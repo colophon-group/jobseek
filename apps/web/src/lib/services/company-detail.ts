@@ -5,6 +5,7 @@ import { cached } from "@/lib/cache";
 import { companyDetailCacheKey } from "@/lib/cache-registry";
 import { getSearchClient } from "@/lib/search/typesense-client";
 import {
+  assertTypesenseSearchResult,
   isRetryableError as isRetryableTypesenseError,
   isTypesenseRateLimitError,
   isTypesenseUnavailableError,
@@ -17,6 +18,8 @@ import {
   resolveCompanyBySlug,
   type CompanyDetail,
 } from "@/lib/services/company-detail-lookup";
+import { normalizeWatchlistUuid } from "@/lib/services/watchlist-input";
+import { CompanyReferenceError } from "@/lib/services/company-references";
 
 const MAX_COMPANY_SLUG_BATCH = 25;
 
@@ -72,12 +75,23 @@ export async function getCompanyIdsBySlugs(
     },
   );
 
-  return new Map(
-    (result.hits ?? []).map((hit) => [
-      String(hit.document.slug),
-      String(hit.document.id),
-    ]),
-  );
+  assertTypesenseSearchResult(result, { expectHits: true });
+  const bySlug = new Map<string, string>();
+  const ids = new Set<string>();
+  for (const hit of result.hits ?? []) {
+    const { id, slug } = hit.document;
+    if (
+      typeof slug !== "string" || !slugs.includes(slug) ||
+      typeof id !== "string" || normalizeWatchlistUuid(id) !== id ||
+      bySlug.has(slug) || ids.has(id)
+    ) {
+      throw new CompanyReferenceError("company_identity_conflict");
+    }
+    bySlug.set(slug, id);
+    ids.add(id);
+  }
+  if (result.found !== bySlug.size) throw new CompanyReferenceError("company_lookup_unavailable");
+  return bySlug;
 }
 
 async function fetchCompanyBySlug(slug: string, locale: string): Promise<CompanyDetail | null> {

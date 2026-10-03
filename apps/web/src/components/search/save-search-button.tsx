@@ -1,5 +1,6 @@
 "use client";
 
+import { useCompanyReferenceErrorMessage } from "@/lib/company-reference-error-message";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Eye, Loader2 } from "lucide-react";
@@ -57,6 +58,8 @@ export function SaveSearchButton({
   const router = useRouter();
   const lp = useLocalePath();
   const { isLoggedIn } = useSession();
+  const errorMessage = useCompanyReferenceErrorMessage();
+  const [mutationError, setMutationError] = useState("");
   const [saving, setSaving] = useState(false);
   const [tooltipOpen, setTooltipOpen] = useState(false);
   const [limitNotice, setLimitNotice] = useState(false);
@@ -105,19 +108,22 @@ export function SaveSearchButton({
     }
 
     setSaving(true);
+    setMutationError("");
     try {
       const result = await createWatchlist(draft);
 
       if ("error" in result) {
         if (result.error === "limit_reached") {
           showLimitNotice();
+        } else {
+          setMutationError(errorMessage(result.error));
         }
         return;
       }
 
       router.push(lp(`/watchlists/${result.id}`));
-    } catch {
-      // Keep the current route unchanged. A later click is an explicit retry.
+    } catch (error) {
+      setMutationError(errorMessage(error));
     } finally {
       setSaving(false);
     }
@@ -190,6 +196,7 @@ export function SaveSearchButton({
         </Tooltip.Portal>
       </Tooltip.Root>
       </Tooltip.Provider>
+      {mutationError && <p role="alert" className="text-sm text-danger">{mutationError}</p>}
     </>
   );
 }

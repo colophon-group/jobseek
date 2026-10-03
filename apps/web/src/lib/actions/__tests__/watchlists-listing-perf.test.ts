@@ -35,6 +35,7 @@
  *   `multi_search`, using viewer languages and the same filter shape as
  *   the watchlist-detail active count.
  */
+import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
@@ -294,6 +295,11 @@ import {
   searchPublicWatchlists,
 } from "../../services/watchlists";
 
+function companyId(seed: string): string {
+  const hex = createHash("sha256").update(seed).digest("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+}
+
 const USER_ID = "user-1";
 
 beforeEach(() => {
@@ -343,7 +349,7 @@ function fakeUserWatchlistRow(
     created_at: new Date("2026-05-01T00:00:00Z"),
     company_count: overrides.company_count ?? 3,
     active_job_count: activeJobCount,
-    company_ids: overrides.company_ids ?? [`company-${i}-a`, `company-${i}-b`],
+    company_ids: overrides.company_ids ?? [companyId(`company-${i}-a`), companyId(`company-${i}-b`)],
   };
 }
 
@@ -413,7 +419,7 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
     const rows = [
       fakeUserWatchlistRow(0, 0, {
         filters: { locationSlugs: ["switzerland"] },
-        company_ids: ["company-a", "company-b"],
+        company_ids: [companyId("company-a"), companyId("company-b")],
       }),
       fakeUserWatchlistRow(1, 0, {
         filters: { anyCompany: true, keywords: ["python"] },
@@ -428,9 +434,9 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
       .mockResolvedValueOnce(rows)
       .mockResolvedValueOnce([{ job_languages: ["de"] }])
       .mockResolvedValueOnce([
-        { id: "company-a", name: "Alpha", icon: "alpha.png" },
-        { id: "company-b", name: "Beta", icon: null },
-        { id: "company-c", name: "Gamma", icon: "gamma.png" },
+        { id: companyId("company-a"), name: "Alpha", icon: "alpha.png" },
+        { id: companyId("company-b"), name: "Beta", icon: null },
+        { id: companyId("company-c"), name: "Gamma", icon: "gamma.png" },
       ]);
     mocks.tsMultiSearch.mockResolvedValueOnce({
       results: [
@@ -439,8 +445,8 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
           facet_counts: [{
             field_name: "company_id",
             counts: [
-              { value: "company-a", count: 6 },
-              { value: "company-b", count: 2 },
+              { value: companyId("company-a"), count: 6 },
+              { value: companyId("company-b"), count: 2 },
             ],
             stats: { total_values: 2 },
           }],
@@ -450,8 +456,8 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
           facet_counts: [{
             field_name: "company_id",
             counts: [
-              { value: "company-c", count: 7 },
-              { value: "company-a", count: 5 },
+              { value: companyId("company-c"), count: 7 },
+              { value: companyId("company-a"), count: 5 },
             ],
             stats: { total_values: 9 },
           }],
@@ -474,16 +480,16 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
         activeJobCount: 8,
         activeCompanyCount: 2,
         topCompanies: [
-          { id: "company-a", name: "Alpha", icon: "alpha.png" },
-          { id: "company-b", name: "Beta", icon: null },
+          { id: companyId("company-a"), name: "Alpha", icon: "alpha.png" },
+          { id: companyId("company-b"), name: "Beta", icon: null },
         ],
       },
       "wl-1": {
         activeJobCount: 12,
         activeCompanyCount: 9,
         topCompanies: [
-          { id: "company-c", name: "Gamma", icon: "gamma.png" },
-          { id: "company-a", name: "Alpha", icon: "alpha.png" },
+          { id: companyId("company-c"), name: "Gamma", icon: "gamma.png" },
+          { id: companyId("company-a"), name: "Alpha", icon: "alpha.png" },
         ],
       },
       "wl-2": {
@@ -500,7 +506,7 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
       facet_strategy: "exhaustive",
       max_facet_values: 4,
       per_page: 0,
-      filter_by: expect.stringContaining("company_id:[company-a,company-b]"),
+      filter_by: expect.stringContaining(`company_id:[${[companyId("company-a"), companyId("company-b")].sort().join(",")}]`),
     });
     expect(searches[0].filter_by).toContain("location_ids:[2658434]");
     expect(searches[0].filter_by).toContain("locales:[de,_none]");
@@ -510,7 +516,7 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
     });
     expect(mocks.dbExecute).toHaveBeenCalledTimes(3);
     const hydrationQueries = mocks.dbExecute.mock.calls.filter(([query]) =>
-      (query as { text: string }).text.includes("FROM company c"),
+      (query as { text: string }).text.includes("FROM company_reference c"),
     );
     expect(hydrationQueries).toHaveLength(1);
   });
@@ -519,7 +525,7 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
     const rowCount = 20;
     const rows = Array.from({ length: rowCount }, (_, index) =>
       fakeUserWatchlistRow(index, 0, {
-        company_ids: [`company-${index}`],
+        company_ids: [companyId(`company-${index}`)],
       }),
     );
     mocks.dbExecute
@@ -527,7 +533,7 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
       .mockResolvedValueOnce([{ job_languages: ["en"] }])
       .mockResolvedValueOnce(
         rows.map((_, index) => ({
-          id: `company-${index}`,
+          id: companyId(`company-${index}`),
           name: `Company ${index}`,
           icon: null,
         })),
@@ -537,7 +543,7 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
         found: index + 1,
         facet_counts: [{
           field_name: "company_id",
-          counts: [{ value: `company-${index}`, count: index + 1 }],
+          counts: [{ value: companyId(`company-${index}`), count: index + 1 }],
           stats: { total_values: 1 },
         }],
       })),
@@ -551,7 +557,7 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
     expect(mocks.dbExecute).toHaveBeenCalledTimes(3);
     expect(
       mocks.dbExecute.mock.calls.filter(([query]) =>
-        (query as { text: string }).text.includes("FROM company c"),
+        (query as { text: string }).text.includes("FROM company_reference c"),
       ),
     ).toHaveLength(1);
   });
@@ -571,14 +577,14 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
       .mockResolvedValueOnce(rows)
       .mockResolvedValueOnce([{ job_languages: ["en"] }])
       .mockResolvedValueOnce([
-        { id: "company-a", name: "Alpha", icon: "alpha.png" },
+        { id: companyId("company-a"), name: "Alpha", icon: "alpha.png" },
       ]);
     mocks.tsMultiSearch.mockResolvedValueOnce({
       results: [{
         found: 14,
         facet_counts: [{
           field_name: "company_id",
-          counts: [{ value: "company-a", count: 14 }],
+          counts: [{ value: companyId("company-a"), count: 14 }],
           stats: { total_values: 1 },
         }],
       }],
@@ -626,7 +632,7 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
 
   it("keeps oversized explicit company scopes inside one multi_search and merges exact facets", async () => {
     const companyIds = Array.from({ length: 101 }, (_, index) =>
-      `company-${index}`,
+      companyId(`company-${index}`),
     );
     mocks.dbExecute
       .mockResolvedValueOnce([
@@ -634,8 +640,8 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
       ])
       .mockResolvedValueOnce([{ job_languages: ["en"] }])
       .mockResolvedValueOnce([
-        { id: "company-100", name: "Largest", icon: "largest.png" },
-        { id: "company-0", name: "Runner-up", icon: "runner-up.png" },
+        { id: companyId("company-100"), name: "Largest", icon: "largest.png" },
+        { id: companyId("company-0"), name: "Runner-up", icon: "runner-up.png" },
       ]);
     mocks.tsMultiSearch.mockResolvedValueOnce({
       results: [
@@ -643,7 +649,7 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
           found: 40,
           facet_counts: [{
             field_name: "company_id",
-            counts: [{ value: "company-0", count: 10 }],
+            counts: [{ value: companyId("company-0"), count: 10 }],
             stats: { total_values: 70 },
           }],
         },
@@ -651,7 +657,7 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
           found: 99,
           facet_counts: [{
             field_name: "company_id",
-            counts: [{ value: "company-100", count: 99 }],
+            counts: [{ value: companyId("company-100"), count: 99 }],
             stats: { total_values: 1 },
           }],
         },
@@ -666,8 +672,8 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
       activeJobCount: 139,
       activeCompanyCount: 71,
       topCompanies: [
-        { id: "company-100", name: "Largest", icon: "largest.png" },
-        { id: "company-0", name: "Runner-up", icon: "runner-up.png" },
+        { id: companyId("company-100"), name: "Largest", icon: "largest.png" },
+        { id: companyId("company-0"), name: "Runner-up", icon: "runner-up.png" },
       ],
     });
   });
@@ -726,12 +732,12 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
     );
     mocks.dbExecute
       .mockResolvedValueOnce([
-        fakeUserWatchlistRow(0, 0, { company_ids: ["company-good"] }),
+        fakeUserWatchlistRow(0, 0, { company_ids: [companyId("company-good")] }),
         fakeUserWatchlistRow(1, 0, { company_ids: splitCompanyIds }),
       ])
       .mockResolvedValueOnce([{ job_languages: ["en"] }])
       .mockResolvedValueOnce([
-        { id: "company-good", name: "Good Company", icon: "good.png" },
+        { id: companyId("company-good"), name: "Good Company", icon: "good.png" },
       ]);
     mocks.tsMultiSearch.mockResolvedValueOnce({
       results: [
@@ -739,7 +745,7 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
           found: 5,
           facet_counts: [{
             field_name: "company_id",
-            counts: [{ value: "company-good", count: 5 }],
+            counts: [{ value: companyId("company-good"), count: 5 }],
             stats: { total_values: 1 },
           }],
         },
@@ -762,7 +768,7 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
         activeJobCount: 5,
         activeCompanyCount: 1,
         topCompanies: [
-          { id: "company-good", name: "Good Company", icon: "good.png" },
+          { id: companyId("company-good"), name: "Good Company", icon: "good.png" },
         ],
       },
     });
@@ -858,13 +864,13 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
           locationSlugs: ["switzerland"],
           occupationSlugs: ["software-engineer"],
         },
-        company_ids: ["company-a", "company-b"],
+        company_ids: [companyId("company-a"), companyId("company-b")],
       }),
       fakeUserWatchlistRow(1, 44, {
         filters: {
           keywords: ["python"],
         },
-        company_ids: ["company-c"],
+        company_ids: [companyId("company-c")],
       }),
       fakeUserWatchlistRow(2, 12),
     ];
@@ -905,11 +911,11 @@ describe("getUserWatchlists — listing fan-out fix (#3176)", () => {
       ],
     });
     const searches = mocks.tsMultiSearch.mock.calls[0]?.[0].searches;
-    expect(searches[0].filter_by).toContain("company_id:[company-a,company-b]");
+    expect(searches[0].filter_by).toContain(`company_id:[${companyId("company-a")},${companyId("company-b")}]`);
     expect(searches[0].filter_by).toContain("location_ids:[2658434]");
     expect(searches[0].filter_by).toContain("occupation_ids:[1]");
     expect(searches[0].filter_by).toContain("locales:[en,_none]");
-    expect(searches[1].filter_by).toContain("company_id:[company-c]");
+    expect(searches[1].filter_by).toContain(`company_id:[${companyId("company-c")}]`);
   });
 
   it("returns [] without touching the database when unauthenticated", async () => {
@@ -1236,7 +1242,7 @@ describe("getPopularWatchlists — anyCompany count patch (#3352)", () => {
     const unfilteredHit = fakePublicWatchlistHit(1, 12);
     mocks.tsSearch.mockResolvedValueOnce({ hits: [filteredHit, unfilteredHit], found: 2 });
     mocks.dbExecute.mockResolvedValueOnce([
-      { watchlist_id: "wl-0", company_ids: ["company-a", "company-b"] },
+      { watchlist_id: "wl-0", company_ids: [companyId("company-a"), companyId("company-b")] },
     ]);
     mocks.tsMultiSearch.mockResolvedValueOnce({ results: [{ found: 14, hits: [] }] });
 
@@ -1248,7 +1254,7 @@ describe("getPopularWatchlists — anyCompany count patch (#3352)", () => {
     expect(mocks.tsMultiSearch).toHaveBeenCalledTimes(1);
     const searches = mocks.tsMultiSearch.mock.calls[0]?.[0].searches;
     expect(searches).toHaveLength(1);
-    expect(searches[0].filter_by).toContain("company_id:[company-a,company-b]");
+    expect(searches[0].filter_by).toContain(`company_id:[${companyId("company-a")},${companyId("company-b")}]`);
     expect(searches[0].filter_by).toContain("location_ids:[2658434]");
     expect(searches[0].filter_by).toContain("occupation_ids:[1]");
     expect(searches[0].filter_by).toContain("locales:[en,_none]");
@@ -1357,7 +1363,7 @@ describe("searchPublicWatchlists — anyCompany count patch (#3352)", () => {
     const unfilteredHit = fakePublicWatchlistHit(1, 42);
     mocks.tsSearch.mockResolvedValueOnce({ hits: [filteredHit, unfilteredHit], found: 2 });
     mocks.dbExecute.mockResolvedValueOnce([
-      { watchlist_id: "wl-0", company_ids: ["company-a"] },
+      { watchlist_id: "wl-0", company_ids: [companyId("company-a")] },
     ]);
     mocks.tsMultiSearch.mockResolvedValueOnce({ results: [{ found: 8, hits: [] }] });
 
@@ -1380,7 +1386,7 @@ describe("searchPublicWatchlists — anyCompany count patch (#3352)", () => {
       query_by: "title",
       per_page: 0,
     });
-    expect(searches[0].filter_by).toContain("company_id:[company-a]");
+    expect(searches[0].filter_by).toContain(`company_id:[${companyId("company-a")}]`);
     expect(searches[0].filter_by).toContain("location_ids:[2657896]");
   });
 

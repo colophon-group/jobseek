@@ -206,6 +206,23 @@ jobs:
           EXPECTED_DEPLOYMENT_ID: ${{ steps.stage.outputs.id }}
         run: node .github/scripts/verify-vercel-company-cache.mjs
 
+      # Mandatory in the bridge release. Expansion-only rollout does not include
+      # this workflow change; once installed, missing credentials cannot bypass it.
+      - name: Install authenticated canary browser
+        if: steps.paths.outputs.deploy == 'true'
+        run: pnpm --filter @jobseek/web exec playwright install --with-deps chromium
+
+      - name: Prove first-use company selection before promotion
+        if: steps.paths.outputs.deploy == 'true'
+        env:
+          DEPLOYMENT_URL: ${{ steps.stage.outputs.url }}
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+          COMPANY_REFERENCE_CANARY_USER_ID: ${{ secrets.COMPANY_REFERENCE_CANARY_USER_ID }}
+          COMPANY_REFERENCE_CANARY_EMAIL: ${{ secrets.COMPANY_REFERENCE_CANARY_EMAIL }}
+          COMPANY_REFERENCE_CANARY_PASSWORD: ${{ secrets.COMPANY_REFERENCE_CANARY_PASSWORD }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: pnpm --filter @jobseek/web exec tsx scripts/verify-company-reference-staged.ts
+
       - name: Require the staged revision is still main
         if: steps.paths.outputs.deploy == 'true'
         env:

@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   WATCHLIST_COMPANY_MAX,
@@ -20,20 +18,16 @@ const COMPANY_ID_1 = "20000000-0000-4000-8000-000000000001";
 const COMPANY_ID_2 = "20000000-0000-4000-8000-000000000002";
 
 describe("watchlist server input normalization", () => {
-  it("serializes scalar membership cap checks under a parent-row lock", () => {
-    const source = readFileSync(join(process.cwd(), "src/lib/services/watchlists.ts"), "utf8");
-    const addCompanySource = source.slice(
-      source.indexOf("export async function addCompanyToWatchlist"),
-      source.indexOf("export async function clearWatchlistCompanies"),
-    );
-    expect(addCompanySource).toContain('.for("update")');
-    expect(addCompanySource).toContain("existing.length >= WATCHLIST_COMPANY_MAX");
-    expect(addCompanySource.indexOf('.for("update")')).toBeLessThan(
-      addCompanySource.indexOf("existing.length >= WATCHLIST_COMPANY_MAX"),
-    );
-    expect(addCompanySource.indexOf("existing.length >= WATCHLIST_COMPANY_MAX")).toBeLessThan(
-      addCompanySource.indexOf(".insert(watchlistCompany)"),
-    );
+  // Concurrent final-slot behavior is exercised against actual PostgreSQL in
+  // scripts/test-company-reference-pg.test.ts, required by the boundary CI job.
+
+  it("preserves canonical identities with malformed display snapshots as unavailable selections", () => {
+    expect(normalizeWatchlistCompaniesForRead([
+      { id: COMPANY_ID_1, name: "Broken\u0001name", slug: "broken", icon: null },
+      { id: COMPANY_ID_2, name: "Unsafe link", slug: "../other", icon: null },
+    ])).toEqual([COMPANY_ID_1, COMPANY_ID_2].map((id) => ({
+      id, name: "Company unavailable", slug: "", icon: null, unavailable: true,
+    })));
   });
 
   it("normalizes valid create input before persistence", () => {

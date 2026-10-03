@@ -7,6 +7,9 @@ import { getTableConfig, PgTimestamp } from "drizzle-orm/pg-core";
 import postgres, { type Sql } from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { companyReference } from "../schema";
+import * as schema from "../schema";
+import { generateDrizzleJson, generateMigration } from "drizzle-kit/api";
+import { auditCompanyReferenceDependencies } from "../../../scripts/company-reference-dependency-check";
 import { auditCompanyReferences, normalizeReferenceCheck, referenceMigrationIdentity, referencePrerequisiteIdentity, validateCompanyReferenceRuntimeRole } from "../../../scripts/company-reference-contract";
 const migration = readFileSync("drizzle/0100_company_references.sql", "utf8");
 const id = "11111111-1111-4111-8111-111111111111";
@@ -27,7 +30,11 @@ async function fixture(malformed = false) {
     CREATE TABLE company (id uuid PRIMARY KEY, name text NOT NULL, slug text UNIQUE NOT NULL, icon text, created_at timestamp NOT NULL DEFAULT now(), updated_at timestamp NOT NULL DEFAULT now());
     CREATE TABLE watchlist_company (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), watchlist_id uuid NOT NULL, company_id uuid NOT NULL REFERENCES company(id) ON DELETE CASCADE);
     CREATE TABLE followed_company (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id text NOT NULL, company_id uuid NOT NULL REFERENCES company(id) ON DELETE CASCADE);
-    CREATE TABLE saved_job (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), company_id uuid NOT NULL, company_name text NOT NULL, company_slug text NOT NULL);
+    CREATE TABLE saved_job (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), company_id uuid NOT NULL, company_name text NOT NULL, company_slug text NOT NULL, company_icon text);
+    CREATE TABLE company_description (company_id uuid NOT NULL REFERENCES company(id) ON DELETE CASCADE);
+    CREATE TABLE job_board (company_id uuid NOT NULL REFERENCES company(id) ON DELETE CASCADE);
+    CREATE TABLE hiring_signal (company_id uuid NOT NULL REFERENCES company(id) ON DELETE CASCADE);
+    CREATE TABLE company_request (resolved_company_id uuid REFERENCES company(id) ON DELETE SET NULL);
     DO $$ BEGIN CREATE ROLE anon; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
     DO $$ BEGIN CREATE ROLE authenticated; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
     DO $$ BEGIN CREATE ROLE jobseek_migration_auditor LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -69,6 +76,74 @@ describe("company reference schema", () => {
   });
 });
 describe.skipIf(!url)("company reference expansion with PostgreSQL", () => {
+  it("audits the complete current Drizzle schema and its reference replacement lifecycle", async () => {
+    await fixture();
+    await sql.unsafe("DROP SCHEMA public CASCADE; CREATE SCHEMA public; SET search_path=public");
+    const legacy = { ...schema } as Record<string, unknown>;
+    delete legacy.companyReference;
+    const desired = generateDrizzleJson(legacy);
+    expect(desired.tables["public.job_posting"]).toBeUndefined();
+    // Permit this historical fixture to remain valid after the separately gated
+    // runtime schema changes selection FKs to company_reference in 0101.
+    for (const table of ["watchlist_company", "followed_company"]) {
+      for (const fk of Object.values(desired.tables[`public.${table}`]!.foreignKeys) as { tableTo: string; columnsFrom: string[]; onDelete?: string }[]) {
+        if (fk.tableTo === "company_reference" && fk.columnsFrom.join() === "company_id") {
+          fk.tableTo = "company"; fk.onDelete = "cascade";
+        }
+      }
+    }
+    for (const statement of await generateMigration(generateDrizzleJson({}), desired)) {
+      await sql.unsafe(statement);
+    }
+    expect(await auditCompanyReferences(sql, "preflight")).toMatchObject({ dependencies: { foreignKeyCount: 7, optionalForeignKeyCount: 1 } });
+    await apply();
+    expect(await auditCompanyReferences(sql, "postflight")).toMatchObject({ dependencies: { foreignKeyCount: 7, snapshot: "independent" } });
+    await expect(sql.begin(tx => auditCompanyReferenceDependencies(tx, "reference"))).rejects.toThrow("inventory/catalog drift");
+    // Test the declared final lifecycle without applying or introducing 0101.
+    for (const table of ["watchlist_company", "followed_company"]) {
+      const [constraint] = await sql`SELECT conname FROM pg_constraint WHERE contype='f' AND conrelid=${table}::regclass AND confrelid='company'::regclass`;
+      await sql.unsafe(`ALTER TABLE ${table} DROP CONSTRAINT "${constraint!.conname}";
+        ALTER TABLE ${table} ADD FOREIGN KEY (company_id) REFERENCES company_reference(id) ON DELETE RESTRICT`);
+    }
+    expect(await sql.begin(tx => auditCompanyReferenceDependencies(tx, "reference"))).toMatchObject({ foreignKeyCount: 7, phase: "reference" });
+  });
+  it.each(["company", "company_reference"])("refuses an uninventoried FK to %s", async target => {
+    await fixture(); await apply();
+    await sql.unsafe(`CREATE TABLE unexpected_dependency (company_id uuid REFERENCES ${target}(id))`);
+    await expect(auditCompanyReferences(sql, "drift")).rejects.toThrow("inventory/catalog drift");
+  });
+  it("accepts the deployed six-FK inventory and refuses malformed optional history or restored posting FK", async () => {
+    await fixture(); await apply();
+    expect(await auditCompanyReferences(sql, "drift")).toMatchObject({ dependencies: { foreignKeyCount: 6, optionalForeignKeyCount: 0 } });
+    await sql.unsafe("CREATE TABLE murmur_accept_log (company_id uuid REFERENCES company(id) ON DELETE SET NULL)");
+    await expect(auditCompanyReferences(sql, "drift")).rejects.toThrow("exact table shape differs");
+    await sql.unsafe("DROP TABLE murmur_accept_log; CREATE TABLE job_posting (company_id uuid REFERENCES company(id) ON DELETE CASCADE)");
+    await expect(auditCompanyReferences(sql, "drift")).rejects.toThrow("inventory/catalog drift");
+  });
+  it("refuses a removed or weakened retained historical dependency", async () => {
+    await fixture(); await apply();
+    await sql.unsafe("ALTER TABLE company_request DROP CONSTRAINT company_request_resolved_company_id_fkey");
+    await expect(auditCompanyReferences(sql, "drift")).rejects.toThrow("inventory/catalog drift");
+    await sql.unsafe("ALTER TABLE company_request ADD FOREIGN KEY (resolved_company_id) REFERENCES company(id) ON DELETE CASCADE");
+    await expect(auditCompanyReferences(sql, "drift")).rejects.toThrow("inventory/catalog drift");
+    await sql.unsafe("ALTER TABLE company_request DROP CONSTRAINT company_request_resolved_company_id_fkey; ALTER TABLE company_request ADD FOREIGN KEY (resolved_company_id) REFERENCES company(id) ON DELETE SET NULL NOT VALID");
+    await expect(auditCompanyReferences(sql, "drift")).rejects.toThrow("inventory/catalog drift");
+    await sql.unsafe("ALTER TABLE company_request VALIDATE CONSTRAINT company_request_resolved_company_id_fkey; ALTER TABLE company_request ALTER CONSTRAINT company_request_resolved_company_id_fkey DEFERRABLE INITIALLY DEFERRED");
+    await expect(auditCompanyReferences(sql, "drift")).rejects.toThrow("inventory/catalog drift");
+  });
+  it("requires complete independent company snapshots in saved jobs", async () => {
+    await fixture(); await apply();
+    await sql.unsafe("ALTER TABLE saved_job DROP COLUMN company_icon");
+    await expect(auditCompanyReferences(sql, "drift")).rejects.toThrow("snapshot columns differ");
+    await fixture(); await apply();
+    await sql.unsafe("ALTER TABLE saved_job ALTER COLUMN company_name DROP NOT NULL");
+    await expect(auditCompanyReferences(sql, "drift")).rejects.toThrow("snapshot columns differ");
+    await fixture(); await apply();
+    await sql.unsafe("CREATE TABLE external_company_history (id uuid PRIMARY KEY);");
+    await sql`INSERT INTO external_company_history (id) VALUES (${id})`;
+    await sql.unsafe("ALTER TABLE saved_job ADD FOREIGN KEY (company_id) REFERENCES external_company_history(id)");
+    await expect(auditCompanyReferences(sql, "drift")).rejects.toThrow("snapshot must remain independent");
+  });
   it("preserves memberships/snapshots and UTC instants with exact ledger/catalog", async () => {
     await fixture();
     const snapshot = () => sql`SELECT to_jsonb(w) AS data FROM watchlist_company w UNION ALL SELECT to_jsonb(f) FROM followed_company f UNION ALL SELECT to_jsonb(s) FROM saved_job s`;

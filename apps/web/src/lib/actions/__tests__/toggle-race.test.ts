@@ -19,8 +19,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * even when Typesense is unavailable. If nothing was deleted, it fetches
  * a durable snapshot and then uses the #3268 retry-on-conflict shape:
  * catch `23505` scoped to the specific UNIQUE constraint, delete the
- * racing winner, and return `saved: false`. Starred companies retain the
- * insert-first implementation because they do not need an external snapshot.
+ * racing winner, and return `saved: false`. Company stars serialize each
+ * toggle and resolve first-use company references outside database locks.
  *
  * Test strategy
  * -------------
@@ -172,13 +172,14 @@ const mocks = vi.hoisted(() => {
           if (isFollowedCompany) {
             const [userId, companyId] = strs;
             if (!userId || !companyId) return [];
+            const removed: FollowedCompanyRow[] = [];
             for (let i = followedCompanyTable.length - 1; i >= 0; i--) {
               const r = followedCompanyTable[i];
               if (r.user_id === userId && r.company_id === companyId) {
-                followedCompanyTable.splice(i, 1);
+                removed.push(...followedCompanyTable.splice(i, 1));
               }
             }
-            return [];
+            return returningId ? removed.map((row) => ({ companyId: row.company_id })) : [];
           }
           throw new Error("dbDelete mock: unknown table");
         };
@@ -256,6 +257,8 @@ const mocks = vi.hoisted(() => {
     },
     getSessionUserId: vi.fn(),
     fetchIndexedPostingSnapshot: vi.fn(),
+    prepareCompanyReferences: vi.fn(),
+    transactionQueue: Promise.resolve() as Promise<unknown>,
     dbInsert,
     dbDelete,
     dbSelect,
@@ -313,8 +316,24 @@ vi.mock("@/lib/search/typesense-posting-detail", () => ({
   fetchIndexedPostingStates: vi.fn().mockResolvedValue(new Map()),
 }));
 
+vi.mock("@/lib/services/company-references", () => ({
+  prepareCompanyReferences: mocks.prepareCompanyReferences,
+  persistCompanyReferences: vi.fn().mockResolvedValue(undefined),
+  lockCompanyStar: vi.fn().mockResolvedValue(undefined),
+  companyReferenceErrorResult: (error: unknown) => { throw error; },
+}));
+
 vi.mock("@/db", () => ({
   db: {
+    transaction: (callback: (tx: unknown) => Promise<unknown>) => {
+      const result = mocks.transactionQueue.then(() => callback({
+        select: () => mocks.dbSelect(),
+        insert: (table: unknown) => mocks.dbInsert(table),
+        delete: (table: unknown) => mocks.dbDelete(table),
+      }));
+      mocks.transactionQueue = result.catch(() => undefined);
+      return result;
+    },
     select: () => mocks.dbSelect(),
     insert: (t: unknown) => mocks.dbInsert(t),
     delete: (t: unknown) => mocks.dbDelete(t),
@@ -330,6 +349,8 @@ beforeEach(async () => {
   const schema = await import("@/db/schema");
   mocks.setTableRefs(schema.savedJob, schema.followedCompany);
   mocks.reset();
+  mocks.transactionQueue = Promise.resolve();
+  mocks.prepareCompanyReferences.mockResolvedValue([]);
   mocks.getSessionUserId.mockResolvedValue("user-1");
   mocks.fetchIndexedPostingSnapshot.mockResolvedValue({
     id: "posting-1",
@@ -493,10 +514,10 @@ describe("#3179 — toggleStarredCompany race", () => {
     const { toggleStarredCompany } = await import(
       "@/lib/actions/starred-companies"
     );
-    const r = await toggleStarredCompany("company-1");
-    expect(r.starred).toBe(true);
+    const r = await toggleStarredCompany("20000000-0000-4000-8000-000000000001");
+    expect(r).toEqual({ starred: true });
     expect(mocks.followedCompanyTable.map((r) => r.company_id)).toEqual([
-      "company-1",
+      "20000000-0000-4000-8000-000000000001",
     ]);
   });
 
@@ -504,10 +525,19 @@ describe("#3179 — toggleStarredCompany race", () => {
     const { toggleStarredCompany } = await import(
       "@/lib/actions/starred-companies"
     );
-    await toggleStarredCompany("company-1");
-    const r = await toggleStarredCompany("company-1");
-    expect(r.starred).toBe(false);
+    await toggleStarredCompany("20000000-0000-4000-8000-000000000001");
+    const r = await toggleStarredCompany("20000000-0000-4000-8000-000000000001");
+    expect(r).toEqual({ starred: false });
     expect(mocks.followedCompanyTable.length).toBe(0);
+  });
+
+  it("unstars existing companies without consulting search", async () => {
+    const { toggleStarredCompany } = await import("@/lib/actions/starred-companies");
+    await toggleStarredCompany("20000000-0000-4000-8000-000000000001");
+    mocks.prepareCompanyReferences.mockClear();
+    mocks.prepareCompanyReferences.mockRejectedValue(new Error("search offline"));
+    await expect(toggleStarredCompany("20000000-0000-4000-8000-000000000001")).resolves.toEqual({ starred: false });
+    expect(mocks.prepareCompanyReferences).not.toHaveBeenCalled();
   });
 
   it("two concurrent toggles on empty state — one starred, one un-starred, no exception", async () => {
@@ -516,28 +546,27 @@ describe("#3179 — toggleStarredCompany race", () => {
     );
 
     const [a, b] = await Promise.all([
-      toggleStarredCompany("company-1"),
-      toggleStarredCompany("company-1"),
+      toggleStarredCompany("20000000-0000-4000-8000-000000000001"),
+      toggleStarredCompany("20000000-0000-4000-8000-000000000001"),
     ]);
 
-    expect([a.starred, b.starred].sort()).toEqual([false, true]);
+    expect([a, b].map((result) => "starred" in result ? result.starred : undefined).sort()).toEqual([false, true]);
     expect(mocks.followedCompanyTable.length).toBe(0);
   });
 
-  it("two concurrent toggles on existing state — both delete, idempotent", async () => {
+  it("two concurrent toggles on existing state preserve toggle parity", async () => {
     const { toggleStarredCompany } = await import(
       "@/lib/actions/starred-companies"
     );
-    await toggleStarredCompany("company-1");
+    await toggleStarredCompany("20000000-0000-4000-8000-000000000001");
 
     const [a, b] = await Promise.all([
-      toggleStarredCompany("company-1"),
-      toggleStarredCompany("company-1"),
+      toggleStarredCompany("20000000-0000-4000-8000-000000000001"),
+      toggleStarredCompany("20000000-0000-4000-8000-000000000001"),
     ]);
 
-    expect(a.starred).toBe(false);
-    expect(b.starred).toBe(false);
-    expect(mocks.followedCompanyTable.length).toBe(0);
+    expect([a, b].map((result) => "starred" in result ? result.starred : undefined).sort()).toEqual([false, true]);
+    expect(mocks.followedCompanyTable.length).toBe(1);
   });
 });
 

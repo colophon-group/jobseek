@@ -69,6 +69,16 @@ describe("SaveSearchButton (issue #3036)", () => {
     expect(window.sessionStorage.length).toBe(1);
   });
 
+  it("explains a catalogue failure without changing the search route", async () => {
+    createWatchlistMock.mockResolvedValue({ error: "company_lookup_unavailable" });
+    render(<SaveSearchButton keywords={[]} locations={[]} occupations={[]} seniorities={[]} />);
+    fireEvent.click(screen.getByRole("button", { name: /save this search/i }));
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Company lookup is temporarily unavailable. Please try again.",
+    );
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
   it("shows a non-purchase limit explanation when the server reports limit_reached", async () => {
     createWatchlistMock.mockResolvedValue({ error: "limit_reached" });
 

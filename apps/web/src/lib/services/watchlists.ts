@@ -1,5 +1,9 @@
 import "server-only";
 
+import { observeCompanySelection } from "@/lib/company-selection-telemetry";
+
+import { readCompanyReferences } from "@/lib/services/company-reference-read";
+
 import { createHash } from "node:crypto";
 import { after } from "next/server";
 import { revalidatePath, updateTag } from "next/cache";
@@ -64,6 +68,12 @@ import { toggleWatchlistAlertState } from "@/lib/notifications/policy";
 import { lockNotificationPolicyForUser } from "@/lib/services/notification-preferences";
 import { sharedWatchlistCloneLimiter } from "@/lib/rate-limit";
 import { readWatchlistCandidates } from "@/lib/services/watchlist-matcher";
+import {
+  companyReferenceErrorResult,
+  prepareCompanyReferences,
+  persistCompanyReferences,
+  persistExistingCompanyReferences,
+} from "@/lib/services/company-references";
 import {
   normalizeCreateWatchlistInput,
   normalizeHandoffWatchlistInput,
@@ -150,6 +160,7 @@ export type WatchlistDetail = {
     name: string;
     slug: string;
     icon: string | null;
+    unavailable?: boolean;
   }[];
 };
 
@@ -252,7 +263,7 @@ class WatchlistCopySourceInvalidError extends Error {}
 
 // ── Actions ─────────────────────────────────────────────────────────
 
-export async function createWatchlist(params: {
+async function createWatchlistImpl(params: {
   title: string;
   companyIds: string[];
   filters?: WatchlistFilters;
@@ -273,6 +284,13 @@ export async function createWatchlist(params: {
   if (!normalized.ok) return { error: "invalid_input" };
   params = normalized.value;
 
+  let references;
+  try {
+    references = await prepareCompanyReferences(params.companyIds);
+  } catch (error) {
+    return companyReferenceErrorResult(error);
+  }
+
   // Slug allocation is concurrency-safe: `insertWatchlistWithUniqueSlug`
   // wraps the INSERT in a retry loop that recovers from the SELECT-then-
   // INSERT race on `idx_wl_user_slug` (#3201). Two browser tabs (or a
@@ -290,6 +308,7 @@ export async function createWatchlist(params: {
     async (candidate) =>
       db.transaction((tx) =>
         createWithinWatchlistLimit(tx, userId, async () => {
+          await persistCompanyReferences(tx, references);
           const [r] = await tx
             .insert(watchlist)
             .values({
@@ -315,10 +334,11 @@ export async function createWatchlist(params: {
       ),
   ).catch((error: unknown) => {
     if (error instanceof WatchlistLimitReachedError) return null;
-    throw error;
+    return companyReferenceErrorResult(error);
   });
 
   if (!inserted) return { error: "limit_reached" };
+  if ("error" in inserted) return inserted;
   const { row, slug } = inserted;
 
   _logWatchlistAudit({
@@ -336,11 +356,13 @@ export async function createWatchlist(params: {
   return { id: row.id, slug };
 }
 
-export async function createWatchlistFromHandoff(params: {
+async function createWatchlistImplFromHandoff(params: {
   title: string;
   companySlugs: string[];
   filters?: WatchlistFilters;
 }): Promise<{ id: string; slug: string } | { error: string }> {
+  const userId = await getSessionUserId();
+  if (!userId) throw new Error("Not authenticated");
   const normalized = normalizeHandoffWatchlistInput(params);
   if (!normalized.ok) return { error: "invalid_input" };
 
@@ -351,11 +373,11 @@ export async function createWatchlistFromHandoff(params: {
   );
   return createWatchlistFromHandoffWithDeps(normalized.value, {
     getCompanyIdsBySlugs,
-    createWatchlist,
+    createWatchlist: createWatchlistImpl,
   });
 }
 
-export async function updateWatchlist(params: {
+async function updateWatchlistImpl(params: {
   watchlistId: string;
   title?: string;
   companyIds?: string[];
@@ -389,6 +411,13 @@ export async function updateWatchlist(params: {
   // separate UI cutover removes legacy toggles.
   if (params.isPublic !== undefined) return { error: "visibility_locked" };
 
+  let references;
+  try {
+    references = await prepareCompanyReferences(params.companyIds ?? []);
+  } catch (error) {
+    return companyReferenceErrorResult(error);
+  }
+
   let newSlug = wl.slug;
   const updates: Record<string, unknown> = {};
 
@@ -408,18 +437,17 @@ export async function updateWatchlist(params: {
   }
   if (params.filters !== undefined) updates.filters = params.filters;
   if (Object.keys(updates).length > 0 || params.companyIds !== undefined) {
-    await db.transaction(async (tx) => {
-      if (params.companyIds !== undefined) {
-        // Copy takes a shared lock on this row before reading company
-        // membership. Coordinate company-only edits with that lock so a copy
-        // observes one coherent source version under READ COMMITTED.
-        await tx
-          .select({ id: watchlist.id })
-          .from(watchlist)
-          .where(eq(watchlist.id, params.watchlistId))
-          .for("update")
-          .limit(1);
-      }
+    const mutation = await db.transaction(async (tx) => {
+      // Recheck ownership after network I/O, and serialize all edits with
+      // source-copy locks so a copy observes one coherent version.
+      const [owned] = await tx
+        .select({ userId: watchlist.userId })
+        .from(watchlist)
+        .where(and(eq(watchlist.id, params.watchlistId), eq(watchlist.userId, userId)))
+        .for("update")
+        .limit(1);
+      if (!owned || owned.userId !== userId) return { error: "not_found" };
+      await persistCompanyReferences(tx, references);
 
       if (Object.keys(updates).length > 0) {
         await tx
@@ -442,7 +470,9 @@ export async function updateWatchlist(params: {
           );
         }
       }
-    });
+      return null;
+    }).catch(companyReferenceErrorResult);
+    if (mutation) return mutation;
   }
 
   // Typesense + IndexNow hook. A doc is indexed when the watchlist is
@@ -730,6 +760,7 @@ async function _copyWatchlist(
             }
 
             if (companies.length > 0) {
+              await persistExistingCompanyReferences(tx, companies.map((row) => row.companyId));
               await tx.insert(watchlistCompany).values(
                 companies.map((c) => ({
                   watchlistId: r.id,
@@ -759,7 +790,7 @@ async function _copyWatchlist(
     if (error instanceof WatchlistLimitReachedError) {
       return { error: "limit_reached" };
     }
-    throw error;
+    return companyReferenceErrorResult(error);
   }
 
   const { row: copyResult, slug } = inserted;
@@ -804,13 +835,13 @@ async function _copyWatchlist(
 export function copyWatchlist(
   watchlistId: string,
 ): Promise<{ id: string; slug: string } | { error: string }> {
-  return _copyWatchlist(watchlistId, "owned");
+  return observeCompanySelection("copy", () => _copyWatchlist(watchlistId, "owned"));
 }
 
 export function copySharedWatchlist(
   watchlistId: string,
 ): Promise<{ id: string; slug: string } | { error: string }> {
-  return _copyWatchlist(watchlistId, "share");
+  return observeCompanySelection("copy_shared", () => _copyWatchlist(watchlistId, "share"));
 }
 
 export async function toggleWatchlistAlerts(
@@ -1144,7 +1175,7 @@ async function _getWatchlistDetailRow(
                 ORDER BY c.name
               )
               FROM watchlist_company wc
-              JOIN company c ON c.id = wc.company_id
+              JOIN company_reference c ON c.id = wc.company_id
               WHERE wc.watchlist_id = w.id
             ),
             '[]'::json
@@ -1244,7 +1275,7 @@ export async function getSharedWatchlistById(
               FROM (
                 SELECT c.id, c.name, c.slug, c.icon
                 FROM watchlist_company wc
-                JOIN company c ON c.id = wc.company_id
+                JOIN company_reference c ON c.id = wc.company_id
                 WHERE wc.watchlist_id = w.id
                 ORDER BY c.name
                 LIMIT ${WATCHLIST_COMPANY_MAX}
@@ -1841,27 +1872,8 @@ async function _resolveUserActivityPreviews(
 async function _hydrateActivityPreviewCompanies(
   companyIds: string[],
 ): Promise<Map<string, { id: string; name: string; icon: string | null }>> {
-  if (companyIds.length === 0) return new Map();
-  const pgArray = pgTextArrayLiteral(companyIds);
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        id: string;
-        name: string;
-        icon: string | null;
-      }>(sql`
-        SELECT c.id::text AS id, c.name, c.icon
-        FROM company c
-        WHERE c.id = ANY(${pgArray}::uuid[])
-      `),
-    { label: "watchlistActivityPreviewCompanies" },
-  );
-  return new Map(
-    (rows as unknown as Array<{ id: string; name: string; icon: string | null }>).map(
-      (company) => [company.id, company],
-    ),
-  );
+  const companies = await readCompanyReferences(companyIds);
+  return new Map(companies.map(({ id, name, icon }) => [id, { id, name, icon }]));
 }
 
 export async function getWatchlistByUserAndSlug(
@@ -1929,7 +1941,7 @@ export async function getWatchlistByUserAndSlug(
               FROM (
                 SELECT c.id, c.name, c.slug, c.icon
                 FROM watchlist_company wc
-                JOIN company c ON c.id = wc.company_id
+                JOIN company_reference c ON c.id = wc.company_id
                 WHERE wc.watchlist_id = w.id
                 ORDER BY c.name
                 LIMIT ${WATCHLIST_COMPANY_MAX}
@@ -2063,7 +2075,7 @@ async function _fetchPublicWatchlistByUserAndSlug(
               FROM (
                 SELECT c.id, c.name, c.slug, c.icon
                 FROM watchlist_company wc
-                JOIN company c ON c.id = wc.company_id
+                JOIN company_reference c ON c.id = wc.company_id
                 WHERE wc.watchlist_id = w.id
                 ORDER BY c.name
                 LIMIT ${WATCHLIST_COMPANY_MAX}
@@ -2755,10 +2767,10 @@ export async function getWatchlistPostingDisplayCounts(
   }
 }
 
-export async function addCompanyToWatchlist(
+async function addCompanyToWatchlistImpl(
   watchlistId: string,
   companyId: string,
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated");
   const normalizedWatchlistId = normalizeWatchlistUuid(watchlistId);
@@ -2766,6 +2778,18 @@ export async function addCompanyToWatchlist(
   if (!normalizedWatchlistId || !normalizedCompanyId) return { ok: false };
   watchlistId = normalizedWatchlistId;
   companyId = normalizedCompanyId;
+
+  const [preflight] = await db.select({ userId: watchlist.userId })
+    .from(watchlist)
+    .where(and(eq(watchlist.id, watchlistId), eq(watchlist.userId, userId)))
+    .limit(1);
+  if (!preflight || preflight.userId !== userId) return { ok: false, error: "not_found" };
+  let references;
+  try {
+    references = await prepareCompanyReferences([companyId]);
+  } catch (error) {
+    return { ok: false, ...companyReferenceErrorResult(error) };
+  }
 
   // Serialize membership growth on the parent row. Checking the bounded
   // membership set while holding this lock prevents two concurrent adds from
@@ -2777,7 +2801,7 @@ export async function addCompanyToWatchlist(
       .where(and(eq(watchlist.id, watchlistId), eq(watchlist.userId, userId)))
       .for("update")
       .limit(1);
-    if (!owned) return null;
+    if (!owned || owned.userId !== userId) return { error: "not_found" };
 
     const existing = await tx
       .select({ companyId: watchlistCompany.companyId })
@@ -2787,16 +2811,18 @@ export async function addCompanyToWatchlist(
     if (existing.some((row) => row.companyId === companyId)) {
       return { wl: owned, changed: false };
     }
-    if (existing.length >= WATCHLIST_COMPANY_MAX) return null;
+    if (existing.length >= WATCHLIST_COMPANY_MAX) return { error: "company_limit_reached" };
+
+    await persistCompanyReferences(tx, references);
 
     await tx
       .insert(watchlistCompany)
       .values({ watchlistId, companyId })
       .onConflictDoNothing();
     return { wl: owned, changed: true };
-  });
+  }).catch(companyReferenceErrorResult);
 
-  if (!mutation) return { ok: false };
+  if ("error" in mutation) return { ok: false, error: mutation.error };
   if (!mutation.changed) return { ok: true };
   const wl = mutation.wl;
 
@@ -2825,29 +2851,34 @@ export async function addCompanyToWatchlist(
     });
   }
 
+  _revalidatePrivateWatchlistOverview();
   return { ok: true };
 }
 
-export async function clearWatchlistCompanies(
+async function clearWatchlistCompaniesImpl(
   watchlistId: string,
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated");
   const normalizedWatchlistId = normalizeWatchlistUuid(watchlistId);
-  if (!normalizedWatchlistId) return { ok: false };
+  if (!normalizedWatchlistId) return { ok: false, error: "invalid_input" };
   watchlistId = normalizedWatchlistId;
 
-  const [wl] = await db
-    .select({ userId: watchlist.userId, slug: watchlist.slug, isPublic: watchlist.isPublic })
-    .from(watchlist)
-    .where(eq(watchlist.id, watchlistId))
-    .limit(1);
+  const wl = await db.transaction(async (tx) => {
+    const [owned] = await tx
+      .select({ userId: watchlist.userId, slug: watchlist.slug, isPublic: watchlist.isPublic })
+      .from(watchlist)
+      .where(and(eq(watchlist.id, watchlistId), eq(watchlist.userId, userId)))
+      .for("update")
+      .limit(1);
+    if (!owned || owned.userId !== userId) return null;
 
-  if (!wl || wl.userId !== userId) return { ok: false };
-
-  await db
-    .delete(watchlistCompany)
-    .where(eq(watchlistCompany.watchlistId, watchlistId));
+    await tx
+      .delete(watchlistCompany)
+      .where(eq(watchlistCompany.watchlistId, watchlistId));
+    return owned;
+  });
+  if (!wl) return { ok: false, error: "not_found" };
 
   _logWatchlistAudit({
     action: "watchlist.companies.clear",
@@ -2871,37 +2902,42 @@ export async function clearWatchlistCompanies(
     });
   }
 
+  _revalidatePrivateWatchlistOverview();
   return { ok: true };
 }
 
-export async function removeCompanyFromWatchlist(
+async function removeCompanyFromWatchlistImpl(
   watchlistId: string,
   companyId: string,
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated");
   const normalizedWatchlistId = normalizeWatchlistUuid(watchlistId);
   const normalizedCompanyId = normalizeWatchlistUuid(companyId);
-  if (!normalizedWatchlistId || !normalizedCompanyId) return { ok: false };
+  if (!normalizedWatchlistId || !normalizedCompanyId) return { ok: false, error: "invalid_input" };
   watchlistId = normalizedWatchlistId;
   companyId = normalizedCompanyId;
 
-  const [wl] = await db
-    .select({ userId: watchlist.userId, slug: watchlist.slug, isPublic: watchlist.isPublic })
-    .from(watchlist)
-    .where(eq(watchlist.id, watchlistId))
-    .limit(1);
+  const wl = await db.transaction(async (tx) => {
+    const [owned] = await tx
+      .select({ userId: watchlist.userId, slug: watchlist.slug, isPublic: watchlist.isPublic })
+      .from(watchlist)
+      .where(and(eq(watchlist.id, watchlistId), eq(watchlist.userId, userId)))
+      .for("update")
+      .limit(1);
+    if (!owned || owned.userId !== userId) return null;
 
-  if (!wl || wl.userId !== userId) return { ok: false };
-
-  await db
-    .delete(watchlistCompany)
-    .where(
-      and(
-        eq(watchlistCompany.watchlistId, watchlistId),
-        eq(watchlistCompany.companyId, companyId),
-      ),
-    );
+    await tx
+      .delete(watchlistCompany)
+      .where(
+        and(
+          eq(watchlistCompany.watchlistId, watchlistId),
+          eq(watchlistCompany.companyId, companyId),
+        ),
+      );
+    return owned;
+  });
+  if (!wl) return { ok: false, error: "not_found" };
 
   _logWatchlistAudit({
     action: "watchlist.company.remove",
@@ -2925,6 +2961,7 @@ export async function removeCompanyFromWatchlist(
     });
   }
 
+  _revalidatePrivateWatchlistOverview();
   return { ok: true };
 }
 
@@ -3138,4 +3175,28 @@ async function _getOwnerInfo(
   const row = (rows as unknown as { name: string; username: string | null; display_username: string | null }[])[0];
   if (!row) return null;
   return { name: row.name, username: row.username, displayUsername: row.display_username };
+}
+
+export async function createWatchlist(...args: Parameters<typeof createWatchlistImpl>): ReturnType<typeof createWatchlistImpl> {
+  return observeCompanySelection("create", () => createWatchlistImpl(...args));
+}
+
+export async function createWatchlistFromHandoff(...args: Parameters<typeof createWatchlistImplFromHandoff>): ReturnType<typeof createWatchlistImplFromHandoff> {
+  return observeCompanySelection("handoff", () => createWatchlistImplFromHandoff(...args));
+}
+
+export async function updateWatchlist(...args: Parameters<typeof updateWatchlistImpl>): ReturnType<typeof updateWatchlistImpl> {
+  return observeCompanySelection("update", () => updateWatchlistImpl(...args));
+}
+
+export async function addCompanyToWatchlist(...args: Parameters<typeof addCompanyToWatchlistImpl>): ReturnType<typeof addCompanyToWatchlistImpl> {
+  return observeCompanySelection("add", () => addCompanyToWatchlistImpl(...args));
+}
+
+export async function clearWatchlistCompanies(...args: Parameters<typeof clearWatchlistCompaniesImpl>): ReturnType<typeof clearWatchlistCompaniesImpl> {
+  return observeCompanySelection("clear", () => clearWatchlistCompaniesImpl(...args));
+}
+
+export async function removeCompanyFromWatchlist(...args: Parameters<typeof removeCompanyFromWatchlistImpl>): ReturnType<typeof removeCompanyFromWatchlistImpl> {
+  return observeCompanySelection("remove", () => removeCompanyFromWatchlistImpl(...args));
 }

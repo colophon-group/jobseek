@@ -1,0 +1,216 @@
+{
+  "version": 1,
+  "retiredProducers": {
+    "bridge": [
+      "retired_catalogue_mirror"
+    ],
+    "reference": [
+      "retired_catalogue_mirror",
+      "legacy_company_compatibility"
+    ]
+  },
+  "foreignKeys": [
+    {
+      "table": "watchlist_company",
+      "column": "company_id",
+      "owner": "web selections",
+      "classification": "active_selection",
+      "producer": "legacy_company_compatibility",
+      "replacementProducer": "web_reference_materializer",
+      "disposition": "Preserve membership UUIDs and timestamps; materialize references atomically and retain while selected.",
+      "foreignKey": {
+        "bridge": {
+          "target": "company",
+          "deleteAction": "c"
+        },
+        "reference": {
+          "target": "company_reference",
+          "deleteAction": "r"
+        }
+      }
+    },
+    {
+      "table": "followed_company",
+      "column": "company_id",
+      "owner": "web stars",
+      "classification": "active_selection",
+      "producer": "legacy_company_compatibility",
+      "replacementProducer": "web_reference_materializer",
+      "disposition": "Preserve star identity; materialize references atomically and retain while selected.",
+      "foreignKey": {
+        "bridge": {
+          "target": "company",
+          "deleteAction": "c"
+        },
+        "reference": {
+          "target": "company_reference",
+          "deleteAction": "r"
+        }
+      }
+    },
+    {
+      "table": "company_description",
+      "column": "company_id",
+      "owner": "catalogue owners",
+      "classification": "retained_history",
+      "producer": "retired_catalogue_mirror",
+      "replacementProducer": "retained_history",
+      "disposition": "Retain existing rows; no live producer or consumer. Owner must audit before independent table retirement.",
+      "foreignKey": {
+        "bridge": {
+          "target": "company",
+          "deleteAction": "c"
+        },
+        "reference": {
+          "target": "company",
+          "deleteAction": "c"
+        }
+      }
+    },
+    {
+      "table": "job_board",
+      "column": "company_id",
+      "owner": "catalogue owners",
+      "classification": "retained_history",
+      "producer": "retired_catalogue_mirror",
+      "replacementProducer": "retained_history",
+      "disposition": "Retain existing boards until company_request resolved_job_board_id is separately audited and retired.",
+      "foreignKey": {
+        "bridge": {
+          "target": "company",
+          "deleteAction": "c"
+        },
+        "reference": {
+          "target": "company",
+          "deleteAction": "c"
+        }
+      }
+    },
+    {
+      "table": "hiring_signal",
+      "column": "company_id",
+      "owner": "web feature owner",
+      "classification": "retained_history",
+      "producer": "retired_catalogue_mirror",
+      "replacementProducer": "retained_history",
+      "disposition": "Retain historical signals; audit dependent outreach_draft before separate retirement.",
+      "foreignKey": {
+        "bridge": {
+          "target": "company",
+          "deleteAction": "c"
+        },
+        "reference": {
+          "target": "company",
+          "deleteAction": "c"
+        }
+      }
+    },
+    {
+      "table": "company_request",
+      "column": "resolved_company_id",
+      "owner": "company-request owner",
+      "classification": "retained_history",
+      "producer": "retired_catalogue_mirror",
+      "replacementProducer": "retained_history",
+      "disposition": "Retain historical resolution references; active submission records request metadata independently. Audit historical resolution fields before retirement.",
+      "foreignKey": {
+        "bridge": {
+          "target": "company",
+          "deleteAction": "n"
+        },
+        "reference": {
+          "target": "company",
+          "deleteAction": "n"
+        }
+      }
+    }
+  ],
+  "snapshot": {
+    "table": "saved_job",
+    "owner": "saved-jobs owner",
+    "producer": "saved_job_snapshot_writer",
+    "replacementProducer": "self_contained_history",
+    "disposition": "Retain company and posting snapshots independently of catalogue/search lifetime and preserve application/interview history.",
+    "columns": [
+      {
+        "name": "company_id",
+        "type": "uuid",
+        "notNull": true
+      },
+      {
+        "name": "company_name",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "company_slug",
+        "type": "text",
+        "notNull": true
+      },
+      {
+        "name": "company_icon",
+        "type": "text",
+        "notNull": false
+      }
+    ]
+  },
+  "optionalForeignKeys": [
+    {
+      "table": "murmur_accept_log",
+      "column": "company_id",
+      "owner": "Murmur owner",
+      "classification": "retained_history",
+      "producer": "retired_catalogue_mirror",
+      "replacementProducer": "retained_history",
+      "disposition": "Production table is absent (read-only catalog probe 2026-10-03). If retained in another deployment, require exact 0075 history-ledger shape and SET NULL company FK; preserve feature-gated status reader and audit before separate retirement. No live catalogue producer is reactivated.",
+      "foreignKey": {
+        "bridge": {
+          "target": "company",
+          "deleteAction": "n"
+        },
+        "reference": {
+          "target": "company",
+          "deleteAction": "n"
+        }
+      },
+      "tableShape": [
+        {
+          "name": "run_id",
+          "type": "text",
+          "notNull": true,
+          "default": null
+        },
+        {
+          "name": "body_sha256",
+          "type": "text",
+          "notNull": true,
+          "default": null
+        },
+        {
+          "name": "applied_at",
+          "type": "timestamp with time zone",
+          "notNull": true,
+          "default": "now()"
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "notNull": false,
+          "default": null
+        },
+        {
+          "name": "board_count",
+          "type": "integer",
+          "notNull": true,
+          "default": "0"
+        },
+        {
+          "name": "target",
+          "type": "text",
+          "notNull": true,
+          "default": null
+        }
+      ]
+    }
+  ]
+}

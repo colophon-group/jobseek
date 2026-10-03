@@ -1,6 +1,7 @@
 import "server-only";
 
 import { isSafeCompanySlug } from "@/lib/services/company-detail-lookup";
+import { CompanyReferenceError } from "@/lib/services/company-references";
 import type { WatchlistFilters } from "@/lib/services/watchlists";
 
 const MAX_HANDOFF_COMPANIES = 25;
@@ -36,9 +37,16 @@ export async function createWatchlistFromHandoffWithDeps(params: {
     return { error: "invalid_companies" };
   }
 
-  const companyIdsBySlug = await deps.getCompanyIdsBySlugs(companySlugs);
+  let companyIdsBySlug: Map<string, string>;
+  try {
+    companyIdsBySlug = await deps.getCompanyIdsBySlugs(companySlugs);
+  } catch (error) {
+    // Resolver errors may contain provider connection details. Expose only
+    // a stable retryable domain code and never save a partially resolved list.
+    return { error: error instanceof CompanyReferenceError ? error.code : "company_lookup_unavailable" };
+  }
   if (companyIdsBySlug.size !== companySlugs.length) {
-    return { error: "invalid_companies" };
+    return { error: "unknown_company" };
   }
 
   const companyIds = [

@@ -248,6 +248,8 @@ describe("#3201 — test harness sanity", () => {
     ) as Error & { code: string };
     msgOnly.code = "23505";
     expect(isWatchlistSlugUniqueViolation(msgOnly)).toBe(true);
+    expect(isWatchlistSlugUniqueViolation(new Error("Drizzle query failed", { cause: mocks.uniqueViolation("x") }))).toBe(true);
+    expect(isWatchlistSlugUniqueViolation(new Error("Drizzle query failed", { cause: other }))).toBe(false);
   });
 });
 
@@ -283,6 +285,21 @@ describe("#3201 — insertWatchlistWithUniqueSlug retries on idx_wl_user_slug 23
     expect(slug).toBe("my-list");
     expect(row.id).toMatch(/^wl-/);
     expect(mocks.watchlistTable.map((r) => r.slug)).toEqual(["my-list"]);
+  });
+
+  it("retries a Drizzle-wrapped driver conflict using a fresh candidate", async () => {
+    let attempts = 0;
+    const { slug } = await insertWatchlistWithUniqueSlug("user-1", "My List", async (candidate) => {
+      attempts += 1;
+      if (attempts === 1) {
+        mocks.watchlistTable.push({ id: "racing-winner", user_id: "user-1", slug: candidate, title: "My List" });
+        throw new Error("Drizzle query failed", { cause: mocks.uniqueViolation(candidate) });
+      }
+      return productionInserter("user-1", "My List")(candidate);
+    });
+    expect(attempts).toBe(2);
+    expect(slug).toBe("my-list-2");
+    expect(mocks.watchlistTable).toHaveLength(2);
   });
 
   it("picker auto-advances around a pre-existing row", async () => {

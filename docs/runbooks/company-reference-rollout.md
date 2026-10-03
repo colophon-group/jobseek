@@ -78,6 +78,16 @@ reference edit/removal works without search. Never mutate the reporter's watchli
 as a canary. Compare persisted membership UUID/count digests before/after promotion.
 
 Observe classified first-use/lookup/foreign-key failures without personal metadata.
+Selection entry points emit `company_selection_mutation` with only bounded
+`operation` and `outcome` fields, after the service resolves or rejects. Count
+these events by operation/outcome through the established production log surface;
+do not export raw request, user, watchlist or company payloads. Handoff delegates
+to the unobserved create implementation so one handoff does not also count as a
+separate create. Outcomes distinguish lookup miss/unavailability, identity
+conflict, authorization/nonexistence, capacity, malformed input, foreign-key
+failure and other database failure. A logging failure cannot alter the mutation
+result. Capture this aggregate evidence and reference coverage at 24 hours and
+7 days before closing rollout observation.
 A successful page read or unit test does not establish this write contract. Re-run
 read-only aggregate drift checks after application deployment and catalogue
 publication changes:
@@ -118,3 +128,15 @@ After the final contract, rollback stays at the compatible bridge release or use
 a reviewed forward repair. Never restore historical cascade FKs or pre-bridge app
 releases as an automatic rollback. Schema restoration is a protected backup/restore
 operation with preserved selection data, not the destructive inverse of expansion.
+
+## Dependency retirement gate
+
+Before retiring any company producer, update the executable lifecycle manifest
+linked from the dependency inventory. Every retained FK must declare an owner
+and compatible replacement or independent retained-history disposition. The
+read-only audit compares the complete inbound catalog against this inventory;
+uninventoried, missing or weakened relationships block promotion. Saved-job
+company snapshots must remain complete and independent of all company-ID FKs.
+The final-contract audit uses reference mode only after its exact ledger proves
+0101; reference mode refuses the active legacy selection FKs. Require the actual
+Drizzle-schema PG fixture and behavior/canary evidence before retiring writers.
