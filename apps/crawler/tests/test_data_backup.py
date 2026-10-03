@@ -507,6 +507,8 @@ def test_web_postgresql_backup_dumps_only_the_allowlist_and_cleans(
     monkeypatch.setenv("RESTIC_SFTP_COMMAND", "ssh -i /root-only/key -p 23")
     monkeypatch.setenv("WEB_POSTGRES_STAGING_ROOT", str(tmp_path / "web-postgresql"))
     monkeypatch.setattr(backup, "_require_web_postgres_helper_image", lambda: None)
+    monkeypatch.setattr(backup, "_web_postgres_reference_phase", lambda **_: "legacy")
+    monkeypatch.setattr(backup, "_web_postgres_dependencies", lambda **_: [])
     monkeypatch.setattr(backup, "_validate_web_postgres_boundary", lambda **_: None)
     monkeypatch.setattr(
         backup,
@@ -615,6 +617,8 @@ def test_web_postgresql_restore_verifies_checksum_and_fingerprints(
         encoding="utf-8",
     )
     monkeypatch.setenv("WEB_DATABASE_URL", "postgresql://test.invalid/restored")
+    monkeypatch.setattr(backup, "_web_postgres_reference_phase", lambda **_: "legacy")
+    monkeypatch.setattr(backup, "_web_postgres_dependencies", lambda **_: [])
     monkeypatch.setattr(backup, "_validate_web_postgres_boundary", lambda **_: None)
     monkeypatch.setattr(
         backup,

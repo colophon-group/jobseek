@@ -44,6 +44,9 @@ RETIREMENT_LEDGER_COUNT=0
 RETIREMENT_CONVERGENCE_APPLIED=false
 SAVED_JOB_ROWS=0
 SAVED_JOB_DIGEST=""
+COMPANY_REFERENCE_PHASE="legacy"
+COMPANY_REFERENCE_ROWS=0
+COMPANY_REFERENCE_DIGEST=""
 RESTORE_PATH=""
 CREDENTIAL_PATH=""
 
@@ -66,6 +69,9 @@ write_status() {
   RETIREMENT_CREATED_AT="$RETIREMENT_CREATED_AT" \
   SAVED_JOB_ROWS="$SAVED_JOB_ROWS" \
   SAVED_JOB_DIGEST="$SAVED_JOB_DIGEST" \
+  COMPANY_REFERENCE_PHASE="$COMPANY_REFERENCE_PHASE" \
+  COMPANY_REFERENCE_ROWS="$COMPANY_REFERENCE_ROWS" \
+  COMPANY_REFERENCE_DIGEST="$COMPANY_REFERENCE_DIGEST" \
   STATUS_FILE="$STATUS_FILE" \
   python3 - <<'PY'
 import json
@@ -92,6 +98,9 @@ record = {
     "retirement_created_at": int(os.environ["RETIREMENT_CREATED_AT"]),
     "saved_job_rows": int(os.environ["SAVED_JOB_ROWS"]),
     "saved_job_digest": os.environ["SAVED_JOB_DIGEST"],
+    "company_reference_phase": os.environ["COMPANY_REFERENCE_PHASE"],
+    "company_reference_rows": int(os.environ["COMPANY_REFERENCE_ROWS"]),
+    "company_reference_digest": os.environ["COMPANY_REFERENCE_DIGEST"],
 }
 temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
 temporary.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -232,6 +241,13 @@ ARCHIVE_DIR="$(dirname "$DUMP_PATH")"
   exit 1
 }
 
+# Validate both packet hashes and the exact reviewed phase bootstrap BEFORE
+# executing SQL. Keep old packet bytes unchanged; supplemental0088 metadata is
+# installed only for historical packets which predate dependency manifests.
+/usr/local/sbin/jobseek-data-backup web-postgresql-prepare-restore \
+  --manifest "$MANIFEST_PATH" --dump "$DUMP_PATH" --bootstrap "$BOOTSTRAP_PATH" \
+  --compatibility "$ARCHIVE_DIR/compatibility.sql"
+
 CREDENTIAL_PATH="$OPERATION_ROOT/credential"
 mkdir -m 0700 "$CREDENTIAL_PATH"
 PASSWORD_FILE="$CREDENTIAL_PATH/postgres-password"
@@ -281,7 +297,7 @@ docker exec "$CONTAINER" sh -ceu '
   export PGPASSFILE=/run/secrets/web-database-pgpass
   exec psql --no-psqlrc --set ON_ERROR_STOP=1 --quiet \
     --host=127.0.0.1 --username=postgres --dbname=web_restore \
-    --file /restore/bootstrap.sql
+    --file /restore/bootstrap.sql --file /restore/compatibility.sql
 '
 docker exec "$CONTAINER" sh -ceu '
   export PGPASSFILE=/run/secrets/web-database-pgpass
@@ -289,6 +305,23 @@ docker exec "$CONTAINER" sh -ceu '
     --host=127.0.0.1 --username=postgres --dbname=web_restore \
     /restore/web-postgresql.dump
 '
+
+# --no-privileges intentionally excludes source credentials/ACLs. Reapply only
+# the existing migration auditor's read-only grant for its restored RLS policy.
+docker exec -i "$CONTAINER" sh -ceu '
+  export PGPASSFILE=/run/secrets/web-database-pgpass
+  exec psql --no-psqlrc --set ON_ERROR_STOP=1 --quiet \
+    --host=127.0.0.1 --username=postgres --dbname=web_restore
+' <<'SQL'
+-- BEGIN COMPANY_REFERENCE_RESTORE_ACCESS
+DO $$ BEGIN
+  IF to_regclass('public.company_reference') IS NOT NULL THEN
+    GRANT USAGE ON SCHEMA public TO jobseek_migration_auditor;
+    GRANT SELECT ON TABLE public.company_reference TO jobseek_migration_auditor;
+  END IF;
+END $$;
+-- END COMPANY_REFERENCE_RESTORE_ACCESS
+SQL
 
 WEB_DATABASE_PASSWORD_FILE="$PGPASS_FILE" \
 WEB_DATABASE_HOST="$CONTAINER" \
@@ -300,6 +333,24 @@ WEB_POSTGRES_NETWORK="$NETWORK" \
   --manifest "$MANIFEST_PATH" \
   --dump "$DUMP_PATH" \
   --bootstrap "$BOOTSTRAP_PATH"
+
+# The verifier has bound these values to the actual restored table, ledger,
+# foreign keys and archive fingerprints before any rollback-only smoke writes.
+read -r COMPANY_REFERENCE_PHASE COMPANY_REFERENCE_ROWS COMPANY_REFERENCE_DIGEST < <(
+  python3 - "$MANIFEST_PATH" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+manifest = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+phase = manifest.get("company_reference_phase", "legacy")
+reference = manifest["fingerprints"].get("public.company_reference", {"rows": 0, "digest": "legacy"})
+print(phase, reference["rows"], reference["digest"])
+PY
+)
+[[ "$COMPANY_REFERENCE_PHASE" =~ ^(legacy|expanded|reference)$ ]]
+[[ "$COMPANY_REFERENCE_ROWS" =~ ^[0-9]+$ ]]
+[[ "$COMPANY_REFERENCE_DIGEST" == legacy || "$COMPANY_REFERENCE_DIGEST" =~ ^[0-9a-f]{32}$ ]]
 
 saved_job_fingerprint() {
   docker exec -i "$CONTAINER" sh -ceu '
@@ -532,9 +583,12 @@ SAVED_JOB_DIGEST="$SAVED_JOB_DIGEST_AFTER"
 docker exec -i "$CONTAINER" sh -ceu '
   export PGPASSFILE=/run/secrets/web-database-pgpass
   exec psql --no-psqlrc --set ON_ERROR_STOP=1 --quiet \
+    --set="company_reference_phase=$1" \
     --host=127.0.0.1 --username=postgres --dbname=web_restore
-' <<'SQL'
+' restore-smoke "$COMPANY_REFERENCE_PHASE" <<'SQL'
 BEGIN;
+SELECT :'company_reference_phase' <> 'legacy' AS references_present,
+       :'company_reference_phase' = 'reference' AS references_only \gset
 INSERT INTO "user" (id, name, email) VALUES
   ('restore-smoke-user', 'Restore Smoke', 'restore-smoke@invalid.example');
 INSERT INTO session (id, expires_at, token, updated_at, user_id) VALUES
@@ -546,6 +600,18 @@ INSERT INTO verification (id, identifier, value, expires_at) VALUES
 INSERT INTO user_preferences (user_id) VALUES ('restore-smoke-user');
 INSERT INTO company (id, name, slug) VALUES
   ('00000000-0000-0000-0000-000000000101', 'Restore Smoke', 'restore-smoke-company');
+\if :references_present
+INSERT INTO company_reference (id, name, slug, source) VALUES
+  ('00000000-0000-0000-0000-000000000101', 'Restore Smoke', 'restore-smoke-company', 'legacy_seed')
+ON CONFLICT (id) DO NOTHING;
+\endif
+\set selection_company_id '00000000-0000-0000-0000-000000000101'
+\if :references_only
+-- Final references must support selection without any legacy catalogue row.
+INSERT INTO company_reference (id, name, slug, source) VALUES
+  ('00000000-0000-0000-0000-000000000109', 'Restore Reference Only', 'restore-reference-only', 'legacy_seed');
+\set selection_company_id '00000000-0000-0000-0000-000000000109'
+\endif
 INSERT INTO job_board (id, company_id, board_url) VALUES
   ('00000000-0000-0000-0000-000000000102', '00000000-0000-0000-0000-000000000101', 'https://invalid.example/restore-smoke');
 INSERT INTO saved_job (
@@ -574,11 +640,11 @@ INSERT INTO saved_job (
 INSERT INTO application_interview (id, saved_job_id, round, type) VALUES
   ('00000000-0000-0000-0000-000000000105', '00000000-0000-0000-0000-000000000103', 1, 'interview');
 INSERT INTO followed_company (user_id, company_id) VALUES
-  ('restore-smoke-user', '00000000-0000-0000-0000-000000000101');
+  ('restore-smoke-user', :'selection_company_id');
 INSERT INTO watchlist (id, user_id, slug, title) VALUES
   ('00000000-0000-0000-0000-000000000106', 'restore-smoke-user', 'restore-smoke', 'Restore Smoke');
 INSERT INTO watchlist_company (watchlist_id, company_id) VALUES
-  ('00000000-0000-0000-0000-000000000106', '00000000-0000-0000-0000-000000000101');
+  ('00000000-0000-0000-0000-000000000106', :'selection_company_id');
 INSERT INTO company_request (input, resolved_company_id, resolved_job_board_id) VALUES
   ('restore-smoke.invalid', '00000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-000000000102');
 INSERT INTO hiring_signal (id, company_id, signal_type, signal_text, signal_date, source_id) VALUES

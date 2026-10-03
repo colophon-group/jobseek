@@ -65,6 +65,104 @@ WEB_POSTGRES_TABLES = (
     ("public", "watchlist_company"),
 )
 WEB_POSTGRES_SEQUENCES = (("drizzle", "__drizzle_migrations_id_seq"),)
+WEB_POSTGRES_REFERENCE_TABLES = (*WEB_POSTGRES_TABLES, ("public", "company_reference"))
+WEB_POSTGRES_REFERENCE_PHASES = ("legacy", "expanded", "reference")
+WEB_POSTGRES_REFERENCE_EXPAND_CREATED_AT = 1_790_985_600_000
+WEB_POSTGRES_REFERENCE_EXPAND_HASH = (
+    "bcd4a393971fab5b44ba57ba22854d289717e95fa19e2bd2e7b356e306c4a977"
+)
+WEB_POSTGRES_REFERENCE_CONTRACT_CREATED_AT = 1_790_992_800_000
+WEB_POSTGRES_REFERENCE_CONTRACT_HASH = (
+    "1573711d3fe8729ac338be72fe7e14d1207a472cb9572e7770650db1aa742d51"
+)
+WEB_POSTGRES_REFERENCE_CHECKS = {
+    "company_reference_name_check": (
+        "CHECK (length(btrim(name)) > 0 AND length(name) <= 300 AND name !~ "
+        r"'[\x01-\x08\x0b\x0c\x0e-\x1f\x7f]'::text)"
+    ),
+    "company_reference_slug_check": (
+        "CHECK (length(btrim(slug)) > 0 AND length(slug) <= 100 "
+        "AND slug ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'::text)"
+    ),
+    "company_reference_icon_check": (
+        "CHECK (icon IS NULL OR length(icon) <= 2048 AND icon !~ "
+        r"'[\x01-\x08\x0b\x0c\x0e-\x1f\x7f]'::text)"
+    ),
+    "company_reference_source_check": (
+        "CHECK (source = ANY (ARRAY['legacy_seed'::text, 'typesense'::text]))"
+    ),
+    "company_reference_verification_check": (
+        "CHECK (source = 'legacy_seed'::text OR verified_at IS NOT NULL)"
+    ),
+}
+# Table-filtered pg_dump preserves triggers/policies but omits their function
+# and role dependencies. Restore only this reviewed compatibility function;
+# never seed rows or manufacture verified provenance while restoring a packet.
+WEB_POSTGRES_REFERENCE_BRIDGE_SQL = (
+    "CREATE FUNCTION public.company_reference_from_legacy() RETURNS trigger\n"
+    "LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\n"
+    "BEGIN\n"
+    "  INSERT INTO public.company_reference (id, name, slug, icon, source, created_"
+    "at, updated_at)\n"
+    "  VALUES (NEW.id, NEW.name, NEW.slug, NEW.icon, 'legacy_seed', NEW.created_at "
+    "AT TIME ZONE 'UTC', NEW.updated_at AT TIME ZONE 'UTC')\n"
+    "  ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, slug = EXCLUDED.slug,\n"
+    "    icon = EXCLUDED.icon, updated_at = EXCLUDED.updated_at\n"
+    "  WHERE company_reference.source = 'legacy_seed';\n"
+    "  RETURN NEW;\n"
+    "END $$;\n"
+    "REVOKE ALL ON FUNCTION public.company_reference_from_legacy() FROM PUBLIC;\n"
+)
+
+
+WEB_POSTGRES_DEPENDENCY_SQL = {
+    "public.notification_cadence": "CREATE TYPE public.notification_cadence AS ENUM ('weekly');\n",
+    "public.jobseek_notifications_pause_state_changed_at": (
+        "CREATE FUNCTION public.jobseek_notifications_pause_state_changed_at()\n"
+        "RETURNS trigger\n"
+        "LANGUAGE plpgsql\n"
+        "AS $pause_state$\n"
+        "BEGIN\n"
+        "  IF NEW.notifications_paused IS NOT DISTINCT FROM OLD.notifications_paused TH"
+        "EN\n"
+        "    NEW.notifications_state_changed_at := OLD.notifications_state_changed_at;\n"
+        "  ELSIF NEW.notifications_state_changed_at\n"
+        "    IS NOT DISTINCT FROM OLD.notifications_state_changed_at\n"
+        "  THEN\n"
+        "    NEW.notifications_state_changed_at := statement_timestamp();\n"
+        "  END IF;\n"
+        "  RETURN NEW;\n"
+        "END\n"
+        "$pause_state$;\n"
+    ),
+    "public.jobseek_watchlist_alerts_enabled_at_compat": (
+        "CREATE FUNCTION public.jobseek_watchlist_alerts_enabled_at_compat()\n"
+        "RETURNS trigger\n"
+        "LANGUAGE plpgsql\n"
+        "AS $compat$\n"
+        "BEGIN\n"
+        "  IF NEW.alerts_enabled THEN\n"
+        "    IF NEW.alerts_enabled_at IS NULL\n"
+        "      OR (TG_OP = 'UPDATE' AND OLD.alerts_enabled = false)\n"
+        "    THEN\n"
+        "      NEW.alerts_enabled_at := statement_timestamp();\n"
+        "    END IF;\n"
+        "  ELSE\n"
+        "    NEW.alerts_enabled_at := NULL;\n"
+        "  END IF;\n"
+        "  RETURN NEW;\n"
+        "END\n"
+        "$compat$;\n"
+    ),
+}
+
+
+def _web_postgres_tables(phase: str) -> tuple[tuple[str, str], ...]:
+    if phase not in WEB_POSTGRES_REFERENCE_PHASES:
+        raise BackupError("web PostgreSQL company-reference phase is invalid")
+    return WEB_POSTGRES_TABLES if phase == "legacy" else WEB_POSTGRES_REFERENCE_TABLES
+
+
 WEB_POSTGRES_CONTRACT_CREATED_AT = 1_785_757_200_000
 WEB_POSTGRES_CONTRACT_HASH = "eec5962093a1eb8a7058f9bf031877d148718e2531eaa981b86c5c6bc51165ab"
 WEB_POSTGRES_SAVED_JOB_TEXT_CHECK_DEFINITION = (
@@ -979,15 +1077,192 @@ def _web_psql(sql: str, *, env: dict[str, str]) -> str:
     ).stdout.strip()
 
 
-def _included_tables_values_sql() -> str:
+def _web_postgres_reference_phase(*, env: dict[str, str]) -> str:
+    """Match catalogue and exact migration ledger; mixed phases fail closed."""
+    output = _web_psql(
+        f"""
+        SELECT json_build_object(
+          'ledger', (SELECT coalesce(json_agg(json_build_object('hash', hash,
+            'created_at', created_at)), '[]'::json) FROM drizzle.__drizzle_migrations
+            WHERE created_at IN ({WEB_POSTGRES_REFERENCE_EXPAND_CREATED_AT},
+              {WEB_POSTGRES_REFERENCE_CONTRACT_CREATED_AT})
+               OR hash IN ({_quote_literal(WEB_POSTGRES_REFERENCE_EXPAND_HASH)},
+                 {_quote_literal(WEB_POSTGRES_REFERENCE_CONTRACT_HASH)})),
+          'table', to_regclass('public.company_reference') IS NOT NULL,
+          'bridge_function', to_regprocedure('public.company_reference_from_legacy()') IS NOT NULL,
+          'bridge_triggers', (SELECT count(*) FROM pg_trigger
+            WHERE tgrelid = 'public.company'::regclass
+              AND tgname = 'company_reference_legacy_bridge' AND NOT tgisinternal
+              AND tgenabled = 'O' AND tgtype=21
+              AND tgfoid=to_regprocedure('public.company_reference_from_legacy()')
+              AND tgattr::text=(SELECT string_agg(attnum::text, ' ' ORDER BY attnum)
+                FROM pg_attribute WHERE attrelid='public.company'::regclass
+                  AND attname IN ('name','slug','icon'))),
+          'selection_fks', (SELECT coalesce(json_agg(json_build_object(
+            'table', c.relname, 'target', t.relname, 'target_schema', n.nspname,
+            'delete', f.confdeltype, 'update', f.confupdtype,
+            'valid', f.convalidated, 'deferred', f.condeferrable,
+            'source_columns', array_length(f.conkey, 1),
+            'target_columns', array_length(f.confkey, 1),
+            'target_column', ta.attname)), '[]'::json)
+            FROM pg_constraint f JOIN pg_class c ON c.oid=f.conrelid
+            JOIN pg_class t ON t.oid=f.confrelid JOIN pg_namespace n ON n.oid=t.relnamespace
+            JOIN pg_attribute a ON a.attrelid=c.oid AND a.attnum=ANY(f.conkey)
+            JOIN pg_attribute ta ON ta.attrelid=t.oid AND ta.attnum=f.confkey[1]
+            WHERE f.contype='f' AND c.oid IN ('public.followed_company'::regclass,
+              'public.watchlist_company'::regclass) AND a.attname='company_id')
+        )
+        """,
+        env=env,
+    )
+    try:
+        state = json.loads(output)
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise BackupError("web PostgreSQL company-reference phase is not parseable") from exc
+    if not isinstance(state, dict):
+        raise BackupError("web PostgreSQL company-reference phase is not parseable")
+    ledger = state.get("ledger")
+    expand = {
+        "hash": WEB_POSTGRES_REFERENCE_EXPAND_HASH,
+        "created_at": WEB_POSTGRES_REFERENCE_EXPAND_CREATED_AT,
+    }
+    contract = {
+        "hash": WEB_POSTGRES_REFERENCE_CONTRACT_HASH,
+        "created_at": WEB_POSTGRES_REFERENCE_CONTRACT_CREATED_AT,
+    }
+    if ledger == [] and state.get("table") is False:
+        phase = "legacy"
+    elif ledger == [expand] and state.get("table") is True:
+        phase = "expanded"
+    elif (
+        isinstance(ledger, list)
+        and len(ledger) == 2
+        and expand in ledger
+        and contract in ledger
+        and state.get("table") is True
+    ):
+        phase = "reference"
+    else:
+        raise BackupError("web PostgreSQL company-reference ledger/catalogue mismatch")
+    bridge = phase == "expanded"
+    if state.get("bridge_function") is not bridge or state.get("bridge_triggers") != int(bridge):
+        raise BackupError("web PostgreSQL company-reference bridge does not match phase")
+    expected_fks = [
+        {
+            "table": table,
+            "target": "company_reference" if phase == "reference" else "company",
+            "target_schema": "public",
+            "delete": "r" if phase == "reference" else "c",
+            "update": "a",
+            "valid": True,
+            "deferred": False,
+            "source_columns": 1,
+            "target_columns": 1,
+            "target_column": "id",
+        }
+        for table in ("followed_company", "watchlist_company")
+    ]
+    fks = state.get("selection_fks")
+    if not isinstance(fks, list) or len(fks) != 2 or any(fk not in fks for fk in expected_fks):
+        raise BackupError(
+            "web PostgreSQL company-reference selection foreign keys do not match phase"
+        )
+    if phase != "legacy":
+        _validate_web_postgres_reference_catalog(env=env)
+    if phase == "expanded":
+        # PostgreSQL stores exactly the function body between the dollar quotes.
+        body = WEB_POSTGRES_REFERENCE_BRIDGE_SQL.split("AS $$", 1)[1].split("$$;", 1)[0]
+        valid = _web_psql(
+            "SELECT count(*) FROM pg_proc p JOIN pg_language l ON l.oid=p.prolang "
+            "WHERE p.oid=to_regprocedure('public.company_reference_from_legacy()') "
+            f"AND p.prosrc={_quote_literal(body)} AND l.lanname='plpgsql' "
+            "AND NOT p.prosecdef AND p.proconfig=ARRAY['search_path=pg_catalog, public']::text[]",
+            env=env,
+        )
+        if valid != "1":
+            raise BackupError(
+                "web PostgreSQL company-reference bridge function differs "
+                "from reviewed restore bytes"
+            )
+    return phase
+
+
+def _validate_web_postgres_reference_catalog(*, env: dict[str, str]) -> None:
+    checks = ", ".join(
+        f"({_quote_literal(name)}, {_quote_literal(definition)})"
+        for name, definition in WEB_POSTGRES_REFERENCE_CHECKS.items()
+    )
+    output = _web_psql(
+        f"""
+        WITH expected(name, type, required, has_default) AS (VALUES
+          ('id', 'uuid', true, false), ('name', 'text', true, false),
+          ('slug', 'text', true, false), ('icon', 'text', false, false),
+          ('source', 'text', true, false),
+          ('verified_at', 'timestamp with time zone', false, false),
+          ('created_at', 'timestamp with time zone', true, true),
+          ('updated_at', 'timestamp with time zone', true, true))
+        SELECT 'reference_columns' WHERE EXISTS (
+          SELECT 1 FROM expected e LEFT JOIN pg_attribute a
+            ON a.attrelid='public.company_reference'::regclass AND a.attname=e.name
+            AND NOT a.attisdropped
+          LEFT JOIN pg_attrdef d ON d.adrelid=a.attrelid AND d.adnum=a.attnum
+          WHERE a.attnum IS NULL OR format_type(a.atttypid,a.atttypmod)<>e.type
+            OR a.attnotnull<>e.required OR (d.oid IS NOT NULL)<>e.has_default)
+        UNION ALL SELECT 'reference_rls' WHERE NOT (SELECT relrowsecurity FROM pg_class
+          WHERE oid='public.company_reference'::regclass)
+        UNION ALL SELECT 'reference_checks' WHERE EXISTS (
+          SELECT 1 FROM (VALUES {checks}) expected_check(name, definition)
+          LEFT JOIN pg_constraint c ON c.conrelid='public.company_reference'::regclass
+            AND c.conname=expected_check.name AND c.contype='c' AND c.convalidated
+          WHERE c.oid IS NULL OR pg_get_constraintdef(c.oid,true)<>expected_check.definition)
+          OR (SELECT count(*) FROM pg_constraint
+            WHERE conrelid='public.company_reference'::regclass AND contype='c')<>5
+        UNION ALL SELECT 'reference_identity' WHERE (SELECT count(*) FROM pg_constraint
+          WHERE conrelid='public.company_reference'::regclass AND contype='p'
+            AND conkey=ARRAY[(SELECT attnum FROM pg_attribute
+              WHERE attrelid='public.company_reference'::regclass AND attname='id')]::smallint[])<>1
+        UNION ALL SELECT 'reference_catalogue_fk' WHERE EXISTS (SELECT 1 FROM pg_constraint
+          WHERE conrelid='public.company_reference'::regclass AND contype='f')
+        UNION ALL SELECT 'reference_unique_slug' WHERE EXISTS (SELECT 1 FROM pg_index
+          WHERE indrelid='public.company_reference'::regclass AND indisunique AND NOT indisprimary)
+        UNION ALL SELECT 'reference_policy_dependency' WHERE EXISTS (
+          SELECT 1 FROM pg_policy p, unnest(p.polroles) AS roles(role_id)
+          LEFT JOIN pg_roles r ON r.oid=role_id
+          WHERE p.polrelid='public.company_reference'::regclass
+            AND (r.rolname IS DISTINCT FROM 'jobseek_migration_auditor' OR p.polcmd<>'r'
+              OR p.polname<>'company_reference_migration_auditor_select'
+              OR pg_get_expr(p.polqual,p.polrelid)<>'true' OR p.polwithcheck IS NOT NULL
+              OR NOT p.polpermissive))
+        UNION ALL SELECT 'reference_values' WHERE EXISTS (SELECT 1 FROM public.company_reference
+          WHERE length(btrim(name))=0 OR length(name)>300 OR length(slug)>100
+            OR slug !~ '^[a-z0-9]+(?:-[a-z0-9]+)*$' OR length(icon)>2048
+            OR source NOT IN ('legacy_seed','typesense')
+            OR (source='typesense' AND verified_at IS NULL))
+        UNION ALL SELECT 'selection_reference_missing' WHERE EXISTS (
+          SELECT 1 FROM public.watchlist_company s
+          LEFT JOIN public.company_reference r ON r.id=s.company_id WHERE r.id IS NULL
+          UNION ALL SELECT 1 FROM public.followed_company s
+          LEFT JOIN public.company_reference r ON r.id=s.company_id WHERE r.id IS NULL)
+        """,
+        env=env,
+    )
+    if output:
+        raise BackupError(
+            "web PostgreSQL company-reference catalogue invalid: " + "; ".join(output.splitlines())
+        )
+
+
+def _included_tables_values_sql(phase: str = "legacy") -> str:
     values = ", ".join(
         f"({_quote_literal(schema)}, {_quote_literal(table)})"
-        for schema, table in WEB_POSTGRES_TABLES
+        for schema, table in _web_postgres_tables(phase)
     )
     return f"VALUES {values}"
 
 
-def _web_postgres_bootstrap_sql() -> str:
+def _web_postgres_bootstrap_sql(
+    phase: str = "legacy", dependencies: list[str] | None = None
+) -> str:
     schemas = sorted(
         {
             schema
@@ -995,14 +1270,165 @@ def _web_postgres_bootstrap_sql() -> str:
             if schema != "public"
         }
     )
-    return "".join(
+    result = "".join(
         f"CREATE SCHEMA IF NOT EXISTS {_quote_identifier(schema)};\n" for schema in schemas
     )
+    if phase != "legacy":
+        _web_postgres_tables(phase)
+        result += "CREATE ROLE jobseek_migration_auditor NOLOGIN;\n"
+    if phase == "expanded":
+        result += WEB_POSTGRES_REFERENCE_BRIDGE_SQL
+    if dependencies is not None:
+        if (
+            not all(isinstance(dependency, str) for dependency in dependencies)
+            or dependencies != sorted(set(dependencies))
+            or any(dependency not in WEB_POSTGRES_DEPENDENCY_SQL for dependency in dependencies)
+        ):
+            raise BackupError("web PostgreSQL bootstrap dependencies are not reviewed")
+        for dependency, definition in WEB_POSTGRES_DEPENDENCY_SQL.items():
+            if dependency in dependencies:
+                result += definition
+    return result
 
 
-def _validate_web_postgres_boundary(*, env: dict[str, str]) -> None:
+def _web_postgres_dependencies(*, env: dict[str, str], phase: str) -> list[str]:
+    # Table-filtered dumps omit standalone functions even when table defaults,
+    # checks, policies or indexes call them. Inspect only objects owned by the
+    # included relations; unrelated excluded tables cannot widen this boundary.
+    # Internal FK triggers belong to their owning constraints, rather than the
+    # included parent table on which PostgreSQL also installs an enforcement trigger.
+    values = _included_tables_values_sql(phase)
+    raw = _web_psql(
+        f"""
+        WITH RECURSIVE included(schema_name, table_name) AS ({values}), relations AS (
+          SELECT c.oid FROM included i JOIN pg_namespace n ON n.nspname=i.schema_name
+          JOIN pg_class c ON c.relnamespace=n.oid AND c.relname=i.table_name),
+        dependency_roots(classid, objid) AS (
+          SELECT 'pg_class'::regclass, oid FROM relations
+          UNION SELECT 'pg_class'::regclass, indexrelid FROM pg_index
+            WHERE indrelid IN (SELECT oid FROM relations)
+          UNION SELECT 'pg_attrdef'::regclass, oid FROM pg_attrdef
+            WHERE adrelid IN (SELECT oid FROM relations)
+          UNION SELECT 'pg_constraint'::regclass, oid FROM pg_constraint
+            WHERE conrelid IN (SELECT oid FROM relations)
+          UNION SELECT 'pg_policy'::regclass, oid FROM pg_policy
+            WHERE polrelid IN (SELECT oid FROM relations)
+          UNION SELECT 'pg_trigger'::regclass, oid FROM pg_trigger
+            WHERE tgrelid IN (SELECT oid FROM relations) AND NOT tgisinternal),
+        dependency_edges(classid, objid, refclassid, refobjid) AS (
+          SELECT classid, objid, refclassid, refobjid FROM pg_depend
+          UNION ALL SELECT 'pg_type'::regclass, contypid, 'pg_constraint'::regclass, oid
+            FROM pg_constraint WHERE contypid<>0),
+        dependency_walk(classid, objid, depth) AS (
+          SELECT classid, objid, 0 FROM dependency_roots
+          UNION SELECT edge.refclassid, edge.refobjid, walk.depth+1
+            FROM dependency_walk walk JOIN dependency_edges edge
+              ON edge.classid=walk.classid AND edge.objid=walk.objid
+            WHERE walk.depth<16),
+        function_oids(oid) AS (
+          SELECT tgfoid FROM pg_trigger
+            WHERE tgrelid IN (SELECT oid FROM relations) AND NOT tgisinternal
+          UNION SELECT objid FROM dependency_walk WHERE classid='pg_proc'::regclass)
+        SELECT json_build_object(
+          'truncated', EXISTS (SELECT 1 FROM dependency_walk walk
+            JOIN dependency_edges edge ON edge.classid=walk.classid AND edge.objid=walk.objid
+            WHERE walk.depth=16 AND NOT EXISTS (SELECT 1 FROM dependency_walk visited
+              WHERE visited.classid=edge.refclassid AND visited.objid=edge.refobjid)),
+          'types', (SELECT coalesce(json_agg(DISTINCT jsonb_build_object(
+            'name', n.nspname || '.' || t.typname, 'kind', t.typtype,
+            'included_relation', t.typtype='c' AND t.typrelid IN (SELECT oid FROM relations),
+            'labels', (SELECT json_agg(enumlabel ORDER BY enumsortorder)
+              FROM pg_enum WHERE enumtypid=t.oid))), '[]'::json)
+            FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace
+            WHERE t.oid IN (SELECT atttypid FROM pg_attribute
+              WHERE attrelid IN (SELECT oid FROM relations) AND attnum>0 AND NOT attisdropped
+              UNION SELECT objid FROM dependency_walk WHERE classid='pg_type'::regclass)
+              AND n.nspname NOT IN ('pg_catalog','information_schema')),
+          'custom_expression_objects', (SELECT coalesce(json_agg(DISTINCT object_name), '[]'::json)
+            FROM (
+              SELECT n.nspname || '.' || o.oprname AS object_name
+                FROM pg_operator o JOIN pg_namespace n ON n.oid=o.oprnamespace
+                WHERE o.oid IN (SELECT objid FROM dependency_walk
+                  WHERE classid='pg_operator'::regclass) AND n.nspname<>'pg_catalog'
+              UNION SELECT n.nspname || '.' || c.collname
+                FROM pg_collation c JOIN pg_namespace n ON n.oid=c.collnamespace
+                WHERE c.oid IN (SELECT objid FROM dependency_walk
+                  WHERE classid='pg_collation'::regclass) AND n.nspname<>'pg_catalog'
+              UNION SELECT n.nspname || '.' || c.opcname
+                FROM pg_opclass c JOIN pg_namespace n ON n.oid=c.opcnamespace
+                WHERE c.oid IN (SELECT objid FROM dependency_walk
+                  WHERE classid='pg_opclass'::regclass) AND n.nspname<>'pg_catalog'
+              UNION SELECT n.nspname || '.' || f.opfname
+                FROM pg_opfamily f JOIN pg_namespace n ON n.oid=f.opfnamespace
+                WHERE f.oid IN (SELECT objid FROM dependency_walk
+                  WHERE classid='pg_opfamily'::regclass) AND n.nspname<>'pg_catalog'
+            ) objects),
+          'functions', (SELECT coalesce(json_agg(DISTINCT jsonb_build_object(
+            'name', n.nspname || '.' || p.proname, 'body', p.prosrc,
+            'language', l.lanname, 'security_definer', p.prosecdef,
+            'config', p.proconfig, 'arguments', p.pronargs,
+            'return_type', p.prorettype::regtype::text, 'kind', p.prokind)), '[]'::json)
+            FROM function_oids f JOIN pg_proc p ON p.oid=f.oid
+            JOIN pg_namespace n ON n.oid=p.pronamespace JOIN pg_language l ON l.oid=p.prolang
+            WHERE n.nspname<>'pg_catalog'))
+        """,
+        env=env,
+    )
+    try:
+        state = json.loads(raw)
+        types = state["types"]
+        functions = state["functions"]
+        expression_objects = state["custom_expression_objects"]
+        if state.get("truncated") is not False:
+            raise BackupError("web PostgreSQL restore dependency traversal exceeded its bound")
+        if not all(isinstance(value, list) for value in (types, functions, expression_objects)):
+            raise ValueError
+    except (KeyError, TypeError, ValueError) as exc:
+        raise BackupError("web PostgreSQL restore dependencies are not parseable") from exc
+    dependencies: set[str] = set()
+    for enum in types:
+        if enum.get("included_relation") is True:
+            continue
+        if enum != {
+            "name": "public.notification_cadence",
+            "kind": "e",
+            "labels": ["weekly"],
+            "included_relation": False,
+        }:
+            raise BackupError("web PostgreSQL table has an unreviewed custom type dependency")
+        dependencies.add(enum["name"])
+    for function in functions:
+        name = function.get("name")
+        if name == "public.company_reference_from_legacy" and phase == "expanded":
+            if function.get("return_type") != "trigger" or function.get("kind") != "f":
+                raise BackupError("web PostgreSQL legacy bridge function has an invalid signature")
+            continue
+        definition = WEB_POSTGRES_DEPENDENCY_SQL.get(name, "")
+        if not definition.startswith("CREATE FUNCTION"):
+            raise BackupError("web PostgreSQL table has an unreviewed custom function dependency")
+        dollar = re.search(r"AS (\$[a-z_]+\$)", definition)
+        assert dollar
+        body = definition.split(dollar.group(1))[1]
+        if function != {
+            "name": name,
+            "body": body,
+            "language": "plpgsql",
+            "security_definer": False,
+            "config": None,
+            "arguments": 0,
+            "return_type": "trigger",
+            "kind": "f",
+        }:
+            raise BackupError("web PostgreSQL trigger function differs from reviewed restore bytes")
+        dependencies.add(name)
+    if expression_objects:
+        raise BackupError("web PostgreSQL table has an unreviewed custom expression dependency")
+    return sorted(dependencies)
+
+
+def _validate_web_postgres_boundary(*, env: dict[str, str], phase: str = "legacy") -> None:
     """Fail if the allowlist is missing or depends on an excluded table."""
-    values = _included_tables_values_sql()
+    values = _included_tables_values_sql(phase)
     output = _web_psql(
         f"""
         WITH included(schema_name, table_name) AS ({values}),
@@ -1275,9 +1701,11 @@ def _validate_web_postgres_contract(*, env: dict[str, str]) -> None:
         )
 
 
-def _web_postgres_fingerprints(*, env: dict[str, str]) -> dict[str, dict[str, Any]]:
+def _web_postgres_fingerprints(
+    *, env: dict[str, str], phase: str = "legacy"
+) -> dict[str, dict[str, Any]]:
     selects: list[str] = []
-    for schema, table in WEB_POSTGRES_TABLES:
+    for schema, table in _web_postgres_tables(phase):
         key = f"{schema}.{table}".replace("'", "''")
         qualified = _qualified_table(schema, table)
         selects.append(
@@ -1298,7 +1726,7 @@ def _web_postgres_fingerprints(*, env: dict[str, str]) -> dict[str, dict[str, An
             "rows": int(parts[1]),
             "digest": parts[2],
         }
-    expected = {f"{schema}.{table}" for schema, table in WEB_POSTGRES_TABLES}
+    expected = {f"{schema}.{table}" for schema, table in _web_postgres_tables(phase)}
     if set(fingerprints) != expected:
         raise BackupError("web PostgreSQL fingerprint omitted an allowlisted table")
     return fingerprints
@@ -1344,7 +1772,7 @@ def _sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _validate_web_postgres_archive(output: str) -> None:
+def _validate_web_postgres_archive(output: str, phase: str = "legacy") -> None:
     table_definitions: set[str] = set()
     table_data: set[str] = set()
     sequence_definitions: set[str] = set()
@@ -1362,7 +1790,7 @@ def _validate_web_postgres_archive(output: str) -> None:
             sequence_state.add(f"{fields[5]}.{fields[6]}")
         elif object_type == "SEQUENCE" and fields[4] != "OWNED":
             sequence_definitions.add(f"{fields[4]}.{fields[5]}")
-    expected_tables = {f"{schema}.{table}" for schema, table in WEB_POSTGRES_TABLES}
+    expected_tables = {f"{schema}.{table}" for schema, table in _web_postgres_tables(phase)}
     expected_sequences = {f"{schema}.{sequence}" for schema, sequence in WEB_POSTGRES_SEQUENCES}
     if table_definitions != expected_tables or table_data != expected_tables:
         raise BackupError("web PostgreSQL archive table boundary is incomplete or unexpected")
@@ -1382,7 +1810,10 @@ def web_postgresql_backup() -> dict[str, Any]:
 
     _require_web_postgres_helper_image()
     env = _web_postgres_env()
-    _validate_web_postgres_boundary(env=env)
+    phase = _web_postgres_reference_phase(env=env)
+    tables = _web_postgres_tables(phase)
+    _validate_web_postgres_boundary(env=env, phase=phase)
+    dependencies = _web_postgres_dependencies(env=env, phase=phase)
     server_version = _web_psql("SHOW server_version", env=env)
     if not server_version.startswith("17."):
         raise BackupError(
@@ -1409,9 +1840,9 @@ def web_postgresql_backup() -> dict[str, Any]:
     success = False
 
     try:
-        before = _web_postgres_fingerprints(env=env)
+        before = _web_postgres_fingerprints(env=env, phase=phase)
         sequences_before = _web_postgres_sequence_fingerprints(env=env)
-        atomic_write(bootstrap_path, _web_postgres_bootstrap_sql())
+        atomic_write(bootstrap_path, _web_postgres_bootstrap_sql(phase, dependencies))
         dump_arguments = [
             "pg_dump",
             "--format=custom",
@@ -1423,7 +1854,7 @@ def web_postgresql_backup() -> dict[str, Any]:
             "--serializable-deferrable",
             "--file=/backup/web-postgresql.dump",
         ]
-        for schema, table in WEB_POSTGRES_TABLES:
+        for schema, table in tables:
             dump_arguments.extend(("--table", _qualified_table(schema, table)))
         for schema, sequence in WEB_POSTGRES_SEQUENCES:
             dump_arguments.extend(("--table", _qualified_table(schema, sequence)))
@@ -1435,9 +1866,14 @@ def web_postgresql_backup() -> dict[str, Any]:
             env=env,
             timeout=3_600,
         )
-        after = _web_postgres_fingerprints(env=env)
+        after = _web_postgres_fingerprints(env=env, phase=phase)
         sequences_after = _web_postgres_sequence_fingerprints(env=env)
-        if before != after or sequences_before != sequences_after:
+        if (
+            before != after
+            or sequences_before != sequences_after
+            or _web_postgres_reference_phase(env=env) != phase
+            or _web_postgres_dependencies(env=env, phase=phase) != dependencies
+        ):
             raise BackupError(
                 "web PostgreSQL changed while the logical dump was created; retrying is required"
             )
@@ -1454,11 +1890,13 @@ def web_postgresql_backup() -> dict[str, Any]:
             ),
             timeout=600,
         ).stdout
-        _validate_web_postgres_archive(archive_listing)
+        _validate_web_postgres_archive(archive_listing, phase)
 
         dump_sha256 = _sha256_file(dump_path)
         manifest = {
-            "schema_version": 1,
+            "schema_version": 2,
+            "company_reference_phase": phase,
+            "dependencies": dependencies,
             "created_at": utc_now().isoformat(),
             "server_version": server_version,
             "archive": dump_path.name,
@@ -1466,7 +1904,7 @@ def web_postgresql_backup() -> dict[str, Any]:
             "archive_sha256": dump_sha256,
             "bootstrap": bootstrap_path.name,
             "bootstrap_sha256": _sha256_file(bootstrap_path),
-            "tables": [f"{schema}.{table}" for schema, table in WEB_POSTGRES_TABLES],
+            "tables": [f"{schema}.{table}" for schema, table in tables],
             "sequences": [f"{schema}.{sequence}" for schema, sequence in WEB_POSTGRES_SEQUENCES],
             "fingerprints": before,
             "sequence_fingerprints": sequences_before,
@@ -1529,7 +1967,12 @@ def web_postgresql_backup() -> dict[str, Any]:
         return {
             "archive_bytes": manifest["archive_bytes"],
             "archive_sha256": dump_sha256,
-            "table_count": len(WEB_POSTGRES_TABLES),
+            "table_count": len(tables),
+            "company_reference_phase": phase,
+            "company_reference_rows": before.get("public.company_reference", {}).get("rows", 0),
+            "company_reference_digest": before.get("public.company_reference", {}).get(
+                "digest", "legacy"
+            ),
             "row_count": sum(item["rows"] for item in before.values()),
             "server_version": server_version,
             "repository_snapshot_id": latest_snapshot.get("short_id")
@@ -1541,16 +1984,26 @@ def web_postgresql_backup() -> dict[str, Any]:
             shutil.rmtree(run_path, ignore_errors=True)
 
 
-def verify_web_postgresql_restore(
+def _validated_web_postgresql_packet(
     manifest_path: Path, dump_path: Path, bootstrap_path: Path
 ) -> dict[str, Any]:
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise BackupError("web PostgreSQL restore manifest is not parseable") from exc
-    if not isinstance(manifest, dict) or manifest.get("schema_version") != 1:
+    if (
+        not isinstance(manifest, dict)
+        or type(manifest.get("schema_version")) is not int
+        or manifest.get("schema_version") not in (1, 2)
+    ):
         raise BackupError("web PostgreSQL restore manifest has an unsupported schema")
-    expected_tables = [f"{schema}.{table}" for schema, table in WEB_POSTGRES_TABLES]
+    markers = ("company_reference_phase" in manifest, "dependencies" in manifest)
+    if markers != ((True, True) if manifest["schema_version"] == 2 else (False, False)):
+        raise BackupError("web PostgreSQL restore manifest mixes historical and new contracts")
+    if "dependencies" in manifest and not isinstance(manifest["dependencies"], list):
+        raise BackupError("web PostgreSQL restore manifest dependencies are invalid")
+    phase = manifest.get("company_reference_phase", "legacy")
+    expected_tables = [f"{schema}.{table}" for schema, table in _web_postgres_tables(phase)]
     if manifest.get("tables") != expected_tables:
         raise BackupError("web PostgreSQL restore manifest table boundary does not match code")
     expected_sequences = [f"{schema}.{sequence}" for schema, sequence in WEB_POSTGRES_SEQUENCES]
@@ -1569,12 +2022,41 @@ def verify_web_postgresql_restore(
         manifest.get("bootstrap") != bootstrap_path.name
         or not isinstance(expected_bootstrap_sha256, str)
         or _sha256_file(bootstrap_path) != expected_bootstrap_sha256
-        or bootstrap_path.read_text(encoding="utf-8") != _web_postgres_bootstrap_sql()
+        or bootstrap_path.read_text(encoding="utf-8")
+        != _web_postgres_bootstrap_sql(phase, manifest.get("dependencies"))
     ):
         raise BackupError("web PostgreSQL restored bootstrap does not match")
+    return manifest
+
+
+def prepare_web_postgresql_restore(
+    manifest_path: Path, dump_path: Path, bootstrap_path: Path, compatibility_path: Path
+) -> dict[str, Any]:
+    manifest = _validated_web_postgresql_packet(manifest_path, dump_path, bootstrap_path)
+    # Historical packets retain their original checksum-bound bootstrap. Their
+    # pre-0100 archive may require the reviewed0088 enum/functions omitted by
+    # table-filtered dumps. These add schema metadata only, never rows/ledger.
+    compatibility = (
+        "" if "dependencies" in manifest else "".join(WEB_POSTGRES_DEPENDENCY_SQL.values())
+    )
+    atomic_write(compatibility_path, compatibility)
+    return {"company_reference_phase": manifest.get("company_reference_phase", "legacy")}
+
+
+def verify_web_postgresql_restore(
+    manifest_path: Path, dump_path: Path, bootstrap_path: Path
+) -> dict[str, Any]:
+    manifest = _validated_web_postgresql_packet(manifest_path, dump_path, bootstrap_path)
+    phase = manifest.get("company_reference_phase", "legacy")
+    expected_sha256 = manifest["archive_sha256"]
     env = _web_postgres_env()
-    _validate_web_postgres_boundary(env=env)
-    actual = _web_postgres_fingerprints(env=env)
+    if _web_postgres_reference_phase(env=env) != phase:
+        raise BackupError("web PostgreSQL restored company-reference phase does not match packet")
+    _validate_web_postgres_boundary(env=env, phase=phase)
+    dependencies = _web_postgres_dependencies(env=env, phase=phase)
+    if "dependencies" in manifest and dependencies != manifest["dependencies"]:
+        raise BackupError("web PostgreSQL restored dependencies do not match packet")
+    actual = _web_postgres_fingerprints(env=env, phase=phase)
     if actual != manifest.get("fingerprints"):
         raise BackupError("web PostgreSQL restored row fingerprints do not match")
     actual_sequences = _web_postgres_sequence_fingerprints(env=env)
@@ -1584,6 +2066,7 @@ def verify_web_postgresql_restore(
         "table_count": len(actual),
         "row_count": sum(item["rows"] for item in actual.values()),
         "archive_sha256": expected_sha256,
+        "company_reference_phase": phase,
     }
 
 
@@ -1820,12 +2303,23 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--manifest", type=Path, required=True)
     verify.add_argument("--dump", type=Path, required=True)
     verify.add_argument("--bootstrap", type=Path, required=True)
+    prepare_restore = subparsers.add_parser("web-postgresql-prepare-restore")
+    prepare_restore.add_argument("--manifest", type=Path, required=True)
+    prepare_restore.add_argument("--dump", type=Path, required=True)
+    prepare_restore.add_argument("--bootstrap", type=Path, required=True)
+    prepare_restore.add_argument("--compatibility", type=Path, required=True)
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
+        if args.service == "web-postgresql-prepare-restore":
+            prepare_web_postgresql_restore(
+                args.manifest, args.dump, args.bootstrap, args.compatibility
+            )
+            print("restore packet checksum and reviewed bootstrap verification succeeded")
+            return 0
         if args.service == "web-postgresql-verify":
             result = verify_web_postgresql_restore(args.manifest, args.dump, args.bootstrap)
             print(

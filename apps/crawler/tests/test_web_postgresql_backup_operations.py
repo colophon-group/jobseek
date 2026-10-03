@@ -433,7 +433,7 @@ def test_bound_backup_rejects_deployment_or_live_status_drift(
         "row_count": 2,
         "service": "web-postgresql",
         "success": True,
-        "table_count": 1,
+        "table_count": 17,
     }
     evidence_path = tmp_path / "activation.json"
     status_path = tmp_path / "backup.json"
@@ -486,6 +486,9 @@ def test_restore_binds_exact_retirement_artifact_and_convergence_evidence(
     }
     evidence: dict[str, object] = {"backup": backup}
     restore_status = {
+        "company_reference_phase": None,
+        "company_reference_rows": None,
+        "company_reference_digest": None,
         "archive_sha256": backup["archive_sha256"],
         "deploy_sha": expected.deploy_sha,
         "duration_seconds": 3,
@@ -538,7 +541,6 @@ def test_restore_binds_exact_retirement_artifact_and_convergence_evidence(
     restore_status["retirement_ledger_count"] = 79
     with pytest.raises(operations.OperationError, match="does not match the bound backup"):
         operations.run_restore_locked(expected, deployment_lock_fd=43)
-
     restore_status["retirement_convergence_applied"] = False
     operations.run_restore_locked(expected, deployment_lock_fd=43)
     assert evidence["restore"] == {
@@ -548,6 +550,33 @@ def test_restore_binds_exact_retirement_artifact_and_convergence_evidence(
     restore_status["retirement_migration_sha256"] = "f" * 64
     with pytest.raises(operations.OperationError, match="does not match the bound backup"):
         operations.run_restore_locked(expected, deployment_lock_fd=43)
+
+
+def test_company_reference_restore_evidence_binds_phase_rows_and_digest() -> None:
+    operations = load_operations()
+    baseline = {"table_count": 17}
+    assert operations.company_reference_evidence_matches(baseline, baseline)
+    reference = {
+        "table_count": 18,
+        "company_reference_phase": "reference",
+        "company_reference_rows": 58,
+        "company_reference_digest": "a" * 32,
+    }
+    assert operations.company_reference_evidence_matches(reference, reference)
+    for key, value in (
+        ("company_reference_phase", "expanded"),
+        ("company_reference_rows", 57),
+        ("company_reference_digest", "b" * 32),
+    ):
+        assert not operations.company_reference_evidence_matches(
+            reference, {**reference, key: value}
+        )
+    with pytest.raises(operations.OperationError, match="historical"):
+        operations.validate_company_reference_evidence({"table_count": 18})
+    with pytest.raises(operations.OperationError, match="invalid"):
+        operations.validate_company_reference_evidence(
+            {**reference, "company_reference_rows": True}
+        )
 
 
 def test_enable_timer_rolls_back_partial_activation(

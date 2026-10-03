@@ -545,6 +545,23 @@ logical dump of this exact boundary:
 - small FK support: `industry`, `company`, and `job_board`; and
 - migration state: `drizzle.__drizzle_migrations`.
 
+Deploy and verify the phase-aware backup tools before migration `0100`. The
+protected workflow must first pass an encrypted backup and a clean isolated
+PostgreSQL 17 restore with these tools. Repeat that proof after `0100` and after
+`0101`, before enabling reference-only writers. Retain the encrypted recovery
+packet for each verified rollback floor.
+
+The pre-expansion boundary contains these 17 tables. Once the exact reviewed `0100`
+ledger row and expanded catalogue exist, `company_reference` becomes the 18th
+required table. After exact `0101`, selection foreign keys must point to that
+table with `ON DELETE RESTRICT` and the legacy bridge trigger/function must be
+absent. Mixed ledger/catalogue/FK phases fail closed. The backup manifest records
+`legacy`, `expanded`, or `reference`; every included row and the complete ledger
+retain their fingerprints. Source migration hashes in the backup tools and
+test-only fixtures must match the actual migration bytes once those files exist.
+The fixtures under `apps/crawler/tests/fixtures/company-reference` never run in
+the production migration runner.
+
 `job_posting`, crawler taxonomies, `enrich_batch`, the unused Stripe
 `subscription` table, and all Murmur tables are excluded. Before dumping, the
 job queries PostgreSQL's FK catalog and refuses to run if any included table
@@ -562,7 +579,17 @@ aggregate hash and records the Drizzle migration sequence state. It runs the
 dump from a serializable, deferrable snapshot, fingerprints again, and rejects
 a backup if the source changed during that small window. Because PostgreSQL
 table-filtered dumps do not include their containing schemas, the packet also
-contains a fixed `bootstrap.sql` for the non-public `drizzle` schema. The job
+contains a reviewed `bootstrap.sql` for the non-public `drizzle` schema and
+required enum/trigger/role dependencies. Table-filtered dumps also omit standalone
+functions and enums: notification policy `0088` introduced `notification_cadence`
+and two notification triggers, while `0100` adds the temporary company bridge.
+The source enum labels and trigger function bodies/properties must match their
+reviewed definitions; unknown dependencies block the backup. Expanded/reference
+bootstraps create only a `NOLOGIN` migration auditor role for the retained SELECT
+policy, then restore its read-only grant after `pg_restore --no-privileges`.
+Version-2 packets require both the phase and explicit dependency list, with no
+historical fallback if either marker is missing. Version-1 packets must retain
+their original 17-table pre-expansion boundary and marker-free manifest. The job
 validates the custom archive with `pg_restore --list`, records SHA-256 checksums
 and fingerprints in a root-only manifest, uploads the three-file packet through
 Restic, applies retention, and runs repository validation. Status and logs
@@ -714,16 +741,27 @@ the Cloudflare tunnel to a restore drill.
    port. It generates an ephemeral random password in root-only files, uses
    `POSTGRES_PASSWORD_FILE` plus a mounted `pgpass` file, and passes no live
    database credential or password value through Docker metadata.
-3. The checksum-bound bootstrap creates only the `drizzle` schema, then
+3. Before executing SQL, the tool verifies the archive and bootstrap checksums
+   and exact reviewed bootstrap for the packet's phase and dependencies. Then
+   the checksum-bound bootstrap creates the required schema metadata and
    `pg_restore --exit-on-error` recreates the selected tables, data, indexes,
    sequence, and constraints. Its short-lived verifier clients join only that
    internal network and authenticate from the mounted `pgpass` file. The
    verifier checks both SHA-256 checksums,
    exact per-table row-count/hash parity, and migration-sequence parity against
-   the encrypted manifest.
+   the encrypted manifest, exact phase ledger/FKs, display/provenance constraints,
+   and canonical verification timestamps. Historical pre-0100 packets retain
+   their original bootstrap bytes and checksums; a separate reviewed supplement
+   supplies the omitted `0088` enum/functions where needed. No restoration path
+   invents company UUIDs, canonical verification, reference rows or migration
+   ledger entries. Restore historical data first, then follow the reviewed
+   application/migration rollout to expand it before serving a newer release.
 4. A rollback-only mutation smoke exercises Better Auth user/session/account
    rows, preferences, saved jobs/interviews, followed companies, watchlists,
    company requests, and hiring/outreach constraints.
+   The final reference phase additionally inserts and selects a reference whose
+   UUID has no legacy `company` row. This smoke uses `legacy_seed` provenance,
+   rolls back all fixtures, and leaves retained canonical metadata unchanged.
 5. The script atomically records aggregate drill evidence in
    `/var/lib/jobseek-backup/status/web-postgresql-restore.json`, then removes
    the exact container, internal network, restored archive, credential files,
