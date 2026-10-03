@@ -46,6 +46,13 @@ ordinary canonical output, fleet coverage, whole-lane savings or final Python
 retirement. PR #10238 must pass Required CI and the actual Crawler Deploy Gate
 at its final head before merge; read their current state.
 
+The [sanitized production evidence](evidence/go-native-ordinary-continuation-2026-10-03.json)
+includes a read-only SQL inventory at 14:30 UTC: 7,885 enabled boards, of which
+5,084 have active board status. It groups every enabled board by monitor type
+and effective monitor/detail browser flags. This includes 2,570 Greenhouse,
+935 Ashby and 195 Lever monitors. These counts describe remaining coverage
+obligations; they do not claim migrated native ownership.
+
 ## Delivery order
 
 1. Finish PR #10238's required checks. When the existing reconciliation job
