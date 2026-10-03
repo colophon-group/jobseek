@@ -31,10 +31,12 @@ const expectedChecks: Record<string, string> = {
 };
 // PostgreSQL renders IN as = ANY and adds casts/parentheses. Normalize only
 // those mechanical differences; keep all operands, bounds and boolean operators.
-export const normalizeReferenceCheck = (value: string) => value
-  .replace(/::text\[\]|::text/g, "")
-  .replace(/=\s*ANY\s*\(ARRAY\[/g, "IN (").replace(/\]\)/g, ")")
-  .replace(/\s/g, "").toLowerCase();
+export const normalizeReferenceCheck = (value: string) =>
+  (value.match(/'(?:''|[^'])*'|[^']+/g) ?? []).map(token => token.startsWith("'") ? token : token
+    .replace(/::text\[\]|::text/g, "")
+    .replace(/=\s*ANY\s*\(ARRAY\[/g, "IN (").replace(/\]\)/g, ")")
+    .replace(/\s/g, "")).join("");
+
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }

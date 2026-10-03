@@ -56,6 +56,10 @@ describe("company reference schema", () => {
   it("retains operands when comparing CHECK contracts", () => {
     expect(normalizeReferenceCheck("CHECK (length(name) <= 300 OR true)"))
       .not.toEqual(normalizeReferenceCheck("CHECK (length(name) <= 300)"));
+    expect(normalizeReferenceCheck("CHECK (slug ~ '^[A-Z]+$')"))
+      .not.toEqual(normalizeReferenceCheck("CHECK (slug ~ '^[a-z]+$')"));
+    expect(normalizeReferenceCheck("CHECK (slug ~ '^[a-z ]+$')"))
+      .not.toEqual(normalizeReferenceCheck("CHECK (slug ~ '^[a-z]+$')"));
   });
 });
 describe.skipIf(!url)("company reference expansion with PostgreSQL", () => {

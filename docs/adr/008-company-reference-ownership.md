@@ -75,7 +75,9 @@ The expansion alone does not resolve #10214 or satisfy final retention behavior.
    or refresh only `legacy_seed` references. Existing verified metadata survives.
    Runtime writes and browser privileges are checked before bridge promotion.
 2. Deploy a bridge that materializes minimal legacy rows and new references in the
-   same transaction as new selections. Move durable selection reads and previews
+   same transaction as new selections. Insert legacy rows before reference promotion
+   in sorted UUID order, matching the legacy trigger lock order and avoiding
+   company/reference lock inversion during old/new writer coexistence. Move durable selection reads and previews
    to references. Old application instances can still read their legacy rows.
 3. Verify first-use persistence, exact membership preservation, authorization,
    concurrent additions, search outages, retirement, reload, sharing and handoff.

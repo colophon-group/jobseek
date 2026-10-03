@@ -66,6 +66,10 @@ promotion. Never grant browser access to fix a runtime-role failure.
 
 Only deploy the bridge after successful postflight. It writes reference and
 minimal legacy rows atomically with selections; reads durable reference display.
+Bridge writes take each sorted UUID in legacy-company then reference order, matching
+the compatibility trigger. Its transient legacy seed is promoted to verified
+Typesense provenance in the same transaction; reference-only mode skips legacy
+writes after contract. This ordering prevents coexistence deadlocks.
 Keep its immutable release available as the rollback floor. Exercise a dedicated
 authenticated canary user/watchlist: a newly published company absent from both
 web representations must survive first save, edit, star, sharing/reload and removal.
