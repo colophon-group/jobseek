@@ -394,6 +394,10 @@ func TestDirectHTTPOperationDeadlineResetsAcrossSlowBodyAndCancels(t *testing.T)
 	for _, mode := range []string{"slow_complete", "read_timeout", "cancel"} {
 		t.Run(mode, func(t *testing.T) {
 			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				// Advertise the expected body. On cancellation the handler can
+				// observe the disconnect and return before the client read, so an
+				// unframed empty response could otherwise finish successfully.
+				w.Header().Set("Content-Length", "8")
 				w.WriteHeader(200)
 				w.(http.Flusher).Flush()
 				for range 8 {

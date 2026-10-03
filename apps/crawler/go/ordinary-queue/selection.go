@@ -70,11 +70,19 @@ func (a *Authority) requireOwnership(ctx context.Context, tx pgx.Tx, claim *Clai
 	if a.ownership == nil {
 		return requireUnselectedAuthority(ctx, tx)
 	}
-	plan, err := a.loadActiveOwnership(ctx, tx, a.ownership.digest, a.ownership.SourceRevision())
-	if err != nil {
+	plan := a.ownership
+	// Startup already validates every member and the exact payload hash. The
+	// ownership transition trigger makes that payload immutable and retains
+	// active/retired rows. Under the shared lease/epoch barriers, recheck the
+	// exact active identity without transferring and decoding the whole fleet
+	// for every heartbeat, claim, posting chunk and settlement.
+	var active bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM public.ordinary_worker_ownership_plan
+  WHERE plan_sha256=$1 AND source_revision=$2 AND routing_epoch=$3 AND state='active')`,
+		plan.digest, plan.SourceRevision(), a.epoch).Scan(&active); err != nil {
 		return err
 	}
-	if plan.body != a.ownership.body {
+	if !active {
 		return ErrAuthorityLost
 	}
 	if err := a.queue.verifyOwnershipProjection(ctx, plan); err != nil {

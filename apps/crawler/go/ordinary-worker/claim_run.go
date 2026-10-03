@@ -3,10 +3,12 @@ package worker
 import (
 	"context"
 	"errors"
+	"log"
 	"strings"
 	"time"
 
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // ClaimRunError is safe to log. Upstream bodies/URLs, SQL messages and arbitrary
@@ -32,6 +34,20 @@ func claimRunError(phase string, err error) error {
 		kind = "configuration"
 	case errors.Is(err, queue.ErrObservation), errors.Is(err, queue.ErrProtocol):
 		kind = "unacknowledged"
+	default:
+		var database *pgconn.PgError
+		if errors.As(err, &database) {
+			switch database.Code {
+			case "57014":
+				kind = "query_cancelled"
+			case "40P01":
+				kind = "deadlock"
+			case "55P03":
+				kind = "lock_timeout"
+			default:
+				kind = "database"
+			}
+		}
 	}
 	return &ClaimRunError{Phase: phase, Kind: kind, cause: err}
 }
@@ -141,6 +157,16 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			return finishSuccess(terminal)
 		}
 		message := "native_" + phase + "_failed"
+		if phase == "processing" {
+			// The persisted aggregate remains compatible; log only a bounded
+			// phase/category so preparation and SQL failures can be diagnosed
+			// without exposing upstream content, credentials or SQL messages.
+			var diagnostic *ClaimRunError
+			if !errors.As(cause, &diagnostic) {
+				diagnostic = claimRunError(phase, cause).(*ClaimRunError)
+			}
+			log.Print(diagnostic.Error())
+		}
 		if phase == "fetch" {
 			var discoveryError *DiscoveryError
 			if errors.As(cause, &discoveryError) {

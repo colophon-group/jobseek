@@ -84,7 +84,7 @@ func PersistGreenhouseInventory(ctx context.Context, sink GreenhouseSink, prepar
 			}
 			content, err := preparer.Prepare(ctx, job)
 			if err != nil {
-				return result, err
+				return result, claimRunError("preparation", err)
 			}
 			if content == nil {
 				return result, errors.New("native rich preparation returned no content")
@@ -93,7 +93,7 @@ func PersistGreenhouseInventory(ctx context.Context, sink GreenhouseSink, prepar
 		}
 		counts, err := sink.WriteRichBatch(ctx, batch)
 		if err != nil {
-			return result, err
+			return result, claimRunError("posting_write", err)
 		}
 		if counts == nil {
 			return result, errors.New("native batch returned no committed accounting")
@@ -110,7 +110,7 @@ func PersistGreenhouseInventory(ctx context.Context, sink GreenhouseSink, prepar
 	}
 	cycle, err := sink.FinishSuccess(ctx, queue.GreenhouseInventorySummary{Discovered: inventory.Discovered, ProcessingFiltered: filtered, Truncated: inventory.Truncated})
 	if err != nil {
-		return result, err
+		return result, claimRunError("finalization", err)
 	}
 	if cycle == nil {
 		return result, errors.New("native inventory returned no terminal result")
