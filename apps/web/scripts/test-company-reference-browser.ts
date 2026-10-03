@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
 import { createServer } from "node:net";
 import { once } from "node:events";
-import { chromium, type Page } from "playwright";
+import { chromium, type Page, type Request, type Route } from "playwright";
 import { hashPassword } from "better-auth/crypto";
 import { companyDocument, fixtureClient, fixtureDatabaseUrl, resetFixture, seedUser } from "./company-reference/fixture";
 import { exerciseCanaryLifecycle, type CanaryLifecycleState } from "./company-reference/canary-lifecycle";
@@ -92,6 +92,80 @@ async function main() {
     assert.equal(persisted[0].any_company, "false", "Company membership and scope must commit atomically before quick reload");
     assert.equal(persisted[0].user_id, user.id); assert.equal(persisted[0].source, "typesense"); assert.equal(persisted[0].alerts_enabled, false);
     assert.equal((await sql`SELECT id FROM company WHERE id=${doc.id}`).length, writeMode === "bridge" ? 1 : 0);
+    browserPhase = "account_recovery_snapshot";
+    // Owner GETs intentionally update private last_accessed_at via after().
+    // Compare account business state, memberships, and session metadata rather
+    // than conflating that documented analytics write with a user mutation.
+    const recoveryState = async () => ({
+      watchlists: await sql`SELECT id, user_id, title, slug, filters, alerts_enabled,
+        share_enabled, is_public, source_watchlist_id FROM watchlist
+        WHERE user_id=${user.id} ORDER BY id`,
+      memberships: await sql`SELECT wc.watchlist_id, wc.company_id FROM watchlist_company wc
+        JOIN watchlist w ON w.id=wc.watchlist_id WHERE w.user_id=${user.id}
+        ORDER BY wc.watchlist_id, wc.company_id`,
+      sessions: await sql`SELECT id, user_id, expires_at FROM session WHERE user_id=${user.id} ORDER BY id`,
+    });
+    const beforeRecovery = await recoveryState();
+    const [recoveryWatchlist] = beforeRecovery.watchlists.filter(row => row.id === watchlistId);
+    assert.equal(recoveryWatchlist.user_id, user.id);
+    const beforePendingIntent = await page.evaluate(() => sessionStorage.getItem("jobseek:pending-watchlist:v1"));
+    assert.equal(beforePendingIntent, null, "Dedicated owner context must not contain an anonymous import intent");
+    const ownedPath = new URL(page.url()).pathname;
+    const isOwnedAction = (request: Request) => request.method() === "POST" &&
+      new URL(request.url()).origin === baseUrl && new URL(request.url()).pathname === ownedPath &&
+      Boolean(request.headers()["next-action"]);
+    let rejectedActions = 0;
+    const rejectedActionIds = new Set<string>();
+    let rejectedAction: string | undefined;
+    const rejectInitialAccount = async (route: Route) => {
+      if (!isOwnedAction(route.request())) { await route.continue(); return; }
+      rejectedActions += 1;
+      rejectedActionIds.add(route.request().headers()["next-action"]);
+      // Current-build opaque identifier stays in memory and is never logged.
+      // It only associates the retry with this intercepted request.
+      rejectedAction ??= route.request().headers()["next-action"];
+      await route.fulfill({ status: 429, contentType: "text/plain", headers: { "retry-after": "1" }, body: "Too many requests" });
+    };
+    browserPhase = "account_recovery_initial_429";
+    await page.route("**/*", rejectInitialAccount);
+    try {
+      await navigateCanary(page, page.url());
+      const retry = page.getByRole("button", { name: "Retry account", exact: true }).filter({ visible: true });
+      await retry.waitFor();
+      assert.equal(await page.getByRole("link", { name: "Log in", exact: true }).filter({ visible: true }).count(), 0,
+        "A rejected account lookup must not falsely present login");
+      assert.equal(await page.getByRole("button", { name: "Account menu", exact: true }).filter({ visible: true }).count(), 0);
+      const heading = page.getByRole("heading", { level: 1 }).filter({ visible: true });
+      assert.equal(await heading.innerText(), recoveryWatchlist.title);
+      assert.equal(await heading.getByRole("button").count(), 0, "Unknown identity must not expose editable owner title");
+      // Cross the manual retry cooldown without clicking: any automatic action
+      // replay is intercepted and makes the exact-one assertion fail.
+      browserPhase = "account_recovery_no_automatic_replay";
+      await page.waitForTimeout(6_000);
+      console.log(JSON.stringify({ contract: "account_recovery_before_manual_retry", rejectedActions, distinctRejectedActions: rejectedActionIds.size,
+        retryEnabled: await retry.isEnabled(), pendingIntentPreserved: await page.evaluate(() => sessionStorage.getItem("jobseek:pending-watchlist:v1")) === beforePendingIntent }));
+      assert.equal(rejectedActions, 1, "Only one initial route action may be rejected before manual retry");
+      assert.ok(rejectedAction, "The rejected owner-route action must have a current-build identifier");
+      assert.equal(await retry.isEnabled(), true, "Manual account retry must become available after its cooldown");
+      assert.equal(await page.evaluate(() => sessionStorage.getItem("jobseek:pending-watchlist:v1")), beforePendingIntent,
+        "Unknown identity must not create or import an anonymous watchlist intent");
+      assert.deepEqual(await recoveryState(), beforeRecovery, "Rejected lookup must preserve account business state and session");
+    } finally {
+      await page.unroute("**/*", rejectInitialAccount);
+    }
+    browserPhase = "account_recovery_manual_retry";
+    const confirmedRetry = page.waitForResponse(response => isOwnedAction(response.request()) &&
+      response.request().headers()["next-action"] === rejectedAction && response.status() === 200);
+    await page.getByRole("button", { name: "Retry account", exact: true }).filter({ visible: true }).click();
+    await confirmedRetry;
+    await waitForCanaryOwnerShell(page, recoveryWatchlist.title);
+    assert.equal(await page.getByRole("button", { name: "Retry account", exact: true }).filter({ visible: true }).count(), 0);
+    assert.equal(await page.getByRole("link", { name: "Log in", exact: true }).filter({ visible: true }).count(), 0);
+    assert.deepEqual(await recoveryState(), beforeRecovery, "Manual account retry must preserve account business state and session");
+    assert.equal(await page.evaluate(() => sessionStorage.getItem("jobseek:pending-watchlist:v1")), beforePendingIntent);
+    const recoveredSession = await context.request.get("/api/auth/get-session");
+    assert.equal(recoveredSession.status(), 200);
+    assert.equal((await recoveredSession.json()).user.id, user.id, "Manual retry must recover the actual dedicated fixture identity");
     browserPhase = "reload";
     await navigateCanary(page, page.url()); await page.getByRole("button", { name: `Remove ${doc.name}`, exact: true }).waitFor();
     assert.ok(search.requests.some(request => request.pathname.includes("/company/")), "Production Typesense SDK must query company fixture");
@@ -137,7 +211,7 @@ async function main() {
     assert.equal((await sql`SELECT 1 FROM watchlist WHERE id=${watchlistId} AND user_id=${user.id}`).length, 0);
     assert.equal((await sql`SELECT 1 FROM company_reference WHERE id=${doc.id}`).length, 1, "Cleanup must retain shared durable reference");
     console.log(JSON.stringify({ contract: "company_reference_authenticated_browser", outcome: "passed", absentLegacyBefore: true, absentReferenceBefore: true,
-      authenticatedMutation: true, committedMembership: true, persistedReload: true, laterScopeDuringLookup: true, ...lifecycle, notificationsEnabled: false, scopedCleanup: true, writeMode, legacyRowsAfterSelection: writeMode === "bridge" ? 1 : 0 }));
+      authenticatedMutation: true, accountRecoveryAfter429: true, noAutomaticAccountReplay: true, committedMembership: true, persistedReload: true, laterScopeDuringLookup: true, ...lifecycle, notificationsEnabled: false, scopedCleanup: true, writeMode, legacyRowsAfterSelection: writeMode === "bridge" ? 1 : 0 }));
     await context.close();
   } catch (error) {
     await page?.screenshot({ path: "/tmp/jobseek-company-reference-browser-failure.png", fullPage: true });

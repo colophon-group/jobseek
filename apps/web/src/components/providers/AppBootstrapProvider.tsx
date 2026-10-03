@@ -139,13 +139,22 @@ export function AppBootstrapProvider({
   }, [canRetry, refresh]);
 
   useEffect(() => {
+    let active = true;
     currentHint.current = readHint();
+    const dispatchGeneration = generation.current;
+    const dispatchHint = currentHint.current;
     if (currentHint.current === null) {
       verifiedData.current = ANON_BOOTSTRAP;
       setData(ANON_BOOTSTRAP);
       setAccountStatus("ready");
     } else {
-      void refresh();
+      // Strict Mode disposes its first effect before this microtask runs.
+      // A context invalidated before dispatch must wait for an explicit retry.
+      queueMicrotask(() => {
+        if (!active || generation.current !== dispatchGeneration) return;
+        if (readHint() !== dispatchHint) { checkHint(); return; }
+        void refresh();
+      });
     }
     // Listen only to the local auth mutation signal. Subscribing to the SDK's
     // session atom/useSession would mount its network refresh manager; this
@@ -158,6 +167,7 @@ export function AppBootstrapProvider({
     window.addEventListener("focus", checkHint);
     window.addEventListener("pageshow", checkHint);
     return () => {
+      active = false;
       generation.current += 1;
       activeRequest.current?.cancel();
       activeRequest.current = null;

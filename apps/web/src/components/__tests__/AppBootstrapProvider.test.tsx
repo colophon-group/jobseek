@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { StrictMode, useState } from "react";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
 // SalaryDisplayProvider (mounted via AppBootstrapProvider) calls `useLingui()`
@@ -225,6 +225,7 @@ describe("AppBootstrapProvider", () => {
 
     // Pre-resolution: waiting on the server action.
     expect(screen.getByTestId("pending").textContent).toBe("true");
+    await act(async () => {});
     expect(mockBootstrap).toHaveBeenCalledTimes(1);
 
     await act(async () => {
@@ -402,6 +403,7 @@ it.each(["logout", "auth signal", "changed hint"])("prevents old response restor
   mockBootstrap.mockReturnValueOnce(new Promise((resolve) => { resolveOld = resolve; }));
   mockBootstrap.mockResolvedValueOnce(bob);
   mountRecovery();
+  await act(async () => {});
   await act(async () => {
     if (change === "logout") fireEvent.click(screen.getByText("Invalidate"));
     if (change === "auth signal") authClient.$store.notify("$sessionSignal");
@@ -522,6 +524,7 @@ it("preserves initial child state and imports pending watchlist intent once afte
   fireEvent.change(screen.getByLabelText("Draft title"), { target: { value: "Unsaved local edit" } });
   expect(readPendingWatchlists()).toHaveLength(1);
   expect(mockCreateWatchlist).not.toHaveBeenCalled();
+  await act(async () => {});
   await act(async () => { resolveBootstrap(alice); });
   await waitFor(() => expect(mockCreateWatchlist).toHaveBeenCalledTimes(1));
   expect(mockCreateWatchlist).toHaveBeenCalledWith(draft);
@@ -532,4 +535,38 @@ it("preserves initial child state and imports pending watchlist intent once afte
   await act(async () => { fireEvent.click(screen.getByText("Refresh")); });
   expect(mockCreateWatchlist).toHaveBeenCalledTimes(1);
   expect((screen.getByLabelText("Draft title") as HTMLInputElement).value).toBe("Unsaved local edit");
+});
+
+it("dispatches exactly one initial request through Strict Mode effect replay", async () => {
+  setDocumentCookie("logged_in=1");
+  mockBootstrap.mockResolvedValueOnce(alice);
+  render(<StrictMode><AppBootstrapProvider initialCurrencyRates={initialCurrencyRates}><SessionProbe /></AppBootstrapProvider></StrictMode>);
+  await screen.findByText("Alice");
+  expect(mockBootstrap).toHaveBeenCalledTimes(1);
+});
+
+it("does not dispatch the initial request after unmount before its microtask", async () => {
+  setDocumentCookie("logged_in=1");
+  mockBootstrap.mockResolvedValueOnce(alice);
+  const view = mountRecovery();
+  view.unmount();
+  await act(async () => {});
+  expect(mockBootstrap).not.toHaveBeenCalled();
+});
+
+it.each(["auth signal", "hint change"])("does not dispatch disposed initial context after %s before its microtask", async (change) => {
+  setDocumentCookie("logged_in=1");
+  mockBootstrap.mockResolvedValueOnce(bob);
+  mountRecovery();
+  act(() => {
+    if (change === "auth signal") authClient.$store.notify("$sessionSignal");
+    else cookieValue = "logged_in=2";
+  });
+  await act(async () => {});
+  expect(mockBootstrap).not.toHaveBeenCalled();
+  expect(screen.getByTestId("account-status").textContent).toBe("unavailable");
+  expect(screen.getByTestId("user-name").textContent).toBe("none");
+  await act(async () => { fireEvent.click(screen.getByText("Retry")); });
+  expect(mockBootstrap).toHaveBeenCalledTimes(1);
+  expect(screen.getByTestId("user-name").textContent).toBe("Bob");
 });
