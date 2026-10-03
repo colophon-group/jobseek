@@ -233,10 +233,16 @@ func (s *hostStore) finishPublication(name string) error {
 }
 
 func (s *hostStore) retain(name string, body []byte, hook func(string) error) error {
-	if len(body) == 0 || len(body) > 8<<20 {
+	return s.retainLimit(name, body, hook, 8<<20)
+}
+
+// Only explicitly bounded journal result/plan callers need larger files. The
+// general host request and evidence store keeps its existing 8 MiB ceiling.
+func (s *hostStore) retainLimit(name string, body []byte, hook func(string) error, limit int64) error {
+	if limit < 1 || limit > 48<<20 || len(body) == 0 || int64(len(body)) > limit {
 		return errHostPreflight
 	}
-	if existing, err := s.read(name, true); err == nil {
+	if existing, err := s.readLimit(name, true, limit); err == nil {
 		if !bytes.Equal(existing, body) {
 			return errHostPreflight
 		}
@@ -265,7 +271,7 @@ func (s *hostStore) retain(name string, body []byte, hook func(string) error) er
 		if !errors.Is(err, fs.ErrExist) {
 			return errHostPreflight
 		}
-		existing, err := s.read(name, true)
+		existing, err := s.readLimit(name, true, limit)
 		if err != nil || !bytes.Equal(existing, body) {
 			return errHostPreflight
 		}

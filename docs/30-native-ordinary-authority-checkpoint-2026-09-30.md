@@ -1,41 +1,41 @@
 # Native ordinary worker authority checkpoint
 
-The installed-image harness now includes a positive joined host/selected-Redis
-journal fixture. It creates only its own official Redis daemon and sleeping native
-consumer containers, uses installed-image preflight, and drives the production
-`WithHostQuiescence` -> `WithSelectedHostColdRedis` -> `RunHostColdPhase` library
-path. Target, intent, reservation and inspection must hold the original host flock
-and all three SQL barriers across commits. A second callback uses a new SQL backend
-and must retain the original endpoint/incarnation, epoch and exact outcomes.
-Missing/escaped scopes refuse; callback exit must close its own Redis connections
-and release SQL barriers. Canonical rows and complete Redis values must remain
-identical. Exact inputs, requests, results, completions and connection receipts
-are retained in a credential-free artifact for independent hash/graph verification.
+The protected native journal now includes the B0-aware forward plan, retention,
+application, inspection and ordinary publication primitives. Closed requests
+name the exact reserved epoch and ordinary plan, protected typed forward request,
+B0 forward plan and transferred receipt. A bounded immutable ancestry walk joins
+these stages to the original intent/target/Lua inputs across inspection and exact
+retry events. Only completed predecessors permit successors. Ordinary-only
+publication shortcuts are refused. Canonical native plans are retained with an
+explicit 32 MiB limit; result envelopes have a 48 MiB limit while general host
+requests/evidence retain their existing smaller ceiling.
 
-Both Linux integration-tag vets, formatting/module checks and workflow lint pass.
-All 188 repository checks pass. This new root fixture is not run locally and still
-requires fresh AMD64/ARM64 CI execution. It proves the initial native library path
-with sleeping consumers when it passes; complete installed cold CLI, producer/lease
-exclusion, full phase graph and runtime admission remain unproven. The disposable
-root harness transfers the existing lock inode's ownership while holding that
-same lock; the runtime owner predicate remains strict. Full installed readbacks
-have a bounded 45-minute matrix job and 15-minute joined fixture context.
+The full required private PostgreSQL/Redis worker race suite passes, including
+substituted request/source/epoch/plan and skipped-stage refusal before effects.
+Missing fixed native producer authority retains an unresolved result, admits only
+an exact native retry and conserves the original epoch, canonical data and complete
+Redis values. The original two SIGKILL journal seams also pass. Both Linux
+architecture integration vets, formatting/tidy and 94 focused repository tests
+pass (three optional skips). Successful native producer transfer/publication
+through this journal is still unproven. See [forward journal evidence](evidence/go-ordinary-native-host-forward-journal-2026-10-03.json).
 
-Preceding source `df54e5e8db6329c723396fae2bdde76376246e2e` passes full CI
-37084517675, installed 37084519859, Linux 37084478239, renderer 37084478177 and
-historical native/legacy images 37084478255/37084478235. Both architecture
-installed/historical artifacts and tested merge parents are independently verified.
-Linux markers prove actual consumer/daemon/socket ownership, wrong PID and
-stopped/restarted stale authority refusal, read-only incarnation and journal
-SIGKILL/conservation. Installed callbacks prove missing-selected-Redis refusal
-without caller fallback and preserve all earlier host/SQL contracts. Draft gate
-evaluator 37084475321 passes; it grants no production admission. Preserve running
-whole-B0 37084478245. See [joined fixture evidence](evidence/go-ordinary-native-host-selected-redis-journal-2026-10-03.json).
+Published parent `52cc87581098a634bb8a09438cbcf9ce242cb042` corrects the disposable
+joined fixture's mutation-lock ownership transfer. Installed run `37086577331`
+at `db0a5ac46` failed before test invocation because Linux `protected_regular`
+refused util-linux flock's create/write reopen in sticky `/run/lock`. The harness
+now opens the existing inode read-only without links, acquires its bounded flock,
+verifies the named inode, and fchowns the held descriptor. Production predicates
+remain strict. Installed run `37088090237` attempts one and two failed earlier
+while fetching the unchanged pinned uv image from GHCR (HTTP 429); they produced
+no positive joined proof. Full `db0a5ac46` CI passes, and Linux plus both historical
+image restoration artifacts were independently verified. Preserve all running
+whole-B0 evidence; generated startup density is not full-service admission.
 
-Next independently verify the fresh positive joined fixture and extend the retained
-graph through complete native forward/reversal/reactivation/finalization and
-producer/lease exclusion. Authenticate deliberate host changes and retain the
-outer mutation lock through complete spec/env/data restoration, SQL release,
+Next prove the positive joined initial fixture and forward transfer/publication
+with the actual source-bound native producer. Extend the complete reversal,
+reactivation and finalization graph, including reversal from reserved/publishing/
+published/active states. Authenticate deliberate host resource changes and retain
+the outer mutation lock through complete spec/env/data restoration, SQL release,
 full-stack startup and readiness. Every enabled profile/consumer, canonical/output/
 database/publisher/freshness/queue parity, full-service resources and attributable
 cost, required gates/exact identities, supported quiesced cutover/cold reversal

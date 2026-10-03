@@ -1,6 +1,6 @@
 # Native ordinary host integration delivery plan
 
-Status: connected containment, scoped SQL quiescence, retained initial phase journal and selected Redis connection implemented; full host admission and production ownership change remain unproven.
+Status: connected containment, scoped SQL quiescence, retained initial/B0-forward phase journal and selected Redis connection implemented; full host admission and production ownership change remain unproven.
 Updated: 2026-10-03. Continue the full goal from
 [the migration plan](../27-go-lightpanda-continuation-plan.md) and
 [the source-bound checkpoint](../30-native-ordinary-authority-checkpoint-2026-09-30.md).
@@ -595,3 +595,24 @@ complete installed cold CLI/full graph/producer lifecycle or production admissio
 After positive verification, extend the full phase graph with exact predecessor
 bindings and authenticated intentional spec/selection changes; keep the host lock
 through restoration, SQL release, full-stack startup/readiness and real crash recovery.
+
+## B0-aware protected forward journal
+
+After completed `cold-inspect` at the original reserved N/ordinary plan, the
+closed host journal supports `cold-b0-forward-plan`, `cold-b0-forward-retain`,
+`cold-b0-forward-apply`, `cold-b0-forward-inspect`, `cold-forward-prepare`,
+`cold-forward-publish` and `cold-forward-activate`, in that order. Requests
+retain original E separately from explicit N and bind the protected typed
+forward request, approved canonical transfer plan and transferred receipt.
+A bounded ancestry walk verifies the original intent/target/Lua rather than
+using a latest allocator or reservation. Native control remains the fixed
+authenticated UID-10001 producer socket; missing control records unresolved
+progress, never completed transfer or runtime admission. General host blobs
+stay capped at 8 MiB; explicit native plan/result callers use 32/48 MiB caps.
+
+Real private SQL/Redis refusal, exact-retry conservation, original journal
+SIGKILL recovery and security/storage tests pass. Positive producer transfer
+and publication under this host journal still need the actual source-bound
+producer fixture. Reversal/reactivation/finalization, intentional host resource
+changes, installed outer cold driver, complete startup/readiness and production
+admission remain required. See the source-scoped forward journal evidence.

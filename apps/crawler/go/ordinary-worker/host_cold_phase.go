@@ -14,24 +14,29 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// The first cold driver stages deliberately end at inspection. Publication,
-// release selection and startup require additional authenticated host phases.
+// Journal stages include the native B0 transfer and publication primitives.
+// Release selection and startup require additional authenticated host phases.
 // Inputs are content hashes in the existing private host store, never paths,
 // connection URLs, shell commands, environment maps or a request for "latest".
 type HostColdPhaseRequest struct {
-	Version             string                   `json:"version"`
-	Binding             queue.HostColdSQLBinding `json:"binding"`
-	RedisEndpointSHA256 string                   `json:"redis_endpoint_sha256"`
-	RedisInstanceSHA256 string                   `json:"redis_instance_sha256"`
-	PredecessorSHA256   string                   `json:"predecessor_result_sha256,omitempty"`
-	Operation           string                   `json:"operation"`
-	PreviousEpoch       int64                    `json:"previous_epoch"`
-	IntentSHA256        string                   `json:"intent_sha256,omitempty"`
-	TargetSHA256        string                   `json:"target_sha256,omitempty"`
-	LuaSHA256           string                   `json:"lua_sha256,omitempty"`
-	Namespace           string                   `json:"namespace,omitempty"`
-	Shard               string                   `json:"shard,omitempty"`
-	Cohort              string                   `json:"cohort,omitempty"`
+	Version              string                   `json:"version"`
+	Binding              queue.HostColdSQLBinding `json:"binding"`
+	RedisEndpointSHA256  string                   `json:"redis_endpoint_sha256"`
+	RedisInstanceSHA256  string                   `json:"redis_instance_sha256"`
+	PredecessorSHA256    string                   `json:"predecessor_result_sha256,omitempty"`
+	Operation            string                   `json:"operation"`
+	PreviousEpoch        int64                    `json:"previous_epoch"`
+	IntentSHA256         string                   `json:"intent_sha256,omitempty"`
+	TargetSHA256         string                   `json:"target_sha256,omitempty"`
+	LuaSHA256            string                   `json:"lua_sha256,omitempty"`
+	Namespace            string                   `json:"namespace,omitempty"`
+	Shard                string                   `json:"shard,omitempty"`
+	Cohort               string                   `json:"cohort,omitempty"`
+	RoutingEpoch         int64                    `json:"routing_epoch,omitempty"`
+	PlanSHA256           string                   `json:"plan_sha256,omitempty"`
+	ForwardRequestSHA256 string                   `json:"forward_request_sha256,omitempty"`
+	ForwardPlanSHA256    string                   `json:"forward_plan_sha256,omitempty"`
+	ForwardReceiptSHA256 string                   `json:"forward_receipt_sha256,omitempty"`
 }
 
 type HostColdPhaseResult struct {
@@ -157,6 +162,11 @@ func decodeHostColdPhase(body []byte, sha string, binding queue.HostColdSQLBindi
 			return r, errHostPreflight
 		}
 	default:
+		if validateHostColdForwardRequest(r) != nil {
+			return r, errHostPreflight
+		}
+	}
+	if !coldB0ForwardOperation(r.Operation) && (r.RoutingEpoch != 0 || r.PlanSHA256 != "" || r.ForwardRequestSHA256 != "" || r.ForwardPlanSHA256 != "" || r.ForwardReceiptSHA256 != "") {
 		return r, errHostPreflight
 	}
 	return r, nil
@@ -170,7 +180,7 @@ type hostColdPhaseCompletion struct {
 }
 
 func (s *hostColdPhaseScope) readResult(requestSHA string, pending bool) (*HostColdPhaseResult, []byte, error) {
-	body, err := s.store.read("cold-result-"+requestSHA+".json", pending)
+	body, err := s.store.readLimit("cold-result-"+requestSHA+".json", pending, 48<<20)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -182,6 +192,37 @@ func (s *hostColdPhaseScope) readResult(requestSHA string, pending bool) (*HostC
 }
 
 func (s *hostColdPhaseScope) predecessor(r HostColdPhaseRequest) (*HostColdPhaseRequest, *HostColdPhaseResult, error) {
+	prior, parent, err := s.loadPredecessor(r)
+	if err != nil || parent == nil {
+		return prior, parent, err
+	}
+	if parent.Outcome == "unresolved" {
+		return prior, parent, nil
+	}
+	switch r.Operation {
+	case "cold-begin":
+		if prior.Operation != "cold-b0-target" || r.TargetSHA256 != parent.Native.B0TargetSHA256 || r.LuaSHA256 != prior.LuaSHA256 {
+			return nil, nil, errHostPreflight
+		}
+	case "cold-reserve":
+		if prior.Operation != "cold-begin" || r.IntentSHA256 != prior.IntentSHA256 || parent.Native.IntentSHA256 != r.IntentSHA256 {
+			return nil, nil, errHostPreflight
+		}
+	case "cold-inspect":
+		if prior.Operation != "cold-reserve" || r.IntentSHA256 != prior.IntentSHA256 || parent.Native.IntentSHA256 != r.IntentSHA256 || parent.Native.RoutingEpoch <= r.PreviousEpoch || !planPattern.MatchString(parent.Native.PlanSHA256) {
+			return nil, nil, errHostPreflight
+		}
+	default:
+		if s.forwardPredecessor(r, *prior, parent) != nil {
+			return nil, nil, errHostPreflight
+		}
+	}
+	return prior, parent, nil
+}
+
+// loadPredecessor verifies the immutable request/result/completion join. It
+// grants no successor authority; predecessor applies the operation policy.
+func (s *hostColdPhaseScope) loadPredecessor(r HostColdPhaseRequest) (*HostColdPhaseRequest, *HostColdPhaseResult, error) {
 	if r.PredecessorSHA256 == "" {
 		if r.Operation != "cold-b0-target" {
 			return nil, nil, errHostPreflight
@@ -212,22 +253,6 @@ func (s *hostColdPhaseScope) predecessor(r HostColdPhaseRequest) (*HostColdPhase
 		if parent.Native == nil || parent.Native.SourceRevision != r.Binding.SourceRevision || parent.Native.Operation != prior.Operation {
 			return nil, nil, errHostPreflight
 		}
-		switch r.Operation {
-		case "cold-begin":
-			if prior.Operation != "cold-b0-target" || r.TargetSHA256 != parent.Native.B0TargetSHA256 || r.LuaSHA256 != prior.LuaSHA256 {
-				return nil, nil, errHostPreflight
-			}
-		case "cold-reserve":
-			if prior.Operation != "cold-begin" || r.IntentSHA256 != prior.IntentSHA256 || parent.Native.IntentSHA256 != r.IntentSHA256 {
-				return nil, nil, errHostPreflight
-			}
-		case "cold-inspect":
-			if prior.Operation != "cold-reserve" || r.IntentSHA256 != prior.IntentSHA256 || parent.Native.IntentSHA256 != r.IntentSHA256 || parent.Native.RoutingEpoch <= r.PreviousEpoch || !planPattern.MatchString(parent.Native.PlanSHA256) {
-				return nil, nil, errHostPreflight
-			}
-		default:
-			return nil, nil, errHostPreflight
-		}
 	}
 	return &prior, parent, nil
 }
@@ -244,6 +269,12 @@ func (s *hostColdPhaseScope) config(r HostColdPhaseRequest) (ColdAdminConfig, ma
 		return filepath.Join(s.store.path, name), nil
 	}
 	env := map[string]string{"LOCAL_DATABASE_URL": "host-bound-connection", "REDIS_URL": "host-bound-connection", "ORDINARY_GO_WORKER_MODE": r.Operation, "ORDINARY_OWNERSHIP_SOURCE_REVISION": r.Binding.SourceRevision, "ORDINARY_COLD_ROUTING_EPOCH": strconv.FormatInt(r.PreviousEpoch, 10), "ORDINARY_COLD_B0_NAMESPACE": r.Namespace, "ORDINARY_COLD_B0_SHARD_ID": r.Shard, "ORDINARY_COLD_B0_COHORT": r.Cohort}
+	if coldB0ForwardOperation(r.Operation) {
+		env["ORDINARY_COLD_ROUTING_EPOCH"] = strconv.FormatInt(r.RoutingEpoch, 10)
+		env["ORDINARY_COLD_PLAN_SHA256"] = r.PlanSHA256
+		env["ORDINARY_COLD_B0_FORWARD_PLAN_SHA256"] = r.ForwardPlanSHA256
+		env["ORDINARY_COLD_B0_FORWARD_RECEIPT_SHA256"] = r.ForwardReceiptSHA256
+	}
 	for _, input := range []struct {
 		hash, fileKey, hashKey string
 		limit                  int
@@ -251,6 +282,7 @@ func (s *hostColdPhaseScope) config(r HostColdPhaseRequest) (ColdAdminConfig, ma
 		{r.LuaSHA256, "ORDINARY_COLD_B0_LUA_FILE", "", 128 << 10},
 		{r.IntentSHA256, "ORDINARY_COLD_INTENT_FILE", "ORDINARY_COLD_INTENT_SHA256", 4096},
 		{r.TargetSHA256, "ORDINARY_COLD_B0_TARGET_FILE", "ORDINARY_COLD_B0_TARGET_SHA256", 16384},
+		{r.ForwardRequestSHA256, "ORDINARY_COLD_B0_FORWARD_REQUEST_FILE", "ORDINARY_COLD_B0_FORWARD_REQUEST_SHA256", 4096},
 	} {
 		if input.hash == "" {
 			continue
@@ -262,6 +294,12 @@ func (s *hostColdPhaseScope) config(r HostColdPhaseRequest) (ColdAdminConfig, ma
 		env[input.fileKey] = p
 		if input.hashKey != "" {
 			env[input.hashKey] = input.hash
+		}
+	}
+	if coldB0ForwardOperation(r.Operation) {
+		forward, err := queue.DecodeColdB0ForwardRequest(string(inputs["cold-input-"+r.ForwardRequestSHA256]), r.ForwardRequestSHA256)
+		if err != nil || forward != (queue.ColdB0ForwardRequest{IntentSHA256: r.IntentSHA256, SourceRevision: r.Binding.SourceRevision, RoutingEpoch: r.RoutingEpoch, OrdinaryPlanSHA256: r.PlanSHA256}) {
+			return ColdAdminConfig{}, nil, errHostPreflight
 		}
 	}
 	if r.IntentSHA256 != "" {
@@ -305,7 +343,7 @@ func validateHostColdPhaseResult(r HostColdPhaseRequest, result *HostColdPhaseRe
 			return errHostPreflight
 		}
 	default:
-		return errHostPreflight
+		return validateHostColdForwardResult(r, n, parent)
 	}
 	return nil
 }
@@ -416,7 +454,12 @@ func runHostColdPhase(ctx context.Context, pool *pgxpool.Pool, requestSHA string
 			return nil, errHostPreflight
 		}
 	}
-	if guard() != nil || s.store.retain("cold-result-"+requestSHA+".json", resultBody, hook) != nil || guard() != nil {
+	if result.Native != nil && len(result.Native.B0ForwardPlan) != 0 {
+		if s.store.retainLimit("cold-input-"+result.Native.B0ForwardPlanSHA256, result.Native.B0ForwardPlan, nil, 32<<20) != nil {
+			return nil, errHostPreflight
+		}
+	}
+	if guard() != nil || s.store.retainLimit("cold-result-"+requestSHA+".json", resultBody, hook, 48<<20) != nil || guard() != nil {
 		return nil, errHostPreflight
 	}
 	if hook != nil && hook("phase_result_retained") != nil {

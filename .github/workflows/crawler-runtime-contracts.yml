@@ -309,6 +309,7 @@ jobs:
           export JOBSEEK_ORDINARY_IMAGE_BINARY="$fixture_directory/ordinary-worker"
           echo "binary=$fixture_directory/ordinary-worker" >> "$GITHUB_OUTPUT"
           export JOBSEEK_ORDINARY_IMAGE_DATA_DIRECTORY="$fixture_directory/data"
+          echo "data_directory=$fixture_directory/data" >> "$GITHUB_OUTPUT"
           docker image inspect --format '{{.Id}}' jobseek-crawler:runtime-v1 > "$fixture_directory/image-id"
           docker image inspect --format '{{.Architecture}}' jobseek-crawler:runtime-v1 > "$fixture_directory/image-architecture"
           docker run --rm --network none --read-only --cap-drop ALL \
@@ -439,7 +440,9 @@ jobs:
           chmod 0755 "$joined_binary"
           trap 'rm -f "$joined_binary"' EXIT
           installed_binary="${{ steps.ordinary-image-process.outputs.binary }}"
+          installed_data="${{ steps.ordinary-image-process.outputs.data_directory }}"
           test -x "$installed_binary"
+          test -d "$installed_data"
           # Earlier fixture commands created this shared inode as the runner
           # user. Transfer only its disposable ownership while holding that
           # same lock, so the strict root coordinator owner predicate holds.
@@ -481,6 +484,7 @@ jobs:
             JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL=postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test \
             JOBSEEK_ORDINARY_IMAGE_SOURCE_REVISION="$GITHUB_SHA" \
             JOBSEEK_ORDINARY_IMAGE_BINARY="$installed_binary" \
+            JOBSEEK_ORDINARY_IMAGE_DATA_DIRECTORY="$installed_data" \
             "$joined_binary" \
             -test.run '^TestActualHostSelectedRedisJournalJoinsScopeAndExactReservation$' \
             -test.count=1 -test.timeout=960s -test.v \

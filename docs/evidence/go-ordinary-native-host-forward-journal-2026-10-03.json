@@ -1,0 +1,92 @@
+{
+  "date": "2026-10-03",
+  "parent": "52cc87581098a634bb8a09438cbcf9ce242cb042",
+  "native_operations": [
+    "cold-b0-forward-plan",
+    "cold-b0-forward-retain",
+    "cold-b0-forward-apply",
+    "cold-b0-forward-inspect",
+    "cold-forward-prepare",
+    "cold-forward-publish",
+    "cold-forward-activate"
+  ],
+  "binding": [
+    "selected Redis endpoint/incarnation",
+    "original active/incoming/rollback host binding and live SQL scope",
+    "original completed reservation N/ordinary plan",
+    "transitive immutable intent/target/Lua ancestry",
+    "closed protected typed forward request",
+    "exact canonical B0 forward plan and transferred receipt",
+    "completed predecessor before successor, unresolved exact retry only"
+  ],
+  "local_validation": {
+    "full_required_private_worker_race_suite_pass": true,
+    "focused_real_SQL_Redis_refusal_and_original_two_SIGKILL_tests_pass": true,
+    "linux_amd64_arm64_integration_vet": true,
+    "format_and_tidy": true,
+    "repository_tests_passed": 94,
+    "repository_tests_optional_skips": 3,
+    "logs_sha256": {
+      "ordinary-forward-journal-tests.log": "6e858f6e7a57e5dfd4b09d306ce46b44bb22308c37eff068b1bb0f80df98b687",
+      "ordinary-forward-journal-worker-suite.log": "ceb6d4698f61859679ca4cd609380e3d2b8211c77f584d3756c1496a22e18b7e",
+      "ordinary-forward-journal-vet.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ordinary-forward-journal-tidy.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ordinary-forward-journal-repository-tests.log": "0f99582ab926e0fde9bb83577907788834fce3f3a1b1523b34fa1cd87aba9505",
+      "ordinary-forward-journal-actionlint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "actionlint": true
+  },
+  "source_files_sha256": {
+    "apps/crawler/go/ordinary-worker/host_cold_phase.go": "40f330baee5a6bcb3843b79288a63ab8afd3645fc081b48941c2c15992c916da",
+    "apps/crawler/go/ordinary-worker/host_cold_forward_phase.go": "af21813b1c586e8da3016d0e5e6e257fb1805e241b86e786d7b8e7d089c6bde2",
+    "apps/crawler/go/ordinary-worker/host_cold_forward_integration_test.go": "947c16e90839860da75ce2293cd07b50d66cd1edb4fee37229e75eb776611c58",
+    "apps/crawler/go/ordinary-worker/host_cold_forward_phase_test.go": "bf50ba0a9735faed3463b388043035106f35dd553c35bd77f14d3e0cb0ea6620",
+    "apps/crawler/go/ordinary-worker/host_preflight_io.go": "4d0e5954c0daf2d6f6e0eab3c19f8f5c30a2e630a5c3b8c9628dffda49091518",
+    ".github/workflows/crawler-runtime-contracts.yml": "842204c74a53ca460c2a4ecee318e5754fe5771d74fe1510267fd349d9596866"
+  },
+  "positive_native_producer_transfer_under_host_journal_verified": false,
+  "full_reversal_reactivation_finalization_graph_implemented": false,
+  "complete_installed_host_CLI_verified": false,
+  "runtime_admission": false,
+  "production_changed": false,
+  "scope": "source library forward graph extension and actual private native-producer absence/substitution refusals; successful native producer transfer/publication and full supported host lifecycle remain unproven",
+  "next": [
+    "independently verify actual positive joined initial host/selected Redis fixture after corrected lock harness",
+    "execute forward journal with source/image-bound UID10001 native producer under actual host scope; retain exact plan/task/receipt conservation and crash recovery",
+    "extend complete reversal/reactivation/finalization including reserved/publishing/published/active reversal",
+    "authenticate deliberate host resource changes; retain outer host lock through restoration, SQL release, full-stack startup/readiness",
+    "finish everyprofile/consumer parity and fullservice CPU/RAM/density/attributablecost, gates/cutover/reversal/rollbackwindow then runtime Python retirement"
+  ],
+  "joined_fixture_retry": {
+    "source": "52cc87581098a634bb8a09438cbcf9ce242cb042",
+    "run": 37088090237,
+    "attempts": {
+      "1": {
+        "conclusion": "failure",
+        "stage": "fetch pinned uv image metadata",
+        "reason": "GHCR HTTP429",
+        "log_sha256": "d6c6fd9e1390c4a5d9f18dc8a15511b6ef30d23675a5e193f4631214a4e1c950"
+      },
+      "2": {
+        "conclusion": "failure",
+        "stage": "fetch pinned uv image metadata",
+        "reason": "GHCR HTTP429",
+        "log_sha256": "5fd7acf768a9add2fbdf7468eee971b862ce23f943e10d96ea49b23ee107a88d"
+      }
+    },
+    "fixture_executed": false,
+    "no_change_to_image_pins_or_production_predicates": true
+  },
+  "joined_fixture_environment_repair": {
+    "source": "same previously verified extraction step",
+    "installed_inputs": [
+      "source revision",
+      "extracted native binary",
+      "extracted data directory"
+    ],
+    "reason": "ordinaryFixtureSourceRevision requires all three explicit installed fixture inputs; step exports expire at step boundary",
+    "data_directory_exported_as_step_output": true,
+    "data_directory_passed_to_root_fixture": true,
+    "local_Docker_execution": false
+  }
+}
