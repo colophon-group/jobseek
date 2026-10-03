@@ -30,7 +30,8 @@ successful tasks, ten failed tasks, nine timeouts, twenty unacknowledged tasks,
 534 completed deadlines matching and three completed SQL receipts with earlier
 Redis retry deadlines; its strict parity check failed. Do not expand ownership
 until a fresh observation resolves those discrepancies. The bounded worker fix
-in [PR #10249](https://github.com/colophon-group/jobseek/pull/10249) removes repeated
+in [PR #10249](https://github.com/colophon-group/jobseek/pull/10249), merged at
+`f90d8244c66a0ca07635ab9bb08adea4b0b6c462`, removes repeated
 decoding of the immutable fleet ownership document, keeps fresh active-identity
 and canonical/cache checks, and adds safe processing-phase diagnostics. It does
 not change pool sizes, timeouts, retry policy or claim authority, and its
