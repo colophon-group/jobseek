@@ -15,12 +15,13 @@ on:
           - rehearse
           - enable-timer
       rehearsal_migration_tag:
-        description: Exact reviewed rehearsal target (initial release supports 0100 only)
+        description: Exact reviewed company reference rehearsal target
         required: false
         default: 0100_company_references
         type: choice
         options:
           - 0100_company_references
+          - 0101_company_reference_selection_contract
       confirmation:
         description: Enter the exact confirmation token documented in the runbook
         required: true
@@ -32,6 +33,7 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  REHEARSAL_MIGRATION_TAG: ${{ inputs.rehearsal_migration_tag }}
 
 concurrency:
   # Share the deployment lock so an operation cannot overlap artifact sync.
@@ -61,7 +63,8 @@ jobs:
             verify:VERIFY-WEB-POSTGRESQL) ;;
             backup:RUN-WEB-POSTGRESQL-BACKUP) ;;
             restore:RUN-WEB-POSTGRESQL-RESTORE-DRILL) ;;
-            rehearse:REHEARSE-COMPANY-REFERENCE-0100) ;;
+            rehearse:REHEARSE-COMPANY-REFERENCE-0100) test "$REHEARSAL_MIGRATION_TAG" = 0100_company_references ;;
+            rehearse:REHEARSE-COMPANY-REFERENCE-0101) test "$REHEARSAL_MIGRATION_TAG" = 0101_company_reference_selection_contract ;;
             enable-timer:ENABLE-WEB-POSTGRESQL-TIMER) ;;
             *) exit 2 ;;
           esac
@@ -111,7 +114,11 @@ jobs:
               expected=RUN-WEB-POSTGRESQL-RESTORE-DRILL
               ;;
             rehearse)
-              expected=REHEARSE-COMPANY-REFERENCE-0100
+              case "$REHEARSAL_MIGRATION_TAG" in
+                0100_company_references) expected=REHEARSE-COMPANY-REFERENCE-0100 ;;
+                0101_company_reference_selection_contract) expected=REHEARSE-COMPANY-REFERENCE-0101 ;;
+                *) exit 2 ;;
+              esac
               ;;
             enable-timer)
               expected=ENABLE-WEB-POSTGRESQL-TIMER
@@ -147,7 +154,7 @@ jobs:
           pnpm --filter @jobseek/web build:company-reference:rehearsal
           manifest=deploy/backups/web-postgresql/company-reference-bundle/manifest.json
           digest="$(sha256sum "$manifest" | cut -d' ' -f1)"
-          python3 deploy/backups/web-postgresql/verify-rehearsal-bundle.py "$(dirname "$manifest")" "$DISPATCH_SHA" "$digest" 0100_company_references
+          python3 deploy/backups/web-postgresql/verify-rehearsal-bundle.py "$(dirname "$manifest")" "$DISPATCH_SHA" "$digest" "$REHEARSAL_MIGRATION_TAG"
           echo "manifest_sha256=$digest" >> "$GITHUB_OUTPUT"
           echo "verifier_sha256=$(sha256sum deploy/backups/web-postgresql/verify-rehearsal-bundle.py | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
@@ -221,10 +228,14 @@ jobs:
 
           rehearsal_args=""
           if [[ "$OPERATION_MODE" == rehearse ]]; then
+            case "$REHEARSAL_MIGRATION_TAG" in
+              0100_company_references|0101_company_reference_selection_contract) ;;
+              *) exit 2 ;;
+            esac
             test "$(gh api 'repos/${{ github.repository }}/git/ref/heads/main' --jq .object.sha)" = "$EXPECTED_DEPLOY_SHA"
             [[ "$EXPECTED_REHEARSAL_MANIFEST_SHA256" =~ ^[0-9a-f]{64}$ ]]
             [[ "$EXPECTED_REHEARSAL_VERIFIER_SHA256" =~ ^[0-9a-f]{64}$ ]]
-            rehearsal_args="--rehearsal-migration-tag 0100_company_references --expected-rehearsal-manifest-sha256 $EXPECTED_REHEARSAL_MANIFEST_SHA256 --expected-rehearsal-verifier-sha256 $EXPECTED_REHEARSAL_VERIFIER_SHA256"
+            rehearsal_args="--rehearsal-migration-tag $REHEARSAL_MIGRATION_TAG --expected-rehearsal-manifest-sha256 $EXPECTED_REHEARSAL_MANIFEST_SHA256 --expected-rehearsal-verifier-sha256 $EXPECTED_REHEARSAL_VERIFIER_SHA256"
           fi
           ssh_root="$(mktemp -d "$RUNNER_TEMP/jobseek-web-backup-ssh.XXXXXX")"
           cleanup() {
@@ -287,7 +298,7 @@ jobs:
           matches=[line.removeprefix('Company reference rehearsal evidence: ') for line in lines if line.startswith('Company reference rehearsal evidence: ')]
           if len(matches)!=1: raise SystemExit('Protected rehearsal evidence missing')
           proof=json.loads(matches[0])
-          if proof['outcome']!='passed' or proof['sourceRevision']!=os.environ['EXPECTED_DEPLOY_SHA'] or proof['manifestSha256']!=os.environ['EXPECTED_REHEARSAL_MANIFEST_SHA256']: raise SystemExit('Protected rehearsal identity differs')
+          if proof['outcome']!='passed' or proof['sourceRevision']!=os.environ['EXPECTED_DEPLOY_SHA'] or proof['manifestSha256']!=os.environ['EXPECTED_REHEARSAL_MANIFEST_SHA256'] or proof['target']['tag']!=os.environ['REHEARSAL_MIGRATION_TAG']: raise SystemExit('Protected rehearsal identity differs')
           proof.update(runId=os.environ['GITHUB_RUN_ID'],runAttempt=int(os.environ['GITHUB_RUN_ATTEMPT']),cleanup='passed',packetVersion=3)
           Path(os.environ['RUNNER_TEMP'],'company-reference-evidence','proof.json').write_text(json.dumps(proof,sort_keys=True)+'\n')
           PYPROOF

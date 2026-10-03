@@ -29,9 +29,9 @@ export const followedCompany = pgTable("followed_company", {
 	index("idx_fc_user_followed_at").using("btree", table.userId.asc().nullsLast().op("text_ops"), table.followedAt.asc().nullsLast().op("text_ops")),
 	foreignKey({
 			columns: [table.companyId],
-			foreignColumns: [company.id],
-			name: "followed_company_company_id_fkey"
-		}).onDelete("cascade"),
+			foreignColumns: [companyReference.id],
+			name: "followed_company_company_id_company_reference_id_fk"
+		}).onDelete("restrict"),
 	foreignKey({
 			columns: [table.userId],
 			foreignColumns: [user.id],

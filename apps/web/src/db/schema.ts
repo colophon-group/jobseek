@@ -718,7 +718,7 @@ export const followedCompany = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     companyId: uuid("company_id")
       .notNull()
-      .references(() => company.id, { onDelete: "cascade" }),
+      .references(() => companyReference.id, { onDelete: "restrict" }),
     followedAt: timestamp("followed_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
@@ -1018,7 +1018,7 @@ export const watchlistCompany = pgTable(
       .references(() => watchlist.id, { onDelete: "cascade" }),
     companyId: uuid("company_id")
       .notNull()
-      .references(() => company.id, { onDelete: "cascade" }),
+      .references(() => companyReference.id, { onDelete: "restrict" }),
     addedAt: timestamp("added_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

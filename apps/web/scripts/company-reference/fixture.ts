@@ -20,13 +20,19 @@ export function fixtureClient() {
 }
 
 /** Generate untouched pre-expand tables from real Drizzle schema, then execute the exact migration. */
-export async function resetFixture(sql: ReturnType<typeof fixtureClient>) {
+export async function resetFixture(sql: ReturnType<typeof fixtureClient>, writeMode: "bridge" | "reference" = "bridge") {
   await sql.unsafe("DROP SCHEMA public CASCADE; CREATE SCHEMA public");
   const legacy = { ...schema } as Record<string, unknown>;
   delete legacy.companyReference;
   const empty = generateDrizzleJson({});
   const desired = generateDrizzleJson(legacy);
-  for (const statement of await generateMigration(empty, desired)) await sql.unsafe(statement);
+  for (const statement of await generateMigration(empty, desired)) {
+    // The final Drizzle schema points selections at references. Reconstruct
+    // exactly the preceding cascade FKs before running the real migrations.
+    const preExpand = statement.replaceAll('REFERENCES "public"."company_reference"("id") ON DELETE restrict',
+      'REFERENCES "public"."company"("id") ON DELETE cascade');
+    await sql.unsafe(preExpand);
+  }
   const migration = await readFile(new URL("../../drizzle/0100_company_references.sql", import.meta.url), "utf8");
   // Migration holds a transaction-scoped lock. Preserve the production runner's transaction boundary.
   await sql.begin(async (tx) => {
@@ -34,6 +40,12 @@ export async function resetFixture(sql: ReturnType<typeof fixtureClient>) {
       await tx.unsafe(statement);
     }
   });
+  if (writeMode === "reference") {
+    const contract = await readFile(new URL("../../drizzle/0101_company_reference_selection_contract.sql", import.meta.url), "utf8");
+    await sql.begin(async tx => {
+      for (const statement of contract.split("--> statement-breakpoint").filter(part => part.trim())) await tx.unsafe(statement);
+    });
+  }
 }
 
 export async function seedUser(sql: ReturnType<typeof fixtureClient>, suffix = randomUUID()) {

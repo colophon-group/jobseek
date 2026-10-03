@@ -1,10 +1,10 @@
 import { relations } from "drizzle-orm/relations";
-import { company, followedCompany, user, occupationDomain, occupation, subscription, jobBoard, savedJob, applicationInterview, session, companyRequest, account, industry, userPreferences, location, seniority, locationMacroMember, companyDescription, occupationName, seniorityName, occupationDomainName, locationName, industryName } from "./schema";
+import { companyReference, company, followedCompany, user, occupationDomain, occupation, subscription, jobBoard, savedJob, applicationInterview, session, companyRequest, account, industry, userPreferences, location, seniority, locationMacroMember, companyDescription, occupationName, seniorityName, occupationDomainName, locationName, industryName } from "./schema";
 
 export const starredCompanyRelations = relations(followedCompany, ({one}) => ({
-	company: one(company, {
+	company: one(companyReference, {
 		fields: [followedCompany.companyId],
-		references: [company.id]
+		references: [companyReference.id]
 	}),
 	user: one(user, {
 		fields: [followedCompany.userId],
@@ -13,7 +13,6 @@ export const starredCompanyRelations = relations(followedCompany, ({one}) => ({
 }));
 
 export const companyRelations = relations(company, ({one, many}) => ({
-	starredCompanies: many(followedCompany),
 	jobBoards: many(jobBoard),
 	companyRequests: many(companyRequest),
 	industry: one(industry, {
@@ -24,7 +23,6 @@ export const companyRelations = relations(company, ({one, many}) => ({
 }));
 
 export const userRelations = relations(user, ({many}) => ({
-	starredCompanies: many(followedCompany),
 	subscriptions: many(subscription),
 	savedJobs: many(savedJob),
 	sessions: many(session),
@@ -195,4 +193,8 @@ export const industryNameRelations = relations(industryName, ({one}) => ({
 		fields: [industryName.industryId],
 		references: [industry.id]
 	}),
+}));
+
+export const companyReferenceRelations = relations(companyReference, ({many}) => ({
+	starredCompanies: many(followedCompany),
 }));

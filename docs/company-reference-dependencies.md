@@ -45,15 +45,15 @@ replacement writer works; a declaration or source-text check alone is not enough
 
 | Dependency | Classification and owner | Migration target and verification |
 | --- | --- | --- |
-| `watchlist_company.company_id → company.id`, cascade | Active; web selections (#10225/#10228) | Bridge materialization, then reference FK with RESTRICT. Real PG mutation/retirement tests; preserve membership IDs, timestamps, ownership and filters. |
-| `followed_company.company_id → company.id`, cascade | Active; web stars (#10225/#10228) | Same restrictive reference target. PG concurrent toggle, removal/outage and retention tests. |
+| `watchlist_company.company_id → company.id`, cascade | Active; web selections (#10225/#10228) | Bridge materialization, then 0101 reference FK with RESTRICT. Real PG mutation/retirement tests; preserve membership IDs, timestamps, ownership and filters. |
+| `followed_company.company_id → company.id`, cascade | Active; web stars (#10225/#10228) | 0101 restrictive reference target. PG concurrent toggle, removal/outage and retention tests. |
 | `company_description.company_id → company.id`, cascade | Inert mirror compatibility; catalogue owners | Keep during bridge. No runtime reader/writer remains; separately audit and retire, without reactivating mirror sync. |
 | `job_board.company_id → company.id`, cascade | Inert mirror compatibility; catalogue owners | Keep, independently retire after auditing `company_request.resolved_job_board_id`. Catalogue/search use crawler/Typesense. |
 | `hiring_signal.company_id → company.id`, cascade | Inert feature schema; web feature owner | Keep; no runtime producer/consumer. `outreach_draft` references signals and must enter its eventual retirement audit. |
 | `company_request.resolved_company_id → company.id`, set null | Compatibility resolution fields; company-request owner | Keep resolution FKs; active request submission only records request/issue metadata. Do not activate a resolver; audit historical records before retiring resolution fields. |
 | `murmur_accept_log.company_id → company.id`, set null (optional historical table; absent in production) | Feature-gated legacy status reader; Murmur owner | Preserve its consumer inventory. No active accept/webhook catalogue writer exists; the audit recognizes only its exact historical table/FK shape if retained elsewhere. Feature retirement must account for the status endpoint and its tests. |
 | `saved_job.company_id` (no company FK) | Active independent durable history; saved-jobs owner | No cutover. Preserve `company_name`, `company_slug`, `company_icon`, posting snapshots and interview relations. Saved-job snapshot tests/PG preservation assertion. |
-| `company_reference.id` | Active web reference owner (#10224) | Exact schema/check/provenance tests and read-only pre/post/drift audit. No catalogue FK, slug uniqueness or UUID default. |
+| `company_reference.id` | Active web reference owner (#10224) | Exact schema/check/provenance tests and read-only expansion/contract pre/post/drift audit. No catalogue FK, slug uniqueness or UUID default. |
 
 `apps/web/src/db/schema.ts` drives runtime and Drizzle generation.
 `apps/web/drizzle/schema.ts` and `drizzle/relations.ts` are historical introspection

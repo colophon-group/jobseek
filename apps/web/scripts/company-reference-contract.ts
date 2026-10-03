@@ -7,7 +7,7 @@ import { normalizeWatchlistCompaniesForRead } from "../src/lib/services/watchlis
 const forbiddenControls = String.raw`[\x01-\x08\x0b\x0c\x0e-\x1f\x7f]`;
 
 export const COMPANY_REFERENCE_MIGRATION_TAG = "0100_company_references";
-export type CompanyReferenceMode = "preflight" | "postflight" | "drift";
+export type CompanyReferenceMode = "preflight" | "postflight" | "contract-preflight" | "contract-postflight" | "drift";
 const migrationFolder = resolve(process.cwd(), "drizzle");
 const journal = JSON.parse(readFileSync(resolve(migrationFolder, "meta/_journal.json"), "utf8")) as {
   entries: { tag: string; when: number }[];
@@ -20,6 +20,8 @@ const identity = (entry: { tag: string; when: number }) => ({
 });
 export const referenceMigrationIdentity = identity(journal.entries[targetIndex]!);
 export const referencePrerequisiteIdentity = identity(journal.entries[targetIndex - 1]!);
+export const referenceContractIdentity = identity(journal.entries.find(entry => entry.tag === "0101_company_reference_selection_contract")
+  ?? (() => { throw new Error("Company reference selection contract journal entry missing"); })());
 const migrationSql = readFileSync(resolve(migrationFolder, `${COMPANY_REFERENCE_MIGRATION_TAG}.sql`), "utf8");
 const expectedFunctionBody = migrationSql.match(/LANGUAGE plpgsql SET search_path = pg_catalog, public AS \$\$([\s\S]*?)\$\$/)?.[1]?.trim();
 
@@ -62,11 +64,13 @@ export async function auditCompanyReferences(sql: Sql, mode: CompanyReferenceMod
     const [relation] = await tx<{ oid: string | null; kind: string | null; persistent: string | null; rls: boolean | null }[]>`
       SELECT c.oid::text AS oid, c.relkind::text AS kind, c.relpersistence::text AS persistent, c.relrowsecurity AS rls
       FROM (SELECT to_regclass('public.company_reference') AS oid) r LEFT JOIN pg_class c ON c.oid = r.oid`;
-    const phase = mode === "drift" ? (relation?.oid ? "postflight" : "preflight") : mode;
+    const contracted = mode === "contract-postflight" || (mode === "drift" && exact(referenceContractIdentity) === 1);
+    const phase = mode === "preflight" || (mode === "drift" && !relation?.oid) ? "preflight" : contracted ? "contract" : "bridge";
+    assert(unique(referenceContractIdentity, contracted ? 1 : 0), "0101 identity absent, duplicated or mismatched");
     assert(unique(referencePrerequisiteIdentity, 1), "Exact 0099 prerequisite identity absent or duplicated");
     assert(unique(referenceMigrationIdentity, phase === "preflight" ? 0 : 1), "0100 identity absent, duplicated or mismatched");
     if (mode !== "drift" || phase === "preflight") {
-      const expected = phase === "preflight" ? referencePrerequisiteIdentity : referenceMigrationIdentity;
+      const expected = phase === "preflight" ? referencePrerequisiteIdentity : contracted ? referenceContractIdentity : referenceMigrationIdentity;
       assert(Number(ledger[0]?.createdAt) === expected.createdAt && ledger[0]?.hash === expected.hash, "Unexpected exact migration ledger head");
     }
     // The separate final-contract verifier declares phase="contract" only after exact 0101 ledger proof.
@@ -77,7 +81,7 @@ export async function auditCompanyReferences(sql: Sql, mode: CompanyReferenceMod
          OR slug IS NULL OR length(btrim(slug)) = 0 OR length(slug) > 100 OR length(icon) > 2048
          OR name ~ ${forbiddenControls} OR icon ~ ${forbiddenControls}
          OR slug !~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'`;
-    assert(malformed?.count === 0, `Seed refused: ${malformed?.count ?? "unknown"} malformed legacy company rows`);
+    assert(contracted || malformed?.count === 0, `Seed refused: ${malformed?.count ?? "unknown"} malformed legacy company rows`);
     // Validate with the actual rendering normalizer in bounded private batches.
     // Publish only aggregate failures; names/IDs never enter verification artifacts.
     let nonrenderable = 0;
@@ -90,13 +94,20 @@ export async function auditCompanyReferences(sql: Sql, mode: CompanyReferenceMod
         + (rendered?.filter(row => "unavailable" in row && row.unavailable === true).length ?? 0);
     }
     assert(nonrenderable === 0, `Reference rendering contract refused: ${nonrenderable} nonrenderable companies`);
-    const selectionForeignKeys = await tx<{ table: string; name: string; target: string; deleteAction: string; validated: boolean }[]>`
+    const selectionForeignKeys = await tx<{ table: string; name: string; target: string; deleteAction: string; updateAction: string; validated: boolean; deferred: boolean; deferrable: boolean; targetColumns: string[] }[]>`
       SELECT conrelid::regclass::text AS "table", conname AS name, confrelid::regclass::text AS target,
-        confdeltype::text AS "deleteAction", convalidated AS validated
+        confdeltype::text AS "deleteAction", confupdtype::text AS "updateAction", convalidated AS validated,
+        condeferred AS deferred, condeferrable AS deferrable,
+        ARRAY(SELECT a.attname FROM unnest(confkey) WITH ORDINALITY k(attnum, position)
+          JOIN pg_attribute a ON a.attrelid=confrelid AND a.attnum=k.attnum ORDER BY k.position) AS "targetColumns"
       FROM pg_constraint WHERE contype = 'f' AND conrelid IN ('public.watchlist_company'::regclass, 'public.followed_company'::regclass)
         AND conkey = ARRAY[(SELECT attnum FROM pg_attribute WHERE attrelid = conrelid AND attname = 'company_id' AND NOT attisdropped)]::smallint[]
       ORDER BY conrelid::regclass::text`;
-    assert(selectionForeignKeys.length === 2 && selectionForeignKeys.every(fk => fk.target === "company" && fk.deleteAction === "c" && fk.validated), "Selection FK bridge contract differs");
+    assert(selectionForeignKeys.length === 2 && selectionForeignKeys.every(fk =>
+      fk.target === (contracted ? "company_reference" : "company") && fk.deleteAction === (contracted ? "r" : "c")
+      && fk.updateAction === "a" && fk.validated && !fk.deferrable && !fk.deferred
+      && JSON.stringify(fk.targetColumns)===JSON.stringify(["id"])
+      && (!contracted || fk.name===`${fk.table}_company_id_company_reference_id_fk`)), "Selection FK lifecycle contract differs");
     if (phase === "preflight") {
       assert(!relation?.oid, "company_reference exists before recorded expansion");
       assert((await tx`SELECT to_regprocedure('public.company_reference_from_legacy()') AS function`)[0]?.function === null, "Unrecorded legacy bridge function exists");
@@ -128,25 +139,25 @@ export async function auditCompanyReferences(sql: Sql, mode: CompanyReferenceMod
     const functions = await tx<{ body: string; securityDefiner: boolean; config: string[]; language: string }[]>`
       SELECT p.prosrc AS body, p.prosecdef AS "securityDefiner", p.proconfig AS config, l.lanname AS language
       FROM pg_proc p JOIN pg_language l ON l.oid=p.prolang WHERE p.oid=to_regprocedure('public.company_reference_from_legacy()')`;
-    assert(functions.length === 1 && functions[0]?.body.trim() === expectedFunctionBody && !functions[0]?.securityDefiner
+    assert(contracted ? functions.length === 0 : functions.length === 1 && functions[0]?.body.trim() === expectedFunctionBody && !functions[0]?.securityDefiner
       && functions[0]?.language === "plpgsql" && JSON.stringify(functions[0]?.config) === JSON.stringify(["search_path=pg_catalog, public"]), "Legacy bridge function drift");
     const triggers = await tx<{ name: string; enabled: string; definition: string }[]>`
       SELECT tgname AS name, tgenabled::text AS enabled, pg_get_triggerdef(oid, true) AS definition
       FROM pg_trigger WHERE tgrelid='public.company'::regclass AND NOT tgisinternal AND tgname='company_reference_legacy_bridge'`;
-    assert(triggers.length === 1 && triggers[0]?.enabled === "O" && triggers[0]?.definition === "CREATE TRIGGER company_reference_legacy_bridge AFTER INSERT OR UPDATE OF name, slug, icon ON company FOR EACH ROW EXECUTE FUNCTION company_reference_from_legacy()", "Legacy bridge trigger drift");
+    assert(contracted ? triggers.length === 0 : triggers.length === 1 && triggers[0]?.enabled === "O" && triggers[0]?.definition === "CREATE TRIGGER company_reference_legacy_bridge AFTER INSERT OR UPDATE OF name, slug, icon ON company FOR EACH ROW EXECUTE FUNCTION company_reference_from_legacy()", "Legacy bridge trigger drift");
     const [coverage] = await tx<{ missingLegacy: number; mismatchedSeed: number; missingSelections: number }[]>`
       SELECT (SELECT count(*) FROM public.company c LEFT JOIN public.company_reference r ON r.id=c.id WHERE r.id IS NULL)::integer AS "missingLegacy",
       (SELECT count(*) FROM public.company c JOIN public.company_reference r ON r.id=c.id WHERE r.source='legacy_seed' AND (r.name IS DISTINCT FROM c.name OR r.slug IS DISTINCT FROM c.slug OR r.icon IS DISTINCT FROM c.icon))::integer AS "mismatchedSeed",
       (SELECT count(*) FROM (SELECT company_id FROM public.watchlist_company UNION ALL SELECT company_id FROM public.followed_company) s
         LEFT JOIN public.company_reference r ON r.id=s.company_id WHERE r.id IS NULL)::integer AS "missingSelections"`;
-    assert(coverage?.missingLegacy === 0 && coverage.mismatchedSeed === 0 && coverage.missingSelections === 0, "Reference/selection coverage drift");
+    assert(coverage?.missingSelections === 0 && (contracted || coverage.missingLegacy === 0 && coverage.mismatchedSeed === 0), "Reference/selection coverage drift");
     const runtime = await tx<{ allowed: boolean }[]>`
       SELECT has_table_privilege(coalesce(${runtimeRole ?? null}, current_user::text), 'public.company_reference', 'SELECT')
         AND has_table_privilege(coalesce(${runtimeRole ?? null}, current_user::text), 'public.company_reference', 'INSERT')
         AND has_table_privilege(coalesce(${runtimeRole ?? null}, current_user::text), 'public.company_reference', 'UPDATE')
-        AND has_table_privilege(coalesce(${runtimeRole ?? null}, current_user::text), 'public.company', 'INSERT')
+        AND (${contracted} OR has_table_privilege(coalesce(${runtimeRole ?? null}, current_user::text), 'public.company', 'INSERT'))
         AND (r.rolsuper OR r.rolbypassrls OR c.relowner=r.oid)
-        AND (NOT legacy.relrowsecurity OR r.rolsuper OR r.rolbypassrls OR legacy.relowner=r.oid) AS allowed
+        AND (${contracted} OR NOT legacy.relrowsecurity OR r.rolsuper OR r.rolbypassrls OR legacy.relowner=r.oid) AS allowed
       FROM pg_roles r, pg_class c, pg_class legacy WHERE r.rolname=coalesce(${runtimeRole ?? null}, current_user::text)
         AND c.oid='public.company_reference'::regclass AND legacy.oid='public.company'::regclass`;
     assert(runtime[0]?.allowed, "Audited runtime role cannot read/write company references through RLS");
@@ -171,7 +182,8 @@ export async function auditCompanyReferences(sql: Sql, mode: CompanyReferenceMod
     assert(policies.length === auditor.length && policies.every(p => p.name==='company_reference_migration_auditor_select'
       && p.command==='r' && p.permissive && JSON.stringify(p.roles)===JSON.stringify(['jobseek_migration_auditor'])
       && p.using==='true' && p.check===null), "Migration auditor exact SELECT policy differs");
-    return { mode, phase, status: "passed", migration: referenceMigrationIdentity, ledgerHead: ledger[0], relation, columns, checks, constraints, indexes,
-      coverage, nonrenderable, runtime, browser, auditor, policies, selectionForeignKeys, dependencies, compatibilityFunction: "exact", compatibilityTrigger: "exact" };
+    return { mode, phase, status: "passed", migration: contracted || mode.startsWith("contract-") ? referenceContractIdentity : referenceMigrationIdentity,
+      expansion: referenceMigrationIdentity, ledgerHead: ledger[0], relation, columns, checks, constraints, indexes,
+      coverage: contracted ? { missingSelections: coverage!.missingSelections } : coverage, nonrenderable, runtime, browser, auditor, policies, selectionForeignKeys, dependencies, compatibilityFunction: contracted ? "absent" : "exact", compatibilityTrigger: contracted ? "absent" : "exact" };
   });
 }

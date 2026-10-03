@@ -26,6 +26,9 @@ and row values out of CI/public artifacts; publish counts/digests only.
 The executable protected rehearsal is `Operate Web PostgreSQL Backup (Hetzner)`
 (`operate-web-postgresql-backup.yml`), mode `rehearse`, target
 `0100_company_references`, confirmation `REHEARSE-COMPANY-REFERENCE-0100`.
+The final contract uses target `0101_company_reference_selection_contract` and
+confirmation `REHEARSE-COMPANY-REFERENCE-0101`; each confirmation authorizes only
+its selected target. Its prerequisite is an expanded v3 packet at exact 0100.
 First deploy the reviewed backup helper at current main through `Deploy Data
 Backups`, service `web-postgresql`, then use protected `verify`, `backup` and
 `restore` modes. A fresh encrypted **v3** packet must include retained
@@ -43,8 +46,11 @@ exact restore hostname and reviewed identities. It receives no production URL,
 backup/SSH secret, host network or Docker socket and installs nothing at runtime.
 Only isolated role scaffolding is added before actual preflight, bounded exact
 SQL plus ledger transaction, and postflight. Every retained owner/filter/history
-row count and digest must remain unchanged. The final-contract target, when added
-by its reviewed PR, must also preserve every existing canonical reference.
+row count and digest must remain unchanged. The final-contract target must also
+preserve every existing canonical reference, including source, verification and
+creation/update timestamps. Proof must report the corresponding dependency phase;
+its reference count must equal the seeded legacy count for 0100 or the preserved
+canonical count for 0101.
 
 A successful operation proves removal of both containers, the internal network,
 credentials and restored plaintext before publishing its counts/digests artifact.
@@ -105,7 +111,8 @@ Bridge writes take each sorted UUID in legacy-company then reference order, matc
 the compatibility trigger. Its transient legacy seed is promoted to verified
 Typesense provenance in the same transaction; reference-only mode skips legacy
 writes after contract. This ordering prevents coexistence deadlocks.
-Keep its immutable release available as the rollback floor. Exercise a dedicated
+Keep its immutable bridge-mode release as the expansion/bridge rollback floor.
+This artifact is not the final reference-mode rollback floor. Exercise a dedicated
 authenticated canary user/watchlist: a newly published company absent from both
 web representations must survive first save, edit, star, sharing/reload and removal.
 The deployment workflow first runs this full lifecycle against the immutable
@@ -164,25 +171,75 @@ COMPANY_REFERENCE_RUNTIME_ROLE=postgres \
 ```
 
 `drift` permits later ledger entries only when the exact expansion/prerequisite
-identities still exist uniquely; the expansion-phase catalogue contract must still
-match. The existing daily protected `Web Database Migrations` drift job runs this audit
+identities still exist uniquely; the appropriate lifecycle catalogue contract must
+still match. The existing daily protected `Web Database Migrations` drift job runs this audit
 as `jobseek_migration_auditor`, using `DATABASE_URL_READONLY` and an explicit
 audited runtime role (`postgres`). Expansion grants that existing auditor only
 SELECT and a narrowly scoped RLS SELECT policy; it creates no role, elevates no
 attributes and grants no write privileges. The verifier checks the exact policy,
 role safety/default read-only setting and SELECT-only table ACL. Runtime role
 ACLs are inspected independently from the auditor identity. No credentials belong
-in an agent scheduler or public issue. A future FK contract
-migration must update phase-aware drift verification in the same PR.
+in an agent scheduler or public issue. The 0101 selection contract updates
+phase-aware drift verification in the same PR. Drift accepts exactly the expanded bridge or contracted reference state,
+requires each phase's exact migration identities, and refuses mixed ledger/schema
+or weakened deletion semantics.
 
 ## Contract and rollback
 
-Separate the restrictive watchlist/star FK migration from expansion. Require all
-active writer/reader cutovers, authenticated canaries, membership preservation,
-and rollback compatibility first. Catalogue disappearance must then be proven
-unable to delete selections. Stop legacy writes only after the rollback floor
-supports on-demand sparse references; independently inventory/retire inactive
-mirror consumers before considering dropping `company`.
+The separate contract migration is `0101_company_reference_selection_contract`.
+Before it can be dispatched, record the deployed compatible bridge SHA and a
+successful authenticated mutation/reload canary bound to that deployment. Verify
+that all active instances and retained rollback artifacts support durable
+references; prevent rollback promotion to pre-bridge versions. Old catalogue
+writer compatibility has now served its purpose. Capture membership/owner/filter
+and saved-history count/digest evidence and retain a successful protected restore
+drill. The contract migration must remain a separate PR/release from expansion.
+
+Deploy the extended immutable rehearsal bundle from that reviewed current main,
+then take and restore a fresh v3 backup in the expanded phase. Run protected
+`rehearse` with target `0101_company_reference_selection_contract` and confirmation
+`REHEARSE-COMPANY-REFERENCE-0101`. This rehearses the actual contract verifier and
+SQL against the restored archive, preserving all owner/filter/history and existing
+canonical reference fingerprints. The successful protected run must remain bound
+to that exact current main, target SQL/timestamp, bundle/runtime and archive.
+
+At the protected direct connection, run `verify-company-references.ts
+contract-preflight`. It requires the exact 0100 bridge ledger head, verified
+reference coverage, validated legacy company(id) cascade FKs, exact compatibility
+trigger/function and read-only auditor policy/ACL. Dispatch the existing routine
+workflow at current reviewed main with the exact 0101 tag/timestamp/hash,
+confirmation and successful 0101 `rehearsal_run_id`; it automatically repeats
+contract-preflight and protected proof verification before its final main
+reauthorization, applies only that ledger-head migration, and runs
+contract-postflight after verify-head. Do not dispatch until the recorded bridge
+canary and rollback-floor evidence is current.
+
+The DDL takes bounded exclusive locks, rechecks complete selected UUID coverage
+and exact old FK semantics in its transaction, moves only watchlist/star company
+FKs to immediate validated reference FKs with ON DELETE RESTRICT, and removes the
+legacy seed trigger/function. It preserves UUIDs, memberships, timestamps,
+owners, filters, history and inactive mirror relationships. It invents no
+replacement identity. Lock contention/deadlock or any catalog mismatch aborts the
+whole migration; use a quiet mutation window and retry the same reviewed identity
+rather than weakening locks or bypassing checks.
+
+After successful contract-postflight, run the authenticated canary again. Switch
+`COMPANY_REFERENCE_WRITE_MODE` to `reference` only through a reviewed protected
+web deployment; this is the point at which new sparse references cease receiving
+legacy rows. Vercel bakes the write mode into each deployment's environment;
+changing the current project setting does not change an older artifact. Record
+a successful immutable build of the compatible code with reference mode against
+0101 as the final rollback floor, including its commit, deployment ID and canary
+evidence. The original bridge-mode artifact cannot serve as that floor: a new
+reference can reuse a slug already owned by another legacy UUID, and its later
+edit/copy/star would then fail the legacy unique constraint. Verify a company
+with a reused slug can be selected without creating a
+legacy row, legacy catalogue deletion cannot erase selections, selected reference
+deletion is restricted, and retiring search never broadens scope. Scheduled drift
+now checks the contract phase, zero missing selected references and absence of the
+retired compatibility trigger/function. It no longer demands legacy catalogue
+parity or legacy INSERT privileges from the reference-only runtime. Independently
+inventory/retire inactive mirror consumers before considering dropping `company`.
 
 During expansion/bridge, application rollback retains both tables and trigger.
 Do not undo the seed, remove references, delete legacy rows or reset provenance.
@@ -190,8 +247,20 @@ If migration fails, its transaction leaves schema/data/ledger unchanged; correct
 preflight and retry the same reviewed identity. A partial application transaction
 also rolls back reference/legacy/membership together.
 
-After the final contract, rollback stays at the compatible bridge release or uses
-a reviewed forward repair. Never restore historical cascade FKs or pre-bridge app
+The real PostgreSQL rollback contract exercises the unchanged compatible service
+code against exact 0101 in reference mode, retaining a reference-only reused-slug
+selection created after cutover through offline edit, copy and star/unstar. It
+also proves bridge-mode rejection leaves selections unchanged, and preserves
+pre-cutover ownership, filters, memberships and saved/interview history. This
+local service proof must be paired with the exact immutable floor's deployed
+authenticated canary; source compatibility alone does not certify an artifact.
+
+After the final contract, rollback stays at that recorded reference-mode release
+or uses a reviewed forward repair/rebuild at current approved main. Until the
+immutable reference-mode floor exists, recovery is that reviewed forward rebuild;
+never promote the original bridge-mode artifact. Stop final rollout closure if
+the floor's identity, mode or canary evidence is missing. Never restore historical
+cascade FKs or pre-bridge app
 releases as an automatic rollback. Schema restoration is a protected backup/restore
 operation with preserved selection data, not the destructive inverse of expansion.
 

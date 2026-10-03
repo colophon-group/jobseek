@@ -1099,8 +1099,21 @@ def validate_rehearsal_proof(
         != {"phase", "foreignKeyCount", "lifecycleOwners", "optionalForeignKeyCount", "snapshot"}
         or dependencies.get("foreignKeyCount") != 6
         or dependencies.get("snapshot") != "independent"
+        or dependencies.get("phase")
+        != (
+            "bridge"
+            if identity["target"]["tag"] == "0100_company_references"
+            else "reference"
+        )
     ):
         raise OperationError("rehearsal dependency proof differs")
+    reference_source = (
+        "company"
+        if identity["target"]["tag"] == "0100_company_references"
+        else "company_reference"
+    )
+    if proof["referenceRows"] != preserved[reference_source]["rows"]:
+        raise OperationError("rehearsal reference preservation count differs")
 
 
 def run_restore(expected: ExpectedIdentity, *, rehearsal: dict[str, str] | None = None) -> None:

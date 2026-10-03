@@ -229,6 +229,12 @@ describe("production migration safety", () => {
     expect(referencePreflight).toBeLessThan(finalMainCheck);
     expect(referencePostflight).toBeGreaterThan(workflow.indexOf("run: pnpm db:migrate:verify-head"));
     expect(workflow.match(/if: env\.ROUTINE_MIGRATION_TAG == '0100_company_references'/g)).toHaveLength(2);
+    const contractPreflight = workflow.indexOf("scripts/verify-company-references.ts contract-preflight");
+    const contractPostflight = workflow.indexOf("scripts/verify-company-references.ts contract-postflight");
+    expect(contractPreflight).toBeGreaterThan(0);
+    expect(contractPreflight).toBeLessThan(finalMainCheck);
+    expect(contractPostflight).toBeGreaterThan(workflow.indexOf("run: pnpm db:migrate:verify-head"));
+    expect(workflow.match(/if: env\.ROUTINE_MIGRATION_TAG == '0101_company_reference_selection_contract'/g)).toHaveLength(2);
     const workflowMigration = workflow.indexOf(
       "timeout --signal=TERM --kill-after=15s 12m pnpm db:migrate",
     );

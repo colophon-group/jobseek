@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { AsyncLocalStorage } from "node:async_hooks";
+import { readFile } from "node:fs/promises";
 import type { Sql } from "postgres";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { companyDocument, fixtureClient, resetFixture, seedUser } from "./company-reference/fixture";
@@ -17,6 +18,7 @@ vi.mock("@/db", async () => {
   runtime.client = fixtureClient();
   return { db: drizzle(runtime.client, { schema }) };
 });
+
 vi.mock("@/lib/cache", () => ({ cached: async (_key: string, load: () => unknown) => load(), invalidate: async () => {},
   kvMget: async (keys: unknown[]) => keys.map(() => null), kvGet: async () => null, kvSet: async () => {} }));
 vi.mock("@/lib/rate-limit", () => ({ sharedWatchlistCloneLimiter: { limit: async () => ({ success: true }) } }));
@@ -63,17 +65,30 @@ async function absent(id: string) {
 beforeAll(() => { runtime.user = new AsyncLocalStorage(); sql = runtime.client!;
   vi.stubEnv("TYPESENSE_HOST", "127.0.0.1"); vi.stubEnv("TYPESENSE_PORT", "1"); vi.stubEnv("TYPESENSE_PROTOCOL", "http"); vi.stubEnv("TYPESENSE_SEARCH_KEY", "fixture");
 });
-beforeEach(async () => {
-  await resetFixture(sql); owner = (await seedUser(sql)).id; stranger = (await seedUser(sql)).id;
-  runtime.companies.clear(); runtime.requests = 0; runtime.outage = false; runtime.beforeSearch = null;
-});
 afterAll(async () => { await sql?.end({ timeout: 5 }); });
 
-describe("company selection persistence against real PostgreSQL", () => {
+describe.each(["bridge", "reference"] as const)("company selection persistence against real PostgreSQL in %s mode", writeMode => {
+  beforeEach(async () => {
+    vi.stubEnv("COMPANY_REFERENCE_WRITE_MODE", writeMode);
+    await resetFixture(sql, writeMode); owner = (await seedUser(sql)).id; stranger = (await seedUser(sql)).id;
+    runtime.companies.clear(); runtime.requests = 0; runtime.outage = false; runtime.beforeSearch = null;
+  });
   it("creates from canonical search without either pre-existing representation and reloads/shares/copies", async () => {
     const doc = document(); await absent(doc.id);
     const id = await create([doc.id]);
     expect(await membership(id)).toEqual([doc.id]);
+    expect(await sql`SELECT id FROM company WHERE id=${doc.id}`).toHaveLength(writeMode === "bridge" ? 1 : 0);
+    if (writeMode === "reference") {
+      await expect(sql`DELETE FROM company_reference WHERE id=${doc.id}`).rejects.toMatchObject({
+        code: expect.stringMatching(/^(23503|23001)$/),
+        constraint_name: "watchlist_company_company_id_company_reference_id_fk",
+      });
+      expect(await sql`SELECT id FROM company_reference WHERE id=${doc.id}`).toHaveLength(1);
+      expect(await membership(id)).toEqual([doc.id]);
+      await sql`INSERT INTO company (id, name, slug) VALUES (${doc.id}, 'Unrelated catalogue mirror', ${doc.slug})`;
+      await sql`DELETE FROM company WHERE id=${doc.id}`;
+      expect(await membership(id)).toEqual([doc.id]);
+    }
     expect((await sql`SELECT name, slug, source, verified_at FROM company_reference WHERE id=${doc.id}`)[0]).toMatchObject({ name: doc.name, slug: doc.slug, source: "typesense" });
     expect((await sql`SELECT verified_at IS NOT NULL AS verified FROM company_reference WHERE id=${doc.id}`)[0].verified).toBe(true);
     const detail = await watchlists.getOwnedWatchlistById(id, owner);
@@ -137,9 +152,10 @@ describe("company selection persistence against real PostgreSQL", () => {
     const results = await Promise.all([create([fresh.id]), create([fresh.id]), as(stranger, () => toggleStarredCompany(fresh.id))]);
     expect(results[2]).toMatchObject({ starred: true });
     expect(await sql`SELECT id FROM company_reference WHERE id=${fresh.id}`).toHaveLength(1);
-    expect(await sql`SELECT id FROM company WHERE id=${fresh.id}`).toHaveLength(1);
+    expect(await sql`SELECT id FROM company WHERE id=${fresh.id}`).toHaveLength(writeMode === "bridge" ? 1 : 0);
   });
 
+  if (writeMode === "bridge") {
   it("promotes a legacy seed inserted during provider lookup to the verified canonical snapshot", async () => {
     const fresh = document(); await absent(fresh.id);
     runtime.beforeSearch = async () => {
@@ -152,6 +168,8 @@ describe("company selection persistence against real PostgreSQL", () => {
     expect(reference).toMatchObject({ name: fresh.name, source: "typesense" });
     expect(reference.verified).toBe(true);
   });
+
+  }
 
   it("preserves a canonical snapshot committed by a concurrent first-use request", async () => {
     const fresh = document(); await absent(fresh.id);
@@ -175,6 +193,7 @@ describe("company selection persistence against real PostgreSQL", () => {
     expect(await sql`SELECT id FROM company_reference WHERE id IN (${one.id}, ${two.id})`).toHaveLength(1);
   });
 
+  if (writeMode === "bridge") {
   it("shares company-to-reference lock order with an overlapping legacy writer", async () => {
     const fresh = document(); await absent(fresh.id);
     // A second AFTER INSERT trigger pauses the old writer after its company row
@@ -206,6 +225,8 @@ describe("company selection persistence against real PostgreSQL", () => {
     expect(await membership(await newWriter!)).toEqual([fresh.id]);
   });
 
+  }
+
   it("keeps the account capacity check atomic without orphaning new references", async () => {
     for (let i = 0; i < 9; i++) await create();
     const one = document(); const two = document();
@@ -224,5 +245,84 @@ describe("company selection persistence against real PostgreSQL", () => {
     expect(await sql`SELECT id FROM watchlist`).toHaveLength(0); await absent(fresh.id);
     const other = randomUUID();
     await expect(sql`INSERT INTO followed_company (user_id, company_id) VALUES (${owner}, ${other})`).rejects.toMatchObject({ code: "23503" });
+  });
+});
+
+describe("supported application rollback after reference-only cutover", () => {
+  it("retains a new reused-slug selection offline under the compatible code built in reference mode", async () => {
+    await resetFixture(sql, "bridge");
+    owner = (await seedUser(sql)).id; stranger = (await seedUser(sql)).id;
+    runtime.companies.clear(); runtime.requests = 0; runtime.outage = false; runtime.beforeSearch = null;
+    vi.stubEnv("COMPANY_REFERENCE_WRITE_MODE", "bridge");
+    const legacy = companyDocument(randomUUID(), "Before cutover");
+    await sql`INSERT INTO company (id, name, slug) VALUES (${legacy.id}, ${legacy.name}, ${legacy.slug})`;
+    const oldList = await create([legacy.id]);
+    expect(await as(owner, () => toggleStarredCompany(legacy.id))).toEqual({ starred: true });
+    const savedId = randomUUID();
+    await sql`INSERT INTO saved_job (id, user_id, job_posting_id, posting_title, posting_source_url,
+      posting_first_seen_at, posting_is_active, company_id, company_name, company_slug)
+      VALUES (${savedId}, ${owner}, ${randomUUID()}, 'Historical job', 'https://example.invalid/job',
+        now(), false, ${legacy.id}, 'Historical display', 'historical-display')`;
+    await sql`INSERT INTO application_interview (saved_job_id, round, type) VALUES (${savedId}, 1, 'interview')`;
+    const retained = async () => ({
+      watchlist: await sql`SELECT * FROM watchlist WHERE id=${oldList}`,
+      membership: await sql`SELECT * FROM watchlist_company WHERE watchlist_id=${oldList}`,
+      star: await sql`SELECT * FROM followed_company WHERE user_id=${owner} AND company_id=${legacy.id}`,
+      saved: await sql`SELECT * FROM saved_job WHERE id=${savedId}`,
+      interview: await sql`SELECT * FROM application_interview WHERE saved_job_id=${savedId}`,
+      reference: await sql`SELECT * FROM company_reference WHERE id=${legacy.id}`,
+    });
+    const beforeContract = await retained();
+    const contract = await readFile(new URL("../drizzle/0101_company_reference_selection_contract.sql", import.meta.url), "utf8");
+    await sql.begin(async tx => {
+      for (const statement of contract.split("--> statement-breakpoint").filter(part => part.trim())) await tx.unsafe(statement);
+    });
+    expect(await retained()).toEqual(beforeContract);
+
+    // This identity can only be persisted in the final reference mode: its slug
+    // is still owned by another UUID in the intentionally retained legacy table.
+    const fresh = { ...companyDocument(randomUUID(), "After cutover"), slug: legacy.slug };
+    runtime.companies.set(fresh.id, fresh);
+    vi.stubEnv("COMPANY_REFERENCE_WRITE_MODE", "reference");
+    await absent(fresh.id);
+    const newList = await create([fresh.id]);
+    const newReference = await sql`SELECT * FROM company_reference WHERE id=${fresh.id}`;
+    const newListBefore = await sql`SELECT * FROM watchlist WHERE id=${newList}`;
+
+    // Re-promoting the original bridge-mode artifact is an unsupported rollback,
+    // even though its code supports the reference-mode build configuration.
+    vi.stubEnv("COMPANY_REFERENCE_WRITE_MODE", "bridge");
+    expect(await as(owner, () => watchlists.updateWatchlist({ watchlistId: newList, title: "Rejected rollback edit", companyIds: [fresh.id] })))
+      .toEqual({ error: "company_identity_conflict" });
+    expect(await as(owner, () => watchlists.copyWatchlist(newList))).toEqual({ error: "company_identity_conflict" });
+    expect(await as(owner, () => toggleStarredCompany(fresh.id))).toEqual({ error: "company_identity_conflict" });
+    expect(await sql`SELECT * FROM watchlist WHERE id=${newList}`).toEqual(newListBefore);
+    expect(await membership(newList)).toEqual([fresh.id]);
+    expect(await sql`SELECT * FROM company_reference WHERE id=${fresh.id}`).toEqual(newReference);
+    expect(await sql`SELECT id FROM company WHERE id=${fresh.id}`).toHaveLength(0);
+
+    // The supported floor is the compatible service code built with reference
+    // mode. Provider retirement/outage must not prevent reuse of retained rows.
+    vi.stubEnv("COMPANY_REFERENCE_WRITE_MODE", "reference");
+    runtime.companies.clear(); runtime.outage = true; runtime.requests = 0;
+    expect(await as(owner, () => watchlists.updateWatchlist({ watchlistId: newList,
+      title: "Supported rollback edit", companyIds: [fresh.id], filters: { anyCompany: false } }))).toHaveProperty("slug");
+    const copy = await as(owner, () => watchlists.copyWatchlist(newList));
+    expect(copy).toHaveProperty("id");
+    if ("id" in copy) expect(await membership(copy.id)).toEqual([fresh.id]);
+    expect(await as(owner, () => toggleStarredCompany(fresh.id))).toEqual({ starred: true });
+    expect((await as(owner, getStarredCompanyIds)).sort()).toEqual([legacy.id, fresh.id].sort());
+    expect(await as(owner, () => toggleStarredCompany(fresh.id))).toEqual({ starred: false });
+    expect(runtime.requests).toBe(0);
+    expect((await sql`SELECT user_id, filters FROM watchlist WHERE id=${newList}`)[0])
+      .toMatchObject({ user_id: owner, filters: { anyCompany: false } });
+    expect(await membership(newList)).toEqual([fresh.id]);
+    expect(await sql`SELECT * FROM company_reference WHERE id=${fresh.id}`).toEqual(newReference);
+    expect(await sql`SELECT id FROM company WHERE id=${fresh.id}`).toHaveLength(0);
+    expect(await retained()).toEqual(beforeContract);
+    expect((await watchlists.getOwnedWatchlistById(newList, owner))?.companies)
+      .toEqual([{ id: fresh.id, name: fresh.name, slug: fresh.slug, icon: null }]);
+    await sql`DELETE FROM company WHERE id=${legacy.id}`;
+    expect(await retained()).toEqual(beforeContract);
   });
 });

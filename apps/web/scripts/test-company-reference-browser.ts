@@ -31,6 +31,8 @@ async function waitForApp(url: string, child: ChildProcess) {
 async function main() {
   // This runner never loads .env files. Its app child receives only isolated dependency URLs.
   const databaseUrl = fixtureDatabaseUrl(); const sql = fixtureClient();
+  const writeMode = process.env.COMPANY_REFERENCE_TEST_WRITE_MODE ?? "bridge";
+  assert.ok(writeMode === "bridge" || writeMode === "reference", "Invalid browser fixture write mode");
   const doc = companyDocument(randomUUID(), `Reference fixture ${randomUUID().slice(0, 8)}`);
   const delayedDoc = companyDocument(randomUUID(), `Delayed reference fixture ${randomUUID().slice(0, 8)}`);
   const search = await startTypesenseFixture([doc, delayedDoc], { [delayedDoc.id]: 2000 });
@@ -38,7 +40,7 @@ async function main() {
   let child: ChildProcess | undefined; let page: Page | undefined;
   const browser = await chromium.launch({ headless: true });
   try {
-    await resetFixture(sql);
+    await resetFixture(sql, writeMode);
     const user = await seedUser(sql);
     await sql`INSERT INTO user_preferences (user_id, notifications_paused) VALUES (${user.id}, true) ON CONFLICT (user_id) DO UPDATE SET notifications_paused=true`;
     const password = `Fixture-${randomUUID()}-Aa1!`;
@@ -51,7 +53,7 @@ async function main() {
     assert.equal((await sql`SELECT id FROM company_reference WHERE id=${doc.id}`).length, 0);
     const inherited = Object.fromEntries(Object.entries(process.env).filter(([key]) => ["PATH", "HOME", "TMPDIR", "TEMP", "SystemRoot"].includes(key)));
     const env: NodeJS.ProcessEnv = { ...inherited, NODE_ENV: "development", NEXT_TELEMETRY_DISABLED: "1", DATABASE_URL: databaseUrl,
-      BETTER_AUTH_URL: baseUrl, BETTER_AUTH_SECRET: "fixture-auth-secret-never-used-outside-local-tests", TRUSTED_ORIGINS: baseUrl,
+      COMPANY_REFERENCE_WRITE_MODE: writeMode, BETTER_AUTH_URL: baseUrl, BETTER_AUTH_SECRET: "fixture-auth-secret-never-used-outside-local-tests", TRUSTED_ORIGINS: baseUrl,
       TYPESENSE_HOST: "127.0.0.1", TYPESENSE_PORT: String(search.port), TYPESENSE_PROTOCOL: "http", TYPESENSE_SEARCH_KEY: "fixture-read-key",
       NEXT_PUBLIC_TYPESENSE_HOST: "127.0.0.1", NEXT_PUBLIC_TYPESENSE_PORT: String(search.port), NEXT_PUBLIC_TYPESENSE_PROTOCOL: "http", NEXT_PUBLIC_TYPESENSE_SEARCH_KEY: "fixture-read-key",
       UPSTASH_REDIS_REST_URL: `http://127.0.0.1:${search.port}/redis`, UPSTASH_REDIS_REST_TOKEN: "fixture-only", };
@@ -89,6 +91,7 @@ async function main() {
     assert.equal(persisted.length, 1, "Picker save must commit a materialized reference");
     assert.equal(persisted[0].any_company, "false", "Company membership and scope must commit atomically before quick reload");
     assert.equal(persisted[0].user_id, user.id); assert.equal(persisted[0].source, "typesense"); assert.equal(persisted[0].alerts_enabled, false);
+    assert.equal((await sql`SELECT id FROM company WHERE id=${doc.id}`).length, writeMode === "bridge" ? 1 : 0);
     browserPhase = "reload";
     await navigateCanary(page, page.url()); await page.getByRole("button", { name: `Remove ${doc.name}`, exact: true }).waitFor();
     assert.ok(search.requests.some(request => request.pathname.includes("/company/")), "Production Typesense SDK must query company fixture");
@@ -134,7 +137,7 @@ async function main() {
     assert.equal((await sql`SELECT 1 FROM watchlist WHERE id=${watchlistId} AND user_id=${user.id}`).length, 0);
     assert.equal((await sql`SELECT 1 FROM company_reference WHERE id=${doc.id}`).length, 1, "Cleanup must retain shared durable reference");
     console.log(JSON.stringify({ contract: "company_reference_authenticated_browser", outcome: "passed", absentLegacyBefore: true, absentReferenceBefore: true,
-      authenticatedMutation: true, committedMembership: true, persistedReload: true, laterScopeDuringLookup: true, ...lifecycle, notificationsEnabled: false, scopedCleanup: true }));
+      authenticatedMutation: true, committedMembership: true, persistedReload: true, laterScopeDuringLookup: true, ...lifecycle, notificationsEnabled: false, scopedCleanup: true, writeMode, legacyRowsAfterSelection: writeMode === "bridge" ? 1 : 0 }));
     await context.close();
   } catch (error) {
     await page?.screenshot({ path: "/tmp/jobseek-company-reference-browser-failure.png", fullPage: true });
