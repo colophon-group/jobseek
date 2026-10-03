@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
@@ -11,6 +12,8 @@ const webRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const migrationFolder = resolve(webRoot, "drizzle");
 const migrationRunner = resolve(webRoot, "src/db/migrate.ts");
 const tsxRunner = resolve(webRoot, "node_modules/tsx/dist/cli.mjs");
+
+let fixtureMigrationRoot: string;
 
 const retirementTag = "0086_drop_supabase_job_posting";
 const productionConfirmation = "DROP-ONLY-JOB-POSTING-0086";
@@ -98,7 +101,6 @@ function parseDatabaseUrl(argv: string[]): string {
 async function loadLedgerFixture(): Promise<{
   seed: MigrationMeta[];
   retirement: MigrationMeta;
-  subsequent: MigrationMeta[];
 }> {
   const journal = JSON.parse(
     await readFile(resolve(migrationFolder, "meta/_journal.json"), "utf8"),
@@ -106,16 +108,32 @@ async function loadLedgerFixture(): Promise<{
   const migrations = readMigrationFiles({ migrationsFolder: migrationFolder });
 
   invariant(journal.entries.length === migrations.length, "Journal and SQL migration counts differ");
-  invariant(migrations.length === 86, `Expected 86 real journal migrations, found ${migrations.length}`);
+  invariant(new Set(journal.entries.map(entry => entry.tag)).size === journal.entries.length,
+    "Journal migration tags must be unique");
+  invariant(journal.entries.every((entry, index) =>
+    entry.idx === index && entry.when === migrations[index]?.folderMillis),
+    "Journal entries must match SQL migration metadata");
 
   const retirementIndex = journal.entries.findIndex((entry) => entry.tag === retirementTag);
   invariant(retirementIndex !== -1, `Journal does not contain ${retirementTag}`);
   const retirement = migrations[retirementIndex];
   invariant(retirement, "Retirement migration metadata is absent");
   const through0085 = migrations.slice(0, retirementIndex);
-  const subsequent = migrations.slice(retirementIndex + 1);
   invariant(through0085.length === 74, "Expected 74 journal entries through 0085");
-  invariant(subsequent.length === 6, "Expected exactly six journal entries after 0086");
+  invariant(retirement.folderMillis === 1_785_760_800_000,
+    "0086 retirement timestamp differs");
+
+  // Execute the real migration runner with the exact historical journal through
+  // 0086. New unrelated migrations have their own fixtures and must not run
+  // against this deliberately minimal pre-retirement schema.
+  const fixtureEntries = journal.entries.slice(0, retirementIndex + 1);
+  await mkdir(resolve(fixtureMigrationRoot, "drizzle/meta"), { recursive: true });
+  await writeFile(resolve(fixtureMigrationRoot, "drizzle/meta/_journal.json"),
+    JSON.stringify({ ...journal, entries: fixtureEntries }));
+  for (const entry of fixtureEntries) {
+    await copyFile(resolve(migrationFolder, `${entry.tag}.sql`),
+      resolve(fixtureMigrationRoot, "drizzle", `${entry.tag}.sql`));
+  }
 
   // The production guard intentionally expects 75 ledger rows at the 0085
   // tip, one more than the current 74 journal entries through 0085. Model that
@@ -126,7 +144,7 @@ async function loadLedgerFixture(): Promise<{
   invariant(seed.every(Boolean), "Ledger fixture contains an absent migration");
   invariant(seed.at(-1)?.folderMillis === 1_785_757_200_000, "Ledger fixture does not end at 0085");
 
-  return { seed, retirement, subsequent };
+  return { seed, retirement };
 }
 
 const baseFixtureSql = String.raw`
@@ -406,8 +424,8 @@ async function invokeRealMigration(
   if (mode) Object.assign(env, attestationEnvironment(mode));
 
   return await new Promise((resolvePromise, reject) => {
-    const child = spawn(process.execPath, [tsxRunner, migrationRunner], {
-      cwd: webRoot,
+    const child = spawn(process.execPath, [tsxRunner, "--tsconfig", resolve(webRoot, "tsconfig.json"), migrationRunner], {
+      cwd: fixtureMigrationRoot,
       env,
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -610,7 +628,7 @@ async function runHarness(databaseUrl: string): Promise<void> {
       "Connected database does not match the explicitly supplied URL",
     );
 
-    const { seed, retirement, subsequent } = await loadLedgerFixture();
+    const { seed, retirement } = await loadLedgerFixture();
 
     await buildFixture(sql, seed, true);
     const beforeSuccess = await captureProof(sql);
@@ -626,20 +644,8 @@ async function runHarness(databaseUrl: string): Promise<void> {
     invariant(!afterSuccess.jobPostingPresent, "0086 did not remove public.job_posting");
     assertEqual(
       afterSuccess.publicTables,
-      [
-        ...beforeSuccess.publicTables.filter((table) => table !== "job_posting"),
-        "ai_filter_budget_account",
-        "ai_filter_configuration",
-        "ai_filter_decision",
-        "ai_filter_event",
-        "ai_filter_feedback",
-        "ai_filter_global_cache",
-        "ai_filter_query_version",
-        "ai_filter_segment",
-        "ai_filter_usage_ledger",
-        "notification_delivery",
-      ].sort(),
-      "0086 plus subsequent additive migrations changed unexpected public tables",
+      beforeSuccess.publicTables.filter((table) => table !== "job_posting"),
+      "0086 changed unexpected public tables",
     );
     invariant(
       afterSuccess.savedJobDigest === beforeSuccess.savedJobDigest,
@@ -650,7 +656,7 @@ async function runHarness(databaseUrl: string): Promise<void> {
         afterSuccess.linkedRowCount === beforeSuccess.linkedRowCount,
       "0086 changed saved-job user/interview relationships",
     );
-    assertLedger(afterSuccess, seed, [retirement, ...subsequent]);
+    assertLedger(afterSuccess, seed, [retirement]);
     console.log("PASS attested production drop preserves rows/relationships and exact ledger");
 
     await buildFixture(sql, seed, true);
@@ -732,19 +738,7 @@ async function runHarness(databaseUrl: string): Promise<void> {
     invariant(!restored.jobPostingPresent, "Restore convergence recreated job_posting");
     assertEqual(
       restored.publicTables,
-      [
-        ...restoreShape.publicTables,
-        "ai_filter_budget_account",
-        "ai_filter_configuration",
-        "ai_filter_decision",
-        "ai_filter_event",
-        "ai_filter_feedback",
-        "ai_filter_global_cache",
-        "ai_filter_query_version",
-        "ai_filter_segment",
-        "ai_filter_usage_ledger",
-        "notification_delivery",
-      ].sort(),
+      restoreShape.publicTables,
       "Restore convergence changed unexpected public tables",
     );
     invariant(
@@ -753,7 +747,7 @@ async function runHarness(databaseUrl: string): Promise<void> {
         restored.linkedRowCount === restoreShape.linkedRowCount,
       "Restore convergence changed saved-job rows or relationships",
     );
-    assertLedger(restored, seed, [retirement, ...subsequent]);
+    assertLedger(restored, seed, [retirement]);
     console.log("PASS absent-source fixture converges only in restore-drill mode");
   } finally {
     try {
@@ -766,7 +760,12 @@ async function runHarness(databaseUrl: string): Promise<void> {
 
 async function main(): Promise<void> {
   const databaseUrl = parseDatabaseUrl(process.argv.slice(2));
-  await runHarness(databaseUrl);
+  fixtureMigrationRoot = await mkdtemp(resolve(tmpdir(), "jobseek-retirement-migrations-"));
+  try {
+    await runHarness(databaseUrl);
+  } finally {
+    await rm(fixtureMigrationRoot, { recursive: true, force: true });
+  }
   console.log("PostgreSQL 17 job_posting retirement execution harness passed.");
 }
 
