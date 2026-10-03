@@ -4,7 +4,7 @@ vi.mock("server-only", () => ({}));
 const mocks = vi.hoisted(() => ({
   existing: [] as Array<Record<string, unknown>>,
   search: vi.fn(),
-  referenceTable: { id: "reference.id" },
+  referenceTable: { id: "reference.id", source: "reference.source" },
   companyTable: { id: "company.id" },
 }));
 vi.mock("@/db/schema", () => ({
@@ -73,6 +73,8 @@ describe("company reference identity preparation", () => {
     { found: 1, hits: [{ document: { ...document, name: " " } }] },
     { found: 1, hits: [{ document: { ...document, slug: "unsafe,slug" } }] },
     { found: 1, hits: [{ document: { ...document, name: "x".repeat(301) } }] },
+    { found: 1, hits: [{ document: { ...document, name: "bad\u0000name" } }] },
+    { found: 1, hits: [{ document: { ...document, icon: "bad\u0007icon" } }] },
     { found: 1, hits: [{ document: { ...document, icon: "x".repeat(2049) } }] },
   ])("classifies malformed responses without accepting incomplete metadata", async (response) => {
     mocks.search.mockResolvedValue(response);
@@ -95,12 +97,13 @@ describe("company reference bridge persistence", () => {
   const prepared: PreparedCompanyReference = { ...document, source: "typesense", verifiedAt: new Date() };
   function transaction(rejectLegacy?: unknown) {
     const writes: Array<{ table: unknown; value: unknown }> = [];
-    const insert = (table: unknown) => ({ values: (value: unknown) => ({
-      onConflictDoNothing: async () => {
+    const insert = (table: unknown) => ({ values: (value: unknown) => {
+      const apply = async () => {
         writes.push({ table, value });
         if (table === mocks.companyTable && rejectLegacy) throw rejectLegacy;
-      },
-    }) });
+      };
+      return { onConflictDoNothing: apply, onConflictDoUpdate: apply };
+    } });
     return { writes, tx: { insert } as unknown as Parameters<typeof persistCompanyReferences>[0] };
   }
 

@@ -3,10 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 // Materialization has its own identity and real-Postgres contract suites.
 vi.mock("@/lib/services/company-references", () => ({
-  prepareCompanyReferences: vi.fn().mockResolvedValue([]),
-  persistCompanyReferences: vi.fn().mockResolvedValue(undefined),
+  prepareCompanyReferences: mocks.prepareCompanyReferences,
+  persistCompanyReferences: mocks.persistCompanyReferences,
   persistExistingCompanyReferences: vi.fn().mockResolvedValue(undefined),
-  companyReferenceErrorResult: (error: unknown) => { throw error; },
+  companyReferenceErrorResult: (error: unknown) => {
+    if (error && typeof error === "object" && "code" in error) return { error: error.code };
+    throw error;
+  },
 }));
 
 
@@ -55,6 +58,8 @@ const mocks = vi.hoisted(() => {
   const getSessionUserId = vi.fn();
   const canCreateWatchlist = vi.fn();
   const sharedCloneLimit = vi.fn();
+  const prepareCompanyReferences = vi.fn();
+  const persistCompanyReferences = vi.fn();
 
   const cloneState = (state: State): State => ({
     watchlists: state.watchlists.map((row) => ({ ...row })),
@@ -240,6 +245,8 @@ const mocks = vi.hoisted(() => {
     getSessionUserId.mockReset();
     canCreateWatchlist.mockReset();
     sharedCloneLimit.mockReset();
+    prepareCompanyReferences.mockReset().mockResolvedValue([]);
+    persistCompanyReferences.mockReset().mockResolvedValue(undefined);
   };
 
   return {
@@ -251,6 +258,8 @@ const mocks = vi.hoisted(() => {
     getSessionUserId,
     canCreateWatchlist,
     sharedCloneLimit,
+    prepareCompanyReferences,
+    persistCompanyReferences,
     reset,
     snapshot: () => cloneState(committed),
     setState: (state: State) => {
@@ -897,6 +906,44 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
 
     expect(mocks.snapshot().watchlists).toHaveLength(1);
     expect(mocks.calls).toEqual({ transactions: 1, rollbacks: 1 });
+    expect(mocks.afterFn).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("company reference mutation authorization and failure boundaries", () => {
+  const owned = {
+    id: WATCHLIST_ID, userId: USER_ID, slug: "existing", title: "Existing",
+    isPublic: false, filters: {},
+  };
+
+  it("does not look up or materialize references for a different owner's watchlist", async () => {
+    mocks.queueRootSelect([{ ...owned, userId: "other-user" }]);
+    await expect(updateWatchlist({ watchlistId: WATCHLIST_ID, companyIds: [NEW_COMPANY_ID] })).resolves.toEqual({ error: "not_found" });
+    expect(mocks.prepareCompanyReferences).not.toHaveBeenCalled();
+    expect(mocks.persistCompanyReferences).not.toHaveBeenCalled();
+    expect(mocks.calls.transactions).toBe(0);
+  });
+
+  it("rechecks ownership after preparation before materializing references", async () => {
+    const revoked = { ...owned, userId: "other-user" };
+    mocks.setState({ watchlists: [revoked], companies: [] });
+    mocks.queueRootSelect([owned]);
+    await expect(updateWatchlist({ watchlistId: WATCHLIST_ID, companyIds: [NEW_COMPANY_ID] })).resolves.toEqual({ error: "not_found" });
+    expect(mocks.prepareCompanyReferences).toHaveBeenCalledWith([NEW_COMPANY_ID]);
+    expect(mocks.persistCompanyReferences).not.toHaveBeenCalled();
+    expect(mocks.snapshot()).toEqual({ watchlists: [revoked], companies: [] });
+    expect(mocks.afterFn).not.toHaveBeenCalled();
+  });
+
+  it("preserves the original selection when canonical preparation fails", async () => {
+    const initial = { watchlists: [owned], companies: [{ watchlistId: WATCHLIST_ID, companyId: COMPANY_ID }] };
+    mocks.setState(initial);
+    mocks.queueRootSelect([owned]);
+    mocks.prepareCompanyReferences.mockRejectedValue({ code: "unknown_company" });
+    await expect(updateWatchlist({ watchlistId: WATCHLIST_ID, companyIds: [COMPANY_ID, NEW_COMPANY_ID] })).resolves.toEqual({ error: "unknown_company" });
+    expect(mocks.snapshot()).toEqual(initial);
+    expect(mocks.calls.transactions).toBe(0);
     expect(mocks.afterFn).not.toHaveBeenCalled();
   });
 });

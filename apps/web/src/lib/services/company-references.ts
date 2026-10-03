@@ -1,6 +1,6 @@
 import "server-only";
 
-import { inArray, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { company, companyReference } from "@/db/schema";
 import { isUniqueViolation } from "@/lib/db-conflict";
@@ -41,6 +41,9 @@ export type PreparedCompanyReference = {
 
 type CompanyTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type ReferenceReader = Pick<typeof db, "select">;
+// Same display-text control policy as the watchlist read normalizer. NUL in
+// particular is rejected before it can reach PostgreSQL's text parameters.
+const TEXT_CONTROL_CHARACTERS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 
 function normalizeIds(ids: readonly string[]): string[] {
   if (ids.length > WATCHLIST_COMPANY_MAX) throw new CompanyReferenceError("invalid_company");
@@ -57,13 +60,13 @@ function validateReference(document: unknown, expectedId: string): Omit<Prepared
   const value = document as Record<string, unknown>;
   if (value.id !== expectedId) throw new CompanyReferenceError("company_identity_conflict");
   if (
-    typeof value.name !== "string" || !value.name.trim() || value.name.trim().length > 300 ||
+    typeof value.name !== "string" || !value.name.trim() || value.name.length > 300 || TEXT_CONTROL_CHARACTERS.test(value.name) ||
     typeof value.slug !== "string" || value.slug.length > 100 || !isSafeCompanySlug(value.slug) ||
-    (value.icon != null && (typeof value.icon !== "string" || value.icon.length > 2048))
+    (value.icon != null && (typeof value.icon !== "string" || value.icon.length > 2048 || TEXT_CONTROL_CHARACTERS.test(value.icon)))
   ) {
     throw new CompanyReferenceError("company_lookup_unavailable");
   }
-  return { id: expectedId, name: value.name.trim(), slug: value.slug, icon: value.icon == null ? null : value.icon as string };
+  return { id: expectedId, name: value.name.trim(), slug: value.slug, icon: value.icon == null ? null : (value.icon as string).trim() || null };
 }
 
 async function readExistingReferences(reader: ReferenceReader, ids: readonly string[]): Promise<PreparedCompanyReference[]> {
@@ -152,7 +155,21 @@ export async function persistCompanyReferences(tx: CompanyTransaction, reference
   // Sorted insertion avoids reversed lock order between overlapping batches.
   const sorted = [...references].sort((left, right) => left.id < right.id ? -1 : left.id > right.id ? 1 : 0);
   for (const reference of sorted) {
-    await tx.insert(companyReference).values(reference).onConflictDoNothing({ target: companyReference.id });
+    if (reference.source === "typesense") {
+      // A compatible old writer may seed a legacy row while the canonical
+      // network lookup is pending. Promote that snapshot; never overwrite a
+      // canonical snapshot another request already persisted.
+      await tx.insert(companyReference).values(reference).onConflictDoUpdate({
+        target: companyReference.id,
+        set: {
+          name: reference.name, slug: reference.slug, icon: reference.icon,
+          source: "typesense", verifiedAt: reference.verifiedAt, updatedAt: new Date(),
+        },
+        setWhere: eq(companyReference.source, "legacy_seed"),
+      });
+    } else {
+      await tx.insert(companyReference).values(reference).onConflictDoNothing({ target: companyReference.id });
+    }
     if (!bridge) continue;
     try {
       await tx.insert(company).values({

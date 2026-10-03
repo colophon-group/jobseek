@@ -15,6 +15,7 @@ vi.mock("@/lib/services/watchlists", () => ({
   createWatchlist: mocks.createWatchlist,
 }));
 
+import { CompanyReferenceError } from "@/lib/services/company-references";
 import { createWatchlistFromHandoffWithDeps } from "../watchlist-handoff";
 
 describe("createWatchlistFromHandoff", () => {
@@ -55,6 +56,18 @@ describe("createWatchlistFromHandoff", () => {
       title: "Roles",
       companySlugs: ["stripe", "missing"],
     }, mocks)).resolves.toEqual({ error: "invalid_companies" });
+    expect(mocks.createWatchlist).not.toHaveBeenCalled();
+  });
+
+  it("returns a safe retryable error without creating on provider failure", async () => {
+    mocks.getCompanyIdsBySlugs.mockRejectedValue(new Error("secret provider details"));
+    await expect(createWatchlistFromHandoffWithDeps({ title: "Roles", companySlugs: ["stripe"] }, mocks)).resolves.toEqual({ error: "company_lookup_unavailable" });
+    expect(mocks.createWatchlist).not.toHaveBeenCalled();
+  });
+
+  it("preserves a classified canonical identity conflict", async () => {
+    mocks.getCompanyIdsBySlugs.mockRejectedValue(new CompanyReferenceError("company_identity_conflict"));
+    await expect(createWatchlistFromHandoffWithDeps({ title: "Roles", companySlugs: ["stripe"] }, mocks)).resolves.toEqual({ error: "company_identity_conflict" });
     expect(mocks.createWatchlist).not.toHaveBeenCalled();
   });
 
