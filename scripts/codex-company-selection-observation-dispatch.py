@@ -414,14 +414,17 @@ def execute(
     if activation_ready:
         # This certifies only that future collection can be enabled. Historical
         # gaps stay explicit, and ordinary checks/service status stay degraded.
+        source_matches = body["sourceRevision"] == source
         ready = bool(
-            report["currentWindowCollected"]
+            source_matches
+            and report["currentWindowCollected"]
             and report["requiredClosedUntil"] > instant(start)
             and report["checkpointAgeSeconds"] <= 1200
         )
         return (0 if ready else 2), {
             "dispatch": "activation_readiness_only",
             "activationReady": ready,
+            "activationSourceMatches": source_matches,
             "collectionHealth": "degraded"
             if report["periodCoverageBlocked"]
             else "covered",

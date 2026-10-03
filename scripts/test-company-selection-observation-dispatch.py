@@ -389,6 +389,31 @@ class DispatchTests(unittest.TestCase):
             self.assertFalse(any(post for _, post in fake.calls))
         self.assertEqual(self.invoke(FakeGithub(), "--activation-ready")[0], 2)
 
+    def test_activation_binds_real_checkpoint_source_but_historical_replay_remains_valid(
+        self,
+    ):
+        fake = gapped_producer()
+        fake.run["head_sha"] = "b" * 40
+        fake.body["sourceRevision"] = "b" * 40
+        # The run, ZIP digest and payload digest are internally valid; only
+        # activation must require their source to equal exact current main.
+        code, report = self.invoke(
+            fake, "--activation-ready", "--expected-source", SOURCE
+        )
+        self.assertEqual(code, 2)
+        self.assertFalse(report["activationReady"])
+        self.assertFalse(report["activationSourceMatches"])
+        self.assertEqual(report["missingWindows"], 5)
+        self.assertEqual(report["expiredMissingWindows"], 5)
+        self.assertTrue(report["periodCoverageBlocked"])
+        self.assertEqual(report["observationStart"], fake.observation_start)
+        self.assertFalse(any(post for _, post in fake.calls))
+        strict, historical = self.invoke(fake, "--check", "--expected-source", SOURCE)
+        self.assertEqual(strict, 2)
+        self.assertTrue(historical["authenticatedCheckpoint"])
+        self.assertEqual(historical["collectionHealth"], "degraded")
+        self.assertEqual(historical["expiredMissingWindows"], 5)
+
     def test_new_windows_are_dispatched_despite_blocked_past_history(self):
         fake = FakeGithub()
         fake.body["checkpoints"].pop(0)
