@@ -1,49 +1,57 @@
 # Go and Lightpanda migration continuation plan
 
-The host coordinator now has an in-process cold driver scope.
-`WithHostQuiescence` keeps the shared host lock, contained exact writer IDs and
-live SQL session across the callback, with fresh Docker/SQL checks on both sides.
-`RunColdAdminInHostScope` borrows that exact source-bound pool and Redis client;
-all cold branches, including reactivation/finalization, use the same connection
-path. It rejects unscoped, different-source and different-pool calls, ignores caller
-endpoint URLs, and leaves borrowed resources open. The driver still must bind
-protected release/intent/epoch requests and durably retain each result before the
-next effect; the complete installed CLI driver and restoration/readiness remain open.
+The native host callback now issues an opaque cold phase scope and retains a
+protected journal for target capture, transition intent, epoch reservation and
+inspection. Requests name exact host/containment bindings and hashed input blobs
+in the rooted private store. They contain no shell commands, caller paths or
+endpoint URLs. The transition intent must match the independently verified
+active/incoming/rollback file-evidence hashes and stable cold attestation. SQL
+backend retries preserve that attestation while every invocation requires the
+live host/SQL scope; serialized or escaped contexts cannot grant another phase.
 
-Actual fully migrated PostgreSQL/private Redis tests pass for target capture,
-intent retention, epoch reservation, inspection and exact retries within the held
-session. All three shared writer barriers remain excluded across commits; the
-intent is independently durable before reservation; canonical rows and complete
-Redis values are conserved; retry consumes no new epoch. The existing actual native
-executable SIGKILL/cold-publication regression and Linux integration vet pass.
-The disposable installed harness now also requires successful/rejected in-process
-callbacks to hold the actual host flock/SQL barriers, release their private backend
-and preserve cold containment on failure. Fresh both-architecture execution of
-this extended callback contract is required.
+The journal fsyncs an immutable request/child claim before native effects, then
+retains the exact outcome and completion index before allowing a successor.
+Native errors produce durable unresolved outcomes without claiming zero effects;
+only a separate exact-input retry event can follow them. Completed exact retries
+return historical retained results. Interrupted result publication recovers only
+the original inode/bytes. Publication, selection and startup operations are not
+accepted by this initial phase graph.
 
-Preceding source `4a670b9671e5c9d84526890273f62e23c6732d9c` full CI37075945787,
-Linux37075932322, installed37075948708 and historical native/legacy image runs
-37075932260/37075932272 pass. Artifacts/logs are independently verified on both
-architectures, including actual containment commands/two publication SIGKILL seams,
-selected-database quiescence/shared-writer waiting and SQL-session SIGKILL release.
-The explicit GitHub PostgreSQL fixture environment correction passes the strict
-predicate. Complete native source/image/binary/CA/34 assets and preceding selected
-pointer/marker/ten installed substitutions remain verified.
+Actual private PostgreSQL/Redis tests pass, including release/cold-binding
+refusals, competing-child refusal, unresolved begin/retry, missing predecessor
+completion, post-reservation recovery and two real Go test-binary SIGKILL seams
+(after reservation and during result hard-link publication). Epochs, canonical
+rows and complete Redis values are conserved. Full worker races pass in39.472s;
+final strengthened journal races pass in3.630s. SQL regressions, Go vet/tidy/format,
+both Linux integration-tag vets, workflow lint and all188 repository checks pass.
+Local release/container bindings remain fixture hashes. The installed harness
+now additionally requires actual opaque host phase bindings and escaped-context
+refusal; fresh exact-source execution of that extension remains required.
 
-Whole-B0 diagnostic source3bc run37073844203 is independently verified for16 arms/
-8pairs, density5.526364394–14.053665419; source4a whole37075932266 is running.
-These synthetic startup fixtures cannot establish complete-service/profile/cost
-parity. Preserve running evidence and independently verify every new source.
-See [cold driver scope evidence](evidence/go-ordinary-native-host-cold-driver-scope-2026-10-03.json).
+Preceding source `6b64229f7ab6c89f5f8a63ca58b74bd1713be8e5` full CI37078521391,
+Linux37078496271, installed37078523573, renderer37078496340 and historical
+native/legacy images37078496324/37078496266 pass. Installed/historical artifacts
+are independently verified on both architectures, including actual callback
+flock/SQL exclusion, failure containment and backend release. Linux logs verify
+the whole required-fixture worker suite, but lack individual worker test markers;
+the workflow now emits those markers for the new journal recovery tests.
 
-Next connect protected host phase requests/results and the complete fixed forward/
-reversal driver, producer/Redis lifecycle, staged spec/env/data restore and final
-absence, then actual full-stack SIGKILL/recovery/readiness/naturally due work. Full
-build/selection/runtime/maintenance exclusion, every enabled profile/consumer,
-canonical/database/publisher/freshness/queue parity, complete-service resources/cost,
-exact required gates/rollout/rollback window and runtime retirement remain required.
-Preserve offline Python/every board and the deployment guard. PR#10210 stays draft;
-production is unchanged and the full migration goal active.
+Source4a whole-B0 run37075932266 is independently verified for16 arms/8pairs,
+density5.554032138–11.932410876. Source6b whole37078496358 is still running.
+These synthetic startup fixtures cannot establish all-profile/full-service/cost
+parity. See [phase journal evidence](evidence/go-ordinary-native-host-cold-phase-journal-2026-10-03.json).
+
+Next bind the borrowed Redis client to verified effective selected service
+execution, extend the protected graph through complete native forward/reversal/
+reactivation/finalization, and authenticate intentional spec/selection changes.
+Keep the outer host lock across staged present-spec/env/data restoration, bridge
+verification, final absence, SQL-scope release, full-stack startup and readiness.
+Actual full-host SIGKILL/recovery/naturally due work, build/runtime/maintenance
+exclusion, every enabled profile/consumer, canonical/database/publisher/freshness/
+queue parity, full-service resources/cost, required gates/rollout/rollback window
+and runtime retirement remain required. Preserve offline Python/every board and
+the deployment guard. PR#10210 stays draft; production is unchanged and the full
+migration goal active.
 
 Earlier entries below retain their source-scoped evidence.
 

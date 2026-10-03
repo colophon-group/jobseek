@@ -183,12 +183,23 @@ func TestActualInstalledNativeHostQuiescenceJoinsSQLExclusionAndRecoversSIGKILL(
 		if err != nil {
 			t.Fatal("explicit in-process host request")
 		}
+		var originalColdContext HostColdPhaseContext
+		var escapedPhaseContext context.Context
+		var escapedPhasePool *pgxpool.Pool
 		for _, reject := range []bool{false, true} {
 			var pid int32
 			result, err := WithHostQuiescence(ctx, config, func(scoped context.Context, pool *pgxpool.Pool, sql *queue.HostColdSQL) error {
 				if queue.CheckHostColdSQLScope(scoped, pool, source) != nil {
 					t.Fatal("callback lost bound SQL scope")
 				}
+				phaseContext, err := InspectHostColdPhaseContext(scoped, pool)
+				if err != nil || phaseContext.RuntimeAdmission || phaseContext.Binding.SourceRevision != source || phaseContext.Binding.RequestSHA256 != hostDigest(body) || phaseContext.Binding.ContainmentIntentSHA256 != first.IntentSHA256 || phaseContext.ActiveReleaseSHA256 != r.Releases[0].FileEvidenceSHA256 || phaseContext.TargetReleaseSHA256 != r.Releases[1].FileEvidenceSHA256 || phaseContext.RollbackReleaseSHA256 != r.Releases[2].FileEvidenceSHA256 || !planPattern.MatchString(phaseContext.ColdAttestationSHA256) {
+					t.Fatal("opaque phase context lost actual host release/cold binding", err)
+				}
+				if originalColdContext.Version != "" && originalColdContext != phaseContext {
+					t.Fatal("new backend changed exact host cold attestation")
+				}
+				originalColdContext, escapedPhaseContext, escapedPhasePool = phaseContext, scoped, pool
 				var observed struct {
 					PID  int32   `json:"backend_pid"`
 					Keys []int64 `json:"exclusive_barriers"`
@@ -223,11 +234,15 @@ func TestActualInstalledNativeHostQuiescenceJoinsSQLExclusionAndRecoversSIGKILL(
 				t.Fatal("in-process callback completion/failure changed contract", err)
 			}
 			assertReleased(pid)
+			if _, err := InspectHostColdPhaseContext(escapedPhaseContext, escapedPhasePool); err == nil {
+				t.Fatal("completed callback retained phase authority")
+			}
 		}
 		if retry := call(true); retry.IntentSHA256 != first.IntentSHA256 {
 			t.Fatal("failed callback changed retained containment identity")
 		}
 		t.Log("actual in-process host callback held the shared mutation flock and all three SQL writer barriers; successful and rejected callbacks released their private SQL backend; callback failure retained cold exact-ID writer containment; returned observation grants no runtime admission")
+		t.Log("actual host callback issued an opaque cold phase context bound to the selected active/incoming/rollback file evidence and original containment request; cold attestation stable across private SQL backend retries; escaped callback context refused; phase effects and complete installed cold driver remain unproven")
 	})
 	// A current shared writer barrier prevents completion until its transaction
 	// exits. No runtime fault environment or unsafe direct Docker mutation.

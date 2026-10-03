@@ -493,3 +493,49 @@ success. Keep the outer host lock across selection, SQL-scope release, full-stac
 startup and readiness. Running workers need SQL barriers released before startup,
 so startup/readiness belongs after the cold SQL callback under the same outer host
 transaction. The current one-shot quiescence wrapper does not implement that handoff.
+
+
+## Protected first cold phase journal
+
+`WithHostQuiescence` now privately constructs an opaque phase scope from the
+held host lock/store, complete cold container evidence, all three selected role
+file-evidence hashes and exact live SQL binding. `InspectHostColdPhaseContext`
+returns a past-observation shape for staging protected native intent bytes;
+`RunHostColdPhase` requires the original live context/pool. A stable attestation
+joins the selected role hashes, containment request, cold container hash, database
+hash, exclusive barrier set and zero SQL leases, excluding the changing backend
+PID. It does not authenticate arbitrary nonparticipating writers or Redis callers.
+
+Stage exact canonical requests as `cold-request-<sha256>.json` and inputs as
+`cold-input-<sha256>` under the existing owner-only 0700 request root; every file
+is immutable 0600 with anchored no-symlink/single-link verification. The closed
+request graph currently accepts only target -> begin -> reserve -> inspect.
+Release/spec selection, publication shortcuts, shell commands, paths, arbitrary
+environment maps and endpoint URLs are rejected. Begin joins the captured target
+and the active/incoming/rollback/cold attestation fields before native intent.
+
+The driver retains request, a unique successor claim and phase intent before
+native effects. It then retains a typed completed or unresolved result, followed
+by two immutable completion indexes, before permitting a successor. Raw errors
+and credentials are never journalled. An unresolved result asserts no absence of
+effects; a new explicit event must name it and preserve every native input to
+retry. A completed exact request returns its retained historical result without
+repeating native effects. Pending result hard-links recover only their exact
+inode/bytes; a result without completed indexes cannot authorize a successor.
+Retry ancestry is bounded to64 unresolved events and still joins the original
+completed reservation when validating inspection.
+
+Actual private PG/Redis tests verify these boundaries plus two test-binary kernel
+SIGKILL seams. Their private flock and release/container hashes remain fixtures.
+The disposable installed host callback must independently verify its new opaque
+phase context against actual selected roles and cold containment, stable backend
+retry and escaped-context refusal. The Linux worker workflow now prints individual
+race-test results so the journal tests can be verified from exact-source logs.
+
+The next phase graph must bind the effective selected Redis endpoint and complete
+producer/lease exclusion, then wrap the entire existing forward/reversal pipeline
+and every E/plan/reversal/R/result binding. Preserve the strict original selection
+predicate until an exact durable next phase authorizes its deliberate change.
+Extend the outer host transaction across cold SQL scope release and whole-stack
+startup/readiness; the one-shot wrapper still ends its host lock on return.
+See [portable phase evidence](../evidence/go-ordinary-native-host-cold-phase-journal-2026-10-03.json).

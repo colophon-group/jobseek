@@ -133,6 +133,19 @@ func CheckHostColdSQLScope(ctx context.Context, pool *pgxpool.Pool, source strin
 	return s.Check(ctx)
 }
 
+// CheckHostColdSQLBinding additionally joins the exact host request and retained
+// containment intent. A source match alone cannot adopt a different handoff.
+func CheckHostColdSQLBinding(ctx context.Context, pool *pgxpool.Pool, binding HostColdSQLBinding) error {
+	if CheckHostColdSQLScope(ctx, pool, binding.SourceRevision) != nil {
+		return ErrAuthorityLost
+	}
+	s := ctx.Value(hostColdSQLKey{}).(*HostColdSQL)
+	if s.binding != binding {
+		return ErrAuthorityLost
+	}
+	return nil
+}
+
 func (s *HostColdSQL) observe(ctx context.Context) error {
 	if !s.active || s.conn == nil || s.conn.IsClosed() || s.conn.PgConn().TxStatus() != 'I' {
 		return ErrAuthorityLost

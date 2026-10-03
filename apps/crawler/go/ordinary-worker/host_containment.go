@@ -312,7 +312,8 @@ func runHostContainmentPhase(ctx context.Context, c HostContainmentConfig, lockP
 		return finish(ctx, nil)
 	}
 	var result *HostContainmentResult
-	err = queue.WithHostColdSQL(ctx, pool, queue.HostColdSQLBinding{SourceRevision: p.source, RequestSHA256: p.expected, ContainmentIntentSHA256: hostDigest(intentBytes)}, func(sqlCtx context.Context, sql *queue.HostColdSQL) error {
+	binding := queue.HostColdSQLBinding{SourceRevision: p.source, RequestSHA256: p.expected, ContainmentIntentSHA256: hostDigest(intentBytes)}
+	err = queue.WithHostColdSQL(ctx, pool, binding, func(sqlCtx context.Context, sql *queue.HostColdSQL) error {
 		if guard() != nil {
 			return errHostPreflight
 		}
@@ -323,7 +324,9 @@ func runHostContainmentPhase(ctx context.Context, c HostContainmentConfig, lockP
 			if coldGuard() != nil || sql.Check(sqlCtx) != nil {
 				return errHostPreflight
 			}
-			if driveCold(sqlCtx, pool, sql) != nil || coldGuard() != nil || sql.Check(sqlCtx) != nil {
+			if withHostColdPhaseScope(sqlCtx, store, pool, sql, binding, r.Releases, actual.SHA256(), coldGuard, func(phaseCtx context.Context) error {
+				return driveCold(phaseCtx, pool, sql)
+			}) != nil || coldGuard() != nil || sql.Check(sqlCtx) != nil {
 				return errHostPreflight
 			}
 		}
