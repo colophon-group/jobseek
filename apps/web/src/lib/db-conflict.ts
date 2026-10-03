@@ -1,18 +1,14 @@
 /**
  * Postgres unique-violation (SQLSTATE `23505`) helpers.
  *
- * Two distinct call-sites in `apps/web/src/lib/actions/` need to detect
- * a unique-violation scoped to a specific index:
+ * Callers need to detect a unique violation scoped to a specific index:
  *
  *   - `toggleSavedJob` (#3179) — `idx_sj_user_posting` on saved_job.
- *   - `toggleStarredCompany` (#3179) — `idx_fc_user_company` on
- *     followed_company.
+ *   - `insertWatchlistWithUniqueSlug` — `idx_wl_user_slug` on watchlist.
+ *   - the company reference bridge — `company_slug_unique` on company.
  *
- * The legacy pattern from #3268 (`watchlist-slug.ts`) inlined the
- * detection logic for `idx_wl_user_slug`. Two more callers crossed the
- * "would-be-helpful" line, so the recognition logic moved here. The
- * watchlist-slug helper still maintains its own copy of the predicate
- * to keep that PR's surface unchanged.
+ * Share recognition across writers so every caller handles Drizzle's
+ * wrapped driver errors as well as direct PostgreSQL error objects.
  *
  * Why a constraint-name filter (rather than bare `code === "23505"`):
  * an unscoped retry would absorb conflicts on unrelated indices and
