@@ -146,7 +146,7 @@ func TestRealFirstOwnershipExecutableActivatesAndRetires(t *testing.T) {
 		t.Fatal("installed retirement rewrote the interrupted receipt", err)
 	}
 	score, err := f.r.ZScore(ctx, "monitors_simple:greenhouse", f.board).Result()
-	if err != nil || score != float64(due.UnixNano())/1e9 || f.r.ZCard(ctx, "inflight:simple").Val() != 0 || f.r.HLen(ctx, "inflight_tokens:simple").Val() != 0 {
+	if err != nil || score != float64(due.UnixMicro())/1e6 || f.r.ZCard(ctx, "inflight:simple").Val() != 0 || f.r.HLen(ctx, "inflight_tokens:simple").Val() != 0 {
 		t.Fatal("installed retirement did not restore the canonical monitor", err)
 	}
 	if f.r.Exists(ctx, "ordinary:ownership:active").Val() != 0 {

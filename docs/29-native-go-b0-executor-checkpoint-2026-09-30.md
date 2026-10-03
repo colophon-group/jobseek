@@ -432,6 +432,10 @@ migration goal remains active and incomplete.
 
 ## Current continuation
 
+The newer [2026-10-03 ordinary worker checkpoint](30-native-ordinary-worker-checkpoint-2026-10-03.md)
+records the deployed native worker, cold-admission repair, complete supported
+recovery and current full-delivery order. The sequence below is historical.
+
 Continue the ordinary Go slice in draft PR #10207 while normal native B0 tasks
 supply further output/failure/freshness evidence. Complete a bounded generation
 extension across the existing claim, heartbeat, settlement and reaper state
