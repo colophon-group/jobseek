@@ -537,6 +537,25 @@ export const company = pgTable("company", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Web-owned, durable display references; catalogue identity belongs to crawler.
+// Keep legacy company foreign keys during the compatible bridge release.
+export const companyReference = pgTable("company_reference", {
+  id: uuid("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull(),
+  icon: text("icon"),
+  source: text("source", { enum: ["legacy_seed", "typesense"] }).notNull(),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  check("company_reference_name_check", sql`length(btrim(${table.name})) > 0 AND length(${table.name}) <= 300 AND ${table.name} !~ '[\x01-\x08\x0b\x0c\x0e-\x1f\x7f]'`),
+  check("company_reference_slug_check", sql`length(btrim(${table.slug})) > 0 AND length(${table.slug}) <= 100 AND ${table.slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'`),
+  check("company_reference_icon_check", sql`${table.icon} IS NULL OR (length(${table.icon}) <= 2048 AND ${table.icon} !~ '[\x01-\x08\x0b\x0c\x0e-\x1f\x7f]')`),
+  check("company_reference_source_check", sql`${table.source} IN ('legacy_seed', 'typesense')`),
+  check("company_reference_verification_check", sql`${table.source} = 'legacy_seed' OR ${table.verifiedAt} IS NOT NULL`),
+]);
+
 export const jobBoard = pgTable(
   "job_board",
   {
