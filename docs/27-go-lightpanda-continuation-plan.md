@@ -24,6 +24,43 @@ touches and zero claim, transport, execution or cancellation errors. New posting
 description/enrichment and disappearance transitions still need natural evidence.
 See the [latest checkpoint](30-native-ordinary-worker-checkpoint-2026-10-03.md).
 
+That early observation is historical. At 21:47 UTC the same release had 547
+successful tasks, ten failed tasks, nine timeouts, twenty unacknowledged tasks,
+21 claim errors and 155 host-circuit refusals. The 21:29 all-member check found
+534 completed deadlines matching and three completed SQL receipts with earlier
+Redis retry deadlines; its strict parity check failed. Do not expand ownership
+until a fresh observation resolves those discrepancies. The bounded worker fix
+in [PR #10249](https://github.com/colophon-group/jobseek/pull/10249), merged at
+`f90d8244c66a0ca07635ab9bb08adea4b0b6c462`, removes repeated
+decoding of the immutable fleet ownership document, keeps fresh active-identity
+and canonical/cache checks, and adds safe processing-phase diagnostics. It does
+not change pool sizes, timeouts, retry policy or claim authority, and its
+production failure-resolution claim remains unproven.
+
+[PR #10246](https://github.com/colophon-group/jobseek/pull/10246) is merged at
+`bcf7811e0575d397b58f45ce206977a851578870` with native Ashby/Lever rich execution;
+its 16-arm ARM64 admission passed. The candidate census admitted 1,128 skip
+profiles, with two detail profiles excluded. [PR #10248](https://github.com/colophon-group/jobseek/pull/10248)
+is merged at `38447db97467eb73a1a5db19005193e618fe4b05` and replaces four Compose
+Python health probes with the installed Go executable. Neither slice is deployed
+at this checkpoint: the original active-ownership guard refused both automatic
+deployments while v0.13.910 continued serving. Build the approved combined
+release, retire ordinary ownership with its original driver, roll back B0 and
+clear its exact selectors, then use the complete supported deployment and
+reactivation. Verify native task outcomes and deadline parity before adopting
+fresh Ashby/Lever profiles.
+
+The next code slice connects the existing Recruitee and Pinpoint parsers to the
+same native rich claim, fetch, enrichment, persistence and settlement path.
+The 21:46 UTC canonical/cache capture admits 218 skip profiles out of 219;
+Floryn's detail profile remains outside this slice. Thirteen actual Python
+request fixtures bind tenant/API-base precedence. Real PostgreSQL/Redis tests
+verify rich fields, description storage/upload scheduling, matching deadlines,
+Recruitee provider-gone 404s, Pinpoint ordinary 404 failures and publisher
+reservation without partial writes. These are candidate results; production
+native owners for these providers remain zero. Publish this slice after the
+worker fix, then refresh its census against the approved release.
+
 Continue with Ashby and Lever through the existing rich worker and queue
 contracts, then every remaining provider/browser profile and mandatory Python
 runtime consumer. Keep every enabled board scheduled. Prove full-service output,

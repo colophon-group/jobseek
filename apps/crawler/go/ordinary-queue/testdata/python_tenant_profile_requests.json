@@ -1,0 +1,126 @@
+{
+  "source": "Actual Python Recruitee/Pinpoint discover under HTTPX MockTransport; no live requests.",
+  "cases": [
+    {
+      "kind": "recruitee",
+      "board_url": "https://fixture.recruitee.com/jobs",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "endpoint": "https://fixture.recruitee.com/api/offers"
+    },
+    {
+      "kind": "recruitee",
+      "board_url": "https://fixture.recruitee.com/jobs",
+      "metadata": {
+        "slug": null,
+        "token": "ignored",
+        "scraper_type": "skip"
+      },
+      "endpoint": "https://fixture.recruitee.com/api/offers"
+    },
+    {
+      "kind": "recruitee",
+      "board_url": "https://FIXTURE.recruitee.com/jobs",
+      "metadata": {
+        "slug": "UpperCase",
+        "scraper_type": "skip"
+      },
+      "endpoint": "https://uppercase.recruitee.com/api/offers"
+    },
+    {
+      "kind": "recruitee",
+      "board_url": "https://fixture.recruitee.com/jobs",
+      "metadata": {
+        "company": "ignored",
+        "company_slug": "ignored",
+        "token": "ignored",
+        "scraper_type": "skip"
+      },
+      "endpoint": "https://fixture.recruitee.com/api/offers"
+    },
+    {
+      "kind": "recruitee",
+      "board_url": "https://careers.example.com/jobs",
+      "metadata": {
+        "slug": "explicit",
+        "scraper_type": "skip"
+      },
+      "endpoint": "https://explicit.recruitee.com/api/offers"
+    },
+    {
+      "kind": "pinpoint",
+      "board_url": "https://fixture.pinpointhq.com/jobs",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "endpoint": "https://fixture.pinpointhq.com/postings.json"
+    },
+    {
+      "kind": "pinpoint",
+      "board_url": "https://fixture.pinpointhq.com/jobs",
+      "metadata": {
+        "slug": null,
+        "token": "ignored",
+        "scraper_type": "skip"
+      },
+      "endpoint": "https://fixture.pinpointhq.com/postings.json"
+    },
+    {
+      "kind": "pinpoint",
+      "board_url": "https://FIXTURE.pinpointhq.com/jobs",
+      "metadata": {
+        "slug": "UpperCase",
+        "scraper_type": "skip"
+      },
+      "endpoint": "https://uppercase.pinpointhq.com/postings.json"
+    },
+    {
+      "kind": "pinpoint",
+      "board_url": "https://fixture.pinpointhq.com/jobs",
+      "metadata": {
+        "token": "ignored",
+        "scraper_type": "skip"
+      },
+      "endpoint": "https://fixture.pinpointhq.com/postings.json"
+    },
+    {
+      "kind": "pinpoint",
+      "board_url": "https://careers.example.com/jobs",
+      "metadata": {
+        "slug": "explicit",
+        "scraper_type": "skip"
+      },
+      "endpoint": "https://explicit.pinpointhq.com/postings.json"
+    },
+    {
+      "kind": "recruitee",
+      "board_url": "https://careers.example.com/jobs",
+      "metadata": {
+        "api_base": "https://CAREERS.example.com/custom/",
+        "scraper_type": "skip"
+      },
+      "endpoint": "https://careers.example.com/custom//api/offers"
+    },
+    {
+      "kind": "recruitee",
+      "board_url": "https://careers.example.com/jobs",
+      "metadata": {
+        "api_base": "https://careers.example.com",
+        "slug": 42,
+        "scraper_type": "skip"
+      },
+      "endpoint": "https://careers.example.com/api/offers"
+    },
+    {
+      "kind": "recruitee",
+      "board_url": "https://careers.example.com/jobs",
+      "metadata": {
+        "api_base": null,
+        "slug": null,
+        "scraper_type": "skip"
+      },
+      "endpoint": "https://careers.example.com/api/offers"
+    }
+  ]
+}

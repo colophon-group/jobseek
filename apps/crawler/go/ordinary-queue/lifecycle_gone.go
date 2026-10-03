@@ -128,7 +128,7 @@ func (c *GreenhouseCycle) FinishProviderGoneResource(ctx context.Context, initia
 		var status string
 		var count int
 		var due time.Time
-		provider := map[string]string{"greenhouse": "Greenhouse", "ashby": "Ashby", "lever": "Lever"}[profile.Provider]
+		provider := map[string]string{"greenhouse": "Greenhouse", "ashby": "Ashby", "lever": "Lever", "recruitee": "Recruitee"}[profile.Provider]
 		if err := tx.QueryRow(ctx, lifecycleQuery("gone"), c.claim.task.ID, decision.Status, decision.Count,
 			decision.First, decision.Last, decision.Gone, decision.Due, provider+" API returned HTTP 404", observation.Endpoint, observation.HTTPStatus, decision.Terminal).Scan(&status, &count, &due); err != nil {
 			return err

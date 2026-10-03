@@ -60,9 +60,16 @@ func richPipelineHTTP(t *testing.T, handler http.HandlerFunc) *VerifiedDirectHTT
 }
 
 func TestRealOwnedRichProvidersPersistPrepareAndSettle(t *testing.T) {
-	for _, provider := range []string{"ashby", "lever"} {
+	for _, provider := range []string{"ashby", "lever", "recruitee", "pinpoint"} {
 		t.Run(provider, func(t *testing.T) {
-			f := privateRichPipelineFixture(t, provider, `{"token":"Fixture Board","scraper_type":"skip"}`)
+			metadata := `{"token":"Fixture Board","scraper_type":"skip"}`
+			if provider == "recruitee" {
+				metadata = `{"api_base":"https://example.com","scraper_type":"skip","scraper_config":{"steps":[{"tag":"h1","field":"title"}]}}`
+			}
+			if provider == "pinpoint" {
+				metadata = `{"slug":"fixture","scraper_type":"skip"}`
+			}
+			f := privateRichPipelineFixture(t, provider, metadata)
 			ctx := context.Background()
 			preparer := richPipelinePreparer(t, f)
 			claim, err := f.a.Claim(ctx, queue.Simple)
@@ -78,13 +85,17 @@ func TestRealOwnedRichProvidersPersistPrepareAndSettle(t *testing.T) {
 			var payload []byte
 			if provider == "ashby" {
 				payload, _ = json.Marshal(map[string]any{"jobs": []any{map[string]any{"jobUrl": postingURL, "title": "Senior Software Engineer", "descriptionHtml": description, "location": "Zurich", "employmentType": "FullTime", "workplaceType": "Remote"}}})
+			} else if provider == "recruitee" {
+				payload, _ = json.Marshal(map[string]any{"offers": []any{map[string]any{"status": "published", "careers_url": postingURL, "title": "Senior Software Engineer", "description": description, "location": "Zurich", "employment_type_code": "fulltime_permanent", "remote": true}}})
+			} else if provider == "pinpoint" {
+				payload, _ = json.Marshal(map[string]any{"data": []any{map[string]any{"url": postingURL, "title": "Senior Software Engineer", "description": description, "location": map[string]any{"city": "Zurich"}, "employment_type": "full_time", "workplace_type": "remote"}}})
 			} else {
 				payload, _ = json.Marshal([]any{map[string]any{"hostedUrl": postingURL, "text": "Senior Software Engineer", "description": description, "categories": map[string]any{"location": "Zurich", "commitment": "Full-time"}, "workplaceType": "remote"}})
 			}
 			requests := 0
 			httpClient := richPipelineHTTP(t, func(w http.ResponseWriter, r *http.Request) {
 				requests++
-				if !strings.Contains(r.URL.EscapedPath(), "Fixture%20Board") {
+				if (provider == "ashby" || provider == "lever") && !strings.Contains(r.URL.EscapedPath(), "Fixture%20Board") {
 					t.Error("provider token escaping changed")
 				}
 				if provider == "lever" && r.Header.Get("Accept") != "application/json" {
@@ -183,5 +194,61 @@ func TestRealOwnedLeverLaterFailureAndReservationHaveNoPartialWrites(t *testing.
 			}
 			assertRichDeadlineAndLease(t, f, "lever")
 		})
+	}
+}
+
+func TestRealOwnedTenantMissingAndPublisherReservation(t *testing.T) {
+	for _, provider := range []string{"recruitee", "pinpoint"} {
+		for _, mode := range []string{"missing", "reserved"} {
+			t.Run(provider+"/"+mode, func(t *testing.T) {
+				metadata := `{"api_base":"https://example.com","scraper_type":"skip"}`
+				if provider == "pinpoint" {
+					metadata = `{"slug":"fixture","scraper_type":"skip"}`
+				}
+				f := privateRichPipelineFixture(t, provider, metadata)
+				ctx := context.Background()
+				claim, err := f.a.Claim(ctx, queue.Simple)
+				if err != nil || claim == nil {
+					t.Fatal("tenant claim unavailable", err)
+				}
+				circuits, err := queue.NewHostCircuits(f.client, queue.DefaultHostCircuitSettings())
+				if err != nil {
+					t.Fatal(err)
+				}
+				client := richPipelineHTTP(t, func(w http.ResponseWriter, r *http.Request) {
+					if mode == "missing" {
+						w.WriteHeader(404)
+						return
+					}
+					w.Header().Set("TDM-Reservation", "1")
+					w.Header().Set("TDM-Policy", "https://example.com/policy")
+					_, _ = w.Write([]byte(`{"offers":[],"data":[]}`))
+				})
+				result, err := RunGreenhouseClaim(ctx, f.a, claim, client, &pipelinePreparer{failAt: 1, cause: fmt.Errorf("preparation must not run")}, circuits)
+				if err != nil || result == nil || !result.Settled || result.Batches.Inserted != 0 {
+					t.Fatal("tenant missing/policy path did not settle", err)
+				}
+				var failures, gone int
+				var reserved bool
+				if err := f.pg.QueryRow(ctx, "SELECT consecutive_failures,gone_confirmation_count,tdm_reserved FROM job_board WHERE id=$1::uuid", f.board).Scan(&failures, &gone, &reserved); err != nil {
+					t.Fatal(err)
+				}
+				switch {
+				case mode == "reserved":
+					if !reserved || failures != 0 || gone != 0 || result.Cycle.Status != "publisher_reserved" {
+						t.Fatal("publisher reservation spent failure/gone budget")
+					}
+				case provider == "recruitee":
+					if failures != 0 || gone != 1 || result.Cycle.Status != "gone_pending" {
+						t.Fatal("Recruitee 404 did not confirm disappearance")
+					}
+				default:
+					if gone != 0 || failures != 1 || result.Cycle.Status != "failed" {
+						t.Fatal("Pinpoint ordinary 404 became provider disappearance")
+					}
+				}
+				assertRichDeadlineAndLease(t, f, provider)
+			})
+		}
 	}
 }
