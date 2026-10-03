@@ -63,17 +63,25 @@ async function absent(id: string) {
 beforeAll(() => { runtime.user = new AsyncLocalStorage(); sql = runtime.client!;
   vi.stubEnv("TYPESENSE_HOST", "127.0.0.1"); vi.stubEnv("TYPESENSE_PORT", "1"); vi.stubEnv("TYPESENSE_PROTOCOL", "http"); vi.stubEnv("TYPESENSE_SEARCH_KEY", "fixture");
 });
-beforeEach(async () => {
-  await resetFixture(sql); owner = (await seedUser(sql)).id; stranger = (await seedUser(sql)).id;
-  runtime.companies.clear(); runtime.requests = 0; runtime.outage = false; runtime.beforeSearch = null;
-});
 afterAll(async () => { await sql?.end({ timeout: 5 }); });
 
-describe("company selection persistence against real PostgreSQL", () => {
+describe.each(["bridge", "reference"] as const)("company selection persistence against real PostgreSQL in %s mode", writeMode => {
+  beforeEach(async () => {
+    vi.stubEnv("COMPANY_REFERENCE_WRITE_MODE", writeMode);
+    await resetFixture(sql, writeMode); owner = (await seedUser(sql)).id; stranger = (await seedUser(sql)).id;
+    runtime.companies.clear(); runtime.requests = 0; runtime.outage = false; runtime.beforeSearch = null;
+  });
   it("creates from canonical search without either pre-existing representation and reloads/shares/copies", async () => {
     const doc = document(); await absent(doc.id);
     const id = await create([doc.id]);
     expect(await membership(id)).toEqual([doc.id]);
+    expect(await sql`SELECT id FROM company WHERE id=${doc.id}`).toHaveLength(writeMode === "bridge" ? 1 : 0);
+    if (writeMode === "reference") {
+      await expect(sql`DELETE FROM company_reference WHERE id=${doc.id}`).rejects.toMatchObject({ code: "23001" });
+      await sql`INSERT INTO company (id, name, slug) VALUES (${doc.id}, 'Unrelated catalogue mirror', ${doc.slug})`;
+      await sql`DELETE FROM company WHERE id=${doc.id}`;
+      expect(await membership(id)).toEqual([doc.id]);
+    }
     expect((await sql`SELECT name, slug, source, verified_at FROM company_reference WHERE id=${doc.id}`)[0]).toMatchObject({ name: doc.name, slug: doc.slug, source: "typesense" });
     expect((await sql`SELECT verified_at IS NOT NULL AS verified FROM company_reference WHERE id=${doc.id}`)[0].verified).toBe(true);
     const detail = await watchlists.getOwnedWatchlistById(id, owner);
@@ -137,9 +145,10 @@ describe("company selection persistence against real PostgreSQL", () => {
     const results = await Promise.all([create([fresh.id]), create([fresh.id]), as(stranger, () => toggleStarredCompany(fresh.id))]);
     expect(results[2]).toMatchObject({ starred: true });
     expect(await sql`SELECT id FROM company_reference WHERE id=${fresh.id}`).toHaveLength(1);
-    expect(await sql`SELECT id FROM company WHERE id=${fresh.id}`).toHaveLength(1);
+    expect(await sql`SELECT id FROM company WHERE id=${fresh.id}`).toHaveLength(writeMode === "bridge" ? 1 : 0);
   });
 
+  if (writeMode === "bridge") {
   it("promotes a legacy seed inserted during provider lookup to the verified canonical snapshot", async () => {
     const fresh = document(); await absent(fresh.id);
     runtime.beforeSearch = async () => {
@@ -152,6 +161,8 @@ describe("company selection persistence against real PostgreSQL", () => {
     expect(reference).toMatchObject({ name: fresh.name, source: "typesense" });
     expect(reference.verified).toBe(true);
   });
+
+  }
 
   it("preserves a canonical snapshot committed by a concurrent first-use request", async () => {
     const fresh = document(); await absent(fresh.id);
@@ -175,6 +186,7 @@ describe("company selection persistence against real PostgreSQL", () => {
     expect(await sql`SELECT id FROM company_reference WHERE id IN (${one.id}, ${two.id})`).toHaveLength(1);
   });
 
+  if (writeMode === "bridge") {
   it("shares company-to-reference lock order with an overlapping legacy writer", async () => {
     const fresh = document(); await absent(fresh.id);
     // A second AFTER INSERT trigger pauses the old writer after its company row
@@ -205,6 +217,8 @@ describe("company selection persistence against real PostgreSQL", () => {
       .toMatchObject({ name: fresh.name, source: "typesense", verified: true });
     expect(await membership(await newWriter!)).toEqual([fresh.id]);
   });
+
+  }
 
   it("keeps the account capacity check atomic without orphaning new references", async () => {
     for (let i = 0; i < 9; i++) await create();

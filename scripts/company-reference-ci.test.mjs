@@ -20,7 +20,7 @@ function classify(paths) {
   } finally { rmSync(directory, { recursive: true, force: true }); }
 }
 
-for (const path of ["apps/web/src/lib/services/watchlists.ts", "apps/web/drizzle/0100_company_references.sql", "apps/crawler/src/core/sync.py", "apps/crawler/go/typesense-exporter/internal/export/company.go", "apps/crawler/data/companies.csv", ".github/workflows/ci.yml", ".github/workflows/deploy-web-production.yml", ".github/scripts/classify-pr-paths.sh", "scripts/company-reference-ci.test.mjs", "scripts/jobseek-data-backup.py", "deploy/backups/web-postgresql/restore-drill.sh", "deploy/backups/web-postgresql/company-reference-rehearsal.json", "apps/crawler/tests/test_company_reference_rehearsal.py", "apps/crawler/tests/test_web_postgresql_company_reference_backup.py"]) {
+for (const path of ["apps/web/src/lib/services/watchlists.ts", "apps/web/drizzle/0100_company_references.sql", "apps/web/drizzle/0101_company_reference_selection_contract.sql", "apps/crawler/src/core/sync.py", "apps/crawler/go/typesense-exporter/internal/export/company.go", "apps/crawler/data/companies.csv", ".github/workflows/ci.yml", ".github/workflows/deploy-web-production.yml", ".github/scripts/classify-pr-paths.sh", "scripts/company-reference-ci.test.mjs", "scripts/jobseek-data-backup.py", "deploy/backups/web-postgresql/restore-drill.sh", "deploy/backups/web-postgresql/company-reference-rehearsal.json", "apps/crawler/tests/test_company_reference_rehearsal.py", "apps/crawler/tests/test_web_postgresql_company_reference_backup.py"]) {
   test(`company reference contract is required for ${path}`, () => {
     assert.equal(classify([path]).company_reference, "true");
   });
@@ -48,6 +48,8 @@ test("required job executes real PostgreSQL production services and authenticate
   assert.match(job, /test:company-reference\n/);
   assert.match(job, /test:company-reference:browser/);
   assert.match(job, /playwright install --with-deps chromium/);
+  assert.ok(job.indexOf("playwright install") < job.indexOf("test:company-reference\n"));
+  assert.match(job, /COMPANY_REFERENCE_TEST_WRITE_MODE: reference/);
 });
 
 test("bridge promotion requires a nonoptional authenticated first-use canary", () => {

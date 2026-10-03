@@ -1537,6 +1537,10 @@ jobs:
         run: pnpm --filter @jobseek/web test:company-reference
       - name: Prove authenticated picker save and persisted reload
         run: pnpm --filter @jobseek/web test:company-reference:browser
+      - name: Prove authenticated picker save after reference-only cutover
+        env:
+          COMPANY_REFERENCE_TEST_WRITE_MODE: reference
+        run: pnpm --filter @jobseek/web test:company-reference:browser
 
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
