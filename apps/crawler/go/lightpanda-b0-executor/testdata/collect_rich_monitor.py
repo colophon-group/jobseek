@@ -35,17 +35,21 @@ base = {
 cases = []
 
 
-def add(name, changes):
+def add(name, changes, rich_overrides=None):
     raw = copy.deepcopy(base)
     raw.update(changes)
     job = _parse_job(raw)
     assert job is not None
+    for key, value in (rich_overrides or {}).items():
+        setattr(job, key, value)
     content = {
         "title": job.title,
         "description": job.description,
         "locations": job.locations,
         "language": job.language,
     }
+    for key in rich_overrides or {}:
+        content[key] = getattr(job, key)
     location_inputs.clear()
     records, _ = board._build_rich_new_records(
         [(job.url, job)],
@@ -112,11 +116,20 @@ add(
     },
 )
 
+add("rich_internship_remote", {}, {"employment_type": "Internship", "job_location_type": "remote"})
+add("rich_fulltime_hybrid", {}, {"employment_type": "Full-time", "job_location_type": "hybrid"})
+add(
+    "rich_coerced_fields",
+    {},
+    {"employment_type": ["Internship", "Full-time"], "job_location_type": ["remote", "hybrid"]},
+)
+add("rich_empty_fields", {}, {"employment_type": " \n ", "job_location_type": None})
+
 output = {
     "schema_version": 1,
     "oracle": (
         "Python src.processing.board._build_rich_new_records and rich description staging; "
-        "standard Greenhouse token/skip"
+        "standard Greenhouse token/skip plus rich employment/location-type inputs"
     ),
     "occupations": occ,
     "seniorities": sen,

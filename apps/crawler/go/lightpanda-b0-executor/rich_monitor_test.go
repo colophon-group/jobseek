@@ -26,6 +26,8 @@ func TestRichMonitorPreparationMatchesPythonBoardWriter(t *testing.T) {
 				Title, Description *string
 				Locations          []string
 				Language           any
+				EmploymentType     any `json:"employment_type"`
+				JobLocationType    any `json:"job_location_type"`
 			}
 			Expected struct {
 				Fields         json.RawMessage

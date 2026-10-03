@@ -7,13 +7,15 @@ import (
 	enrichment "github.com/colophon-group/jobseek/apps/crawler/go/job-enrichment"
 )
 
-// RichMonitorContent is the complete content contract emitted by the standard
-// token Greenhouse API monitor. Extras, localizations and detail enrichment
-// require separate processing contracts before their profiles can be selected.
+// RichMonitorContent supplies rich API monitor inputs to the existing board
+// writer contract. Extras, localizations and detail enrichment require their
+// processing contracts before profiles that emit them can be selected.
 type RichMonitorContent struct {
 	Title, Description *string
 	Locations          []string
 	Language           any
+	EmploymentType     any
+	JobLocationType    any
 }
 
 // PrepareRichMonitor matches board._build_rich_new_records for this contract.
@@ -70,7 +72,12 @@ func (p *Processor) PrepareRichMonitor(ctx context.Context, content RichMonitorC
 		prepared.Fields.Titles = []string{}
 	}
 	prepared.Fields.Locales = BuildLocales(language, detected)
-	prepared.Fields.OccupationID, prepared.Fields.SeniorityID, err = p.Lookups.ResolveTitles(p.Matcher, prepared.Fields.Titles, "")
+	employment, err := CoerceText(content.EmploymentType)
+	if err != nil {
+		return nil, err
+	}
+	prepared.Fields.EmploymentType = EmploymentType(employment)
+	prepared.Fields.OccupationID, prepared.Fields.SeniorityID, err = p.Lookups.ResolveTitles(p.Matcher, prepared.Fields.Titles, optionalText(employment))
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +85,11 @@ func (p *Processor) PrepareRichMonitor(ctx context.Context, content RichMonitorC
 	if err != nil {
 		return nil, err
 	}
-	prepared.Fields.LocationIDs, prepared.Fields.LocationTypes, err = p.Locations.Resolve(ctx, locations, "", optionalText(language))
+	kind, err := CoerceText(content.JobLocationType)
+	if err != nil {
+		return nil, err
+	}
+	prepared.Fields.LocationIDs, prepared.Fields.LocationTypes, err = p.Locations.Resolve(ctx, locations, optionalText(kind), optionalText(language))
 	if err != nil {
 		return nil, err
 	}
