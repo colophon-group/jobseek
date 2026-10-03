@@ -25,6 +25,10 @@ import "@/test-utils/lingui-mock";
 // `updatePreferences` calls — those exist for unrelated reasons and
 // belong to other tests.
 
+const session = vi.hoisted(() => ({ isLoggedIn: true, isPending: false }));
+const setTheme = vi.hoisted(() => vi.fn());
+vi.mock("@/components/providers/SessionProvider", () => ({ useSession: () => session }));
+
 const pushMock = vi.fn();
 const refreshMock = vi.fn();
 let currentPathname = "/en/settings";
@@ -42,7 +46,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("next-themes", () => ({
-  useTheme: () => ({ theme: "dark", setTheme: vi.fn(), resolvedTheme: "dark" }),
+  useTheme: () => ({ theme: "dark", setTheme, resolvedTheme: "dark" }),
 }));
 
 const updatePreferencesMock = vi.fn().mockResolvedValue(null);
@@ -74,6 +78,8 @@ let cookieValue = "";
 let cookieWrites: string[] = [];
 
 beforeEach(() => {
+  session.isPending = false;
+  setTheme.mockClear();
   pushMock.mockReset();
   refreshMock.mockReset();
   updatePreferencesMock.mockReset().mockResolvedValue(null);
@@ -121,6 +127,7 @@ afterEach(() => {
   vi.resetModules();
 });
 
+import { localPrefs } from "@/lib/preference-timestamps";
 import { GeneralSettings } from "../GeneralSettings";
 
 describe("GeneralSettings locale switch (#2988)", () => {
@@ -416,4 +423,26 @@ describe("GeneralSettings save recovery", () => {
       }),
     );
   });
+});
+
+it("keeps locale navigation usable while skipping account preference writes when identity is unresolved", async () => {
+  session.isPending = true;
+  const user = userEvent.setup();
+  render(<GeneralSettings savedJobLanguages={[]} savedDisplayCurrency="EUR" savedSalaryPeriod={null}
+    availableCurrencies={["EUR"]} availableLanguages={[]} locale="en" />);
+  await user.click(screen.getByRole("button", { name: "Deutsch" }));
+  expect(pushMock).toHaveBeenCalledWith("/de/settings");
+  expect(document.cookie).toContain("NEXT_LOCALE=de");
+  expect(updatePreferencesMock).not.toHaveBeenCalled();
+});
+
+it("applies browser theme choice while identity is unavailable without an account preference write", async () => {
+  session.isPending = true;
+  const user = userEvent.setup();
+  render(<GeneralSettings savedJobLanguages={[]} savedDisplayCurrency="EUR" savedSalaryPeriod={null}
+    availableCurrencies={["EUR"]} availableLanguages={[]} locale="en" />);
+  await user.click(screen.getByRole("button", { name: "Light" }));
+  expect(setTheme).toHaveBeenCalledWith("light");
+  expect(localPrefs.themeTimestamp.get()).toBeTruthy();
+  expect(updatePreferencesMock).not.toHaveBeenCalled();
 });

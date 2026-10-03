@@ -110,7 +110,7 @@ function SharedWatchlistCloneAction({
   const { t } = useLingui();
   const router = useRouter();
   const lp = useLocalePath();
-  const { isLoggedIn, plan } = useSession();
+  const { isLoggedIn, plan, isPending } = useSession();
   const [busy, setBusy] = useState(false);
   const [aiWarningOpen, setAiWarningOpen] = useState(false);
   const [limitRaceReached, setLimitRaceReached] = useState(false);
@@ -169,6 +169,7 @@ function SharedWatchlistCloneAction({
   }
 
   function continueClone() {
+    if (isPending) return;
     if (!isLoggedIn) {
       const staged = stagePendingWatchlistEntry({
         kind: "clone",
@@ -189,6 +190,7 @@ function SharedWatchlistCloneAction({
       size="sm"
       className={`gap-2 ${cloneBlocked ? "!cursor-not-allowed !opacity-50 hover:!opacity-50" : ""}`}
       onClick={() => {
+        if (isPending) return;
         if (cloneBlocked) {
           showLimitTooltip();
           return;
@@ -199,7 +201,7 @@ function SharedWatchlistCloneAction({
         }
         continueClone();
       }}
-      disabled={busy}
+      disabled={busy || isPending}
       aria-disabled={cloneBlocked || undefined}
       aria-label={label}
     >

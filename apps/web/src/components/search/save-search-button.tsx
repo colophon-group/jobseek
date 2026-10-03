@@ -57,7 +57,7 @@ export function SaveSearchButton({
   const { t } = useLingui();
   const router = useRouter();
   const lp = useLocalePath();
-  const { isLoggedIn } = useSession();
+  const { isLoggedIn, isPending } = useSession();
   const errorMessage = useCompanyReferenceErrorMessage();
   const [mutationError, setMutationError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -78,6 +78,7 @@ export function SaveSearchButton({
   }
 
   async function handleSave() {
+    if (isPending) return;
     const draft = buildSearchWatchlistDraft({
       fallbackTitle: t({
         id: "watchlists.savedSearch.defaultTitle",
@@ -141,7 +142,7 @@ export function SaveSearchButton({
         comment: "Tooltip explaining save search creates a watchlist",
         message: "Create a watchlist from your current filters",
       })
-    : t({
+    : isPending ? label : t({
         id: "search.saveSearch.tooltipLogin",
         comment: "Tooltip when user needs to log in to save search",
         message: "Save this search now and add it after login",
@@ -168,7 +169,7 @@ export function SaveSearchButton({
             variant="outline"
             size="sm"
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || isPending}
             className="h-8 shrink-0 gap-1.5 px-3 text-xs text-foreground"
           >
             {saving ? (

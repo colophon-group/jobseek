@@ -764,19 +764,18 @@ describe("WatchlistViewPage private detail", () => {
     expect(window.sessionStorage.length).toBe(1);
   });
 
-  it("keeps anonymous cloning available while account state is resolving", () => {
+  it("does not stage an anonymous clone while account identity is unresolved", () => {
     mocks.isLoggedIn = false;
     mocks.isPending = true;
     renderPage(false);
 
     const cloneButton = screen.getByRole("button", { name: "Clone" });
-    expect(cloneButton.getAttribute("disabled")).toBeNull();
+    expect((cloneButton as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByText("Checking account…")).toBeNull();
 
     fireEvent.click(cloneButton);
-    expect(mocks.push).toHaveBeenCalledWith(
-      expect.stringMatching(/^\/en\/watchlists\/[0-9a-f-]+$/),
-    );
+    expect(mocks.push).not.toHaveBeenCalled();
     expect(mocks.copySharedWatchlist).not.toHaveBeenCalled();
+    expect(window.sessionStorage.length).toBe(0);
   });
 });

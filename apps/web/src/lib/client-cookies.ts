@@ -9,6 +9,9 @@ import { getLanguage } from "@/lib/job-languages";
  */
 export const LOGGED_IN_COOKIE = "logged_in";
 
+/** Notify account consumers after a client-side hint change. Carries no identity. */
+export const LOGGED_IN_HINT_CHANGED = "jobseek:logged-in-hint-changed";
+
 /**
  * Name of the non-httpOnly cookie that persists anonymous-viewer
  * `jobLanguages` preferences. The same cookie is the canonical source
@@ -119,4 +122,5 @@ export function clearLoggedInHint(): void {
   const secure = window.location.protocol === "https:" ? "; Secure" : "";
   document.cookie =
     `${LOGGED_IN_COOKIE}=; Max-Age=0; Path=/; SameSite=Lax${secure}`;
+  window.dispatchEvent(new Event(LOGGED_IN_HINT_CHANGED));
 }
