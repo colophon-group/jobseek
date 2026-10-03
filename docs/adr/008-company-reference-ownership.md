@@ -83,8 +83,9 @@ The expansion alone does not resolve #10214 or satisfy final retention behavior.
    concurrent additions, search outages, retirement, reload, sharing and handoff.
    Require real PostgreSQL plus authenticated browser/deployment canaries.
 4. After all active writers/readers and rollback artifacts support references,
-   switch watchlist/star FKs to restrictive reference FKs in a separately reviewed
-   contract migration. Stop legacy writes only after the bridge rollback floor
+   switch watchlist/star FKs to restrictive reference FKs in the separately reviewed
+   `0101_company_reference_selection_contract` migration and remove its legacy
+   trigger/function. Stop legacy writes only after the bridge rollback floor
    and canaries are proven. Preserve inactive legacy consumers until their own
    retirement audit; do not drop `company` in this epic as an unexamined shortcut.
 

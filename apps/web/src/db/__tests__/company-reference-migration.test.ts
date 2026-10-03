@@ -6,12 +6,13 @@ import { getTableColumns } from "drizzle-orm";
 import { getTableConfig, PgTimestamp } from "drizzle-orm/pg-core";
 import postgres, { type Sql } from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { companyReference } from "../schema";
+import { companyReference, watchlistCompany, followedCompany } from "../schema";
 import * as schema from "../schema";
 import { generateDrizzleJson, generateMigration } from "drizzle-kit/api";
 import { auditCompanyReferenceDependencies } from "../../../scripts/company-reference-dependency-check";
-import { auditCompanyReferences, normalizeReferenceCheck, referenceMigrationIdentity, referencePrerequisiteIdentity, validateCompanyReferenceRuntimeRole } from "../../../scripts/company-reference-contract";
+import { auditCompanyReferences, normalizeReferenceCheck, referenceMigrationIdentity, referenceContractIdentity, referencePrerequisiteIdentity, validateCompanyReferenceRuntimeRole } from "../../../scripts/company-reference-contract";
 const migration = readFileSync("drizzle/0100_company_references.sql", "utf8");
+const contractMigration = readFileSync("drizzle/0101_company_reference_selection_contract.sql", "utf8");
 const id = "11111111-1111-4111-8111-111111111111";
 const second = "22222222-2222-4222-8222-222222222222";
 const third = "33333333-3333-4333-8333-333333333333";
@@ -23,13 +24,30 @@ async function apply() {
     await tx`INSERT INTO drizzle.__drizzle_migrations (hash, created_at) VALUES (${referenceMigrationIdentity.hash}, ${referenceMigrationIdentity.createdAt})`;
   });
 }
+async function applyContract() {
+  await sql.begin(async tx => {
+    for (const statement of contractMigration.split("--> statement-breakpoint").filter(s => s.trim())) await tx.unsafe(statement);
+    await tx`INSERT INTO drizzle.__drizzle_migrations (hash,created_at) VALUES (${referenceContractIdentity.hash},${referenceContractIdentity.createdAt})`;
+  });
+}
+async function restoreFixture() {
+    const parsed = new URL(url!);
+    const { stdout: dump } = await promisify(execFile)("pg_dump", ["--schema=public", "--schema=drizzle", "--no-owner", "--inserts"], {
+      env: { ...process.env, PGHOST: parsed.hostname, PGPORT: parsed.port || "5432", PGDATABASE: parsed.pathname.slice(1),
+        PGUSER: decodeURIComponent(parsed.username), PGPASSWORD: decodeURIComponent(parsed.password) }, maxBuffer: 10 * 1024 * 1024,
+    });
+    await sql.unsafe("DROP SCHEMA public CASCADE; DROP SCHEMA drizzle CASCADE");
+    // Recent pg_dump emits psql-only restrict/unrestrict directives.
+    await sql.unsafe(dump.split("\n").filter(line => !line.startsWith("\\restrict ") && !line.startsWith("\\unrestrict ")).join("\n") + "\nSET search_path = public;");
+}
 async function fixture(malformed = false) {
   await sql.unsafe(`DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; SET search_path = public;
     DROP SCHEMA IF EXISTS drizzle CASCADE; CREATE SCHEMA drizzle;
     CREATE TABLE drizzle.__drizzle_migrations (id serial PRIMARY KEY, hash text NOT NULL, created_at bigint NOT NULL);
     CREATE TABLE company (id uuid PRIMARY KEY, name text NOT NULL, slug text UNIQUE NOT NULL, icon text, created_at timestamp NOT NULL DEFAULT now(), updated_at timestamp NOT NULL DEFAULT now());
-    CREATE TABLE watchlist_company (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), watchlist_id uuid NOT NULL, company_id uuid NOT NULL REFERENCES company(id) ON DELETE CASCADE);
-    CREATE TABLE followed_company (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id text NOT NULL, company_id uuid NOT NULL REFERENCES company(id) ON DELETE CASCADE);
+    CREATE TABLE watchlist (id uuid PRIMARY KEY, user_id text NOT NULL, filters jsonb NOT NULL, updated_at timestamptz DEFAULT now() NOT NULL);
+    CREATE TABLE watchlist_company (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), watchlist_id uuid NOT NULL REFERENCES watchlist(id) ON DELETE CASCADE, company_id uuid NOT NULL REFERENCES company(id) ON DELETE CASCADE, added_at timestamptz DEFAULT now() NOT NULL);
+    CREATE TABLE followed_company (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id text NOT NULL, company_id uuid NOT NULL REFERENCES company(id) ON DELETE CASCADE, followed_at timestamptz DEFAULT now() NOT NULL);
     CREATE TABLE saved_job (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), company_id uuid NOT NULL, company_name text NOT NULL, company_slug text NOT NULL, company_icon text);
     CREATE TABLE company_description (company_id uuid NOT NULL REFERENCES company(id) ON DELETE CASCADE);
     CREATE TABLE job_board (company_id uuid NOT NULL REFERENCES company(id) ON DELETE CASCADE);
@@ -42,6 +60,7 @@ async function fixture(malformed = false) {
     ALTER ROLE jobseek_migration_auditor SET default_transaction_read_only = on;`);
   await sql`INSERT INTO drizzle.__drizzle_migrations (hash, created_at) VALUES (${referencePrerequisiteIdentity.hash}, ${referencePrerequisiteIdentity.createdAt})`;
   await sql`INSERT INTO company (id,name,slug,icon,created_at,updated_at) VALUES (${id}, ${malformed ? " " : "First"}, 'first', 'https://example.test/icon.png', '2026-01-01 12:00:00', '2026-02-01 12:00:00')`;
+  await sql`INSERT INTO watchlist (id,user_id,filters) VALUES (${third},'fixture-user','{"anyCompany":false,"keywords":["engineer"]}')`;
   await sql`INSERT INTO watchlist_company (watchlist_id, company_id) VALUES (${third}, ${id})`;
   await sql`INSERT INTO followed_company (user_id, company_id) VALUES ('fixture-user', ${id})`;
   await sql`INSERT INTO saved_job (company_id,company_name,company_slug) VALUES (${id}, 'Historical snapshot', 'historical-slug')`;
@@ -214,14 +233,7 @@ describe.skipIf(!url)("company reference expansion with PostgreSQL", () => {
   });
   it("verifies an already-expanded backup restored into the disposable fixture", async () => {
     await fixture(); await apply();
-    const parsed = new URL(url!);
-    const { stdout: dump } = await promisify(execFile)("pg_dump", ["--schema=public", "--schema=drizzle", "--no-owner", "--inserts"], {
-      env: { ...process.env, PGHOST: parsed.hostname, PGPORT: parsed.port || "5432", PGDATABASE: parsed.pathname.slice(1),
-        PGUSER: decodeURIComponent(parsed.username), PGPASSWORD: decodeURIComponent(parsed.password) }, maxBuffer: 10 * 1024 * 1024,
-    });
-    await sql.unsafe("DROP SCHEMA public CASCADE; DROP SCHEMA drizzle CASCADE");
-    // Recent pg_dump emits psql-only restrict/unrestrict directives.
-    await sql.unsafe(dump.split("\n").filter(line => !line.startsWith("\\restrict ") && !line.startsWith("\\unrestrict ")).join("\n") + "\nSET search_path = public;");
+    await restoreFixture();
     expect(await auditCompanyReferences(sql, "postflight")).toMatchObject({ status: "passed" });
     expect((await sql`SELECT count(*)::integer AS count FROM watchlist_company`)[0]!.count).toBe(1);
     expect((await sql`SELECT company_name FROM saved_job`)[0]!.company_name).toBe("Historical snapshot");
@@ -283,5 +295,91 @@ describe.skipIf(!url)("company reference expansion with PostgreSQL", () => {
     await sql.unsafe("REVOKE SELECT ON company_reference FROM authenticated");
     await sql`UPDATE drizzle.__drizzle_migrations SET hash='wrong' WHERE created_at=${referenceMigrationIdentity.createdAt}`;
     await expect(auditCompanyReferences(sql, "drift")).rejects.toThrow("0100 identity");
+  });
+});
+
+describe.skipIf(!url)("company reference selection contract with PostgreSQL", () => {
+  it("declares restrictive durable reference FKs in the runtime schema", () => {
+    for (const table of [watchlistCompany, followedCompany]) {
+      const fk = getTableConfig(table).foreignKeys.find(key => key.reference().columns[0]?.name === "company_id")!;
+      expect(fk.onDelete).toBe("restrict");
+      expect(fk.reference().foreignTable).toBe(companyReference);
+    }
+  });
+  it("preserves memberships, owner/filters and history and retires only compatibility", async () => {
+    await fixture(); await apply();
+    const snapshot = () => sql`SELECT to_jsonb(w) AS data FROM watchlist w UNION ALL SELECT to_jsonb(wc) FROM watchlist_company wc UNION ALL SELECT to_jsonb(f) FROM followed_company f UNION ALL SELECT to_jsonb(s) FROM saved_job s`;
+    const before = await snapshot();
+    expect(await auditCompanyReferences(sql,"contract-preflight")).toMatchObject({ status:"passed",phase:"bridge" });
+    await applyContract();
+    expect(await auditCompanyReferences(sql,"contract-postflight")).toMatchObject({ status:"passed",phase:"contract",compatibilityFunction:"absent",compatibilityTrigger:"absent" });
+    expect(await auditCompanyReferences(sql,"drift")).toMatchObject({ status:"passed",phase:"contract" });
+    expect(await snapshot()).toEqual(before);
+    await sql`DELETE FROM company WHERE id=${id}`;
+    expect(await snapshot()).toEqual(before);
+    expect((await sql`SELECT name FROM company_reference WHERE id=${id}`)[0]!.name).toBe("First");
+    await expect(sql`DELETE FROM company_reference WHERE id=${id}`).rejects.toMatchObject({code:expect.stringMatching(/^(23001|23503)$/)});
+    await sql`INSERT INTO company_reference (id,name,slug,source,verified_at) VALUES (${second},'Reused slug','first','typesense',now())`;
+    await sql`INSERT INTO watchlist_company (watchlist_id,company_id) VALUES (${third},${second})`;
+    await sql`INSERT INTO followed_company (user_id,company_id) VALUES ('fixture-user',${second})`;
+    expect(await sql`SELECT id FROM company WHERE id=${second}`).toHaveLength(0);
+    expect(await auditCompanyReferences(sql,"drift")).toMatchObject({status:"passed",coverage:{missingSelections:0}});
+    await sql`DELETE FROM watchlist_company WHERE company_id=${second}`;
+    await expect(sql`DELETE FROM company_reference WHERE id=${second}`).rejects.toMatchObject({code:expect.stringMatching(/^(23001|23503)$/)});
+    await sql`DELETE FROM followed_company WHERE company_id=${second}`;
+    await sql`DELETE FROM company_reference WHERE id=${second}`;
+    await sql`DELETE FROM watchlist WHERE id=${third}`;
+    expect(await sql`SELECT id FROM watchlist_company`).toHaveLength(0);
+    expect(await sql`SELECT id FROM followed_company`).toHaveLength(1);
+  });
+  it("restores and verifies an already-contracted fixture with unchanged references", async () => {
+    await fixture(); await apply(); await applyContract();
+    await sql`INSERT INTO company_reference (id,name,slug,source,verified_at) VALUES (${second},'Sparse','sparse','typesense',now())`;
+    await sql`INSERT INTO watchlist_company (watchlist_id,company_id) VALUES (${third},${second})`;
+    await restoreFixture();
+    expect(await auditCompanyReferences(sql,"contract-postflight")).toMatchObject({status:"passed",phase:"contract"});
+    expect((await sql`SELECT count(*)::integer AS count FROM watchlist_company`)[0]!.count).toBe(2);
+    expect((await sql`SELECT company_name FROM saved_job`)[0]!.company_name).toBe("Historical snapshot");
+    await expect(sql`INSERT INTO followed_company (user_id,company_id) VALUES ('fixture-user','44444444-4444-4444-8444-444444444444')`).rejects.toMatchObject({code:"23503"});
+  });
+  it("fails atomically when a selected reference is missing", async () => {
+    await fixture(); await apply(); await sql`DELETE FROM company_reference WHERE id=${id}`;
+    await expect(applyContract()).rejects.toThrow("2 selections lack durable references");
+    expect((await sql`SELECT count(*)::integer AS count FROM drizzle.__drizzle_migrations`)[0]!.count).toBe(2);
+    expect((await sql`SELECT confrelid::regclass::text AS target FROM pg_constraint WHERE conrelid='watchlist_company'::regclass AND confrelid='company'::regclass`)[0]!.target).toBe("company");
+    expect((await sql`SELECT to_regprocedure('public.company_reference_from_legacy()') IS NOT NULL AS exists`)[0]!.exists).toBe(true);
+    expect((await sql`SELECT count(*)::integer AS count FROM watchlist_company`)[0]!.count).toBe(1);
+  });
+  it("refuses unreviewed FK semantics and rolls back earlier drops", async () => {
+    await fixture(); await apply();
+    await sql.unsafe("ALTER TABLE watchlist_company DROP CONSTRAINT watchlist_company_company_id_fkey; ALTER TABLE watchlist_company ADD CONSTRAINT watchlist_company_company_id_fkey FOREIGN KEY(company_id) REFERENCES company(id) ON DELETE SET NULL");
+    await expect(applyContract()).rejects.toThrow("unexpected legacy selection foreign key");
+    // The followed-company FK was dropped earlier in the same DO block, then restored by rollback.
+    expect((await sql`SELECT count(*)::integer AS count FROM pg_constraint WHERE conrelid='followed_company'::regclass AND confrelid='company'::regclass`)[0]!.count).toBe(1);
+    expect((await sql`SELECT count(*)::integer AS count FROM drizzle.__drizzle_migrations`)[0]!.count).toBe(2);
+  });
+  it("rejects schema-only or ledger-only contraction and weakened retention", async () => {
+    await fixture(); await apply(); await applyContract();
+    await sql`DELETE FROM drizzle.__drizzle_migrations WHERE created_at=${referenceContractIdentity.createdAt}`;
+    await expect(auditCompanyReferences(sql,"drift")).rejects.toThrow("Selection FK lifecycle");
+    await fixture(); await apply();
+    await sql`INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES (${referenceContractIdentity.hash},${referenceContractIdentity.createdAt})`;
+    await expect(auditCompanyReferences(sql,"drift")).rejects.toThrow("Selection FK lifecycle");
+    await fixture(); await apply(); await applyContract();
+    await sql.unsafe("ALTER TABLE watchlist_company DROP CONSTRAINT watchlist_company_company_id_company_reference_id_fk; ALTER TABLE watchlist_company ADD CONSTRAINT watchlist_company_company_id_company_reference_id_fk FOREIGN KEY(company_id) REFERENCES company_reference(id) ON DELETE CASCADE");
+    await expect(auditCompanyReferences(sql,"drift")).rejects.toThrow("Selection FK lifecycle");
+  });
+  it("keeps auditor read-only while the reference-only runtime no longer needs legacy INSERT", async () => {
+    await fixture(); await apply(); await applyContract();
+    await sql.unsafe(`DO $$ BEGIN CREATE ROLE company_reference_runtime_fixture BYPASSRLS; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+      GRANT USAGE ON SCHEMA public,drizzle TO company_reference_runtime_fixture,jobseek_migration_auditor;
+      GRANT SELECT ON ALL TABLES IN SCHEMA public,drizzle TO company_reference_runtime_fixture,jobseek_migration_auditor;
+      GRANT INSERT,UPDATE ON company_reference TO company_reference_runtime_fixture;
+      REVOKE INSERT ON company FROM company_reference_runtime_fixture;`);
+    expect(await auditCompanyReferences(sql,"contract-postflight","company_reference_runtime_fixture")).toMatchObject({status:"passed"});
+    const auditorUrl=new URL(url!); auditorUrl.username="jobseek_migration_auditor"; auditorUrl.password="";
+    const auditor=postgres(auditorUrl.href,{max:1,prepare:false,onnotice:()=>{}});
+    try { expect(await auditCompanyReferences(auditor,"drift","company_reference_runtime_fixture")).toMatchObject({status:"passed",phase:"contract"}); }
+    finally { await auditor.end(); }
   });
 });

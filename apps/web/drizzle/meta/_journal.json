@@ -624,6 +624,13 @@
       "when": 1790985600000,
       "tag": "0100_company_references",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1790992800000,
+      "tag": "0101_company_reference_selection_contract",
+      "breakpoints": true
     }
   ]
 }

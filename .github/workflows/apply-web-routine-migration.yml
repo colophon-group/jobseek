@@ -165,6 +165,11 @@ jobs:
         working-directory: apps/web
         run: pnpm exec tsx scripts/verify-company-references.ts preflight
 
+      - name: Verify company reference selection contract preflight
+        if: env.ROUTINE_MIGRATION_TAG == '0101_company_reference_selection_contract'
+        working-directory: apps/web
+        run: pnpm exec tsx scripts/verify-company-references.ts contract-preflight
+
       - name: Require the exact protected archive rehearsal before company reference DDL
         if: startsWith(env.ROUTINE_MIGRATION_TAG, '0100_') || startsWith(env.ROUTINE_MIGRATION_TAG, '0101_')
         env:
@@ -203,6 +208,11 @@ jobs:
         if: env.ROUTINE_MIGRATION_TAG == '0100_company_references'
         working-directory: apps/web
         run: pnpm exec tsx scripts/verify-company-references.ts postflight
+
+      - name: Verify company reference selection contract postflight
+        if: env.ROUTINE_MIGRATION_TAG == '0101_company_reference_selection_contract'
+        working-directory: apps/web
+        run: pnpm exec tsx scripts/verify-company-references.ts contract-postflight
 
       - name: Publish non-sensitive migration evidence
         if: always()
