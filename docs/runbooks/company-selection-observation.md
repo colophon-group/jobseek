@@ -43,7 +43,8 @@ SHA256 of the payload. Artifact retention is 14 days. A later run retrieves the
 newest valid completed main-workflow snapshot among the most recent 30 runs,
 verifies the originating workflow/event/actor, source revision, run attempt,
 artifact ZIP digest, fixed schema, bounded operation/outcome/reason values, time
-bounds, and payload digest. The ZIP is parsed in bounded memory; no archive paths
+bounds, and payload digest. The ZIP is capped at4MiB compressed and16MiB inflated (enough for the full
+bounded seven-day outcome matrix) and parsed in bounded memory; no archive paths
 are extracted. A failed run with a valid partial checkpoint still contributes
 honest evidence. This cumulative snapshot avoids downloading 672 separate
 artifacts for a seven-day report. A skipped run has no artifact; the next run

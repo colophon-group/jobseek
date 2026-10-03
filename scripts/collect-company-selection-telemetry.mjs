@@ -16,6 +16,7 @@ const WORKFLOW = '.github/workflows/company-selection-observation.yml';
 const OWNER = 'viktor-shcherb';
 const RETENTION = { hobby: 3600_000, pro: 24 * 3600_000, enterprise: 72 * 3600_000 };
 const MAX_ARTIFACT = 4 * 1024 * 1024;
+const MAX_SNAPSHOT = 16 * 1024 * 1024;
 const MAX_HISTORY = 680;
 const iso = value => new Date(value).toISOString();
 const assert = condition => { if (!condition) throw new Error('invalid_observation_contract'); };
@@ -177,12 +178,12 @@ export function unzipCheckpoint(zip) {
   const central = zip.readUInt32LE(eocd + 16);
   assert(central + 46 <= eocd && zip.readUInt32LE(central) === 0x02014b50);
   const flags = zip.readUInt16LE(central + 8), method = zip.readUInt16LE(central + 10), compressed = zip.readUInt32LE(central + 20), uncompressed = zip.readUInt32LE(central + 24), nameLength = zip.readUInt16LE(central + 28), external = zip.readUInt32LE(central + 38), offset = zip.readUInt32LE(central + 42);
-  assert(!(flags & 1) && [0, 8].includes(method) && uncompressed <= MAX_ARTIFACT && zip.subarray(central + 46, central + 46 + nameLength).toString() === 'checkpoint.json' && ((external >>> 16) & 0xf000) !== 0xa000 && offset + 30 <= central && zip.readUInt32LE(offset) === 0x04034b50);
+  assert(!(flags & 1) && [0, 8].includes(method) && uncompressed <= MAX_SNAPSHOT && zip.subarray(central + 46, central + 46 + nameLength).toString() === 'checkpoint.json' && ((external >>> 16) & 0xf000) !== 0xa000 && offset + 30 <= central && zip.readUInt32LE(offset) === 0x04034b50);
   const localNameLength = zip.readUInt16LE(offset + 26), extra = zip.readUInt16LE(offset + 28);
   assert(zip.subarray(offset + 30, offset + 30 + localNameLength).toString() === 'checkpoint.json' && zip.readUInt16LE(offset + 8) === method);
   const begin = offset + 30 + localNameLength + extra;
   assert(begin + compressed <= central);
-  const data = method === 0 ? zip.subarray(begin, begin + compressed) : inflateRawSync(zip.subarray(begin, begin + compressed), { maxOutputLength: MAX_ARTIFACT });
+  const data = method === 0 ? zip.subarray(begin, begin + compressed) : inflateRawSync(zip.subarray(begin, begin + compressed), { maxOutputLength: MAX_SNAPSHOT });
   assert(data.length === uncompressed);
   return JSON.parse(data.toString('utf8'));
 }
