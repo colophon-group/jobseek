@@ -8,8 +8,18 @@ import (
 	greenhouse "github.com/colophon-group/jobseek/apps/crawler/go/greenhouse-monitor"
 )
 
+type RichMonitorJob struct {
+	URL                             string
+	Title, Description              *string
+	Locations                       []string
+	Language                        any
+	DatePosted                      any
+	Metadata                        map[string]any
+	EmploymentType, JobLocationType any
+}
+
 type GreenhouseInventory struct {
-	Jobs        []greenhouse.Job
+	Jobs        []RichMonitorJob
 	Discovered  int
 	DropReasons map[string]int
 	Truncated   bool
@@ -21,12 +31,20 @@ type GreenhouseInventory struct {
 // canonical aliases then retain the last raw dictionary entry's content.
 // Truncation suppresses disappearance; it never slices collected postings.
 func NormalizeGreenhouseInventory(ctx context.Context, boardURL string, inventory greenhouse.Inventory) (GreenhouseInventory, error) {
+	jobs := make([]RichMonitorJob, len(inventory.Jobs))
+	for i, job := range inventory.Jobs {
+		jobs[i] = RichMonitorJob{URL: job.URL, Title: job.Title, Description: job.Description, Locations: job.Locations, Language: job.Language, DatePosted: job.DatePosted, Metadata: job.Metadata}
+	}
+	return NormalizeRichInventory(ctx, boardURL, jobs, inventory.Truncated)
+}
+
+func NormalizeRichInventory(ctx context.Context, boardURL string, jobs []RichMonitorJob, truncated bool) (GreenhouseInventory, error) {
 	if err := ctx.Err(); err != nil {
 		return GreenhouseInventory{}, err
 	}
-	raw := make(map[string]greenhouse.Job, len(inventory.Jobs))
-	order := make([]string, 0, len(inventory.Jobs))
-	for _, job := range inventory.Jobs {
+	raw := make(map[string]RichMonitorJob, len(jobs))
+	order := make([]string, 0, len(jobs))
+	for _, job := range jobs {
 		if job.URL == "" {
 			return GreenhouseInventory{}, errors.New("Greenhouse inventory contains missing raw URL")
 		}
@@ -35,8 +53,8 @@ func NormalizeGreenhouseInventory(ctx context.Context, boardURL string, inventor
 		}
 		raw[job.URL] = job
 	}
-	result := GreenhouseInventory{Discovered: len(raw), DropReasons: map[string]int{}, Truncated: inventory.Truncated}
-	accepted := make(map[string]greenhouse.Job, len(raw))
+	result := GreenhouseInventory{Discovered: len(raw), DropReasons: map[string]int{}, Truncated: truncated}
+	accepted := make(map[string]RichMonitorJob, len(raw))
 	for _, source := range order {
 		if err := ctx.Err(); err != nil {
 			return GreenhouseInventory{}, err
@@ -55,7 +73,7 @@ func NormalizeGreenhouseInventory(ctx context.Context, boardURL string, inventor
 		urls = append(urls, url)
 	}
 	sort.Strings(urls)
-	result.Jobs = make([]greenhouse.Job, 0, len(urls))
+	result.Jobs = make([]RichMonitorJob, 0, len(urls))
 	for _, url := range urls {
 		result.Jobs = append(result.Jobs, accepted[url])
 	}

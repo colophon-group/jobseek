@@ -198,7 +198,7 @@ func (a *Authority) PreflightGreenhouseHost(ctx context.Context, claim *Claim, c
 	if a == nil || !a.valid(claim) || a.ownership == nil || claim.task.Kind != Monitor || claim.recovered != nil || circuits == nil || circuits.client != a.queue {
 		return nil, ErrConfiguration
 	}
-	profile, err := InspectGreenhouseMonitor(claim.task.ID, claim.task.Config)
+	profile, err := InspectRichMonitor(claim.task.ID, claim.task.Config)
 	if err != nil {
 		return nil, err
 	}

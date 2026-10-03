@@ -1,0 +1,166 @@
+{
+  "cases": [
+    {
+      "kind": "ashby",
+      "board_url": "https://jobs.ashbyhq.com/inferred",
+      "metadata": {
+        "token": null,
+        "scraper_type": "skip"
+      },
+      "token": "inferred",
+      "endpoint": "https://api.ashbyhq.com/posting-api/job-board/inferred?includeCompensation=true"
+    },
+    {
+      "kind": "ashby",
+      "board_url": "https://jobs.ashbyhq.com/inferred",
+      "metadata": {
+        "token": "",
+        "scraper_type": "skip"
+      },
+      "token": "inferred",
+      "endpoint": "https://api.ashbyhq.com/posting-api/job-board/inferred?includeCompensation=true"
+    },
+    {
+      "kind": "ashby",
+      "board_url": "https://jobs.ashbyhq.com/inferred",
+      "metadata": {
+        "token": "explicit",
+        "scraper_type": "skip"
+      },
+      "token": "explicit",
+      "endpoint": "https://api.ashbyhq.com/posting-api/job-board/explicit?includeCompensation=true"
+    },
+    {
+      "kind": "ashby",
+      "board_url": "https://jobs.ashbyhq.com/inferred",
+      "metadata": {
+        "token": "binance.us",
+        "scraper_type": "skip"
+      },
+      "token": "binance.us",
+      "endpoint": "https://api.ashbyhq.com/posting-api/job-board/binance.us?includeCompensation=true"
+    },
+    {
+      "kind": "ashby",
+      "board_url": "https://jobs.ashbyhq.com/inferred",
+      "metadata": {
+        "token": "Jasper AI",
+        "scraper_type": "skip"
+      },
+      "token": "Jasper AI",
+      "endpoint": "https://api.ashbyhq.com/posting-api/job-board/Jasper%20AI?includeCompensation=true"
+    },
+    {
+      "kind": "ashby",
+      "board_url": "https://jobs.ashbyhq.com/inferred",
+      "metadata": {
+        "token": "Tools for Humanity",
+        "scraper_type": "skip"
+      },
+      "token": "Tools for Humanity",
+      "endpoint": "https://api.ashbyhq.com/posting-api/job-board/Tools%20for%20Humanity?includeCompensation=true"
+    },
+    {
+      "kind": "ashby",
+      "board_url": "https://jobs.ashbyhq.com/inferred",
+      "metadata": {
+        "scraper_type": "skip",
+        "board_token": "ignored"
+      },
+      "token": "inferred",
+      "endpoint": "https://api.ashbyhq.com/posting-api/job-board/inferred?includeCompensation=true"
+    },
+    {
+      "kind": "ashby",
+      "board_url": "https://jobs.ashbyhq.com/inferred",
+      "metadata": {
+        "token": "explicit",
+        "scraper_type": "skip",
+        "org": "ignored"
+      },
+      "token": "explicit",
+      "endpoint": "https://api.ashbyhq.com/posting-api/job-board/explicit?includeCompensation=true"
+    },
+    {
+      "kind": "lever",
+      "board_url": "https://jobs.eu.lever.co/inferred",
+      "metadata": {
+        "token": null,
+        "scraper_type": "skip"
+      },
+      "token": "inferred",
+      "endpoint": "https://api.eu.lever.co/v0/postings/inferred?limit=100&skip=0"
+    },
+    {
+      "kind": "lever",
+      "board_url": "https://jobs.eu.lever.co/inferred",
+      "metadata": {
+        "token": "",
+        "scraper_type": "skip"
+      },
+      "token": "inferred",
+      "endpoint": "https://api.eu.lever.co/v0/postings/inferred?limit=100&skip=0"
+    },
+    {
+      "kind": "lever",
+      "board_url": "https://jobs.eu.lever.co/inferred",
+      "metadata": {
+        "token": "explicit",
+        "scraper_type": "skip"
+      },
+      "token": "explicit",
+      "endpoint": "https://api.eu.lever.co/v0/postings/explicit?limit=100&skip=0"
+    },
+    {
+      "kind": "lever",
+      "board_url": "https://jobs.eu.lever.co/inferred",
+      "metadata": {
+        "token": "binance.us",
+        "scraper_type": "skip"
+      },
+      "token": "binance.us",
+      "endpoint": "https://api.eu.lever.co/v0/postings/binance.us?limit=100&skip=0"
+    },
+    {
+      "kind": "lever",
+      "board_url": "https://jobs.eu.lever.co/inferred",
+      "metadata": {
+        "token": "Jasper AI",
+        "scraper_type": "skip"
+      },
+      "token": "Jasper AI",
+      "endpoint": "https://api.eu.lever.co/v0/postings/Jasper%20AI?limit=100&skip=0"
+    },
+    {
+      "kind": "lever",
+      "board_url": "https://jobs.eu.lever.co/inferred",
+      "metadata": {
+        "token": "Tools for Humanity",
+        "scraper_type": "skip"
+      },
+      "token": "Tools for Humanity",
+      "endpoint": "https://api.eu.lever.co/v0/postings/Tools%20for%20Humanity?limit=100&skip=0"
+    },
+    {
+      "kind": "lever",
+      "board_url": "https://jobs.eu.lever.co/inferred",
+      "metadata": {
+        "scraper_type": "skip",
+        "board_token": "ignored"
+      },
+      "token": "inferred",
+      "endpoint": "https://api.eu.lever.co/v0/postings/inferred?limit=100&skip=0"
+    },
+    {
+      "kind": "lever",
+      "board_url": "https://jobs.eu.lever.co/inferred",
+      "metadata": {
+        "token": "explicit",
+        "scraper_type": "skip",
+        "region": "us"
+      },
+      "token": "explicit",
+      "endpoint": "https://api.lever.co/v0/postings/explicit?limit=100&skip=0"
+    }
+  ]
+}

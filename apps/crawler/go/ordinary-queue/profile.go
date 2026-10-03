@@ -23,6 +23,7 @@ var greenhouseToken = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
 // and verify enabled/canonical board state before it can affect a queue pop.
 type GreenhouseMonitorProfile struct {
 	BoardID, CompanyID, Domain, Token, Endpoint string
+	Provider, Region, Profile                   string
 	CheckInterval, ScrapeInterval               time.Duration
 	EffectiveConfigSHA256, SnapshotSHA256       string
 }
@@ -46,6 +47,10 @@ var monitorRuntimeFields = map[string]bool{
 // Read the exact effective object: duplicate keys must not be interpreted
 // differently by a plan builder, the runtime and the configuration fingerprint.
 func profileMetadata(raw string) (map[string]json.RawMessage, error) {
+	return profileMetadataFields(raw, greenhouseMetadataFields)
+}
+
+func profileMetadataFields(raw string, allowed map[string]bool) (map[string]json.RawMessage, error) {
 	if len(raw) == 0 || len(raw) > 1<<20 {
 		return nil, ErrUnsupportedProfile
 	}
@@ -58,7 +63,7 @@ func profileMetadata(raw string) (map[string]json.RawMessage, error) {
 	for decoder.More() {
 		key, err := decoder.Token()
 		name, ok := key.(string)
-		if err != nil || !ok || !greenhouseMetadataFields[name] || fields[name] != nil {
+		if err != nil || !ok || !allowed[name] || fields[name] != nil {
 			return nil, ErrUnsupportedProfile
 		}
 		var value json.RawMessage
@@ -152,6 +157,7 @@ func InspectGreenhouseMonitor(boardID string, config map[string]string) (Greenho
 	digest := sha256.Sum256(body)
 	result = GreenhouseMonitorProfile{
 		BoardID: boardID, CompanyID: config["company_id"], Domain: config["domain"], Token: token,
+		Provider: "greenhouse", Profile: greenhouseOwnershipProfile,
 		Endpoint:      "https://boards-api.greenhouse.io/v1/boards/" + token + "/jobs?content=true",
 		CheckInterval: check, ScrapeInterval: scrape,
 		EffectiveConfigSHA256: hex.EncodeToString(digest[:]), SnapshotSHA256: configDigest(config),

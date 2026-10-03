@@ -791,5 +791,131 @@
       "_monitor_config_fingerprint": "fixture",
       "_confirmed_drop_candidate": null
     }
+  },
+  {
+    "name": "configured-nine-tenths-passes",
+    "metadata": {
+      "recent_discovered_counts": [],
+      "suspect_streak": 0,
+      "_monitor_config_fingerprint": "fixture",
+      "_confirmed_drop_candidate": null,
+      "blast_radius_floor": 0.9
+    },
+    "active": 10,
+    "missing": 8,
+    "complete": true,
+    "discovered": 1,
+    "identities": [
+      "https://job-boards.greenhouse.io/fixture/jobs/1"
+    ],
+    "gone": 8,
+    "skipped": "",
+    "counted": 1,
+    "delisted": 1,
+    "result_metadata": {
+      "recent_discovered_counts": [
+        1
+      ],
+      "suspect_streak": 0,
+      "_monitor_config_fingerprint": "fixture",
+      "_confirmed_drop_candidate": null,
+      "blast_radius_floor": 0.9
+    }
+  },
+  {
+    "name": "configured-nine-tenths-boundary",
+    "metadata": {
+      "recent_discovered_counts": [],
+      "suspect_streak": 0,
+      "_monitor_config_fingerprint": "fixture",
+      "_confirmed_drop_candidate": null,
+      "blast_radius_floor": 0.9
+    },
+    "active": 10,
+    "missing": 9,
+    "complete": true,
+    "discovered": 1,
+    "identities": [
+      "https://job-boards.greenhouse.io/fixture/jobs/1"
+    ],
+    "gone": 9,
+    "skipped": "",
+    "counted": 1,
+    "delisted": 1,
+    "result_metadata": {
+      "recent_discovered_counts": [
+        1
+      ],
+      "suspect_streak": 0,
+      "_monitor_config_fingerprint": "fixture",
+      "_confirmed_drop_candidate": null,
+      "blast_radius_floor": 0.9
+    }
+  },
+  {
+    "name": "configured-nine-tenths-blocks",
+    "metadata": {
+      "recent_discovered_counts": [],
+      "suspect_streak": 0,
+      "_monitor_config_fingerprint": "fixture",
+      "_confirmed_drop_candidate": null,
+      "blast_radius_floor": 0.9
+    },
+    "active": 10,
+    "missing": 10,
+    "complete": true,
+    "discovered": 1,
+    "identities": [
+      "https://job-boards.greenhouse.io/fixture/jobs/1"
+    ],
+    "gone": 0,
+    "skipped": "blast_radius",
+    "counted": 1,
+    "delisted": 0,
+    "result_metadata": {
+      "recent_discovered_counts": [],
+      "suspect_streak": 1,
+      "_monitor_config_fingerprint": "fixture",
+      "_confirmed_drop_candidate": {
+        "inventory_fingerprint": "2d58c5321471db6a76b521ff1e00076b38f40310eb45e77663141301dfe49612",
+        "config_fingerprint": "fixture",
+        "discovered": 1,
+        "confirmations": 1
+      },
+      "blast_radius_floor": 0.9
+    }
+  },
+  {
+    "name": "configured-zero-survives",
+    "metadata": {
+      "recent_discovered_counts": [],
+      "suspect_streak": 0,
+      "_monitor_config_fingerprint": "fixture",
+      "_confirmed_drop_candidate": null,
+      "blast_radius_floor": 0.0
+    },
+    "active": 10,
+    "missing": 1,
+    "complete": true,
+    "discovered": 1,
+    "identities": [
+      "https://job-boards.greenhouse.io/fixture/jobs/1"
+    ],
+    "gone": 0,
+    "skipped": "blast_radius",
+    "counted": 1,
+    "delisted": 0,
+    "result_metadata": {
+      "recent_discovered_counts": [],
+      "suspect_streak": 1,
+      "_monitor_config_fingerprint": "fixture",
+      "_confirmed_drop_candidate": {
+        "inventory_fingerprint": "2d58c5321471db6a76b521ff1e00076b38f40310eb45e77663141301dfe49612",
+        "config_fingerprint": "fixture",
+        "discovered": 1,
+        "confirmations": 1
+      },
+      "blast_radius_floor": 0.0
+    }
   }
 ]

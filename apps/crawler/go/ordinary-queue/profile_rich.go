@@ -1,0 +1,133 @@
+package queue
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"net/url"
+	"regexp"
+	"strings"
+)
+
+var ashbyURLToken = regexp.MustCompile(`jobs\.ashbyhq\.com/([\pL\pN_-]+)`)
+var leverURLToken = regexp.MustCompile(`jobs\.(?:eu\.)?lever\.co/([\pL\pN_-]+)`)
+var leverEURegion = regexp.MustCompile(`(?:api|jobs)\.eu\.lever\.co/`)
+var richProviderToken = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_. -]{0,127}$`)
+
+func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, error) {
+	if config["crawler_type"] == "greenhouse" {
+		return profileMetadata(config["metadata"])
+	}
+	allowed := make(map[string]bool, len(greenhouseMetadataFields)+4)
+	for key, value := range greenhouseMetadataFields {
+		allowed[key] = value
+	}
+	switch config["crawler_type"] {
+	case "ashby":
+		allowed["org"] = true // Legacy aliases are retained, never selected as tokens.
+		allowed["blast_radius_floor"] = true
+	case "lever":
+		allowed["company"] = true
+		allowed["region"] = true
+	default:
+		return nil, ErrUnsupportedProfile
+	}
+	return profileMetadataFields(config["metadata"], allowed)
+}
+
+// InspectRichMonitor admits only the existing complete API/skip contracts.
+// It reuses the Greenhouse authority/interval/transport validation, then binds
+// the original provider configuration. It never fetches the configured URL.
+func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMonitorProfile, error) {
+	if config["crawler_type"] == "greenhouse" {
+		return InspectGreenhouseMonitor(boardID, config)
+	}
+	md, err := richProfileMetadata(config)
+	if err != nil {
+		return GreenhouseMonitorProfile{}, err
+	}
+	var token, region string
+	if raw, exists := md["token"]; exists && json.Unmarshal(raw, &token) != nil {
+		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+	}
+	if token == "" {
+		pattern := ashbyURLToken
+		if config["crawler_type"] == "lever" {
+			pattern = leverURLToken
+		}
+		if match := pattern.FindStringSubmatch(config["board_url"]); match != nil {
+			token = match[1]
+			ignored := map[string]bool{"api": true, "js": true, "css": true, "assets": true, "posting-api": config["crawler_type"] == "ashby", "v0": config["crawler_type"] == "lever"}
+			if ignored[token] {
+				token = ""
+			}
+		}
+	}
+	if !richProviderToken.MatchString(token) || token == "." || token == ".." {
+		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+	}
+	if config["crawler_type"] == "lever" {
+		if raw, exists := md["region"]; exists && json.Unmarshal(raw, &region) != nil {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		if region == "" && leverEURegion.MatchString(config["board_url"]) {
+			region = "eu"
+		}
+	}
+	// Admission retains the original values for binding. Only the validation
+	// copy supplies a canonical token and drops provider-specific aliases.
+	validation := cloneConfig(config)
+	validation["crawler_type"] = "greenhouse"
+	validationMD := make(map[string]json.RawMessage)
+	for key, value := range md {
+		if greenhouseMetadataFields[key] {
+			validationMD[key] = value
+		}
+	}
+	// The common validator checks authority and transport policy. Provider
+	// tokens have their own path-component contract, including dots and spaces.
+	validationMD["token"], _ = json.Marshal("provider-token")
+	body, err := json.Marshal(validationMD)
+	if err != nil {
+		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+	}
+	validation["metadata"] = string(body)
+	profile, err := InspectGreenhouseMonitor(boardID, validation)
+	if err != nil {
+		return GreenhouseMonitorProfile{}, err
+	}
+	if raw, exists := md["blast_radius_floor"]; exists && strings.TrimSpace(string(raw)) != "null" {
+		var floor float64
+		if json.Unmarshal(raw, &floor) != nil || floor < 0 || floor > 1 {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+	}
+	stable, err := stableGreenhouseConfig(config, md)
+	if err != nil {
+		return GreenhouseMonitorProfile{}, err
+	}
+	body, err = json.Marshal(struct {
+		BoardID string            `json:"board_id"`
+		Config  map[string]string `json:"config"`
+	}{boardID, stable})
+	if err != nil {
+		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+	}
+	digest := sha256.Sum256(body)
+	profile.EffectiveConfigSHA256 = hex.EncodeToString(digest[:])
+	profile.SnapshotSHA256 = configDigest(config)
+	profile.Provider, profile.Region = config["crawler_type"], region
+	profile.Token = token
+	profile.Profile = profile.Provider + ".token-skip/v1"
+	switch profile.Provider {
+	case "ashby":
+		profile.Endpoint = "https://api.ashbyhq.com/posting-api/job-board/" + url.PathEscape(token) + "?includeCompensation=true"
+	case "lever":
+		host := "api.lever.co"
+		if region == "eu" {
+			host = "api.eu.lever.co"
+		}
+		profile.Endpoint = "https://" + host + "/v0/postings/" + url.PathEscape(token) + "?limit=100&skip=0"
+	}
+	return profile, nil
+}

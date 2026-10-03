@@ -158,7 +158,7 @@ func newNativeExecutableFixture(t *testing.T, f nativePipelineFixture, dsn strin
 	}
 	identityOutput, err := exec.Command(binary, "--identity").Output()
 	var identity BuildIdentity
-	if err != nil || json.Unmarshal(identityOutput, &identity) != nil || identity != (BuildIdentity{revision, pinnedCASHA256, "greenhouse.token-skip/v1"}) {
+	if err != nil || json.Unmarshal(identityOutput, &identity) != nil || identity != (BuildIdentity{revision, pinnedCASHA256, "greenhouse.token-skip/v1", [3]string{"greenhouse.token-skip/v1", "ashby.token-skip/v1", "lever.token-skip/v1"}}) {
 		t.Fatal("native executable lost compiled source/CA/profile identities")
 	}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")

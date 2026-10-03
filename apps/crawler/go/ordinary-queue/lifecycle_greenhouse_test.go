@@ -94,7 +94,7 @@ func TestGreenhouseLifecyclePythonGuardOracle(t *testing.T) {
 	if err := decoder.Decode(&cases); err != nil {
 		t.Fatal(err)
 	}
-	if len(cases) != 21 {
+	if len(cases) != 25 {
 		t.Fatal("missing captured lifecycle cases")
 	}
 	for _, item := range cases {

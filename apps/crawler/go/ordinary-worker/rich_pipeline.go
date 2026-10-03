@@ -4,24 +4,23 @@ import (
 	"context"
 	"errors"
 
-	greenhouse "github.com/colophon-group/jobseek/apps/crawler/go/greenhouse-monitor"
 	executor "github.com/colophon-group/jobseek/apps/crawler/go/lightpanda-b0-executor"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 )
 
 type RichPreparer interface {
-	Prepare(context.Context, greenhouse.Job) (*queue.GreenhouseRichContent, error)
+	Prepare(context.Context, RichMonitorJob) (*queue.GreenhouseRichContent, error)
 }
 
 // NativeRichPreparer reuses the same in-process models/lookup/location pipeline
 // as the native B0 executor, with its separate rich-monitor (not detail) policy.
 type NativeRichPreparer struct{ Processor *executor.Processor }
 
-func (p NativeRichPreparer) Prepare(ctx context.Context, job greenhouse.Job) (*queue.GreenhouseRichContent, error) {
+func (p NativeRichPreparer) Prepare(ctx context.Context, job RichMonitorJob) (*queue.GreenhouseRichContent, error) {
 	if p.Processor == nil {
 		return nil, errors.New("native rich processor unavailable")
 	}
-	prepared, err := p.Processor.PrepareRichMonitor(ctx, executor.RichMonitorContent{Title: job.Title, Description: job.Description, Locations: job.Locations, Language: job.Language})
+	prepared, err := p.Processor.PrepareRichMonitor(ctx, executor.RichMonitorContent{Title: job.Title, Description: job.Description, Locations: job.Locations, Language: job.Language, EmploymentType: job.EmploymentType, JobLocationType: job.JobLocationType})
 	if err != nil {
 		return nil, err
 	}

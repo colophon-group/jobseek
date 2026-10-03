@@ -1050,5 +1050,128 @@
     "python_oracle_cases": 79,
     "private_owned_profile_variants": 4,
     "production_ordinary_owners": 4
+  },
+  "greenhouse_family_production": {
+    "observed_at_utc": "2026-10-03T20:40:11.382611+00:00",
+    "revision": "c7b1dcf2c4d25a2677aaf70073928a9e940fd441",
+    "identities": {
+      "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:3b2afe16a8b46c0515044ad6bcb8c9677aad646984f2148f109821a58bd1fe4a",
+      "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:d0094bc7e489ee50b4a3b9e1c5c7a7b3cdceb4ff698381402f8a277da2152da5",
+      "JOBSEEK_DEPLOY_REVISION": "c7b1dcf2c4d25a2677aaf70073928a9e940fd441"
+    },
+    "routing_epoch": "151",
+    "b0_plan_digest": "58393871e9354ca37f545aa135ba659d31a6a9e00452a94ec9aa3e0943af6f13",
+    "b0_receipt_sha256": "493d62bb684e9d2efa70a50b07ccffa37ce753df3e02a86973e2b2c0b52abac8",
+    "ordinary_receipt": {
+      "schema": "jobseek.ordinary.first-owner/v1",
+      "state": "active",
+      "source_revision": "c7b1dcf2c4d25a2677aaf70073928a9e940fd441",
+      "crawler_image_ref": "ghcr.io/colophon-group/jobseek-crawler@sha256:3b2afe16a8b46c0515044ad6bcb8c9677aad646984f2148f109821a58bd1fe4a",
+      "routing_epoch": "151",
+      "plan_sha256": "4478835d261551535a125980ddd4c6df53feff3b8fdee78bcd479cfd5d5b3b93",
+      "projection_sha1": "bb8b9af6861f62dba0772213595a5118cdece036",
+      "b0_receipt_sha256": "493d62bb684e9d2efa70a50b07ccffa37ce753df3e02a86973e2b2c0b52abac8",
+      "compose_sha256": "f634e0af692b6f841d83ae3295366fb960a2d4da5ee90f7d5e417ced016840a2"
+    },
+    "ordinary_receipt_sha256": "9a4948c67f6edcfcbc033a4640a55d7613a962ff8c63d2af020d658c7e1f7271",
+    "health_status": {
+      "worker-1": 200,
+      "worker-2": 200,
+      "worker-3": 200,
+      "browser-1": 200,
+      "drain": 200,
+      "exporter": 200,
+      "lightpanda-claimant": 204,
+      "ordinary-go": 204
+    },
+    "ordinary_metrics": [
+      "jobseek_ordinary_go_ready 1",
+      "jobseek_ordinary_go_active_claims 4",
+      "jobseek_ordinary_go_claim_errors_total 0",
+      "crawler_tasks_total{kind=\"monitor\",status=\"succeeded\"} 50",
+      "crawler_runtime_origin_attempts_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 50",
+      "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"response\"} 50",
+      "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"transport_error\"} 0",
+      "crawler_runtime_response_body_bytes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 2216516",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"success\"} 50",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"error\"} 0",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"cancelled\"} 0",
+      "crawler_runtime_output_items_total{stage=\"monitor\",implementation=\"go\"} 1461",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"new\"} 0",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"relisted\"} 0",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"gone\"} 0",
+      "jobseek_ordinary_go_posting_touches_total 1461"
+    ],
+    "deployment_run": 37137484149,
+    "enabled_native_owners": 2570,
+    "canonical_members_verified": 2570,
+    "redis_members_verified": 2570,
+    "completed_current_epoch_receipts": 51,
+    "current_receipt_deadline_agreement": true,
+    "projection_pttl": -1,
+    "limits": [
+      "Sequential SQL/metrics snapshots:51 completed receipts versus50 metric successes.",
+      "No natural new/relisted/gone transition observed at this checkpoint.",
+      "Full fleet freshness, whole-service resources, expanded reversal/window and Python retirement remain unfinished."
+    ]
+  },
+  "greenhouse_family_followup": {
+    "observed_at_utc": "2026-10-03T20:52:37.959493+00:00",
+    "revision": "c7b1dcf2c4d25a2677aaf70073928a9e940fd441",
+    "routing_epoch": "151",
+    "ordinary_receipt_sha256": "9a4948c67f6edcfcbc033a4640a55d7613a962ff8c63d2af020d658c7e1f7271",
+    "health_status": {
+      "worker-1": 200,
+      "worker-2": 200,
+      "worker-3": 200,
+      "browser-1": 200,
+      "drain": 200,
+      "exporter": 200,
+      "lightpanda-claimant": 204,
+      "ordinary-go": 204
+    },
+    "ordinary_metrics": [
+      "jobseek_ordinary_go_ready 1",
+      "jobseek_ordinary_go_active_claims 4",
+      "jobseek_ordinary_go_claim_errors_total 0",
+      "crawler_tasks_total{kind=\"monitor\",status=\"succeeded\"} 192",
+      "crawler_runtime_origin_attempts_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 192",
+      "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"response\"} 192",
+      "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"transport_error\"} 0",
+      "crawler_runtime_response_body_bytes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 14131772",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"success\"} 192",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"error\"} 0",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"cancelled\"} 0",
+      "crawler_runtime_output_items_total{stage=\"monitor\",implementation=\"go\"} 10822",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"new\"} 0",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"relisted\"} 0",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"gone\"} 1",
+      "jobseek_ordinary_go_posting_touches_total 10822"
+    ],
+    "members_verified": 2570,
+    "current_completed_receipt_deadline_matches": 192,
+    "natural_gone_transitions": 1,
+    "limits": [
+      "No new/relisted posting at this snapshot.",
+      "Natural new description/enrichment,fullfleet freshness,resources,reversal/window andPythonretirement remainunfinished."
+    ]
+  },
+  "ashby_lever_candidate": {
+    "source_base": "c7b1dcf2c4d25a2677aaf70073928a9e940fd441",
+    "candidate_version": "0.13.911",
+    "captured_profiles": 1130,
+    "admitted_canonical_and_cached": 1128,
+    "ashby_skip": 934,
+    "lever_skip": 194,
+    "remaining_detail_profiles": 2,
+    "canonical_cached_binding_mismatches": 0,
+    "production_adoption_claimed": false,
+    "actual_python_request_cases": 16,
+    "checks": [
+      "Native verified HTTP/PostgreSQL/Redis enriched inserts,description bytes/pending upload,lifecycle andcanonical/Redis scheduling PASS.",
+      "Later Lever404 andpublisherreservation settle withoutpartialwrites/delistings;actualpagepolicyresource retained.",
+      "Full ordinaryqueue race PASS74.730s;fullworker race PASS63.933s;vet/tidy/gofmt PASS.",
+      "AffectedPython ownership/runtime/docs checks29PASS1skip;installed image andtrustedDocker hostchecks remainCI obligations."
+    ]
   }
 }

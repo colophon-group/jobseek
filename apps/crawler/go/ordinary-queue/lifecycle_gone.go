@@ -104,7 +104,7 @@ func (c *GreenhouseCycle) FinishProviderGoneResource(ctx context.Context, initia
 	if c.done || c.failed || c.processed != 0 {
 		return nil, ErrConfiguration
 	}
-	profile, err := InspectGreenhouseMonitor(c.claim.task.ID, c.claim.task.Config)
+	profile, err := InspectRichMonitor(c.claim.task.ID, c.claim.task.Config)
 	if err != nil || initialEndpoint != profile.Endpoint || !validGreenhouseResponseResource(observation.Endpoint) {
 		return nil, ErrConfiguration
 	}
@@ -128,8 +128,9 @@ func (c *GreenhouseCycle) FinishProviderGoneResource(ctx context.Context, initia
 		var status string
 		var count int
 		var due time.Time
+		provider := map[string]string{"greenhouse": "Greenhouse", "ashby": "Ashby", "lever": "Lever"}[profile.Provider]
 		if err := tx.QueryRow(ctx, lifecycleQuery("gone"), c.claim.task.ID, decision.Status, decision.Count,
-			decision.First, decision.Last, decision.Gone, decision.Due, "Greenhouse API returned HTTP 404", observation.Endpoint, observation.HTTPStatus, decision.Terminal).Scan(&status, &count, &due); err != nil {
+			decision.First, decision.Last, decision.Gone, decision.Due, provider+" API returned HTTP 404", observation.Endpoint, observation.HTTPStatus, decision.Terminal).Scan(&status, &count, &due); err != nil {
 			return err
 		}
 		result.Status = decision.Status
