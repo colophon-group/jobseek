@@ -1,6 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
+// Materialization has its own identity and real-Postgres contract suites.
+vi.mock("@/lib/services/company-references", () => ({
+  prepareCompanyReferences: vi.fn().mockResolvedValue([]),
+  persistCompanyReferences: vi.fn().mockResolvedValue(undefined),
+  persistExistingCompanyReferences: vi.fn().mockResolvedValue(undefined),
+  companyReferenceErrorResult: (error: unknown) => { throw error; },
+}));
+
 
 const mocks = vi.hoisted(() => {
   type WatchlistRow = {
@@ -340,7 +348,8 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
       })),
     });
 
-    await expect(addCompanyToWatchlist(WATCHLIST_ID, NEW_COMPANY_ID)).resolves.toEqual({ ok: false });
+    mocks.queueRootSelect([{ userId: USER_ID }]);
+    await expect(addCompanyToWatchlist(WATCHLIST_ID, NEW_COMPANY_ID)).resolves.toEqual({ ok: false, error: "company_limit_reached" });
     expect(mocks.snapshot().companies).toHaveLength(250);
     expect(mocks.calls).toEqual({ transactions: 1, rollbacks: 0 });
   });

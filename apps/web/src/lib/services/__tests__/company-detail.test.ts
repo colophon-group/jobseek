@@ -17,7 +17,8 @@ vi.mock("@/lib/search/typesense-client", () => ({
     collections: () => ({ documents: () => ({ search: mocks.search }) }),
   }),
 }));
-vi.mock("@/lib/search/typesense-retry", () => ({
+vi.mock("@/lib/search/typesense-retry", async () => ({
+  assertTypesenseSearchResult: (await vi.importActual<typeof import("@/lib/search/typesense-retry")>("@/lib/search/typesense-retry")).assertTypesenseSearchResult,
   isRetryableError: (err: unknown) =>
     typeof err === "object" &&
     err !== null &&
@@ -156,16 +157,17 @@ describe("getCompanyBySlug", () => {
 describe("getCompanyIdsBySlugs", () => {
   it("resolves the handoff company set in one exact batched search", async () => {
     searchMock.mockResolvedValue({
+      found: 2,
       hits: [
-        { document: { id: "uuid-stripe", slug: "stripe" } },
-        { document: { id: "uuid-gitlab", slug: "gitlab" } },
+        { document: { id: "20000000-0000-4000-8000-000000000001", slug: "stripe" } },
+        { document: { id: "20000000-0000-4000-8000-000000000002", slug: "gitlab" } },
       ],
     });
 
     await expect(getCompanyIdsBySlugs(["stripe", "gitlab"])).resolves.toEqual(
       new Map([
-        ["stripe", "uuid-stripe"],
-        ["gitlab", "uuid-gitlab"],
+        ["stripe", "20000000-0000-4000-8000-000000000001"],
+        ["gitlab", "20000000-0000-4000-8000-000000000002"],
       ]),
     );
     expect(searchMock).toHaveBeenCalledTimes(1);
@@ -174,5 +176,20 @@ describe("getCompanyIdsBySlugs", () => {
       filter_by: "slug:[stripe,gitlab]",
       per_page: 2,
     });
+  });
+});
+
+
+describe("handoff slug identity validation", () => {
+  it.each([
+    { found: 1, hits: [{ document: { id: "not-a-uuid", slug: "stripe" } }] },
+    { found: 1, hits: [{ document: { id: "20000000-0000-4000-8000-000000000001", slug: "foreign" } }] },
+    { found: 2, hits: [
+      { document: { id: "20000000-0000-4000-8000-000000000001", slug: "stripe" } },
+      { document: { id: "20000000-0000-4000-8000-000000000001", slug: "gitlab" } },
+    ] },
+  ])("rejects malformed or ambiguous canonical slug results", async (response) => {
+    searchMock.mockResolvedValue(response);
+    await expect(getCompanyIdsBySlugs(["stripe", "gitlab"])).rejects.toMatchObject({ code: "company_identity_conflict" });
   });
 });

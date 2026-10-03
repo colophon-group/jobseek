@@ -6,6 +6,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // Server actions transitively import `server-only`, which throws in a
 // non-Next runtime. Neutralize before module-under-test loads.
 vi.mock("server-only", () => ({}));
+// Materialization has its own identity and real-Postgres contract suites.
+vi.mock("@/lib/services/company-references", () => ({
+  prepareCompanyReferences: vi.fn().mockResolvedValue([]),
+  persistCompanyReferences: vi.fn().mockResolvedValue(undefined),
+  persistExistingCompanyReferences: vi.fn().mockResolvedValue(undefined),
+  companyReferenceErrorResult: (error: unknown) => { throw error; },
+}));
+
 
 /**
  * Shared mocks must live in `vi.hoisted` because `vi.mock` hoists to the

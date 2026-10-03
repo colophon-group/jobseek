@@ -4,49 +4,53 @@ import { eq, and } from "drizzle-orm";
 import { db } from "@/db";
 import { followedCompany } from "@/db/schema";
 import { getSessionUserId } from "@/lib/sessionCache";
-import { isUniqueViolation } from "@/lib/db-conflict";
+import { normalizeWatchlistUuid } from "@/lib/services/watchlist-input";
+import {
+  companyReferenceErrorResult,
+  lockCompanyStar,
+  prepareCompanyReferences,
+  persistCompanyReferences,
+} from "@/lib/services/company-references";
 
 export type ToggleResult = {
   starred: boolean;
-};
+} | { error: string };
 
 /**
- * UNIQUE index name behind `(user_id, company_id)` on
- * `followed_company` (see `apps/web/src/db/schema.ts`). Used to scope
- * the race-recovery branch in `toggleStarredCompany`.
- */
-const FOLLOWED_COMPANY_UNIQUE_CONSTRAINT = "idx_fc_user_company";
-
-/**
- * Toggle a (user, company) follow row.
- *
- * #3179 — same SELECT-then-INSERT-OR-DELETE race as `toggleSavedJob`,
- * fixed with the same retry-on-conflict shape (matches #3268). The
- * UNIQUE constraint `idx_fc_user_company` is the source of truth.
- *
- * See `toggleSavedJob` for the full reasoning; this is the parallel
- * implementation on `followed_company`.
+ * Delete first, so removing an existing selection never needs search. An
+ * absent selection is prepared outside database locks, then rechecked under
+ * the same advisory lock before applying exactly one toggle. Concurrent
+ * requests therefore preserve toggle parity without network I/O in a lock.
  */
 export async function toggleStarredCompany(
   companyId: string,
 ): Promise<ToggleResult> {
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated");
+  const normalized = normalizeWatchlistUuid(companyId);
+  if (!normalized) return { error: "invalid_company" };
+  companyId = normalized;
+
+  const removeExisting = async (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => {
+    await lockCompanyStar(tx, userId, companyId);
+    const removed = await tx.delete(followedCompany).where(and(
+      eq(followedCompany.userId, userId), eq(followedCompany.companyId, companyId),
+    )).returning({ companyId: followedCompany.companyId });
+    return removed.length > 0;
+  };
+
+  if (await db.transaction(removeExisting)) return { starred: false };
 
   try {
-    await db.insert(followedCompany).values({ userId, companyId });
-    return { starred: true };
+    const references = await prepareCompanyReferences([companyId]);
+    return await db.transaction(async (tx) => {
+      if (await removeExisting(tx)) return { starred: false };
+      await persistCompanyReferences(tx, references);
+      await tx.insert(followedCompany).values({ userId, companyId });
+      return { starred: true };
+    });
   } catch (err) {
-    if (!isUniqueViolation(err, FOLLOWED_COMPANY_UNIQUE_CONSTRAINT)) throw err;
-    await db
-      .delete(followedCompany)
-      .where(
-        and(
-          eq(followedCompany.userId, userId),
-          eq(followedCompany.companyId, companyId),
-        ),
-      );
-    return { starred: false };
+    return companyReferenceErrorResult(err);
   }
 }
 

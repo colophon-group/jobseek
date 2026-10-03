@@ -36,7 +36,14 @@ export async function createWatchlistFromHandoffWithDeps(params: {
     return { error: "invalid_companies" };
   }
 
-  const companyIdsBySlug = await deps.getCompanyIdsBySlugs(companySlugs);
+  let companyIdsBySlug: Map<string, string>;
+  try {
+    companyIdsBySlug = await deps.getCompanyIdsBySlugs(companySlugs);
+  } catch {
+    // Resolver errors may contain provider connection details. Expose only
+    // a stable retryable domain code and never save a partially resolved list.
+    return { error: "company_lookup_unavailable" };
+  }
   if (companyIdsBySlug.size !== companySlugs.length) {
     return { error: "invalid_companies" };
   }
