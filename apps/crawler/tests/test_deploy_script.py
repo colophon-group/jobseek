@@ -247,7 +247,7 @@ def test_deploy_quiesces_writers_before_migrations_and_schema_sync() -> None:
     migrate = script.index("alembic -c src/migrations/alembic.ini upgrade head")
     migration_cutover = script.index("MIGRATION_CUTOVER_REACHED=1", migrate)
     typesense_schema = script.index("go-typesense-exporter --setup-schemas")
-    sync = script.index("uv run --no-sync crawler sync", typesense_schema)
+    sync = script.index("go-typesense-exporter --sync-registry", typesense_schema)
     nw_cutover = script.index("uv run --no-sync crawler repair-nw-provider-cutover")
     umantis_cutover = script.index(
         "repair_umantis_identity_cutover deploy-umantis-identity-cutover",
@@ -272,8 +272,11 @@ def test_operational_sync_entrypoints_are_local_and_typesense_only() -> None:
     sync_workflow = SYNC_DATA_WORKFLOW.read_text()
     sync_host = CSV_SYNC_HOST.read_text()
 
-    assert "uv run --no-sync crawler sync\n" in script
-    assert "uv run --no-sync crawler sync\n" in sync_host
+    forward = script[script.index("FORWARD_SYNC_STARTED=1") :]
+    assert "go-typesense-exporter --sync-registry\n" in forward
+    assert "uv run --no-sync crawler sync\n" not in forward
+    assert "command_args=(go-typesense-exporter --sync-registry)" in sync_host
+    assert "command_args=(uv run --no-sync crawler sync)" in sync_host
     assert "--legacy-mirror" not in script
     assert "--legacy-mirror" not in sync_workflow
     assert "--legacy-mirror" not in sync_host
@@ -378,7 +381,7 @@ def test_csv_sync_requires_the_committed_runtime_contract_before_publication() -
     contract_gate = sync_host.index("verify_runtime_contract() {")
     credentials = sync_host.index("build_runtime_env() {")
     image = sync_host.index("CRAWLER_IMAGE_REF)")
-    publication = sync_host.index("uv run --no-sync crawler sync")
+    publication = sync_host.index("command_args=(go-typesense-exporter --sync-registry)")
     assert image < contract_gate < credentials < publication
     assert '"$ACTIVE_RELEASE/environment.env"' in sync_host
     assert '"$ACTIVE_RELEASE/success.env"' in sync_host
@@ -685,6 +688,8 @@ def _install_csv_host_docker(binary_dir: Path) -> None:
         "elif args[:1] == ['run']:\n"
         "    log = os.environ.get('TEST_CSV_SYNC_LOG')\n"
         "    env_log = os.environ.get('TEST_CSV_SYNC_ENV_LOG')\n"
+        "    args_log = os.environ.get('TEST_CSV_SYNC_ARGS_LOG')\n"
+        "    if args_log: Path(args_log).write_text('\\n'.join(args) + '\\n')\n"
         "    if log:\n"
         "        volume = next((item for item in args if item.endswith(':/app/data:ro')), '')\n"
         "        Path(log).write_text(volume.split(':', 1)[0] + '\\n')\n"
@@ -800,6 +805,7 @@ def test_legacy_format2_bootstrap_attests_old_runtime_and_is_idempotent(
     _install_csv_host_docker(tmp_path / "bin")
     env["TEST_CSV_SYNC_LOG"] = str(tmp_path / "sync.log")
     env["TEST_CSV_SYNC_ENV_LOG"] = str(tmp_path / "sync-env.log")
+    env["TEST_CSV_SYNC_ARGS_LOG"] = str(tmp_path / "sync-args.log")
     candidate_id, data_contract, archive_sha = _create_csv_candidate(
         candidates,
         previous_revision,
@@ -848,6 +854,13 @@ def test_legacy_format2_bootstrap_attests_old_runtime_and_is_idempotent(
     assert sync_environment.count("WEB_DATABASE_URL=postgresql://web\n") == 1
     assert "postgresql://web" not in first.stdout
     assert "postgresql://web" not in first.stderr
+    assert Path(env["TEST_CSV_SYNC_ARGS_LOG"]).read_text().splitlines()[-5:] == [
+        "uv",
+        "run",
+        "--no-sync",
+        "crawler",
+        "sync",
+    ]
     assert not (candidates / candidate_id).exists()
 
     # A workflow retry re-copies the same immutable archive. Once the bridge
@@ -1030,6 +1043,8 @@ def test_current_csv_sync_runtime_environment_omits_web_credential(tmp_path: Pat
     _install_csv_host_docker(tmp_path / "bin")
     sync_environment_log = tmp_path / "sync-environment.log"
     env["TEST_CSV_SYNC_ENV_LOG"] = str(sync_environment_log)
+    args_log = tmp_path / "sync-args.log"
+    env["TEST_CSV_SYNC_ARGS_LOG"] = str(args_log)
     bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
     result = subprocess.run(
         [
@@ -1049,6 +1064,11 @@ def test_current_csv_sync_runtime_environment_omits_web_credential(tmp_path: Pat
 
     assert result.returncode == 0, result.stderr
     assert "WEB_DATABASE_URL=" not in sync_environment_log.read_text(encoding="utf-8")
+    arguments = args_log.read_text().splitlines()
+    assert arguments[-2:] == ["go-typesense-exporter", "--sync-registry"]
+    assert "uv" not in arguments
+    assert "--env-file" in arguments
+    assert f"{active.resolve() / 'data'}:/app/data:ro" in arguments
 
 
 def test_legacy_format1_bootstrap_rejects_any_unattested_override_without_mutation(
@@ -2366,7 +2386,7 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     assert "repair_umantis_identity_cutover rollback-umantis-identity-cutover 1" in rollback_sync
     assert "-e CRAWLER_DB_ROLE=rollback-sync" in rollback_sync
     assert script.index("FORWARD_SYNC_STARTED=1") < script.index(
-        "uv run --no-sync crawler sync", script.index("FORWARD_SYNC_STARTED=1")
+        "go-typesense-exporter --sync-registry", script.index("FORWARD_SYNC_STARTED=1")
     )
     assert "local services=(redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy)" in (
         script

@@ -1160,9 +1160,8 @@ jobs:
               --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
               --mount "type=bind,source=$staged_data,target=/app/data,readonly" \
               --workdir /tmp \
-              -e PYTHONDONTWRITEBYTECODE=1 \
-              --entrypoint /app/.venv/bin/python \
-              jobseek-crawler-slim-ci:pr -m src.sync --dry-run
+              --entrypoint /usr/local/bin/go-typesense-exporter \
+              jobseek-crawler-slim-ci:pr --sync-registry --dry-run
           )"
           REGISTRY_OUTPUT="$registry_output" python - <<'PY'
           import json
@@ -1179,10 +1178,9 @@ jobs:
             docker run --rm \
               --platform linux/amd64 \
               --workdir /tmp \
-              -e PYTHONDONTWRITEBYTECODE=1 \
-              --entrypoint /app/.venv/bin/crawler \
+              --entrypoint /usr/local/bin/go-typesense-exporter \
               jobseek-crawler-slim-ci:pr \
-              sync 2>&1
+              --sync-registry 2>&1
           )"; then
             echo 'ERROR: naturally unmounted installed crawler sync succeeded' >&2
             exit 1
