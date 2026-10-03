@@ -28,7 +28,7 @@ JSON with no trailing newline, at most 8192 bytes. Its sorted fields are:
 - `lua_sha256`: the compiled, reviewed lifecycle script digest.
 
 Before effects, the command requires all source queue keys and the legacy guard
-to be absent, checks the exact eight-field source tombstone, binds the existing
+to be absent, checks the exact persistent eight-field source tombstone, binds the existing
 safe marker, and fsyncs `.cold-cleanup-v1-SHA256.request`. It clears the marker,
 uses the reviewed atomic Lua to clear only that exact tombstone, requires Redis
 SAVE and absent-authority readback, then fsyncs the same decision in `.complete`.

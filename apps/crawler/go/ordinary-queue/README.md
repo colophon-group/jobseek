@@ -918,3 +918,9 @@ fixtures. The installed harness additionally requires actual selected intent/
 receipt binding and unselected-generation/pointer/marker substitution refusal
 before intent/archive effects. These receipts still grant no runtime/cold
 admission or authenticated production build/incoming/rollback selection.
+
+`ObserveColdB0Cleanup` requires the live host SQL backend. It re-derives retained
+ordinary restoration against current reversal/allocator/target and the exact
+restored B0 tombstone, checks zero source Go SQL fences, persistent tombstone,
+absent source queues/guard and stable Redis incarnation, then returns non-mutating
+evidence. It neither clears authority nor permits native producer cleanup.

@@ -341,6 +341,18 @@ func runActualHostSelectedRedisJournal(t *testing.T, forward, restore bool) {
 						intent := hostPhaseRetainTestInput(t, state, intentBody)
 						begun := call(HostColdPhaseRequest{Operation: "cold-begin", PredecessorSHA256: hostPhaseResultSHA(t, target), IntentSHA256: intent, TargetSHA256: target.Native.B0TargetSHA256, LuaSHA256: luaSHA})
 						reserved := call(HostColdPhaseRequest{Operation: "cold-reserve", PredecessorSHA256: hostPhaseResultSHA(t, begun), IntentSHA256: intent})
+						// Publication can leave this exact candidate plan active. Retire
+						// only our reservation after all proof/conservation reads and
+						// backend scopes finish, before the next owned fixture starts.
+						// The private pipeline's initial plan has separate cleanup.
+						planSHA, epoch := reserved.Native.PlanSHA256, reserved.Native.RoutingEpoch
+						t.Cleanup(func() {
+							cleanup, done := context.WithTimeout(context.Background(), 10*time.Second)
+							defer done()
+							if _, err := f.pg.Exec(cleanup, "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE plan_sha256=$1 AND routing_epoch=$2 AND source_revision=$3 AND state='active'", planSHA, epoch, source); err != nil {
+								t.Error("owned joined candidate plan cleanup", err)
+							}
+						})
 						inspected := call(HostColdPhaseRequest{Operation: "cold-inspect", PredecessorSHA256: hostPhaseResultSHA(t, reserved), IntentSHA256: intent})
 						if inspected.Native.RoutingEpoch != reserved.Native.RoutingEpoch || inspected.Native.PlanSHA256 != reserved.Native.PlanSHA256 {
 							t.Fatal("joined inspection changed reservation")

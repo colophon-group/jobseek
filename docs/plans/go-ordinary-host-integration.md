@@ -1,5 +1,42 @@
 # Native ordinary host integration delivery plan
 
+Fresh cleanup evidence now binds the live original host flock, selected Redis
+and exclusive SQL scopes to completed restoration ancestry. It re-derives the
+retained decision against current source/allocator R, requires zero actual source
+Go SQL fences, exact persistent rollback tombstone and absent source queues/guard,
+checks Redis incarnation and protected history, and durably retains the observed
+bytes. Missing/escaped scopes, changed source/plan/target, foreign or expiring
+owner and leftover queues refuse. The native cleanup primitive also refuses an
+expiring tombstone before effects. These observations grant no later cleanup or
+runtime authority; stopped producer/sentinel/image checks and durable delegated
+execution/recovery still remain.
+
+Required private PostgreSQL/Redis full queue and worker races pass in
+72.140/49.813s; final host observation regression passes in 3.733s. Native unit
+and real Redis/Lua/SAVE races pass in 3.108/1.479s; both Linux integration vets,
+tidy/format and 94 repository tests pass (three optional skips, 46.03s).
+
+Published `995056add` raw evidence independently verifies initial four
+and all eleven installed-producer forward phases on AMD64 and ARM64. Both
+restoration fixtures fail
+before the first phase because the preceding fixture leaves an active candidate
+SQL plan. The prepared correction retires only its exact reservation after all
+proof/conservation reads and retries; fresh installed execution is still needed.
+Both failed runs and their raw forward proofs are preserved. Whole-B0
+`37102190932` independently
+recomputes 16 arms/eight pairs, density 5.561–13.710, for generated startup-cardinality
+B0 only. Full-service cost and complete migration admission remain unproven.
+See [cleanup observation evidence](../evidence/go-ordinary-native-host-cold-cleanup-observation-2026-10-03.json).
+
+Next publish these validated local slices and collect fresh exact-source
+installed restoration evidence. Bind actual stopped producer, exact sentinel/image/executable and
+live cleanup evidence to protected durable delegation; verify installed cleanup,
+real crash/reload, R initialization and complete reactivation/finalization plus
+spec/env/data/image restoration, SQL release and full-stack readiness under the
+original flock. Continue all enabled profile/consumer parity and whole-service
+cost, gates, supported cutover/cold reversal and rollback window before retiring
+production Python. Goal active; PR #10210 draft; production unchanged.
+
 The native producer now has a protected `--cleanup-cold` one-shot command to
 replace Python sentinel/tombstone cleanup. It requires mode `off`, fixed UID10001
 and root client identity, absent socket and the shared lifecycle flock. A closed

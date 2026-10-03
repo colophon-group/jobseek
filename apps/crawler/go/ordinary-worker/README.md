@@ -1,5 +1,13 @@
 # Native ordinary processing assembly
 
+`ObserveHostColdB0Cleanup` retains fresh cleanup evidence inside the original
+live mutation flock and checked host/SQL/selected-Redis scopes. It joins completed
+ordinary restoration inspection and protected ancestry to a fresh queue witness,
+re-reads protected bytes and durably retains the evidence. Its opaque result or
+serialized digest grants no permission for later sentinel/tombstone cleanup.
+Actual stopped producer, marker and installed release checks, durable delegated
+command/recovery and subsequent R initialization remain separate requirements.
+
 This package connects the standard Greenhouse token/skip inventory to the
 existing native enrichment, owned rich batches and terminal board lifecycle.
 The native executable now connects this assembly to protected startup, bounded

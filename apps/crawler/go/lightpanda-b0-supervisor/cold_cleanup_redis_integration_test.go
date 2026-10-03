@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -98,7 +99,7 @@ func TestColdProducerCleanupRealRedisSaveFailureAndExactRecovery(t *testing.T) {
 }
 
 func TestColdProducerCleanupRejectsForeignSourceWithoutEffects(t *testing.T) {
-	for _, drift := range []string{"owner", "source_receipt", "extra_owner", "source_queue", "legacy_guard", "sentinel", "absent_owner", "cancelled"} {
+	for _, drift := range []string{"owner", "source_receipt", "extra_owner", "expiring_owner", "source_queue", "legacy_guard", "sentinel", "absent_owner", "cancelled"} {
 		t.Run(drift, func(t *testing.T) {
 			q, sentinel, d, body, prefix := coldCleanupRedisFixture(t)
 			ctx, cancel := context.WithCancel(context.Background())
@@ -110,6 +111,10 @@ func TestColdProducerCleanupRejectsForeignSourceWithoutEffects(t *testing.T) {
 				q.client.HSet(ctx, producerOwnerKey, "source_receipt_sha256", "foreign")
 			case "extra_owner":
 				q.client.HSet(ctx, producerOwnerKey, "extra", "field")
+			case "expiring_owner":
+				if err := q.client.PExpire(ctx, producerOwnerKey, 10*time.Minute).Err(); err != nil {
+					t.Fatal(err)
+				}
 			case "source_queue":
 				q.client.Set(ctx, q.keys[1], "orphan", 0)
 			case "legacy_guard":

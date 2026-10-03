@@ -124,6 +124,7 @@ func observeColdCleanup(ctx context.Context, q *b0Queue, d producerColdCleanupDe
 	}
 	ownerType := pipeline.Type(ctx, producerOwnerKey)
 	owner := pipeline.HGetAll(ctx, producerOwnerKey)
+	ownerTTL := pipeline.PTTL(ctx, producerOwnerKey)
 	if _, err := pipeline.Exec(ctx); err != nil {
 		return errors.New("cold cleanup Redis observation failed")
 	}
@@ -136,7 +137,7 @@ func observeColdCleanup(ctx context.Context, q *b0Queue, d producerColdCleanupDe
 		return nil
 	}
 	expected := map[string]string{"schema": "jobseek.lightpanda.producer-rollback/v1", "namespace": d.Namespace, "shard_id": d.ShardID, "routing_epoch": strconv.FormatInt(d.SourceEpoch, 10), "engine_owner": engineOwner, "cohort": d.Cohort, "rollback_plan_digest": d.B0RestorationPlanSHA256, "source_receipt_sha256": d.SourceReceiptSHA256}
-	if ownerType.Val() != "hash" || !reflect.DeepEqual(owner.Val(), expected) {
+	if ownerType.Val() != "hash" || ownerTTL.Val() != -1 || !reflect.DeepEqual(owner.Val(), expected) {
 		return errors.New("cold cleanup tombstone cycle changed")
 	}
 	return nil

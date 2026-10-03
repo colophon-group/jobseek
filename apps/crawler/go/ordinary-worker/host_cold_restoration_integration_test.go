@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -208,6 +209,65 @@ func runHostColdRestorationJournalTest(t *testing.T, nonempty bool) {
 	ordinaryRetained := complete(r)
 	r.Operation, r.PredecessorSHA256, r.TargetSHA256, r.LuaSHA256 = "cold-ordinary-rollback-inspect", hostPhaseResultSHA(t, ordinaryRetained), "", ""
 	ordinaryInspection := complete(r)
+	if nonempty {
+		requestSHA := ordinaryInspection.RequestSHA256
+		if err := runHostPhaseTestDriver(ctx, state, f.pg, d, func(scoped context.Context, store *hostStore) error {
+			if result, err := ObserveHostColdB0Cleanup(scoped, f.pg, requestSHA, target.Native.B0TargetSHA256, luaSHA); err == nil || result != nil {
+				t.Fatal("cleanup observation admitted without original outer flock")
+			}
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+		var escaped context.Context
+		if err := withHostMutationScope(ctx, filepath.Join(state, "mutation.lock"), func(outer context.Context) error {
+			if err := runHostPhaseTestDriver(outer, state, f.pg, d, func(scoped context.Context, store *hostStore) error {
+				escaped = scoped
+				observation, err := ObserveHostColdB0Cleanup(scoped, f.pg, requestSHA, target.Native.B0TargetSHA256, luaSHA)
+				if err != nil || observation == nil || !planPattern.MatchString(observation.SHA256()) || hostDigest([]byte(observation.Payload())) != observation.SHA256() {
+					t.Fatal("live host cleanup observation", err)
+				}
+				retained, err := store.read("cold-cleanup-observation-"+observation.SHA256()+".json", false)
+				if err != nil || string(retained) != observation.Payload() {
+					t.Fatal("cleanup observation lacks exact protected durable bytes", err)
+				}
+				var evidence struct {
+					Context  HostColdPhaseContext `json:"context"`
+					SQLRedis struct {
+						SourceEpoch     int64 `json:"source_epoch"`
+						RetirementEpoch int64 `json:"retirement_epoch"`
+						SourceFences    int64 `json:"source_go_write_fences"`
+					} `json:"sql_redis"`
+					RuntimeAdmission bool `json:"runtime_admission"`
+				}
+				if json.Unmarshal([]byte(observation.Payload()), &evidence) != nil || evidence.Context.Binding != d.Binding || evidence.SQLRedis.SourceEpoch != previous || evidence.SQLRedis.RetirementEpoch != r.RetirementEpoch || evidence.SQLRedis.SourceFences != 0 || evidence.RuntimeAdmission {
+					t.Fatal("cleanup evidence source/retirement/zero-fence binding")
+				}
+				for _, invalid := range []string{history[0].result.RequestSHA256, ordinaryRetained.RequestSHA256} {
+					if result, err := ObserveHostColdB0Cleanup(scoped, f.pg, invalid, target.Native.B0TargetSHA256, luaSHA); err == nil || result != nil {
+						t.Fatal("skipped restoration inspection granted cleanup")
+					}
+				}
+				if result, err := ObserveHostColdB0Cleanup(scoped, f.pg, requestSHA, strings.Repeat("9", 64), luaSHA); err == nil || result != nil {
+					t.Fatal("foreign target granted cleanup")
+				}
+				again, err := ObserveHostColdB0Cleanup(scoped, f.pg, requestSHA, target.Native.B0TargetSHA256, luaSHA)
+				if err != nil || again.Payload() != observation.Payload() {
+					t.Fatal("same backend cleanup observation changed", err)
+				}
+				return nil
+			}); err != nil {
+				return err
+			}
+			if result, err := ObserveHostColdB0Cleanup(escaped, f.pg, requestSHA, target.Native.B0TargetSHA256, luaSHA); err == nil || result != nil {
+				t.Fatal("escaped host/SQL/Redis scope admitted with outer flock still held")
+			}
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+		t.Log("actual private original host flock and live selected SQL/Redis scopes bind completed restoration ancestry, exact source tombstone and zero source fences; wrong/skipped target/phase and missing/escaped scopes refuse, observation remains non-mutating and grants no producer cleanup or runtime admission")
+	}
 	beforeMissingProducer := fullColdExecutableRedisSnapshot(t, f)
 	completion := r
 	completion.Operation, completion.PredecessorSHA256 = "cold-b0-reactivation-plan", hostPhaseResultSHA(t, ordinaryInspection)
