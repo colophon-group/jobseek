@@ -1,0 +1,892 @@
+{
+  "schema": "jobseek.native-ordinary-continuation/v1",
+  "observed_at": "2026-10-03T14:30:29.569174+00:00",
+  "source_revision": "eb991eb3997e66e4f05d327405a399f26c4a4644",
+  "routing_epoch": 149,
+  "enabled_boards": 7885,
+  "enabled_active_boards": 5084,
+  "effective_profiles": [
+    {
+      "crawler_type": "accenture",
+      "monitor_needs_browser": true,
+      "scraper_needs_browser": false,
+      "enabled_count": 12,
+      "active_count": 10
+    },
+    {
+      "crawler_type": "adp",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 14,
+      "active_count": 9
+    },
+    {
+      "crawler_type": "almacareer",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 23,
+      "active_count": 22
+    },
+    {
+      "crawler_type": "amazon",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 1,
+      "active_count": 1
+    },
+    {
+      "crawler_type": "api_sniffer",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 239,
+      "active_count": 162
+    },
+    {
+      "crawler_type": "api_sniffer",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": true,
+      "enabled_count": 17,
+      "active_count": 5
+    },
+    {
+      "crawler_type": "api_sniffer",
+      "monitor_needs_browser": true,
+      "scraper_needs_browser": false,
+      "enabled_count": 57,
+      "active_count": 38
+    },
+    {
+      "crawler_type": "api_sniffer",
+      "monitor_needs_browser": true,
+      "scraper_needs_browser": true,
+      "enabled_count": 13,
+      "active_count": 4
+    },
+    {
+      "crawler_type": "ashby",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 934,
+      "active_count": 745
+    },
+    {
+      "crawler_type": "ashby",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": true,
+      "enabled_count": 1,
+      "active_count": 1
+    },
+    {
+      "crawler_type": "avature",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 7,
+      "active_count": 1
+    },
+    {
+      "crawler_type": "bamboohr",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 10,
+      "active_count": 5
+    },
+    {
+      "crawler_type": "beehire",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 1,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "beisen",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 24,
+      "active_count": 24
+    },
+    {
+      "crawler_type": "brassring",
+      "monitor_needs_browser": true,
+      "scraper_needs_browser": false,
+      "enabled_count": 4,
+      "active_count": 4
+    },
+    {
+      "crawler_type": "breezy",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 13,
+      "active_count": 3
+    },
+    {
+      "crawler_type": "bytedance",
+      "monitor_needs_browser": true,
+      "scraper_needs_browser": false,
+      "enabled_count": 3,
+      "active_count": 3
+    },
+    {
+      "crawler_type": "candidatus",
+      "monitor_needs_browser": true,
+      "scraper_needs_browser": false,
+      "enabled_count": 1,
+      "active_count": 1
+    },
+    {
+      "crawler_type": "cnstaff",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 1,
+      "active_count": 1
+    },
+    {
+      "crawler_type": "comeet",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 9,
+      "active_count": 9
+    },
+    {
+      "crawler_type": "computrabajo",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 11,
+      "active_count": 2
+    },
+    {
+      "crawler_type": "cornerstone",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 12,
+      "active_count": 1
+    },
+    {
+      "crawler_type": "curately",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 1,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "cvwarehouse",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 2,
+      "active_count": 2
+    },
+    {
+      "crawler_type": "darwinbox",
+      "monitor_needs_browser": true,
+      "scraper_needs_browser": false,
+      "enabled_count": 5,
+      "active_count": 5
+    },
+    {
+      "crawler_type": "dayforce",
+      "monitor_needs_browser": true,
+      "scraper_needs_browser": false,
+      "enabled_count": 10,
+      "active_count": 9
+    },
+    {
+      "crawler_type": "deel",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 3,
+      "active_count": 3
+    },
+    {
+      "crawler_type": "dom",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 528,
+      "active_count": 257
+    },
+    {
+      "crawler_type": "dom",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": true,
+      "enabled_count": 24,
+      "active_count": 13
+    },
+    {
+      "crawler_type": "dom",
+      "monitor_needs_browser": true,
+      "scraper_needs_browser": false,
+      "enabled_count": 142,
+      "active_count": 61
+    },
+    {
+      "crawler_type": "dom",
+      "monitor_needs_browser": true,
+      "scraper_needs_browser": true,
+      "enabled_count": 144,
+      "active_count": 60
+    },
+    {
+      "crawler_type": "earcu",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 3,
+      "active_count": 1
+    },
+    {
+      "crawler_type": "eightfold",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 30,
+      "active_count": 2
+    },
+    {
+      "crawler_type": "fenbi",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 2,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "gem",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 13,
+      "active_count": 10
+    },
+    {
+      "crawler_type": "greenhouse",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 2570,
+      "active_count": 2272
+    },
+    {
+      "crawler_type": "gupy",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 36,
+      "active_count": 7
+    },
+    {
+      "crawler_type": "headhunter",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 2,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "hibob",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 4,
+      "active_count": 3
+    },
+    {
+      "crawler_type": "hirehive",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 1,
+      "active_count": 1
+    },
+    {
+      "crawler_type": "hrmos",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 6,
+      "active_count": 3
+    },
+    {
+      "crawler_type": "icims",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 118,
+      "active_count": 20
+    },
+    {
+      "crawler_type": "infoniqa",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 1,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "infor",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 1,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "inline",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 107,
+      "active_count": 86
+    },
+    {
+      "crawler_type": "inline",
+      "monitor_needs_browser": true,
+      "scraper_needs_browser": false,
+      "enabled_count": 17,
+      "active_count": 11
+    },
+    {
+      "crawler_type": "inline",
+      "monitor_needs_browser": true,
+      "scraper_needs_browser": true,
+      "enabled_count": 1,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "inploi",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 1,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "intervieweb",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 3,
+      "active_count": 1
+    },
+    {
+      "crawler_type": "jarvi",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 1,
+      "active_count": 1
+    },
+    {
+      "crawler_type": "jazzhr",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 20,
+      "active_count": 5
+    },
+    {
+      "crawler_type": "job51",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 2,
+      "active_count": 2
+    },
+    {
+      "crawler_type": "jobbank104",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 2,
+      "active_count": 1
+    },
+    {
+      "crawler_type": "jobbank104",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": true,
+      "enabled_count": 2,
+      "active_count": 2
+    },
+    {
+      "crawler_type": "jobconvo",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 1,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "jobdiva",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 2,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "jobs_ch",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 11,
+      "active_count": 4
+    },
+    {
+      "crawler_type": "jobstreet",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 3,
+      "active_count": 3
+    },
+    {
+      "crawler_type": "jobvite",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 8,
+      "active_count": 2
+    },
+    {
+      "crawler_type": "jobvite",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": true,
+      "enabled_count": 1,
+      "active_count": 1
+    },
+    {
+      "crawler_type": "jobylon",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 28,
+      "active_count": 21
+    },
+    {
+      "crawler_type": "johdi",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 2,
+      "active_count": 2
+    },
+    {
+      "crawler_type": "join",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 274,
+      "active_count": 36
+    },
+    {
+      "crawler_type": "join",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": true,
+      "enabled_count": 2,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "keka",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 1,
+      "active_count": 1
+    },
+    {
+      "crawler_type": "kipt",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 1,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "lever",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 195,
+      "active_count": 147
+    },
+    {
+      "crawler_type": "linkedin",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 31,
+      "active_count": 11
+    },
+    {
+      "crawler_type": "manatal",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 5,
+      "active_count": 5
+    },
+    {
+      "crawler_type": "mokahr",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 22,
+      "active_count": 15
+    },
+    {
+      "crawler_type": "nextdata",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 45,
+      "active_count": 15
+    },
+    {
+      "crawler_type": "nextdata",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": true,
+      "enabled_count": 2,
+      "active_count": 1
+    },
+    {
+      "crawler_type": "nextdata",
+      "monitor_needs_browser": true,
+      "scraper_needs_browser": false,
+      "enabled_count": 5,
+      "active_count": 4
+    },
+    {
+      "crawler_type": "nextdata",
+      "monitor_needs_browser": true,
+      "scraper_needs_browser": true,
+      "enabled_count": 2,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "njoyn",
+      "monitor_needs_browser": true,
+      "scraper_needs_browser": true,
+      "enabled_count": 1,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "notion",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 8,
+      "active_count": 8
+    },
+    {
+      "crawler_type": "nowhiring",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 1,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "oracle_hcm",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 134,
+      "active_count": 15
+    },
+    {
+      "crawler_type": "pageup",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 3,
+      "active_count": 2
+    },
+    {
+      "crawler_type": "papa_johns",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 1,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "paycom",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 16,
+      "active_count": 11
+    },
+    {
+      "crawler_type": "paylocity",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 9,
+      "active_count": 6
+    },
+    {
+      "crawler_type": "paynet",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 2,
+      "active_count": 1
+    },
+    {
+      "crawler_type": "peoplesoft",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 1,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "personio",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 56,
+      "active_count": 42
+    },
+    {
+      "crawler_type": "personio",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": true,
+      "enabled_count": 1,
+      "active_count": 1
+    },
+    {
+      "crawler_type": "phenom",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 27,
+      "active_count": 1
+    },
+    {
+      "crawler_type": "phenom",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": true,
+      "enabled_count": 4,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "pinpoint",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 104,
+      "active_count": 93
+    },
+    {
+      "crawler_type": "practicematch",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 4,
+      "active_count": 2
+    },
+    {
+      "crawler_type": "prospective",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 1,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "recruitee",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 115,
+      "active_count": 84
+    },
+    {
+      "crawler_type": "recruiter_co_kr",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 14,
+      "active_count": 8
+    },
+    {
+      "crawler_type": "recruiterbox",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 6,
+      "active_count": 3
+    },
+    {
+      "crawler_type": "rippling",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 10,
+      "active_count": 4
+    },
+    {
+      "crawler_type": "rss",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 405,
+      "active_count": 330
+    },
+    {
+      "crawler_type": "rss",
+      "monitor_needs_browser": true,
+      "scraper_needs_browser": false,
+      "enabled_count": 2,
+      "active_count": 1
+    },
+    {
+      "crawler_type": "seamlesshiring",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 1,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "seek",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 6,
+      "active_count": 2
+    },
+    {
+      "crawler_type": "sitemap",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 269,
+      "active_count": 75
+    },
+    {
+      "crawler_type": "sitemap",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": true,
+      "enabled_count": 47,
+      "active_count": 15
+    },
+    {
+      "crawler_type": "smartrecruiters",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 129,
+      "active_count": 89
+    },
+    {
+      "crawler_type": "softgarden",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 15,
+      "active_count": 6
+    },
+    {
+      "crawler_type": "talemetry",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 2,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "talentbrew",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 8,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "talentreef",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 2,
+      "active_count": 2
+    },
+    {
+      "crawler_type": "taleo",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 4,
+      "active_count": 1
+    },
+    {
+      "crawler_type": "traffit",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 3,
+      "active_count": 3
+    },
+    {
+      "crawler_type": "turbohire",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 1,
+      "active_count": 1
+    },
+    {
+      "crawler_type": "typify",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 3,
+      "active_count": 1
+    },
+    {
+      "crawler_type": "ukg",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 16,
+      "active_count": 14
+    },
+    {
+      "crawler_type": "umantis",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 9,
+      "active_count": 4
+    },
+    {
+      "crawler_type": "unifr",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 9,
+      "active_count": 3
+    },
+    {
+      "crawler_type": "unisante",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 1,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "universia",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 1,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "wecruit",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 1,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "welcometothejungle",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 3,
+      "active_count": 1
+    },
+    {
+      "crawler_type": "woowa",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 3,
+      "active_count": 3
+    },
+    {
+      "crawler_type": "workable",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 77,
+      "active_count": 31
+    },
+    {
+      "crawler_type": "workday",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 494,
+      "active_count": 61
+    },
+    {
+      "crawler_type": "workday",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": true,
+      "enabled_count": 2,
+      "active_count": 0
+    },
+    {
+      "crawler_type": "ycombinator",
+      "monitor_needs_browser": false,
+      "scraper_needs_browser": false,
+      "enabled_count": 4,
+      "active_count": 3
+    }
+  ],
+  "ordinary_native_owners": 0,
+  "ordinary_plan_state": "staged",
+  "supported_recovery": {
+    "returncode": 0,
+    "restored_services": 9,
+    "http_health_endpoints": 7,
+    "restart_policies": "unless-stopped",
+    "ordinary_receipt_removed": true,
+    "ordinary_projection_absent": true
+  },
+  "cold_lease_index": {
+    "valid": true,
+    "maintenance_seconds": 17.904,
+    "canonical_mutations": 0,
+    "unchanged_native_sql_admission_seconds": 0.089802514
+  },
+  "b0_natural_execution": {
+    "committed": 3,
+    "render_failures": 0,
+    "executor_failures": 0,
+    "inflight": 0,
+    "dead": 0
+  },
+  "limits": [
+    "Read-only enabled SQL inventory, not migrated capability coverage.",
+    "Ordinary owner activation and canonical output not yet proven.",
+    "Whole-lane cost and Python retirement remain open."
+  ]
+}

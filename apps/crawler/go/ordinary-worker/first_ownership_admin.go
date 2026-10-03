@@ -90,7 +90,9 @@ func RunFirstOwnershipAdmin(ctx context.Context, c FirstOwnershipAdminConfig) (*
 	if c.database == "" || c.redis == "" || !planPattern.MatchString(c.digest) {
 		return nil, ErrStartup
 	}
-	ctx, cancel := context.WithTimeout(ctx, 180*time.Second)
+	// Legacy cancellation retains ten-minute SQL leases after every process
+	// stops. The protected host remains cold while they expire naturally.
+	ctx, cancel := context.WithTimeout(ctx, 14*time.Minute)
 	defer cancel()
 	config, err := pgxpool.ParseConfig(c.database)
 	if err != nil {
@@ -99,6 +101,7 @@ func RunFirstOwnershipAdmin(ctx context.Context, c FirstOwnershipAdminConfig) (*
 	config.MaxConns, config.MinConns = 2, 0
 	config.ConnConfig.ConnectTimeout = 3 * time.Second
 	config.ConnConfig.RuntimeParams["application_name"] = "jobseek:crawler:first-ordinary-owner:local"
+	config.ConnConfig.RuntimeParams["statement_timeout"] = "10000"
 	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return nil, ErrStartup
@@ -109,6 +112,9 @@ func RunFirstOwnershipAdmin(ctx context.Context, c FirstOwnershipAdminConfig) (*
 		return nil, ErrStartup
 	}
 	defer client.Close()
+	if err := waitFirstOwnershipLegacyLeases(ctx, pool); err != nil {
+		return nil, ErrStartup
+	}
 	r := c.request
 	var result *queue.FirstOwnershipResult
 	err = queue.WithHostColdSQL(ctx, pool, queue.HostColdSQLBinding{SourceRevision: r.SourceRevision, RequestSHA256: c.digest, ContainmentIntentSHA256: r.ColdHostSHA256}, func(ctx context.Context, _ *queue.HostColdSQL) error {
@@ -140,4 +146,26 @@ func RunFirstOwnershipAdmin(ctx context.Context, c FirstOwnershipAdminConfig) (*
 		return nil, ErrStartup
 	}
 	return result, nil
+}
+
+// Observe database time without clearing leases or inventing completions. The
+// existing exclusive SQL scope rechecks this predicate after acquiring all
+// barriers, so a fresh lease or nonparticipating writer still refuses cutover.
+func waitFirstOwnershipLegacyLeases(ctx context.Context, pool *pgxpool.Pool) error {
+	ctx, cancel := context.WithTimeout(ctx, 11*time.Minute)
+	defer cancel()
+	for {
+		var clear bool
+		if err := pool.QueryRow(ctx, `SELECT
+ NOT EXISTS(SELECT 1 FROM public.job_board WHERE leased_until>clock_timestamp())
+ AND NOT EXISTS(SELECT 1 FROM public.job_posting WHERE leased_until>clock_timestamp())`).Scan(&clear); err != nil {
+			return ErrStartup
+		}
+		if clear {
+			return nil
+		}
+		if !waitRuntime(ctx, time.Second) {
+			return ErrStartup
+		}
+	}
 }

@@ -181,7 +181,10 @@ effect=activate
 [[ "$operation" == activate ]] || effect=retire
 printf '{"version":"jobseek.ordinary.first-owner-request/v1","operation":"%s","source_revision":"%s","routing_epoch":%s,"plan_sha256":"%s","projection_sha1":"%s","crawler_image_ref":"%s","b0_receipt_sha256":"%s","b0_cohort":"%s","namespace":"production-b0","shard_id":"lightpanda-b0","cold_host_sha256":"%s"}\n' \
   "$effect" "$JOBSEEK_DEPLOY_REVISION" "$LIGHTPANDA_B0_ROUTING_EPOCH" "$ORDINARY_OWNERSHIP_PLAN_SHA256" "$ORDINARY_OWNERSHIP_PROJECTION_SHA1" "$CRAWLER_IMAGE_REF" "$b0_hash" "$LIGHTPANDA_B0_PRODUCER_COHORT" "$cold_hash" | publish "$REQUEST"
-bounded 200s "${native[@]}" -v "$REQUEST:/run/jobseek/ordinary-request.json:ro" \
+# Ten-minute legacy SQL leases can survive graceful process cancellation. Keep
+# the same cold host and pending identity while the native command observes
+# their natural expiry, then rechecks all exclusive SQL barriers.
+bounded 860s "${native[@]}" -v "$REQUEST:/run/jobseek/ordinary-request.json:ro" \
   -e "ORDINARY_GO_WORKER_MODE=$effect-first-ownership" \
   -e ORDINARY_FIRST_OWNERSHIP_REQUEST_FILE=/run/jobseek/ordinary-request.json \
   -e ORDINARY_OWNERSHIP_SOURCE_REVISION -e ORDINARY_OWNERSHIP_ROUTING_EPOCH \
