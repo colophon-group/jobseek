@@ -151,7 +151,11 @@ func OpenAuthority(ctx context.Context, dsn string, client *Client, epoch int64)
 	if err != nil {
 		return nil, ErrConfiguration
 	}
-	config.MinConns, config.MaxConns = 0, 1
+	// The ordinary runtime has five monitor slots. A blocked canonical row or
+	// large posting chunk must not consume unrelated slots' transaction budget
+	// while they wait for one connection. Keep a fixed, bounded pool; each
+	// transaction still independently holds the same epoch/lease/row fences.
+	config.MinConns, config.MaxConns = 0, 5
 	config.MaxConnIdleTime = time.Minute
 	config.ConnConfig.ConnectTimeout = 3 * time.Second
 	config.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeDescribeExec
