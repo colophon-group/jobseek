@@ -104,7 +104,22 @@ func TestRealFirstOwnershipExecutableActivatesAndRetires(t *testing.T) {
 	if err := f.r.Do(ctx, "ACL", "SETUSER", "default", "+save").Err(); err != nil {
 		t.Fatal(err)
 	}
+	// Production shutdown can retain SQL leases even though every writer is
+	// stopped. The installed command must wait for database-clock expiry and
+	// preserve the lease columns, rather than falsely completing or clearing it.
+	var leaseUntil time.Time
+	if err := f.pg.QueryRow(ctx, `UPDATE job_board
+ SET lease_owner='cold-legacy-fixture',leased_until=clock_timestamp()+interval '2 seconds'
+ WHERE id=$1::uuid RETURNING leased_until`, f.board).Scan(&leaseUntil); err != nil {
+		t.Fatal(err)
+	}
+	started := time.Now()
 	call(true)
+	var retainedLease time.Time
+	var leaseOwner string
+	if err := f.pg.QueryRow(ctx, "SELECT leased_until,lease_owner FROM job_board WHERE id=$1::uuid", f.board).Scan(&retainedLease, &leaseOwner); err != nil || !retainedLease.Equal(leaseUntil) || leaseOwner != "cold-legacy-fixture" || time.Since(started) < time.Second {
+		t.Fatal("installed cold command did not preserve and await legacy lease expiry", err)
+	}
 	// The installed command must retire a claimed monitor whose process never
 	// reached ACK. No worker restart or origin fetch is part of this recovery.
 	native, err := queue.OpenOwnedAuthority(ctx, f.dsn, f.client, plan.Epoch(), plan.SHA256(), plan.SourceRevision())

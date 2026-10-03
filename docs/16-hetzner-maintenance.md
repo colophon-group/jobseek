@@ -1770,6 +1770,46 @@ sudo -u codex-runner test ! -r /home/deploy/.env
 sudo -u codex-runner test ! -w /var/run/docker.sock
 ```
 
+### Native ordinary cold-admission index repair
+
+If the first ordinary cutover is contained with a `pending` or `retiring`
+receipt, PostgreSQL may time out its posting-lease observation before admitting
+the installed recovery command. On 2026-10-03 this occurred with approximately
+5.87 million postings and no index on `leased_until`. Do not clear the receipt,
+erase leases, change routing epochs or start individual writers.
+
+The metadata repair is the exact
+[`ordinary_cold_lease_index.sql`](../apps/crawler/src/migrations/sql/ordinary_cold_lease_index.sql)
+from the reviewed fix revision. It creates an index only over non-null posting
+leases. It changes no posting, board, queue, ownership plan or attempt receipt.
+Migration `0038` subsequently accepts this already prepared index; do not stamp
+the migration manually.
+
+Before repair, verify the active release/source/immutable image, exact ordinary
+and B0 receipt hashes, and that every ordinary/B0/legacy writer is stopped and
+restart-disabled. Require the ordinary SQL plan to remain staged, no active
+ordinary plan or write fence, and no Redis ordinary ownership projection.
+Prepare root-only temporary SQL and database-only environment files; verify the
+SQL bytes against the reviewed source. Never pass the full production environment
+or database credentials as command arguments.
+
+Run the index preparation in the installed `jobseek-maintenance oneoff` wrapper,
+tracking issue `3409` and the reviewed fix revision, with a 900-second budget.
+Use the active digest-pinned crawler image, a read-only mount of the SQL, and one
+PostgreSQL connection with `statement_timeout=900000` and `lock_timeout=5000`.
+Explicitly expect only `redis` and `alloy` in this metadata-only operation: the
+writer lane is already deliberately contained by the retained cutover receipt.
+This is not a restoration health claim. Recheck the staged plan before executing
+the index, remove the temporary SQL/database files afterward, and retain the
+wrapper's result and provenance.
+
+Next run the installed `ordinary-go-cutover.sh recover-pending` through its
+original source/image/receipt guards. It must pass the unchanged cold SQL
+admission, cancel the inert staged adoption, restore the complete B0/legacy stack,
+check every HTTP endpoint and restart policy, and only then remove the pending
+ordinary receipt. Save measured cold-admission time and full restoration evidence.
+Leave the partial index in place for later activation and supported retirement.
+
 ### Production Maintenance Provenance
 
 Do not run ad-hoc crawler one-offs or pause writer services with bare

@@ -44,6 +44,37 @@ func hostSQLBindingFixture() HostColdSQLBinding {
 	return HostColdSQLBinding{strings.Repeat("a", 40), strings.Repeat("b", 64), strings.Repeat("c", 64)}
 }
 
+func TestHostColdSQLPostingLeasePredicateCanUsePartialIndex(t *testing.T) {
+	p := hostSQLFixture(t)
+	body, err := os.ReadFile("../../src/migrations/sql/ordinary_cold_lease_index.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := p.Begin(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(context.Background())
+	// This proves index eligibility, not production scan time. The transaction
+	// restores the private fixture's original schema when the test finishes.
+	for range 2 {
+		if _, err := tx.Exec(context.Background(), string(body)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := tx.Exec(context.Background(), "SET LOCAL enable_seqscan=off"); err != nil {
+		t.Fatal(err)
+	}
+	var plan string
+	if err := tx.QueryRow(context.Background(), `EXPLAIN (FORMAT JSON)
+ SELECT count(*) FROM public.job_posting WHERE leased_until>clock_timestamp()`).Scan(&plan); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(plan, `"Index Name": "idx_job_posting_cold_lease"`) {
+		t.Fatal("cold lease predicate cannot use the partial posting index")
+	}
+}
+
 func hostSQLAssertReleased(t *testing.T, p *pgxpool.Pool) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
