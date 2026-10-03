@@ -46,7 +46,7 @@ export async function createWatchlistFromHandoffWithDeps(params: {
     return { error: error instanceof CompanyReferenceError ? error.code : "company_lookup_unavailable" };
   }
   if (companyIdsBySlug.size !== companySlugs.length) {
-    return { error: "invalid_companies" };
+    return { error: "unknown_company" };
   }
 
   const companyIds = [

@@ -1,5 +1,7 @@
 "use server";
 
+import { observeCompanySelection } from "@/lib/company-selection-telemetry";
+
 import { eq, and } from "drizzle-orm";
 import { db } from "@/db";
 import { followedCompany } from "@/db/schema";
@@ -22,7 +24,7 @@ export type ToggleResult = {
  * the same advisory lock before applying exactly one toggle. Concurrent
  * requests therefore preserve toggle parity without network I/O in a lock.
  */
-export async function toggleStarredCompany(
+async function toggleStarredCompanyObserved(
   companyId: string,
 ): Promise<ToggleResult> {
   const userId = await getSessionUserId();
@@ -64,4 +66,8 @@ export async function getStarredCompanyIds(): Promise<string[]> {
     .where(eq(followedCompany.userId, userId));
 
   return rows.map((r) => r.companyId);
+}
+
+export async function toggleStarredCompany(companyId: string): Promise<ToggleResult> {
+  return observeCompanySelection("star", () => toggleStarredCompanyObserved(companyId));
 }

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { observeCompanySelection } from "@/lib/company-selection-telemetry";
+
 import { readCompanyReferences } from "@/lib/services/company-reference-read";
 
 import { createHash } from "node:crypto";
@@ -261,7 +263,7 @@ class WatchlistCopySourceInvalidError extends Error {}
 
 // ── Actions ─────────────────────────────────────────────────────────
 
-export async function createWatchlist(params: {
+async function createWatchlistImpl(params: {
   title: string;
   companyIds: string[];
   filters?: WatchlistFilters;
@@ -354,7 +356,7 @@ export async function createWatchlist(params: {
   return { id: row.id, slug };
 }
 
-export async function createWatchlistFromHandoff(params: {
+async function createWatchlistImplFromHandoff(params: {
   title: string;
   companySlugs: string[];
   filters?: WatchlistFilters;
@@ -371,11 +373,11 @@ export async function createWatchlistFromHandoff(params: {
   );
   return createWatchlistFromHandoffWithDeps(normalized.value, {
     getCompanyIdsBySlugs,
-    createWatchlist,
+    createWatchlist: createWatchlistImpl,
   });
 }
 
-export async function updateWatchlist(params: {
+async function updateWatchlistImpl(params: {
   watchlistId: string;
   title?: string;
   companyIds?: string[];
@@ -833,13 +835,13 @@ async function _copyWatchlist(
 export function copyWatchlist(
   watchlistId: string,
 ): Promise<{ id: string; slug: string } | { error: string }> {
-  return _copyWatchlist(watchlistId, "owned");
+  return observeCompanySelection("copy", () => _copyWatchlist(watchlistId, "owned"));
 }
 
 export function copySharedWatchlist(
   watchlistId: string,
 ): Promise<{ id: string; slug: string } | { error: string }> {
-  return _copyWatchlist(watchlistId, "share");
+  return observeCompanySelection("copy_shared", () => _copyWatchlist(watchlistId, "share"));
 }
 
 export async function toggleWatchlistAlerts(
@@ -2765,7 +2767,7 @@ export async function getWatchlistPostingDisplayCounts(
   }
 }
 
-export async function addCompanyToWatchlist(
+async function addCompanyToWatchlistImpl(
   watchlistId: string,
   companyId: string,
 ): Promise<{ ok: boolean; error?: string }> {
@@ -2853,13 +2855,13 @@ export async function addCompanyToWatchlist(
   return { ok: true };
 }
 
-export async function clearWatchlistCompanies(
+async function clearWatchlistCompaniesImpl(
   watchlistId: string,
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated");
   const normalizedWatchlistId = normalizeWatchlistUuid(watchlistId);
-  if (!normalizedWatchlistId) return { ok: false };
+  if (!normalizedWatchlistId) return { ok: false, error: "invalid_input" };
   watchlistId = normalizedWatchlistId;
 
   const wl = await db.transaction(async (tx) => {
@@ -2876,7 +2878,7 @@ export async function clearWatchlistCompanies(
       .where(eq(watchlistCompany.watchlistId, watchlistId));
     return owned;
   });
-  if (!wl) return { ok: false };
+  if (!wl) return { ok: false, error: "not_found" };
 
   _logWatchlistAudit({
     action: "watchlist.companies.clear",
@@ -2904,15 +2906,15 @@ export async function clearWatchlistCompanies(
   return { ok: true };
 }
 
-export async function removeCompanyFromWatchlist(
+async function removeCompanyFromWatchlistImpl(
   watchlistId: string,
   companyId: string,
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   const userId = await getSessionUserId();
   if (!userId) throw new Error("Not authenticated");
   const normalizedWatchlistId = normalizeWatchlistUuid(watchlistId);
   const normalizedCompanyId = normalizeWatchlistUuid(companyId);
-  if (!normalizedWatchlistId || !normalizedCompanyId) return { ok: false };
+  if (!normalizedWatchlistId || !normalizedCompanyId) return { ok: false, error: "invalid_input" };
   watchlistId = normalizedWatchlistId;
   companyId = normalizedCompanyId;
 
@@ -2935,7 +2937,7 @@ export async function removeCompanyFromWatchlist(
       );
     return owned;
   });
-  if (!wl) return { ok: false };
+  if (!wl) return { ok: false, error: "not_found" };
 
   _logWatchlistAudit({
     action: "watchlist.company.remove",
@@ -3173,4 +3175,28 @@ async function _getOwnerInfo(
   const row = (rows as unknown as { name: string; username: string | null; display_username: string | null }[])[0];
   if (!row) return null;
   return { name: row.name, username: row.username, displayUsername: row.display_username };
+}
+
+export async function createWatchlist(...args: Parameters<typeof createWatchlistImpl>): ReturnType<typeof createWatchlistImpl> {
+  return observeCompanySelection("create", () => createWatchlistImpl(...args));
+}
+
+export async function createWatchlistFromHandoff(...args: Parameters<typeof createWatchlistImplFromHandoff>): ReturnType<typeof createWatchlistImplFromHandoff> {
+  return observeCompanySelection("handoff", () => createWatchlistImplFromHandoff(...args));
+}
+
+export async function updateWatchlist(...args: Parameters<typeof updateWatchlistImpl>): ReturnType<typeof updateWatchlistImpl> {
+  return observeCompanySelection("update", () => updateWatchlistImpl(...args));
+}
+
+export async function addCompanyToWatchlist(...args: Parameters<typeof addCompanyToWatchlistImpl>): ReturnType<typeof addCompanyToWatchlistImpl> {
+  return observeCompanySelection("add", () => addCompanyToWatchlistImpl(...args));
+}
+
+export async function clearWatchlistCompanies(...args: Parameters<typeof clearWatchlistCompaniesImpl>): ReturnType<typeof clearWatchlistCompaniesImpl> {
+  return observeCompanySelection("clear", () => clearWatchlistCompaniesImpl(...args));
+}
+
+export async function removeCompanyFromWatchlist(...args: Parameters<typeof removeCompanyFromWatchlistImpl>): ReturnType<typeof removeCompanyFromWatchlistImpl> {
+  return observeCompanySelection("remove", () => removeCompanyFromWatchlistImpl(...args));
 }

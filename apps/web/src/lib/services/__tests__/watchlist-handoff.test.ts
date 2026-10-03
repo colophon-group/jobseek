@@ -55,7 +55,7 @@ describe("createWatchlistFromHandoff", () => {
     await expect(createWatchlistFromHandoffWithDeps({
       title: "Roles",
       companySlugs: ["stripe", "missing"],
-    }, mocks)).resolves.toEqual({ error: "invalid_companies" });
+    }, mocks)).resolves.toEqual({ error: "unknown_company" });
     expect(mocks.createWatchlist).not.toHaveBeenCalled();
   });
 

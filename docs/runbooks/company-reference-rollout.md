@@ -78,6 +78,16 @@ reference edit/removal works without search. Never mutate the reporter's watchli
 as a canary. Compare persisted membership UUID/count digests before/after promotion.
 
 Observe classified first-use/lookup/foreign-key failures without personal metadata.
+Selection entry points emit `company_selection_mutation` with only bounded
+`operation` and `outcome` fields, after the service resolves or rejects. Count
+these events by operation/outcome through the established production log surface;
+do not export raw request, user, watchlist or company payloads. Handoff delegates
+to the unobserved create implementation so one handoff does not also count as a
+separate create. Outcomes distinguish lookup miss/unavailability, identity
+conflict, authorization/nonexistence, capacity, malformed input, foreign-key
+failure and other database failure. A logging failure cannot alter the mutation
+result. Capture this aggregate evidence and reference coverage at 24 hours and
+7 days before closing rollout observation.
 A successful page read or unit test does not establish this write contract. Re-run
 read-only aggregate drift checks after application deployment and catalogue
 publication changes:

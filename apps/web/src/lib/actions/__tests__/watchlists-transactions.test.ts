@@ -390,7 +390,7 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
     });
 
     expect(mocks.snapshot().watchlists[0]?.shareEnabled).toBe(true);
-    expect(audit).toHaveBeenCalledTimes(1);
+    expect(audit.mock.calls.filter(([line]) => JSON.parse(line as string).event === "watchlist.audit")).toHaveLength(1);
     audit.mockRestore();
   });
 
@@ -449,7 +449,7 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
         companies: [{ watchlistId: "wl-new", companyId: COMPANY_ID }],
       });
       expect(mocks.calls).toEqual({ transactions: 1, rollbacks: 0 });
-      expect(audit).toHaveBeenCalledTimes(1);
+      expect(audit.mock.calls.filter(([line]) => JSON.parse(line as string).event === "watchlist.audit")).toHaveLength(1);
       expect(mocks.afterFn).not.toHaveBeenCalled();
     } finally {
       audit.mockRestore();
@@ -472,7 +472,7 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
         companies: [{ watchlistId: "wl-new", companyId: COMPANY_ID }],
       });
       expect(mocks.calls).toEqual({ transactions: 2, rollbacks: 1 });
-      expect(audit).toHaveBeenCalledTimes(1);
+      expect(audit.mock.calls.filter(([line]) => JSON.parse(line as string).event === "watchlist.audit")).toHaveLength(1);
       expect(mocks.afterFn).not.toHaveBeenCalled();
     } finally {
       audit.mockRestore();
@@ -491,7 +491,7 @@ describe("#3114 — watchlist multi-table writes are atomic", () => {
       expect(mocks.snapshot()).toEqual({ watchlists: [], companies: [] });
       expect(mocks.calls).toEqual({ transactions: 0, rollbacks: 0 });
       expect(mocks.afterFn).not.toHaveBeenCalled();
-      expect(audit).not.toHaveBeenCalled();
+      expect(audit.mock.calls.filter(([line]) => JSON.parse(line as string).event === "watchlist.audit")).toHaveLength(0);
     } finally {
       audit.mockRestore();
     }

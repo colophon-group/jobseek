@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import ts from "typescript";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -283,8 +284,9 @@ function spyAuditLog() {
 function expectSingleAuditPayload(
   spy: ReturnType<typeof spyAuditLog>,
 ): Record<string, unknown> {
-  expect(spy).toHaveBeenCalledTimes(1);
-  const [line] = spy.mock.calls[0];
+  const entries = spy.mock.calls.filter(([line]) => JSON.parse(line as string).event === "watchlist.audit");
+  expect(entries).toHaveLength(1);
+  const [line] = entries[0];
   expect(typeof line).toBe("string");
   return JSON.parse(line as string) as Record<string, unknown>;
 }
@@ -756,66 +758,28 @@ const EXPECTED_AUDITING_MUTATORS = new Set<string>([
   "removeCompanyFromWatchlist",
 ]);
 
-/**
- * Enumerate every exported async function in the source file.
- *
- * Regex: /^[ \t]*export\s+(?:default\s+)?async\s+function\s+(\w+)\s*\(/gm
- *   - matches `export async function name(` and `export default async function name(`
- *   - the leading [ \t]* + the `m` flag confine matches to start-of-line so
- *     a comment containing the literal phrase can't be picked up
- *
- * Cases this regex misses (documented honest limitations):
- *   - `export const name = async () => {...}` and `export const name = async function() {...}`
- *     → not currently used in watchlists.ts; if introduced, this guard would
- *     silently skip them. Add a parallel arrow-form regex if/when needed.
- *   - `export { name }` re-exports of an internally-defined async function
- *     → also not used here.
- *   - JSDoc / multi-line-string occurrences of the pattern. The leading-
- *     whitespace anchor avoids the comment block case in practice.
- */
-function enumerateExportedAsyncFunctions(
-  source: string,
-): { name: string; start: number }[] {
-  const exportRe = /^[ \t]*export\s+(?:default\s+)?async\s+function\s+(\w+)\s*\(/gm;
-  const matches: { name: string; start: number }[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = exportRe.exec(source)) !== null) {
-    matches.push({ name: m[1], start: m.index });
-  }
-  return matches;
+/** Parse actual declarations so private telemetry delegates cannot leak into a sibling body. */
+function declarations(source: string) {
+  const file = ts.createSourceFile("watchlists.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  return file.statements.filter(ts.isFunctionDeclaration);
 }
 
-/**
- * Returns the slice of `source` corresponding to the i-th function
- * body. We can't reliably brace-balance without a real parser, so we
- * approximate the body as everything up to the next `export ...`
- * boundary (or the next non-exported top-level `async function` /
- * `function`, to avoid pulling private helpers into the previous
- * function's slice). For our checks (substring matches against
- * mutation patterns + `_invalidateWatchlistCaches(`) the
- * approximation is sound: any token introduced inside the next
- * function still sits past the export anchor we slice on.
- */
-function functionBody(
-  source: string,
-  matches: { name: string; start: number }[],
-  i: number,
-): string {
-  const start = matches[i].start;
-  // End at either the next exported async function OR the next
-  // top-level (column-0 or whitespace-prefixed) `async function _xxx`
-  // private helper definition. These are anchored similarly so we don't
-  // bleed into the next sibling.
-  const tail = source.slice(start);
-  const nextExport = tail.search(/\n[ \t]*export\s+(?:default\s+)?async\s+function\s+\w+\s*\(/);
-  // Also stop at private helpers `async function _xxx(` so the LAST
-  // export's body doesn't include the helper definitions at the bottom
-  // of the file (which would let `_invalidateWatchlistCaches` definition
-  // leak into the slice).
-  const nextPrivate = tail.search(/\nasync\s+function\s+_\w+\s*\(/);
-  const candidates = [nextExport, nextPrivate].filter((n) => n >= 0);
-  const offset = candidates.length > 0 ? Math.min(...candidates) : tail.length;
-  return tail.slice(0, offset);
+function enumerateExportedAsyncFunctions(source: string): { name: string; start: number }[] {
+  return declarations(source).filter(fn => fn.name &&
+    fn.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.ExportKeyword) &&
+    fn.modifiers?.some(modifier => modifier.kind === ts.SyntaxKind.AsyncKeyword))
+    .map(fn => ({ name: fn.name!.text, start: fn.getStart() }));
+}
+
+function functionBody(source: string, matches: { name: string; start: number }[], i: number): string {
+  const functions = declarations(source);
+  const fn = functions.find(candidate => candidate.name?.text === matches[i].name)!;
+  const body = fn.body?.getText() ?? "";
+  const delegate = functions.find(candidate => candidate.name?.text === `${matches[i].name}Impl`);
+  // A wrapper must visibly call its matching private implementation before
+  // that implementation contributes to its audit/invalidation classification.
+  return delegate?.body && body.includes(`${delegate.name!.text}(...args)`)
+    ? `${body}\n${delegate.body.getText()}` : body;
 }
 
 /**
