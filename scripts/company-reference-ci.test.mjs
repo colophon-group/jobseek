@@ -79,3 +79,14 @@ test("promotion success requires the same lifecycle through the exact public ali
   assert.match(step, /scripts\/verify-company-reference-staged\.ts/);
   assert.doesNotMatch(step, /continue-on-error|VERCEL_AUTOMATION_BYPASS|CANARY_ENABLED|CANARY_REQUIRED/);
 });
+
+test('remote lifecycle boundaries let the shared IP burst budget settle without retrying actions', () => {
+  const workflow = readFileSync('.github/workflows/deploy-web-production.yml', 'utf8');
+  const stagedPause = workflow.indexOf('- name: Let the public-read burst window settle before staged lifecycle');
+  const staged = workflow.indexOf('- name: Prove first-use company selection before promotion');
+  const publicPause = workflow.indexOf('- name: Let the public-read burst window settle before public lifecycle');
+  const publicCanary = workflow.indexOf('- name: Prove the promoted company lifecycle through the public alias');
+  assert.ok(stagedPause >= 0 && stagedPause < staged && publicPause > staged && publicPause < publicCanary);
+  assert.match(workflow.slice(stagedPause, staged), /if: steps\.paths\.outputs\.deploy == 'true'[\s\S]*run: sleep 65/);
+  assert.match(workflow.slice(publicPause, publicCanary), /if: steps\.promote\.outputs\.promoted == 'true'[\s\S]*run: sleep 65/);
+});

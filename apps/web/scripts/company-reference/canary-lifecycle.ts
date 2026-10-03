@@ -1,5 +1,6 @@
 import type { BrowserContext, Page } from "playwright";
 import type { Sql } from "postgres";
+import { navigateCanary, waitForCanaryOwnerShell } from "./canary-navigation";
 
 export type CanaryLifecycleState = {
   titles: string[];
@@ -38,7 +39,7 @@ export async function restoreCanaryStar(page: Page, sql: Sql, userId: string, st
   const current = await sql`SELECT 1 FROM followed_company WHERE user_id=${userId} AND company_id=${state.company.id}`;
   check(current.length <= 1, "CANARY_STAR_STATE_AMBIGUOUS");
   if (Boolean(current.length) !== state.initialStarred) {
-    await page.goto(`/en/company/${state.company.slug}`);
+    await navigateCanary(page, `/en/company/${state.company.slug}`);
     await page.getByRole("button", { name: "Account menu", exact: true }).waitFor();
     await page.getByRole("button", { name: current.length ? "Starred" : "Star", exact: true }).click();
     await until(async () => (await sql`SELECT 1 FROM followed_company WHERE user_id=${userId} AND company_id=${state.company.id}`).length === Number(state.initialStarred), "CANARY_STAR_RESTORE_FAILED");
@@ -70,7 +71,7 @@ export async function exerciseCanaryLifecycle(input: {
   let shared: Page | undefined;
   try {
     shared = await anonymous.newPage(); shared.setDefaultTimeout(30_000);
-    await shared.goto(`/en/watchlists/${watchlistId}`);
+    await navigateCanary(shared, `/en/watchlists/${watchlistId}`);
     await shared.getByRole("link", { name: state.company.name, exact: true }).waitFor();
     // This header appears only after the real session bootstrap effect settles.
     await shared.getByRole("link", { name: "Log in", exact: true }).waitFor();
@@ -79,7 +80,7 @@ export async function exerciseCanaryLifecycle(input: {
     await shared.waitForURL(url => /\/en\/watchlists\/[0-9a-f-]{36}$/.test(url.pathname) && !url.pathname.endsWith(watchlistId));
     // Browser-backed clone handoff, followed by a real dedicated-account sign-in.
     input.onPhase?.("canary_clone_sign_in");
-    await shared.goto(`/en/sign-in?next=${encodeURIComponent("/en/watchlists")}`);
+    await navigateCanary(shared, `/en/sign-in?next=${encodeURIComponent("/en/watchlists")}`);
     await signInCanaryAccount(shared, email, password, input.onPhase);
     await shared.waitForURL(url => url.pathname.startsWith("/en/watchlists"));
     const session = await anonymous.request.get("/api/auth/get-session", { maxRedirects: 0 });
@@ -100,9 +101,14 @@ export async function exerciseCanaryLifecycle(input: {
       FROM watchlist w JOIN watchlist_company wc ON wc.watchlist_id=w.id WHERE w.id=${cloneId} AND w.user_id=${userId} AND w.title=${targetTitle}`;
     check(copied.length === 1 && copied[0].company_id === state.company.id && !copied[0].alerts_enabled && !copied[0].share_enabled && copied[0].any_company !== "true", "CANARY_CLONE_SELECTION_MISMATCH");
     await shared.waitForURL(url => url.pathname === `/en/watchlists/${cloneId}`);
+    input.onPhase?.("canary_clone_cleanup_owner_shell");
+    await waitForCanaryOwnerShell(shared, targetTitle);
     await shared.getByRole("button", { name: `Remove ${state.company.name}`, exact: true }).waitFor();
+    input.onPhase?.("canary_clone_cleanup_trigger");
     await shared.getByRole("button", { name: "Delete", exact: true }).click();
+    input.onPhase?.("canary_clone_cleanup_confirmation");
     await shared.getByRole("alertdialog").getByRole("button", { name: "Delete", exact: true }).click();
+    input.onPhase?.("canary_clone_cleanup_persistence");
     await shared.waitForURL(/\/en\/watchlists$/);
     check((await sql`SELECT 1 FROM watchlist WHERE id=${cloneId}`).length === 0, "CANARY_CLONE_CLEANUP_FAILED");
   } finally {
@@ -117,7 +123,7 @@ export async function exerciseCanaryLifecycle(input: {
   check(initialStar.length <= 1, "CANARY_STAR_STATE_AMBIGUOUS"); state.initialStarred = Boolean(initialStar.length);
   const [policy] = await sql`SELECT notifications_paused FROM user_preferences WHERE user_id=${userId}`;
   check(policy?.notifications_paused === true, "CANARY_NOTIFICATIONS_NOT_PAUSED");
-  await page.goto(`/en/company/${state.company.slug}`);
+  await navigateCanary(page, `/en/company/${state.company.slug}`);
   await page.getByRole("button", { name: "Account menu", exact: true }).waitFor();
   state.starTouched = true;
   await page.getByRole("button", { name: state.initialStarred ? "Starred" : "Star", exact: true }).click();
@@ -125,10 +131,14 @@ export async function exerciseCanaryLifecycle(input: {
   await restoreCanaryStar(page, sql, userId, state);
 
   input.onPhase?.("canary_removal");
-  await page.goto(`/en/watchlists/${watchlistId}`);
+  await navigateCanary(page, `/en/watchlists/${watchlistId}`);
   await page.getByRole("button", { name: `Remove ${state.company.name}`, exact: true }).click();
   await until(async () => (await sql`SELECT 1 FROM watchlist_company WHERE watchlist_id=${watchlistId}`).length === 0, "CANARY_REMOVAL_NOT_COMMITTED");
-  await page.reload();
+  input.onPhase?.("canary_removal_reload_navigation");
+  await navigateCanary(page, page.url());
+  input.onPhase?.("canary_removal_reload_owner_shell");
+  await waitForCanaryOwnerShell(page, targetTitle);
+  input.onPhase?.("canary_removal_reload_absence");
   check((await page.getByRole("button", { name: `Remove ${state.company.name}`, exact: true }).count()) === 0, "CANARY_REMOVAL_RELOAD_FAILED");
   check((await sql`SELECT 1 FROM company_reference WHERE id=${state.company.id}`).length === 1, "CANARY_REMOVAL_DELETED_REFERENCE");
   return { edit: true, share: true, anonymousRead: true, cloneHandoff: true, starRestored: true, removal: true };

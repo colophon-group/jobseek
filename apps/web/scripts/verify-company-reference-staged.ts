@@ -7,6 +7,7 @@ import { chromium, type Page } from "playwright";
 import { exerciseCanaryLifecycle, restoreCanaryStar, type CanaryLifecycleState } from "./company-reference/canary-lifecycle";
 import { openCanaryAccess, resolveCanaryTarget, reattestPublicCanaryIdentity, validateCanaryDeploymentIdentity, type CanaryDeploymentIdentity } from "./company-reference/canary-target";
 import { selectCanaryCompany, canaryFailureKind } from "./company-reference/canary-picker";
+import { navigateCanary, waitForCanaryOwnerShell } from "./company-reference/canary-navigation";
 import { logExternalError } from "../src/lib/safe-external-error";
 
 let contract = "company_reference_staged_canary";
@@ -99,7 +100,9 @@ async function main() {
 
     phase = "create_scoped_watchlist";
     page = await context.newPage(); page.setDefaultTimeout(30_000);
-    await page.goto(`/en/watchlists?title=${encodeURIComponent(title)}`);
+    // The title query starts a create after hydration, so this navigation must not be replayed.
+    const creationNavigation = await page.goto(`/en/watchlists?title=${encodeURIComponent(title)}`);
+    check(creationNavigation?.status() === 200, "CANARY_CREATE_NAVIGATION_FAILED");
     await page.waitForURL(/\/en\/watchlists\/[0-9a-f-]{36}/);
     watchlistId = page.url().split("/").pop()!;
     const owned = await sql`SELECT user_id, title, alerts_enabled FROM watchlist WHERE id=${watchlistId}`;
@@ -124,7 +127,7 @@ async function main() {
     const legacy = await sql`SELECT 1 FROM company WHERE id=${doc.id}`;
     check(legacy.length === (writeMode === "bridge" ? 1 : 0), "PRODUCTION_WRITE_MODE_CONTRACT_MISMATCH");
     phase = "persisted_reload";
-    await page.reload(); await page.getByRole("button", { name: `Remove ${doc.name}`, exact: true }).waitFor();
+    await navigateCanary(page, page.url()); await page.getByRole("button", { name: `Remove ${doc.name}`, exact: true }).waitFor();
     const dangling = await sql`SELECT 1 FROM watchlist_company wc LEFT JOIN company_reference r ON r.id=wc.company_id WHERE wc.watchlist_id=${watchlistId} AND r.id IS NULL`;
     check(dangling.length === 0, "CANARY_SELECTION_REFERENCE_MISSING");
     phase = "complete_authenticated_lifecycle";
@@ -153,13 +156,22 @@ async function main() {
     } catch (error) { if (!failure) { failure = error; failurePhase = "cleanup_recovery"; } }
     for (const cleanupId of cleanupIds) {
       try {
-        phase = "scoped_cleanup";
+        phase = "cleanup_ownership_preflight";
         const owned = await sql`SELECT user_id, title FROM watchlist WHERE id=${cleanupId}`;
         check(owned.length === 1 && owned[0].user_id === userId && titles.includes(owned[0].title), "CLEANUP_OWNERSHIP_MISMATCH");
         page ??= await context.newPage();
-        await page.goto(`/en/watchlists/${cleanupId}`);
+        phase = "cleanup_navigation";
+        await navigateCanary(page, `/en/watchlists/${cleanupId}`);
+        phase = "cleanup_request_session";
+        const cleanupSession = await context.request.get("/api/auth/get-session", { maxRedirects: 0 });
+        check(cleanupSession.status() === 200 && (await cleanupSession.json()).user?.id === userId, "CLEANUP_SESSION_IDENTITY_MISMATCH");
+        phase = "cleanup_owner_shell";
+        await waitForCanaryOwnerShell(page, owned[0].title);
+        phase = "cleanup_delete_trigger";
         await page.getByRole("button", { name: "Delete", exact: true }).click();
+        phase = "cleanup_delete_confirmation";
         await page.getByRole("alertdialog").getByRole("button", { name: "Delete", exact: true }).click();
+        phase = "cleanup_delete_persistence";
         await page.waitForURL(/\/en\/watchlists$/);
         check((await sql`SELECT 1 FROM watchlist WHERE id=${cleanupId}`).length === 0, "CANARY_CLEANUP_FAILED");
         cleanupProof.deleted++;

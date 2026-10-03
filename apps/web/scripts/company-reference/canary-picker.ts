@@ -32,6 +32,10 @@ export async function selectCanaryCompany(page: Page, name: string, onPhase: (ph
 export function canaryFailureKind(error: unknown): string {
   try {
     if (typeof error !== "object" || error === null) return "unknown_failure";
+    const code = (error as { code?: unknown }).code;
+    if (code === "CANARY_NAVIGATION_RATE_LIMIT_EXHAUSTED") return "navigation_rate_limited";
+    if (code === "CANARY_NAVIGATION_RETRY_AFTER_INVALID" || code === "CANARY_NAVIGATION_RETRY_AFTER_EXCESSIVE") return "navigation_retry_invalid";
+    if (code === "CANARY_NAVIGATION_HTTP_FAILED") return "navigation_http_failed";
     const name = (error as { name?: unknown }).name;
     if (name === "TimeoutError") return "browser_timeout";
     if (name === "PostgresError") return "database_error";

@@ -99,6 +99,15 @@ test("actual credentialed CLI command failure never retains command, stdout or s
 
 
 describe("canary failure diagnostics", () => {
+  test.each([
+    ["CANARY_NAVIGATION_RATE_LIMIT_EXHAUSTED", "navigation_rate_limited"],
+    ["CANARY_NAVIGATION_RETRY_AFTER_INVALID", "navigation_retry_invalid"],
+    ["CANARY_NAVIGATION_RETRY_AFTER_EXCESSIVE", "navigation_retry_invalid"],
+    ["CANARY_NAVIGATION_HTTP_FAILED", "navigation_http_failed"],
+    ["private-customer-code", "operation_error"],
+  ])("bounds navigation code %s", (code, expected) => {
+    expect(canaryFailureKind({ code, message: "private", cause: "private" })).toBe(expected);
+  });
   test.each([['TimeoutError', 'browser_timeout'], ['PostgresError', 'database_error'], ['TypeError', 'type_error'], ['private-user-string', 'operation_error']])("bounds name %s", (name, expected) => {
     expect(canaryFailureKind({name, message:'private locator/customer/password', stack:'private'})).toBe(expected);
   });

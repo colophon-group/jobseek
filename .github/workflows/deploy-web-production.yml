@@ -212,6 +212,12 @@ jobs:
         if: steps.paths.outputs.deploy == 'true'
         run: pnpm --filter @jobseek/web exec playwright install --with-deps chromium
 
+      # Cache smoke and both canaries share the runner's 30/minute IP budget.
+      # Let earlier reads expire rather than replaying any application mutation.
+      - name: Let the public-read burst window settle before staged lifecycle
+        if: steps.paths.outputs.deploy == 'true'
+        run: sleep 65
+
       - name: Prove first-use company selection before promotion
         if: steps.paths.outputs.deploy == 'true'
         env:
@@ -292,6 +298,10 @@ jobs:
             exit 1
           fi
           echo "Production remains current for web inputs at main $current_main"
+
+      - name: Let the public-read burst window settle before public lifecycle
+        if: steps.promote.outputs.promoted == 'true'
+        run: sleep 65
 
       - name: Prove the promoted company lifecycle through the public alias
         if: steps.promote.outputs.promoted == 'true'
