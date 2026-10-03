@@ -26,6 +26,30 @@ or served history at the current epoch still refuses adoption. Complete the
 existing supported old-owner/B0 retirement and fresh B0 activation before
 using this change to expand the cohort.
 
+## Greenhouse family continuation
+
+[PR #10238](https://github.com/colophon-group/jobseek/pull/10238) and
+[PR #10240](https://github.com/colophon-group/jobseek/pull/10240) are merged with
+Required CI and the actual Crawler Deploy Gate green at their final heads.
+They deliver natural lease waiting, the partial posting-lease index and fresh
+adoption after an older owner has retired. Their release builds completed;
+promotion refused while the v0.13.905 ownership receipts remain active. The
+healthy existing lane continues serving until the larger cohort's approved
+immutable image is ready and supported retirement clears those receipts.
+
+A read-only capture at 14:55 UTC contains all 2,570 enabled Greenhouse canonical
+configurations and their cached projections. The original native factory
+admitted 2,520; the remaining 50 need existing Python token precedence and URL
+inference, including custom board URLs with explicit tokens and an ignored
+legacy `board_token` field. The expanded factory admits all 2,570 with zero
+unsupported canonical/cache profiles and zero binding mismatches. No production
+configuration was changed. Frozen results from the actual Python token function
+and request construction cover all 50 variants plus 29 boundary cases. Native
+request checks enforce the exact fixed Greenhouse API endpoint; private
+PostgreSQL/Redis checks exercise staging, canonical/cache binding and owned claims.
+These are admission and request-contract results; production ownership is still
+four boards. Fresh supported staging/adoption must revalidate current state.
+
 ## Earlier verified deployment and recovery
 
 [PR #10229](https://github.com/colophon-group/jobseek/pull/10229) delivered the
@@ -43,7 +67,8 @@ B0 is active at epoch 149 with cohort `cdom`. First ordinary adoption selected
 four enabled canonical Greenhouse token/skip boards: 1-800 Contacts, Brex,
 Duolingo and Figma. Admission failed before ownership publication. PostgreSQL
 retained a staged plan; no ordinary SQL owner, active fence or Redis ownership
-projection was established. Ordinary native production ownership remains zero.
+projection was established in that initial attempt. The later supported retry
+established the four owners described above.
 
 Two concrete admission problems were observed: legacy SQL leases survive
 process cancellation for up to ten minutes, and the unchanged posting-lease
@@ -64,8 +89,8 @@ restart policy passed. B0 recorded three naturally scheduled commits at epoch
 
 These are bounded component and recovery observations. They do not establish
 ordinary canonical output, fleet coverage, whole-lane savings or final Python
-retirement. PR #10238 must pass Required CI and the actual Crawler Deploy Gate
-at its final head before merge; read their current state.
+retirement. Both corrective PRs subsequently passed their required checks and
+merged; their images have not replaced the currently serving v0.13.905 lane.
 
 The [sanitized production evidence](evidence/go-native-ordinary-continuation-2026-10-03.json)
 includes a read-only SQL inventory at 14:30 UTC: 7,885 enabled boards, of which
@@ -76,12 +101,11 @@ obligations; they do not claim migrated native ownership.
 
 ## Delivery order
 
-1. Finish PR #10238's required checks. When the existing reconciliation job
-   releases the host mutation lock, stage the four-board cohort against current
-   canonical configuration and perform supported cold adoption. Verify actual
-   natural native monitor commits, descriptions/enrichment, next deadlines,
-   queue conservation, publisher policy and supported retirement before
-   extending ownership.
+1. Publish and deploy the expanded Greenhouse factory after its required checks.
+   Use supported old-owner retirement and B0 rollback, immutable deployment,
+   fresh B0 activation and current canonical/cache staging to adopt the enabled
+   Greenhouse family. Verify natural native commits, new descriptions/enrichment,
+   deadlines, queue conservation, publisher policy and supported retirement.
 2. Expand ordinary ownership through the existing worker and queue contracts.
    Start with remaining enabled Greenhouse profiles, then reuse the existing
    Go Ashby and Lever parsers. Add only the profile-specific metadata, detail

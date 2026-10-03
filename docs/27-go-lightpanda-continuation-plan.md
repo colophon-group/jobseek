@@ -13,17 +13,21 @@ freshness and queue conservation on real jobs, and compare whole-service resourc
 and cost. Add a fixture or abstraction only for a specific changed production
 contract or observed failure. Plans and synthetic evidence are supporting work.
 
-The immediate deliverable is the first `greenhouse.token-skip/v1` owner on a
-smaller branch based on current main, reusing the existing worker, queue fences
-and persistence code. Its first adoption keeps the proven B0 incarnation intact
-under the shared mutation lock and a complete cold writer window. Deliver the
-executable cutover, opt-in Compose service, native healthcheck and supported
-retirement before expanding profile coverage. Preserve the larger draft branches
-and unfinished recovery fixture; they are not prerequisites for first adoption.
-The full delivery goal remains active until production migration and retirement
-are complete.
+The first four `greenhouse.token-skip/v1` owners are active in production at
+epoch 149 on v0.13.905. Their natural executions committed 513 posting touches,
+and canonical next deadlines match Redis. The immediate deliverable is the
+remaining Greenhouse family: the native profile factory now admits all 2,570
+separately captured canonical and cached configurations in local verification.
+Deploy the approved implementation, retire the old owner through its supported
+driver, establish a fresh B0 epoch and adopt the larger cohort. Fresh staging
+must recheck current configurations. Keep every enabled board scheduled.
+See the [latest checkpoint](30-native-ordinary-worker-checkpoint-2026-10-03.md).
+Then migrate remaining provider/browser profiles and mandatory Python consumers,
+prove full-service behavior and resources, exercise reversal and observe its
+rollback window before removing Python and legacy browser assets. The full
+delivery goal remains active until production migration and retirement finish.
 
-## Current delivery and next work — 2026-10-03
+## Earlier registry delivery — 2026-10-03
 
 Crawler v0.13.903, source `b026cc597486b4d39831b93a85e06bcda1d9f04c`,
 is promoted in production. [PR #10220](https://github.com/colophon-group/jobseek/pull/10220)
