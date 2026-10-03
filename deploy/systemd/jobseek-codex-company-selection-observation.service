@@ -1,0 +1,37 @@
+[Unit]
+Description=Dispatch and verify Jobseek aggregate company selection observation
+Documentation=file:///srv/jobseek-codex/repo/docs/runbooks/company-selection-observation.md
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/usr/local/lib/jobseek-codex/codex-company-selection-observation-dispatch.py
+
+[Service]
+Type=oneshot
+User=codex-runner
+Group=codex-runner
+Environment=HOME=/home/codex-runner
+UnsetEnvironment=GH_TOKEN GITHUB_TOKEN VERCEL_TOKEN LOCAL_DATABASE_URL DATABASE_URL REDIS_URL HF_TOKEN
+WorkingDirectory=/srv/jobseek-codex/state/company-selection-observation
+ExecCondition=/bin/sh -c '! /usr/bin/id -nG codex-runner | /usr/bin/tr " " "\\n" | /usr/bin/grep -qx docker'
+ExecStart=/usr/bin/python3 -I /usr/local/lib/jobseek-codex/codex-company-selection-observation-dispatch.py
+TimeoutStartSec=3min
+UMask=0077
+Nice=10
+MemoryMax=128M
+TasksMax=32
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectClock=true
+ProtectControlGroups=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/srv/jobseek-codex/state/company-selection-observation
+InaccessiblePaths=-/home/deploy -/etc/jobseek-codex -/home/codex-runner/.codex -/home/codex-runner/.vercel -/home/codex-runner/.cache/huggingface -/srv/jobseek-codex/repo -/srv/jobseek-codex/worktrees -/srv/jobseek-codex/traces -/srv/jobseek-codex/inputs -/run/docker.sock -/var/run/docker.sock -/run/containerd/containerd.sock

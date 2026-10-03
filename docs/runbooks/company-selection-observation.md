@@ -112,6 +112,54 @@ expired Vercel logs. Restarting a full acceptance observation requires an explic
 owner decision and a recorded new period. No logging drain, paid subscription,
 provider configuration, or notification activation is part of this workflow.
 
+## Independent durable dispatch
+
+On 2026-10-03, seven eligible GitHub cron slots produced no observation run.
+Other repository 15-minute schedules also showed multi-hour event gaps. The
+trigger-service cause was unknown; owner manual runs preserved coverage. GitHub
+cron remains a secondary trigger, with a separate explicitly activated Hetzner
+timer under #10243 for reliable delivery independent of cron.
+
+`jobseek-codex-company-selection-observation.timer` runs at minutes 8, 23, 38
+and 53 UTC, after the collector's five-minute ingestion lag. Its root-owned
+Python dispatcher runs as the existing nonprivileged `codex-runner`, using only
+existing GitHub CLI authentication. It cannot access provider/database env
+files, the production checkout, Codex auth, or Docker sockets. No model runs.
+Installation leaves an inactive timer inactive; targeted protected opt-in is
+described in [runner deployment](../18-codex-automation-deployment.md#company-selection-observation-activation).
+
+Each invocation validates the fixed repository, owner auth, active fixed
+workflow, default main, current source and unchanged declared observation start.
+It retrieves only that workflow's recent main schedule/owner-dispatched runs and
+bounded aggregate artifacts. ZIP digest, payload digest, run/source/attempt/start,
+checkpoint types/bounds and counts are checked in memory; no archive paths or
+signed URLs are persisted. A covered newest closed window suppresses duplicate
+dispatch. Recent in-flight runs wait within a bound; a stale queue or ambiguous
+POST result never reports healthy. Local slot intent prevents repeated uncertain
+dispatches, but remote artifact coverage remains authoritative. Read-only
+`--check --expected-source <SHA>` requires current metadata and covered history
+before targeted activation; it never dispatches or changes the period.
+
+The dispatcher reports missing/partial/expired closed-window counts, pending
+delivery, and positive telemetry visibility. It checks at most the retained
+seven-day horizon and states when that is not the whole declared period. These
+are collection-health fields, not rollout acceptance or universal zero claims.
+A quiet window without positive telemetry does not mean transport failure and
+does not justify duplicate dispatch or manufactured mutations. The collector's
+24-hour/seven-day positive-control, expiry and unknown provider-capture policy
+continues to govern acceptance. Keep independent reference drift and normal-auth
+canary evidence alongside it.
+
+The dispatcher has a 150-second overall request budget, 20-second per-command
+bounds, 90-second completion wait, 512KiB metadata/4MiB ZIP/16MiB inflation limits,
+and a private nonblocking lock separate from Codex routines. Its child environment
+contains no token overrides; raw errors/output, auth records and signed artifact
+URLs do not reach diagnostics. Failure emits a fixed reason and marks the service
+failed rather than hiding an hourly retention risk. Two actual protected host
+timer-to-collector cycles with authentic complete artifacts are required before
+manual fallback is removed. Changing auth/schedules or restarting acceptance is
+an explicit owner action, never automatic gap repair.
+
 ## Local review
 
 Run `node --test scripts/collect-company-selection-telemetry.test.mjs` and

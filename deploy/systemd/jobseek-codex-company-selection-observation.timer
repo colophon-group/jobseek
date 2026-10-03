@@ -1,0 +1,13 @@
+[Unit]
+Description=Preserve 15-minute company selection observation checkpoints
+Documentation=file:///srv/jobseek-codex/repo/docs/runbooks/company-selection-observation.md
+
+[Timer]
+# Five-minute collector ingestion lag has elapsed at each invocation.
+OnCalendar=*-*-* *:08,23,38,53:00 UTC
+AccuracySec=15s
+Persistent=true
+Unit=jobseek-codex-company-selection-observation.service
+
+[Install]
+WantedBy=timers.target

@@ -2117,11 +2117,11 @@ test("Codex deploy reserves the next runner-lock handoff", () => {
   );
   assert.match(
     deployCodexRunnerHostScript,
-    /restore_candidates=\("\$\{TIMERS\[@\]\}"\)[\s\S]*restore_candidates=\("\$\{ACTIVE_TIMERS_BEFORE_DEPLOY\[@\]\}"\)/,
+    /for timer in "\$\{TIMERS\[@\]\}"; do[\s\S]*timer.*OBSERVATION_TIMER[\s\S]*timer_in_list[\s\S]*ACTIVE_TIMERS_BEFORE_DEPLOY[\s\S]*restore_candidates\+=\("\$\{timer\}"\)[\s\S]*restore_candidates=\("\$\{ACTIVE_TIMERS_BEFORE_DEPLOY\[@\]\}"\)/,
   );
   assert.match(
     deployCodexRunnerHostScript,
-    /for timer in "\$\{restore_candidates\[@\]\}"; do[\s\S]*jobseek-codex-daily-annotations\.timer[\s\S]*LABELLER_CONTRACT_VERIFIED[\s\S]*safe_restore\+=\("\$\{timer\}"\)/,
+    /for timer in "\$\{restore_candidates\[@\]-\}"; do[\s\S]*jobseek-codex-daily-annotations\.timer[\s\S]*LABELLER_CONTRACT_VERIFIED[\s\S]*safe_restore\+=\("\$\{timer\}"\)/,
   );
   assert.match(
     deployCodexRunnerHostScript,
