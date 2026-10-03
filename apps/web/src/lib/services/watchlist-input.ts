@@ -530,7 +530,7 @@ export function normalizeWatchlistCompaniesForRead(
     const id = boundedText(item.id, COMPANY_ID_MAX_LENGTH, { allowEmpty: false, trim: true });
     const name = boundedText(item.name, 300, { allowEmpty: false, trim: true });
     const slug = boundedText(item.slug, COMPANY_SLUG_MAX_LENGTH, { allowEmpty: false, trim: true });
-    if (id !== null && UUID.test(id) && item.unavailable === true) {
+    if (id !== null && UUID.test(id) && (item.unavailable === true || name === null || slug === null || !COMPANY_SLUG.test(slug))) {
       if (!seen.has(id)) {
         seen.add(id);
         result.push({ id, name: "Company unavailable", slug: "", icon: null, unavailable: true });

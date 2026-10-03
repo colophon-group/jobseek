@@ -36,6 +36,15 @@ describe("watchlist server input normalization", () => {
     );
   });
 
+  it("preserves canonical identities with malformed display snapshots as unavailable selections", () => {
+    expect(normalizeWatchlistCompaniesForRead([
+      { id: COMPANY_ID_1, name: "Broken\u0001name", slug: "broken", icon: null },
+      { id: COMPANY_ID_2, name: "Unsafe link", slug: "../other", icon: null },
+    ])).toEqual([COMPANY_ID_1, COMPANY_ID_2].map((id) => ({
+      id, name: "Company unavailable", slug: "", icon: null, unavailable: true,
+    })));
+  });
+
   it("normalizes valid create input before persistence", () => {
     expect(normalizeCreateWatchlistInput({
       title: "  Engineering roles  ",

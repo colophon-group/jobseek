@@ -1,8 +1,8 @@
 import "server-only";
 
-import { inArray } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { db } from "@/db";
-import { companyReference } from "@/db/schema";
+import { withDbRetry } from "@/lib/db-retry";
 import { fetchCanonicalCompanyReferences } from "@/lib/services/company-references";
 import { normalizeWatchlistUuid, WATCHLIST_COMPANY_MAX } from "@/lib/services/watchlist-input";
 
@@ -22,12 +22,11 @@ export async function readCompanyReferences(ids: string[]): Promise<DisplayCompa
   const byId = new Map<string, DisplayCompanyReference>();
   for (let offset = 0; offset < orderedIds.length; offset += WATCHLIST_COMPANY_MAX) {
     const batch = orderedIds.slice(offset, offset + WATCHLIST_COMPANY_MAX);
-    const retained = await db.select({
-      id: companyReference.id,
-      name: companyReference.name,
-      slug: companyReference.slug,
-      icon: companyReference.icon,
-    }).from(companyReference).where(inArray(companyReference.id, batch));
+    const rows = await withDbRetry(() => db.execute<{ [key: string]: unknown } & DisplayCompanyReference>(sql`
+      SELECT c.id::text AS id, c.name, c.slug, c.icon
+      FROM company_reference c WHERE c.id = ANY(${`{${batch.join(",")}}`}::uuid[])
+    `), { label: "readCompanyReferences" });
+    const retained = rows as unknown as DisplayCompanyReference[];
     retained.forEach((row) => byId.set(row.id, row));
     const missing = batch.filter((id) => !byId.has(id));
     if (missing.length === 0) continue;

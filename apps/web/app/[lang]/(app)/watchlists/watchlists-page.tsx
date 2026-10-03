@@ -1,5 +1,7 @@
 "use client";
 
+import { useCompanyReferenceErrorMessage } from "@/lib/company-reference-error-message";
+
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
@@ -101,6 +103,12 @@ export function WatchlistsPage({
   const currencyRates = useSalaryRates();
   const searchParams = useSearchParams();
   const [creating, setCreating] = useState(false);
+  const companyErrorMessage = useCompanyReferenceErrorMessage();
+  const createFailure = (error?: unknown) => companyErrorMessage(error, t({
+    id: "watchlists.createFailed",
+    comment: "Error shown when a new watchlist cannot be created",
+    message: "Could not create this watchlist.",
+  }));
   const [createError, setCreateError] = useState("");
   const [pendingWatchlists, setPendingWatchlists] = useState<PendingWatchlistEntry[]>([]);
   const [activityById, setActivityById] = useState<
@@ -189,21 +197,13 @@ export function WatchlistsPage({
             isPublic: false,
           });
       if ("error" in result) {
-        setCreateError(t({
-          id: "watchlists.createFailed",
-          comment: "Error shown when a new watchlist cannot be created",
-          message: "Could not create this watchlist.",
-        }));
+        setCreateError(createFailure(result.error));
         return;
       }
 
       navigateToCreatedWatchlist(result.id, navigation);
-    } catch {
-      setCreateError(t({
-        id: "watchlists.createFailed",
-        comment: "Error shown when a new watchlist cannot be created",
-        message: "Could not create this watchlist.",
-      }));
+    } catch (error) {
+      setCreateError(createFailure(error));
     } finally {
       setCreating(false);
     }
@@ -246,21 +246,13 @@ export function WatchlistsPage({
             result = intent.kind === "clone"
               ? await copySharedWatchlist(intent.watchlistId)
               : await createWatchlist(intent.draft);
-          } catch {
-            setCreateError(t({
-              id: "watchlists.createFailed",
-              comment: "Error shown when a new watchlist cannot be created",
-              message: "Could not create this watchlist.",
-            }));
+          } catch (error) {
+            setCreateError(createFailure(error));
             return;
           }
           if ("error" in result) {
             if (result.error !== "limit_reached") {
-              setCreateError(t({
-                id: "watchlists.createFailed",
-                comment: "Error shown when a new watchlist cannot be created",
-                message: "Could not create this watchlist.",
-              }));
+              setCreateError(createFailure(result.error));
               return;
             }
             clearPendingWatchlist();
@@ -288,12 +280,8 @@ export function WatchlistsPage({
         } else if (createdIds.length > 1) {
           router.refresh();
         }
-      } catch {
-        setCreateError(t({
-          id: "watchlists.createFailed",
-          comment: "Error shown when a new watchlist cannot be created",
-          message: "Could not create this watchlist.",
-        }));
+      } catch (error) {
+        setCreateError(createFailure(error));
       } finally {
         setCreating(false);
       }

@@ -1871,7 +1871,7 @@ async function _hydrateActivityPreviewCompanies(
   companyIds: string[],
 ): Promise<Map<string, { id: string; name: string; icon: string | null }>> {
   const companies = await readCompanyReferences(companyIds);
-  return new Map(companies.map((company) => [company.id, company]));
+  return new Map(companies.map(({ id, name, icon }) => [id, { id, name, icon }]));
 }
 
 export async function getWatchlistByUserAndSlug(

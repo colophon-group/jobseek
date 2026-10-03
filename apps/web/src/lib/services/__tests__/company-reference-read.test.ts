@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 const mocks = vi.hoisted(() => ({ rows: vi.fn(), canonical: vi.fn() }));
-vi.mock("@/db", () => ({ db: { select: () => ({ from: () => ({ where: mocks.rows }) }) } }));
+vi.mock("@/db", () => ({ db: { execute: mocks.rows } }));
 vi.mock("@/lib/services/company-references", () => ({ fetchCanonicalCompanyReferences: mocks.canonical }));
 import { readCompanyReferences } from "../company-reference-read";
 const retainedId = "11111111-1111-4111-8111-111111111111";

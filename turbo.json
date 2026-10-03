@@ -13,7 +13,9 @@
       "env": [
         "BETTER_AUTH_SECRET",
         "BETTER_AUTH_URL",
+        "VERCEL",
         "VERCEL_ENV",
+        "VERCEL_URL",
         "STRIPE_ENVIRONMENT",
         "STRIPE_CHECKOUT_ENABLED",
         "STRIPE_PRO_PRICE_ID",
@@ -74,7 +76,9 @@
       "env": [
         "BETTER_AUTH_SECRET",
         "BETTER_AUTH_URL",
+        "VERCEL",
         "VERCEL_ENV",
+        "VERCEL_URL",
         "STRIPE_ENVIRONMENT",
         "STRIPE_CHECKOUT_ENABLED",
         "STRIPE_PRO_PRICE_ID",

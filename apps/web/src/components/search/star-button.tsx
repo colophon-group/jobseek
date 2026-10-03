@@ -37,14 +37,14 @@ export function StarButton({ companyId }: { companyId: string }) {
   }
 
   return (
-    <>
+    <span className="relative ml-auto inline-flex">
     <button
       onClick={handleClick}
       disabled={toggling}
       aria-label={label}
       aria-describedby={error ? errorId : undefined}
       title={error ? errorMessage(error) : undefined}
-      className="ml-auto cursor-pointer p-1 transition-colors disabled:cursor-default disabled:opacity-50"
+      className="cursor-pointer p-1 transition-colors disabled:cursor-default disabled:opacity-50"
     >
       <Star
         size={18}
@@ -52,7 +52,7 @@ export function StarButton({ companyId }: { companyId: string }) {
         className={starred ? "fill-accent text-accent" : "text-muted hover:text-accent"}
       />
     </button>
-    {error && <span id={errorId} role="alert" className="sr-only">{errorMessage(error)}</span>}
-    </>
+    {error && <span id={errorId} role="alert" className="absolute right-0 top-full z-30 mt-1 w-56 rounded-md border border-border-soft bg-surface p-2 text-xs text-danger shadow-lg">{errorMessage(error)}</span>}
+    </span>
   );
 }

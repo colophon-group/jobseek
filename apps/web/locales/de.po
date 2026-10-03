@@ -1396,10 +1396,6 @@ msgid "watchlists.actions.cloneFailed"
 msgstr "Diese Watchlist konnte nicht geklont werden."
 
 #. Error shown when a new watchlist cannot be created
-#. Error shown when a new watchlist cannot be created
-#. Error shown when a new watchlist cannot be created
-#. Error shown when a new watchlist cannot be created
-#. Error shown when a new watchlist cannot be created
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/watchlists/watchlists-page.tsx
 msgid "watchlists.createFailed"
@@ -6012,6 +6008,12 @@ msgstr "Wir konnten deine Zahlungen nicht stoppen. Versuche die Kontolöschung i
 #: src/components/search/ai-search-filter.tsx
 msgid "search.aiFilter.unavailable.body"
 msgstr "Wir konnten nicht prüfen, wie viele Jobs diese Suche enthält. Versuche es gleich noch einmal."
+
+#. Company selection save failed because canonical identity conflicts with a retained reference
+#. js-lingui-explicit-id
+#: src/lib/company-reference-error-message.ts
+msgid "companies.selection.identityConflict"
+msgstr "Wir konnten dieses Unternehmen nicht verifizieren. Bitte versuche es erneut oder wähle ein anderes Unternehmen."
 
 #. Error shown when a session watchlist cannot load
 #. js-lingui-explicit-id
