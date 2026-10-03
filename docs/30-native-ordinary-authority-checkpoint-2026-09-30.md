@@ -2292,3 +2292,31 @@ exclusion, protected reversal/reactivation/finalization, expected host resource
 changes, outer lock through restoration/SQL release/startup/readiness and full
 production admission remain required. See
 [fixture evidence](evidence/go-ordinary-native-host-forward-producer-fixture-2026-10-03.json).
+
+## Protected reversal admission and retirement journal — 2026-10-03
+
+The protected journal now adds reversal begin, retirement reservation and exact
+inspection. Closed requests bind original E, forward N/ordinary plan and a
+protected canonical reversal specification. Only a completed forward anchor may
+branch; its retained stage identifies reserved/publishing/published/active source
+state. Immutable ancestry joins the original target/intent/reservation. The
+specification must match the original cold attestation, rollback release and
+prior ordinary/B0 identities. Unresolved forward effects still require their
+exact native retry before a completed reversal branch. Inspection explicitly
+names R; historical retries cannot adopt a latest epoch or allocate R+1.
+
+The actual private PostgreSQL/Redis reserved-source test passes: nine changed
+specification fields refuse before effects, reversal/retirement returned-effect
+interruption recovers, historical retries retain R, and canonical rows/complete
+Redis values remain unchanged. The full required private worker race suite passes
+in 39.664 seconds, native/both Linux integration vets and format/tidy pass, and
+94 focused repository tests pass (three optional skips). Host/release/listener
+labels remain fixtures; successful publishing/published/active source execution,
+process SIGKILL reversal, complete restoration and production admission remain
+unproven. See [reversal evidence](evidence/go-ordinary-native-host-reversal-journal-2026-10-03.json).
+
+The B0/ordinary restoration, reactivation and finalization journal, intentional
+host resource changes, bounded full-graph retention and installed outer driver
+remain next. Preserve original host exclusion through complete restoration,
+SQL release and full-stack startup/readiness. This slice grants no service
+startup or production reversal authority.

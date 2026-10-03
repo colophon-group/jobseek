@@ -1,0 +1,57 @@
+{
+  "date": "2026-10-03",
+  "parent": "a7d669e2b66ef5f359bf9e3cc154dad5bfd553f8",
+  "operations": [
+    "cold-reversal-begin",
+    "cold-reversal-reserve",
+    "cold-reversal-inspect"
+  ],
+  "binding": [
+    "closed exact intent/original E/forward N/ordinary plan/reversal spec",
+    "completed forward anchor with reserved/publishing/published/active stage identity",
+    "immutable ancestry to original completed target/intent/reservation",
+    "original selected host roles/cold attestation and rollback release/prior ordinary/prior B0 bindings",
+    "reserve R once, inspect explicitly named R; exact historical retry never latest/high-water adoption",
+    "unresolved forward effects still require exact native retry before a completed reversal branch"
+  ],
+  "local_validation": {
+    "actual_private_SQL_Redis_reserved_reversal_and_retirement": true,
+    "nine_substituted_spec_fields_refused_before_effects": true,
+    "returned_effect_interruption_at_begin_and_reserve_verified": true,
+    "historical_exact_retries_keep_R_without_R_plus_one": true,
+    "canonical_rows_and_complete_Redis_values_conserved": true,
+    "full_required_private_worker_race_suite_seconds": 39.664,
+    "native_and_both_Linux_integration_vet": true,
+    "format_tidy": true,
+    "repository_tests_passed": 94,
+    "optional_skips": 3,
+    "logs_sha256": {
+      "ordinary-host-reversal-tests.log": "0c23173db766421fdf48dc164b5ed7e845af678379f09462bed141446fdf9cd9",
+      "ordinary-host-reversal-worker-suite.log": "75e62e4c29d8feab4dd151f548c8e6addd461ae3c0e1218a6080ff9d56fcd04f",
+      "ordinary-host-reversal-vet.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ordinary-host-reversal-tidy.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ordinary-host-reversal-repository-tests.log": "52bef168959ecee5961ba733c9c6208714a5a477cff8a988267eb1734c8bafa6"
+    }
+  },
+  "source_files_sha256": {
+    "apps/crawler/go/ordinary-worker/host_cold_phase.go": "8f8f9549e62fcb7bd2c361dcaf2941258d5d469e254d83c0efbf8bdb1734cb06",
+    "apps/crawler/go/ordinary-worker/host_cold_reversal_phase.go": "5fc330eb47ef43f67b65c6b59e8020d62cdcf6044b06b15b159687431e15a6c3",
+    "apps/crawler/go/ordinary-worker/host_cold_reversal_phase_test.go": "4349864ee5fb2140876d9265730ffd0556450cebf0e6b49a04387e7cee353afa",
+    "apps/crawler/go/ordinary-worker/host_cold_reversal_integration_test.go": "f98399d1e1bcd36736cfc1645b894b0d1bbc9dab4bc5517d17502044b16e7e8d"
+  },
+  "positive_actual_publishing_published_active_reversal_under_host_journal": false,
+  "actual_SIGKILL_reversal_verified": false,
+  "complete_B0_ordinary_restoration_reactivation_finalization_journal_implemented": false,
+  "full_installed_cold_CLI_verified": false,
+  "runtime_admission": false,
+  "production_changed": false,
+  "scope": "native journal reversal admission/reservation/inspection and actual private reserved-source returned-effect recovery; synthetic host/release/listener authority, no production reversal or full restoration",
+  "next": [
+    "independently verify installed forward producer raw proofs at exact published source",
+    "extend protected B0/ordinary restoration, reactivation and finalization; full SQL/queue/canonical conservation at exact R",
+    "support authenticated intentional host changes and bounded full phase/retry retention",
+    "hold original outer host mutation lock through full restoration/SQL release/startup/readiness and prove all source states/crash seams",
+    "every enabled profile/consumer/output/database/publisher/freshness/queue parity, whole-service resources/attributable cost and exact gates/cutover/reversal/rollback window before runtime Python retirement"
+  ],
+  "private_linux_verifier_sha256": "6a6c5d48e2e1cee4398160abd4cde8e80a0bc4e895ff9c3a0ced8a9e3ae30446"
+}

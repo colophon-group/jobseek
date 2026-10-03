@@ -37,6 +37,8 @@ type HostColdPhaseRequest struct {
 	ForwardRequestSHA256 string                   `json:"forward_request_sha256,omitempty"`
 	ForwardPlanSHA256    string                   `json:"forward_plan_sha256,omitempty"`
 	ForwardReceiptSHA256 string                   `json:"forward_receipt_sha256,omitempty"`
+	ReversalSHA256       string                   `json:"reversal_sha256,omitempty"`
+	RetirementEpoch      int64                    `json:"retirement_epoch,omitempty"`
 }
 
 type HostColdPhaseResult struct {
@@ -162,11 +164,18 @@ func decodeHostColdPhase(body []byte, sha string, binding queue.HostColdSQLBindi
 			return r, errHostPreflight
 		}
 	default:
-		if validateHostColdForwardRequest(r) != nil {
+		if hostColdReversalOperation(r.Operation) {
+			if validateHostColdReversalRequest(r) != nil {
+				return r, errHostPreflight
+			}
+		} else if validateHostColdForwardRequest(r) != nil {
 			return r, errHostPreflight
 		}
 	}
-	if !coldB0ForwardOperation(r.Operation) && (r.RoutingEpoch != 0 || r.PlanSHA256 != "" || r.ForwardRequestSHA256 != "" || r.ForwardPlanSHA256 != "" || r.ForwardReceiptSHA256 != "") {
+	if !coldB0ForwardOperation(r.Operation) && !hostColdReversalOperation(r.Operation) && (r.RoutingEpoch != 0 || r.PlanSHA256 != "" || r.ForwardRequestSHA256 != "" || r.ForwardPlanSHA256 != "" || r.ForwardReceiptSHA256 != "") {
+		return r, errHostPreflight
+	}
+	if !hostColdReversalOperation(r.Operation) && (r.ReversalSHA256 != "" || r.RetirementEpoch != 0) {
 		return r, errHostPreflight
 	}
 	return r, nil
@@ -213,7 +222,11 @@ func (s *hostColdPhaseScope) predecessor(r HostColdPhaseRequest) (*HostColdPhase
 			return nil, nil, errHostPreflight
 		}
 	default:
-		if s.forwardPredecessor(r, *prior, parent) != nil {
+		if hostColdReversalOperation(r.Operation) {
+			if s.reversalPredecessor(r, *prior, parent) != nil {
+				return nil, nil, errHostPreflight
+			}
+		} else if s.forwardPredecessor(r, *prior, parent) != nil {
 			return nil, nil, errHostPreflight
 		}
 	}
@@ -269,9 +282,11 @@ func (s *hostColdPhaseScope) config(r HostColdPhaseRequest) (ColdAdminConfig, ma
 		return filepath.Join(s.store.path, name), nil
 	}
 	env := map[string]string{"LOCAL_DATABASE_URL": "host-bound-connection", "REDIS_URL": "host-bound-connection", "ORDINARY_GO_WORKER_MODE": r.Operation, "ORDINARY_OWNERSHIP_SOURCE_REVISION": r.Binding.SourceRevision, "ORDINARY_COLD_ROUTING_EPOCH": strconv.FormatInt(r.PreviousEpoch, 10), "ORDINARY_COLD_B0_NAMESPACE": r.Namespace, "ORDINARY_COLD_B0_SHARD_ID": r.Shard, "ORDINARY_COLD_B0_COHORT": r.Cohort}
-	if coldB0ForwardOperation(r.Operation) {
+	if coldB0ForwardOperation(r.Operation) || hostColdReversalOperation(r.Operation) {
 		env["ORDINARY_COLD_ROUTING_EPOCH"] = strconv.FormatInt(r.RoutingEpoch, 10)
 		env["ORDINARY_COLD_PLAN_SHA256"] = r.PlanSHA256
+	}
+	if coldB0ForwardOperation(r.Operation) {
 		env["ORDINARY_COLD_B0_FORWARD_PLAN_SHA256"] = r.ForwardPlanSHA256
 		env["ORDINARY_COLD_B0_FORWARD_RECEIPT_SHA256"] = r.ForwardReceiptSHA256
 	}
@@ -283,6 +298,7 @@ func (s *hostColdPhaseScope) config(r HostColdPhaseRequest) (ColdAdminConfig, ma
 		{r.IntentSHA256, "ORDINARY_COLD_INTENT_FILE", "ORDINARY_COLD_INTENT_SHA256", 4096},
 		{r.TargetSHA256, "ORDINARY_COLD_B0_TARGET_FILE", "ORDINARY_COLD_B0_TARGET_SHA256", 16384},
 		{r.ForwardRequestSHA256, "ORDINARY_COLD_B0_FORWARD_REQUEST_FILE", "ORDINARY_COLD_B0_FORWARD_REQUEST_SHA256", 4096},
+		{r.ReversalSHA256, "ORDINARY_COLD_REVERSAL_FILE", "ORDINARY_COLD_REVERSAL_SHA256", 4096},
 	} {
 		if input.hash == "" {
 			continue
@@ -305,6 +321,9 @@ func (s *hostColdPhaseScope) config(r HostColdPhaseRequest) (ColdAdminConfig, ma
 	if r.IntentSHA256 != "" {
 		spec, err := queue.DecodeColdTransitionSpec(string(inputs["cold-input-"+r.IntentSHA256]), r.IntentSHA256)
 		if err != nil || spec.SourceRevision != r.Binding.SourceRevision || spec.PreviousEpoch != r.PreviousEpoch || spec.ActiveReleaseSHA256 != s.info.ActiveReleaseSHA256 || spec.TargetReleaseSHA256 != s.info.TargetReleaseSHA256 || spec.RollbackReleaseSHA256 != s.info.RollbackReleaseSHA256 || spec.ColdAttestationSHA256 != s.info.ColdAttestationSHA256 || r.Operation == "cold-begin" && spec.TargetB0ManifestSHA256 != r.TargetSHA256 {
+			return ColdAdminConfig{}, nil, errHostPreflight
+		}
+		if hostColdReversalOperation(r.Operation) && s.checkReversalSpec(r, spec, inputs) != nil {
 			return ColdAdminConfig{}, nil, errHostPreflight
 		}
 	}
@@ -343,6 +362,9 @@ func validateHostColdPhaseResult(r HostColdPhaseRequest, result *HostColdPhaseRe
 			return errHostPreflight
 		}
 	default:
+		if hostColdReversalOperation(r.Operation) {
+			return validateHostColdReversalResult(r, n, parent)
+		}
 		return validateHostColdForwardResult(r, n, parent)
 	}
 	return nil

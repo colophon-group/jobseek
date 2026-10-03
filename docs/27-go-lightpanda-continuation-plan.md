@@ -1,5 +1,37 @@
 # Go and Lightpanda migration continuation plan
 
+The protected journal now adds reversal begin, retirement reservation and exact
+inspection. Closed requests bind original E, forward N/ordinary plan and a
+protected canonical reversal specification. Only a completed forward anchor may
+branch; its retained stage identifies reserved/publishing/published/active source
+state. Immutable ancestry joins the original target/intent/reservation. The
+specification must match the original cold attestation, rollback release and
+prior ordinary/B0 identities. Unresolved forward effects still require their
+exact native retry before a completed reversal branch. Inspection explicitly
+names R; historical retries cannot adopt a latest epoch or allocate R+1.
+
+The actual private PostgreSQL/Redis reserved-source test passes: nine changed
+specification fields refuse before effects, reversal/retirement returned-effect
+interruption recovers, historical retries retain R, and canonical rows/complete
+Redis values remain unchanged. The full required private worker race suite passes
+in 39.664 seconds, native/both Linux integration vets and format/tidy pass, and
+94 focused repository tests pass (three optional skips). Host/release/listener
+labels remain fixtures; successful publishing/published/active source execution,
+process SIGKILL reversal, complete restoration and production admission remain
+unproven. See [reversal evidence](evidence/go-ordinary-native-host-reversal-journal-2026-10-03.json).
+
+Published producer fixture source `a7d669e2b` passes full CI, Linux, both
+historical image and renderer jobs; its installed producer fixture is still
+running. Preserve that evidence before publishing another source. Next extend
+the journal through B0/ordinary restoration, reactivation and finalization, then
+phase-authenticated expected host changes and outer-lock retention through full
+restoration/SQL release/startup/readiness. All every-profile/consumer parity,
+whole-service resources/cost, exact gates, cutover/cold reversal and rollback
+window requirements remain active before runtime Python/Playwright/Chromium
+retirement. PR #10210 remains draft and production unchanged.
+
+Earlier entries retain their source-scoped observations and pending states.
+
 Installed run `37088941835` at `eb607acac1814a08975ef7ca0af4a4b3d6f7e928`
 executed the actual initial host/selected-Redis four-phase fixture successfully
 on AMD64 and ARM64 (424.64/423.35 seconds). The jobs then failed uploading the
