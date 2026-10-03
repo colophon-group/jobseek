@@ -19,6 +19,22 @@ import (
 // production inputs without writing a cursor or index. --run requires an
 // explicit enable flag and exclusive ownership recorded in PostgreSQL.
 func main() {
+	if len(os.Args) >= 2 && (os.Args[1] == "--repair-nw-provider-cutover" || os.Args[1] == "--repair-umantis-identity-cutover") {
+		kind, park := "nw", false
+		if os.Args[1] == "--repair-umantis-identity-cutover" {
+			kind = "umantis"
+			park = len(os.Args) == 3 && os.Args[2] == "--park-monitors"
+		}
+		if len(os.Args) != 2 && !(kind == "umantis" && park) {
+			fmt.Fprintln(os.Stderr, "usage: --repair-nw-provider-cutover | --repair-umantis-identity-cutover [--park-monitors]")
+			os.Exit(2)
+		}
+		if err := runProviderCutover(kind, park); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(os.Args) >= 2 && os.Args[1] == "--sync-registry" {
 		if err := runRegistry(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, err)

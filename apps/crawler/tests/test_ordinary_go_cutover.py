@@ -75,7 +75,10 @@ docker() {
         return 0 ;;
       *' ps -aq '*|*' ps -q '*)
         service=${!#}
-        if [[ "$service" == ordinary-go && ! -f "$DEPLOY_DIR/started" ]]; then return 0; fi
+        if [[ "$service" == ordinary-go &&
+          ( ! -f "$DEPLOY_DIR/started" || -f "$DEPLOY_DIR/native-removed" ) ]]; then
+          return 0
+        fi
         case "$service" in
           worker-1) index=1 ;; worker-2) index=2 ;; worker-3) index=3 ;;
           browser-1) index=4 ;; exporter) index=5 ;; drain) index=6 ;;
@@ -86,6 +89,12 @@ docker() {
         printf '%064d\n' "$index"; return 0 ;;
       *) return 95 ;;
     esac
+  elif [[ "$1" == rm ]]; then
+    [[ "$TEST_FAILURE" != remove ]] || return 97
+    [[ "$#" == 2 && "$2" == "$(printf '%064d' 10)" &&
+      "$(value "$RECEIPT" state)" == retiring ]] || return 98
+    touch "$DEPLOY_DIR/native-removed"
+    return 0
   elif [[ "$1" == ps ]]; then return 0
   elif [[ "$1" == update ]]; then
     if [[ "$args" == *unless-stopped* && "$TEST_FAILURE" == arm ]]; then return 92; fi
@@ -150,6 +159,27 @@ def test_complete_first_owner_cutover_and_retirement(
     assert invoke(host, "retire").returncode == 0
     assert not receipt.exists()
     assert (deploy / ".lightpanda-b0-active-v1").read_bytes() == b0
+    assert (deploy / "native-removed").exists()
+    events = Path(env["TEST_LOG"]).read_text().splitlines()
+    removal = next(i for i, event in enumerate(events) if event.startswith("docker:rm "))
+    assert not any("--force" in event or " -v " in event for event in events[removal : removal + 1])
+    assert any("update --restart unless-stopped" in event for event in events[:removal])
+
+
+def test_retired_container_cleanup_failure_retains_identity_for_supported_recovery(
+    host: tuple[Path, Path, dict[str, str]],
+) -> None:
+    _, deploy, env = host
+    assert invoke(host, "activate", PLAN, PROJECTION).returncode == 0
+    env["TEST_FAILURE"] = "remove"
+    result = invoke(host, "retire")
+    assert result.returncode != 0
+    assert "state=retiring\n" in (deploy / ".ordinary-go-owner-v1").read_text()
+    assert not (deploy / "native-removed").exists()
+    env["TEST_FAILURE"] = ""
+    assert invoke(host, "recover-pending").returncode == 0
+    assert not (deploy / ".ordinary-go-owner-v1").exists()
+    assert (deploy / "native-removed").exists()
 
 
 @pytest.mark.parametrize("failure", ["image", "admin", "health", "arm", "signal"])

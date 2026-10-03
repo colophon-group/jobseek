@@ -1447,14 +1447,17 @@ rollback_compose_defines_service() {
 repair_umantis_identity_cutover() {
   local operation_label="$1"
   local park_monitors="${2:-0}"
-  local -a command_args=(repair-umantis-identity-cutover)
+  local -a command_args=(go-typesense-exporter --repair-umantis-identity-cutover)
 
   if [[ "$park_monitors" == 1 ]]; then
-    command_args+=(--park-monitors)
+    # Historical rollback images predate the native command. Retain their
+    # supported CLI until those complete rollback generations expire.
+    command_args=(uv run --no-sync crawler repair-umantis-identity-cutover --park-monitors)
   fi
 
   docker run --rm \
     -e LOCAL_DATABASE_URL \
+    -e REDIS_URL \
     -e CRAWLER_DB_ROLE="$operation_label" \
     -e CRAWLER_DB_POOL_MIN=0 \
     -e CRAWLER_DB_POOL_MAX=4 \
@@ -1462,7 +1465,7 @@ repair_umantis_identity_cutover() {
     "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
     --label "com.docker.compose.service=${operation_label}" \
     "$CRAWLER_IMAGE_REF" \
-    uv run --no-sync crawler "${command_args[@]}"
+    "${command_args[@]}"
 }
 
 rollback_sync_previous_config() {
@@ -2353,7 +2356,7 @@ docker run --rm \
   "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
   --label com.docker.compose.service=deploy-nw-provider-cutover \
   "$CRAWLER_IMAGE_REF" \
-  uv run --no-sync crawler repair-nw-provider-cutover
+  go-typesense-exporter --repair-nw-provider-cutover
 
 # Revision 0022 canonicalizes durable PostgreSQL identities. Existing Redis
 # scrape hashes predate that transaction, so repair and verify them while all

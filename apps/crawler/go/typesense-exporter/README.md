@@ -264,3 +264,27 @@ Typesense or database credentials. It has a five-minute process budget and
 honors SIGTERM. Python currently transports the committed effects and reaps
 its child on shutdown; CSV parsing and the local transaction remain Python.
 The retained Python queue publisher is an offline oracle, not a fallback.
+
+### Deployment provider identity repairs
+
+`go-typesense-exporter --repair-nw-provider-cutover` reapplies the exact
+revision-0021 idempotent SQL after registry sync. The forward deploy also uses
+`--repair-umantis-identity-cutover`: it validates the revision-0022 durable
+receipts before repairing existing Redis scrape hashes in atomic 500-row
+batches, then verifies every batch again. `--park-monitors` additionally parks
+the exact historical Umantis monitors while preserving canonical scrape work.
+The caller keeps every crawler writer quiesced throughout these commands.
+
+The installed executable embeds the original SQL, queries and Lua; offline
+tests compare every asset with the retained Python source. One PostgreSQL
+connection preserves the existing role attribution, 30-second statement and
+60-second idle-transaction guards. Errors expose fixed categories; Redis
+transport failures are not automatically retried. Later batch failure leaves
+earlier validated batches complete, and an exact retry safely resumes.
+
+These commands use the existing `LOCAL_DATABASE_URL`, `CRAWLER_DB_ROLE` and,
+for Umantis, `REDIS_URL`. They require no Typesense or upstream credentials.
+Forward deployment calls Go directly. Historical rollback generations keep
+their original Python `--park-monitors` invocation until those prior-image
+rollback targets expire; that remaining boundary still prevents final Python
+runtime retirement.

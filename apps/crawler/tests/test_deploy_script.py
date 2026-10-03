@@ -248,7 +248,7 @@ def test_deploy_quiesces_writers_before_migrations_and_schema_sync() -> None:
     migration_cutover = script.index("MIGRATION_CUTOVER_REACHED=1", migrate)
     typesense_schema = script.index("go-typesense-exporter --setup-schemas")
     sync = script.index("go-typesense-exporter --sync-registry", typesense_schema)
-    nw_cutover = script.index("uv run --no-sync crawler repair-nw-provider-cutover")
+    nw_cutover = script.index("go-typesense-exporter --repair-nw-provider-cutover")
     umantis_cutover = script.index(
         "repair_umantis_identity_cutover deploy-umantis-identity-cutover",
         nw_cutover,
