@@ -1,5 +1,28 @@
 # Go and Lightpanda migration continuation plan
 
+## Delivery objective — revised 2026-10-03
+
+Deliver the migration in full: production Go workers and self-hosted Lightpanda
+or proven Go HTTP/API routes must replace every enabled crawler profile, then
+remove production Python, Playwright and Chromium after the supported rollback
+window. Preserve useful isolated offline Python tools and every enabled board.
+
+Judge progress by deployed native owners, enabled profiles migrated and mandatory
+production Python consumers removed. Check canonical/database/publisher behavior,
+freshness and queue conservation on real jobs, and compare whole-service resources
+and cost. Add a fixture or abstraction only for a specific changed production
+contract or observed failure. Plans and synthetic evidence are supporting work.
+
+The immediate deliverable is the first `greenhouse.token-skip/v1` owner on a
+smaller branch based on current main, reusing the existing worker, queue fences
+and persistence code. Its first adoption keeps the proven B0 incarnation intact
+under the shared mutation lock and a complete cold writer window. Deliver the
+executable cutover, opt-in Compose service, native healthcheck and supported
+retirement before expanding profile coverage. Preserve the larger draft branches
+and unfinished recovery fixture; they are not prerequisites for first adoption.
+The full delivery goal remains active until production migration and retirement
+are complete.
+
 ## Current delivery and next work — 2026-10-03
 
 Crawler v0.13.903, source `b026cc597486b4d39831b93a85e06bcda1d9f04c`,
@@ -35,14 +58,36 @@ Recovery fixture expansion has taken too much effort while production ordinary
 and browser workers remain Python. Deliver in this order:
 
 1. Connect and deploy the existing `greenhouse.token-skip/v1` native worker.
-   The missing production connection is the host driver around existing
-   `WithHostMutationScope`, `WithHostQuiescence`, selected Redis and cold ownership
-   operations, followed by release selection, native Compose startup/health and
-   complete supported reversal. Reuse that code and the deployed release
-   contract. Foundation PR #10207 and worker PR #10210 remain draft. Correct and
-   rerun the existing installed fixture's selected-client baseline failure;
-   the local correction is not installed evidence. Defer the unwired completion
-   fixture rather than extending its synthetic graph.
+   The main-based [PR #10229](https://github.com/colophon-group/jobseek/pull/10229) contains the
+   existing processing/persistence code, three ownership/fencing migrations,
+   exact legacy exclusion, installed-image source binding, an opt-in native
+   Compose service and a first-owner host driver. First adoption and retirement
+   preserve the current B0 epoch and receipt. Real private PostgreSQL/Redis tests
+   cover native claims, commits, settlement, projection durability and the actual
+   compiled administrative command. Shell tests cover complete startup and
+   containment after image, administrative, readiness, restart-arming and signal
+   failure. Native ordinary execution and installed-binary execution passed in
+   CI on the initial `9b6edecc62a77eb7e6c25c4f3e2be0b55993c3f2` candidate;
+   its full crawler suite found four shutdown mocks requiring the new ownership
+   startup dependency. Those fixtures now pass with the affected pipeline/queue
+   suite (170 tests). Exact active retries preserve interrupted leases and repeat
+   no SAVE, allowing the unchanged complete native stack to recover normally.
+   Required CI, installed-image parity and ARM64 B0 lane measurement subsequently
+   passed at `3955c1ee57d1473f5d4c334aaef48b2ca83d67c2`. Cold retirement now
+   restores interrupted owned monitors from PostgreSQL deadlines, revokes their
+   Redis tokens and preserves completed receipts, canonical rows and the B0
+   incarnation. Real PostgreSQL/Redis race tests cover claim-before-SQL, stale
+   attempts, disabled members, commit-before-ACK, reaping, SAVE failure/retry and
+   refusal before any effect. Both full native queue and worker suites pass
+   locally. The installed-image CI job now also exercises the original host
+   driver with actual containers and the native process, including failed
+   readiness containment and complete recovery. Its legacy/B0 health services
+   are fixtures; production coverage, freshness and resource claims still need
+   real production observations. Wait for those updated-head checks, then
+   deliver the default-off service and use the supported production cold
+   cutover. No production ordinary owner has been selected yet.
+   Foundation PR #10207 and worker PR #10210 remain preserved drafts; their joint
+   transition framework and unwired completion fixture are not prerequisites.
 2. Connect already implemented Go provider/enrichment routes to native
    claim/fetch/enrich/persist/reschedule execution for remaining enabled effective
    profiles. The fresh production inventory is 8,019 total / 7,885 enabled boards,
@@ -58,8 +103,8 @@ and browser workers remain Python. Deliver in this order:
 Report deployed native owners, enabled profiles migrated and runtime Python
 consumers removed. Add a fixture only for a named production failure or missing
 acceptance check. Preserve exclusive ownership, deployment holds, the active-B0
-deployment guard and complete quiesced rollback. The full migration goal remains
-active; this current section supersedes historical next-action priorities below.
+deployment guard and complete quiesced rollback. The full migration objective is
+unfinished; this current section supersedes historical next-action priorities below.
 
 
 Reviewed 2026-09-30 against `origin/main`

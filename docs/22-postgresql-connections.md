@@ -30,6 +30,8 @@ environment typo cannot silently weaken the repository budget.
 | **steady service total** |  | **6** |  | **44** |  |
 | Go B0 executor (enabled overlay only) | 1 | 1 | 1 | 1 | `lightpanda-b0-executor` |
 | **enabled Go B0 steady total** |  | **7** |  | **45** |  |
+| Native ordinary worker (opt-in profile) | 1 | 0 | 2 | 2 | `ordinary-authority` + read-only lookup |
+| **Go B0 plus ordinary steady total** |  | **7** |  | **47** |  |
 
 Each worker supervises one Go lease-reaper child with a fixed zero-to-one
 connection pool and the same 60-second idle and idle-transaction limits. These
@@ -103,6 +105,8 @@ makes simultaneous use unlikely.
 | CSV/database sync | 0 | 4 | 6 | 10 |
 | base or rolled-back stack healthy | 44 | 0 | 6 | **50** |
 | enabled Go B0 stack healthy | 45 | 0 | 6 | **51** |
+| Go B0 plus native ordinary stack healthy | 47 | 0 | 6 | **53** |
+| first ordinary cold ownership command | 0 | 3 | 6 | **9** |
 
 Compose replaces containers with the same service names, so old and new pool
 generations do not coexist. Rollback explicitly quiesces all six crawler
@@ -125,6 +129,14 @@ The absolute deployment maximum is therefore 51 connections for the enabled Go
 B0 stack and 50 for the base or rolled-back stack. It includes the independent
 ingress connection and does not assume exclusion based on timer or backup
 cadence.
+
+The opt-in native ordinary worker adds one authority connection and one read-only
+lookup connection; its healthcheck opens neither. With that profile selected the
+complete service ceiling is 47, or 53 including independent clients. Its cold
+administrative command runs only after every crawler writer stops and retains at
+most one exclusive SQL session plus a two-slot administrative pool. Retirement
+and deployment refuse overlapping ordinary ownership rather than mixing pool
+generations.
 
 ## Ownership metrics
 

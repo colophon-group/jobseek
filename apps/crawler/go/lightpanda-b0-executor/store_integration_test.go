@@ -13,7 +13,44 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
+
+func TestOrdinaryLookupStoreReadOnlyBudgetAndAttribution(t *testing.T) {
+	dsn := os.Getenv("JOBSEEK_B0_EXECUTOR_TEST_DATABASE_URL")
+	if dsn == "" {
+		dsn = os.Getenv("JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL")
+	}
+	if dsn == "" {
+		if os.Getenv("JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES") == "1" {
+			t.Fatal("mandatory migrated ordinary database unavailable")
+		}
+		t.Skip("requires isolated migrated executor or ordinary database")
+	}
+	parsed, err := url.Parse(dsn)
+	if err != nil || (!strings.HasSuffix(parsed.Path, "_b0_executor_test") && !strings.HasSuffix(parsed.Path, "_ordinary_worker_test")) || (parsed.Hostname() != "127.0.0.1" && parsed.Hostname() != "localhost") {
+		t.Fatal("ordinary lookup test requires isolated local executor database")
+	}
+	ctx := context.Background()
+	store, err := OpenOrdinaryLookupStore(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	config := store.pool.Config()
+	var application, timeout, readOnly string
+	if err := store.pool.QueryRow(ctx, "SELECT current_setting('application_name'),current_setting('statement_timeout'),current_setting('default_transaction_read_only')").Scan(&application, &timeout, &readOnly); err != nil {
+		t.Fatal(err)
+	}
+	if config.MinConns != 1 || config.MaxConns != 1 || application != "jobseek:crawler:ordinary-lookups:local" || timeout != "30s" || readOnly != "on" {
+		t.Fatal("ordinary lookup attribution/reader budget changed")
+	}
+	_, err = store.pool.Exec(ctx, "UPDATE public.job_board SET updated_at=updated_at WHERE false")
+	var failure *pgconn.PgError
+	if !errors.As(err, &failure) || failure.Code != "25006" {
+		t.Fatal("ordinary lookup reader accepted a posting/board writer")
+	}
+}
 
 func fixtureID(t *testing.T) string {
 	t.Helper()

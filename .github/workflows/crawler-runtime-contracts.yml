@@ -208,7 +208,7 @@ jobs:
           persist-credentials: false
 
       - name: Build slim crawler image
-        run: docker build --target slim --tag jobseek-crawler:runtime-v1 apps/crawler
+        run: docker build --target slim --build-arg "CRAWLER_SOURCE_REVISION=${GITHUB_SHA}" --tag jobseek-crawler:runtime-v1 apps/crawler
 
       - name: Import the installed contract surface from the image
         run: |
@@ -216,6 +216,17 @@ jobs:
             --entrypoint /app/.venv/bin/python \
             jobseek-crawler:runtime-v1 \
             -I -c 'import importlib.resources, json, pathlib, sysconfig; import jobseek_runtime_v1; from jobseek_runtime_v1 import CONTRACT_VERSION, framing, runtime_pb2; site=pathlib.Path(sysconfig.get_paths()["purelib"]).resolve(); modules=(jobseek_runtime_v1, framing, runtime_pb2); assert all(pathlib.Path(module.__file__).resolve().is_relative_to(site) for module in modules); assert not pathlib.Path("/app/contracts").exists(); hello=runtime_pb2.ClientHello(supported_contract_versions=[CONTRACT_VERSION], implementation=runtime_pb2.IMPLEMENTATION_PYTHON); payload=hello.SerializeToString(); wire=framing.encode_record(payload, 4096); assert framing.decode_record(wire, 4096) == payload; registry=json.loads(importlib.resources.files("jobseek_runtime_v1").joinpath("privacy_registry.json").read_text(encoding="utf-8")); assert registry["format"] == "jobseek.runtime.privacy-registry/v1"; assert runtime_pb2.DESCRIPTOR.package == "jobseek.crawler.runtime.v1"'
+
+      - name: Verify installed native ordinary executable source and mode
+        run: |
+          set -euo pipefail
+          docker run --rm --read-only --entrypoint /usr/local/bin/go-ordinary-worker \
+            jobseek-crawler:runtime-v1 --identity \
+            | jq -e --arg revision "$GITHUB_SHA" '.source_revision == $revision and .profile == "greenhouse.token-skip/v1"'
+          if docker run --rm --read-only --entrypoint /usr/local/bin/go-ordinary-worker jobseek-crawler:runtime-v1; then
+            echo "Native worker accepted an unselected environment" >&2
+            exit 1
+          fi
 
       - name: Verify installed build info for all long-lived roles
         run: |

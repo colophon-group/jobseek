@@ -8,6 +8,11 @@ x-common-env: &common-env
   LOCAL_DATABASE_URL: ${LOCAL_DATABASE_URL}         # Hetzner Postgres machine
   REDIS_URL: redis://localhost:6379/0
   WORKER_ID_PREFIX: hetzner
+  # Exact native cohort binding; empty keeps the ordinary lane on Python.
+  ORDINARY_OWNERSHIP_SOURCE_REVISION: ${ORDINARY_OWNERSHIP_SOURCE_REVISION:-}
+  ORDINARY_OWNERSHIP_ROUTING_EPOCH: ${ORDINARY_OWNERSHIP_ROUTING_EPOCH:-}
+  ORDINARY_OWNERSHIP_PLAN_SHA256: ${ORDINARY_OWNERSHIP_PLAN_SHA256:-}
+  ORDINARY_OWNERSHIP_PROJECTION_SHA1: ${ORDINARY_OWNERSHIP_PROJECTION_SHA1:-}
   # Shared classification stage; Python remains an explicit cold rollback option.
   JOB_ENRICHMENT_ENGINE: ${JOB_ENRICHMENT_ENGINE:-go}
   LOG_LEVEL: INFO
@@ -205,6 +210,33 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:9097/\")'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    mem_limit: 1g
+    cpus: 1.0
+
+  # -- Native ordinary owner; selected only by supported cold cutover --
+  ordinary-go:
+    profiles: [ordinary-go]
+    image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
+    init: true
+    restart: "no"
+    network_mode: host
+    stop_grace_period: 45s
+    command: ["/usr/local/bin/go-ordinary-worker"]
+    environment:
+      <<: *common-env
+      ORDINARY_GO_WORKER_MODE: enabled
+      METRICS_PORT: "9104"
+      DISCOVERY_CONCURRENCY: "20"
+      MONITOR_CONCURRENCY: "5"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/go-ordinary-worker", "--health"]
       interval: 30s
       timeout: 5s
       retries: 3

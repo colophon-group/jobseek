@@ -87,6 +87,17 @@ type Store struct{ pool *pgxpool.Pool }
 // OpenStore preserves the B0 executor's one-connection budget. Callers must
 // attest the current route before binding its private socket.
 func OpenStore(ctx context.Context, dsn string) (*Store, error) {
+	return openStore(ctx, dsn, "jobseek:crawler:lightpanda-b0-executor:local", false)
+}
+
+// OpenOrdinaryLookupStore attributes the ordinary worker's separate bounded
+// taxonomy/currency/location reader. It must never serve as posting write
+// authority; ordinary effects continue through the opaque owned queue cycle.
+func OpenOrdinaryLookupStore(ctx context.Context, dsn string) (*Store, error) {
+	return openStore(ctx, dsn, "jobseek:crawler:ordinary-lookups:local", true)
+}
+
+func openStore(ctx context.Context, dsn, application string, readOnly bool) (*Store, error) {
 	config, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, errors.New("invalid executor database configuration")
@@ -94,7 +105,10 @@ func OpenStore(ctx context.Context, dsn string) (*Store, error) {
 	config.MinConns, config.MaxConns = 1, 1
 	config.MaxConnIdleTime = time.Minute
 	config.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeDescribeExec
-	config.ConnConfig.RuntimeParams["application_name"] = "jobseek:crawler:lightpanda-b0-executor:local"
+	config.ConnConfig.RuntimeParams["application_name"] = application
+	if readOnly {
+		config.ConnConfig.RuntimeParams["default_transaction_read_only"] = "on"
+	}
 	config.ConnConfig.RuntimeParams["statement_timeout"] = "30s"
 	config.ConnConfig.RuntimeParams["idle_in_transaction_session_timeout"] = "60s"
 	config.ConnConfig.RuntimeParams["tcp_keepalives_idle"] = "60"

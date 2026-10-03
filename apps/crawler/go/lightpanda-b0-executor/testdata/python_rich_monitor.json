@@ -1,0 +1,918 @@
+{
+  "schema_version": 1,
+  "oracle": "Python src.processing.board._build_rich_new_records and rich description staging; standard Greenhouse token/skip",
+  "occupations": {
+    "software-engineer": 41,
+    "data-engineer": 52
+  },
+  "seniorities": {
+    "senior": 7,
+    "junior": 3,
+    "intern": 9
+  },
+  "technologies": {
+    "python": 4,
+    "go": 2,
+    "postgresql": 4
+  },
+  "rates": {
+    "CHF": 1.05,
+    "USD": 0.9
+  },
+  "cases": [
+    {
+      "name": "rich",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          [
+            4
+          ],
+          100000,
+          120000,
+          "CHF",
+          "yearly",
+          105000,
+          5.0,
+          null,
+          41,
+          7
+        ],
+        "description": {
+          "html": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+          "locale": "en",
+          "hash": 6763039431974022715
+        },
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          "en"
+        ]
+      }
+    },
+    {
+      "name": "missing_title_is_valid",
+      "content": {
+        "title": null,
+        "description": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      "expected": {
+        "fields": [
+          null,
+          [],
+          [
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          [
+            4
+          ],
+          100000,
+          120000,
+          "CHF",
+          "yearly",
+          105000,
+          5.0,
+          null,
+          null,
+          null
+        ],
+        "description": {
+          "html": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+          "locale": "en",
+          "hash": 6763039431974022715
+        },
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          "en"
+        ]
+      }
+    },
+    {
+      "name": "garbage_title_is_not_detail_failure",
+      "content": {
+        "title": "Access Denied",
+        "description": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Access Denied"
+          ],
+          [
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          [
+            4
+          ],
+          100000,
+          120000,
+          "CHF",
+          "yearly",
+          105000,
+          5.0,
+          null,
+          null,
+          null
+        ],
+        "description": {
+          "html": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+          "locale": "en",
+          "hash": 6763039431974022715
+        },
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          "en"
+        ]
+      }
+    },
+    {
+      "name": "blank_title",
+      "content": {
+        "title": null,
+        "description": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      "expected": {
+        "fields": [
+          null,
+          [],
+          [
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          [
+            4
+          ],
+          100000,
+          120000,
+          "CHF",
+          "yearly",
+          105000,
+          5.0,
+          null,
+          null,
+          null
+        ],
+        "description": {
+          "html": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+          "locale": "en",
+          "hash": 6763039431974022715
+        },
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          "en"
+        ]
+      }
+    },
+    {
+      "name": "decoded_title",
+      "content": {
+        "title": "Senior Software Engineer &amp; Platform",
+        "description": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer & Platform"
+          ],
+          [
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          [
+            4
+          ],
+          100000,
+          120000,
+          "CHF",
+          "yearly",
+          105000,
+          5.0,
+          null,
+          41,
+          7
+        ],
+        "description": {
+          "html": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+          "locale": "en",
+          "hash": 6763039431974022715
+        },
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          "en"
+        ]
+      }
+    },
+    {
+      "name": "missing_content_and_language_defaults_en",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "language": null
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          41,
+          7
+        ],
+        "description": null,
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "name": "empty_content",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "",
+        "locations": [
+          "Zurich"
+        ],
+        "language": ""
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          41,
+          7
+        ],
+        "description": null,
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "name": "whitespace_content",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": " \n \t ",
+        "locations": [
+          "Zurich"
+        ],
+        "language": null
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          41,
+          7
+        ],
+        "description": null,
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "name": "removed_content",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<script>removed</script>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": null
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          41,
+          7
+        ],
+        "description": null,
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          null
+        ]
+      }
+    },
+    {
+      "name": "missing_locations",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+        "locations": null,
+        "language": "en"
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "en"
+          ],
+          null,
+          null,
+          [
+            4
+          ],
+          100000,
+          120000,
+          "CHF",
+          "yearly",
+          105000,
+          5.0,
+          null,
+          41,
+          7
+        ],
+        "description": {
+          "html": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+          "locale": "en",
+          "hash": 6763039431974022715
+        },
+        "location_inputs": [
+          null,
+          null,
+          "en"
+        ]
+      }
+    },
+    {
+      "name": "deduplicated_locations",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+        "locations": [
+          "Zurich",
+          "London"
+        ],
+        "language": "en"
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          [
+            4
+          ],
+          100000,
+          120000,
+          "CHF",
+          "yearly",
+          105000,
+          5.0,
+          null,
+          41,
+          7
+        ],
+        "description": {
+          "html": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+          "locale": "en",
+          "hash": 6763039431974022715
+        },
+        "location_inputs": [
+          [
+            "Zurich",
+            "London"
+          ],
+          null,
+          "en"
+        ]
+      }
+    },
+    {
+      "name": "stray_toggle",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<p>Python</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          [
+            4
+          ],
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          41,
+          7
+        ],
+        "description": {
+          "html": "<p>Python</p>",
+          "locale": "en",
+          "hash": -3612069440606175615
+        },
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          "en"
+        ]
+      }
+    },
+    {
+      "name": "false_language_detected",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": false
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          [
+            4
+          ],
+          100000,
+          120000,
+          "CHF",
+          "yearly",
+          105000,
+          5.0,
+          null,
+          41,
+          7
+        ],
+        "description": {
+          "html": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+          "locale": "en",
+          "hash": 6763039431974022715
+        },
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          "en"
+        ]
+      }
+    },
+    {
+      "name": "false_language_without_description",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "language": false
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "False"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          41,
+          7
+        ],
+        "description": null,
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          "False"
+        ]
+      }
+    },
+    {
+      "name": "list_language_coerced",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": [
+          "en",
+          "fr",
+          "en"
+        ]
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "en, fr"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          [
+            4
+          ],
+          100000,
+          120000,
+          "CHF",
+          "yearly",
+          105000,
+          5.0,
+          null,
+          41,
+          7
+        ],
+        "description": {
+          "html": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+          "locale": "en, fr",
+          "hash": 6763039431974022715
+        },
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          "en, fr"
+        ]
+      }
+    },
+    {
+      "name": "description_trimmed_before_hash",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "\n<p>Café 東京</p>\n",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "fr"
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "fr"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          41,
+          7
+        ],
+        "description": {
+          "html": "<p>Café 東京</p>",
+          "locale": "fr",
+          "hash": -8474406105025787698
+        },
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          "fr"
+        ]
+      }
+    },
+    {
+      "name": "nullable_derived_fields",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<p>Join our team.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          41,
+          7
+        ],
+        "description": {
+          "html": "<p>Join our team.</p>",
+          "locale": "en",
+          "hash": 9116804169423389781
+        },
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          "en"
+        ]
+      }
+    },
+    {
+      "name": "german_language_detected",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<p>Wir suchen einen erfahrenen Softwareentwickler für unser Team. Sie entwickeln neue Anwendungen und arbeiten mit unseren Kunden zusammen.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": null
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "de"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          41,
+          7
+        ],
+        "description": {
+          "html": "<p>Wir suchen einen erfahrenen Softwareentwickler für unser Team. Sie entwickeln neue Anwendungen und arbeiten mit unseren Kunden zusammen.</p>",
+          "locale": "de",
+          "hash": -4238016451912014216
+        },
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          "de"
+        ]
+      }
+    }
+  ]
+}

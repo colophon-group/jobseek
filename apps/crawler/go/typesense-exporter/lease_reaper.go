@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	ordinaryqueue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
@@ -79,7 +80,7 @@ func reapLeasesAt(ctx context.Context, client *redis.Client, wtype string, now f
 	}
 	// No blind transport replay: a lost acknowledgement leaves observation to
 	// the next normal tick. The same Lua handles task-level idempotence.
-	raw, err := client.Eval(ctx, leaseReaperLua, []string{}, wtype, strconv.FormatFloat(now, 'f', -1, 64), settings.BatchSize, settings.MaxStrikes, strconv.FormatFloat(now, 'f', -1, 64)).Slice()
+	raw, err := client.Eval(ctx, leaseReaperLua, []string{}, wtype, strconv.FormatFloat(now, 'f', -1, 64), settings.BatchSize, settings.MaxStrikes, strconv.FormatFloat(now, 'f', -1, 64), "guarded").Slice()
 	if err != nil {
 		return result, errors.New("lease sweep was not acknowledged")
 	}
@@ -102,11 +103,19 @@ func reapLeasesAt(ctx context.Context, client *redis.Client, wtype string, now f
 func (r redisLeaseReaper) Sweep(ctx context.Context, wtype string) (leaseReapResult, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	now, err := r.client.Time(ctx).Result()
+	var result leaseReapResult
+	err := ordinaryqueue.WithOrdinaryLeaseRetirement(ctx, r.pool, func(ctx context.Context) error {
+		now, err := r.client.Time(ctx).Result()
+		if err != nil {
+			return errors.New("read lease clock failed")
+		}
+		result, err = reapLeasesAt(ctx, r.client, wtype, float64(now.Unix())+float64(now.Nanosecond())/1e9, r.settings)
+		return err
+	})
 	if err != nil {
-		return leaseReapResult{}, errors.New("read lease clock failed")
+		return leaseReapResult{}, errors.New("guarded lease sweep failed")
 	}
-	return reapLeasesAt(ctx, r.client, wtype, float64(now.Unix())+float64(now.Nanosecond())/1e9, r.settings)
+	return result, nil
 }
 func (r redisLeaseReaper) Depths(ctx context.Context, wtype string) (int64, int64, error) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)

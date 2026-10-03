@@ -558,6 +558,56 @@ jobs:
             -test.run '^TestInstalledNativeExecutorStartupBudgetHealthAndRecovery$' \
             -test.count=1
 
+  test-go-ordinary:
+    name: Native ordinary execution
+    needs: changes
+    if: needs.changes.outputs.crawler_code == 'true'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        ports: [5432:5432]
+        env:
+          POSTGRES_USER: crawler
+          POSTGRES_PASSWORD: crawler
+          POSTGRES_DB: jobseek_ordinary_worker_test
+        options: >-
+          --health-cmd "pg_isready -U crawler -d jobseek_ordinary_worker_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      LOCAL_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test
+      JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test
+      JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES: "1"
+      JOBSEEK_ORDINARY_QUEUE_REQUIRE_REDIS: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/ordinary-worker/go.mod
+          cache-dependency-path: apps/crawler/go/ordinary-worker/go.sum
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          enable-cache: true
+          prune-cache: true
+          cache-dependency-glob: "apps/crawler/uv.lock"
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - name: Prepare actual PostgreSQL schema and private Redis fixtures
+        working-directory: apps/crawler
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends redis-server
+          uv sync --frozen --group dev
+          uv run --frozen alembic -c src/migrations/alembic.ini upgrade head
+      - name: Verify first ownership, queues and executable processing
+        run: |
+          set -euo pipefail
+          for module in ordinary-queue ordinary-worker; do
+            (cd "apps/crawler/go/$module" && go test -race ./... && go vet ./... && go mod tidy -diff && test -z "$(gofmt -l .)")
+          done
+          (cd apps/crawler && uv run --frozen pytest -q tests/test_ordinary_ownership.py tests/test_ordinary_go_cutover.py)
+
   test-go-r2-drain:
     name: Test Go R2 drain
     needs: changes
@@ -742,6 +792,7 @@ jobs:
         with:
           context: apps/crawler
           target: slim
+          build-args: CRAWLER_SOURCE_REVISION=${{ github.sha }}
           platforms: linux/amd64
           tags: jobseek-crawler-slim-ci:pr
           labels: |
@@ -753,6 +804,39 @@ jobs:
           push: false
           cache-from: type=gha,scope=crawler-slim
           cache-to: type=gha,mode=max,scope=crawler-slim,ignore-error=true
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/ordinary-worker/go.mod
+          cache-dependency-path: apps/crawler/go/ordinary-worker/go.sum
+
+      - name: Prove installed native ordinary executable against PostgreSQL and Redis
+        env:
+          LOCAL_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/image_ordinary_worker_test
+          JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/image_ordinary_worker_test
+          JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES: "1"
+          JOBSEEK_ORDINARY_QUEUE_REQUIRE_REDIS: "1"
+          JOBSEEK_ORDINARY_IMAGE_BINARY: ${{ runner.temp }}/go-ordinary-worker
+          JOBSEEK_ORDINARY_IMAGE_SOURCE_REVISION: ${{ github.sha }}
+          JOBSEEK_ORDINARY_IMAGE_DATA_DIRECTORY: ${{ runner.temp }}/ordinary-image-data
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends redis-server
+          docker exec "$POSTGRES_CONTAINER" psql -U crawler -d crawler \
+            -v ON_ERROR_STOP=1 -c 'CREATE DATABASE image_ordinary_worker_test'
+          docker run --rm --network host -e LOCAL_DATABASE_URL \
+            jobseek-crawler-slim-ci:pr uv run --no-sync alembic -c src/migrations/alembic.ini upgrade head
+          container="$(docker create jobseek-crawler-slim-ci:pr)"
+          trap 'docker rm -f "$container" >/dev/null' EXIT
+          docker cp "$container:/usr/local/bin/go-ordinary-worker" "$JOBSEEK_ORDINARY_IMAGE_BINARY"
+          docker cp "$container:/app/data" "$JOBSEEK_ORDINARY_IMAGE_DATA_DIRECTORY"
+          JOBSEEK_ORDINARY_HOST_IMAGE_ID="$(docker image inspect -f '{{.Id}}' jobseek-crawler-slim-ci:pr)"
+          export JOBSEEK_ORDINARY_HOST_IMAGE_ID
+          cd apps/crawler/go/ordinary-worker
+          go test -race -count=1 -run 'TestRealNativeExecutable|TestRealFirstOwnershipExecutable' ./...
+          go test -race -count=1 -run '^TestRealFirstOwnershipHostContainersCutoverAndRecovery$' ./...
 
       - name: Prove fresh producer volume initialization and client connectivity
         env:
@@ -892,6 +976,7 @@ jobs:
         with:
           context: apps/crawler
           target: full
+          build-args: CRAWLER_SOURCE_REVISION=${{ github.sha }}
           platforms: linux/amd64
           tags: jobseek-crawler-ci:pr
           labels: |
@@ -2079,6 +2164,7 @@ jobs:
       - test-go-http-pilot
       - test-go-b0-supervisor
       - test-go-b0-executor
+      - test-go-ordinary
       - test-go-r2-drain
       - test-go-typesense-exporter
       - test-go-dom-extractor
@@ -2147,6 +2233,7 @@ jobs:
           requireSuccess("test-go-http-pilot", goHttpPilot);
           requireSuccess("test-go-b0-supervisor", crawlerCode);
           requireSuccess("test-go-b0-executor", crawlerCode);
+          requireSuccess("test-go-ordinary", crawlerCode);
           requireSuccess("test-go-typesense-exporter", crawlerCode);
           requireSuccess("test-go-dom-extractor", crawlerCode);
           requireSuccess("dependency-review", eventName === "pull_request" && code);

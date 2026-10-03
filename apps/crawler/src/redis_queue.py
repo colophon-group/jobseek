@@ -75,6 +75,7 @@ import redis.asyncio as aioredis
 import structlog
 
 from src.config import settings
+from src.ordinary_ownership import LegacyOwnership
 
 log = structlog.get_logger()
 
@@ -1015,7 +1016,9 @@ async def _enqueue_with_go_producer(
 # ---------------------------------------------------------------------------
 
 
-async def claim_work(*, browser: bool = False) -> WorkItem | None:
+async def claim_work(
+    *, browser: bool = False, ownership: LegacyOwnership | None = None
+) -> WorkItem | None:
     """Claim the next available work item from the tiered ready queues.
 
     Uses a Lua script for atomic claim + rate limit + reschedule +
@@ -1037,6 +1040,7 @@ async def claim_work(*, browser: bool = False) -> WorkItem | None:
         str(settings.throttle_delay_default),
         "10",  # max domains to check per tier
         str(settings.inflight_lease_ttl_seconds),
+        *(ownership.claim_arguments() if ownership is not None else ()),
     )
 
     if not result:
