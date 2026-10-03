@@ -433,14 +433,20 @@ restore_timer_enablement""")
                 )
             )
 
-    def test_targeted_activation_checks_revision_and_coverage_before_only_one_timer(
-        self,
-    ):
-        with tempfile.TemporaryDirectory() as directory:
-            folder = Path(directory)
-            (folder / "release.txt").write_text("revision=" + SOURCE + "\n")
-            (folder / "codex-company-selection-observation-dispatch.py").touch()
-            script = f"""PRIVILEGED_DIR={shlex.quote(directory)}
+    def activation_fixture(self, directory):
+        folder = Path(directory)
+        (folder / "release.txt").write_text("revision=" + SOURCE + "\n")
+        for name in (
+            "codex-company-selection-observation-dispatch.py",
+            "jobseek-codex-company-selection-observation.service",
+            "jobseek-codex-company-selection-observation.timer",
+        ):
+            source = (
+                ROOT / ("scripts" if name.endswith(".py") else "deploy/systemd") / name
+            )
+            (folder / name).write_bytes(source.read_bytes())
+        script = f"""PRIVILEGED_DIR={shlex.quote(directory)}
+FIXTURE_UNITS={shlex.quote(directory)}
 EXPECTED_SHA={SOURCE}
 JOBSEEK_CODEX_OBSERVATION_CONFIRMATION=ACTIVATE-COMPANY-SELECTION-OBSERVATION
 stat() {{ echo 0:644; }}
@@ -448,12 +454,19 @@ id() {{ echo codex-runner; }}
 as_runner() {{ echo "runner-check $*"; return "$CHECK_RESULT"; }}
 systemctl() {{ echo "systemctl $*"; }}
 activate_company_selection_observation_timer"""
-            # Installed root-owned unit paths are checked; this fixture only
-            # substitutes shell's file predicate to model the isolated host.
-            script = script.replace(
-                "activate_company_selection_observation_timer",
-                "eval \"$(declare -f activate_company_selection_observation_timer | sed 's/\\[\\[ -f /[[ -n /g')\"\nactivate_company_selection_observation_timer",
-            )
+        # Substitute only /etc fixture paths; the real file predicates and cmp
+        # compare installed bytes against the exact trusted bundle. stat models
+        # matching root-owner/0644 metadata while release.txt binds the SHA.
+        return script.replace(
+            "activate_company_selection_observation_timer",
+            'eval "$(declare -f activate_company_selection_observation_timer | sed "s#/etc/systemd/system/#$FIXTURE_UNITS/#g")"\nactivate_company_selection_observation_timer',
+        )
+
+    def test_targeted_activation_checks_revision_and_coverage_before_only_one_timer(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as directory:
+            script = self.activation_fixture(directory)
             for code in (0, 1):
                 result = self.shell(script, {"CHECK_RESULT": str(code)})
                 if code:
@@ -474,6 +487,24 @@ activate_company_selection_observation_timer"""
                             "systemctl is-active --quiet jobseek-codex-company-selection-observation.timer",
                         ],
                     )
+
+    def test_matching_release_and_modes_cannot_activate_stale_installed_bytes(self):
+        for name in (
+            "codex-company-selection-observation-dispatch.py",
+            "jobseek-codex-company-selection-observation.service",
+            "jobseek-codex-company-selection-observation.timer",
+        ):
+            with (
+                self.subTest(stale_file=name),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                script = self.activation_fixture(directory)
+                (Path(directory) / name).write_text("stale partial deployment bytes\n")
+                result = self.shell(script, {"CHECK_RESULT": "0"})
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("installed observation bytes differ", result.stderr)
+                self.assertNotIn("runner-check", result.stdout)
+                self.assertNotIn("systemctl", result.stdout)
 
     def test_activation_refuses_wrong_authority_without_starting_any_unit(self):
         with tempfile.TemporaryDirectory() as directory:

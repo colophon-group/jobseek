@@ -566,11 +566,18 @@ activate_company_selection_observation_timer() {
     fail "targeted observation activation identity is invalid"
   [[ "$(sed -n 's/^revision=//p' "${PRIVILEGED_DIR}/release.txt")" == "${EXPECTED_SHA}" ]] ||
     fail "deploy the exact reviewed runner revision before activation"
+  local path bundle_path
   for path in "${PRIVILEGED_DIR}/codex-company-selection-observation-dispatch.py" \
     "/etc/systemd/system/jobseek-codex-company-selection-observation.service" \
     "/etc/systemd/system/${OBSERVATION_TIMER}"; do
     [[ -f "$path" && ! -L "$path" && "$(stat -c '%u:%a' "$path")" == 0:644 ]] ||
       fail "observation runtime or unit is not root-owned and read-only"
+    if [[ "$path" == "${PRIVILEGED_DIR}/codex-company-selection-observation-dispatch.py" ]]; then
+      bundle_path="${TRUSTED_SOURCE}/scripts/${path##*/}"
+    else
+      bundle_path="${TRUSTED_SOURCE}/deploy/systemd/${path##*/}"
+    fi
+    cmp -s "$path" "$bundle_path" || fail "installed observation bytes differ from the trusted deployment bundle"
   done
   ! id -nG codex-runner | tr ' ' '\n' | grep -qx docker || fail "dispatcher must have no Docker membership"
   # Only GH identity, current-main metadata and validated checkpoint artifacts
