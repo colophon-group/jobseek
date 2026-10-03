@@ -6,6 +6,7 @@ import { once } from "node:events";
 import { chromium, type Page } from "playwright";
 import { hashPassword } from "better-auth/crypto";
 import { companyDocument, fixtureClient, fixtureDatabaseUrl, resetFixture, seedUser } from "./company-reference/fixture";
+import { exerciseCanaryLifecycle, type CanaryLifecycleState } from "./company-reference/canary-lifecycle";
 import { logExternalError } from "../src/lib/safe-external-error";
 import { startTypesenseFixture } from "./company-reference/typesense-fixture";
 
@@ -36,7 +37,9 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
   try {
     await resetFixture(sql);
-    const user = await seedUser(sql); const password = `Fixture-${randomUUID()}-Aa1!`;
+    const user = await seedUser(sql);
+    await sql`INSERT INTO user_preferences (user_id, notifications_paused) VALUES (${user.id}, true) ON CONFLICT (user_id) DO UPDATE SET notifications_paused=true`;
+    const password = `Fixture-${randomUUID()}-Aa1!`;
     // Hash with the real auth implementation and obtain the session through the real HTTP sign-in route.
     // The fixture is a verified test account; no auth override exists in app/runtime code.
     const hash = await hashPassword(password);
@@ -115,6 +118,15 @@ async function main() {
     assert.equal(await page.getByRole("button", { name: `Remove ${delayedDoc.name}`, exact: true }).count(), 0);
     assert.equal((await sql`SELECT 1 FROM watchlist_company WHERE watchlist_id=${watchlistId} AND company_id=${delayedDoc.id}`).length, 1);
     assert.equal((await sql`SELECT id FROM company WHERE id=${delayedDoc.id}`).length, process.env.COMPANY_REFERENCE_TEST_WRITE_MODE === "reference" ? 0 : 1);
+    browserPhase = "complete_canary_lifecycle";
+    await page.getByRole("button", { name: "Any company", exact: true }).click();
+    await page.getByRole("button", { name: `Remove ${delayedDoc.name}`, exact: true }).click();
+    const reducedDeadline = Date.now() + 15_000;
+    while (Date.now() < reducedDeadline && (await sql`SELECT 1 FROM watchlist_company WHERE watchlist_id=${watchlistId}`).length !== 1) await new Promise(resolve => setTimeout(resolve, 100));
+    const [owned] = await sql`SELECT title FROM watchlist WHERE id=${watchlistId} AND user_id=${user.id}`;
+    const state: CanaryLifecycleState = { titles: [owned.title], company: doc, starTouched: false };
+    const lifecycle = await exerciseCanaryLifecycle({ page, sql, userId: user.id, email: user.email, password,
+      origin: baseUrl, watchlistId, state, onPhase: next => { browserPhase = next; }, createAnonymousContext: () => browser.newContext({ baseURL: baseUrl }) });
     browserPhase = "scoped_cleanup";
     await page.getByRole("button", { name: "Delete", exact: true }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Delete", exact: true }).click();
@@ -122,7 +134,7 @@ async function main() {
     assert.equal((await sql`SELECT 1 FROM watchlist WHERE id=${watchlistId} AND user_id=${user.id}`).length, 0);
     assert.equal((await sql`SELECT 1 FROM company_reference WHERE id=${doc.id}`).length, 1, "Cleanup must retain shared durable reference");
     console.log(JSON.stringify({ contract: "company_reference_authenticated_browser", outcome: "passed", absentLegacyBefore: true, absentReferenceBefore: true,
-      authenticatedMutation: true, committedMembership: true, persistedReload: true, laterScopeDuringLookup: true, notificationsEnabled: false, scopedCleanup: true }));
+      authenticatedMutation: true, committedMembership: true, persistedReload: true, laterScopeDuringLookup: true, ...lifecycle, notificationsEnabled: false, scopedCleanup: true }));
     await context.close();
   } catch (error) {
     await page?.screenshot({ path: "/tmp/jobseek-company-reference-browser-failure.png", fullPage: true });

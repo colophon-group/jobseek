@@ -8,6 +8,15 @@ export async function startTypesenseFixture(companies: ReturnType<typeof company
   const requests: { pathname: string; method: string; filter?: string; delayMs?: number }[] = [];
   const server = createServer(async (request, response) => {
     const url = new URL(request.url!, "http://localhost");
+    const origin = request.headers.origin;
+    if (origin) {
+      const parsed = new URL(origin);
+      if (parsed.hostname !== "127.0.0.1" || parsed.protocol !== "http:") { response.statusCode = 403; response.end(); return; }
+      response.setHeader("access-control-allow-origin", origin);
+      response.setHeader("access-control-allow-headers", "content-type,x-typesense-api-key");
+      response.setHeader("access-control-allow-methods", "GET,POST,OPTIONS");
+    }
+    if (request.method === "OPTIONS") { response.statusCode = 204; response.end(); return; }
     const chunks: Buffer[] = [];
     for await (const chunk of request) chunks.push(Buffer.from(chunk));
     const body = Buffer.concat(chunks).toString();

@@ -4,6 +4,7 @@ import { parse } from "dotenv";
 import postgres from "postgres";
 import { Client } from "typesense";
 import { chromium, type Page } from "playwright";
+import { exerciseCanaryLifecycle, restoreCanaryStar, type CanaryLifecycleState } from "./company-reference/canary-lifecycle";
 import { bootstrapDeploymentAccess } from "./company-reference/deployment-access";
 import { logExternalError } from "../src/lib/safe-external-error";
 
@@ -36,6 +37,8 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ baseURL: base.origin });
   let page: Page | undefined; let watchlistId: string | undefined;
+  let lifecycleState: CanaryLifecycleState | undefined;
+  let lifecycleProof: Awaited<ReturnType<typeof exerciseCanaryLifecycle>> | undefined;
   const title = `company-reference-canary:${randomUUID()}`;
   let failure: unknown; let failurePhase: string | undefined;
   try {
@@ -45,7 +48,9 @@ async function main() {
     const identity = await sql`SELECT id, email, email_verified FROM "user" WHERE id=${userId}`;
     check(identity.length === 1 && identity[0].email === email && identity[0].email_verified, "DEDICATED_IDENTITY_NOT_VERIFIED");
     const [capacity] = await sql`SELECT count(*)::integer AS value FROM watchlist WHERE user_id=${userId}`;
-    check(capacity.value < 10, "CANARY_ACCOUNT_CAPACITY_EXHAUSTED");
+    check(capacity.value <= 8, "CANARY_ACCOUNT_CAPACITY_EXHAUSTED");
+    const [policy] = await sql`SELECT notifications_paused FROM user_preferences WHERE user_id=${userId}`;
+    check(policy?.notifications_paused === true, "CANARY_NOTIFICATIONS_NOT_PAUSED");
     const missing = await sql`SELECT count(*)::integer AS value FROM (
       SELECT wc.company_id FROM watchlist_company wc LEFT JOIN company_reference cr ON cr.id=wc.company_id WHERE cr.id IS NULL
       UNION ALL SELECT fc.company_id FROM followed_company fc LEFT JOIN company_reference cr ON cr.id=fc.company_id WHERE cr.id IS NULL
@@ -72,6 +77,7 @@ async function main() {
     check(doc, "FIRST_USE_CATALOGUE_FIXTURE_UNAVAILABLE");
     check(/^[0-9a-f-]{36}$/i.test(doc.id) && doc.name.length <= 300 && doc.slug.length <= 100, "INVALID_CANONICAL_FIXTURE");
 
+    lifecycleState = { titles: [title], company: doc, starTouched: false };
     phase = "authenticated_request_identity";
     const signedIn = await context.request.post("/api/auth/sign-in/email", { data: { email, password }, headers: { origin: base.origin }, maxRedirects: 0 });
     check(signedIn.status() === 200, "CANARY_SIGN_IN_FAILED");
@@ -113,41 +119,50 @@ async function main() {
     await page.reload(); await page.getByRole("button", { name: `Remove ${doc.name}`, exact: true }).waitFor();
     const dangling = await sql`SELECT 1 FROM watchlist_company wc LEFT JOIN company_reference r ON r.id=wc.company_id WHERE wc.watchlist_id=${watchlistId} AND r.id IS NULL`;
     check(dangling.length === 0, "CANARY_SELECTION_REFERENCE_MISSING");
+    phase = "complete_authenticated_lifecycle";
+    lifecycleProof = await exerciseCanaryLifecycle({ page, sql, userId, email, password, origin: base.origin,
+      watchlistId, state: lifecycleState, onPhase: next => { phase = next; }, createAnonymousContext: async () => {
+        const anonymous = await browser.newContext({ baseURL: base.origin });
+        try { await bootstrapDeploymentAccess(anonymous, base, bypass); return anonymous; }
+        catch (error) { await anonymous.close(); throw error; }
+      } });
   } catch (error) { failure = error; failurePhase = phase; }
   finally {
-    // Recover a committed create even if navigation failed before recording its ID.
-    // The random namespace belongs only to this run; never search by broad prefix.
+    // Restore a dedicated account's exact pre-existing star state before deleting owned fixtures.
+    if (page && lifecycleState) {
+      try { await restoreCanaryStar(page, sql, userId, lifecycleState); }
+      catch (error) { if (!failure) { failure = error; failurePhase = "star_cleanup"; } }
+    }
+    // Recover committed create/copy even if navigation failed before recording IDs.
+    const titles = lifecycleState?.titles ?? [title];
+    let cleanupIds: string[] = [];
     try {
-      const created = await sql`SELECT id FROM watchlist WHERE user_id=${userId} AND title=${title}`;
-      check(created.length <= 1, "CLEANUP_NAMESPACE_AMBIGUOUS");
-      if (created.length === 1) {
-        check(!watchlistId || watchlistId === created[0].id, "CLEANUP_IDENTITY_MISMATCH");
-        watchlistId = created[0].id;
-      }
+      const created = await sql`SELECT id FROM watchlist WHERE user_id=${userId} AND title=ANY(${titles}::text[])`;
+      check(created.length <= 2, "CLEANUP_NAMESPACE_AMBIGUOUS");
+      check(!watchlistId || created.some(row => row.id === watchlistId), "CLEANUP_IDENTITY_MISMATCH");
+      cleanupIds = created.map(row => row.id);
     } catch (error) { if (!failure) { failure = error; failurePhase = "cleanup_recovery"; } }
-    if (watchlistId) {
+    for (const cleanupId of cleanupIds) {
       try {
         phase = "scoped_cleanup";
-        const owned = await sql`SELECT user_id, title FROM watchlist WHERE id=${watchlistId}`;
-        check(owned.length === 1 && owned[0].user_id === userId && owned[0].title === title, "CLEANUP_OWNERSHIP_MISMATCH");
-        // Delete through the production authenticated action, after exact owner + fresh namespace checks.
+        const owned = await sql`SELECT user_id, title FROM watchlist WHERE id=${cleanupId}`;
+        check(owned.length === 1 && owned[0].user_id === userId && titles.includes(owned[0].title), "CLEANUP_OWNERSHIP_MISMATCH");
         page ??= await context.newPage();
-        await page.goto(`/en/watchlists/${watchlistId}`);
-        await page!.getByRole("button", { name: "Delete", exact: true }).click();
-        await page!.getByRole("alertdialog").getByRole("button", { name: "Delete", exact: true }).click();
-        await page!.waitForURL(/\/en\/watchlists$/);
-        const retained = await sql`SELECT 1 FROM watchlist WHERE id=${watchlistId}`;
-        check(retained.length === 0, "CANARY_CLEANUP_FAILED");
+        await page.goto(`/en/watchlists/${cleanupId}`);
+        await page.getByRole("button", { name: "Delete", exact: true }).click();
+        await page.getByRole("alertdialog").getByRole("button", { name: "Delete", exact: true }).click();
+        await page.waitForURL(/\/en\/watchlists$/);
+        check((await sql`SELECT 1 FROM watchlist WHERE id=${cleanupId}`).length === 0, "CANARY_CLEANUP_FAILED");
       } catch (error) { if (!failure) { failure = error; failurePhase = phase; } }
     }
     try {
-      const signedOut = await context.request.post("/api/auth/sign-out", { headers: { origin: base.origin }, maxRedirects: 0 });
+      const signedOut = await context.request.post("/api/auth/sign-out", { data: {}, headers: { origin: base.origin }, maxRedirects: 0 });
       check(signedOut.status() === 200, "CANARY_SESSION_CLEANUP_FAILED");
     } catch (error) { if (!failure) { failure = error; failurePhase = "session_cleanup"; } }
     await context.close(); await browser.close(); await sql.end({ timeout: 5 });
   }
   if (failure) { phase = failurePhase!; throw failure; }
-  console.log(JSON.stringify({ contract: CONTRACT, outcome: "passed", firstUse: true, realRequestIdentity: true, committedSelection: true, persistedReload: true, scopedCleanup: true, writeMode, legacyRowsAfterSelection: writeMode === "bridge" ? 1 : 0 }));
+  console.log(JSON.stringify({ contract: CONTRACT, outcome: "passed", firstUse: true, realRequestIdentity: true, committedSelection: true, persistedReload: true, scopedCleanup: true, ...lifecycleProof, writeMode, legacyRowsAfterSelection: writeMode === "bridge" ? 1 : 0 }));
 }
 void main().catch(error => {
   console.error(JSON.stringify({ contract: CONTRACT, outcome: "failed", phase }));
