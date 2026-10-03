@@ -127,14 +127,19 @@ func (a *Authority) claimOwned(ctx context.Context, tx pgx.Tx, worker WorkerType
 	if worker != Simple {
 		return nil, ErrConfiguration
 	}
-	a.ownershipMu.Lock()
-	defer a.ownershipMu.Unlock()
 	now, err := a.queue.clock(ctx)
 	if err != nil {
 		return nil, err
 	}
 	members := a.ownership.document.Members
 	count := min(len(members), ownershipCandidateBatch)
+	// Protect only the shared scan cursor. A canonical row wait must not hold
+	// a process mutex across every other claim's SQL transaction. Redis still
+	// atomically validates and pops the exact member/lease/snapshot below.
+	a.ownershipMu.Lock()
+	start := a.ownershipCursor
+	a.ownershipCursor = (start + count) % len(members)
+	a.ownershipMu.Unlock()
 	type probe struct {
 		member           ownershipMember
 		first, recurring *redis.Cmd
@@ -142,12 +147,11 @@ func (a *Authority) claimOwned(ctx context.Context, tx pgx.Tx, worker WorkerType
 	probes := make([]probe, 0, count)
 	pipe := a.queue.redis.Pipeline()
 	for i := 0; i < count; i++ {
-		member := members[(a.ownershipCursor+i)%len(members)]
+		member := members[(start+i)%len(members)]
 		probes = append(probes, probe{member,
 			pipe.Do(ctx, "ZMSCORE", "ft_monitors_simple:"+member.Domain, member.BoardID),
 			pipe.Do(ctx, "ZMSCORE", "monitors_simple:"+member.Domain, member.BoardID)})
 	}
-	a.ownershipCursor = (a.ownershipCursor + count) % len(members)
 	if _, err := pipe.Exec(ctx); err != nil && !errors.Is(err, redis.Nil) {
 		return nil, ErrObservation
 	}

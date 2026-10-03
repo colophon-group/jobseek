@@ -91,3 +91,43 @@ func TestRealAuthorityBlockedBoardDoesNotStarveIndependentBoard(t *testing.T) {
 		t.Fatal("blocked observation did not finish after canonical change")
 	}
 }
+
+func TestRealConcurrentOwnedClaimsPopOneExactLease(t *testing.T) {
+	f, authority, _ := realOwnedAuthority(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+	type result struct {
+		claim *Claim
+		err   error
+	}
+	start := make(chan struct{})
+	done := make(chan result, 5)
+	for range 5 {
+		go func() {
+			<-start
+			claim, err := authority.Claim(ctx, Simple)
+			done <- result{claim, err}
+		}()
+	}
+	close(start)
+	claimed := 0
+	for range 5 {
+		select {
+		case r := <-done:
+			if r.err != nil {
+				t.Fatalf("concurrent owned claim rejected: %v", r.err)
+			}
+			if r.claim != nil {
+				claimed++
+				if r.claim.Descriptor().ID != f.task.ID || !r.claim.OwnershipBound() {
+					t.Fatal("concurrent pop escaped its exact ownership")
+				}
+			}
+		case <-ctx.Done():
+			t.Fatal("concurrent owned claims did not finish")
+		}
+	}
+	if claimed != 1 || f.client.redis.ZCard(ctx, "inflight:simple").Val() != 1 || f.client.redis.HLen(ctx, "inflight_tokens:simple").Val() != 1 {
+		t.Fatal("concurrent selection duplicated or lost an exact lease")
+	}
+}
