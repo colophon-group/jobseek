@@ -7,6 +7,40 @@ CI/canaries #10227; promotion/legacy retirement #10228.
 Paths below are repository-relative. This inventory distinguishes executable
 runtime dependencies from retained mirror schema and historical test evidence.
 
+## Executable lifecycle inventory
+
+[`company-reference-dependencies.json`](../apps/web/scripts/company-reference-dependencies.json)
+is the machine-readable database lifecycle manifest. Each inbound company or
+reference FK declares its owner, active-selection versus retained-history
+classification, producer, replacement producer, and bridge/final disposition.
+The deployed inventory contains six FKs. A read-only catalog probe on
+2026-10-03 confirmed that the runtime/0075 Murmur table is absent from production.
+That known legacy dependency is inventoried as optional retained history: only
+its exact six-column/default/PK shape and SET NULL company FK are accepted if
+present. Malformed optional history and all unknown references fail verification. The checker refuses retiring the legacy compatibility producer while active
+selections still require legacy rows; final selections require restrictive web
+references and a live replacement materializer. Retained inert/history rows need
+an explicit owner and independent retirement disposition. Saved jobs declare a
+self-contained company snapshot lifecycle with no company-identity FK.
+
+[`company-reference-dependency-check.ts`](../apps/web/scripts/company-reference-dependency-check.ts)
+compares **all** inbound FKs to `public.company` and `public.company_reference`
+against that manifest, including columns, target columns, actions, validation and
+immediacy. It also verifies saved-job company snapshot types/nullability and the
+absence of any FK on its company identity. Unknown, missing or weakened
+relationships fail closed with metadata-only diagnostics. It runs inside the
+read-only pre/post/drift audit used by protected migration and scheduled drift
+workflows. The expansion calls bridge mode; the separate final-contract audit
+must call reference mode after its exact migration ledger proves cutover.
+
+Changing a producer's lifecycle requires updating its declared retirement phase
+and every retained dependency's replacement/disposition in the same reviewed
+change. Required CI generates the current Drizzle schema, proves its optional historical
+Murmur shape, and separately proves the deployed variant without that table and both
+phase inventories, unexpected legacy/reference FKs, missing historical relations,
+and independent snapshots. Behavioral service/browser tests still prove the
+replacement writer works; a declaration or source-text check alone is not enough.
+
 ## Database relationships
 
 | Dependency | Classification and owner | Migration target and verification |
@@ -17,7 +51,7 @@ runtime dependencies from retained mirror schema and historical test evidence.
 | `job_board.company_id → company.id`, cascade | Inert mirror compatibility; catalogue owners | Keep, independently retire after auditing `company_request.resolved_job_board_id`. Catalogue/search use crawler/Typesense. |
 | `hiring_signal.company_id → company.id`, cascade | Inert feature schema; web feature owner | Keep; no runtime producer/consumer. `outreach_draft` references signals and must enter its eventual retirement audit. |
 | `company_request.resolved_company_id → company.id`, set null | Compatibility resolution fields; company-request owner | Keep resolution FKs; active request submission only records request/issue metadata. Do not activate a resolver; audit historical records before retiring resolution fields. |
-| `murmur_accept_log.company_id → company.id`, set null | Feature-gated legacy status reader; Murmur owner | Keep legacy ledger and status join through bridge. No active accept/webhook catalogue writer exists. Feature retirement must account for the status endpoint and its tests. |
+| `murmur_accept_log.company_id → company.id`, set null (optional historical table; absent in production) | Feature-gated legacy status reader; Murmur owner | Preserve its consumer inventory. No active accept/webhook catalogue writer exists; the audit recognizes only its exact historical table/FK shape if retained elsewhere. Feature retirement must account for the status endpoint and its tests. |
 | `saved_job.company_id` (no company FK) | Active independent durable history; saved-jobs owner | No cutover. Preserve `company_name`, `company_slug`, `company_icon`, posting snapshots and interview relations. Saved-job snapshot tests/PG preservation assertion. |
 | `company_reference.id` | Active web reference owner (#10224) | Exact schema/check/provenance tests and read-only pre/post/drift audit. No catalogue FK, slug uniqueness or UUID default. |
 

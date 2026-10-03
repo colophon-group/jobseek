@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Sql } from "postgres";
+import { auditCompanyReferenceDependencies } from "./company-reference-dependency-check";
 import { normalizeWatchlistCompaniesForRead } from "../src/lib/services/watchlist-input";
 const forbiddenControls = String.raw`[\x01-\x08\x0b\x0c\x0e-\x1f\x7f]`;
 
@@ -68,6 +69,8 @@ export async function auditCompanyReferences(sql: Sql, mode: CompanyReferenceMod
       const expected = phase === "preflight" ? referencePrerequisiteIdentity : referenceMigrationIdentity;
       assert(Number(ledger[0]?.createdAt) === expected.createdAt && ledger[0]?.hash === expected.hash, "Unexpected exact migration ledger head");
     }
+    // The separate final-contract verifier declares phase="contract" only after exact 0101 ledger proof.
+    const dependencies = await auditCompanyReferenceDependencies(tx, phase.startsWith("contract") ? "reference" : "bridge");
     const [malformed] = await tx<{ count: number }[]>`
       SELECT count(*)::integer AS count FROM public.company
       WHERE name IS NULL OR length(btrim(name)) = 0 OR length(name) > 300
@@ -97,7 +100,7 @@ export async function auditCompanyReferences(sql: Sql, mode: CompanyReferenceMod
     if (phase === "preflight") {
       assert(!relation?.oid, "company_reference exists before recorded expansion");
       assert((await tx`SELECT to_regprocedure('public.company_reference_from_legacy()') AS function`)[0]?.function === null, "Unrecorded legacy bridge function exists");
-      return { mode, phase, status: "passed", migration: referenceMigrationIdentity, ledgerHead: ledger[0], malformed, nonrenderable, selectionForeignKeys };
+      return { mode, phase, status: "passed", migration: referenceMigrationIdentity, ledgerHead: ledger[0], malformed, nonrenderable, selectionForeignKeys, dependencies };
     }
     assert(relation?.kind === "r" && relation.persistent === "p" && relation.rls, "Company reference must be a permanent RLS table");
     const columns = await tx<{ name: string; type: string; notNull: boolean; default: string | null }[]>`
@@ -169,6 +172,6 @@ export async function auditCompanyReferences(sql: Sql, mode: CompanyReferenceMod
       && p.command==='r' && p.permissive && JSON.stringify(p.roles)===JSON.stringify(['jobseek_migration_auditor'])
       && p.using==='true' && p.check===null), "Migration auditor exact SELECT policy differs");
     return { mode, phase, status: "passed", migration: referenceMigrationIdentity, ledgerHead: ledger[0], relation, columns, checks, constraints, indexes,
-      coverage, nonrenderable, runtime, browser, auditor, policies, selectionForeignKeys, compatibilityFunction: "exact", compatibilityTrigger: "exact" };
+      coverage, nonrenderable, runtime, browser, auditor, policies, selectionForeignKeys, dependencies, compatibilityFunction: "exact", compatibilityTrigger: "exact" };
   });
 }

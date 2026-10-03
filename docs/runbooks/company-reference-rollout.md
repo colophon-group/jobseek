@@ -128,3 +128,15 @@ After the final contract, rollback stays at the compatible bridge release or use
 a reviewed forward repair. Never restore historical cascade FKs or pre-bridge app
 releases as an automatic rollback. Schema restoration is a protected backup/restore
 operation with preserved selection data, not the destructive inverse of expansion.
+
+## Dependency retirement gate
+
+Before retiring any company producer, update the executable lifecycle manifest
+linked from the dependency inventory. Every retained FK must declare an owner
+and compatible replacement or independent retained-history disposition. The
+read-only audit compares the complete inbound catalog against this inventory;
+uninventoried, missing or weakened relationships block promotion. Saved-job
+company snapshots must remain complete and independent of all company-ID FKs.
+The final-contract audit uses reference mode only after its exact ledger proves
+0101; reference mode refuses the active legacy selection FKs. Require the actual
+Drizzle-schema PG fixture and behavior/canary evidence before retiring writers.
