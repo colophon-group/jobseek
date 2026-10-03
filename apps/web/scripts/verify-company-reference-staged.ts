@@ -4,6 +4,7 @@ import { parse } from "dotenv";
 import postgres from "postgres";
 import { Client } from "typesense";
 import { chromium, type Page } from "playwright";
+import { bootstrapDeploymentAccess } from "./company-reference/deployment-access";
 import { logExternalError } from "../src/lib/safe-external-error";
 
 const CONTRACT = "company_reference_staged_canary";
@@ -34,16 +35,12 @@ async function main() {
     apiKey: values.TYPESENSE_SEARCH_KEY, logLevel: "silent", connectionTimeoutSeconds: 5 });
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ baseURL: base.origin });
-  // Scope the deployment bypass to this exact verified first-party origin.
-  // Global browser headers would also reach analytics, images, and external links.
-  await context.route("**/*", async route => {
-    if (new URL(route.request().url()).origin !== base.origin) return route.continue();
-    await route.continue({ headers: { ...route.request().headers(), "x-vercel-protection-bypass": bypass } });
-  });
   let page: Page | undefined; let watchlistId: string | undefined;
   const title = `company-reference-canary:${randomUUID()}`;
   let failure: unknown; let failurePhase: string | undefined;
   try {
+    phase = "deployment_access";
+    await bootstrapDeploymentAccess(context, base, bypass);
     phase = "dedicated_identity_preflight";
     const identity = await sql`SELECT id, email, email_verified FROM "user" WHERE id=${userId}`;
     check(identity.length === 1 && identity[0].email === email && identity[0].email_verified, "DEDICATED_IDENTITY_NOT_VERIFIED");
@@ -76,9 +73,9 @@ async function main() {
     check(/^[0-9a-f-]{36}$/i.test(doc.id) && doc.name.length <= 300 && doc.slug.length <= 100, "INVALID_CANONICAL_FIXTURE");
 
     phase = "authenticated_request_identity";
-    const signedIn = await context.request.post("/api/auth/sign-in/email", { data: { email, password }, headers: { origin: base.origin, "x-vercel-protection-bypass": bypass }, maxRedirects: 0 });
+    const signedIn = await context.request.post("/api/auth/sign-in/email", { data: { email, password }, headers: { origin: base.origin }, maxRedirects: 0 });
     check(signedIn.status() === 200, "CANARY_SIGN_IN_FAILED");
-    const session = await context.request.get("/api/auth/get-session", { headers: { "x-vercel-protection-bypass": bypass }, maxRedirects: 0 });
+    const session = await context.request.get("/api/auth/get-session", { maxRedirects: 0 });
     const sessionBody = await session.json();
     check(session.status() === 200 && sessionBody.user?.id === userId, "CANARY_SESSION_IDENTITY_MISMATCH");
 
@@ -102,7 +99,7 @@ async function main() {
     const deadline = Date.now() + 15_000;
     let persisted = false;
     while (Date.now() < deadline) {
-      const row = await sql`SELECT r.source, r.verified_at, w.alerts_enabled, w.filters->>'anyCompany' AS any_company,
+      const row = await sql`SELECT r.source, r.verified_at, w.alerts_enabled, COALESCE(w.filters->>'anyCompany', 'false') AS any_company,
         (SELECT count(*)::integer FROM watchlist_company all_wc WHERE all_wc.watchlist_id=w.id) AS membership_count FROM watchlist_company wc
         JOIN watchlist w ON w.id=wc.watchlist_id JOIN company_reference r ON r.id=wc.company_id
         WHERE wc.watchlist_id=${watchlistId} AND wc.company_id=${doc.id} AND w.user_id=${userId} AND w.title=${title}`;
@@ -144,7 +141,7 @@ async function main() {
       } catch (error) { if (!failure) { failure = error; failurePhase = phase; } }
     }
     try {
-      const signedOut = await context.request.post("/api/auth/sign-out", { headers: { origin: base.origin, "x-vercel-protection-bypass": bypass }, maxRedirects: 0 });
+      const signedOut = await context.request.post("/api/auth/sign-out", { headers: { origin: base.origin }, maxRedirects: 0 });
       check(signedOut.status() === 200, "CANARY_SESSION_CLEANUP_FAILED");
     } catch (error) { if (!failure) { failure = error; failurePhase = "session_cleanup"; } }
     await context.close(); await browser.close(); await sql.end({ timeout: 5 });

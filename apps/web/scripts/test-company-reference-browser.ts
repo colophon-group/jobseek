@@ -81,10 +81,11 @@ async function main() {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
     browserPhase = "persisted_sql";
-    const persisted = await sql`SELECT w.user_id, w.alerts_enabled, r.name, r.source, r.verified_at FROM watchlist w
+    const persisted = await sql`SELECT w.user_id, w.alerts_enabled, COALESCE(w.filters->>'anyCompany', 'false') AS any_company, r.name, r.source, r.verified_at FROM watchlist w
       JOIN watchlist_company wc ON wc.watchlist_id=w.id JOIN company_reference r ON r.id=wc.company_id
       WHERE w.id=${watchlistId} AND wc.company_id=${doc.id}`;
     assert.equal(persisted.length, 1, "Picker save must commit a materialized reference");
+    assert.equal(persisted[0].any_company, "false", "Company membership and scope must commit atomically before quick reload");
     assert.equal(persisted[0].user_id, user.id); assert.equal(persisted[0].source, "typesense"); assert.equal(persisted[0].alerts_enabled, false);
     browserPhase = "reload";
     await page.reload(); await page.getByRole("button", { name: `Remove ${doc.name}`, exact: true }).waitFor();

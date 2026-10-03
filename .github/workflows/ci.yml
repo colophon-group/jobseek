@@ -1445,10 +1445,10 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Prove first-use references and transaction invariants
-        run: pnpm --filter @jobseek/web test:company-reference
       - name: Install browser
         run: pnpm --filter @jobseek/web exec playwright install --with-deps chromium
+      - name: Prove first-use references and transaction invariants
+        run: pnpm --filter @jobseek/web test:company-reference
       - name: Prove authenticated picker save and persisted reload
         run: pnpm --filter @jobseek/web test:company-reference:browser
 
