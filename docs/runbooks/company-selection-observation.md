@@ -137,8 +137,17 @@ signed URLs are persisted. A covered newest closed window suppresses duplicate
 dispatch. Recent in-flight runs wait within a bound; a stale queue or ambiguous
 POST result never reports healthy. Local slot intent prevents repeated uncertain
 dispatches, but remote artifact coverage remains authoritative. Read-only
-`--check --expected-source <SHA>` requires current metadata and covered history
-before targeted activation; it never dispatches or changes the period.
+`--check --expected-source <SHA>` remains a strict health check and fails for
+missing/partial retained history. The separate `--activation-ready --expected-source <SHA>`
+gate requires owner/repository/workflow/exact-main identity, a digest-verified
+artifact no more than 20 minutes old, and the latest closed window exhausted. It
+may return ready solely to enable future collection despite historical gaps; its
+output still states degraded collection, missing/partial/expired counts, original
+start and blocked period acceptance. It never dispatches, repairs past gaps,
+changes the period or certifies rollout acceptance. Protected activation prints
+that evidence, queues only the service asynchronously and enables only its timer.
+Normal timer invocations continue collecting new windows while their honest
+exit/status remains degraded for historical gaps.
 
 The dispatcher reports missing/partial/expired closed-window counts, pending
 delivery, and positive telemetry visibility. It checks at most the retained

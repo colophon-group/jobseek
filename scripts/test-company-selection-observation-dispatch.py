@@ -94,6 +94,7 @@ class FakeGithub:
             "updated_at": "2026-10-03T18:07:00Z",
         }
         self.body = sample_body()
+        self.observation_start = START
         self.bad_archive = None
         self.bad_digest = False
         self.extra_member = False
@@ -135,7 +136,7 @@ class FakeGithub:
         if path.endswith("/branches/main"):
             return {"commit": {"sha": self.source}}
         if path.endswith("/actions/variables/COMPANY_REFERENCE_OBSERVATION_START"):
-            return {"value": START}
+            return {"value": self.observation_start}
         if path.endswith("/runs?per_page=10"):
             return {"workflow_runs": [self.run]}
         if path.endswith("/artifacts?per_page=20"):
@@ -157,6 +158,34 @@ class FakeGithub:
         if path.endswith("/zip"):
             return self.bad_archive or self.zip()
         raise AssertionError("unexpected API boundary")
+
+
+def gapped_producer():
+    fake = FakeGithub()
+    fake.observation_start = "2026-10-03T15:22:34.000Z"
+    fake.body["observationStart"] = fake.observation_start
+    rows = []
+    begins = range(
+        int(D.instant(fake.observation_start)) // 900 * 900,
+        int(NOW - 300) // 900 * 900,
+        900,
+    )
+    for index, begin in enumerate(begins):
+        if index < 5:
+            continue
+        rows.append(
+            {
+                "from": iso(begin),
+                "until": iso(begin + 900),
+                "queriedFrom": iso(max(begin, D.instant(fake.observation_start))),
+                "collectedAt": fake.body["generatedAt"],
+                "queryCoverage": "exhausted",
+                "counts": [],
+                "reasons": [],
+            }
+        )
+    fake.body["checkpoints"] = rows
+    return fake
 
 
 class DispatchTests(unittest.TestCase):
@@ -314,6 +343,60 @@ class DispatchTests(unittest.TestCase):
             self.invoke(fake, "--check", "--expected-source", SOURCE)[0], 2
         )
         self.assertFalse(any(post for _, post in fake.calls))
+
+    def test_gapped_history_allows_only_activation_readiness_with_blocked_period(self):
+        fake = gapped_producer()
+        strict, strict_report = self.invoke(
+            fake, "--check", "--expected-source", SOURCE
+        )
+        code, report = self.invoke(
+            fake, "--activation-ready", "--expected-source", SOURCE
+        )
+        self.assertEqual(strict, 2)
+        self.assertEqual(code, 0)
+        self.assertTrue(report["activationReady"])
+        self.assertEqual(report["collectionHealth"], "degraded")
+        self.assertTrue(report["periodCoverageBlocked"])
+        self.assertEqual(report["rolloutAcceptance"], "blocked_incomplete_history")
+        self.assertEqual(report["missingWindows"], strict_report["missingWindows"])
+        self.assertEqual(
+            report["expiredMissingWindows"], strict_report["expiredMissingWindows"]
+        )
+        self.assertFalse(any(post for _, post in fake.calls))
+        self.assertEqual(report["observationStart"], "2026-10-03T15:22:34.000Z")
+        self.assertEqual(report["missingWindows"], 5)
+        self.assertEqual(report["expiredMissingWindows"], 5)
+
+    def test_activation_readiness_rejects_current_gap_missing_artifact_stale_or_wrong_source(
+        self,
+    ):
+        for mutation in (
+            lambda f: f.body["checkpoints"].pop(),
+            lambda f: f.body["checkpoints"][-1].update(
+                queryCoverage="partial", reasons=["retention_boundary"]
+            ),
+            lambda f: f.artifact.update(name="wrong-artifact"),
+            lambda f: f.body.update(generatedAt="2026-10-03T17:00:00.000Z"),
+            lambda f: setattr(f, "source", "b" * 40),
+        ):
+            fake = FakeGithub()
+            mutation(fake)
+            code, report = self.invoke(
+                fake, "--activation-ready", "--expected-source", SOURCE
+            )
+            self.assertEqual(code, 2)
+            self.assertFalse(report.get("activationReady", False))
+            self.assertFalse(any(post for _, post in fake.calls))
+        self.assertEqual(self.invoke(FakeGithub(), "--activation-ready")[0], 2)
+
+    def test_new_windows_are_dispatched_despite_blocked_past_history(self):
+        fake = FakeGithub()
+        fake.body["checkpoints"].pop(0)
+        fake.body["checkpoints"].pop()
+        code, report = self.invoke(fake)
+        self.assertEqual(code, 2)
+        self.assertTrue(report["periodCoverageBlocked"])
+        self.assertEqual(sum(post is not None for _, post in fake.calls), 1)
 
     def test_artifact_digest_boundary_source_start_or_counts_corruption_fails(self):
         mutations = [
@@ -474,7 +557,9 @@ activate_company_selection_observation_timer"""
                     self.assertNotIn("systemctl", result.stdout)
                 else:
                     self.assertEqual(result.returncode, 0, result.stderr)
-                    self.assertIn("--check --expected-source " + SOURCE, result.stdout)
+                    self.assertIn(
+                        "--activation-ready --expected-source " + SOURCE, result.stdout
+                    )
                     self.assertEqual(
                         [
                             row
@@ -482,11 +567,46 @@ activate_company_selection_observation_timer"""
                             if row.startswith("systemctl ")
                         ],
                         [
-                            "systemctl start jobseek-codex-company-selection-observation.service",
+                            "systemctl start --no-block jobseek-codex-company-selection-observation.service",
                             "systemctl enable --now jobseek-codex-company-selection-observation.timer",
                             "systemctl is-active --quiet jobseek-codex-company-selection-observation.timer",
                         ],
                     )
+
+    def test_gapped_readiness_evidence_is_emitted_before_only_future_trigger_activation(
+        self,
+    ):
+        fake = gapped_producer()
+        code, report = DispatchTests().invoke(
+            fake, "--activation-ready", "--expected-source", SOURCE
+        )
+        self.assertEqual(code, 0)
+        self.assertEqual(report["expiredMissingWindows"], 5)
+        with tempfile.TemporaryDirectory() as directory:
+            script = self.activation_fixture(directory)
+            evidence = shlex.quote(json.dumps(report))
+            script = script.replace(
+                'as_runner() { echo "runner-check $*"; return "$CHECK_RESULT"; }',
+                'as_runner() { echo "runner-check $*"; echo '
+                + evidence
+                + '; return "$CHECK_RESULT"; }',
+            )
+            result = self.shell(script, {"CHECK_RESULT": str(code)})
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn(
+                "--activation-ready --expected-source " + SOURCE, result.stdout
+            )
+            lines = result.stdout.splitlines()
+            emitted = json.loads(next(line for line in lines if line.startswith("{")))
+            self.assertEqual(emitted["expiredMissingWindows"], 5)
+            self.assertTrue(emitted["periodCoverageBlocked"])
+            self.assertEqual(emitted["collectionHealth"], "degraded")
+            self.assertLess(
+                lines.index(next(line for line in lines if line.startswith("{"))),
+                lines.index(
+                    "systemctl start --no-block jobseek-codex-company-selection-observation.service"
+                ),
+            )
 
     def test_matching_release_and_modes_cannot_activate_stale_installed_bytes(self):
         for name in (

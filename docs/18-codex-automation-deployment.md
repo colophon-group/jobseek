@@ -145,8 +145,13 @@ current main, the owner may use **Deploy Codex Runner (Hetzner)** with
 `operation=activate-observation`, `expected_sha=<exact current main SHA>`, and
 `confirmation=ACTIVATE-COMPANY-SELECTION-OBSERVATION`. The protected job validates
 both actor identities and main; its host entry point checks the matching
-installed root-owned release/units, current GitHub main and authentic current
-checkpoint coverage. It starts/enables only the observation service/timer. It
+installed root-owned release/units and exact bundle bytes, current GitHub main
+and authentic latest closed-window coverage. Its separate `--activation-ready`
+check requires exact source binding and a checkpoint no more than 20 minutes old.
+It prints historical missing/partial/expired counts and blocked period acceptance
+even when this narrow readiness gate passes. Historical gaps must not prevent
+future collection: the job queues only this service asynchronously, then enables
+only its timer; normal service checks still exit degraded for retained gaps. It
 does not redeploy the host, restart the crawler or activate other routines.
 
 Keep manual collection until two actual timer dispatch/collection cycles show

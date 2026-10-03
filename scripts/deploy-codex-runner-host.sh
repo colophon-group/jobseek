@@ -584,8 +584,10 @@ activate_company_selection_observation_timer() {
   # are read. No environment files or provider/DB credentials enter this helper.
   as_runner env -i HOME=/home/codex-runner PATH=/usr/local/bin:/usr/bin:/bin \
     python3 -I "${PRIVILEGED_DIR}/codex-company-selection-observation-dispatch.py" \
-    --check --expected-source "${EXPECTED_SHA}" || fail "observation identity or current coverage check failed"
-  systemctl start jobseek-codex-company-selection-observation.service
+    --activation-ready --expected-source "${EXPECTED_SHA}" || fail "observation identity or current-window readiness check failed"
+  # Historical gaps deliberately keep service exit/status degraded. Queue only
+  # this validated service so that honest exit2 cannot block future timer runs.
+  systemctl start --no-block jobseek-codex-company-selection-observation.service
   systemctl enable --now "${OBSERVATION_TIMER}"
   systemctl is-active --quiet "${OBSERVATION_TIMER}" || fail "observation timer did not start"
 }

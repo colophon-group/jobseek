@@ -361,6 +361,7 @@ def health(body: dict | None, start: str, now: float) -> dict:
             partial += row["queryCoverage"] != "exhausted"
             positive |= bool(row["counts"])
     return {
+        "observationStart": start,
         "requiredClosedUntil": until,
         "missingWindows": missing,
         "partialWindows": partial,
@@ -368,7 +369,10 @@ def health(body: dict | None, start: str, now: float) -> dict:
         "positiveTelemetryObserved": positive,
         "entireDeclaredPeriodRetained": first <= instant(start),
         "providerCaptureGuarantee": "unknown",
-        "rolloutAcceptance": "collector_report_required",
+        "rolloutAcceptance": "blocked_incomplete_history"
+        if missing or partial or first > instant(start)
+        else "collector_report_required",
+        "periodCoverageBlocked": bool(missing or partial or first > instant(start)),
         "authenticatedCheckpoint": body is not None,
         "collectorRunId": body["runId"] if body else None,
         "checkpointAgeSeconds": max(0, int(now - instant(body["generatedAt"])))
@@ -395,6 +399,7 @@ def execute(
     state: Path,
     *,
     check_only: bool = False,
+    activation_ready: bool = False,
     expected_source: str | None = None,
 ) -> tuple[int, dict]:
     now = time.time()
@@ -402,7 +407,26 @@ def execute(
     values = runs(github, now)
     body = newest_checkpoint(github, values, start, now)
     report = health(body, start, now)
-    require(not check_only or body is not None, "no_authenticated_checkpoint")
+    require(
+        not (check_only or activation_ready) or body is not None,
+        "no_authenticated_checkpoint",
+    )
+    if activation_ready:
+        # This certifies only that future collection can be enabled. Historical
+        # gaps stay explicit, and ordinary checks/service status stay degraded.
+        ready = bool(
+            report["currentWindowCollected"]
+            and report["requiredClosedUntil"] > instant(start)
+            and report["checkpointAgeSeconds"] <= 1200
+        )
+        return (0 if ready else 2), {
+            "dispatch": "activation_readiness_only",
+            "activationReady": ready,
+            "collectionHealth": "degraded"
+            if report["periodCoverageBlocked"]
+            else "covered",
+            **report,
+        }
     if report["currentWindowCollected"]:
         code = 0 if not report["missingWindows"] and not report["partialWindows"] else 2
         return code, {
@@ -471,13 +495,19 @@ def main(argv: list[str] | None = None, *, github: Github | None = None) -> int:
         type=Path,
         default=Path("/srv/jobseek-codex/state/company-selection-observation"),
     )
-    parser.add_argument("--check", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--check", action="store_true")
+    mode.add_argument("--activation-ready", action="store_true")
     parser.add_argument("--expected-source")
     args = parser.parse_args(argv)
     try:
         require(
             args.expected_source is None or bool(SHA.fullmatch(args.expected_source)),
             "invalid_expected_source",
+        )
+        require(
+            not args.activation_ready or args.expected_source is not None,
+            "activation_requires_exact_source",
         )
         os.umask(0o077)
         require(not args.state_dir.is_symlink(), "unsafe_state")
@@ -491,6 +521,7 @@ def main(argv: list[str] | None = None, *, github: Github | None = None) -> int:
                 github or Github(),
                 args.state_dir,
                 check_only=args.check,
+                activation_ready=args.activation_ready,
                 expected_source=args.expected_source,
             )
         print(json.dumps(report, separators=(",", ":"), sort_keys=True))
