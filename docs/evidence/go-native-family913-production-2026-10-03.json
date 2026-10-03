@@ -147,5 +147,44 @@
     "failed_current_epoch_boards": 2,
     "claim_errors": 0,
     "conclusion": "Two posting_write deadline failures observed; sustained failure resolution unproven, profile expansion remains held"
+  },
+  "later_deadline_observation": {
+    "observed_at_utc": "2026-10-03T23:31:04.154552+00:00",
+    "settled_current_deadline_matches": 465,
+    "settled_current_deadline_mismatches": 2,
+    "strict_result": "failed; completed SQL versus earlier tokenless requeue deadlines retained",
+    "metrics": [
+      "jobseek_ordinary_go_ready 1",
+      "jobseek_ordinary_go_active_claims 2",
+      "jobseek_ordinary_go_claim_errors_total 3",
+      "crawler_tasks_total{kind=\"monitor\",status=\"failed\"} 2",
+      "crawler_tasks_total{kind=\"monitor\",status=\"gone\"} 1",
+      "crawler_tasks_total{kind=\"monitor\",status=\"host_circuit_half_open\"} 2",
+      "crawler_tasks_total{kind=\"monitor\",status=\"succeeded\"} 460",
+      "crawler_tasks_total{kind=\"monitor\",status=\"timeout\"} 6",
+      "crawler_tasks_total{kind=\"monitor\",status=\"unacknowledged\"} 3",
+      "crawler_runtime_origin_attempts_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 470",
+      "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"response\"} 470",
+      "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"transport_error\"} 0",
+      "crawler_runtime_response_body_bytes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 33228543",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"success\"} 469",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"error\"} 1",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"cancelled\"} 0",
+      "crawler_runtime_output_items_total{stage=\"monitor\",implementation=\"go\"} 25343",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"new\"} 0",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"relisted\"} 0",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"gone\"} 32",
+      "jobseek_ordinary_go_posting_touches_total 24872"
+    ]
+  },
+  "next_native_authority_candidate": {
+    "version": "0.13.916",
+    "base_revision": "86a4dfdf9d15d2e97df3518edb50f5501ea06859",
+    "deployed": false,
+    "max_sql_connections": 5,
+    "claim_mutex": "cursor only; no Redis/canonical wait",
+    "reproduction_before": "independent canonical observation hits deadline behind blocked unrelated board with one connection",
+    "real_postgresql_redis_race": "Both regressions5repetitions PASS2.400s; queue27.155s; worker39.964s; vetbothPASS",
+    "limitation": "Fixes reproduced pool starvation; live failure/deadline resolution needs deployment proof"
   }
 }
