@@ -1,5 +1,48 @@
 # Native ordinary worker authority checkpoint
 
+The disposable installed fixture now extends actual native candidate N forward
+publication through active reversal and nonempty B0/ordinary restoration: 21
+retained phases under the original host flock. It stops the image-bound UID10001
+producer before restoration, binds exact R to the actual N transfer receipt,
+preserves unattempted microsecond schedules, restores SQL bigint hash/interval,
+drops inactive terminal work and checks complete source retirement/conservation.
+Four returned-effect recovery seams and explicit historical retries on a new SQL
+backend are prepared. Raw closed requests/results/plans and complete snapshots
+are required by the strict source-adaptive verifier. Actual new fixture execution
+is not yet verified; both Linux integration vets/format/tidy, workflow parsing
+and 94 repository tests pass (three optional skips, 44.33 seconds).
+
+The candidate activation sentinel and exact rollback tombstone remain retained.
+Existing Python cleanup requires producer-off, sentinel absence, exact plan and
+source receipt, and no source SQL fences. Positive primitive reactivation tests
+perform tombstone cleanup as fixture setup. The native durable cleanup/R
+initialization handoff still needs checked host authority before reactivation,
+finalization and startup; this fixture does not grant it.
+
+Published `27b665433` full CI passes. Linux raw proof independently verifies both
+architectures' lifecycle deadlines and all three private SIGKILL seams; both
+historical native/legacy image artifacts verify. Installed run `37099665504`
+fails both architectures after all eleven stages return with nil context error;
+the assertion incorrectly treats the owned browser readiness change as unrelated.
+Initial four-phase raw proofs independently verify on both architectures; no
+positive forward proof was emitted. The correction checks all eight shared
+readiness indexes at member level, exact unrelated domains/scores/type/expiry,
+owned-domain removal after forward transfer and exact first-time restoration.
+Its regression test and independent verifier refuse unrelated drift. Whole-B0
+run `37099640940` independently recomputes 16 arms/eight pairs with density
+5.651–13.541; generated startup-cardinality B0 only, whole-service cost unproven. See [installed restoration fixture](evidence/go-ordinary-native-installed-restoration-fixture-2026-10-03.json).
+
+Next publish this prepared fixture/correction and collect positive installed
+candidate-N reversal/nonempty restoration and real crash evidence. Authenticate
+and journal producer/sentinel/tombstone cleanup plus R initialization, finish
+reactivation/finalization and complete restoration/SQL release/full-stack
+startup/readiness under the original flock. Every enabled profile and consumer,
+canonical outputs, database/publisher/freshness/queue conservation, comparable
+whole-service cost, exact gates, supported cutover/cold reversal and rollback
+window remain required before production Python/Playwright/Chromium retirement.
+Goal active; PR #10210 draft; production unchanged. Earlier entries retain their
+source scopes.
+
 The complete cold graph now has a fixed thirty-minute coordinator/SQL lifecycle
 only when the coordinator holds the live original opaque outer host flock.
 Standalone calls retain five minutes. Earlier caller and cumulative outer

@@ -9,6 +9,7 @@ import (
 	"debug/buildinfo"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -86,6 +87,13 @@ func seedHostForwardFixture(t *testing.T, ctx context.Context, f nativePipelineF
 		score, err := strconv.ParseFloat(p.Score, 64)
 		if err != nil || f.r.HSet(ctx, "scrape:"+p.ID, config).Err() != nil || f.r.ZAdd(ctx, prefix+"jobs.example.test", redis.Z{Member: p.ID, Score: score}).Err() != nil {
 			t.Fatal("owned exact legacy schedule")
+		}
+	}
+	// Shared readiness indexes also contain domains outside this transfer.
+	// Keep them populated so conservation proves member scores and key expiry.
+	for n, key := range hostForwardReadinessKeys() {
+		if f.r.ZAdd(ctx, key, redis.Z{Member: "unrelated.example.test", Score: float64(n) + 0.125}).Err() != nil {
+			t.Fatal("owned unrelated readiness seed")
 		}
 	}
 	return s
@@ -456,6 +464,7 @@ func verifyHostForwardProducerStillOwned(t *testing.T, proof map[string]any) {
 
 func assertHostForwardUnrelatedValues(t *testing.T, before, after map[string]string, seed *hostForwardFixtureSeed) {
 	t.Helper()
+	assertHostForwardReadiness(t, before, after, nil)
 	allowed := func(key string) bool {
 		for _, suffix := range []string{"route", "records", "ready", "inflight", "dead", "terminal", "origin-holders"} {
 			if key == "lightpanda-b0:{host-selected-redis}:"+suffix {
@@ -473,13 +482,96 @@ func assertHostForwardUnrelatedValues(t *testing.T, before, after map[string]str
 		return false
 	}
 	for key, value := range before {
+		if hostForwardReadinessKey(key) {
+			continue // Member-level conservation is checked above.
+		}
 		if !allowed(key) && after[key] != value {
 			t.Fatal("unrelated prior Redis value changed", key)
 		}
 	}
 	for key, value := range after {
+		if hostForwardReadinessKey(key) {
+			continue
+		}
 		if !allowed(key) && before[key] != value {
 			t.Fatal("unrelated new Redis value added", key)
+		}
+	}
+}
+
+func hostForwardReadinessKeys() []string {
+	keys := []string{}
+	for _, kind := range []string{"simple", "browser"} {
+		keys = append(keys, "ready:rotation:"+kind)
+		for tier := 0; tier < 3; tier++ {
+			keys = append(keys, fmt.Sprintf("ready:%s:%d", kind, tier))
+		}
+	}
+	return keys
+}
+
+func hostForwardReadinessKey(key string) bool {
+	for _, candidate := range hostForwardReadinessKeys() {
+		if key == candidate {
+			return true
+		}
+	}
+	return false
+}
+
+// Read the same logical snapshot format as fullColdExecutableRedisSnapshot.
+// Only the owned domain may change; unrelated members, scores and expiry stay
+// exact. An absent key and a key containing only the owned domain project empty.
+func hostForwardReadinessProjection(raw string) (string, *float64, error) {
+	if raw == "" {
+		return "", nil, nil
+	}
+	parts := strings.SplitN(raw, ":", 3)
+	if len(parts) != 3 || parts[0] != "zset" || (parts[1] != "true" && parts[1] != "false") {
+		return "", nil, fmt.Errorf("unexpected readiness type/expiry")
+	}
+	var rows []struct {
+		Score  float64
+		Member []byte
+	}
+	if err := json.Unmarshal([]byte(parts[2]), &rows); err != nil {
+		return "", nil, err
+	}
+	var owned *float64
+	unrelated := rows[:0]
+	for _, row := range rows {
+		if string(row.Member) == "jobs.example.test" {
+			if owned != nil {
+				return "", nil, fmt.Errorf("duplicate owned readiness member")
+			}
+			score := row.Score
+			owned = &score
+		} else {
+			unrelated = append(unrelated, row)
+		}
+	}
+	if len(unrelated) == 0 {
+		return "", owned, nil
+	}
+	encoded, err := json.Marshal(unrelated)
+	return parts[0] + ":" + parts[1] + ":" + string(encoded), owned, err
+}
+
+func assertHostForwardReadiness(t *testing.T, before, after map[string]string, restored *hostForwardFixtureSeed) {
+	t.Helper()
+	for _, key := range hostForwardReadinessKeys() {
+		old, _, err := hostForwardReadinessProjection(before[key])
+		current, owned, currentErr := hostForwardReadinessProjection(after[key])
+		if err != nil || currentErr != nil || old != current {
+			t.Fatal("unrelated readiness member/score/type/expiry changed", key, err, currentErr)
+		}
+		if restored != nil && key == "ready:browser:0" {
+			want, err := strconv.ParseFloat(restored.Postings[0].Score, 64)
+			if err != nil || owned == nil || *owned != want {
+				t.Fatal("restored first-time readiness score", key)
+			}
+		} else if owned != nil {
+			t.Fatal("unexpected owned readiness membership", key)
 		}
 	}
 }
