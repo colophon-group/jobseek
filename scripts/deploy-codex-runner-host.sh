@@ -2,7 +2,8 @@
 # Deploy the Hetzner-local Codex runner host surface.
 #
 # This is deployment-only: it updates the checked-out repo and systemd units.
-# It does not start any Codex operational service directly.
+# It does not start any Codex operational service directly. The separately
+# authorized observation-only operation starts one deterministic dispatcher.
 
 set -euo pipefail
 
@@ -23,6 +24,7 @@ LOCK_FILE="${ROOT_DIR}/state/codex-runner.lock"
 # CI copies this complete bundle into a root-owned deployment directory.
 TRUSTED_SOURCE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PRIVILEGED_DIR=/usr/local/lib/jobseek-codex
+OBSERVATION_TIMER=jobseek-codex-company-selection-observation.timer
 
 UNITS=(
   jobseek-codex-docker-lifecycle.service
@@ -32,12 +34,15 @@ UNITS=(
   jobseek-codex-daily-annotations.timer
   jobseek-codex-daily-error-review.service
   jobseek-codex-daily-error-review.timer
+  jobseek-codex-company-selection-observation.service
+  jobseek-codex-company-selection-observation.timer
 )
 
 TIMERS=(
   jobseek-codex-governor.timer
   jobseek-codex-daily-annotations.timer
   jobseek-codex-daily-error-review.timer
+  jobseek-codex-company-selection-observation.timer
 )
 
 ALWAYS_ON_SERVICES=(
@@ -193,6 +198,7 @@ for path in [root, *root.rglob("*")]:
 PYTHON
 
   as_runner touch "${LOCK_FILE}"
+  as_runner mkdir -p -m 0700 "${ROOT_DIR}/state/company-selection-observation"
 }
 
 ensure_document_extraction_runtime() {
@@ -326,7 +332,8 @@ install_privileged_runtime() {
   install -d -o root -g root -m 0755 "${PRIVILEGED_DIR}"
   local script
   for script in codex-routine-status.py codex-error-review-bundle.py \
-      codex-docker-lifecycle-watch.py jobseek_maintenance_provenance.py; do
+      codex-docker-lifecycle-watch.py codex-company-selection-observation-dispatch.py \
+      jobseek_maintenance_provenance.py; do
     install -o root -g root -m 0644 "${TRUSTED_SOURCE}/scripts/${script}" \
       "${PRIVILEGED_DIR}/${script}"
   done
@@ -376,17 +383,14 @@ restore_timer_enablement() {
   local -a enable_candidates=()
   local -a disable_candidates=()
 
-  if [[ "${START_TIMERS}" == "1" ]]; then
-    enable_candidates=("${TIMERS[@]}")
-  else
-    for timer in "${TIMERS[@]}"; do
-      if timer_in_list "${timer}" "${ENABLED_TIMERS_BEFORE_DEPLOY[@]}"; then
-        enable_candidates+=("${timer}")
-      else
-        disable_candidates+=("${timer}")
-      fi
-    done
-  fi
+  for timer in "${TIMERS[@]}"; do
+    if timer_in_list "${timer}" "${ENABLED_TIMERS_BEFORE_DEPLOY[@]-}" ||
+      { [[ "${START_TIMERS}" == "1" && "${timer}" != "${OBSERVATION_TIMER}" ]]; }; then
+      enable_candidates+=("${timer}")
+    else
+      disable_candidates+=("${timer}")
+    fi
+  done
 
   if ((${#enable_candidates[@]} > 0)); then
     systemctl enable "${enable_candidates[@]}"
@@ -407,6 +411,8 @@ start_always_on_services() {
 }
 
 verify_entrypoints() {
+  as_runner env -i HOME=/home/codex-runner PATH=/usr/local/bin:/usr/bin:/bin \
+    python3 -I "${PRIVILEGED_DIR}/codex-company-selection-observation-dispatch.py" --help >/dev/null
   as_runner python3 -m py_compile \
     "${REPO_DIR}/scripts/codex-company-resolver-governor.py" \
     "${REPO_DIR}/scripts/codex-daily-routine-runner.py" \
@@ -496,11 +502,17 @@ restore_timers_on_exit() {
 
   if [[ "${TIMER_RESTORE_ARMED}" == "1" ]]; then
     if [[ "${START_TIMERS}" == "1" ]]; then
-      restore_candidates=("${TIMERS[@]}")
+      for timer in "${TIMERS[@]}"; do
+        if [[ "${timer}" != "${OBSERVATION_TIMER}" ]] ||
+          timer_in_list "${timer}" "${ACTIVE_TIMERS_BEFORE_DEPLOY[@]-}"; then
+          restore_candidates+=("${timer}")
+        fi
+      done
     elif ((${#ACTIVE_TIMERS_BEFORE_DEPLOY[@]} > 0)); then
       restore_candidates=("${ACTIVE_TIMERS_BEFORE_DEPLOY[@]}")
     fi
-    for timer in "${restore_candidates[@]}"; do
+    for timer in "${restore_candidates[@]-}"; do
+      [[ -n "${timer}" ]] || continue
       if [[ "${timer}" == "jobseek-codex-daily-annotations.timer" ]] &&
         [[ "${LABELLER_CONTRACT_VERIFIED}" != "1" ]]; then
         log "leaving ${timer} stopped: labeller PostgreSQL contract was not verified"
@@ -547,6 +559,38 @@ main() {
   report_trace_retention
 }
 
+activate_company_selection_observation_timer() {
+  [[ "${EXPECTED_SHA}" =~ ^[0-9a-f]{40}$ && "${BRANCH}" == main &&
+    "${START_TIMERS}" == 0 &&
+    "${JOBSEEK_CODEX_OBSERVATION_CONFIRMATION:-}" == ACTIVATE-COMPANY-SELECTION-OBSERVATION ]] ||
+    fail "targeted observation activation identity is invalid"
+  [[ "$(sed -n 's/^revision=//p' "${PRIVILEGED_DIR}/release.txt")" == "${EXPECTED_SHA}" ]] ||
+    fail "deploy the exact reviewed runner revision before activation"
+  for path in "${PRIVILEGED_DIR}/codex-company-selection-observation-dispatch.py" \
+    "/etc/systemd/system/jobseek-codex-company-selection-observation.service" \
+    "/etc/systemd/system/${OBSERVATION_TIMER}"; do
+    [[ -f "$path" && ! -L "$path" && "$(stat -c '%u:%a' "$path")" == 0:644 ]] ||
+      fail "observation runtime or unit is not root-owned and read-only"
+  done
+  ! id -nG codex-runner | tr ' ' '\n' | grep -qx docker || fail "dispatcher must have no Docker membership"
+  # Only GH identity, current-main metadata and validated checkpoint artifacts
+  # are read. No environment files or provider/DB credentials enter this helper.
+  as_runner env -i HOME=/home/codex-runner PATH=/usr/local/bin:/usr/bin:/bin \
+    python3 -I "${PRIVILEGED_DIR}/codex-company-selection-observation-dispatch.py" \
+    --check --expected-source "${EXPECTED_SHA}" || fail "observation identity or current coverage check failed"
+  systemctl start jobseek-codex-company-selection-observation.service
+  systemctl enable --now "${OBSERVATION_TIMER}"
+  systemctl is-active --quiet "${OBSERVATION_TIMER}" || fail "observation timer did not start"
+}
+
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
-  main "$@"
+  if [[ $# == 1 && "$1" == --activate-company-selection-observation ]]; then
+    require_root
+    verify_trusted_bundle
+    activate_company_selection_observation_timer
+  elif [[ $# == 0 ]]; then
+    main
+  else
+    fail "unknown deployment operation"
+  fi
 fi
