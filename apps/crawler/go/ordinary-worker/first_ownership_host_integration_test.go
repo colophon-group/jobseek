@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -48,6 +49,7 @@ func TestRealFirstOwnershipHostContainersCutoverAndRecovery(t *testing.T) {
 				t.Helper()
 				out, err := command(name, args...)
 				if err != nil {
+					t.Log("fixture container state counts", firstOwnershipFixtureContainerStates(dir, project))
 					if len(out) > 12000 {
 						out = out[len(out)-12000:]
 					}
@@ -72,20 +74,23 @@ func TestRealFirstOwnershipHostContainersCutoverAndRecovery(t *testing.T) {
 			ref := "ghcr.io/ci/jobseek-crawler@" + image
 			browser := "ghcr.io/ci/jobseek-crawler-browser@" + image
 			write(".env", fmt.Sprintf("JOBSEEK_DEPLOY_REVISION=%s\nCRAWLER_IMAGE_REF=%s\nBROWSER_IMAGE_REF=%s\nLIGHTPANDA_B0_SERVICE_HOST=10.0.0.5\nFIXTURE_IMAGE_ID=%s\n", plan.SourceRevision(), ref, browser, image))
-			write("health.py", `import http.server, pathlib, sys
-port = int(sys.argv[1])
-class Handler(http.server.BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(503 if port == 9096 and pathlib.Path('/fixture/fail-health').exists() else 204)
-        self.end_headers()
-    def log_message(self, *args): pass
-http.server.HTTPServer(('127.0.0.1', port), Handler).serve_forever()
-`)
+			write("health.py", firstOwnershipFixtureHealthScript)
 			ports := map[string]int{"worker-1": 9095, "worker-2": 9096, "worker-3": 9097, "browser-1": 9098, "exporter": 9093, "drain": 9094, "lightpanda-producer": 0, "lightpanda-executor": 0, "lightpanda-claimant": 9101}
 			var compose strings.Builder
 			compose.WriteString("services:\n")
 			for service, port := range ports {
-				fmt.Fprintf(&compose, "  %s:\n    image: ${FIXTURE_IMAGE_ID}\n    network_mode: host\n    restart: unless-stopped\n    volumes: [%q]\n    entrypoint: [/app/.venv/bin/python, /fixture/health.py, %q]\n    command: []\n", service, dir+":/fixture:ro", fmt.Sprint(port))
+				// Delay binding so the real host test exercises listener readiness,
+				// rather than accepting a merely running Python process.
+				fmt.Fprintf(&compose, "  %s:\n    image: ${FIXTURE_IMAGE_ID}\n    network_mode: host\n    restart: unless-stopped\n    volumes: [%q]\n    entrypoint: [/app/.venv/bin/python, /fixture/health.py, %q, \"1\", %q]\n    command: []\n", service, dir+":/fixture:ro", fmt.Sprint(port), fmt.Sprint(port == 9096))
+				if port > 0 {
+					probe, err := json.Marshal(firstOwnershipFixtureListenerProbe(port))
+					if err != nil {
+						t.Fatal(err)
+					}
+					// TCP readiness proves the listener exists, while the unchanged
+					// driver HTTP gate still rejects the injected 9096 response.
+					fmt.Fprintf(&compose, "    healthcheck:\n      test: %s\n      interval: 1s\n      timeout: 3s\n      retries: 5\n", probe)
+				}
 			}
 			fmt.Fprintf(&compose, `  ordinary-go:
     profiles: [ordinary-go]
@@ -173,6 +178,7 @@ http.server.HTTPServer(('127.0.0.1', port), Handler).serve_forever()
 				must("bash", "cutover.sh", "recover-pending")
 			} else {
 				if activationErr != nil {
+					t.Log("fixture container state counts", firstOwnershipFixtureContainerStates(dir, project))
 					t.Fatal("physical cutover failed", activationErr, strings.ReplaceAll(string(out), dsn, "[private fixture database]"))
 				}
 				must("docker", "compose", "--profile", "ordinary-go", "stop", "ordinary-go")
