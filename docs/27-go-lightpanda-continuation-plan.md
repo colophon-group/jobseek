@@ -13,62 +13,76 @@ freshness and queue conservation on real jobs, and compare whole-service resourc
 and cost. Add a fixture or abstraction only for a specific changed production
 contract or observed failure. Plans and synthetic evidence are supporting work.
 
-All 2,570 enabled Greenhouse boards are now owned by the Go ordinary worker
-on v0.13.910, source `c7b1dcf2c4d25a2677aaf70073928a9e940fd441`, at epoch 151.
-[Deployment 37137484149](https://github.com/colophon-group/jobseek/actions/runs/37137484149)
-completed promotion, and the installed supported activation driver restored the
-complete stack. All eight HTTP readiness endpoints passed. The 20:40 UTC readback
-verified all 2,570 SQL and Redis members and deadline agreement for 51 completed
-current-epoch receipts. Sequential metrics recorded 50 successes, 1,461 posting
-touches and zero claim, transport, execution or cancellation errors. New posting,
-description/enrichment and disappearance transitions still need natural evidence.
-See the [latest checkpoint](30-native-ordinary-worker-checkpoint-2026-10-03.md).
+Production v0.13.913, source `f90d8244c66a0ca07635ab9bb08adea4b0b6c462`,
+was promoted by [deployment 37158271320 attempt 2](https://github.com/colophon-group/jobseek/actions/runs/37158271320).
+The supported original drivers restored Lightpanda `cdom` and all 2,570 Greenhouse
+native owners at epoch 153. The fresh canonical/cache census admitted all 2,570
+without config mismatches. The 23:13 UTC readback verified every SQL/Redis member,
+persistent projection, all eight HTTP readiness endpoints and 61 completed
+current-epoch deadlines. Native metrics recorded 59 successful monitors, 3,235
+posting touches and zero claim, transport, execution or cancellation errors.
+See the [portable production evidence](evidence/go-native-family913-production-2026-10-03.json).
+At 23:14 UTC the worker had 110 successes, one timeout and two current boards
+with `native_processing_failed`; safe diagnostics identified `posting_write` /
+`deadline` failures. Claim errors remained zero. Diagnose these specific failures
+and repeat strict deadline checks before expanding ownership. Natural
+new/description/enrichment/gone behavior and whole-service freshness/cost also
+remain unfinished.
 
-That early observation is historical. At 21:47 UTC the same release had 547
-successful tasks, ten failed tasks, nine timeouts, twenty unacknowledged tasks,
-21 claim errors and 155 host-circuit refusals. The 21:29 all-member check found
-534 completed deadlines matching and three completed SQL receipts with earlier
-Redis retry deadlines; its strict parity check failed. Do not expand ownership
-until a fresh observation resolves those discrepancies. The bounded worker fix
-in [PR #10249](https://github.com/colophon-group/jobseek/pull/10249), merged at
-`f90d8244c66a0ca07635ab9bb08adea4b0b6c462`, removes repeated
-decoding of the immutable fleet ownership document, keeps fresh active-identity
-and canonical/cache checks, and adds safe processing-phase diagnostics. It does
-not change pool sizes, timeouts, retry policy or claim authority, and its
-production failure-resolution claim remains unproven.
+The prior v0.13.910 observation is historical: by 22:22 UTC it had 604 successes,
+12 failed tasks, 29 timeouts, 31 unacknowledged tasks and 39 claim errors. Its
+strict 21:29 check found three completed SQL deadlines with earlier Redis retry
+deadlines. [PR #10249](https://github.com/colophon-group/jobseek/pull/10249), now
+deployed in v0.13.913, removes repeated immutable ownership-document decoding
+and adds safe processing-phase diagnostics. Pool sizes, timeouts, retries and
+claim authority retain their existing contracts. Continue observing current
+failures and strict deadline parity before expanding production ownership.
 
-[PR #10246](https://github.com/colophon-group/jobseek/pull/10246) is merged at
-`bcf7811e0575d397b58f45ce206977a851578870` with native Ashby/Lever rich execution;
-its 16-arm ARM64 admission passed. The candidate census admitted 1,128 skip
-profiles, with two detail profiles excluded. [PR #10248](https://github.com/colophon-group/jobseek/pull/10248)
-is merged at `38447db97467eb73a1a5db19005193e618fe4b05` and replaces four Compose
-Python health probes with the installed Go executable. Neither slice is deployed
-at this checkpoint: the original active-ownership guard refused both automatic
-deployments while v0.13.910 continued serving. Build the approved combined
-release, retire ordinary ownership with its original driver, roll back B0 and
-clear its exact selectors, then use the complete supported deployment and
-reactivation. Verify native task outcomes and deadline parity before adopting
-fresh Ashby/Lever profiles.
+Native Ashby/Lever rich routes from [PR #10246](https://github.com/colophon-group/jobseek/pull/10246)
+and four Go Compose health probes from [PR #10248](https://github.com/colophon-group/jobseek/pull/10248)
+are deployed in v0.13.913. Actual Docker metadata verifies all four installed
+probe commands; the ordinary and browser service processes still execute Python
+for their remaining profiles. Ashby/Lever production native owners remain zero;
+the earlier 1,128-profile candidate census must be refreshed before admission.
 
-The next code slice connects the existing Recruitee and Pinpoint parsers to the
-same native rich claim, fetch, enrichment, persistence and settlement path.
-The 21:46 UTC canonical/cache capture admits 218 skip profiles out of 219;
-Floryn's detail profile remains outside this slice. Thirteen actual Python
-request fixtures bind tenant/API-base precedence. Real PostgreSQL/Redis tests
-verify rich fields, description storage/upload scheduling, matching deadlines,
-Recruitee provider-gone 404s, Pinpoint ordinary 404 failures and publisher
-reservation without partial writes. These are candidate results; production
-native owners for these providers remain zero. Publish this slice after the
-worker fix, then refresh its census against the approved release.
+[PR #10251](https://github.com/colophon-group/jobseek/pull/10251) is merged at
+`6a56adeccbad8122ca8490876240f0d06d4a0cdd` with native Recruitee/Pinpoint rich
+execution. Required CI, the actual Crawler Deploy Gate, installed image parity
+and 16-arm ARM64 admission passed before exact-head merge. The 218 eligible
+candidate profiles and one excluded Floryn detail profile are candidate evidence;
+v0.13.914 is not deployed and these providers have zero native owners. Thirteen
+actual Python request fixtures bind endpoint precedence; real PostgreSQL/Redis
+checks cover rich fields, description uploads, provider-specific 404s, publisher
+reservation and full-inventory settlement. Refresh the census against the next
+approved release before staging a combined rich-provider cohort.
 
-Continue with Ashby and Lever through the existing rich worker and queue
-contracts, then every remaining provider/browser profile and mandatory Python
-runtime consumer. Keep every enabled board scheduled. Prove full-service output,
-publisher policy, freshness, queue conservation and resources, exercise supported
-reversal and observe its rollback window before removing production Python and
-legacy browser assets. The full delivery goal remains active until that retirement
-is complete. Avoid additional frameworks or fixture expansion unless a changed
-production contract or an observed failure requires them.
+The next runtime slice replaces the NW and Umantis forward deployment repair
+commands with Go. It embeds the exact existing SQL/Lua contracts and retains
+UUID/dedup behavior, foreign-owner refusal, Umantis two-pass verification and
+idempotent partial-batch recovery. Historical rollback still uses its original
+prior-image Python command. The same slice repairs one observed retirement seam:
+after complete legacy/B0 readiness and restart arming, remove only the exact
+stopped ordinary container before deleting its retiring receipt. Preserve the
+old image for rollback. This requires the installed host CI contract before use.
+
+The v0.13.913 cold handoff initially refused 68 expired tokenless Redis monitor
+leases after the SQL leases expired naturally. The existing installed maintenance
+reaper requeued 63 simple and five browser entries with no dead letters, missing
+configs, SQL writes or ownership/B0 changes. The original activation retry then
+completed. Retained write fences from retired epoch 151 remain historical;
+current admission was bound to epoch 153. Never clear SQL leases or partially
+restart writers to bypass admission.
+
+Continue by validating v0.13.913 task outcomes and strict deadline parity while
+completing the deployment-repair slice. Build the approved combined release,
+use the original complete retirement/B0/deploy/reactivation contracts, then
+adopt fresh eligible Ashby/Lever/Recruitee/Pinpoint profiles. Finish every
+remaining provider, URL/detail and browser profile plus mandatory Python runtime
+consumers. Keep every enabled board scheduled. Prove full-service output,
+publisher policy, freshness, queue conservation and comparable resources/cost;
+exercise supported cold reversal and its observation window, then retire
+production Python, Playwright, Chromium and runtime-only legacy assets. The full
+delivery goal remains active until that retirement is complete.
 
 ## Earlier registry delivery — 2026-10-03
 

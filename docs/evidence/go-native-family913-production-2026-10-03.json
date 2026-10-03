@@ -1,0 +1,151 @@
+{
+  "schema_version": "jobseek.native-ordinary-production-checkpoint/v1",
+  "observed_at_utc": "2026-10-03T23:12:47.685886+00:00",
+  "source_revision": "f90d8244c66a0ca07635ab9bb08adea4b0b6c462",
+  "version": "0.13.913",
+  "deployment": {
+    "run_id": 37158271320,
+    "attempt": 2,
+    "status": "success including promotion"
+  },
+  "images": {
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:55c602b98f4a863cd66f42a865a9d5b518d5a6070c433c600506f2b5ff740f0e",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:6b944b77297ee05897faa67d9ffb276beec9e1dbe6721f5b9f090f1b713bf130",
+    "JOBSEEK_DEPLOY_REVISION": "f90d8244c66a0ca07635ab9bb08adea4b0b6c462"
+  },
+  "routing_epoch": 153,
+  "b0": {
+    "cohort": "cdom",
+    "receipt_sha256": "a8d99d82f77dba9ebb5e101459752bb6b2f2454de57b40525409af81767931ac",
+    "plan_sha256": "87a6cb2e1dfe28dda4ade3fd67210b436596efc877485e14ce268a29ff578bc9"
+  },
+  "ordinary": {
+    "members": 2570,
+    "profile": "greenhouse.token-skip/v1",
+    "receipt_sha256": "c39d92b252fc270ff82130410b5009ea64f2b6468c730977cea5257365810dbe",
+    "plan_sha256": "c3b2c74c1a74545b637297ed6b04ec3bff6bdaa6a4e2d6a78b5e6c402f9f66a5",
+    "projection_sha1": "bd633ce302eb792a5123d566ff89cdab4f1d24e8",
+    "projection_persistent": true,
+    "settled_current_deadline_matches": 61,
+    "settled_current_deadline_mismatches": 0,
+    "metrics": [
+      "jobseek_ordinary_go_ready 1",
+      "jobseek_ordinary_go_active_claims 4",
+      "jobseek_ordinary_go_claim_errors_total 0",
+      "crawler_tasks_total{kind=\"monitor\",status=\"host_circuit_half_open\"} 2",
+      "crawler_tasks_total{kind=\"monitor\",status=\"succeeded\"} 59",
+      "crawler_runtime_origin_attempts_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 59",
+      "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"response\"} 59",
+      "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"transport_error\"} 0",
+      "crawler_runtime_response_body_bytes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 3528502",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"success\"} 59",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"error\"} 0",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"cancelled\"} 0",
+      "crawler_runtime_output_items_total{stage=\"monitor\",implementation=\"go\"} 3235",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"new\"} 0",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"relisted\"} 0",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"gone\"} 0",
+      "jobseek_ordinary_go_posting_touches_total 3235"
+    ]
+  },
+  "http_readiness": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200,
+    "lightpanda-claimant": 204,
+    "ordinary-go": 204
+  },
+  "installed_go_health_probes": {
+    "worker-1": [
+      "CMD",
+      "/usr/local/bin/go-ordinary-worker",
+      "--worker-health=9095"
+    ],
+    "worker-2": [
+      "CMD",
+      "/usr/local/bin/go-ordinary-worker",
+      "--worker-health=9096"
+    ],
+    "worker-3": [
+      "CMD",
+      "/usr/local/bin/go-ordinary-worker",
+      "--worker-health=9097"
+    ],
+    "browser-1": [
+      "CMD",
+      "/usr/local/bin/go-ordinary-worker",
+      "--worker-health=9098"
+    ]
+  },
+  "handoff": {
+    "supported_activation_returncode": 0,
+    "initial_refusal": "Expired tokenless legacy Redis monitor leases remained after natural SQL lease expiry",
+    "installed_maintenance_reaper": {
+      "simple_reenqueued": 63,
+      "browser_reenqueued": 5,
+      "dead_lettered": 0,
+      "missing_config": 0,
+      "sql_mutations": 0,
+      "ordinary_owner_changes": 0,
+      "b0_changes": 0
+    },
+    "historical_fences_preserved_at_retired_epoch": 151
+  },
+  "recruitee_pinpoint": {
+    "pr": 10251,
+    "merged_revision": "6a56adeccbad8122ca8490876240f0d06d4a0cdd",
+    "version": "0.13.914",
+    "native_production_owners": 0,
+    "candidate_eligible": 218,
+    "arm64_run_id": 37158422074,
+    "arm64_source": "b76b2a7b816fd750f98d93d66232599572c92866",
+    "arm64_admitted": true,
+    "arm64_reasons": []
+  },
+  "limitations": [
+    "Early observation does not prove sustained failure resolution or full-service freshness.",
+    "Natural new/relisted/gone transitions and enrichment output still require current-release evidence.",
+    "Ashby/Lever routes and four native health probes are deployed; other-provider native owners remain zero.",
+    "Recruitee/Pinpoint is merged but not deployed.",
+    "Every enabled profile, mandatory runtime consumer, whole-service resources/cost and supported reversal/window remain migration acceptance work."
+  ],
+  "followup_runtime": {
+    "observed_at_utc": "2026-10-03T23:14:41.515648+00:00",
+    "metrics": [
+      "jobseek_ordinary_go_ready 1",
+      "jobseek_ordinary_go_active_claims 5",
+      "jobseek_ordinary_go_claim_errors_total 0",
+      "crawler_tasks_total{kind=\"monitor\",status=\"host_circuit_half_open\"} 2",
+      "crawler_tasks_total{kind=\"monitor\",status=\"succeeded\"} 110",
+      "crawler_tasks_total{kind=\"monitor\",status=\"timeout\"} 1",
+      "crawler_runtime_origin_attempts_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 110",
+      "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"response\"} 110",
+      "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"transport_error\"} 0",
+      "crawler_runtime_response_body_bytes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 6387150",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"success\"} 110",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"error\"} 0",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"cancelled\"} 0",
+      "crawler_runtime_output_items_total{stage=\"monitor\",implementation=\"go\"} 5138",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"new\"} 0",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"relisted\"} 0",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"gone\"} 0",
+      "jobseek_ordinary_go_posting_touches_total 5132"
+    ],
+    "processing_diagnostics": [
+      [
+        "posting_write",
+        "deadline"
+      ],
+      [
+        "posting_write",
+        "deadline"
+      ]
+    ],
+    "failed_current_epoch_boards": 2,
+    "claim_errors": 0,
+    "conclusion": "Two posting_write deadline failures observed; sustained failure resolution unproven, profile expansion remains held"
+  }
+}
