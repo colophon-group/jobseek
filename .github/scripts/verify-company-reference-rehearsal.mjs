@@ -34,7 +34,9 @@ export function validateEvidence(run, artifact, proof, expected) {
   for (const value of Object.values(proof.preserved)) requireProof(Object.keys(value).sort().join(',') === 'digest,rows'
     && Number.isSafeInteger(value.rows) && value.rows >= 0 && /^[a-f0-9]{64}$/.test(value.digest));
   requireProof(Number.isSafeInteger(proof.referenceRows) && proof.referenceRows >= 0
-    && proof.dependencies?.foreignKeyCount === 6 && proof.dependencies?.snapshot === 'independent');
+    && proof.dependencies?.foreignKeyCount === 6 && proof.dependencies?.snapshot === 'independent'
+    && proof.dependencies?.phase === (expected.target.tag === '0100_company_references' ? 'bridge' : 'reference')
+    && proof.referenceRows === proof.preserved[expected.target.tag === '0100_company_references' ? 'company' : 'company_reference'].rows);
 }
 function api(path) { return JSON.parse(execFileSync('gh', ['api', path], { encoding:'utf8', maxBuffer:1048576 })); }
 export function main() {

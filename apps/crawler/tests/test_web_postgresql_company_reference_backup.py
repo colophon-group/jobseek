@@ -354,7 +354,7 @@ def test_actual_selective_archive_restores_reference_phase_and_smoke(
         "INSERT INTO followed_company(user_id,company_id) VALUES ('backup-fixture','0"
         "0000000-0000-0000-0000-000000000201');"
     )
-    if packet_version == 3 and phase == "legacy":
+    if packet_version == 3:
         journal = json.loads((ROOT / "apps/web/drizzle/meta/_journal.json").read_text())
         prerequisite = next(
             row for row in journal["entries"] if row["tag"] == "0099_product_news_consent"
@@ -369,7 +369,16 @@ def test_actual_selective_archive_restores_reference_phase_and_smoke(
     if packet_version == 3:
         psql(
             "INSERT INTO company_description(company_id,locale,description) "
-            "VALUES ('00000000-0000-0000-0000-000000000201','en','Retained description')"
+            "VALUES ('00000000-0000-0000-0000-000000000201','en','Retained description'); "
+            'UPDATE watchlist SET filters=\'{"anyCompany":false,"keywords":["retained"]}\'::jsonb; '
+            "INSERT INTO saved_job(id,user_id,job_posting_id,posting_title,posting_source_url,"
+            "posting_first_seen_at,posting_is_active,company_id,company_name,company_slug) "
+            "VALUES ('00000000-0000-0000-0000-000000000220','backup-fixture',"
+            "'00000000-0000-0000-0000-000000000221','Archived job','https://example.invalid/retained-job',"
+            "'2026-10-01T10:00:00Z',false,'00000000-0000-0000-0000-000000000201',"
+            "'Archived company display','archived-company'); "
+            "INSERT INTO application_interview(saved_job_id,round,type) "
+            "VALUES ('00000000-0000-0000-0000-000000000220',1,'interview')"
         )
     migration_root = ROOT / "apps/crawler/tests/fixtures/company-reference"
     for name, timestamp, expected in (
@@ -574,19 +583,7 @@ def test_actual_selective_archive_restores_reference_phase_and_smoke(
             )
             == "0"
         )
-    if phase != "legacy":
-        # A valid ledger and unchanged rows cannot hide a weakened provenance
-        # check; backup/restore readiness independently inspects exact DDL.
-        psql(
-            "ALTER TABLE company_reference DROP CONSTRAINT company_reference_verification_check; "
-            "ALTER TABLE company_reference ADD CONSTRAINT "
-            "company_reference_verification_check CHECK(true)",
-            target,
-        )
-        with pytest.raises(backup.BackupError, match="reference_checks"):
-            backup._web_postgres_reference_phase(env={})
-
-    if packet_version == 3 and phase == "legacy":
+    if packet_version == 3 and phase in ("legacy", "expanded"):
         command(["pnpm", "--dir", str(ROOT / "apps/web"), "build:company-reference:rehearsal"])
         bundle = ROOT / "deploy/backups/web-postgresql/company-reference-bundle"
         allowlist = json.loads((bundle / "manifest.json").read_text())
@@ -617,7 +614,18 @@ def test_actual_selective_archive_restores_reference_phase_and_smoke(
                 "REHEARSAL_APP_PACKAGE": str(ROOT / "apps/web/package.json"),
                 "REHEARSAL_BUNDLE": str(bundle / "rehearse.mjs"),
                 "REHEARSAL_SOCKET": str(target),
-                "REHEARSAL_TARGET": json.dumps(allowlist["migrations"][0]),
+                "REHEARSAL_TARGET": json.dumps(
+                    next(
+                        row
+                        for row in allowlist["migrations"]
+                        if row["tag"]
+                        == (
+                            "0100_company_references"
+                            if phase == "legacy"
+                            else "0101_company_reference_selection_contract"
+                        )
+                    )
+                ),
             },
             capture_output=True,
             text=True,
@@ -627,15 +635,11 @@ def test_actual_selective_archive_restores_reference_phase_and_smoke(
         proof = json.loads(completed.stdout)
         assert proof["preflight"] == proof["postflight"] == "passed"
         assert proof["dependencies"]["foreignKeyCount"] == 6
-        assert proof["referenceRows"] == 1
+        assert proof["referenceRows"] == (1 if phase == "legacy" else 2)
         assert set(proof["preserved"]) == {
-            table
-            for schema, table in backup._web_postgres_tables("legacy", 3)
-            if schema == "public"
+            table for schema, table in backup._web_postgres_tables(phase, 3) if schema == "public"
         }
-        after_rehearsal = backup._web_postgres_fingerprints(
-            env={}, phase="legacy", packet_version=3
-        )
+        after_rehearsal = backup._web_postgres_fingerprints(env={}, phase=phase, packet_version=3)
         assert {
             key: value for key, value in after_rehearsal.items() if not key.startswith("drizzle.")
         } == {key: value for key, value in before.items() if not key.startswith("drizzle.")}
@@ -643,6 +647,27 @@ def test_actual_selective_archive_restores_reference_phase_and_smoke(
             after_rehearsal["drizzle.__drizzle_migrations"]["rows"]
             == before["drizzle.__drizzle_migrations"]["rows"] + 1
         )
+        assert proof["preserved"]["saved_job"]["rows"] == 1
+        assert proof["preserved"]["application_interview"]["rows"] == 1
+        if phase == "expanded":
+            assert proof["preserved"]["company_reference"]["rows"] == 2
+            assert backup._web_postgres_reference_phase(env={}) == "reference"
+            assert psql(
+                "SELECT source || '|' || verified_at::text FROM company_reference "
+                "WHERE id='00000000-0000-0000-0000-000000000110'",
+                target,
+            ).startswith("typesense|2026-10-03")
+    if phase != "legacy":
+        # A valid ledger and unchanged rows cannot hide a weakened provenance
+        # check; backup/restore readiness independently inspects exact DDL.
+        psql(
+            "ALTER TABLE company_reference DROP CONSTRAINT company_reference_verification_check; "
+            "ALTER TABLE company_reference ADD CONSTRAINT "
+            "company_reference_verification_check CHECK(true)",
+            target,
+        )
+        with pytest.raises(backup.BackupError, match="reference_checks"):
+            backup._web_postgres_reference_phase(env={})
 
 
 @pytest.mark.parametrize(

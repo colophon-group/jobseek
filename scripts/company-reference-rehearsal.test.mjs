@@ -27,9 +27,18 @@ for(const [name,mutate] of Object.entries({
  'missing description':f=>delete f.proof.preserved.company_description,'changed runtime':f=>f.proof.runtimeImage='node:latest',
  'changed bundle':f=>f.proof.manifestSha256='a'.repeat(64),'negative row count':f=>f.proof.preserved.saved_job.rows=-1,
  'extra private field':f=>f.proof.rawRows=[],'incomplete FK coverage':f=>f.proof.dependencies.foreignKeyCount=5,
+ 'wrong dependency phase':f=>f.proof.dependencies.phase='reference','missing seeded reference':f=>f.proof.referenceRows=0,
  'stale rehearsal':f=>f.run.updated_at=new Date(Date.now()-10*60*60*1000).toISOString()
 })) test(`rejects ${name}`,()=>{const f=fixture();mutate(f);assert.throws(()=>validateEvidence(f.run,f.artifact,f.proof,expected))});
-test('final rehearsal must preserve existing references too',()=>{const f=fixture();const final={...expected,target:{...target,tag:'0101_company_reference_selection_contract'}};f.proof.target=final.target;assert.throws(()=>validateEvidence(f.run,f.artifact,f.proof,final));f.proof.preserved.company_reference={rows:3,digest:'e'.repeat(64)};validateEvidence(f.run,f.artifact,f.proof,final)});
+test('final rehearsal must preserve existing references in the reference phase',()=>{
+ const f=fixture();const final={...expected,target:{...target,tag:'0101_company_reference_selection_contract'}};f.proof.target=final.target;
+ assert.throws(()=>validateEvidence(f.run,f.artifact,f.proof,final));
+ f.proof.preserved.company_reference={rows:3,digest:'e'.repeat(64)};
+ assert.throws(()=>validateEvidence(f.run,f.artifact,f.proof,final));
+ f.proof.dependencies.phase='reference';
+ assert.throws(()=>validateEvidence(f.run,f.artifact,f.proof,final));
+ f.proof.referenceRows=3;validateEvidence(f.run,f.artifact,f.proof,final);
+});
 
 test('protected proof IO precedes the final owner/main authorization',()=>{
  const apply=readFileSync('.github/workflows/apply-web-routine-migration.yml','utf8').split('  apply:')[1];

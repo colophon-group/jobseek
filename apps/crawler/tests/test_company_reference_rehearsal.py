@@ -3,10 +3,13 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import os
+import subprocess
 import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -232,3 +235,75 @@ def test_host_rejects_replaceable_rehearsal_directory(tmp_path, unsafe):
         directory.symlink_to(tmp_path, target_is_directory=True)
     with pytest.raises(operations.OperationError):
         operations.require_root_directory(directory)
+
+
+def test_final_bundle_retains_expansion_and_exact_contract_resources(bundle):
+    root, manifest = bundle
+    tag = "0101_company_reference_selection_contract"
+    path = root / f"drizzle/{tag}.sql"
+    path.write_text("reviewed contract fixture\n")
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    manifest["files"][f"drizzle/{tag}.sql"] = digest
+    manifest["migrations"].append({"tag": tag, "createdAt": 1790992800000, "hash": digest})
+    assert verify(root, manifest)["target"] == manifest["migrations"][0]
+    assert verify(root, manifest, tag=tag)["target"] == manifest["migrations"][1]
+    manifest["migrations"][1]["hash"] = "f" * 64
+    with pytest.raises(ValueError, match="target SQL"):
+        verify(root, manifest, tag=tag)
+
+
+def test_host_final_proof_requires_preserved_references_and_reference_phase():
+    identity, backup, proof = proof_fixture()
+    identity["target"]["tag"] = "0101_company_reference_selection_contract"
+    proof["preserved"]["company_reference"] = {"rows": 2, "digest": "f" * 64}
+    proof["referenceRows"] = 2
+    with pytest.raises(operations.OperationError, match="dependency proof"):
+        operations.validate_rehearsal_proof(
+            proof, operations.ExpectedIdentity("a" * 40, {}), identity, backup
+        )
+    proof["dependencies"]["phase"] = "reference"
+    operations.validate_rehearsal_proof(
+        proof, operations.ExpectedIdentity("a" * 40, {}), identity, backup
+    )
+    proof["referenceRows"] = 1
+    with pytest.raises(operations.OperationError, match="reference preservation count"):
+        operations.validate_rehearsal_proof(
+            proof, operations.ExpectedIdentity("a" * 40, {}), identity, backup
+        )
+
+
+@pytest.mark.parametrize("stage", ["preauthorize", "authorize"])
+@pytest.mark.parametrize(
+    "tag,confirmation,accepted",
+    [
+        ("0100_company_references", "REHEARSE-COMPANY-REFERENCE-0100", True),
+        ("0101_company_reference_selection_contract", "REHEARSE-COMPANY-REFERENCE-0101", True),
+        ("0100_company_references", "REHEARSE-COMPANY-REFERENCE-0101", False),
+        ("0101_company_reference_selection_contract", "REHEARSE-COMPANY-REFERENCE-0100", False),
+        ("9999_arbitrary", "REHEARSE-COMPANY-REFERENCE-0101", False),
+    ],
+)
+def test_actual_dispatch_confirmation_binds_exact_rehearsal_target(
+    stage, tag, confirmation, accepted
+):
+    workflow = yaml.safe_load(
+        (ROOT / ".github/workflows/operate-web-postgresql-backup.yml").read_text()
+    )
+    script = workflow["jobs"][stage]["steps"][0]["run"]
+    result = subprocess.run(
+        ["bash", "-c", script],
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            "DISPATCH_ACTOR": "viktor-shcherb",
+            "DISPATCH_TRIGGERING_ACTOR": "viktor-shcherb",
+            "DISPATCH_EVENT": "workflow_dispatch",
+            "DISPATCH_REF": "refs/heads/main",
+            "DISPATCH_SHA": "a" * 40,
+            "DISPATCH_MODE": "rehearse",
+            "DISPATCH_CONFIRMATION": confirmation,
+            "REHEARSAL_MIGRATION_TAG": tag,
+        },
+    )
+    assert (result.returncode == 0) is accepted
