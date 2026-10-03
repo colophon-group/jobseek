@@ -12,7 +12,15 @@ on:
           - verify
           - backup
           - restore
+          - rehearse
           - enable-timer
+      rehearsal_migration_tag:
+        description: Exact reviewed rehearsal target (initial release supports 0100 only)
+        required: false
+        default: 0100_company_references
+        type: choice
+        options:
+          - 0100_company_references
       confirmation:
         description: Enter the exact confirmation token documented in the runbook
         required: true
@@ -20,6 +28,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -52,6 +61,7 @@ jobs:
             verify:VERIFY-WEB-POSTGRESQL) ;;
             backup:RUN-WEB-POSTGRESQL-BACKUP) ;;
             restore:RUN-WEB-POSTGRESQL-RESTORE-DRILL) ;;
+            rehearse:REHEARSE-COMPANY-REFERENCE-0100) ;;
             enable-timer:ENABLE-WEB-POSTGRESQL-TIMER) ;;
             *) exit 2 ;;
           esac
@@ -61,7 +71,7 @@ jobs:
     if: github.actor == 'viktor-shcherb' && github.triggering_actor == 'viktor-shcherb'
     runs-on: ubuntu-latest
     environment: production-backup-operations
-    timeout-minutes: 5
+    timeout-minutes: 10
     outputs:
       deploy_sha: ${{ steps.artifacts.outputs.deploy_sha }}
       data_backup_sha256: ${{ steps.artifacts.outputs.data_backup_sha256 }}
@@ -71,6 +81,8 @@ jobs:
       restore_drill_sha256: ${{ steps.artifacts.outputs.restore_drill_sha256 }}
       service_sha256: ${{ steps.artifacts.outputs.service_sha256 }}
       timer_sha256: ${{ steps.artifacts.outputs.timer_sha256 }}
+      rehearsal_manifest_sha256: ${{ steps.rehearsal.outputs.manifest_sha256 }}
+      rehearsal_verifier_sha256: ${{ steps.rehearsal.outputs.verifier_sha256 }}
     env:
       DISPATCH_ACTOR: ${{ github.actor }}
       DISPATCH_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
@@ -98,6 +110,9 @@ jobs:
             restore)
               expected=RUN-WEB-POSTGRESQL-RESTORE-DRILL
               ;;
+            rehearse)
+              expected=REHEARSE-COMPANY-REFERENCE-0100
+              ;;
             enable-timer)
               expected=ENABLE-WEB-POSTGRESQL-TIMER
               ;;
@@ -112,6 +127,29 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        if: inputs.mode == 'rehearse'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        if: inputs.mode == 'rehearse'
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Bind the reviewed helper bundle and exact target
+        if: inputs.mode == 'rehearse'
+        id: rehearsal
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(gh api 'repos/${{ github.repository }}/git/ref/heads/main' --jq .object.sha)" = "$DISPATCH_SHA"
+          pnpm install --frozen-lockfile
+          pnpm --filter @jobseek/web build:company-reference:rehearsal
+          manifest=deploy/backups/web-postgresql/company-reference-bundle/manifest.json
+          digest="$(sha256sum "$manifest" | cut -d' ' -f1)"
+          python3 deploy/backups/web-postgresql/verify-rehearsal-bundle.py "$(dirname "$manifest")" "$DISPATCH_SHA" "$digest" 0100_company_references
+          echo "manifest_sha256=$digest" >> "$GITHUB_OUTPUT"
+          echo "verifier_sha256=$(sha256sum deploy/backups/web-postgresql/verify-rehearsal-bundle.py | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
       - name: Bind authorization to the deployed revision and reviewed artifacts
         id: artifacts
@@ -152,6 +190,9 @@ jobs:
       EXPECTED_RESTORE_DRILL_SHA256: ${{ needs.authorize.outputs.restore_drill_sha256 }}
       EXPECTED_SERVICE_SHA256: ${{ needs.authorize.outputs.service_sha256 }}
       EXPECTED_TIMER_SHA256: ${{ needs.authorize.outputs.timer_sha256 }}
+      EXPECTED_REHEARSAL_MANIFEST_SHA256: ${{ needs.authorize.outputs.rehearsal_manifest_sha256 }}
+      EXPECTED_REHEARSAL_VERIFIER_SHA256: ${{ needs.authorize.outputs.rehearsal_verifier_sha256 }}
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Run the authorized operation over host-key-pinned OpenSSH
         run: |
@@ -160,7 +201,7 @@ jobs:
           test "$DISPATCH_ACTOR" = viktor-shcherb
           test "$DISPATCH_TRIGGERING_ACTOR" = viktor-shcherb
           case "$OPERATION_MODE" in
-            verify|backup|restore|enable-timer) ;;
+            verify|backup|restore|rehearse|enable-timer) ;;
             *) exit 2 ;;
           esac
           : "${TARGET_HOST:?production host is required}"
@@ -178,6 +219,13 @@ jobs:
             [[ "$digest" =~ ^[0-9a-f]{64}$ ]]
           done
 
+          rehearsal_args=""
+          if [[ "$OPERATION_MODE" == rehearse ]]; then
+            test "$(gh api 'repos/${{ github.repository }}/git/ref/heads/main' --jq .object.sha)" = "$EXPECTED_DEPLOY_SHA"
+            [[ "$EXPECTED_REHEARSAL_MANIFEST_SHA256" =~ ^[0-9a-f]{64}$ ]]
+            [[ "$EXPECTED_REHEARSAL_VERIFIER_SHA256" =~ ^[0-9a-f]{64}$ ]]
+            rehearsal_args="--rehearsal-migration-tag 0100_company_references --expected-rehearsal-manifest-sha256 $EXPECTED_REHEARSAL_MANIFEST_SHA256 --expected-rehearsal-verifier-sha256 $EXPECTED_REHEARSAL_VERIFIER_SHA256"
+          fi
           ssh_root="$(mktemp -d "$RUNNER_TEMP/jobseek-web-backup-ssh.XXXXXX")"
           cleanup() {
             rm -rf -- "$ssh_root"
@@ -228,4 +276,27 @@ jobs:
               --expected-retirement-migration-sha256 '$EXPECTED_RETIREMENT_MIGRATION_SHA256' \
               --expected-restore-drill-sha256 '$EXPECTED_RESTORE_DRILL_SHA256' \
               --expected-service-sha256 '$EXPECTED_SERVICE_SHA256' \
-              --expected-timer-sha256 '$EXPECTED_TIMER_SHA256'"
+              --expected-timer-sha256 '$EXPECTED_TIMER_SHA256' $rehearsal_args" | tee "$RUNNER_TEMP/company-reference-operation.txt"
+          if [[ "$OPERATION_MODE" == rehearse ]]; then
+            test "$(gh api 'repos/${{ github.repository }}/git/ref/heads/main' --jq .object.sha)" = "$EXPECTED_DEPLOY_SHA"
+            mkdir -p "$RUNNER_TEMP/company-reference-evidence"
+            python3 - <<'PYPROOF'
+          import json, os
+          from pathlib import Path
+          lines=Path(os.environ['RUNNER_TEMP'],'company-reference-operation.txt').read_text().splitlines()
+          matches=[line.removeprefix('Company reference rehearsal evidence: ') for line in lines if line.startswith('Company reference rehearsal evidence: ')]
+          if len(matches)!=1: raise SystemExit('Protected rehearsal evidence missing')
+          proof=json.loads(matches[0])
+          if proof['outcome']!='passed' or proof['sourceRevision']!=os.environ['EXPECTED_DEPLOY_SHA'] or proof['manifestSha256']!=os.environ['EXPECTED_REHEARSAL_MANIFEST_SHA256']: raise SystemExit('Protected rehearsal identity differs')
+          proof.update(runId=os.environ['GITHUB_RUN_ID'],runAttempt=int(os.environ['GITHUB_RUN_ATTEMPT']),cleanup='passed',packetVersion=3)
+          Path(os.environ['RUNNER_TEMP'],'company-reference-evidence','proof.json').write_text(json.dumps(proof,sort_keys=True)+'\n')
+          PYPROOF
+          fi
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: inputs.mode == 'rehearse'
+        with:
+          name: company-reference-rehearsal-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/company-reference-evidence/proof.json
+          if-no-files-found: error
+          retention-days: 7

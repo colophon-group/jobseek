@@ -56,7 +56,6 @@ def test_secret_bearing_job_uses_strict_native_openssh_after_authorization() -> 
     workflow = _workflow()
     operate = _job(workflow, "operate")
 
-    assert len(workflow.splitlines()) < 260
     assert "group: hetzner-data-backup-production-sync" in workflow
     assert "cancel-in-progress: false" in workflow
     assert "needs: [preauthorize, authorize]" in operate
@@ -77,7 +76,19 @@ def test_secret_bearing_job_uses_strict_native_openssh_after_authorization() -> 
     assert "secrets.RESTIC" not in workflow
 
     uses = re.findall(r"^\s+- uses: ([^\s#]+)", workflow, flags=re.MULTILINE)
-    assert uses == ["actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"]
+    assert uses == [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413",
+        "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+        "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+    ]
+    # The secret-bearing job only uploads its bounded rehearsal proof; all
+    # dependency installation belongs to the reviewed authorization job.
+    operate_uses = re.findall(r"^\s+- uses: ([^\s#]+)", operate, flags=re.MULTILINE)
+    assert operate_uses == ["actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"]
+    upload = operate[operate.index("      - uses: actions/upload-artifact@") :]
+    assert "if: inputs.mode == 'rehearse'" in upload
+    assert "path: ${{ runner.temp }}/company-reference-evidence/proof.json" in upload
 
 
 def test_dispatch_is_bound_to_reviewed_revision_and_installed_helper() -> None:

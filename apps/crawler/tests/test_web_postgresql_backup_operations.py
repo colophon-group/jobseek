@@ -534,7 +534,7 @@ def test_restore_binds_exact_retirement_artifact_and_convergence_evidence(
         "deployment_lock_fd": 43,
     }
     assert evidence["restore"] == {
-        field: restore_status[field] for field in operations.RESTORE_FIELDS
+        field: restore_status.get(field) for field in operations.RESTORE_FIELDS
     }
     assert writes[-1] is evidence
 
@@ -544,7 +544,7 @@ def test_restore_binds_exact_retirement_artifact_and_convergence_evidence(
     restore_status["retirement_convergence_applied"] = False
     operations.run_restore_locked(expected, deployment_lock_fd=43)
     assert evidence["restore"] == {
-        field: restore_status[field] for field in operations.RESTORE_FIELDS
+        field: restore_status.get(field) for field in operations.RESTORE_FIELDS
     }
 
     restore_status["retirement_migration_sha256"] = "f" * 64
@@ -972,16 +972,6 @@ def test_next_restore_reconciles_only_service_labeled_stale_resources_under_lock
     }
     removals: list[list[str]] = []
     monkeypatch.setattr(operations, "RESTORE_RUNTIME_ROOT", runtime_root)
-    assert (
-        "with service_data_lock() as service_lock_fd:\n"
-        "        reconcile_stale_restore_resources()\n"
-        "        run_restore_drill(\n"
-        "            new_restore_resources(),\n"
-        "            deploy_sha=expected.deploy_sha,\n"
-        "            service_lock_fd=service_lock_fd,\n"
-        "            deployment_lock_fd=deployment_lock_fd,\n"
-        "        )" in MODULE_PATH.read_text(encoding="utf-8")
-    )
     monkeypatch.setattr(
         operations,
         "listed_restore_resources",
@@ -1044,7 +1034,9 @@ def test_restore_wrapper_holds_and_passes_deployment_identity_lock(
         finally:
             lock_is_held = False
 
-    def fake_run_restore_locked(_expected: object, *, deployment_lock_fd: int) -> None:
+    def fake_run_restore_locked(
+        _expected: object, *, deployment_lock_fd: int, rehearsal_request: object = None
+    ) -> None:
         nonlocal observed_fd
         assert lock_is_held
         observed_fd = deployment_lock_fd

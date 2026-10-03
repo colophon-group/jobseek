@@ -140,6 +140,7 @@ commit_web_candidate() {
   web_candidate_commit_complete=1
 }
 
+rehearsal_candidate=""
 cleanup() {
   local status=$?
   local cleanup_failed=0
@@ -168,6 +169,9 @@ cleanup() {
     fi
   fi
   typesense_rotation_discard
+  if [[ -n "$rehearsal_candidate" ]]; then
+    rm -rf -- "$rehearsal_candidate"
+  fi
   if [[ -n "$web_candidate_root" ]]; then
     rm -rf -- "$web_candidate_root"
   fi
@@ -385,6 +389,27 @@ PY
   install -o root -g root -m 0644 \
     "$REPO_ROOT/apps/web/drizzle/0086_drop_supabase_job_posting.sql" \
     /usr/local/share/jobseek-backup/0086_drop_supabase_job_posting.sql
+  # Rehearsal code is compiled on the protected runner, never installed on host.
+  rehearsal_source="$REPO_ROOT/deploy/backups/web-postgresql/company-reference-bundle"
+  rehearsal_root=/usr/local/share/jobseek-backup/company-reference-rehearsal
+  test ! -L "$rehearsal_source"
+  rehearsal_manifest_sha="$(sha256sum "$rehearsal_source/manifest.json")"
+  rehearsal_manifest_sha="${rehearsal_manifest_sha%% *}"
+  install -o root -g root -m 0755 \
+    "$REPO_ROOT/deploy/backups/web-postgresql/verify-rehearsal-bundle.py" \
+    /usr/local/sbin/jobseek-verify-company-reference-rehearsal
+  rehearsal_identity="$(python3 /usr/local/sbin/jobseek-verify-company-reference-rehearsal \
+    "$rehearsal_source" "$JOBSEEK_BACKUP_DEPLOY_SHA" "$rehearsal_manifest_sha" 0100_company_references)"
+  rehearsal_image="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["runtimeImage"])' <<<"$rehearsal_identity")"
+  /usr/local/sbin/jobseek-web-postgresql-protect-client-image "$rehearsal_image" company-reference-rehearsal
+  test ! -L "$rehearsal_root"
+  rehearsal_candidate="$(mktemp -d /usr/local/share/jobseek-backup/.company-reference-rehearsal.XXXXXX)"
+  cp -R "$rehearsal_source/." "$rehearsal_candidate/"
+  chown -R root:root "$rehearsal_candidate"
+  find "$rehearsal_candidate" -type d -exec chmod 0755 {} +
+  find "$rehearsal_candidate" -type f -exec chmod 0644 {} +
+  if [[ -d "$rehearsal_root" ]]; then rm -rf -- "$rehearsal_root"; fi
+  mv "$rehearsal_candidate" "$rehearsal_root"
   install -o root -g root -m 0755 \
     "$REPO_ROOT/deploy/backups/web-postgresql/operations.py" \
     /usr/local/sbin/jobseek-web-postgresql-operations

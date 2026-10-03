@@ -3,8 +3,13 @@
 set -euo pipefail
 
 IMAGE="${1:-}"
-LEASE_NAME="jobseek-web-postgresql-backup-image-lease"
-LEASE_LABEL="jobseek.backup.helper-image=web-postgresql"
+LEASE_KIND="${2:-web-postgresql}"
+case "$LEASE_KIND" in
+  web-postgresql) LEASE_NAME="jobseek-web-postgresql-backup-image-lease" ;;
+  company-reference-rehearsal) LEASE_NAME="jobseek-company-reference-rehearsal-image-lease" ;;
+  *) exit 2 ;;
+esac
+LEASE_LABEL="jobseek.backup.helper-image=$LEASE_KIND"
 LEASE_TMPFS="/var/lib/postgresql/data:rw,noexec,nosuid,nodev,size=65536"
 PULL_TIMEOUT_S=300
 
@@ -20,7 +25,7 @@ lease_metadata() {
 
 lease_is_exact() {
   local actual expected
-  expected="${IMAGE}|false|web-postgresql|none|true|[\"ALL\"]|[\"no-new-privileges:true\"]|{\"/var/lib/postgresql/data\":\"rw,noexec,nosuid,nodev,size=65536\"}|[]|[\"/bin/true\"]"
+  expected="${IMAGE}|false|${LEASE_KIND}|none|true|[\"ALL\"]|[\"no-new-privileges:true\"]|{\"/var/lib/postgresql/data\":\"rw,noexec,nosuid,nodev,size=65536\"}|[]|[\"/bin/true\"]"
   actual="$(lease_metadata "$1")"
   if [[ "$actual" != "$expected" ]]; then
     echo "ERROR: helper-image lease metadata differs from the hardened contract: $actual" >&2
@@ -70,7 +75,7 @@ if existing_metadata="$(lease_metadata "$LEASE_NAME" 2>/dev/null)"; then
   existing_label="${existing_label%%|*}"
   existing_running="${existing_metadata#*|}"
   existing_running="${existing_running%%|*}"
-  if [[ "$existing_label" != web-postgresql || "$existing_running" != false ]]; then
+  if [[ "$existing_label" != "$LEASE_KIND" || "$existing_running" != false ]]; then
     echo "ERROR: refusing to replace an unmanaged or running helper-image lease" >&2
     exit 1
   fi

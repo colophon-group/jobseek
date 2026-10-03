@@ -78,6 +78,7 @@ ARTIFACT_MODES = {
     "timer": 0o644,
 }
 BACKUP_FIELDS = (
+    "packet_version",
     "company_reference_phase",
     "company_reference_rows",
     "company_reference_digest",
@@ -95,6 +96,8 @@ BACKUP_FIELDS = (
     "table_count",
 )
 RESTORE_FIELDS = (
+    "packet_version",
+    "company_reference_rehearsal",
     "company_reference_phase",
     "company_reference_rows",
     "company_reference_digest",
@@ -241,6 +244,7 @@ def listed_restore_resources(kind: str) -> list[str]:
 def reconcile_restore_resources(resources: RestoreResources) -> None:
     cleanup_failed = False
     for command in (
+        ["docker", "rm", "--force", resources.container + "-verifier"],
         ["docker", "rm", "--force", resources.container],
         ["docker", "network", "rm", resources.network],
     ):
@@ -255,6 +259,7 @@ def reconcile_restore_resources(resources: RestoreResources) -> None:
         except (OSError, subprocess.TimeoutExpired):
             cleanup_failed = True
     for kind, name in (
+        ("container", resources.container + "-verifier"),
         ("container", resources.container),
         ("network", resources.network),
     ):
@@ -410,6 +415,7 @@ def run_restore_drill(
     service_lock_fd: int | None = None,
     deployment_lock_fd: int | None = None,
     timeout: int = 90 * 60,
+    rehearsal: dict[str, Any] | None = None,
 ) -> None:
     env = os.environ.copy()
     env.update(
@@ -421,6 +427,9 @@ def run_restore_drill(
             "WEB_POSTGRES_RESTORE_DEPLOY_SHA": deploy_sha,
         }
     )
+    if rehearsal is not None:
+        env["WEB_POSTGRES_REHEARSAL_MIGRATION_TAG"] = rehearsal["target"]["tag"]
+        env["WEB_POSTGRES_REHEARSAL_MANIFEST_SHA256"] = rehearsal["manifestSha256"]
     if (service_lock_fd is None) != (deployment_lock_fd is None):
         raise OperationError("restore lock boundary is incomplete")
     pass_fds: tuple[int, ...] = ()
@@ -698,9 +707,11 @@ def validate_loaded_unit(unit: str, expected_path: Path) -> None:
         raise OperationError(f"loaded systemd unit does not match reviewed artifact: {unit}")
 
 
-def validate_helper_image_lease() -> None:
-    run_checked(["docker", "image", "inspect", RESTORE_IMAGE])
-    output = run_checked(["docker", "container", "inspect", HELPER_IMAGE_LEASE])
+def validate_helper_image_lease(
+    *, image: str = RESTORE_IMAGE, lease: str = HELPER_IMAGE_LEASE, label: str = "web-postgresql"
+) -> None:
+    run_checked(["docker", "image", "inspect", image])
+    output = run_checked(["docker", "container", "inspect", lease])
     try:
         payload = json.loads(output)
         container = payload[0]
@@ -711,9 +722,9 @@ def validate_helper_image_lease() -> None:
     except (IndexError, KeyError, TypeError, json.JSONDecodeError) as exc:
         raise OperationError("web PostgreSQL helper-image lease is invalid") from exc
     if (
-        config.get("Image") != RESTORE_IMAGE
+        config.get("Image") != image
         or state.get("Running") is not False
-        or labels.get(HELPER_IMAGE_LEASE_LABEL) != "web-postgresql"
+        or labels.get(HELPER_IMAGE_LEASE_LABEL) != label
         or config.get("Entrypoint") != ["/bin/true"]
         or host_config.get("NetworkMode") != "none"
         or host_config.get("ReadonlyRootfs") is not True
@@ -837,7 +848,10 @@ def validate_company_reference_evidence(status: dict[str, Any]) -> None:
         or isinstance(rows, bool)
         or not isinstance(rows, int)
         or rows < 0
-        or status.get("table_count") != (17 if phase == "legacy" else 18)
+        or type(status.get("packet_version", 1)) is not int
+        or status.get("packet_version", 1) not in (1, 2, 3)
+        or status.get("table_count")
+        != (17 + int(phase != "legacy") + int(status.get("packet_version", 1) == 3))
         or (phase == "legacy" and (rows != 0 or digest != "legacy"))
         or (phase != "legacy" and not re.fullmatch(r"[0-9a-f]{32}", str(digest)))
     ):
@@ -852,6 +866,12 @@ def company_reference_evidence_matches(backup: dict[str, Any], restore: dict[str
         "company_reference_rows": 0,
         "company_reference_digest": "legacy",
     }
+
+    def version(row: dict[str, Any]) -> int:
+        return row.get("packet_version", 2 if row.get("company_reference_phase") is not None else 1)
+
+    if version(backup) != version(restore):
+        return False
     return all(
         (backup.get(key) if backup.get(key) is not None else default)
         == (restore.get(key) if restore.get(key) is not None else default)
@@ -931,23 +951,197 @@ def load_bound_backup(
     return evidence, backup
 
 
-def run_restore(expected: ExpectedIdentity) -> None:
+REHEARSAL_ROOT = Path("/usr/local/share/jobseek-backup/company-reference-rehearsal")
+REHEARSAL_VERIFIER = Path("/usr/local/sbin/jobseek-verify-company-reference-rehearsal")
+
+
+def require_root_directory(path: Path) -> None:
+    metadata = path.lstat()
+    if (
+        not stat.S_ISDIR(metadata.st_mode)
+        or metadata.st_uid != 0
+        or metadata.st_gid != 0
+        or stat.S_IMODE(metadata.st_mode) & 0o022
+    ):
+        raise OperationError("unsafe writable rehearsal directory")
+
+
+def validate_rehearsal_identity(
+    expected: ExpectedIdentity, request: dict[str, str]
+) -> dict[str, Any]:
+    if request.get("tag") not in {
+        "0100_company_references",
+        "0101_company_reference_selection_contract",
+    }:
+        raise OperationError("rehearsal target is not reviewed")
+    if any(
+        not isinstance(request.get(key), str) or not re.fullmatch(r"[0-9a-f]{64}", request[key])
+        for key in ("manifestSha256", "verifierSha256")
+    ):
+        raise OperationError("rehearsal artifact identity is absent")
+    require_root_directory(REHEARSAL_ROOT.parent)
+    require_root_directory(REHEARSAL_ROOT)
+    require_root_regular_file(REHEARSAL_VERIFIER, mode=0o755)
+    require_root_regular_file(REHEARSAL_ROOT / "manifest.json", mode=0o644)
+    if sha256_file(REHEARSAL_VERIFIER) != request["verifierSha256"]:
+        raise OperationError("rehearsal verifier differs from protected dispatch")
+    identity = json.loads(
+        run_checked(
+            [
+                "python3",
+                str(REHEARSAL_VERIFIER),
+                str(REHEARSAL_ROOT),
+                expected.deploy_sha,
+                request["manifestSha256"],
+                request["tag"],
+            ],
+            timeout=60,
+        )
+    )
+    for resource in REHEARSAL_ROOT.rglob("*"):
+        if resource.is_symlink():
+            raise OperationError("unsafe rehearsal resource")
+        if resource.is_file():
+            require_root_regular_file(resource, mode=0o644)
+        else:
+            metadata = resource.stat()
+            if (
+                metadata.st_uid != 0
+                or metadata.st_gid != 0
+                or stat.S_IMODE(metadata.st_mode) != 0o755
+            ):
+                raise OperationError("unsafe rehearsal directory")
+    validate_helper_image_lease(
+        image=identity["runtimeImage"],
+        lease="jobseek-company-reference-rehearsal-image-lease",
+        label="company-reference-rehearsal",
+    )
+    return identity
+
+
+def validate_rehearsal_proof(
+    proof: Any, expected: ExpectedIdentity, identity: dict[str, Any], backup: dict[str, Any]
+) -> None:
+    keys = {
+        "contract",
+        "outcome",
+        "sourceRevision",
+        "runtimeImage",
+        "archiveSha256",
+        "manifestSha256",
+        "target",
+        "preflight",
+        "postflight",
+        "preserved",
+        "referenceRows",
+        "dependencies",
+    }
+    if (
+        not isinstance(proof, dict)
+        or set(proof) != keys
+        or any(
+            proof.get(key) != value
+            for key, value in {
+                "contract": "company_reference_archive_rehearsal",
+                "outcome": "passed",
+                "sourceRevision": expected.deploy_sha,
+                "runtimeImage": identity["runtimeImage"],
+                "archiveSha256": backup["archive_sha256"],
+                "manifestSha256": identity["manifestSha256"],
+                "target": identity["target"],
+                "preflight": "passed",
+                "postflight": "passed",
+            }.items()
+        )
+    ):
+        raise OperationError(
+            "isolated rehearsal proof differs from protected archive/source/migration identity"
+        )
+    retained = {
+        "user",
+        "session",
+        "account",
+        "verification",
+        "user_preferences",
+        "industry",
+        "company",
+        "company_description",
+        "job_board",
+        "saved_job",
+        "application_interview",
+        "followed_company",
+        "company_request",
+        "hiring_signal",
+        "outreach_draft",
+        "watchlist",
+        "watchlist_company",
+    }
+    if identity["target"]["tag"] == "0101_company_reference_selection_contract":
+        retained.add("company_reference")
+    preserved = proof.get("preserved")
+    if not isinstance(preserved, dict) or set(preserved) != retained:
+        raise OperationError("rehearsal preservation boundary differs")
+    for row in preserved.values():
+        if (
+            not isinstance(row, dict)
+            or set(row) != {"rows", "digest"}
+            or type(row["rows"]) is not int
+            or row["rows"] < 0
+            or not re.fullmatch(r"[0-9a-f]{64}", str(row["digest"]))
+        ):
+            raise OperationError("rehearsal preservation fingerprint differs")
+    if type(proof.get("referenceRows")) is not int or proof["referenceRows"] < 0:
+        raise OperationError("rehearsal reference count differs")
+    dependencies = proof.get("dependencies")
+    if (
+        not isinstance(dependencies, dict)
+        or set(dependencies)
+        != {"phase", "foreignKeyCount", "lifecycleOwners", "optionalForeignKeyCount", "snapshot"}
+        or dependencies.get("foreignKeyCount") != 6
+        or dependencies.get("snapshot") != "independent"
+    ):
+        raise OperationError("rehearsal dependency proof differs")
+
+
+def run_restore(expected: ExpectedIdentity, *, rehearsal: dict[str, str] | None = None) -> None:
     with deployment_identity_lock() as deployment_lock_fd:
-        run_restore_locked(expected, deployment_lock_fd=deployment_lock_fd)
+        run_restore_locked(
+            expected, deployment_lock_fd=deployment_lock_fd, rehearsal_request=rehearsal
+        )
 
 
-def run_restore_locked(expected: ExpectedIdentity, *, deployment_lock_fd: int) -> None:
+def run_restore_locked(
+    expected: ExpectedIdentity,
+    *,
+    deployment_lock_fd: int,
+    rehearsal_request: dict[str, str] | None = None,
+) -> None:
     validate_host_readiness(expected)
-    load_bound_backup(expected, clear_restore=True)
+    _, bound_backup = load_bound_backup(expected, clear_restore=True)
+    rehearsal = None
+    if rehearsal_request is not None:
+        rehearsal = validate_rehearsal_identity(expected, rehearsal_request)
+        required_phase = (
+            "legacy" if rehearsal["target"]["tag"] == "0100_company_references" else "expanded"
+        )
+        if (
+            bound_backup.get("packet_version") != 3
+            or bound_backup.get("company_reference_phase") != required_phase
+        ):
+            raise OperationError(
+                "rehearsal requires a fresh v3 backup in the target prerequisite phase"
+            )
     before = timer_state()
     started = int(time.time())
     with service_data_lock() as service_lock_fd:
         reconcile_stale_restore_resources()
+        drill_options = {"rehearsal": rehearsal} if rehearsal is not None else {}
         run_restore_drill(
             new_restore_resources(),
             deploy_sha=expected.deploy_sha,
             service_lock_fd=service_lock_fd,
             deployment_lock_fd=deployment_lock_fd,
+            **drill_options,
         )
     if timer_state() != before:
         raise OperationError("restore operation changed the timer state")
@@ -979,6 +1173,10 @@ def run_restore_locked(expected: ExpectedIdentity, *, deployment_lock_fd: int) -
         or not re.fullmatch(r"[0-9a-f]{32}", str(restore_status.get("saved_job_digest", "")))
     ):
         raise OperationError("fresh isolated restore evidence does not match the bound backup")
+    if rehearsal is not None:
+        validate_rehearsal_proof(
+            restore_status.get("company_reference_rehearsal"), expected, rehearsal, backup
+        )
     restore = project(restore_status, RESTORE_FIELDS)
     evidence["restore"] = restore
     atomic_json(EVIDENCE_PATH, evidence)
@@ -987,6 +1185,11 @@ def run_restore_locked(expected: ExpectedIdentity, *, deployment_lock_fd: int) -
         for key in ("duration_seconds", "finished_at", "row_count", "started_at", "table_count")
     }
     print("Restore evidence: " + json.dumps(safe, sort_keys=True))
+    if rehearsal is not None:
+        print(
+            "Company reference rehearsal evidence: "
+            + json.dumps(restore_status["company_reference_rehearsal"], sort_keys=True)
+        )
 
 
 def validate_activation_evidence(expected: ExpectedIdentity) -> dict[str, Any]:
@@ -1091,7 +1294,7 @@ def expected_identity(args: argparse.Namespace) -> ExpectedIdentity:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=("verify", "backup", "restore", "enable-timer"))
+    parser.add_argument("mode", choices=("verify", "backup", "restore", "rehearse", "enable-timer"))
     parser.add_argument("--expected-deploy-sha", required=True)
     parser.add_argument("--expected-data-backup-sha256", required=True)
     parser.add_argument("--expected-image-protector-sha256", required=True)
@@ -1100,6 +1303,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--expected-restore-drill-sha256", required=True)
     parser.add_argument("--expected-service-sha256", required=True)
     parser.add_argument("--expected-timer-sha256", required=True)
+    parser.add_argument("--rehearsal-migration-tag")
+    parser.add_argument("--expected-rehearsal-manifest-sha256")
+    parser.add_argument("--expected-rehearsal-verifier-sha256")
     return parser
 
 
@@ -1114,6 +1320,15 @@ def main(argv: list[str] | None = None) -> int:
             run_backup(expected)
         elif args.mode == "restore":
             run_restore(expected)
+        elif args.mode == "rehearse":
+            run_restore(
+                expected,
+                rehearsal={
+                    "tag": args.rehearsal_migration_tag,
+                    "manifestSha256": args.expected_rehearsal_manifest_sha256,
+                    "verifierSha256": args.expected_rehearsal_verifier_sha256,
+                },
+            )
         else:
             enable_timer(expected)
     except (OperationError, OSError, subprocess.TimeoutExpired) as exc:

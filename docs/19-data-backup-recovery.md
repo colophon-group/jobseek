@@ -542,7 +542,8 @@ logical dump of this exact boundary:
 - user/product state: `user_preferences`, `saved_job`,
   `application_interview`, `followed_company`, `company_request`,
   `watchlist`, `watchlist_company`, `hiring_signal`, and `outreach_draft`;
-- small FK support: `industry`, `company`, and `job_board`; and
+- small FK support: `industry`, `company`, and `job_board`, plus retained
+  `company_description` in fresh v3 packets; and
 - migration state: `drizzle.__drizzle_migrations`.
 
 Deploy and verify the phase-aware backup tools before migration `0100`. The
@@ -551,9 +552,12 @@ PostgreSQL 17 restore with these tools. Repeat that proof after `0100` and after
 `0101`, before enabling reference-only writers. Retain the encrypted recovery
 packet for each verified rollback floor.
 
-The pre-expansion boundary contains these 17 tables. Once the exact reviewed `0100`
-ledger row and expanded catalogue exist, `company_reference` becomes the 18th
-required table. After exact `0101`, selection foreign keys must point to that
+Historical v1/v2 packets retain their original 17-table legacy boundary and
+18-table expanded/reference boundary. Fresh v3 packets additionally retain
+`company_description`, whose company FK is required by the complete reviewed
+migration inventory: 18 legacy tables and 19 expanded/reference tables. Once
+the exact reviewed `0100` ledger row and expanded catalogue exist,
+`company_reference` is required. After exact `0101`, selection foreign keys must point to that
 table with `ON DELETE RESTRICT` and the legacy bridge trigger/function must be
 absent. Mixed ledger/catalogue/FK phases fail closed. The backup manifest records
 `legacy`, `expanded`, or `reference`; every included row and the complete ledger
@@ -587,9 +591,11 @@ The source enum labels and trigger function bodies/properties must match their
 reviewed definitions; unknown dependencies block the backup. Expanded/reference
 bootstraps create only a `NOLOGIN` migration auditor role for the retained SELECT
 policy, then restore its read-only grant after `pg_restore --no-privileges`.
-Version-2 packets require both the phase and explicit dependency list, with no
+Version-2 and version-3 packets require both the phase and explicit dependency list, with no
 historical fallback if either marker is missing. Version-1 packets must retain
-their original 17-table pre-expansion boundary and marker-free manifest. The job
+their original 17-table pre-expansion boundary and marker-free manifest. Historical
+v2 packet boundaries and bootstrap bytes are unchanged; relabelling v1 or v2
+as v3 fails closed. Rehearsal requires a fresh v3 packet. The job
 validates the custom archive with `pg_restore --list`, records SHA-256 checksums
 and fingerprints in a root-only manifest, uploads the three-file packet through
 Restic, applies retention, and runs repository validation. Status and logs

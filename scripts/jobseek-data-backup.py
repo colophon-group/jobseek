@@ -65,6 +65,7 @@ WEB_POSTGRES_TABLES = (
     ("public", "watchlist_company"),
 )
 WEB_POSTGRES_SEQUENCES = (("drizzle", "__drizzle_migrations_id_seq"),)
+WEB_POSTGRES_V3_TABLES = (*WEB_POSTGRES_TABLES, ("public", "company_description"))
 WEB_POSTGRES_REFERENCE_TABLES = (*WEB_POSTGRES_TABLES, ("public", "company_reference"))
 WEB_POSTGRES_REFERENCE_PHASES = ("legacy", "expanded", "reference")
 WEB_POSTGRES_REFERENCE_EXPAND_CREATED_AT = 1_790_985_600_000
@@ -157,10 +158,13 @@ WEB_POSTGRES_DEPENDENCY_SQL = {
 }
 
 
-def _web_postgres_tables(phase: str) -> tuple[tuple[str, str], ...]:
+def _web_postgres_tables(phase: str, packet_version: int = 1) -> tuple[tuple[str, str], ...]:
     if phase not in WEB_POSTGRES_REFERENCE_PHASES:
         raise BackupError("web PostgreSQL company-reference phase is invalid")
-    return WEB_POSTGRES_TABLES if phase == "legacy" else WEB_POSTGRES_REFERENCE_TABLES
+    if packet_version not in (1, 2, 3):
+        raise BackupError("web PostgreSQL packet version is invalid")
+    tables = WEB_POSTGRES_V3_TABLES if packet_version == 3 else WEB_POSTGRES_TABLES
+    return tables if phase == "legacy" else (*tables, ("public", "company_reference"))
 
 
 WEB_POSTGRES_CONTRACT_CREATED_AT = 1_785_757_200_000
@@ -1252,10 +1256,10 @@ def _validate_web_postgres_reference_catalog(*, env: dict[str, str]) -> None:
         )
 
 
-def _included_tables_values_sql(phase: str = "legacy") -> str:
+def _included_tables_values_sql(phase: str = "legacy", packet_version: int = 1) -> str:
     values = ", ".join(
         f"({_quote_literal(schema)}, {_quote_literal(table)})"
-        for schema, table in _web_postgres_tables(phase)
+        for schema, table in _web_postgres_tables(phase, packet_version)
     )
     return f"VALUES {values}"
 
@@ -1291,13 +1295,15 @@ def _web_postgres_bootstrap_sql(
     return result
 
 
-def _web_postgres_dependencies(*, env: dict[str, str], phase: str) -> list[str]:
+def _web_postgres_dependencies(
+    *, env: dict[str, str], phase: str, packet_version: int = 1
+) -> list[str]:
     # Table-filtered dumps omit standalone functions even when table defaults,
     # checks, policies or indexes call them. Inspect only objects owned by the
     # included relations; unrelated excluded tables cannot widen this boundary.
     # Internal FK triggers belong to their owning constraints, rather than the
     # included parent table on which PostgreSQL also installs an enforcement trigger.
-    values = _included_tables_values_sql(phase)
+    values = _included_tables_values_sql(phase, packet_version)
     raw = _web_psql(
         f"""
         WITH RECURSIVE included(schema_name, table_name) AS ({values}), relations AS (
@@ -1426,9 +1432,11 @@ def _web_postgres_dependencies(*, env: dict[str, str], phase: str) -> list[str]:
     return sorted(dependencies)
 
 
-def _validate_web_postgres_boundary(*, env: dict[str, str], phase: str = "legacy") -> None:
+def _validate_web_postgres_boundary(
+    *, env: dict[str, str], phase: str = "legacy", packet_version: int = 1
+) -> None:
     """Fail if the allowlist is missing or depends on an excluded table."""
-    values = _included_tables_values_sql(phase)
+    values = _included_tables_values_sql(phase, packet_version)
     output = _web_psql(
         f"""
         WITH included(schema_name, table_name) AS ({values}),
@@ -1702,10 +1710,10 @@ def _validate_web_postgres_contract(*, env: dict[str, str]) -> None:
 
 
 def _web_postgres_fingerprints(
-    *, env: dict[str, str], phase: str = "legacy"
+    *, env: dict[str, str], phase: str = "legacy", packet_version: int = 1
 ) -> dict[str, dict[str, Any]]:
     selects: list[str] = []
-    for schema, table in _web_postgres_tables(phase):
+    for schema, table in _web_postgres_tables(phase, packet_version):
         key = f"{schema}.{table}".replace("'", "''")
         qualified = _qualified_table(schema, table)
         selects.append(
@@ -1726,7 +1734,9 @@ def _web_postgres_fingerprints(
             "rows": int(parts[1]),
             "digest": parts[2],
         }
-    expected = {f"{schema}.{table}" for schema, table in _web_postgres_tables(phase)}
+    expected = {
+        f"{schema}.{table}" for schema, table in _web_postgres_tables(phase, packet_version)
+    }
     if set(fingerprints) != expected:
         raise BackupError("web PostgreSQL fingerprint omitted an allowlisted table")
     return fingerprints
@@ -1772,7 +1782,9 @@ def _sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _validate_web_postgres_archive(output: str, phase: str = "legacy") -> None:
+def _validate_web_postgres_archive(
+    output: str, phase: str = "legacy", packet_version: int = 1
+) -> None:
     table_definitions: set[str] = set()
     table_data: set[str] = set()
     sequence_definitions: set[str] = set()
@@ -1790,7 +1802,9 @@ def _validate_web_postgres_archive(output: str, phase: str = "legacy") -> None:
             sequence_state.add(f"{fields[5]}.{fields[6]}")
         elif object_type == "SEQUENCE" and fields[4] != "OWNED":
             sequence_definitions.add(f"{fields[4]}.{fields[5]}")
-    expected_tables = {f"{schema}.{table}" for schema, table in _web_postgres_tables(phase)}
+    expected_tables = {
+        f"{schema}.{table}" for schema, table in _web_postgres_tables(phase, packet_version)
+    }
     expected_sequences = {f"{schema}.{sequence}" for schema, sequence in WEB_POSTGRES_SEQUENCES}
     if table_definitions != expected_tables or table_data != expected_tables:
         raise BackupError("web PostgreSQL archive table boundary is incomplete or unexpected")
@@ -1811,9 +1825,10 @@ def web_postgresql_backup() -> dict[str, Any]:
     _require_web_postgres_helper_image()
     env = _web_postgres_env()
     phase = _web_postgres_reference_phase(env=env)
-    tables = _web_postgres_tables(phase)
-    _validate_web_postgres_boundary(env=env, phase=phase)
-    dependencies = _web_postgres_dependencies(env=env, phase=phase)
+    packet_version = 3
+    tables = _web_postgres_tables(phase, packet_version)
+    _validate_web_postgres_boundary(env=env, phase=phase, packet_version=packet_version)
+    dependencies = _web_postgres_dependencies(env=env, phase=phase, packet_version=packet_version)
     server_version = _web_psql("SHOW server_version", env=env)
     if not server_version.startswith("17."):
         raise BackupError(
@@ -1840,7 +1855,7 @@ def web_postgresql_backup() -> dict[str, Any]:
     success = False
 
     try:
-        before = _web_postgres_fingerprints(env=env, phase=phase)
+        before = _web_postgres_fingerprints(env=env, phase=phase, packet_version=packet_version)
         sequences_before = _web_postgres_sequence_fingerprints(env=env)
         atomic_write(bootstrap_path, _web_postgres_bootstrap_sql(phase, dependencies))
         dump_arguments = [
@@ -1866,13 +1881,14 @@ def web_postgresql_backup() -> dict[str, Any]:
             env=env,
             timeout=3_600,
         )
-        after = _web_postgres_fingerprints(env=env, phase=phase)
+        after = _web_postgres_fingerprints(env=env, phase=phase, packet_version=packet_version)
         sequences_after = _web_postgres_sequence_fingerprints(env=env)
         if (
             before != after
             or sequences_before != sequences_after
             or _web_postgres_reference_phase(env=env) != phase
-            or _web_postgres_dependencies(env=env, phase=phase) != dependencies
+            or _web_postgres_dependencies(env=env, phase=phase, packet_version=packet_version)
+            != dependencies
         ):
             raise BackupError(
                 "web PostgreSQL changed while the logical dump was created; retrying is required"
@@ -1890,11 +1906,11 @@ def web_postgresql_backup() -> dict[str, Any]:
             ),
             timeout=600,
         ).stdout
-        _validate_web_postgres_archive(archive_listing, phase)
+        _validate_web_postgres_archive(archive_listing, phase, packet_version)
 
         dump_sha256 = _sha256_file(dump_path)
         manifest = {
-            "schema_version": 2,
+            "schema_version": 3,
             "company_reference_phase": phase,
             "dependencies": dependencies,
             "created_at": utc_now().isoformat(),
@@ -1968,6 +1984,7 @@ def web_postgresql_backup() -> dict[str, Any]:
             "archive_bytes": manifest["archive_bytes"],
             "archive_sha256": dump_sha256,
             "table_count": len(tables),
+            "packet_version": packet_version,
             "company_reference_phase": phase,
             "company_reference_rows": before.get("public.company_reference", {}).get("rows", 0),
             "company_reference_digest": before.get("public.company_reference", {}).get(
@@ -1994,16 +2011,19 @@ def _validated_web_postgresql_packet(
     if (
         not isinstance(manifest, dict)
         or type(manifest.get("schema_version")) is not int
-        or manifest.get("schema_version") not in (1, 2)
+        or manifest.get("schema_version") not in (1, 2, 3)
     ):
         raise BackupError("web PostgreSQL restore manifest has an unsupported schema")
     markers = ("company_reference_phase" in manifest, "dependencies" in manifest)
-    if markers != ((True, True) if manifest["schema_version"] == 2 else (False, False)):
+    if markers != ((True, True) if manifest["schema_version"] in (2, 3) else (False, False)):
         raise BackupError("web PostgreSQL restore manifest mixes historical and new contracts")
     if "dependencies" in manifest and not isinstance(manifest["dependencies"], list):
         raise BackupError("web PostgreSQL restore manifest dependencies are invalid")
     phase = manifest.get("company_reference_phase", "legacy")
-    expected_tables = [f"{schema}.{table}" for schema, table in _web_postgres_tables(phase)]
+    packet_version = manifest["schema_version"]
+    expected_tables = [
+        f"{schema}.{table}" for schema, table in _web_postgres_tables(phase, packet_version)
+    ]
     if manifest.get("tables") != expected_tables:
         raise BackupError("web PostgreSQL restore manifest table boundary does not match code")
     expected_sequences = [f"{schema}.{sequence}" for schema, sequence in WEB_POSTGRES_SEQUENCES]
@@ -2048,15 +2068,16 @@ def verify_web_postgresql_restore(
 ) -> dict[str, Any]:
     manifest = _validated_web_postgresql_packet(manifest_path, dump_path, bootstrap_path)
     phase = manifest.get("company_reference_phase", "legacy")
+    packet_version = manifest["schema_version"]
     expected_sha256 = manifest["archive_sha256"]
     env = _web_postgres_env()
     if _web_postgres_reference_phase(env=env) != phase:
         raise BackupError("web PostgreSQL restored company-reference phase does not match packet")
-    _validate_web_postgres_boundary(env=env, phase=phase)
-    dependencies = _web_postgres_dependencies(env=env, phase=phase)
+    _validate_web_postgres_boundary(env=env, phase=phase, packet_version=packet_version)
+    dependencies = _web_postgres_dependencies(env=env, phase=phase, packet_version=packet_version)
     if "dependencies" in manifest and dependencies != manifest["dependencies"]:
         raise BackupError("web PostgreSQL restored dependencies do not match packet")
-    actual = _web_postgres_fingerprints(env=env, phase=phase)
+    actual = _web_postgres_fingerprints(env=env, phase=phase, packet_version=packet_version)
     if actual != manifest.get("fingerprints"):
         raise BackupError("web PostgreSQL restored row fingerprints do not match")
     actual_sequences = _web_postgres_sequence_fingerprints(env=env)
@@ -2064,6 +2085,7 @@ def verify_web_postgresql_restore(
         raise BackupError("web PostgreSQL restored sequence fingerprints do not match")
     return {
         "table_count": len(actual),
+        "packet_version": packet_version,
         "row_count": sum(item["rows"] for item in actual.values()),
         "archive_sha256": expected_sha256,
         "company_reference_phase": phase,
