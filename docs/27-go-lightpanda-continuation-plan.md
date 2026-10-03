@@ -1,5 +1,50 @@
 # Go and Lightpanda migration continuation plan
 
+The installed-image harness now includes a positive joined host/selected-Redis
+journal fixture. It creates only its own official Redis daemon and sleeping native
+consumer containers, uses installed-image preflight, and drives the production
+`WithHostQuiescence` -> `WithSelectedHostColdRedis` -> `RunHostColdPhase` library
+path. Target, intent, reservation and inspection must hold the original host flock
+and all three SQL barriers across commits. A second callback uses a new SQL backend
+and must retain the original endpoint/incarnation, epoch and exact outcomes.
+Missing/escaped scopes refuse; callback exit must close its own Redis connections
+and release SQL barriers. Canonical rows and complete Redis values must remain
+identical. Exact inputs, requests, results, completions and connection receipts
+are retained in a credential-free artifact for independent hash/graph verification.
+
+Both Linux integration-tag vets, formatting/module checks and workflow lint pass.
+All 188 repository checks pass. This new root fixture is not run locally and still
+requires fresh AMD64/ARM64 CI execution. It proves the initial native library path
+with sleeping consumers when it passes; complete installed cold CLI, producer/lease
+exclusion, full phase graph and runtime admission remain unproven. The disposable
+root harness transfers the existing lock inode's ownership while holding that
+same lock; the runtime owner predicate remains strict. Full installed readbacks
+have a bounded 45-minute matrix job and 15-minute joined fixture context.
+
+Preceding source `df54e5e8db6329c723396fae2bdde76376246e2e` passes full CI
+37084517675, installed 37084519859, Linux 37084478239, renderer 37084478177 and
+historical native/legacy images 37084478255/37084478235. Both architecture
+installed/historical artifacts and tested merge parents are independently verified.
+Linux markers prove actual consumer/daemon/socket ownership, wrong PID and
+stopped/restarted stale authority refusal, read-only incarnation and journal
+SIGKILL/conservation. Installed callbacks prove missing-selected-Redis refusal
+without caller fallback and preserve all earlier host/SQL contracts. Draft gate
+evaluator 37084475321 passes; it grants no production admission. Preserve running
+whole-B0 37084478245. See [joined fixture evidence](evidence/go-ordinary-native-host-selected-redis-journal-2026-10-03.json).
+
+Next independently verify the fresh positive joined fixture and extend the retained
+graph through complete native forward/reversal/reactivation/finalization and
+producer/lease exclusion. Authenticate deliberate host changes and retain the
+outer mutation lock through complete spec/env/data restoration, SQL release,
+full-stack startup and readiness. Every enabled profile/consumer, canonical/output/
+database/publisher/freshness/queue parity, full-service resources and attributable
+cost, required gates/exact identities, supported quiesced cutover/cold reversal
+and rollback window remain required before production Python/Playwright/Chromium
+retirement. Preserve offline Python, every board and the B0 deployment guard.
+PR #10210 remains draft, production unchanged and the full migration goal active.
+
+Earlier entries retain their source-scoped observations and pending states.
+
 The cold journal now opens Redis through `WithSelectedHostColdRedis` inside
 `WithHostQuiescence`. The endpoint comes from the selected generation's verified
 Compose and image defaults, matched observed consumer execution, and the live

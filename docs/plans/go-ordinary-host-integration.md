@@ -568,3 +568,30 @@ host/SQL exclusion. Positive full host callback -> selected Redis -> retained
 journal effects, complete forward/reversal graph, phase-authenticated expected
 host changes, outer lock through SQL release/startup/readiness and actual installed
 full-stack recovery remain the next connected delivery work.
+
+## Positive selected host/Redis initial journal fixture
+
+The installed-image AMD64/ARM64 harness now requires a root fixture joining actual
+selected Compose/image/consumer execution and official Redis PID/listener ownership
+through the production host callback to native target/begin/reserve/inspect effects.
+It uses its own sleeping native consumers, private migrated PostgreSQL, seed queue
+and protected release generations. The expected installed binary/CA/34 assets and
+immutable reference are independently retained by earlier image steps. Actual
+preflight must join them before the callback runs; fixture host scope injection
+and caller client/URL fallback are not used for phase authority.
+
+Independent shared SQL attempts and a second file descriptor test the original
+mutation flock across every phase and commit. A new callback/backend retries the
+same requests without another epoch, resource handles cannot escape, and Redis
+client count returns to its baseline on exit. Raw credential-free canonical phase
+inputs/requests/results/completions and the hashed connection receipt are retained
+for independent artifact verification. The root-only fixture shares the existing
+lock inode, taking disposable ownership under that same lock rather than weakening
+the runtime owner predicate. Complete readbacks have explicit bounded time budgets.
+
+This newly required fixture awaits fresh source execution. Its path is native
+library code plus actual installed preflight and sleeping consumers; do not infer
+complete installed cold CLI/full graph/producer lifecycle or production admission.
+After positive verification, extend the full phase graph with exact predecessor
+bindings and authenticated intentional spec/selection changes; keep the host lock
+through restoration, SQL release, full-stack startup/readiness and real crash recovery.

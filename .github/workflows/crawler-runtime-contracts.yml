@@ -211,7 +211,8 @@ jobs:
           - arch: arm64
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
+    # Full installed host readbacks run across every joined cold phase/retry.
+    timeout-minutes: 45
     services:
       postgres:
         image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
@@ -277,6 +278,7 @@ jobs:
           PY
 
       - name: Verify image-installed native process crash and receipt recovery
+        id: ordinary-image-process
         working-directory: apps/crawler/go/ordinary-worker
         env:
           JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test
@@ -305,6 +307,7 @@ jobs:
           docker cp "$fixture_container:/app/data" "$fixture_directory/data"
           chmod -R a-w "$fixture_directory/data"
           export JOBSEEK_ORDINARY_IMAGE_BINARY="$fixture_directory/ordinary-worker"
+          echo "binary=$fixture_directory/ordinary-worker" >> "$GITHUB_OUTPUT"
           export JOBSEEK_ORDINARY_IMAGE_DATA_DIRECTORY="$fixture_directory/data"
           docker image inspect --format '{{.Id}}' jobseek-crawler:runtime-v1 > "$fixture_directory/image-id"
           docker image inspect --format '{{.Architecture}}' jobseek-crawler:runtime-v1 > "$fixture_directory/image-architecture"
@@ -423,6 +426,41 @@ jobs:
               -run '^TestActualInstalledNativeHostQuiescence' ./... \
             | tee "$RUNNER_TEMP/ordinary-host-quiescence-tests.log"
 
+      - name: Verify actual selected Redis host callback and retained journal phases
+        working-directory: apps/crawler/go/ordinary-worker
+        run: |
+          set -euo pipefail
+          # Only this disposable harness runs the owned root fixture. The
+          # coordinator needs the official Redis daemon's host /proc PID/fd
+          # observation; agents do not receive or invoke the Docker socket.
+          docker pull redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
+          joined_binary="${RUNNER_TEMP}/ordinary-host-selected-redis-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.test"
+          go test -race -c -tags=integration -o "$joined_binary" .
+          chmod 0755 "$joined_binary"
+          trap 'rm -f "$joined_binary"' EXIT
+          installed_binary="${{ steps.ordinary-image-process.outputs.binary }}"
+          test -x "$installed_binary"
+          # Earlier fixture commands created this shared inode as the runner
+          # user. Transfer only its disposable ownership while holding that
+          # same lock, so the strict root coordinator owner predicate holds.
+          test -f /run/lock/jobseek-crawler-mutation.lock
+          test ! -L /run/lock/jobseek-crawler-mutation.lock
+          sudo flock --exclusive --timeout 5 /run/lock/jobseek-crawler-mutation.lock \
+            chown --no-dereference root:root /run/lock/jobseek-crawler-mutation.lock
+          sudo env PATH=/usr/bin:/bin GITHUB_ACTIONS=true \
+            JOBSEEK_CRAWLER_RELEASE_REQUIRE_HOST_SELECTED_REDIS=1 \
+            JOBSEEK_CRAWLER_RELEASE_HOST_JOIN_PROOF="$RUNNER_TEMP/ordinary-host-installed-join-proof.json" \
+            JOBSEEK_CRAWLER_RELEASE_HOST_SELECTED_REDIS_PROOF="$RUNNER_TEMP/ordinary-host-selected-redis-proof.json" \
+            JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES=1 \
+            JOBSEEK_ORDINARY_QUEUE_REQUIRE_REDIS=1 \
+            JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL=postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test \
+            JOBSEEK_ORDINARY_IMAGE_SOURCE_REVISION="$GITHUB_SHA" \
+            JOBSEEK_ORDINARY_IMAGE_BINARY="$installed_binary" \
+            "$joined_binary" \
+            -test.run '^TestActualHostSelectedRedisJournalJoinsScopeAndExactReservation$' \
+            -test.count=1 -test.timeout=960s -test.v \
+            | tee "$RUNNER_TEMP/ordinary-host-selected-redis-tests.log"
+
       - name: Save installed native process identities and test results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -437,6 +475,8 @@ jobs:
             ${{ runner.temp }}/ordinary-host-installed-manifest.json
             ${{ runner.temp }}/ordinary-host-containment-tests.log
             ${{ runner.temp }}/ordinary-host-quiescence-tests.log
+            ${{ runner.temp }}/ordinary-host-selected-redis-tests.log
+            ${{ runner.temp }}/ordinary-host-selected-redis-proof.json
           if-no-files-found: error
 
       - name: Import the installed contract surface from the image
