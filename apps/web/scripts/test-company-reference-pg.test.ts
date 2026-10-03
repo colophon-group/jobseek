@@ -127,7 +127,7 @@ describe("company selection persistence against real PostgreSQL", () => {
     runtime.requests = 0;
     expect(await as(stranger, () => watchlists.updateWatchlist({ watchlistId: id, companyIds: [fresh.id] }))).toEqual({ error: "not_found" });
     expect(await as(stranger, () => watchlists.addCompanyToWatchlist(id, fresh.id))).toMatchObject({ ok: false });
-    expect(await as(null, () => toggleStarredCompany(fresh.id))).rejects.toThrow("Not authenticated");
+    await expect(as(null, () => toggleStarredCompany(fresh.id))).rejects.toThrow("Not authenticated");
     expect(runtime.requests).toBe(0); await absent(fresh.id);
   });
 
@@ -153,7 +153,7 @@ describe("company selection persistence against real PostgreSQL", () => {
     const fresh = document();
     await sql.unsafe(`CREATE FUNCTION reject_fixture_membership() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'fixture rejection'; END $$;
       CREATE TRIGGER reject_fixture_membership BEFORE INSERT ON watchlist_company FOR EACH ROW EXECUTE FUNCTION reject_fixture_membership()`);
-    expect(await as(owner, () => watchlists.createWatchlist({ title: "Rollback", companyIds: [fresh.id] }))).rejects.toThrow();
+    await expect(as(owner, () => watchlists.createWatchlist({ title: "Rollback", companyIds: [fresh.id] }))).rejects.toThrow();
     expect(await sql`SELECT id FROM watchlist`).toHaveLength(0); await absent(fresh.id);
     const other = randomUUID();
     await expect(sql`INSERT INTO followed_company (user_id, company_id) VALUES (${owner}, ${other})`).rejects.toMatchObject({ code: "23503" });

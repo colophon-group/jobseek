@@ -49,3 +49,15 @@ test("required job executes real PostgreSQL production services and authenticate
   assert.match(job, /test:company-reference:browser/);
   assert.match(job, /playwright install --with-deps chromium/);
 });
+
+test("bridge promotion requires a nonoptional authenticated first-use canary", () => {
+  const deploy = readFileSync(".github/workflows/deploy-web-production.yml", "utf8");
+  const canary = deploy.indexOf("      - name: Prove first-use company selection before promotion");
+  const promotion = deploy.indexOf("      - name: Promote only if this SHA is still main");
+  assert.ok(canary > 0 && canary < promotion);
+  const step = deploy.slice(canary, deploy.indexOf("\n      - name:", canary + 1));
+  assert.doesNotMatch(step, /continue-on-error|CANARY_ENABLED|CANARY_REQUIRED/);
+  assert.match(step, /COMPANY_REFERENCE_CANARY_USER_ID: \$\{\{ secrets\./);
+  assert.match(step, /COMPANY_REFERENCE_CANARY_PASSWORD: \$\{\{ secrets\./);
+  assert.match(step, /scripts\/verify-company-reference-staged\.ts/);
+});
