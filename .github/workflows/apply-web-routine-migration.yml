@@ -93,7 +93,8 @@ jobs:
         run: |
           set -euo pipefail
           pnpm --filter @jobseek/web build:company-reference:rehearsal
-          export REHEARSAL_EXPECTED_MANIFEST_SHA256="$(sha256sum deploy/backups/web-postgresql/company-reference-bundle/manifest.json | cut -d' ' -f1)"
+          REHEARSAL_EXPECTED_MANIFEST_SHA256="$(sha256sum deploy/backups/web-postgresql/company-reference-bundle/manifest.json | cut -d' ' -f1)"
+          export REHEARSAL_EXPECTED_MANIFEST_SHA256
           node .github/scripts/verify-company-reference-rehearsal.mjs
 
       - name: Test routine migration safety contracts
@@ -164,6 +165,17 @@ jobs:
         working-directory: apps/web
         run: pnpm exec tsx scripts/verify-company-references.ts preflight
 
+      - name: Require the exact protected archive rehearsal before company reference DDL
+        if: startsWith(env.ROUTINE_MIGRATION_TAG, '0100_') || startsWith(env.ROUTINE_MIGRATION_TAG, '0101_')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          pnpm --filter @jobseek/web build:company-reference:rehearsal
+          REHEARSAL_EXPECTED_MANIFEST_SHA256="$(sha256sum deploy/backups/web-postgresql/company-reference-bundle/manifest.json | cut -d' ' -f1)"
+          export REHEARSAL_EXPECTED_MANIFEST_SHA256
+          node .github/scripts/verify-company-reference-rehearsal.mjs
+
       - name: Reauthorize and refuse stale main immediately before DDL
         env:
           REPOSITORY: ${{ github.repository }}
@@ -178,16 +190,6 @@ jobs:
           test "$(git rev-parse HEAD)" = "$ROUTINE_MIGRATION_REVISION"
           remote_main_sha="$(gh api "repos/$REPOSITORY/git/ref/heads/main" --jq .object.sha)"
           test "$remote_main_sha" = "$ROUTINE_MIGRATION_REVISION"
-
-      - name: Require the exact protected archive rehearsal before company reference DDL
-        if: startsWith(env.ROUTINE_MIGRATION_TAG, '0100_') || startsWith(env.ROUTINE_MIGRATION_TAG, '0101_')
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          pnpm --filter @jobseek/web build:company-reference:rehearsal
-          export REHEARSAL_EXPECTED_MANIFEST_SHA256="$(sha256sum deploy/backups/web-postgresql/company-reference-bundle/manifest.json | cut -d' ' -f1)"
-          node .github/scripts/verify-company-reference-rehearsal.mjs
 
       - name: Apply exactly one reviewed migration under the ledger lock
         working-directory: apps/web

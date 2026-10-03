@@ -955,6 +955,17 @@ REHEARSAL_ROOT = Path("/usr/local/share/jobseek-backup/company-reference-rehears
 REHEARSAL_VERIFIER = Path("/usr/local/sbin/jobseek-verify-company-reference-rehearsal")
 
 
+def require_root_directory(path: Path) -> None:
+    metadata = path.lstat()
+    if (
+        not stat.S_ISDIR(metadata.st_mode)
+        or metadata.st_uid != 0
+        or metadata.st_gid != 0
+        or stat.S_IMODE(metadata.st_mode) & 0o022
+    ):
+        raise OperationError("unsafe writable rehearsal directory")
+
+
 def validate_rehearsal_identity(
     expected: ExpectedIdentity, request: dict[str, str]
 ) -> dict[str, Any]:
@@ -968,6 +979,8 @@ def validate_rehearsal_identity(
         for key in ("manifestSha256", "verifierSha256")
     ):
         raise OperationError("rehearsal artifact identity is absent")
+    require_root_directory(REHEARSAL_ROOT.parent)
+    require_root_directory(REHEARSAL_ROOT)
     require_root_regular_file(REHEARSAL_VERIFIER, mode=0o755)
     require_root_regular_file(REHEARSAL_ROOT / "manifest.json", mode=0o644)
     if sha256_file(REHEARSAL_VERIFIER) != request["verifierSha256"]:

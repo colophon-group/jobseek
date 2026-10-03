@@ -219,3 +219,16 @@ def test_v1_and_v2_status_versions_remain_exact_and_v3_is_not_relabeled():
     assert not operations.company_reference_evidence_matches(
         v2, {**v2, "table_count": 18, "packet_version": 3}
     )
+
+
+@pytest.mark.parametrize("unsafe", ["writable", "symlink"])
+def test_host_rejects_replaceable_rehearsal_directory(tmp_path, unsafe):
+    directory = tmp_path / "bundle"
+    directory.mkdir()
+    if unsafe == "writable":
+        directory.chmod(0o777)
+    else:
+        directory.rmdir()
+        directory.symlink_to(tmp_path, target_is_directory=True)
+    with pytest.raises(operations.OperationError):
+        operations.require_root_directory(directory)

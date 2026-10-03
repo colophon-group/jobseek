@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, lstatSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 function requireProof(condition) { if (!condition) throw new Error('Protected company reference rehearsal evidence differs'); }
-export function validateEvidence(run, artifact, proof, expected) {
+export function validateRunIdentity(run, artifact, expected) {
   requireProof(run.status === 'completed' && run.conclusion === 'success' && run.event === 'workflow_dispatch'
     && run.head_branch === 'main' && run.head_sha === expected.revision
     && run.path === '.github/workflows/operate-web-postgresql-backup.yml'
@@ -15,6 +16,9 @@ export function validateEvidence(run, artifact, proof, expected) {
     && run.actor?.login === 'viktor-shcherb' && run.triggering_actor?.login === 'viktor-shcherb');
   requireProof(artifact.name === `company-reference-rehearsal-${expected.runId}-${run.run_attempt}`
     && artifact.expired === false && artifact.size_in_bytes > 0 && artifact.size_in_bytes <= 131072);
+}
+export function validateEvidence(run, artifact, proof, expected) {
+  validateRunIdentity(run, artifact, expected);
   requireProof(Object.keys(proof).sort().join(',') === ['runId','runAttempt','cleanup','packetVersion','contract','outcome','sourceRevision','manifestSha256','runtimeImage','target','archiveSha256','preflight','postflight','preserved','referenceRows','dependencies'].sort().join(','));
   requireProof(proof.runId === expected.runId && proof.runAttempt === run.run_attempt && proof.cleanup === 'passed'
     && proof.packetVersion === 3 && proof.contract === 'company_reference_archive_rehearsal'
@@ -38,9 +42,11 @@ export function main() {
     ROUTINE_MIGRATION_TAG: tag, ROUTINE_MIGRATION_HASH: hash, ROUTINE_MIGRATION_CREATED_AT: createdAt } = process.env;
   requireProof(/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(repository ?? '') && /^[1-9][0-9]*$/.test(runId ?? '')
     && /^[a-f0-9]{40}$/.test(revision ?? '') && /^[a-f0-9]{64}$/.test(hash ?? '') && /^[0-9]+$/.test(createdAt ?? ''));
-  const manifest = JSON.parse(readFileSync('deploy/backups/web-postgresql/company-reference-bundle/manifest.json','utf8'));
+  const manifestBytes = readFileSync('deploy/backups/web-postgresql/company-reference-bundle/manifest.json');
+  const manifest = JSON.parse(manifestBytes);
   const manifestSha256 = process.env.REHEARSAL_EXPECTED_MANIFEST_SHA256;
-  requireProof(manifest.sourceClean === true && manifest.sourceRevision === revision && /^[a-f0-9]{64}$/.test(manifestSha256 ?? ''));
+  requireProof(manifest.sourceClean === true && manifest.sourceRevision === revision && /^[a-f0-9]{64}$/.test(manifestSha256 ?? '')
+    && createHash('sha256').update(manifestBytes).digest('hex') === manifestSha256);
   const target = manifest.migrations.find(row => row.tag === tag);
   requireProof(target && target.hash === hash && String(target.createdAt) === createdAt);
   requireProof(api(`repos/${repository}/git/ref/heads/main`).object.sha === revision);
@@ -50,7 +56,7 @@ export function main() {
   requireProof(artifacts.length === 1);
   const expected = { runId,revision,manifestSha256,runtimeImage:manifest.runtimeImage,target };
   // Reject untrusted/stale run metadata before downloading any archive.
-  requireProof(run.conclusion === 'success' && run.head_sha === revision && artifacts[0].expired === false && artifacts[0].size_in_bytes <= 131072);
+  validateRunIdentity(run, artifacts[0], expected);
   const root = mkdtempSync(join(tmpdir(),'jobseek-rehearsal-evidence-'));
   try {
     execFileSync('gh',['run','download',runId,'--repo',repository,'--name',name,'--dir',root],{stdio:'pipe'});
