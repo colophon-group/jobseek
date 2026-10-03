@@ -5,7 +5,28 @@ including retirement of production Python, Playwright and Chromium after
 replacement coverage and supported reversal are established. Useful isolated
 offline Python tools may remain. Preserve every enabled board.
 
-## Latest verified production state
+## First native ordinary owner — 14:45 UTC
+
+The supported exact adoption succeeded after database-clock lease expiry.
+All four selected boards now have native ownership at epoch 149 and completed
+Go-owned monitor receipts. Their four naturally due API requests succeeded,
+touched 513 existing postings and settled one-hour canonical deadlines that
+match Redis. All eight HTTP health endpoints and source/image/receipt bindings
+passed. No claim, transport, execution or cancellation errors were reported;
+no native lease remains. All 513 existing descriptions remain stored and
+uploaded. No new/relisted/gone posting transition was observed in this sample;
+new description/enrichment generation still needs applicable natural evidence.
+
+The [portable evidence](evidence/go-native-ordinary-continuation-2026-10-03.json)
+preserves this observation and the earlier recovery/census. Full migration
+remains active. The next bounded code change permits a fresh-epoch owner only
+after prior ordinary owners have retired. Historical attempt receipts remain
+intact and lose write authority through their old epoch. Another active owner
+or served history at the current epoch still refuses adoption. Complete the
+existing supported old-owner/B0 retirement and fresh B0 activation before
+using this change to expand the cohort.
+
+## Earlier verified deployment and recovery
 
 [PR #10229](https://github.com/colophon-group/jobseek/pull/10229) delivered the
 native Greenhouse token/skip worker, transactional persistence and queue

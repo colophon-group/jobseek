@@ -110,7 +110,7 @@ func privateRedis(t *testing.T) *Client {
 	}
 	return c
 }
-func seedTask(t *testing.T, c *Client, kind Kind, worker WorkerType) (*Task, float64) {
+func seedTask(t *testing.T, c *Client, kind Kind, worker WorkerType, ids ...string) (*Task, float64) {
 	t.Helper()
 	ctx := context.Background()
 	now, err := c.clock(ctx)
@@ -118,6 +118,9 @@ func seedTask(t *testing.T, c *Client, kind Kind, worker WorkerType) (*Task, flo
 		t.Fatal(err)
 	}
 	task := &Task{Worker: worker, Kind: kind, ID: "00000000-0000-4000-8000-000000000001", Domain: "ordinary-worker.invalid"}
+	if len(ids) == 1 {
+		task.ID = ids[0]
+	}
 	prefix, tier := "monitors_", ":1"
 	config := "board:"
 	if kind == Scrape {

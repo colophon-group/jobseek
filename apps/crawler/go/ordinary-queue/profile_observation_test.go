@@ -10,10 +10,14 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func greenhouseAuthorityFixture(t *testing.T) authorityFixture {
+func greenhouseAuthorityFixture(t *testing.T, ids ...string) authorityFixture {
 	t.Helper()
-	f := realAuthority(t, Monitor, Simple)
+	f := realAuthority(t, Monitor, Simple, ids...)
 	config := profileConfig()
+	if len(ids) == 1 {
+		config["board_url"] = "https://job-boards.greenhouse.io/" + ids[0]
+		config["metadata"] = `{"token":"` + ids[0] + `","scraper_type":"skip"}`
+	}
 	config["company_id"] = f.company
 	config["board_slug"] = "ordinary-" + f.company
 	ctx := context.Background()

@@ -861,8 +861,8 @@
       "active_count": 3
     }
   ],
-  "ordinary_native_owners": 0,
-  "ordinary_plan_state": "staged",
+  "ordinary_native_owners": 4,
+  "ordinary_plan_state": "active",
   "supported_recovery": {
     "returncode": 0,
     "restored_services": 9,
@@ -885,8 +885,153 @@
     "dead": 0
   },
   "limits": [
-    "Read-only enabled SQL inventory, not migrated capability coverage.",
-    "Ordinary owner activation and canonical output not yet proven.",
-    "Whole-lane cost and Python retirement remain open."
-  ]
+    "Enabled inventory is a read-only SQL census, not migrated capability coverage.",
+    "Four naturally scheduled monitors touched 513 existing postings; no new/relisted/gone posting transition was observed.",
+    "Stored/uploaded descriptions are retained, not proof of newly generated native description/enrichment parity.",
+    "Whole-lane cost, complete rollout/reversal and Python retirement remain open."
+  ],
+  "first_native_owner": {
+    "observed_at": "2026-10-03T14:45:07.055168+00:00",
+    "source_revision": "eb991eb3997e66e4f05d327405a399f26c4a4644",
+    "routing_epoch": 149,
+    "plan_sha256": "f83ac7657b50ee0fdb3b9a3284d743111e8e1f2037d6335ec4a9e78fad625d16",
+    "projection_sha1": "b1336ace83e6d9913cdcc19a34edce851167eaec",
+    "state": "active",
+    "health_status": {
+      "worker-1": 200,
+      "worker-2": 200,
+      "worker-3": 200,
+      "browser-1": 200,
+      "drain": 200,
+      "exporter": 200,
+      "lightpanda-claimant": 204,
+      "ordinary-go": 204
+    },
+    "ordinary_metrics": [
+      "jobseek_ordinary_go_ready 1",
+      "jobseek_ordinary_go_active_claims 0",
+      "jobseek_ordinary_go_claim_errors_total 0",
+      "crawler_tasks_total{kind=\"monitor\",status=\"succeeded\"} 4",
+      "crawler_runtime_origin_attempts_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 4",
+      "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"response\"} 4",
+      "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"transport_error\"} 0",
+      "crawler_runtime_response_body_bytes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 464891",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"success\"} 4",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"error\"} 0",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"cancelled\"} 0",
+      "crawler_runtime_output_items_total{stage=\"monitor\",implementation=\"go\"} 513",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"new\"} 0",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"relisted\"} 0",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"gone\"} 0",
+      "jobseek_ordinary_go_posting_touches_total 513"
+    ],
+    "boards": [
+      {
+        "id": "d6108310-0f28-498c-9cde-f3cbebcf2a24",
+        "board_slug": "1-800-contacts-greenhouse",
+        "is_enabled": true,
+        "board_status": "active",
+        "tdm_reserved": false,
+        "next_check_at": "2026-10-03T15:43:50.059034+00:00",
+        "active_postings": 8,
+        "last_success_at": "2026-10-03T14:43:50.059034+00:00",
+        "native_next_due_at": "2026-10-03T15:43:50.059034+00:00",
+        "learned_egress_host": null,
+        "native_attempt_epoch": 149,
+        "native_attempt_state": "completed",
+        "latest_posting_seen_at": "2026-10-03T14:43:49.903048+00:00",
+        "stored_description_rows": 8,
+        "native_attempt_updated_at": "2026-10-03T14:43:50.082269+00:00",
+        "uploaded_description_rows": 8
+      },
+      {
+        "id": "7a38b334-e8f8-46b0-9e89-8511cfdc0b2a",
+        "board_slug": "brex-greenhouse",
+        "is_enabled": true,
+        "board_status": "active",
+        "tdm_reserved": false,
+        "next_check_at": "2026-10-03T15:44:07.327899+00:00",
+        "active_postings": 282,
+        "last_success_at": "2026-10-03T14:44:07.327899+00:00",
+        "native_next_due_at": "2026-10-03T15:44:07.327899+00:00",
+        "learned_egress_host": null,
+        "native_attempt_epoch": 149,
+        "native_attempt_state": "completed",
+        "latest_posting_seen_at": "2026-10-03T14:44:05.092265+00:00",
+        "stored_description_rows": 282,
+        "native_attempt_updated_at": "2026-10-03T14:44:07.34771+00:00",
+        "uploaded_description_rows": 282
+      },
+      {
+        "id": "788d2fb3-bfc0-40b9-acb2-163d2413b305",
+        "board_slug": "duolingo-greenhouse",
+        "is_enabled": true,
+        "board_status": "active",
+        "tdm_reserved": false,
+        "next_check_at": "2026-10-03T15:43:56.050498+00:00",
+        "active_postings": 61,
+        "last_success_at": "2026-10-03T14:43:56.050498+00:00",
+        "native_next_due_at": "2026-10-03T15:43:56.050498+00:00",
+        "learned_egress_host": null,
+        "native_attempt_epoch": 149,
+        "native_attempt_state": "completed",
+        "latest_posting_seen_at": "2026-10-03T14:43:53.007889+00:00",
+        "stored_description_rows": 61,
+        "native_attempt_updated_at": "2026-10-03T14:43:56.065413+00:00",
+        "uploaded_description_rows": 61
+      },
+      {
+        "id": "02697f69-a93e-485d-b67b-136fe68fcf93",
+        "board_slug": "figma-careers",
+        "is_enabled": true,
+        "board_status": "active",
+        "tdm_reserved": false,
+        "next_check_at": "2026-10-03T15:43:56.080106+00:00",
+        "active_postings": 162,
+        "last_success_at": "2026-10-03T14:43:56.080106+00:00",
+        "native_next_due_at": "2026-10-03T15:43:56.080106+00:00",
+        "learned_egress_host": null,
+        "native_attempt_epoch": 149,
+        "native_attempt_state": "completed",
+        "latest_posting_seen_at": "2026-10-03T14:43:53.982083+00:00",
+        "stored_description_rows": 162,
+        "native_attempt_updated_at": "2026-10-03T14:43:56.106079+00:00",
+        "uploaded_description_rows": 162
+      }
+    ],
+    "queue": {
+      "projection_sha1": "b1336ace83e6d9913cdcc19a34edce851167eaec",
+      "members": [
+        {
+          "lease_token_present": false,
+          "first_score": null,
+          "board_id": "d6108310-0f28-498c-9cde-f3cbebcf2a24",
+          "recurring_score": "1791042230.059034",
+          "inflight_score": null
+        },
+        {
+          "lease_token_present": false,
+          "first_score": null,
+          "board_id": "7a38b334-e8f8-46b0-9e89-8511cfdc0b2a",
+          "recurring_score": "1791042247.327899",
+          "inflight_score": null
+        },
+        {
+          "lease_token_present": false,
+          "first_score": null,
+          "board_id": "788d2fb3-bfc0-40b9-acb2-163d2413b305",
+          "recurring_score": "1791042236.050498",
+          "inflight_score": null
+        },
+        {
+          "lease_token_present": false,
+          "first_score": null,
+          "board_id": "02697f69-a93e-485d-b67b-136fe68fcf93",
+          "recurring_score": "1791042236.080106",
+          "inflight_score": null
+        }
+      ],
+      "projection_pttl": -1
+    }
+  }
 }
