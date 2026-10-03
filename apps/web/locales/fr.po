@@ -4483,7 +4483,7 @@ msgstr "Supprimer"
 #. js-lingui-explicit-id
 #: src/components/watchlist/company-pill.tsx
 msgid "watchlists.companyPill.remove"
-msgstr "Supprimer {0}"
+msgstr "Supprimer {name}"
 
 #. Aria label for remove-filter X button on a filter pill; {name} is the filter value
 #. Aria label for remove-filter X button on a filter pill; {name} is the filter value

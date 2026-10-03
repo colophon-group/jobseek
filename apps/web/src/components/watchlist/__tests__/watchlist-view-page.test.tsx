@@ -515,6 +515,31 @@ describe("WatchlistViewPage private detail", () => {
     expect(mocks.updateWatchlist).toHaveBeenCalledTimes(1);
   });
 
+  it("queues a later filter edit behind a slow company save", async () => {
+    vi.useFakeTimers();
+    let finishCompanySave!: (result: { success: boolean }) => void;
+    mocks.updateWatchlist.mockImplementationOnce(() => new Promise((resolve) => {
+      finishCompanySave = resolve;
+    }));
+    try {
+      renderPage(true, { filters: { anyCompany: false }, companies: [] });
+      fireEvent.click(screen.getByRole("button", { name: "Company" }));
+      fireEvent.click(screen.getByRole("button", { name: "Select new company" }));
+      await vi.advanceTimersByTimeAsync(0);
+      expect(mocks.updateWatchlist).toHaveBeenCalledTimes(1);
+      fireEvent.click(screen.getByRole("button", { name: "Apply salary" }));
+      await vi.advanceTimersByTimeAsync(500);
+      expect(mocks.updateWatchlist).toHaveBeenCalledTimes(1);
+      finishCompanySave({ success: true });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(mocks.updateWatchlist).toHaveBeenNthCalledWith(2, expect.objectContaining({
+        filters: expect.objectContaining({ salaryMin: 200_000, anyCompany: false }),
+      }));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("retains the selection and explains a temporary catalogue failure", async () => {
     mocks.updateWatchlist.mockResolvedValueOnce({ error: "company_lookup_unavailable" });
     renderPage(true, {

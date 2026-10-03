@@ -556,21 +556,33 @@ export function WatchlistViewPage({
     const pendingFilters = pendingFiltersRef.current;
     pendingFiltersRef.current = null;
     const scopeFilters = buildFilters();
-    try {
-      await filterSaveChainRef.current;
-      const persisted = await persistWatchlistChanges({
-        companyIds: nextCompanies.map((candidate) => candidate.id),
-        filters: scopeFilters,
-      });
-      if (!persisted) throw new Error("company_update_failed");
-    } catch (error) {
-      setCompanies(previousCompanies);
-      setMutationError(updateErrorMessage(error));
-      if (pendingFilters) enqueueFilterSave(pendingFilters.filters, false, pendingFilters.scopeRevision);
-    } finally {
-      if (mountedRef.current) setPersistedScopeRevision(scopeRevision);
-      companyMutationInFlightRef.current = false;
-    }
+    // Reserve the shared queue now so later filter edits cannot overtake a
+    // slow first-use company lookup and then be overwritten by this snapshot.
+    const companySave = filterSaveChainRef.current.then(async () => {
+      try {
+        const persisted = await persistWatchlistChanges({
+          companyIds: nextCompanies.map((candidate) => candidate.id),
+          filters: scopeFilters,
+        });
+        if (!persisted) throw new Error("company_update_failed");
+      } catch (error) {
+        setCompanies(previousCompanies);
+        setMutationError(updateErrorMessage(error));
+        if (pendingFilters) {
+          // Restore the superseded filter save before any newer queued edits.
+          try {
+            await persistWatchlistChanges({ filters: pendingFilters.filters });
+          } catch {
+            // The company failure is already reported; retain the newer queue.
+          }
+        }
+      } finally {
+        if (mountedRef.current) setPersistedScopeRevision(scopeRevision);
+        companyMutationInFlightRef.current = false;
+      }
+    });
+    filterSaveChainRef.current = companySave;
+    await companySave;
   }
 
   function handleToggleCompany(company: Company) {
