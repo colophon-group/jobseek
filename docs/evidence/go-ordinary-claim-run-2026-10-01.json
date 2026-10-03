@@ -1,0 +1,78 @@
+{
+  "schema": "jobseek.migration.ordinary-claim-run-evidence/v1",
+  "runtime_source_head": "3e9aef091edcd8f1ab9f911c45b2f184bb2f465d",
+  "pull_request": "https://github.com/colophon-group/jobseek/pull/10210",
+  "candidate_version": "0.13.904",
+  "draft": true,
+  "selected_in_production": false,
+  "local": {
+    "source_head": "3e9aef091edcd8f1ab9f911c45b2f184bb2f465d",
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "migration": "head0037/down0036/head0037 passed",
+    "full_native_queue_race_seconds": 26.414,
+    "full_native_assembly_race_seconds": 20.259,
+    "reader_and_preparation_race_seconds": 2.875,
+    "mandatory_legacy_python_tests": 185,
+    "legacy_python_skips": 0,
+    "runtime_version_documentation_node_tests": 39,
+    "vet_format": "passed",
+    "cleanup": true,
+    "production_changed": false
+  },
+  "verified": [
+    "Sealed verified transport and ownership-bound opaque claim connect preflight, cycle, discovery, full inventory, native preparation, 500-posting batches, terminal lifecycle, host outcomes and settlement.",
+    "Actual verified TLS HTTP202 -> 1001 native postings through 500/500/1 real PostgreSQL/Redis batches and guarded absence.",
+    "Eight real TLS redirect/resource cases preserve final-resource publisher-header precedence, provider404 identity, generic status/body failure, partial-body failure and private-redirect refusal.",
+    "Pre-existing publisher reservation and open host circuit settle without HTTP or preparation; mid-body cancellation writes no fabricated terminal policy/gone/failure receipt.",
+    "Publisher reservation during preparation at posting751 preserves the first500 committed postings without absence, failure-budget use or partial next batch.",
+    "Actual runner commit-before-ack recovery closes authority, expires/reaps/reclaims its lease and settles the same durable failure due/learned-host receipt without refetch, preparation or host/canonical failure replay.",
+    "Thirteen real Redis corrupt-index/numeric cases reject reschedule before any queue, lease, claim snapshot or learned-host mutation; production Python and Go Lua remain identical.",
+    "Initial token endpoint remains bound to the exact claim; final-resource adapters reject different initial tokens, relative/file/userinfo/control URLs without canonical effects.",
+    "Protected host-success errors retain canonical receipts; settled result is true only after successful token-guarded acknowledgement."
+  ],
+  "not_verified": [
+    "Fresh current-checkpoint Linux/full CI/B0 admission and actual green deploy gate.",
+    "Installed native executable, protected startup source/plan/epoch/CA/internal-host/model inputs, metrics/concurrency/heartbeat/task deadline/drain.",
+    "Installed cancellation/SIGKILL/claim-loss, supported exclusive all-writer projection/cutover and shared B0 epoch cold reversal.",
+    "Every enabled effective profile/runtime consumer, production fleet output/freshness/queue/cost and actual rollback window before Python/Playwright/Chromium retirement."
+  ],
+  "previous_host_circuit_checkpoint": {
+    "head": "3684247cc9621946bf6e5f0a497656261d287c2a",
+    "linux": {
+      "run": 36846132716,
+      "amd64": "success",
+      "arm64": "success"
+    },
+    "full_ci": {
+      "run": 36846125648,
+      "conclusion": "success"
+    },
+    "b0_admission": {
+      "run": 36846132352,
+      "conclusion": "success"
+    },
+    "actual_deploy_gate": "failure while draft",
+    "limitation": "Earlier-head success does not cover later claim-run source or authorize merging a draft."
+  },
+  "next": "Package protected CA/internal-host assets and implement the exact-source/plan/epoch ordinary executable with bounded concurrency, task deadlines, metrics, heartbeat, cancellation and drain using the completed claim runner. Prove installed crash/cancel/claim-loss and supported all-writer ownership/projection cutover/cold reversal with the shared B0 epoch before selection. Complete every enabled effective profile and runtime consumer, fleet output/freshness/queue conservation, comparable whole-service CPU/RAM/density/attributable cost and the rollback window before retiring production Python/Playwright/Chromium. The full migration goal remains active.",
+  "checkpoint_checks": {
+    "head": "426a6c47da7066480797c4b47e30ee723a853965",
+    "linux": {
+      "run": 36851878686,
+      "amd64": "success",
+      "arm64": "success"
+    },
+    "full_ci": {
+      "run": 36851882626,
+      "conclusion": "success"
+    },
+    "b0_admission": {
+      "run": 36851878654,
+      "conclusion": "success"
+    },
+    "actual_deploy_gate": "failure while draft",
+    "limitation": "Earlier-head success does not cover later ordinary process/image source or authorize merging a draft."
+  },
+  "continued_by_runtime_source_head": "2b775782f275a48b6a5890463bbfc9ac96b37d17"
+}

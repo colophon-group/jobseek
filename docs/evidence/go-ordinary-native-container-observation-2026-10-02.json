@@ -1,0 +1,57 @@
+{
+  "version": "jobseek.migration.native-container-observation/v1",
+  "date": "2026-10-02",
+  "preceding_verified_source": "b852b59bd4c946e32c593358056e38dd0d9334c6",
+  "api": [
+    "ObserveContainers",
+    "RequireColdContainers"
+  ],
+  "canonical_formats": [
+    "jobseek.crawler-container-inventory/v1",
+    "jobseek.crawler-container-state/v1"
+  ],
+  "contract": [
+    "Complete daemon enumeration including stopped, orphaned and foreign-project containers; no caller ignore list or project-filtered omissions",
+    "Fixed cleared-environment local Docker commands, bounded 256 containers and 32-ID inspection batches, exact IDs/cardinality and duplicate-safe JSON",
+    "Two complete snapshots and re-enumeration readback bind process/restart/config/mount observations; private inspect bytes never emitted",
+    "Explicit image-evidence hashes bind exact project/service/local image IDs with same host architecture; known project unbound services/images refuse even stopped",
+    "All services default to mutating; exporter, browser, B0, future consumers and every one-off must be stopped with PID=0 and restart=no/zero retries",
+    "Unknown globally running or restartable containers refuse; unknown stopped disabled containers remain explicitly counted",
+    "Only matched immutable Redis/Postgres/Alloy daemon commands with explicit non-oneoff labels may stay live; independent runtime/config/mount/user fidelity still mandatory"
+  ],
+  "local_verification": {
+    "compiler": "go1.26.0",
+    "race_tests": "pass",
+    "linux_integration_tag_vet": [
+      "amd64",
+      "arm64"
+    ],
+    "go_mod_tidy_diff": "pass",
+    "repository_contract_tests": 188,
+    "actionlint": "1.7.12 pass",
+    "race_package_seconds": 3.872,
+    "race_log_sha256": "fbbd8e3869546707ae88c0cfde1c822598f0a022c42893aea562df693231d898",
+    "zizmor": "1.26.1 pass",
+    "linux_integration_tag_vet_modules": [
+      "ordinary-queue",
+      "ordinary-worker"
+    ],
+    "repository_log_sha256": "8aa2823e05b3d26668549913a84c3ec6c34d2e9932d1dd7cebe88f282b688408",
+    "unscoped_discovery": "Rejected unscoped node discovery required unavailable frontend Vitest dependencies; exact required repository script selection passes"
+  },
+  "actual_fixture": {
+    "name": "TestActualWholeDaemonContainerStateAndRestartObservation",
+    "harness": "existing disposable Linux Actions daemon only; never local agent Docker access",
+    "status": "fresh execution required",
+    "scope": "Already-pulled public image with bounded synthetic exporter command; actual created/running/stopped/restart-disabled states and global PostgreSQL omission refusal; positive full-host exclusion not established"
+  },
+  "production_changed": false,
+  "full_goal_active": true,
+  "open_work": [
+    "Native locked coordinator consumer, independently verified source/binary/config/mount/numeric users and selected release/spec sets",
+    "Complete actual writer exclusion including unknown oneoffs and SQL leases/barriers, reobserved and bound to durable intent",
+    "Phased spec restoration and real host crash recovery, full readiness/cold cutover/cold reversal",
+    "Every enabled profile/consumer, canonical parity/freshness/queue/publisher and comparable complete-service resources/cost",
+    "Exact required gates/merge/deploy, actual rollback window, production Python/Playwright/Chromium retirement while useful offline Python remains isolated"
+  ]
+}

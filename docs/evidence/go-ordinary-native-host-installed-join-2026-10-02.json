@@ -1,0 +1,206 @@
+{
+  "version": "jobseek.migration.native-host-installed-join/v1",
+  "date": "2026-10-02",
+  "preceding_runtime_source": "1c87e360132cc761bc7136c28ae2d92ee3dbbe64",
+  "command": "--host-preflight",
+  "fixture": "TestActualInstalledNativeHostPreflightJoinsExactRuntimeAndRejectsSubstitution",
+  "actual_execution": "fresh exact-source Linux AMD64/ARM64 execution required",
+  "contract": [
+    "Disposable harness publishes the exact built native image only to a pinned loopback registry; retains raw immutable image manifest and proof, recomputes manifest SHA and joins config digest to independently observed native image ID",
+    "Never-started scoped native container uses explicit10001:10001 user/project/worker/non-oneoff labels; actual installed command observes three distinct synthetic release generation directories and exact complete daemon execution binding",
+    "Positive installed request binds image/source/container/service and independently retained binary/system-CA/34 asset hashes; exact installed expectation and receipt retention are asserted",
+    "Ten fresh-request substitutions (source,image,service,missing container,unscoped container,binary,CA,asset,omitted asset,extra asset) must fail with live context before any intent/archive retention; earlier positive receipt remains exact",
+    "Fixture setup/cleanup owns its registry/containers; actual host command and Go tests perform read-only Docker observations; no local agent Docker access"
+  ],
+  "required_artifacts": [
+    "ordinary-host-preflight-tests.log",
+    "ordinary-host-installed-join-proof.json",
+    "ordinary-host-installed-manifest.json"
+  ],
+  "local_verification": {
+    "compiler": "go1.26.0",
+    "linux_amd64_arm64_integration_tag_vet": "pass",
+    "actionlint": "1.7.12 pass",
+    "zizmor": "1.26.1 offline pass",
+    "repository_script_tests": 188,
+    "repository_log_sha256": "4de9ec9aeb7a52c4d5e9b2e231760a6de4dec65fbf2963077b3f47cefb3b517e",
+    "bash_and_embedded_python_syntax": "pass"
+  },
+  "preceding_62c_whole_b0": {
+    "schema": "jobseek.migration.synthetic-b0-admission/v1",
+    "pr": 10210,
+    "pr_head": "62c23ada87e3a08254545a89891ede04f35c0114",
+    "tested_merge_checkout": "480dbcf620f7f1710807998da0e4e2100177790e",
+    "verified_merge_parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "62c23ada87e3a08254545a89891ede04f35c0114"
+    ],
+    "run": 37057439521,
+    "report_sha256": "ddb2648ae93dfc56c75e53a9b4feb9ce9c592676680603bb46494f95e291d163",
+    "mode": "synthetic",
+    "arms": 16,
+    "pairs": 8,
+    "admitted": true,
+    "verdict_recomputed": true,
+    "density_range": [
+      5.859682828526386,
+      13.250151408607012
+    ],
+    "verdict": {
+      "admitted": true,
+      "reasons": [],
+      "density_ratios": [
+        5.8994028604433435,
+        6.0663285793916994,
+        5.859682828526386,
+        12.191452804837906,
+        11.566816899315885,
+        12.002427724065866,
+        13.250151408607012,
+        11.425907259100525
+      ],
+      "pair_metrics": [
+        {
+          "pair": "c1-p1",
+          "density_ratio": 5.8994028604433435,
+          "elapsed_ratio": 1.444002820885866,
+          "p99_ratio": 0.6800105761070352,
+          "peak_rss_ratio": 0.24477101412554633,
+          "cpu_seconds_candidate": 1.713783,
+          "cpu_seconds_control": 2.498683,
+          "lifetime_cpu_seconds_candidate": 4.007427,
+          "lifetime_cpu_seconds_control": 6.041132
+        },
+        {
+          "pair": "c1-p2",
+          "density_ratio": 6.0663285793916994,
+          "elapsed_ratio": 1.472750737992021,
+          "p99_ratio": 0.6884624460058291,
+          "peak_rss_ratio": 0.24277464016624384,
+          "cpu_seconds_candidate": 1.681047,
+          "cpu_seconds_control": 2.467046,
+          "lifetime_cpu_seconds_candidate": 3.958141,
+          "lifetime_cpu_seconds_control": 5.958514
+        },
+        {
+          "pair": "c1-p3",
+          "density_ratio": 5.859682828526386,
+          "elapsed_ratio": 1.425660778687623,
+          "p99_ratio": 0.6979222141724747,
+          "peak_rss_ratio": 0.2432999908710338,
+          "cpu_seconds_candidate": 1.705338,
+          "cpu_seconds_control": 2.424275,
+          "lifetime_cpu_seconds_candidate": 4.002058,
+          "lifetime_cpu_seconds_control": 5.901453
+        },
+        {
+          "pair": "c4-p1",
+          "density_ratio": 12.191452804837906,
+          "elapsed_ratio": 1.3123442530017475,
+          "p99_ratio": 0.7624072565127652,
+          "peak_rss_ratio": 0.10764461578204797,
+          "cpu_seconds_candidate": 2.367595,
+          "cpu_seconds_control": 5.824345,
+          "lifetime_cpu_seconds_candidate": 4.662007,
+          "lifetime_cpu_seconds_control": 10.388992
+        },
+        {
+          "pair": "c4-p2",
+          "density_ratio": 11.566816899315885,
+          "elapsed_ratio": 1.2932704786423628,
+          "p99_ratio": 0.7655776499183575,
+          "peak_rss_ratio": 0.11180867561920624,
+          "cpu_seconds_candidate": 2.419024,
+          "cpu_seconds_control": 5.884972,
+          "lifetime_cpu_seconds_candidate": 4.7213780000000005,
+          "lifetime_cpu_seconds_control": 10.419484
+        },
+        {
+          "pair": "c4-p3",
+          "density_ratio": 12.002427724065866,
+          "elapsed_ratio": 1.324002391916137,
+          "p99_ratio": 0.7563584453888367,
+          "peak_rss_ratio": 0.11031121556028221,
+          "cpu_seconds_candidate": 2.3755349999999997,
+          "cpu_seconds_control": 6.036048,
+          "lifetime_cpu_seconds_candidate": 4.669252,
+          "lifetime_cpu_seconds_control": 10.659163
+        },
+        {
+          "pair": "c4-p4",
+          "density_ratio": 13.250151408607012,
+          "elapsed_ratio": 1.6019170904056526,
+          "p99_ratio": 0.6233499152166382,
+          "peak_rss_ratio": 0.12089802153997137,
+          "cpu_seconds_candidate": 2.417083,
+          "cpu_seconds_control": 6.269588,
+          "lifetime_cpu_seconds_candidate": 4.727055,
+          "lifetime_cpu_seconds_control": 10.906372
+        },
+        {
+          "pair": "c4-p5",
+          "density_ratio": 11.425907259100525,
+          "elapsed_ratio": 1.3110811135868097,
+          "p99_ratio": 0.761465731394363,
+          "peak_rss_ratio": 0.11474634651375781,
+          "cpu_seconds_candidate": 2.399772,
+          "cpu_seconds_control": 5.99425,
+          "lifetime_cpu_seconds_candidate": 4.7009490000000005,
+          "lifetime_cpu_seconds_control": 10.597315
+        }
+      ]
+    },
+    "images": {
+      "browser": "sha256:060aa00f5f96b8250ddf4f6ee9c5825a152f65e2b72daf693f5f43241804e16b",
+      "candidate": "sha256:5ff22ad6084a4db5919a202b45ce8500d5042c930d0565ac31ff3f9cf430159c",
+      "renderer": "sha256:ded1efae0a596870487f538bdb161de460fe0808fa634431b0d4b31b407255ea"
+    },
+    "checkout": {
+      "clean": true,
+      "head": "480dbcf620f7f1710807998da0e4e2100177790e",
+      "postflight_clean": true,
+      "postflight_head": "480dbcf620f7f1710807998da0e4e2100177790e"
+    },
+    "production_changed": false,
+    "scope": "generated B0 with production startup cardinality; not all-profile or whole-production service cost parity"
+  },
+  "runtime_admission": false,
+  "production_changed": false,
+  "remaining_gates": [
+    "Actual installed native positive/negative join execution on both architectures; latest source CI and independently verified artifacts",
+    "Independently authenticated production build/selected active,incoming,rollback pointers/specs; synthetic labels and loopback build do not select or authenticate production generations",
+    "Effective file/process/dependency/import/mount/network/namespace/security/resource fidelity",
+    "All-writer/exporter/oneoff/host-maintenance/restart containment and SQL leases/barriers under shared mutation lock",
+    "Connected durable native cold phases, staged present-spec restore/final absence, real full-host crashes/readiness/cutover/reversal",
+    "Every enabled profile/consumer; full canonical/database/publisher/freshness/queue parity, comparable complete-service resources/cost",
+    "Actual required gates/merge/deploy and rollback window before production Python/Playwright/Chromium retirement"
+  ],
+  "full_goal_active": true,
+  "preceding_linux": {
+    "source": "1c87e360132cc761bc7136c28ae2d92ee3dbbe64",
+    "run": 37064122898,
+    "tested_merge": "1a8f975642a2947605d9d307397307957d8d1007",
+    "parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "1c87e360132cc761bc7136c28ae2d92ee3dbbe64"
+    ],
+    "log_sha256": "8b47967ffc1fb89a09d3e8719bc74b83b8762e16c03bd568bc914c11f9256a71",
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+        "prior_binary_sha256": "cec244e6eaa0a2159324687ee3f04fd63c2c7f2786f4ac5a1a6975af709ae322",
+        "actual_prior_restored_R_and_native_legacy_root_finalizer_pass": true
+      },
+      {
+        "architecture": "arm64",
+        "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+        "prior_binary_sha256": "4ed19362c9d76b0d569c330a36e0dd2da0ae48c0f1974b0690fb0f10c8c6d9e1",
+        "actual_prior_restored_R_and_native_legacy_root_finalizer_pass": true
+      }
+    ],
+    "no_failed_or_skipped_tests": true,
+    "production_changed": false,
+    "scope": "actual prior clean source binary restored R plus native/legacy root finalizer crashes; historical host/release labels synthetic; no immutable prior image or complete host admission"
+  }
+}

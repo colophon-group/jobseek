@@ -13,16 +13,17 @@ import (
 	"sync"
 	"time"
 
+	b0producer "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/b0producer"
 	b0task "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/b0task"
 	"github.com/redis/go-redis/v9"
 )
 
 const (
-	producerProtocol          = "jobseek.lightpanda.producer/v1"
-	producerSocketPath        = "/run/jobseek-lightpanda-producer/control.sock"
+	producerProtocol          = b0producer.Protocol
+	producerSocketPath        = b0producer.SocketPath
 	producerSentinelPath      = "/run/jobseek-lightpanda-producer/.activation-v1"
-	producerFrameLimit        = uint64(256 * 1024)
-	producerTimeout           = 3 * time.Second
+	producerFrameLimit        = b0producer.FrameLimit
+	producerTimeout           = b0producer.Timeout
 	producerPreflightInterval = 2 * time.Second
 	producerBacklog           = 72 // 67 discovery callers plus bounded healthcheck headroom.
 	producerMaxHandlers       = 8
@@ -50,8 +51,12 @@ type producerConfig struct {
 }
 
 func producerConfigFromEnvironment() (producerConfig, error) {
-	if requiredEnv("LIGHTPANDA_B0_PRODUCER_MODE") != modeEnabled {
-		return producerConfig{}, errors.New("LIGHTPANDA_B0_PRODUCER_MODE must be exactly enabled")
+	return producerConfigForMode(modeEnabled)
+}
+
+func producerConfigForMode(mode string) (producerConfig, error) {
+	if (mode != modeEnabled && mode != "off") || requiredEnv("LIGHTPANDA_B0_PRODUCER_MODE") != mode {
+		return producerConfig{}, errors.New("LIGHTPANDA_B0_PRODUCER_MODE does not match the selected operation")
 	}
 	redisOptions, err := redis.ParseURL(requiredEnv("REDIS_URL"))
 	if err != nil || redisOptions == nil {
@@ -120,36 +125,8 @@ func authorityErrorClass(err error) (string, bool) {
 	return "", false
 }
 
-type producerRequest struct {
-	Version             string            `json:"version"`
-	Operation           string            `json:"operation"`
-	Cohort              string            `json:"cohort"`
-	Domain              string            `json:"domain"`
-	PostingID           string            `json:"posting_id"`
-	NextScrapeAtMS      int64             `json:"next_scrape_at_ms"`
-	Config              map[string]string `json:"config"`
-	Browser             bool              `json:"browser"`
-	FirstTime           bool              `json:"first_time"`
-	OperatorTransfer    bool              `json:"operator_transfer"`
-	ExpectedDigest      string            `json:"expected_digest"`
-	LegacyScheduleScore string            `json:"legacy_schedule_score,omitempty"`
-}
-
-type producerResponse struct {
-	Version               string   `json:"version"`
-	Outcome               string   `json:"outcome"`
-	Reason                string   `json:"reason"`
-	PreparationDigest     string   `json:"preparation_digest"`
-	PayloadSHA256         string   `json:"payload_sha256"`
-	ExistingState         string   `json:"existing_state"`
-	ExistingPayloadSHA256 string   `json:"existing_payload_sha256"`
-	Activated             bool     `json:"activated"`
-	Cohort                string   `json:"cohort"`
-	BoardSlugs            []string `json:"board_slugs"`
-	LifetimeOccupancy     int64    `json:"lifetime_occupancy"`
-	LifetimeCapacity      int64    `json:"lifetime_capacity"`
-	LifetimeHeadroom      int64    `json:"lifetime_headroom"`
-}
+type producerRequest = b0producer.Request
+type producerResponse = b0producer.Response
 
 type producerQueue interface {
 	preflight(context.Context, bool, producerOwnerIdentity) (bool, error)

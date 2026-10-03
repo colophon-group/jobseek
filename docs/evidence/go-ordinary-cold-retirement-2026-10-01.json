@@ -1,0 +1,179 @@
+{
+  "checkpoint": "native joint cold retirement",
+  "date": "2026-10-01",
+  "runtime_source_revision": "c0f46f848db6862f185a548b183a87b615aeb6eb",
+  "candidate_version": "0.13.904",
+  "pr": 10210,
+  "draft": true,
+  "production_changed": false,
+  "full_migration_goal": "active",
+  "local_proof": {
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "results": [
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "--no-sync",
+          "alembic",
+          "-c",
+          "src/migrations/alembic.ini",
+          "upgrade",
+          "head"
+        ],
+        "exit_code": 0,
+        "seconds": 0.27,
+        "log": "ordinary-cold-reversal-migration-upgrade.log"
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "--no-sync",
+          "alembic",
+          "-c",
+          "src/migrations/alembic.ini",
+          "downgrade",
+          "0040"
+        ],
+        "exit_code": 0,
+        "seconds": 0.267,
+        "log": "ordinary-cold-reversal-final-migration-downgrade-0040.log"
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "--no-sync",
+          "alembic",
+          "-c",
+          "src/migrations/alembic.ini",
+          "upgrade",
+          "head"
+        ],
+        "exit_code": 0,
+        "seconds": 0.271,
+        "log": "ordinary-cold-reversal-final-migration-upgrade-head.log"
+      },
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=90s",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 38.378,
+        "log": "ordinary-cold-reversal-final-queue-race.log"
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "--no-sync",
+          "pytest",
+          "tests/test_ordinary_ownership.py",
+          "tests/test_lightpanda_activation.py",
+          "tests/test_redis_queue.py",
+          "tests/test_pipeline.py",
+          "tests/test_rich_monitor_contract.py",
+          "-q"
+        ],
+        "exit_code": 0,
+        "seconds": 6.008,
+        "log": "ordinary-cold-reversal-final-legacy.log"
+      },
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=90s",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 30.697,
+        "log": "ordinary-cold-reversal-final-worker-race.log"
+      }
+    ],
+    "cleanup": true,
+    "production_changed": false
+  },
+  "additional_checks": {
+    "legacy_tests": 295,
+    "legacy_skips": 0,
+    "repository_node_tests": 132,
+    "ruff": "passed",
+    "pyright": "passed",
+    "go_vet": "passed",
+    "git_diff_check": "passed"
+  },
+  "operational_proof": [
+    "Exact immutable reversal intent commits before sequence allocation; forward journal stays reversing.",
+    "All reserved/publishing/published/active source phases; disabled or changed configurations, lost joint witness and complete private Redis loss.",
+    "Seven wrong source/rollback bindings reject before allocation; existing lease barrier blocks begin.",
+    "Actual executable SIGKILL after nextval and active-owner retirement before commit: SQL ownership rollback and pending intent survive; exact recovery allocates burned epoch + 1.",
+    "Separate actual CLI read-only inspection observes pending intent while allocation is paused; it never adopts allocator high-water.",
+    "Exact reserve retry performs no new allocation; changed later high-water refuses mutation while retained inspection remains readable.",
+    "Every Redis value/expiry class, canonical row, committed receipt and future deadline conserved.",
+    "Retirement alone cannot mark forward journal reversed or release native/legacy claims."
+  ],
+  "previous_exact_source": {
+    "revision": "f2b82c73db4d7f53c7ceb3824615f037497a192a",
+    "workflows": {
+      "linux_pg17_redis": 36899324776,
+      "full_ci": 36899366997,
+      "runtime_and_installed_images": 36899371310,
+      "whole_b0": 36899324501
+    },
+    "all_four": "success",
+    "installed_artifacts": {
+      "arm64": {
+        "source": "f2b82c73db4d7f53c7ceb3824615f037497a192a",
+        "architecture": "arm64",
+        "image_id": "sha256:cd52562d62f486b2b439348c158c56f118f4ea2f904cb9b0464cc9c315ab9d93",
+        "binary_sha256": "cef764dbc70a61b77f8484a621d6c11b59fb2ad17ca13f7154f2b0c37f682263",
+        "asset_count": 34,
+        "tests": [
+          "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+          "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+          "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+          "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+        ],
+        "scope": "image-extracted native binary/assets on Linux private PG17/Redis; native publication/SIGKILL/joint guard plus actual Python guard interoperability and exact number normalization; later reversal source not covered"
+      },
+      "amd64": {
+        "source": "f2b82c73db4d7f53c7ceb3824615f037497a192a",
+        "architecture": "amd64",
+        "image_id": "sha256:33d5a1e54602cf6ee217b22be7fbada8aac2f81e3ced0b9eb90e1d7f52eb4a2a",
+        "binary_sha256": "4a87a8db626c95f7afe7a208ff0f58dd02268a840dda0a8f7c1c6add9f3cda63",
+        "asset_count": 34,
+        "tests": [
+          "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+          "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+          "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+          "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+        ],
+        "scope": "image-extracted native binary/assets on Linux private PG17/Redis; native publication/SIGKILL/joint guard plus actual Python guard interoperability and exact number normalization; later reversal source not covered"
+      }
+    },
+    "dormant_renderer_run": 36899324562,
+    "publish_and_deploy": "skipped",
+    "actual_deploy_gate": "failure: draft PR; no merge authority"
+  },
+  "current_exact_source_ci": "must run after checkpoint push; prior results do not admit this source",
+  "limits": [
+    "Retirement only: no full restoration, task transfer, host release selection, readiness or production ordinary ownership.",
+    "Private PostgreSQL18.6/Redis component proof; installed Linux/current-source artifacts and actual container/public fetch/effective settings still required.",
+    "Cold-host and rollback digest binding is not independent host/release attestation."
+  ],
+  "next": "Complete supported ADR006 all-writer wrapper and PG-derived B0 transfer/restoration, durable cross-store evidence/readback, changed/disabled-cohort restoration and remaining actual process-interruption seams. Continue every enabled profile/runtime consumer, canonical/publisher/freshness/queue parity, whole-service resource/cost proof, exact gates/production rollout, actual rollback window and Python/Playwright/Chromium retirement."
+}

@@ -1,0 +1,276 @@
+{
+  "schema": "jobseek.migration.host-completion-checkpoint/v1",
+  "date": "2026-10-03",
+  "parent": "cd71940f07d3f4c1463c9a86c43ecc33e29231db",
+  "runtime_version": "0.13.904",
+  "operations": [
+    "cold-b0-reactivation-plan",
+    "cold-b0-reactivation-retain",
+    "cold-b0-reactivation-apply",
+    "cold-b0-reactivation-inspect",
+    "cold-ordinary-finalization-plan",
+    "cold-ordinary-finalization-retain",
+    "cold-ordinary-finalization-prepare",
+    "cold-ordinary-finalization-publish",
+    "cold-ordinary-finalization-complete",
+    "cold-ordinary-finalization-inspect"
+  ],
+  "contracts": [
+    "closed linear predecessor graph binds original E, forward N/ordinary plan, reversal, exact R and restored ordinary plan",
+    "reactivation binds original canonical prior B0 receipt, retained plan and actual receipt",
+    "finalization binds typed canonical request, live selected release/cold attestation, restored authority and immutable publication/final receipts",
+    "unresolved effects admit only exact native retry; no implicit or latest authority",
+    "private reactivation plans bounded to 64 MiB, envelopes to 96 MiB; generic host evidence ceilings preserved",
+    "exact pending-link recovery scans at most 1024 protected entries; immutable ancestry remains bounded to 64 events"
+  ],
+  "validation": {
+    "nonempty_historical_B0_restoration_at_exact_R": true,
+    "canonical_recurring_due_score": "1925089445.100001",
+    "canonical_SQL_description_hash": "-9223372036854775808",
+    "canonical_scrape_interval_hours": 24,
+    "native_queue_guard_and_SQL_fence_retired": true,
+    "fourteen_historical_exact_retries_no_R_plus_one_or_replay": true,
+    "missing_fixed_producer_reactivation_unresolved_successor_refused_exact_retry_only": true,
+    "all_ten_completion_request_link_and_receipt_contracts_tested": true,
+    "rehashed_foreign_final_or_prior_receipts_refused": true,
+    "actual_56_MiB_protected_plan_link_interruption_and_exact_retry": true,
+    "actual_320_entry_private_history_pending_link_recovery": true,
+    "full_required_private_worker_race_suite_seconds": 47.552,
+    "reviewed_empty_authority_regression_seconds": 0.22,
+    "native_and_both_Linux_integration_vet_format_tidy": true,
+    "repository_tests_passed": 94,
+    "optional_skips": 3,
+    "logs_sha256": {
+      "ordinary-host-completion-pure-tests.log": "8cc7af5067478c1bbf03bf7a35312f052e015c88fa835e648196dff2637755ed",
+      "ordinary-host-completion-tests.log": "e61877718a9bbf431e2b826744841aefbf3e6132ef98a56caad4ebc9f8a322ba",
+      "ordinary-host-completion-repository-tests.log": "681c9ff603857ad33aa0828d2ddb0bb5e4347301759f06fbb563a0347202652a",
+      "ordinary-host-forward-bootstrap-queue-tests.log": "314ed0086e8d0413aebd2159057e18fdfeedae4657044e84170b548e0cecfef8",
+      "ordinary-host-forward-bootstrap-worker-tests.log": "9d68690fd6d44feaf623af40d2b982ee9a368cf9520b6444f795ef61c01967ce",
+      "ordinary-host-forward-bootstrap-vet.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "preceding_installed_initial_partial": {
+    "source_revision": "cd71940f07d3f4c1463c9a86c43ecc33e29231db",
+    "run": 37094394773,
+    "job_conclusion": "failure",
+    "scope": "independently verified initial four-phase raw host/selected-Redis journal only; forward fixture reaches native plan refusal but retains no independently verifiable positive producer/forward proof",
+    "full_installed_verifier_admission": false,
+    "forward_producer_execution_verified": false,
+    "runtime_admission": false,
+    "production_changed": false,
+    "verifier_sha256": "d77b3e2f3151538ea84fae2de6f8a7ef234a549fa5ac0e90fcd9674b710f8fa1",
+    "architectures": [
+      {
+        "actual_joined_host_selected_Redis_initial_journal_four_phases_and_exact_retry_pass": true,
+        "actual_SQL_backend_retry_Redis_client_release_and_conservation_pass": true,
+        "joined_reservation_epoch": 13,
+        "joined_proof_scope": "actual native library callback with installed image preflight, sleeping consumer stand-ins and private SQL/Redis; complete installed cold CLI/phase graph/producer exclusion/runtime admission unproven",
+        "complete_installed_cold_CLI_phase_graph_producer_exclusion_runtime_admission": false,
+        "architecture": "amd64",
+        "image_id": "sha256:454343f4dc1dc98971bdd8ca5591c0c7e46a6fda9878c6ecd5db31bc58be5814",
+        "binary_sha256": "2ed397d6977e0bd7a7701b86d636edce252df30d38317ed6f79b4a3cf1d48325",
+        "initial_proof_sha256": "1c64fc57a2268c2df580a130de37bbe542c7449ace3157b16e69ee1098b32d4b",
+        "forward_fixture_failed_at_first_forward_plan": true,
+        "forward_log_sha256": "784736f68c2c1e9135eb01cb98cc5a59029ef544337f016e1f83769a7167c8cb"
+      },
+      {
+        "actual_joined_host_selected_Redis_initial_journal_four_phases_and_exact_retry_pass": true,
+        "actual_SQL_backend_retry_Redis_client_release_and_conservation_pass": true,
+        "joined_reservation_epoch": 13,
+        "joined_proof_scope": "actual native library callback with installed image preflight, sleeping consumer stand-ins and private SQL/Redis; complete installed cold CLI/phase graph/producer exclusion/runtime admission unproven",
+        "complete_installed_cold_CLI_phase_graph_producer_exclusion_runtime_admission": false,
+        "architecture": "arm64",
+        "image_id": "sha256:7edee904ba92c7876772efa7d454ca62007cda4a3c6a68d64639bd5f6a6cd016",
+        "binary_sha256": "438960a782cb6809c59e945e040cc32aca3e108abd0e78f327c89d41aafe1c3e",
+        "initial_proof_sha256": "86dbc6444aafdf80d4f1fd2d460ff82c9992644b8161ff64aa189d0e5218152c",
+        "forward_fixture_failed_at_first_forward_plan": true,
+        "forward_log_sha256": "612265b0a4f1c46b4d65fa0948612d593f0b35579150a55881afdd8b763b5998"
+      }
+    ]
+  },
+  "installed_forward_fixture_correction": {
+    "failed_run": 37094394773,
+    "failed_source": "cd71940f07d3f4c1463c9a86c43ecc33e29231db",
+    "failure_operation": "cold-b0-forward-plan",
+    "original_native_error_body_retained": false,
+    "diagnosis": "source inspection and exact private PostgreSQL/reviewed Lua regression identify absent producer-owner initialization; listening fixed producer alone supplies no Redis queue authority",
+    "correction": "actual installed native preparation/activation of one owned inactive bootstrap posting, then reviewed Lua claim/completion before source snapshot; forward must preserve its terminal record/guard and exact lifetime occupancy 1 + 2 = 3",
+    "positive_corrected_installed_execution_proven": false,
+    "production_predicates_relaxed": false
+  },
+  "preceding_verified": {
+    "source_revision": "cd71940f07d3f4c1463c9a86c43ecc33e29231db",
+    "full_CI": {
+      "run": 37094396734,
+      "conclusion": "success"
+    },
+    "linux": {
+      "run": 37094397507,
+      "independent_raw_verification": true
+    },
+    "historical_native": {
+      "run": 37094397569,
+      "independent_raw_verification": true
+    },
+    "historical_legacy": {
+      "run": 37094397490,
+      "independent_raw_verification": true
+    },
+    "whole_B0": {
+      "schema": "jobseek.migration.synthetic-b0-admission/v1",
+      "pr": 10210,
+      "pr_head": "cd71940f07d3f4c1463c9a86c43ecc33e29231db",
+      "tested_merge_checkout": "02ff71d9397526877ff33e902abfb385f195a42e",
+      "verified_merge_parents": [
+        "86813918a20a499c5d59a39ca8c33797161f8743",
+        "cd71940f07d3f4c1463c9a86c43ecc33e29231db"
+      ],
+      "run": 37094397554,
+      "report_sha256": "ee77e31179e809856fb45b208b1e2c2e533bd9750b6bf730a6b9c56256522a18",
+      "mode": "synthetic",
+      "arms": 16,
+      "pairs": 8,
+      "admitted": true,
+      "verdict_recomputed": true,
+      "density_range": [
+        7.033669054267932,
+        13.895851860569245
+      ],
+      "verdict": {
+        "admitted": true,
+        "reasons": [],
+        "density_ratios": [
+          7.033669054267932,
+          7.513018141206801,
+          7.280664455437113,
+          13.895851860569245,
+          13.619608595117615,
+          12.939283283445187,
+          13.864526685300104,
+          13.628472998902604
+        ],
+        "pair_metrics": [
+          {
+            "pair": "c1-p1",
+            "density_ratio": 7.033669054267932,
+            "elapsed_ratio": 1.874088787509557,
+            "p99_ratio": 0.5377216304939726,
+            "peak_rss_ratio": 0.2664454032525722,
+            "cpu_seconds_candidate": 1.7259360000000001,
+            "cpu_seconds_control": 2.457644,
+            "lifetime_cpu_seconds_candidate": 4.00012,
+            "lifetime_cpu_seconds_control": 5.967715
+          },
+          {
+            "pair": "c1-p2",
+            "density_ratio": 7.513018141206801,
+            "elapsed_ratio": 1.9045326447011202,
+            "p99_ratio": 0.5262607418795493,
+            "peak_rss_ratio": 0.2534976768198245,
+            "cpu_seconds_candidate": 1.698124,
+            "cpu_seconds_control": 2.491179,
+            "lifetime_cpu_seconds_candidate": 3.9702990000000002,
+            "lifetime_cpu_seconds_control": 6.028423
+          },
+          {
+            "pair": "c1-p3",
+            "density_ratio": 7.280664455437113,
+            "elapsed_ratio": 1.8837341413984847,
+            "p99_ratio": 0.5242651588309241,
+            "peak_rss_ratio": 0.2587310750177114,
+            "cpu_seconds_candidate": 1.739402,
+            "cpu_seconds_control": 2.594154,
+            "lifetime_cpu_seconds_candidate": 4.050542999999999,
+            "lifetime_cpu_seconds_control": 6.111257
+          },
+          {
+            "pair": "c4-p1",
+            "density_ratio": 13.895851860569245,
+            "elapsed_ratio": 1.5803216021510993,
+            "p99_ratio": 0.6328315162887309,
+            "peak_rss_ratio": 0.1137261405783554,
+            "cpu_seconds_candidate": 2.547612,
+            "cpu_seconds_control": 6.197207,
+            "lifetime_cpu_seconds_candidate": 4.869949,
+            "lifetime_cpu_seconds_control": 10.700616
+          },
+          {
+            "pair": "c4-p2",
+            "density_ratio": 13.619608595117615,
+            "elapsed_ratio": 1.532777747454263,
+            "p99_ratio": 0.6454804589231334,
+            "peak_rss_ratio": 0.11254198215385838,
+            "cpu_seconds_candidate": 2.574733,
+            "cpu_seconds_control": 6.016155,
+            "lifetime_cpu_seconds_candidate": 4.9550600000000005,
+            "lifetime_cpu_seconds_control": 10.600992
+          },
+          {
+            "pair": "c4-p3",
+            "density_ratio": 12.939283283445187,
+            "elapsed_ratio": 1.5452755926088502,
+            "p99_ratio": 0.6374215276009599,
+            "peak_rss_ratio": 0.11942513033823988,
+            "cpu_seconds_candidate": 2.595132,
+            "cpu_seconds_control": 6.468504,
+            "lifetime_cpu_seconds_candidate": 4.961303,
+            "lifetime_cpu_seconds_control": 11.129037
+          },
+          {
+            "pair": "c4-p4",
+            "density_ratio": 13.864526685300104,
+            "elapsed_ratio": 1.6008096557089224,
+            "p99_ratio": 0.6281245668811928,
+            "peak_rss_ratio": 0.11546082257580306,
+            "cpu_seconds_candidate": 2.522256,
+            "cpu_seconds_control": 6.595376,
+            "lifetime_cpu_seconds_candidate": 4.912097,
+            "lifetime_cpu_seconds_control": 11.320601
+          },
+          {
+            "pair": "c4-p5",
+            "density_ratio": 13.628472998902604,
+            "elapsed_ratio": 1.5657313851841788,
+            "p99_ratio": 0.6385927018081544,
+            "peak_rss_ratio": 0.1148867804419655,
+            "cpu_seconds_candidate": 2.702207,
+            "cpu_seconds_control": 6.437111,
+            "lifetime_cpu_seconds_candidate": 5.1101350000000005,
+            "lifetime_cpu_seconds_control": 11.224665
+          }
+        ]
+      },
+      "images": {
+        "browser": "sha256:15b477d4740bf93ec0236ae66f30e47eb59a8130aa3c70617de93aed50bfe149",
+        "candidate": "sha256:6ed110ac660151c811a59470b4eeaafa9d3dd2efc63edfdc19a6bdc0e0368d3b",
+        "renderer": "sha256:595a2493807d9c4e62927dc95951803719f2fe73478919cd6ff5028f72f7d2a8"
+      },
+      "checkout": {
+        "clean": true,
+        "head": "02ff71d9397526877ff33e902abfb385f195a42e",
+        "postflight_clean": true,
+        "postflight_head": "02ff71d9397526877ff33e902abfb385f195a42e"
+      },
+      "production_changed": false,
+      "scope": "generated B0 with production startup cardinality; not all-profile or whole-production service cost parity"
+    }
+  },
+  "next": [
+    "Fresh exact-source installed bootstrap/forward eleven-phase raw proof on AMD64/ARM64, including unchanged terminal record/guard, source/image/process/socket and full SQL/Redis conservation verification",
+    "Positive installed complete reactivation/finalization journal and nonempty candidate-N reversal, reserved/publishing/published/active source and real SIGKILL recovery",
+    "Authenticate expected host resource/release changes; retain original outer lock through full spec/env/data/image restoration, SQL release and whole-stack startup/readiness",
+    "Every enabled profile/consumer canonical/output/database/publisher/freshness/queue parity and comparable whole-service CPU/RAM/density/attributable cost",
+    "Required exact-source/image checks, supported quiesced production cutover, cold reversal and rollback window, then runtime Python/Playwright/Chromium retirement while preserving useful isolated offline Python"
+  ],
+  "limits": {
+    "host_release_and_prior_receipt_labels_synthetic": true,
+    "positive_full_31_phase_installed_execution": false,
+    "SIGKILL_restoration_or_completion_proven": false,
+    "complete_host_runtime_admission": false,
+    "whole_production_service_cost_parity": false,
+    "all_enabled_profiles_migrated": false,
+    "production_changed": false,
+    "draft_PR": 10210,
+    "full_migration_goal": "active"
+  }
+}

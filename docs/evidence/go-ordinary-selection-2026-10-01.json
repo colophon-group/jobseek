@@ -1,0 +1,69 @@
+{
+  "schema": "jobseek.migration.ordinary-selection-evidence/v1",
+  "implementation_head": "f7ccc7b060e0e9100caae9d654c15d3f45891ca2",
+  "pull_request": "https://github.com/colophon-group/jobseek/pull/10210",
+  "candidate_version": "0.13.904",
+  "draft": true,
+  "selected_in_production": false,
+  "linux": {
+    "source_head": "f7ccc7b060e0e9100caae9d654c15d3f45891ca2",
+    "run": 36793700617,
+    "url": "https://github.com/colophon-group/jobseek/actions/runs/36793700617",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "databaseId": 110152172390,
+        "name": "Ordinary queue private PostgreSQL/Redis (amd64)",
+        "conclusion": "success",
+        "status": "completed",
+        "completedAt": "2026-09-30T23:58:39Z",
+        "url": "https://github.com/colophon-group/jobseek/actions/runs/36793700617/job/110152172390"
+      },
+      {
+        "databaseId": 110152172460,
+        "name": "Ordinary queue private PostgreSQL/Redis (arm64)",
+        "conclusion": "success",
+        "status": "completed",
+        "completedAt": "2026-09-30T23:58:39Z",
+        "url": "https://github.com/colophon-group/jobseek/actions/runs/36793700617/job/110152172460"
+      }
+    ],
+    "scope": "source-level real migrated PostgreSQL17/private Redis on LinuxAMD64+ARM64: native owned authority/atomic selection, canonical effects, legacy startup/perclaim attestation; no ordinary processing executable, installed image crash/cold reversal, production activation or service cost"
+  },
+  "local": {
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "full_race_seconds": 18.94,
+    "production_reaper_race_seconds": 4.863,
+    "legacy_real_ownership_tests": 9,
+    "migration": "head/down0034/head passed",
+    "pipeline_runtime_migration_tests": 251,
+    "node_workflow_version_documentation_tests": 117,
+    "vet_module_format_ruff_actionlint": "passed",
+    "cleanup": true
+  },
+  "verified": [
+    "native owned plan/source/epoch startup and operation binding",
+    "fresh canonical eligibility and exact Redis hash validation before pop",
+    "legacy startup requires installed identity; every planned claim holds DB barriers through pop",
+    "native/legacy races preserve exclusive membership and canonical fixture effects",
+    "bounded progress past foreign heads/domains without foreign logical task/score/config changes",
+    "global first-time priority/eight-monitor fairness/throttle/rotation/B0 and inflight duplicate repair",
+    "planned missing/corrupt projection/full Redis loss and unaware caller rejection before effects",
+    "config/route/browser drift remains excluded from legacy ownership",
+    "delayed disable waits on canonical row then rejects before queue pop/fence publication",
+    "canonical/plan/epoch/projection revocation rejects native callback/heartbeat before effects",
+    "nullable score probing preserves absent versus zero/due recurring work"
+  ],
+  "not_verified": [
+    "native ordinary processing executable: rich inventory/content/enrichment/lifecycle/failure/publisher/TDM",
+    "supported all-writer ownership projection install, activation and cold reversal with shared B0 epoch",
+    "actual installed ordinary executable cancellation/crash after commit before acknowledgement",
+    "exact installed image canonical output/freshness/queue conservation and resource admission",
+    "new-head Required CI/full installed/admission and actual green Crawler Deploy Gate",
+    "all enabled profile/runtime coverage and whole-service cost",
+    "actual production rollback window and Python/Playwright/Chromium retirement"
+  ],
+  "production": "no mutation this slice; last recorded v0.13.902 revision b75ccb9456bf29c9477f9747c0c2cc3908ad79bb/native B0 epoch145; no fresh health attestation",
+  "full_goal": "active; incomplete"
+}

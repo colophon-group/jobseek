@@ -109,6 +109,11 @@ func runProducer(ctx context.Context, configured producerConfig) error {
 	if ctx == nil || configured.RedisOptions == nil || configured.Socket != producerSocketPath {
 		return errors.New("invalid B0 producer runtime")
 	}
+	release, err := acquireProducerLifecycleLock(filepath.Dir(configured.Socket))
+	if err != nil {
+		return err
+	}
+	defer release()
 	client := redis.NewClient(configured.RedisOptions)
 	defer client.Close()
 	queue, err := newB0Queue(

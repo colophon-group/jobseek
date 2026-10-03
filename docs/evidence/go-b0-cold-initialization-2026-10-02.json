@@ -1,0 +1,329 @@
+{
+  "database": "owned fully migrated PostgreSQL18.6",
+  "redis": "private per-test Redis UDS",
+  "results": [
+    {
+      "command": [
+        "go",
+        "test",
+        "-race",
+        "-count=1",
+        "-timeout=120s",
+        "./..."
+      ],
+      "exit_code": 0,
+      "seconds": 67.729,
+      "log": "ordinary-cold-initialization-final-queue-race.log"
+    },
+    {
+      "command": [
+        "go",
+        "test",
+        "-race",
+        "-count=1",
+        "-timeout=120s",
+        "./..."
+      ],
+      "exit_code": 0,
+      "seconds": 31.204,
+      "log": "ordinary-cold-initialization-final-worker-race.log"
+    },
+    {
+      "command": [
+        "go",
+        "test",
+        "-race",
+        "-count=1",
+        "-timeout=120s",
+        "./..."
+      ],
+      "exit_code": 0,
+      "seconds": 3.527,
+      "log": "ordinary-cold-initialization-final-exporter-race.log"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "--frozen",
+        "--no-sync",
+        "pytest",
+        "-q",
+        "tests/test_ordinary_ownership.py",
+        "tests/test_lightpanda_activation.py",
+        "tests/test_redis_queue.py",
+        "tests/test_pipeline.py",
+        "tests/test_rich_monitor_contract.py"
+      ],
+      "exit_code": 0,
+      "seconds": 6.183,
+      "log": "ordinary-cold-initialization-final-legacy.log"
+    }
+  ],
+  "cleanup": true,
+  "production_changed": false,
+  "supervisor_race": "passed",
+  "real_redis_initializer": "passed; SAVE denial, exact pair recovery, no task activation, exact retry, orphan refusal",
+  "workflow_contract_tests": 104,
+  "legacy_tests": 295,
+  "linux_queue_vet_crosscompile": "amd64 and arm64 passed; actual UID-10001 root execution pending new-source CI",
+  "previous_linux_root_failure": {
+    "source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+    "run": 36941887568,
+    "scope": "full queue and prior forward fixture pass; reactivation startup fails with fixture Redis initialization without sentinel"
+  },
+  "previous_installed_verification": [
+    {
+      "source_revision": "cfe31376d6bc5a2b838b2fd61bc00d64243fc0a2",
+      "run": 36941158368,
+      "production_changed": false,
+      "architectures": [
+        {
+          "architecture": "amd64",
+          "image_id": "sha256:7a61c1faa0e4632756314720abdc283930213d1e545693cd3e79a5931e795019",
+          "binary_sha256": "f0ac1e1aefc346edaa3720ac0083c2af76c7af53a8df189c2317ab8c9d73b1dc",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "asset_hashes_verified": 34
+        },
+        {
+          "architecture": "arm64",
+          "image_id": "sha256:6ee65715b1007007964c3d1447d89ae8bffc4e8e543d0bd461901b66208b0ffc",
+          "binary_sha256": "cbca72885c1fd553206505edfb65134ef72646c64418d1476872ce4ee5c2f2d9",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "asset_hashes_verified": 34
+        }
+      ],
+      "scope": "prior installed ordinary worker fixtures; does not verify new native cold initializer"
+    },
+    {
+      "source_revision": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+      "run": 36941995477,
+      "production_changed": false,
+      "architectures": [
+        {
+          "architecture": "amd64",
+          "image_id": "sha256:4f523577e0239b7431d759ffa994885a1cdb8e8370fb30939ddcb2537c11f406",
+          "binary_sha256": "bec52d4c71e7494fd234f30bea7323d29689b2b2636ed23632d4cbd0c0a9bfc8",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "asset_hashes_verified": 34
+        },
+        {
+          "architecture": "arm64",
+          "image_id": "sha256:3f36693dba87d1aa64c4c60e1297d91eadb810cf48497bea651ca8ca7cf328b4",
+          "binary_sha256": "9590b7eb7e0b67a66f88dcd4babf515847f2437db1a4e2fdc5254e9c1aa1e463",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "asset_hashes_verified": 34
+        }
+      ],
+      "scope": "prior installed ordinary worker fixtures; does not verify new native cold initializer"
+    }
+  ],
+  "full_migration_complete": false,
+  "log_sha256": {
+    "ordinary-cold-initialization-node.log": "5db3cb1cf57be72361bb3b1f8b718474a4b8b480f87132719c7d0216211742cc",
+    "ordinary-cold-initialization-redis.log": "1b7cac856a23d5162e9f05c42aeb0fcaedd1681baa8431483d234a36cf36f524",
+    "ordinary-cold-initialization-supervisor-race.log": "5c5de3557e8c370af927414dfe7da32aec0ad98584446d45d1307d166d25f597",
+    "ordinary-cold-initialization-final-queue-race.log": "1b7197429f8597bbefbcbb6d21fb849d8e759bd8ef405de25dce32b9308b9e08",
+    "ordinary-cold-initialization-final-exporter-race.log": "d450d7537d8181b54e214ea747d67e51154ccc8a607cf3566f2dd5f741544d5b",
+    "ordinary-cold-initialization-final-legacy.log": "25e28b82270811643e876d852131eee2dec25be121bfe062a6f2b91b91fdb486",
+    "ordinary-cold-initialization-final-worker-race.log": "a987a3816d79357999e9a236ddde038804472ab7dcb47451c6e3acd94a52b6d2"
+  },
+  "runtime_source_revision": "faba3427cac82d1bfa1c759d2725f38f6ae358d2",
+  "scope": "native cold bootstrap and local contract proof; new-source actual Linux UID-10001 execution required",
+  "remaining": "all-writer host integration, compatible ordinary finalization at R, independent prior-release proof, full enabled profile migration and final retirement",
+  "repeated_reload_test_source": "2b3466b3df62ae73c99c48dc1af8850a948c5ea6",
+  "linux_observed_boundary": {
+    "source_revision": "1bc63f1995c7ab2135ef3189279d810cd1cff23d",
+    "run": 36944444318,
+    "jobs": [
+      110643171761,
+      110643171888
+    ],
+    "initializer_and_first_rdb_reload": "executed successfully both architectures",
+    "post_save_pre_sql_commit_sigkill": "reached both architectures",
+    "overall_reactivation": "not admitted; fixture second reload refused existing restart.log",
+    "failed_log_sha256": "062254a26d86812c479527744b101f16bf8961e9d05ed4b4badc0dbaa29d7c54"
+  },
+  "repeated_reload_local": {
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "results": [
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=120s",
+          "-run",
+          "^TestRealColdPublicationPersistenceActivationAndExactRetry$",
+          "-v",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 5.449,
+        "log": "ordinary-cold-initialization-repeated-reload-queue-race.log"
+      }
+    ],
+    "cleanup": true,
+    "production_changed": false
+  },
+  "preceding_whole_b0_verified": {
+    "schema": "jobseek.migration.synthetic-b0-admission/v1",
+    "pr": 10210,
+    "pr_head": "cfe31376d6bc5a2b838b2fd61bc00d64243fc0a2",
+    "tested_merge_checkout": "1cd7c11fa6c18e9876a04a7bf191ddbe51dd5144",
+    "verified_merge_parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "cfe31376d6bc5a2b838b2fd61bc00d64243fc0a2"
+    ],
+    "run": 36941143997,
+    "report_sha256": "513f5961406ccad75bb271750e4eb71059fd10d133530b6f6141a057a8b0b849",
+    "mode": "synthetic",
+    "arms": 16,
+    "pairs": 8,
+    "admitted": true,
+    "verdict_recomputed": true,
+    "images": {
+      "browser": "sha256:a8bd41ce10ec078f95e0630dad87d5f75911c6c3402fb0b603f579fe30ae4355",
+      "candidate": "sha256:ffd78ca33e8976a4a0c1e954d78bab30d4b696291dcc30a693a29c5ae592d4aa",
+      "renderer": "sha256:58b4a7d3f93c7fb9e5d4c36f36c8d480c3c3fe46023e913b8927e26bae3bfc76"
+    },
+    "checkout": {
+      "clean": true,
+      "head": "1cd7c11fa6c18e9876a04a7bf191ddbe51dd5144",
+      "postflight_clean": true,
+      "postflight_head": "1cd7c11fa6c18e9876a04a7bf191ddbe51dd5144"
+    },
+    "verdict": {
+      "admitted": true,
+      "reasons": [],
+      "density_ratios": [
+        7.741488656934969,
+        5.685842294937997,
+        5.9893860868544655,
+        12.971609330153726,
+        13.857927303669161,
+        14.23350159180542,
+        14.079562741407086,
+        14.30434264308192
+      ],
+      "pair_metrics": [
+        {
+          "pair": "c1-p1",
+          "density_ratio": 7.741488656934969,
+          "elapsed_ratio": 1.8913369899864765,
+          "p99_ratio": 0.5278029004626705,
+          "peak_rss_ratio": 0.24431179503081515,
+          "cpu_seconds_candidate": 1.690159,
+          "cpu_seconds_control": 2.523726,
+          "lifetime_cpu_seconds_candidate": 3.943671,
+          "lifetime_cpu_seconds_control": 6.029814
+        },
+        {
+          "pair": "c1-p2",
+          "density_ratio": 5.685842294937997,
+          "elapsed_ratio": 1.447042344314268,
+          "p99_ratio": 0.6912091178031046,
+          "peak_rss_ratio": 0.2544992050874404,
+          "cpu_seconds_candidate": 1.67906,
+          "cpu_seconds_control": 2.48142,
+          "lifetime_cpu_seconds_candidate": 3.945901,
+          "lifetime_cpu_seconds_control": 5.989495
+        },
+        {
+          "pair": "c1-p3",
+          "density_ratio": 5.9893860868544655,
+          "elapsed_ratio": 1.446031044951452,
+          "p99_ratio": 0.6897461618900965,
+          "peak_rss_ratio": 0.24143226433927978,
+          "cpu_seconds_candidate": 1.679228,
+          "cpu_seconds_control": 2.501316,
+          "lifetime_cpu_seconds_candidate": 3.965237,
+          "lifetime_cpu_seconds_control": 5.997806
+        },
+        {
+          "pair": "c4-p1",
+          "density_ratio": 12.971609330153726,
+          "elapsed_ratio": 1.5521171377540894,
+          "p99_ratio": 0.6386990070163238,
+          "peak_rss_ratio": 0.11965494012728607,
+          "cpu_seconds_candidate": 2.408999,
+          "cpu_seconds_control": 5.936901,
+          "lifetime_cpu_seconds_candidate": 4.697861,
+          "lifetime_cpu_seconds_control": 10.479256
+        },
+        {
+          "pair": "c4-p2",
+          "density_ratio": 13.857927303669161,
+          "elapsed_ratio": 1.593387263108106,
+          "p99_ratio": 0.6291205652292142,
+          "peak_rss_ratio": 0.11498020073219933,
+          "cpu_seconds_candidate": 2.382051,
+          "cpu_seconds_control": 5.971452,
+          "lifetime_cpu_seconds_candidate": 4.674282,
+          "lifetime_cpu_seconds_control": 10.583421
+        },
+        {
+          "pair": "c4-p3",
+          "density_ratio": 14.23350159180542,
+          "elapsed_ratio": 1.5765312060619179,
+          "p99_ratio": 0.6352142696296477,
+          "peak_rss_ratio": 0.11076200721890993,
+          "cpu_seconds_candidate": 2.380934,
+          "cpu_seconds_control": 6.14151,
+          "lifetime_cpu_seconds_candidate": 4.683505,
+          "lifetime_cpu_seconds_control": 10.72881
+        },
+        {
+          "pair": "c4-p4",
+          "density_ratio": 14.079562741407086,
+          "elapsed_ratio": 1.6114462419100888,
+          "p99_ratio": 0.6233740965602608,
+          "peak_rss_ratio": 0.11445286132153304,
+          "cpu_seconds_candidate": 2.415624,
+          "cpu_seconds_control": 6.002241,
+          "lifetime_cpu_seconds_candidate": 4.715444,
+          "lifetime_cpu_seconds_control": 10.638194
+        },
+        {
+          "pair": "c4-p5",
+          "density_ratio": 14.30434264308192,
+          "elapsed_ratio": 1.6093549855413511,
+          "p99_ratio": 0.6248569518181738,
+          "peak_rss_ratio": 0.11250814005910935,
+          "cpu_seconds_candidate": 2.402634,
+          "cpu_seconds_control": 6.382162,
+          "lifetime_cpu_seconds_candidate": 4.714679,
+          "lifetime_cpu_seconds_control": 11.14223
+        }
+      ]
+    },
+    "production_changed": false,
+    "scope": "generated B0 workload with production startup cardinality; not all-profile or whole production-service performance proof"
+  }
+}

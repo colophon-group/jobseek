@@ -153,6 +153,10 @@ func (c *Client) ClaimFenced(ctx context.Context, worker WorkerType) (*Task, err
 }
 
 func (c *Client) claimTask(ctx context.Context, worker WorkerType, token string) (*Task, error) {
+	return c.claimTaskBound(ctx, worker, token, nil)
+}
+
+func (c *Client) claimTaskBound(ctx context.Context, worker WorkerType, token string, binding []any) (*Task, error) {
 	if !validWorker(worker) {
 		return nil, ErrConfiguration
 	}
@@ -162,7 +166,9 @@ func (c *Client) claimTask(ctx context.Context, worker WorkerType, token string)
 	if err != nil {
 		return nil, err
 	}
-	raw, err := c.claim.Run(ctx, c.redis, nil, string(worker), number(now), number(c.settings.DefaultDelaySeconds), c.settings.MaxDomains, number(c.settings.LeaseTTL.Seconds()), token).Result()
+	args := []any{string(worker), number(now), number(c.settings.DefaultDelaySeconds), c.settings.MaxDomains, number(c.settings.LeaseTTL.Seconds()), token}
+	args = append(args, binding...)
+	raw, err := c.claim.Run(ctx, c.redis, nil, args...).Result()
 	if errors.Is(err, redis.Nil) || (err == nil && raw == nil) {
 		return nil, nil
 	}
@@ -235,12 +241,23 @@ func (c *Client) Complete(ctx context.Context, task *Task) (bool, error) {
 	return c.transition(ctx, c.complete, string(task.Worker), string(task.Kind), task.Domain, task.ID, task.claimToken)
 }
 func (c *Client) Reschedule(ctx context.Context, task *Task, nextDue float64) (bool, error) {
+	return c.rescheduleHost(ctx, task, nextDue, nil)
+}
+
+func (c *Client) rescheduleHost(ctx context.Context, task *Task, nextDue float64, learned *string) (bool, error) {
 	if !validTask(task) || !validTime(nextDue) {
 		return false, ErrConfiguration
 	}
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	return c.transition(ctx, c.reschedule, string(task.Worker), task.Domain, task.ID, string(task.Kind), number(nextDue), task.claimToken)
+	host := ""
+	if learned != nil {
+		if task.Kind != Monitor || task.Worker != Simple || !task.Fenced() || !validHost(*learned) || normalizeHost(*learned) != *learned {
+			return false, ErrConfiguration
+		}
+		host = *learned
+	}
+	return c.transition(ctx, c.reschedule, string(task.Worker), task.Domain, task.ID, string(task.Kind), number(nextDue), task.claimToken, host)
 }
 func (c *Client) transition(ctx context.Context, script *redis.Script, args ...any) (bool, error) {
 	raw, err := script.Run(ctx, c.redis, nil, args...).Result()

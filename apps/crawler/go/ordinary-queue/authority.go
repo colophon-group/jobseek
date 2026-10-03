@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"regexp"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -41,7 +42,7 @@ func authorityError(err error) error {
 	if errors.As(err, &callback) {
 		return callback
 	}
-	for _, known := range []error{ErrAuthorityLost, ErrConfiguration, ErrObservation, context.Canceled, context.DeadlineExceeded} {
+	for _, known := range []error{ErrAuthorityLost, ErrConfiguration, ErrObservation, ErrUnsupportedProfile, context.Canceled, context.DeadlineExceeded} {
 		if errors.Is(err, known) {
 			return known
 		}
@@ -68,9 +69,13 @@ func WithOrdinaryLeaseRetirement(ctx context.Context, pool *pgxpool.Pool, fn fun
 }
 
 type Authority struct {
-	queue *Client
-	pool  *pgxpool.Pool
-	epoch int64
+	queue           *Client
+	pool            *pgxpool.Pool
+	epoch           int64
+	ownership       *OwnershipPlan
+	jointAuditLua   string
+	ownershipCursor int
+	ownershipMu     sync.Mutex
 }
 
 // Claim is an immutable identity captured from a tokenized queue claim. A
@@ -81,6 +86,9 @@ type Claim struct {
 	boardID      string
 	configDigest string
 	recovered    *Receipt
+	cycleMu      sync.Mutex
+	cycleStarted bool
+	hostRun      *GreenhouseHostRun
 }
 
 // Descriptor returns a detached configuration snapshot, without claim tokens.
@@ -92,6 +100,12 @@ func (claim *Claim) Descriptor() Task {
 	task.claimToken = ""
 	task.Config = cloneConfig(task.Config)
 	return task
+}
+
+// OwnershipBound reports how this opaque claim was installed, not current
+// permission. Writes/settlement still revalidate the exact plan and epoch.
+func (claim *Claim) OwnershipBound() bool {
+	return claim != nil && claim.owner != nil && claim.owner.ownership != nil
 }
 func cloneConfig(config map[string]string) map[string]string {
 	copy := make(map[string]string, len(config))
@@ -110,8 +124,10 @@ func configDigest(config map[string]string) string {
 // means a deliberately unscheduled detail. Callers cannot supply an arbitrary
 // due time to native settlement.
 type Receipt struct {
-	claim   *Claim
-	nextDue *time.Time
+	claim           *Claim
+	nextDue         *time.Time
+	learnedHost     *string
+	terminalOutcome string
 }
 
 func (r *Receipt) NextDue() *time.Time {
@@ -149,7 +165,15 @@ func OpenAuthority(ctx context.Context, dsn string, client *Client, epoch int64)
 	}
 	authority := &Authority{queue: client, pool: pool, epoch: epoch}
 	if err := authority.transaction(ctx, false, func(ctx context.Context, tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, "SELECT task_kind,task_id,board_id,routing_epoch,claim_token,config_sha256,state,next_due_at FROM public.ordinary_worker_write_fence WHERE false")
+		rows, err := tx.Query(ctx, "SELECT task_kind,task_id,board_id,routing_epoch,claim_token,config_sha256,state,next_due_at,learned_egress_host FROM public.ordinary_worker_write_fence WHERE false")
+		if err != nil {
+			return err
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		rows, err = tx.Query(ctx, "SELECT plan_sha256,routing_epoch,source_revision,payload,state,created_at FROM public.ordinary_worker_ownership_plan WHERE false")
 		if err != nil {
 			return err
 		}
@@ -199,6 +223,11 @@ func (a *Authority) current(ctx context.Context, claim *Claim) error {
 	if !a.valid(claim) {
 		return ErrConfiguration
 	}
+	if a.ownership != nil {
+		if err := a.queue.verifyOwnershipProjection(ctx, a.ownership); err != nil {
+			return err
+		}
+	}
 	prefix := "scrape:"
 	if claim.task.Kind == Monitor {
 		prefix = "board:"
@@ -242,7 +271,16 @@ func canonicalDue(ctx context.Context, tx pgx.Tx, claim *Claim) (*time.Time, err
 func (a *Authority) Claim(ctx context.Context, worker WorkerType) (*Claim, error) {
 	var claim *Claim
 	err := a.transaction(ctx, false, func(ctx context.Context, tx pgx.Tx) error {
-		task, err := a.queue.ClaimFenced(ctx, worker)
+		if err := a.requireOwnership(ctx, tx, nil); err != nil {
+			return err
+		}
+		var task *Task
+		var err error
+		if a.ownership == nil {
+			task, err = a.queue.ClaimFenced(ctx, worker)
+		} else {
+			task, err = a.claimOwned(ctx, tx, worker)
+		}
 		if task != nil {
 			claim = &Claim{owner: a, task: *task}
 			claim.task.Config = cloneConfig(task.Config)
@@ -280,8 +318,9 @@ func (a *Authority) Claim(ctx context.Context, worker WorkerType) (*Claim, error
 		var state, oldToken, oldDigest, oldBoard string
 		var oldEpoch int64
 		var oldDue *time.Time
-		err = tx.QueryRow(ctx, `SELECT state,claim_token,config_sha256,board_id::text,routing_epoch,next_due_at
-   FROM public.ordinary_worker_write_fence WHERE task_kind=$1 AND task_id=$2::uuid FOR UPDATE`, string(task.Kind), task.ID).Scan(&state, &oldToken, &oldDigest, &oldBoard, &oldEpoch, &oldDue)
+		var oldHost *string
+		err = tx.QueryRow(ctx, `SELECT state,claim_token,config_sha256,board_id::text,routing_epoch,next_due_at,learned_egress_host
+   FROM public.ordinary_worker_write_fence WHERE task_kind=$1 AND task_id=$2::uuid FOR UPDATE`, string(task.Kind), task.ID).Scan(&state, &oldToken, &oldDigest, &oldBoard, &oldEpoch, &oldDue, &oldHost)
 		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return err
 		}
@@ -292,21 +331,23 @@ func (a *Authority) Claim(ctx context.Context, worker WorkerType) (*Claim, error
 		recovered := state == "completed" && oldEpoch <= a.epoch && oldDigest == claim.configDigest && oldBoard == claim.boardID && ((oldDue == nil && due == nil) || (oldDue != nil && due != nil && oldDue.Equal(*due) && due.After(now)))
 		nextState := "active"
 		var retainedDue *time.Time
+		var retainedHost *string
 		if recovered {
 			nextState = "completed"
 			retainedDue = due
+			retainedHost = oldHost
 		}
 		_, err = tx.Exec(ctx, `INSERT INTO public.ordinary_worker_write_fence
-   (task_kind,task_id,board_id,routing_epoch,claim_token,config_sha256,state,next_due_at)
-   VALUES ($1,$2::uuid,$3::uuid,$4,$5,$6,$7,$8)
+   (task_kind,task_id,board_id,routing_epoch,claim_token,config_sha256,state,next_due_at,learned_egress_host)
+   VALUES ($1,$2::uuid,$3::uuid,$4,$5,$6,$7,$8,$9)
    ON CONFLICT(task_kind,task_id) DO UPDATE SET board_id=EXCLUDED.board_id,
    routing_epoch=EXCLUDED.routing_epoch,claim_token=EXCLUDED.claim_token,
-   config_sha256=EXCLUDED.config_sha256,state=EXCLUDED.state,next_due_at=EXCLUDED.next_due_at,updated_at=clock_timestamp()`, string(task.Kind), task.ID, claim.boardID, a.epoch, task.claimToken, claim.configDigest, nextState, retainedDue)
+   config_sha256=EXCLUDED.config_sha256,state=EXCLUDED.state,next_due_at=EXCLUDED.next_due_at,learned_egress_host=EXCLUDED.learned_egress_host,updated_at=clock_timestamp()`, string(task.Kind), task.ID, claim.boardID, a.epoch, task.claimToken, claim.configDigest, nextState, retainedDue, retainedHost)
 		if err != nil {
 			return err
 		}
 		if recovered {
-			claim.recovered = &Receipt{claim: claim, nextDue: due}
+			claim.recovered = &Receipt{claim: claim, nextDue: due, learnedHost: retainedHost}
 		}
 		return a.current(ctx, claim)
 	})
@@ -344,11 +385,19 @@ func (a *Authority) require(ctx context.Context, tx pgx.Tx, claim *Claim, state 
 // Fetch/render/enrichment runs before entering this bounded transaction. A
 // terminal write records the database-owned due time for settlement/recovery.
 func (a *Authority) Write(ctx context.Context, claim *Claim, terminal bool, fn func(context.Context, pgx.Tx) error) (*Receipt, error) {
+	return a.write(ctx, claim, terminal, nil, fn)
+}
+
+// learned is private terminal evidence, frozen with the due time after callback.
+func (a *Authority) write(ctx context.Context, claim *Claim, terminal bool, learned **string, fn func(context.Context, pgx.Tx) error) (*Receipt, error) {
 	if !a.valid(claim) || claim.configDigest == "" || fn == nil {
 		return nil, ErrConfiguration
 	}
 	var receipt *Receipt
 	err := a.transaction(ctx, false, func(ctx context.Context, tx pgx.Tx) error {
+		if err := a.requireOwnership(ctx, tx, claim); err != nil {
+			return err
+		}
 		if err := a.current(ctx, claim); err != nil {
 			return err
 		}
@@ -363,12 +412,17 @@ func (a *Authority) Write(ctx context.Context, claim *Claim, terminal bool, fn f
 			if err != nil {
 				return err
 			}
-			_, err = tx.Exec(ctx, `UPDATE public.ordinary_worker_write_fence SET state='completed',next_due_at=$3,updated_at=clock_timestamp()
-    WHERE task_kind=$1 AND task_id=$2::uuid`, string(claim.task.Kind), claim.task.ID, due)
+			var host *string
+			if learned != nil && *learned != nil {
+				value := **learned
+				host = &value
+			}
+			_, err = tx.Exec(ctx, `UPDATE public.ordinary_worker_write_fence SET state='completed',next_due_at=$3,learned_egress_host=$4,updated_at=clock_timestamp()
+    WHERE task_kind=$1 AND task_id=$2::uuid`, string(claim.task.Kind), claim.task.ID, due, host)
 			if err != nil {
 				return err
 			}
-			receipt = &Receipt{claim: claim, nextDue: due}
+			receipt = &Receipt{claim: claim, nextDue: due, learnedHost: host}
 		}
 		return a.current(ctx, claim)
 	})
@@ -385,6 +439,9 @@ func (a *Authority) Settle(ctx context.Context, claim *Claim, receipt *Receipt) 
 		return ErrConfiguration
 	}
 	return a.transaction(ctx, true, func(ctx context.Context, tx pgx.Tx) error {
+		if err := a.requireOwnership(ctx, tx, claim); err != nil {
+			return err
+		}
 		if err := a.current(ctx, claim); err != nil {
 			return err
 		}
@@ -400,11 +457,18 @@ func (a *Authority) Settle(ctx context.Context, claim *Claim, receipt *Receipt) 
 		if !equal(retained, receipt.nextDue) || !equal(canonical, receipt.nextDue) {
 			return ErrAuthorityLost
 		}
+		var retainedHost *string
+		if err := tx.QueryRow(ctx, "SELECT learned_egress_host FROM public.ordinary_worker_write_fence WHERE task_kind=$1 AND task_id=$2::uuid", string(claim.task.Kind), claim.task.ID).Scan(&retainedHost); err != nil {
+			return err
+		}
+		if (retainedHost == nil) != (receipt.learnedHost == nil) || retainedHost != nil && *retainedHost != *receipt.learnedHost {
+			return ErrAuthorityLost
+		}
 		var accepted bool
 		if receipt.nextDue == nil {
 			accepted, err = a.queue.Complete(ctx, &claim.task)
 		} else {
-			accepted, err = a.queue.Reschedule(ctx, &claim.task, seconds(*receipt.nextDue))
+			accepted, err = a.queue.rescheduleHost(ctx, &claim.task, seconds(*receipt.nextDue), receipt.learnedHost)
 		}
 		if err != nil {
 			return err
@@ -420,5 +484,10 @@ func (a *Authority) Heartbeat(ctx context.Context, claim *Claim) error {
 	if !a.valid(claim) {
 		return ErrConfiguration
 	}
-	return a.transaction(ctx, false, func(ctx context.Context, _ pgx.Tx) error { return a.current(ctx, claim) })
+	return a.transaction(ctx, false, func(ctx context.Context, tx pgx.Tx) error {
+		if err := a.requireOwnership(ctx, tx, claim); err != nil {
+			return err
+		}
+		return a.current(ctx, claim)
+	})
 }

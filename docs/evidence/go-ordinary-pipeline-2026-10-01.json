@@ -1,0 +1,75 @@
+{
+  "schema": "jobseek.migration.ordinary-pipeline-evidence/v1",
+  "runtime_source_head": "9d7a8f5a80b528597c0a1bcf3eeb593f5b24fa8b",
+  "pull_request": "https://github.com/colophon-group/jobseek/pull/10210",
+  "candidate_version": "0.13.904",
+  "draft": true,
+  "selected_in_production": false,
+  "local": {
+    "source_head": "9d7a8f5a80b528597c0a1bcf3eeb593f5b24fa8b",
+    "database": "owned fully migrated PostgreSQL18.6; reference snapshot in owned private schema",
+    "redis": "private per-test Redis UDS",
+    "migration": "head/down0034/head passed",
+    "full_native_queue_race_seconds": 22.939,
+    "native_pipeline_race_seconds": 13.268,
+    "production_reaper_race_seconds": 3.32,
+    "python_ownership_and_sql_tests": 12,
+    "actual_python_url_cases": 40,
+    "actual_python_inventory_cases": 6,
+    "real_native_pipeline_groups": 2,
+    "node_workflow_runtime_version_documentation_tests": 130,
+    "vet_module_format_ruff_actionlint": "passed",
+    "cleanup": true
+  },
+  "previous_lifecycle_checkpoint": {
+    "head": "7e10947339c5de95329f45dcbbc3f61b1ee0d2b6",
+    "linux_run": 36800629362,
+    "full_ci_run": 36800624392,
+    "b0_admission_run": 36800629213,
+    "conclusion": "all three success",
+    "actual_deploy_gate": "failure while draft; reconciliation job success does not grant merge authority",
+    "limitation": "precedes processing assembly; no current-source proof"
+  },
+  "verified": [
+    "default Python non-streaming Greenhouse raw URL dictionary retains first position and last content",
+    "canonical alias content winner and URL sanity/drop accounting match captured Python output",
+    "known SuccessFactors/TalentLink/Overwolf session-token normalization and Python URL edge captures",
+    "all collected postings retained above 50000 flag; no truncation slicing",
+    "native models/taxonomy/currency/native SQLite location pipeline connects to owned rich writes",
+    "1001 postings cross three atomic 500/500/1 chunks with actual last-duplicate/description/R2/derived fields",
+    "guarded unseen-row removal and exact canonical receipt settlement conserve queue work",
+    "preparation failure after committed500 retains prefix/original, invalidates success/absence and permits canonical failure scheduling",
+    "invalid accounting/duplicate identities/cancel/preparation/persistence errors never finalize partial success",
+    "mandatory fresh Python oracle regeneration and full migrated database pipeline on both Linux architectures"
+  ],
+  "not_verified": [
+    "current source Linux/full/installed/admission checks",
+    "network response capture/HTTP redirect/SSRF/cookies/headers/request accounting and typed provider/publisher outcomes",
+    "shared host circuits and deferral/canonical lower-bound schedules",
+    "exact embedded-source ordinary executable, startup identities, concurrency/heartbeat/shutdown and installed faults",
+    "supported all-writer ownership/projection installation/cutover and cold reversal with shared B0 epoch",
+    "fleet effective profile/output/freshness/queue/resource/whole-service cost proof",
+    "remaining enabled profiles/runtime consumers/rollback window and Python/Playwright/Chromium retirement"
+  ],
+  "next": "Connect this completed native processing assembly to the exact-revision ordinary executable and persistent verified HTTP/circuit runtime. Do not reimplement inventory/rich/batch/lifecycle components. Prove installed faults and supported cutover/reversal before selecting the first cohort; full migration goal remains active.",
+  "pipeline_checkpoint_654": {
+    "head": "654ed153e78738c53b68adbbc3872a4c9225fcb3",
+    "full_ci": {
+      "run": 36831279197,
+      "conclusion": "success"
+    },
+    "b0_admission": {
+      "run": 36831284162,
+      "conclusion": "success"
+    },
+    "linux": {
+      "run": 36831284128,
+      "arm64": "success",
+      "amd64_attempt1": "dependency download timeout before tests",
+      "amd64_attempt2": "capture serialization key-order difference; counts unchanged; fixed in this source"
+    },
+    "actual_deploy_gate": "failure while draft",
+    "limitation": "does not cover later source or grant draft merge authority"
+  },
+  "continued_by_discovery_source": "aa99863e3302b4709db463c848065002f74dcd4f"
+}

@@ -1,0 +1,158 @@
+{
+  "checkpoint": "native canonical B0 rollback preparation",
+  "date": "2026-10-01",
+  "runtime_source_revision": "a7502f1bb87a80a2acb8df818080b4f1acee6ae8",
+  "candidate_version": "0.13.904",
+  "pr": 10210,
+  "draft": true,
+  "production_changed": false,
+  "full_migration_goal": "active",
+  "local_full_races": {
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "results": [
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=90s",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 38.201,
+        "log": "ordinary-cold-b0-rollback-final-queue-race.log"
+      },
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=90s",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 32.724,
+        "log": "ordinary-cold-b0-rollback-final-worker-race.log"
+      },
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=90s",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 4.843,
+        "log": "ordinary-cold-b0-rollback-final-exporter-race.log"
+      }
+    ],
+    "cleanup": true,
+    "production_changed": false
+  },
+  "final_focused_races_after_url_manifest_bounds": {
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "results": [
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=90s",
+          "-run",
+          "^Test(RealColdB0Rollback|ColdB0Rollback)",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 6.782,
+        "log": "ordinary-cold-b0-rollback-focused-race.log"
+      }
+    ],
+    "cleanup": true,
+    "production_changed": false
+  },
+  "repository_tests": 108,
+  "go_vet": "passed for queue and exporter",
+  "proof": [
+    "Exact retained reversal/source/retirement and approved B0 target with explicit source route; no allocator/latest adoption.",
+    "Pinned actual B0 audit plus atomic read-only snapshot, permanent selectors/witnesses, zero inflight; exact second snapshot under DB barriers/row locks.",
+    "21 actual ready/dead/terminal cases across changed, never-successful, disabled, inactive, gone, null-due and missing canonical rows; completed SQL fences retained.",
+    "Actual unchanged rollback Lua accepts all native manifests in private fixtures and produces matching schedule/config/drop effects without canonical replay or forward-journal release.",
+    "12 unsafe-source faults reject before effects, including actual B0 inflight, live PG lease, historical-domain suffix inflight/deadletter, stale route/retirement/target, expiry, missing guard, corrupt index, advanced allocator and invalid URL.",
+    "Active candidate disabled/changed and ordinary joint-witness loss still permit preparation; complete private Redis loss refuses automatic reconstruction.",
+    "Exact bigint description hashes, microsecond due times, ready transfer kind/decimal score, first-time intent, deterministic unchanged retries; no queue/canonical/receipt/future effects from planning."
+  ],
+  "bounds": {
+    "records_and_fence_ids": 2048,
+    "record_snapshot_and_manifest_bytes": 33554432,
+    "each_legacy_authority_index_entries": 65536,
+    "canonical_url_bytes": 16384
+  },
+  "consumer_integration": "Shared pure actual B0 task codec; exporter module dependency and Docker contracts copy updated and tested. Worker module already pins the codec and compatible dependencies.",
+  "previous_checkpoint": {
+    "head": "286810cfc074cc201d3d9b51700cd03886525654",
+    "runtime": "c0f46f848db6862f185a548b183a87b615aeb6eb",
+    "linux": {
+      "id": 36905777222,
+      "conclusion": "success"
+    },
+    "full_ci": {
+      "id": 36905796129,
+      "attempt": 2,
+      "conclusion": "success",
+      "first_attempt": "failed before tests: Go proxy dependency-download HTTP/2 INTERNAL_ERROR"
+    },
+    "installed_images": {
+      "id": 36905800217,
+      "conclusion": "success",
+      "verified_artifacts": {
+        "amd64": {
+          "source": "286810cfc074cc201d3d9b51700cd03886525654",
+          "architecture": "amd64",
+          "image_id": "sha256:980f1bdc50545728f53c6533f09fcb9fee3d8272224d8074b24cda0acc3377c0",
+          "binary_sha256": "050315d171b4c8e1adfaa065a563dc30dbc2099962659672b31ad68f2cea8307",
+          "asset_count": 34,
+          "tests": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "scope": "image-extracted native binary/assets on Linux private PG17/Redis; includes actual cold-retirement SIGKILL/read-only paused inspection/burned+1 recovery. Later native rollback planner source is not covered."
+        },
+        "arm64": {
+          "source": "286810cfc074cc201d3d9b51700cd03886525654",
+          "architecture": "arm64",
+          "image_id": "sha256:0fa6e8b385685d07451ddcb712af1bf986e622e20dafd2b95c41615a43c11521",
+          "binary_sha256": "20190044a2aa7509cb04e1c36539eb7d58101f66d89fe5f2f4aa41406e0bac9b",
+          "asset_count": 34,
+          "tests": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "scope": "image-extracted native binary/assets on Linux private PG17/Redis; includes actual cold-retirement SIGKILL/read-only paused inspection/burned+1 recovery. Later native rollback planner source is not covered."
+        }
+      }
+    },
+    "whole_b0": {
+      "id": 36905777358,
+      "status": "in_progress"
+    },
+    "actual_deploy_gate": "failure: draft PR; evaluator success is not authority"
+  },
+  "current_source_ci": "required after push; earlier reports do not admit this source",
+  "limits": [
+    "Preparation only: no durable restoration journal/apply/recovery, fence cleanup, sentinel/receipt release, restored owners or host readiness yet.",
+    "Caller source receipt digest is bound; independent receipt/host/release/sentinel evidence must come from supported ADR006 wrapper.",
+    "Private actual Lua compatibility is not production restoration or public-fetch/container admission."
+  ],
+  "next": "Retain the exact native rollback manifest durably under reversal identity before the first Redis restoration mutation. Implement exact pinned-Lua application/retry with no missing-witness reconstruction, acknowledged SAVE and atomic tombstone/readback before SQL progression; clear only the manifest-bound historical source fences without replaying canonical data. Prove actual SIGKILL/restart across those seams. Then finish ordinary/B0 fresh ownership restoration, protected CLI and supported ADR006 all-writer host wrapper with independent exact immutable release/data/spec/env/image/sentinel/receipt evidence and full readiness. Continue full migration scope through enabled profiles/runtime consumers, parity/resource/cost, exact gates/rollout, actual rollback window and production Python retirement."
+}

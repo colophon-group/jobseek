@@ -1,0 +1,60 @@
+{
+  "version": "jobseek.migration.native-installed-file-observation/v1",
+  "date": "2026-10-02",
+  "preceding_verified_source": "2320553ac663c97e9c114d850242e3bb7e10806b",
+  "apis": [
+    "DecodeInstalledExpectation",
+    "ObserveInstalledContainerFiles"
+  ],
+  "expectation_version": "jobseek.crawler-installed-expectation/v1",
+  "receipt_version": "jobseek.crawler-installed-container-files/v1",
+  "runtime_admission": false,
+  "trust_boundary": "Expected manifest digest and source/image association must come from independently verified build evidence and protected retained host intent. A matching hash or container label cannot authenticate that trust root.",
+  "contract": [
+    "Canonical closed expectation binds source/image/platform/runtime kind and exact binary/system-CA/asset and optional complete legacy-source hashes",
+    "Fixed image inspect and container cp commands against an already-existing exact container ID, cleared Docker environment; no create/run/remove/execute or extraction",
+    "Two complete bounded streamed archive observations, exact files and known parent directories; SHA hashing discards contents privately",
+    "Reject missing/extra/duplicate/aliased paths, links/devices/setuid/writable files, unsupported PAX/sparse/xattrs, missing end blocks and nonzero or oversized trailers",
+    "Require exact source-request/platform/image association and identical image-inspect bytes plus final complete daemon inventory readback; only credential-free hashes/counts returned"
+  ],
+  "bounds": {
+    "manifest_bytes": 1048576,
+    "manifest_files": 4096,
+    "file_bytes": 67108864,
+    "archive_bytes": 268435456,
+    "archive_members": 16384,
+    "operation_seconds": 180,
+    "command_seconds": 30
+  },
+  "local_verification": {
+    "compiler": "go1.26.0",
+    "releaseevidence_races": "pass",
+    "package_seconds": 3.288,
+    "log_sha256": "df6e2d49743bc1270ba36f8824ba0bafcd8fb467b8632e69133eebeb582cb504",
+    "linux_integration_tag_vet": "both modules AMD64/ARM64 pass",
+    "go_mod_tidy_diff": "both modules pass",
+    "repository_script_tests": 188,
+    "repository_log_sha256": "25341c7f7a195fc156951519f1646e24fd488aa0f9fd06228698b4a9302f758a",
+    "actionlint": "1.7.12 pass",
+    "zizmor": "1.26.1 offline pass"
+  },
+  "actual_fixture": {
+    "name": "TestActualInstalledContainerFilesRequireExactRetainedManifest",
+    "status": "fresh exact-source execution required",
+    "job": "existing installed-image AMD64/ARM64 disposable Actions harness",
+    "scope": "Read already-owned never-started native image container; compare independent fixture-extracted binary/system-CA/complete asset hashes and reject declared binary/CA/asset/extra/missing drift; no local agent Docker access",
+    "new_required_artifact": "ordinary-installed-files-tests.log",
+    "legacy_observer_actual_fixture": "still required; legacy kind currently unit-tested only"
+  },
+  "reference": "https://docs.docker.com/reference/cli/docker/container/cp/",
+  "production_changed": false,
+  "full_goal_active": true,
+  "open_work": [
+    "Authenticate build/source association and selected image/generation/specs; verify effective file ownership/permissions, process users, mounted data and full security/network/namespace/resource fidelity",
+    "Run new actual native file-observation fixture and actual selected legacy counterpart, then connect read-only proofs into complete locked host coordinator",
+    "Complete all-writer/exporter/oneoff/maintenance exclusion and SQL lease/barrier checks",
+    "Retain canonical intent/archive/receipts before effects; implement phased spec restore and full actual host crash recovery/readiness/cold cutover/reversal",
+    "Every enabled profile/runtime consumer and canonical/database/publisher/freshness/queue parity",
+    "Comparable complete-service resources/cost, exact actual gates/merge/deploy, production rollback window and Python/Playwright/Chromium retirement"
+  ]
+}

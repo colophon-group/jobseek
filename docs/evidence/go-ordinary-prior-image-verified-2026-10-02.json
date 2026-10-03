@@ -1,0 +1,196 @@
+{
+  "candidate_source": "eb804cf56aa89761f5df195f75e9e333a799ffb0",
+  "full_ci": {
+    "run": 37021699860,
+    "conclusion": "success"
+  },
+  "prior_image": {
+    "candidate_source": "eb804cf56aa89761f5df195f75e9e333a799ffb0",
+    "run": 37021649337,
+    "tested_merge": "60f1e21fabb3fa407326c5bda54d864245039adb",
+    "parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "eb804cf56aa89761f5df195f75e9e333a799ffb0"
+    ],
+    "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "image_id": "sha256:715c0fcd445b2bd04e0d0898d59a118ba8f9d46fba0faa80af7de261f349d0cf",
+        "binary_sha256": "bec52d4c71e7494fd234f30bea7323d29689b2b2636ed23632d4cbd0c0a9bfc8",
+        "dockerfile_sha256": "0b6ece8cd4e0f73463e99128697ad6ea5e9ed51b564a8547d80746989e24fb67",
+        "proof_sha256": "c42802c1089c60f5958e47f70ac2c19fd8238440925c928744bc153e55618e79",
+        "assets": 34,
+        "actual_prior_installed_restored_R_pass": true
+      },
+      {
+        "architecture": "arm64",
+        "image_id": "sha256:3deda9e67ef4f76cc712a26db21e2fdebd130d46c274e0dcfb3910cc953e467f",
+        "binary_sha256": "9590b7eb7e0b67a66f88dcd4babf515847f2437db1a4e2fdc5254e9c1aa1e463",
+        "dockerfile_sha256": "0b6ece8cd4e0f73463e99128697ad6ea5e9ed51b564a8547d80746989e24fb67",
+        "proof_sha256": "f1d4fec75cc880692b37c092bf3b78dac21a36f30e35c687d67e969b16d8fa4e",
+        "assets": 34,
+        "actual_prior_installed_restored_R_pass": true
+      }
+    ],
+    "log_sha256": "b71e120d3de053b8345495c3bb3b5920c774a865d99b1318c8ce74d6ef0b8ef0",
+    "installed_asset_sha256": {
+      "README.md": "f4449496c21178aa003e28a17a7135f207d848aa74421eeb46abff9c1370fd26",
+      "boards.csv": "416c5939d22faa9ee928155d20a1c3ee294f26b3c496ed93637eae13e8b492e1",
+      "companies.csv": "a15ccf834c0e0d3e11c7a0c8cea5aa7df5930b085264683689e2cef4eee04c65",
+      "company_descriptions.csv": "99c016c51713bb5937593ad1267c596f7cf208c4424a5f17c83410761f10dde7",
+      "images/avera-icon.png": "94225e0ecf08cdbf6eff0d197030e27d60c1bcd28d410f584e589dec867ac393",
+      "images/avera-logo.png": "6c1d3514864d40cbd8d51661b6b2aa905f40bfc57cff84b1f68cb12f668a9b1e",
+      "images/bae-systems-icon.png": "d4b21210623413bf11e723e19336ac41043bae110237513e220e479998b4d8e6",
+      "images/bae-systems-logo.svg": "36a6c9e949fa4b9d913ffed811e4b88515deee4af4eaf2de720d09a8516f58dc",
+      "images/banner-health-icon.png": "4a95ca7481e999700637cf3b58705c249c15bba3acbfc8839d928f0a33b40e20",
+      "images/banner-health-logo.svg": "b97938bf23013ffc64f20118f42f09481c30e6b6a920202028633ddb7cabb1d1",
+      "images/capgemini-icon.png": "b764b1abe10194e9370b69528933762fa502dfa454932c80b9c6eafdac60e05e",
+      "images/capgemini.png": "3e4b021ad539b695290353a9811f02c13933c65716fd710a55ead1a055c6b9fc",
+      "images/drees-sommer-icon.png": "e804fe381612328706a9ec314545a66b74eea36a831576340ad080c4ba3ca0e5",
+      "images/drees-sommer-logo.svg": "ab80c4e211746308c0952f64614a4220b61af0acbedc86a24c98f10e752988e6",
+      "images/epfl/icon.png": "9af4578f7f87fabea840044b4a9fe388dc2847f5e301317944eaf1255d7000bc",
+      "images/epfl/logo.png": "f9f64c61b3e52eb82d4b6144d85843c0001201cd2d75f1128fa34642e4f8983a",
+      "images/fulenwider-enterprises-icon.png": "2862579dd64d28782e8deeec0095264fc91d50cc21911f0ed00b24ddacd531a8",
+      "images/fulenwider-enterprises-logo.png": "326a67f1d0faddf840345d22873ff732d7b71e386c22d096740689f776802ed0",
+      "images/mediamarktsaturn-icon.webp": "37fa4d863ef3d13f87b7be4590f8d41f0cddec282db557aec4db30df9a14de39",
+      "images/mediamarktsaturn-logo.svg": "47f1f499c28f30c96cae0d428ae13eef36df923feaf6d9e07a48bc209f5f5cfc",
+      "images/singapore-public-service-icon.png": "23fa7bf3fd10506cc3679f70e2aaa7f52ed684b46055d75fcb67335334c4518c",
+      "images/singapore-public-service-logo.svg": "dbd644d3eb74771e725aeed2e6686feddd5e6fd6517920c79cbd5733aa844537",
+      "images/swiss-post-icon.png": "e1c297617f8d7a8614f3a4366168dad693085b1385a872bb2e0abe347e3090e2",
+      "images/swiss-post-logo.png": "e1c297617f8d7a8614f3a4366168dad693085b1385a872bb2e0abe347e3090e2",
+      "industries.csv": "3fae2b061b36e907b83fc03648aa4df512df01d7fc324b5b83bf11bb1e8f25b3",
+      "industries.svg": "163aaa518b8d11b3b0d24905e053c8fc249894681784b7bd00b0eae8a3562c09",
+      "labeller_optout.txt": "c802b5e4878133598994cbc7cbdd432fc6cfeff7e4608d7e94f7d3bb879b09ff",
+      "occupation_domains.csv": "6d2458a0ce106da21ee6898a66896f18d774a65c72d476969be4394a47461d9b",
+      "occupations.csv": "97ce6fa825130597639bf2c3cd2e19f114610cc5de3006d69c31c07018397d01",
+      "occupations.svg": "d1e399827f71d3558712746b636e13c3c7d859d6c5d7dfdb75195dd40a861c78",
+      "seniority.csv": "a00c21d795baff88e7c0e4733922eff26f24fb0d24251f7ae1fb0db20ecb5004",
+      "seniority.svg": "549e9c57dc14e0195eb3263c288afa3f48280d7715ce37c375db9fd97974feb5",
+      "technologies.csv": "6894e31c7e854d5efddf3a57b52cd83ed7326ac5753a12ee7c743c02721d9bde",
+      "technologies.svg": "935a8307c03617ed1532ccf1c9f445a440f4ac95118e4e5a673b77a4f6fc0374"
+    },
+    "production_changed": false,
+    "scope": "actual historical candidate image-extracted runtime at restored R; not previously selected production ordinary release or complete host admission"
+  },
+  "linux_recovery": {
+    "source": "eb804cf56aa89761f5df195f75e9e333a799ffb0",
+    "run": 37021649476,
+    "tested_merge": "60f1e21fabb3fa407326c5bda54d864245039adb",
+    "parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "eb804cf56aa89761f5df195f75e9e333a799ffb0"
+    ],
+    "log_sha256": "5eae26de9161b738113e4a20cb1be3de36cc12f8c34ece710b457fa80e1717c3",
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+        "prior_binary_sha256": "cec244e6eaa0a2159324687ee3f04fd63c2c7f2786f4ac5a1a6975af709ae322",
+        "actual_prior_restored_R_and_native_legacy_root_finalizer_pass": true
+      },
+      {
+        "architecture": "arm64",
+        "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+        "prior_binary_sha256": "4ed19362c9d76b0d569c330a36e0dd2da0ae48c0f1974b0690fb0f10c8c6d9e1",
+        "actual_prior_restored_R_and_native_legacy_root_finalizer_pass": true
+      }
+    ],
+    "no_failed_or_skipped_tests": true,
+    "production_changed": false,
+    "scope": "actual prior clean source binary restored R plus native/legacy root finalizer crashes; historical host/release labels synthetic; no immutable prior image or complete host admission"
+  },
+  "installed": {
+    "source_revision": "eb804cf56aa89761f5df195f75e9e333a799ffb0",
+    "run": 37021705356,
+    "production_changed": false,
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "image_id": "sha256:fec960f380803b849e180e0fe75d4540d8c2eea92f18debb1ac90a3d6702d4c3",
+        "binary_sha256": "6fa8bfa56c0f12179758ba5db266bceb4b50c89487704106ac96d864203159ba",
+        "source_ca_identity_verified": true,
+        "actual_executable_fixtures": [
+          "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+          "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+          "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+          "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+        ],
+        "asset_hashes_verified": 34
+      },
+      {
+        "architecture": "arm64",
+        "image_id": "sha256:62e0f6e7ff7d4b5441104254c0d3854a7d2c944120462689a2e1615294b00537",
+        "binary_sha256": "586bd180baf4d757943a34aece11e6a8f10767edf9b00bc5eb229933d17d124d",
+        "source_ca_identity_verified": true,
+        "actual_executable_fixtures": [
+          "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+          "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+          "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+          "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+        ],
+        "asset_hashes_verified": 34
+      }
+    ],
+    "installed_asset_sha256": {
+      "README.md": "f4449496c21178aa003e28a17a7135f207d848aa74421eeb46abff9c1370fd26",
+      "boards.csv": "416c5939d22faa9ee928155d20a1c3ee294f26b3c496ed93637eae13e8b492e1",
+      "companies.csv": "a15ccf834c0e0d3e11c7a0c8cea5aa7df5930b085264683689e2cef4eee04c65",
+      "company_descriptions.csv": "99c016c51713bb5937593ad1267c596f7cf208c4424a5f17c83410761f10dde7",
+      "images/avera-icon.png": "94225e0ecf08cdbf6eff0d197030e27d60c1bcd28d410f584e589dec867ac393",
+      "images/avera-logo.png": "6c1d3514864d40cbd8d51661b6b2aa905f40bfc57cff84b1f68cb12f668a9b1e",
+      "images/bae-systems-icon.png": "d4b21210623413bf11e723e19336ac41043bae110237513e220e479998b4d8e6",
+      "images/bae-systems-logo.svg": "36a6c9e949fa4b9d913ffed811e4b88515deee4af4eaf2de720d09a8516f58dc",
+      "images/banner-health-icon.png": "4a95ca7481e999700637cf3b58705c249c15bba3acbfc8839d928f0a33b40e20",
+      "images/banner-health-logo.svg": "b97938bf23013ffc64f20118f42f09481c30e6b6a920202028633ddb7cabb1d1",
+      "images/capgemini-icon.png": "b764b1abe10194e9370b69528933762fa502dfa454932c80b9c6eafdac60e05e",
+      "images/capgemini.png": "3e4b021ad539b695290353a9811f02c13933c65716fd710a55ead1a055c6b9fc",
+      "images/drees-sommer-icon.png": "e804fe381612328706a9ec314545a66b74eea36a831576340ad080c4ba3ca0e5",
+      "images/drees-sommer-logo.svg": "ab80c4e211746308c0952f64614a4220b61af0acbedc86a24c98f10e752988e6",
+      "images/epfl/icon.png": "9af4578f7f87fabea840044b4a9fe388dc2847f5e301317944eaf1255d7000bc",
+      "images/epfl/logo.png": "f9f64c61b3e52eb82d4b6144d85843c0001201cd2d75f1128fa34642e4f8983a",
+      "images/fulenwider-enterprises-icon.png": "2862579dd64d28782e8deeec0095264fc91d50cc21911f0ed00b24ddacd531a8",
+      "images/fulenwider-enterprises-logo.png": "326a67f1d0faddf840345d22873ff732d7b71e386c22d096740689f776802ed0",
+      "images/mediamarktsaturn-icon.webp": "37fa4d863ef3d13f87b7be4590f8d41f0cddec282db557aec4db30df9a14de39",
+      "images/mediamarktsaturn-logo.svg": "47f1f499c28f30c96cae0d428ae13eef36df923feaf6d9e07a48bc209f5f5cfc",
+      "images/singapore-public-service-icon.png": "23fa7bf3fd10506cc3679f70e2aaa7f52ed684b46055d75fcb67335334c4518c",
+      "images/singapore-public-service-logo.svg": "dbd644d3eb74771e725aeed2e6686feddd5e6fd6517920c79cbd5733aa844537",
+      "images/swiss-post-icon.png": "e1c297617f8d7a8614f3a4366168dad693085b1385a872bb2e0abe347e3090e2",
+      "images/swiss-post-logo.png": "e1c297617f8d7a8614f3a4366168dad693085b1385a872bb2e0abe347e3090e2",
+      "industries.csv": "3fae2b061b36e907b83fc03648aa4df512df01d7fc324b5b83bf11bb1e8f25b3",
+      "industries.svg": "163aaa518b8d11b3b0d24905e053c8fc249894681784b7bd00b0eae8a3562c09",
+      "labeller_optout.txt": "c802b5e4878133598994cbc7cbdd432fc6cfeff7e4608d7e94f7d3bb879b09ff",
+      "occupation_domains.csv": "6d2458a0ce106da21ee6898a66896f18d774a65c72d476969be4394a47461d9b",
+      "occupations.csv": "97ce6fa825130597639bf2c3cd2e19f114610cc5de3006d69c31c07018397d01",
+      "occupations.svg": "d1e399827f71d3558712746b636e13c3c7d859d6c5d7dfdb75195dd40a861c78",
+      "seniority.csv": "a00c21d795baff88e7c0e4733922eff26f24fb0d24251f7ae1fb0db20ecb5004",
+      "seniority.svg": "549e9c57dc14e0195eb3263c288afa3f48280d7715ce37c375db9fd97974feb5",
+      "technologies.csv": "6894e31c7e854d5efddf3a57b52cd83ed7326ac5753a12ee7c743c02721d9bde",
+      "technologies.svg": "935a8307c03617ed1532ccf1c9f445a440f4ac95118e4e5a673b77a4f6fc0374"
+    }
+  },
+  "preceding_b0_failure": {
+    "source": "4f363091c1b4e7d40755e100b681e40a753d8089",
+    "run": 37019476070,
+    "admitted": false,
+    "arm_error": "completed one-shot posting was rescheduled",
+    "pair": "c4-p2/candidate",
+    "complete_arms": 10,
+    "reasons": [
+      "c4-p2/candidate:arm_error",
+      "c4-p2/candidate:counts",
+      "c4-p2/candidate:fixture",
+      "c4-p2/candidate:lifetime_resources",
+      "c4-p2/candidate:memory",
+      "c4-p2/candidate:queue_or_metrics",
+      "c4-p2:canonical_parity",
+      "c4-p2:measurements",
+      "density",
+      "run_order"
+    ]
+  },
+  "current_b0_run": 37021649241,
+  "current_b0_verified": false,
+  "production_changed": false,
+  "scope": "historical native image/runtime compatibility and current candidate fixtures; selected legacy production image and complete host admission remain unproven"
+}

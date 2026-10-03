@@ -1,0 +1,159 @@
+{
+  "version": "jobseek.migration.execution-fixture-mode-correction/v1",
+  "date": "2026-10-02",
+  "failed_source_revision": "d1a4b5bdd411628561e85d098fb74d7da63532be",
+  "failed_linux_run": 37048510734,
+  "failed_architectures": [
+    "amd64",
+    "arm64"
+  ],
+  "cause": "The mode-drift unit fixture did not set its initial mode. On Linux the initial directory was already 0755, so chmod 0755 was not a change. The negative test therefore correctly received no rejection.",
+  "correction": "Explicitly chmod the initial protected fixture directory to 0700 before injecting faults; the later 0755 mutation now changes the observed mode on Linux and macOS. Production predicate is unchanged.",
+  "local_verification": {
+    "compiler": "go1.26.0",
+    "releaseevidence_race": "pass",
+    "package_seconds": 3.114,
+    "log_sha256": "8a8ae5b97f034f76b2834cd0bab2ca965b2579a1d8646bb4653e187d11502928"
+  },
+  "fresh_exact_source_linux_required": true,
+  "preceding_verified_whole_b0": {
+    "schema": "jobseek.migration.synthetic-b0-admission/v1",
+    "pr": 10210,
+    "pr_head": "771c576a157c5736e5732ca14e2ec8da586dabbc",
+    "tested_merge_checkout": "bb0e5fc726030e05192ec6674eaa1e24b772a601",
+    "verified_merge_parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "771c576a157c5736e5732ca14e2ec8da586dabbc"
+    ],
+    "run": 37041380157,
+    "report_sha256": "e6eccb17e4157086a5cdc3368f8317a85f2b9d47afeb0da3336c7debf39cc658",
+    "mode": "synthetic",
+    "arms": 16,
+    "pairs": 8,
+    "admitted": true,
+    "verdict_recomputed": true,
+    "density_range": [
+      7.018678971633962,
+      13.740068173429663
+    ],
+    "verdict": {
+      "admitted": true,
+      "reasons": [],
+      "density_ratios": [
+        7.462185266940549,
+        7.334001700704491,
+        7.018678971633962,
+        13.394733260435345,
+        13.740068173429663,
+        13.098053071042358,
+        12.922704543459915,
+        13.408994530143355
+      ],
+      "pair_metrics": [
+        {
+          "pair": "c1-p1",
+          "density_ratio": 7.462185266940549,
+          "elapsed_ratio": 1.8498325489735825,
+          "p99_ratio": 0.5350610286670424,
+          "peak_rss_ratio": 0.24789421366537617,
+          "cpu_seconds_candidate": 1.718848,
+          "cpu_seconds_control": 2.591504,
+          "lifetime_cpu_seconds_candidate": 3.989063,
+          "lifetime_cpu_seconds_control": 6.164734
+        },
+        {
+          "pair": "c1-p2",
+          "density_ratio": 7.334001700704491,
+          "elapsed_ratio": 1.841931633694464,
+          "p99_ratio": 0.5306813470040395,
+          "peak_rss_ratio": 0.25114960547630244,
+          "cpu_seconds_candidate": 1.760057,
+          "cpu_seconds_control": 2.580475,
+          "lifetime_cpu_seconds_candidate": 4.066714,
+          "lifetime_cpu_seconds_control": 6.143656
+        },
+        {
+          "pair": "c1-p3",
+          "density_ratio": 7.018678971633962,
+          "elapsed_ratio": 1.8622818637641607,
+          "p99_ratio": 0.5276603474236713,
+          "peak_rss_ratio": 0.2653322471779355,
+          "cpu_seconds_candidate": 1.7128679999999998,
+          "cpu_seconds_control": 2.550368,
+          "lifetime_cpu_seconds_candidate": 4.003077,
+          "lifetime_cpu_seconds_control": 6.11704
+        },
+        {
+          "pair": "c4-p1",
+          "density_ratio": 13.394733260435345,
+          "elapsed_ratio": 1.5983743417440766,
+          "p99_ratio": 0.6308658105561279,
+          "peak_rss_ratio": 0.11932856822653351,
+          "cpu_seconds_candidate": 2.4375210000000003,
+          "cpu_seconds_control": 6.170771,
+          "lifetime_cpu_seconds_candidate": 4.751307,
+          "lifetime_cpu_seconds_control": 10.8056
+        },
+        {
+          "pair": "c4-p2",
+          "density_ratio": 13.740068173429663,
+          "elapsed_ratio": 1.594958225028834,
+          "p99_ratio": 0.6279363190570205,
+          "peak_rss_ratio": 0.11608080869010098,
+          "cpu_seconds_candidate": 2.453303,
+          "cpu_seconds_control": 6.315691,
+          "lifetime_cpu_seconds_candidate": 4.783351,
+          "lifetime_cpu_seconds_control": 11.050846
+        },
+        {
+          "pair": "c4-p3",
+          "density_ratio": 13.098053071042358,
+          "elapsed_ratio": 1.5622768938944758,
+          "p99_ratio": 0.6354958956268527,
+          "peak_rss_ratio": 0.11927550494877849,
+          "cpu_seconds_candidate": 2.424531,
+          "cpu_seconds_control": 6.220007,
+          "lifetime_cpu_seconds_candidate": 4.7340480000000005,
+          "lifetime_cpu_seconds_control": 10.842591
+        },
+        {
+          "pair": "c4-p4",
+          "density_ratio": 12.922704543459915,
+          "elapsed_ratio": 1.5452197856180954,
+          "p99_ratio": 0.636776088879991,
+          "peak_rss_ratio": 0.11957402418521744,
+          "cpu_seconds_candidate": 2.45261,
+          "cpu_seconds_control": 6.112361,
+          "lifetime_cpu_seconds_candidate": 4.780579,
+          "lifetime_cpu_seconds_control": 10.801047
+        },
+        {
+          "pair": "c4-p5",
+          "density_ratio": 13.408994530143355,
+          "elapsed_ratio": 1.588172981131773,
+          "p99_ratio": 0.6296946083162553,
+          "peak_rss_ratio": 0.11844087023539071,
+          "cpu_seconds_candidate": 2.430092,
+          "cpu_seconds_control": 6.195287,
+          "lifetime_cpu_seconds_candidate": 4.750921,
+          "lifetime_cpu_seconds_control": 10.87711
+        }
+      ]
+    },
+    "images": {
+      "browser": "sha256:4eae86e2b99a36d2497ff7e36ffe92fea74dd0f8211076d3ff7cd8f2d0547f26",
+      "candidate": "sha256:ef910cb5db180d9cc63414112b88376194a0134db29133ed28833f45cd4cca61",
+      "renderer": "sha256:e52be041ffb45375fe5823da6fd82bc0e59c6d946ab30c0df7fe66469216bfdb"
+    },
+    "checkout": {
+      "clean": true,
+      "head": "bb0e5fc726030e05192ec6674eaa1e24b772a601",
+      "postflight_clean": true,
+      "postflight_head": "bb0e5fc726030e05192ec6674eaa1e24b772a601"
+    },
+    "production_changed": false,
+    "scope": "generated B0 with production startup cardinality; not all-profile or whole-production service cost parity"
+  },
+  "production_changed": false,
+  "full_goal_active": true
+}

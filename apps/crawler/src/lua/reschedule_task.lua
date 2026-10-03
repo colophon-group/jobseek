@@ -7,6 +7,8 @@
 -- ARGV[4] = task_type ("monitor" or "scrape")
 -- ARGV[5] = next_due (float timestamp)
 -- ARGV[6] = optional claim token returned by tokenized claim
+-- ARGV[7] = optional failure-associated host from a native committed receipt
+--           Published atomically after lease retirement; legacy calls omit it.
 --
 -- Returns: 1 if rescheduled, 0 if guarded or a stale tokenized attempt
 --
@@ -36,6 +38,17 @@ if supplied_token ~= "" and (#supplied_token ~= 32 or
     string.find(supplied_token, "[^0-9a-f]") ~= nil) then
     return redis.error_reply("ordinary claim token is invalid")
 end
+local learned_host = ARGV[7] or ""
+if learned_host ~= "" then
+    if wtype ~= "simple" or task_type ~= "monitor" or supplied_token == "" or
+        #learned_host > 253 or string.find(learned_host, "[%c|]") ~= nil then
+        return redis.error_reply("ordinary receipt host is invalid")
+    end
+    -- Preflight every optional write before touching queue or inflight state.
+    if redis.call("TYPE", "board:" .. task_id)["ok"] ~= "hash" then
+        return redis.error_reply("ordinary receipt board is unavailable")
+    end
+end
 local current_token = redis.call("HGET", token_key, inflight_member)
 -- Legacy callers cannot mutate a tokenized lease; a tokenized caller cannot
 -- mutate an absent/new generation. Expiry revokes authority before the reaper.
@@ -59,6 +72,47 @@ local monitor_repair_type = redis.call("TYPE", monitor_repair_key)["ok"]
 if monitor_repair_type ~= "none" and monitor_repair_type ~= "hash" then
     return redis.error_reply("monitor repair deadline index is corrupt")
 end
+-- Redis scripts do not roll back earlier writes after a runtime type error.
+-- Validate every queue/index read and lease-ending write before any mutation,
+-- including the optional learned-host publication at the end of this script.
+local function finite(value)
+    return value ~= nil and value == value and value ~= math.huge and value ~= -math.huge
+end
+if not finite(next_due) then
+    return redis.error_reply("ordinary next deadline is invalid")
+end
+for tier = 0, 2 do
+    local state = redis.call("TYPE", "ready:" .. wtype .. ":" .. tier)["ok"]
+    if state ~= "none" and state ~= "zset" then
+        return redis.error_reply("ordinary ready queue is corrupt")
+    end
+end
+for _, prefix in ipairs({"ft_monitors_", "ft_scrapes_", "monitors_", "scrapes_"}) do
+    local key = prefix .. wtype .. ":" .. domain
+    local state = redis.call("TYPE", key)["ok"]
+    if state ~= "none" and state ~= "zset" then
+        return redis.error_reply("ordinary recurring queue is corrupt")
+    end
+    local first = redis.call("ZRANGE", key, 0, 0, "WITHSCORES")
+    if #first >= 2 and not finite(tonumber(first[2])) then
+        return redis.error_reply("ordinary queue deadline is corrupt")
+    end
+end
+for _, item in ipairs({{"inflight:" .. wtype, "zset"}, {"inflight_strikes:" .. wtype, "hash"}, {"ratelimit:" .. domain, "string"}}) do
+    local state = redis.call("TYPE", item[1])["ok"]
+    if state ~= "none" and state ~= item[2] then
+        return redis.error_reply("ordinary settlement index is corrupt")
+    end
+end
+local rate = redis.call("GET", "ratelimit:" .. domain)
+local rotation = redis.call("ZSCORE", scrape_rotation_key, domain)
+local repair = redis.call("HGET", monitor_repair_key, inflight_member)
+if (rate ~= false and not finite(tonumber(rate))) or
+   (rotation ~= false and not finite(tonumber(rotation))) or
+   (repair ~= false and not finite(tonumber(repair))) then
+    return redis.error_reply("ordinary settlement deadline is corrupt")
+end
+
 if task_type == "scrape" and redis.call("HEXISTS", b0_guard_key, task_id) == 1 then
     redis.call("ZREM", "inflight:" .. wtype, inflight_member)
     redis.call("HDEL", token_key, inflight_member)
@@ -171,4 +225,7 @@ else
     end
 end
 
+if learned_host ~= "" then
+    redis.call("HSET", "board:" .. task_id, "egress_host", learned_host)
+end
 return 1

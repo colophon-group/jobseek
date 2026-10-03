@@ -1,0 +1,298 @@
+{
+  "version": "jobseek.migration.native-container-execution-verified/v1",
+  "date": "2026-10-02",
+  "source_revision": "2320553ac663c97e9c114d850242e3bb7e10806b",
+  "full_ci": 37051180960,
+  "linux": {
+    "source": "2320553ac663c97e9c114d850242e3bb7e10806b",
+    "run": 37051186913,
+    "tested_merge": "a0a56362588063dc1cc4578f89f3fe6971b09e3c",
+    "parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "2320553ac663c97e9c114d850242e3bb7e10806b"
+    ],
+    "log_sha256": "a00a182a83ef2afc8d22207c4f03c9120e5942f1fb80f69da18fd2ba8b4d283b",
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+        "prior_binary_sha256": "cec244e6eaa0a2159324687ee3f04fd63c2c7f2786f4ac5a1a6975af709ae322",
+        "actual_prior_restored_R_and_native_legacy_root_finalizer_pass": true
+      },
+      {
+        "architecture": "arm64",
+        "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+        "prior_binary_sha256": "4ed19362c9d76b0d569c330a36e0dd2da0ae48c0f1974b0690fb0f10c8c6d9e1",
+        "actual_prior_restored_R_and_native_legacy_root_finalizer_pass": true
+      }
+    ],
+    "no_failed_or_skipped_tests": true,
+    "production_changed": false,
+    "scope": "actual prior clean source binary restored R plus native/legacy root finalizer crashes; historical host/release labels synthetic; no immutable prior image or complete host admission"
+  },
+  "actual_execution_fixture": {
+    "architectures": [
+      "amd64",
+      "arm64"
+    ],
+    "inventory_version": "jobseek.crawler-container-inventory/v2",
+    "command_environment_configured_numeric_user_workdir_bind_and_image_volume_verified": true,
+    "declared_drift_refused": true,
+    "created_running_stopped_restart_disabled_verified": true,
+    "independent_live_postgres_prevents_cold_receipt": true,
+    "scope": "Controlled sleep exporter and private relative bind in disposable Actions; configured settings only, not effective process identity/source/content/full-host admission"
+  },
+  "production_changed": false,
+  "full_goal_active": true,
+  "installed": {
+    "source_revision": "2320553ac663c97e9c114d850242e3bb7e10806b",
+    "run": 37051184881,
+    "production_changed": false,
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "image_id": "sha256:5ad13f8dba4cb4878e99ff54c5a3be529f1bea6da831a8c40f0cc4dc9df903a4",
+        "binary_sha256": "72c81c3da1f2aee30fe5df1af0b4c646bd6dc2b311dc552fcae9dd1c26731a98",
+        "source_ca_identity_verified": true,
+        "actual_executable_fixtures": [
+          "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+          "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+          "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+          "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain",
+          "TestRealNativeExecutableVerifiesReleaseFilesWithoutRuntimeAuthority",
+          "TestRealNativeExecutableCapturesRetainedDeploymentSpecsWithoutRuntimeAuthority"
+        ],
+        "asset_hashes_verified": 34
+      },
+      {
+        "architecture": "arm64",
+        "image_id": "sha256:ce2ccd2f4b25e392129b0ae48e6af9313942501f9463a8d6751ce10ed0f54408",
+        "binary_sha256": "451ff897f70ad227df8b8be57765a2e81368e3829dc52df4b79e95391cb5cdd7",
+        "source_ca_identity_verified": true,
+        "actual_executable_fixtures": [
+          "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+          "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+          "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+          "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain",
+          "TestRealNativeExecutableVerifiesReleaseFilesWithoutRuntimeAuthority",
+          "TestRealNativeExecutableCapturesRetainedDeploymentSpecsWithoutRuntimeAuthority"
+        ],
+        "asset_hashes_verified": 34
+      }
+    ]
+  },
+  "historical_native_image": {
+    "candidate_source": "2320553ac663c97e9c114d850242e3bb7e10806b",
+    "run": 37051186992,
+    "tested_merge": "a0a56362588063dc1cc4578f89f3fe6971b09e3c",
+    "parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "2320553ac663c97e9c114d850242e3bb7e10806b"
+    ],
+    "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "image_id": "sha256:060e160bcf157b31b15bbcd4184f76e97fe5f9fd7d41f51ca4aca53d0419f388",
+        "binary_sha256": "bec52d4c71e7494fd234f30bea7323d29689b2b2636ed23632d4cbd0c0a9bfc8",
+        "dockerfile_sha256": "0b6ece8cd4e0f73463e99128697ad6ea5e9ed51b564a8547d80746989e24fb67",
+        "proof_sha256": "3c1327bcdcd23aa40dea5696675e84468f55ea4924ffeaa1e9b8a5f37a89a759",
+        "assets": 34,
+        "actual_prior_installed_restored_R_pass": true
+      },
+      {
+        "architecture": "arm64",
+        "image_id": "sha256:0d5e425c5df702d78a09bebdf283cfd43d2a23bbd17400fc66589cb9e014ddfb",
+        "binary_sha256": "9590b7eb7e0b67a66f88dcd4babf515847f2437db1a4e2fdc5254e9c1aa1e463",
+        "dockerfile_sha256": "0b6ece8cd4e0f73463e99128697ad6ea5e9ed51b564a8547d80746989e24fb67",
+        "proof_sha256": "d7ff50e6e1741124ec6f8e59fa1548251b861f550d021d64fba06a967fe55719",
+        "assets": 34,
+        "actual_prior_installed_restored_R_pass": true
+      }
+    ],
+    "log_sha256": "2363042cc3d31b3e0b4d88e8a7f1486486cb4b2814a185fa8d5ad5d3e624dd9e",
+    "production_changed": false,
+    "scope": "actual historical candidate image-extracted runtime at restored R; not previously selected production ordinary release or complete host admission"
+  },
+  "historical_legacy_image": {
+    "candidate_source": "2320553ac663c97e9c114d850242e3bb7e10806b",
+    "run": 37051187352,
+    "tested_merge": "a0a56362588063dc1cc4578f89f3fe6971b09e3c",
+    "parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "2320553ac663c97e9c114d850242e3bb7e10806b"
+    ],
+    "prior_source": "b75ccb9456bf29c9477f9747c0c2cc3908ad79bb",
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "image_id": "sha256:55dee93c15376b4a627e42e2297508ac32d4bd2ad3a4f56e88d9265d0268c619",
+        "python_version": "3.13.15",
+        "entrypoint_sha256": "9b93a8161ff11af80fec30f7942918fd69c942c908c897b812f31722f4fe9418",
+        "dockerfile_sha256": "b517191aabac57df4c346152de82d286fa3497e23566765049e132652824826b",
+        "source_files": 599,
+        "assets": 34,
+        "proof_sha256": "cacb2c6d0f88ca2b23a19349e2ec639946d54f27f7715de38838e3cb2f9ef70f",
+        "actual_historical_legacy_container_at_R_pass": true
+      },
+      {
+        "architecture": "arm64",
+        "image_id": "sha256:e30a70888f76b181ec55ff5d1089feac2907d8178048daff843ad26608eca0d1",
+        "python_version": "3.13.15",
+        "entrypoint_sha256": "9b93a8161ff11af80fec30f7942918fd69c942c908c897b812f31722f4fe9418",
+        "dockerfile_sha256": "b517191aabac57df4c346152de82d286fa3497e23566765049e132652824826b",
+        "source_files": 599,
+        "assets": 34,
+        "proof_sha256": "0ccc4fd1c0177875e26fac543b104d23c4cd74aeed787c8451922eb45129cbd6",
+        "actual_historical_legacy_container_at_R_pass": true
+      }
+    ],
+    "log_sha256": "dea021a6c4ec565da42aa8cc5afd4ce9656c9ef2dcebe5bed9f2776abd2577cb",
+    "production_changed": false,
+    "scope": "rebuilt unchanged last-recorded production source image; completed synthetic host-label legacy restoration and no-fetch policy cycle at R; not selected production image digest, all-profile parity or complete host admission"
+  },
+  "preceding_whole_b0": {
+    "schema": "jobseek.migration.synthetic-b0-admission/v1",
+    "pr": 10210,
+    "pr_head": "d1a4b5bdd411628561e85d098fb74d7da63532be",
+    "tested_merge_checkout": "f223e5bde569ebcd8b4eee0497ef313d142abc9e",
+    "verified_merge_parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "d1a4b5bdd411628561e85d098fb74d7da63532be"
+    ],
+    "run": 37048510704,
+    "report_sha256": "e867b97d6bc18ab2d8da4c9ae295f5ba405895162d2a864c0238d7facc69eaa8",
+    "mode": "synthetic",
+    "arms": 16,
+    "pairs": 8,
+    "admitted": true,
+    "verdict_recomputed": true,
+    "density_range": [
+      5.33966158927643,
+      14.129990055650339
+    ],
+    "verdict": {
+      "admitted": true,
+      "reasons": [],
+      "density_ratios": [
+        5.740718740252276,
+        5.33966158927643,
+        5.412329226648373,
+        12.001593773425702,
+        14.129990055650339,
+        13.767476732744077,
+        11.862698844062393,
+        11.220766775508395
+      ],
+      "pair_metrics": [
+        {
+          "pair": "c1-p1",
+          "density_ratio": 5.740718740252276,
+          "elapsed_ratio": 1.415182139091258,
+          "p99_ratio": 0.7038727875937373,
+          "peak_rss_ratio": 0.2465165431583342,
+          "cpu_seconds_candidate": 1.657677,
+          "cpu_seconds_control": 2.360211,
+          "lifetime_cpu_seconds_candidate": 3.9514950000000004,
+          "lifetime_cpu_seconds_control": 5.807846
+        },
+        {
+          "pair": "c1-p2",
+          "density_ratio": 5.33966158927643,
+          "elapsed_ratio": 1.4014305649035612,
+          "p99_ratio": 0.7013163603726602,
+          "peak_rss_ratio": 0.26245681331529236,
+          "cpu_seconds_candidate": 1.675129,
+          "cpu_seconds_control": 2.421238,
+          "lifetime_cpu_seconds_candidate": 3.9650920000000003,
+          "lifetime_cpu_seconds_control": 5.919376
+        },
+        {
+          "pair": "c1-p3",
+          "density_ratio": 5.412329226648373,
+          "elapsed_ratio": 1.4104005951689595,
+          "p99_ratio": 0.694559991781013,
+          "peak_rss_ratio": 0.2605903181618464,
+          "cpu_seconds_candidate": 1.645139,
+          "cpu_seconds_control": 2.426087,
+          "lifetime_cpu_seconds_candidate": 3.9005579999999997,
+          "lifetime_cpu_seconds_control": 5.879215
+        },
+        {
+          "pair": "c4-p1",
+          "density_ratio": 12.001593773425702,
+          "elapsed_ratio": 1.3325992815015772,
+          "p99_ratio": 0.7514474640955495,
+          "peak_rss_ratio": 0.11103519304679846,
+          "cpu_seconds_candidate": 2.316815,
+          "cpu_seconds_control": 6.265455,
+          "lifetime_cpu_seconds_candidate": 4.564053,
+          "lifetime_cpu_seconds_control": 10.739744
+        },
+        {
+          "pair": "c4-p2",
+          "density_ratio": 14.129990055650339,
+          "elapsed_ratio": 1.5859946758890473,
+          "p99_ratio": 0.6302762107200387,
+          "peak_rss_ratio": 0.11224315584389499,
+          "cpu_seconds_candidate": 2.402769,
+          "cpu_seconds_control": 5.924897,
+          "lifetime_cpu_seconds_candidate": 4.706218,
+          "lifetime_cpu_seconds_control": 10.609432
+        },
+        {
+          "pair": "c4-p3",
+          "density_ratio": 13.767476732744077,
+          "elapsed_ratio": 1.5206109489657789,
+          "p99_ratio": 0.6470611196142295,
+          "peak_rss_ratio": 0.1104495020027317,
+          "cpu_seconds_candidate": 2.46003,
+          "cpu_seconds_control": 5.83664,
+          "lifetime_cpu_seconds_candidate": 4.75432,
+          "lifetime_cpu_seconds_control": 10.379857
+        },
+        {
+          "pair": "c4-p4",
+          "density_ratio": 11.862698844062393,
+          "elapsed_ratio": 1.293612031153773,
+          "p99_ratio": 0.7681544934784635,
+          "peak_rss_ratio": 0.10904871211505647,
+          "cpu_seconds_candidate": 2.3733239999999998,
+          "cpu_seconds_control": 5.762199,
+          "lifetime_cpu_seconds_candidate": 4.616068,
+          "lifetime_cpu_seconds_control": 10.248031
+        },
+        {
+          "pair": "c4-p5",
+          "density_ratio": 11.220766775508395,
+          "elapsed_ratio": 1.2966735049355596,
+          "p99_ratio": 0.7682255648185716,
+          "peak_rss_ratio": 0.11556015118020395,
+          "cpu_seconds_candidate": 2.3602730000000003,
+          "cpu_seconds_control": 6.014906,
+          "lifetime_cpu_seconds_candidate": 4.647307,
+          "lifetime_cpu_seconds_control": 10.54203
+        }
+      ]
+    },
+    "images": {
+      "browser": "sha256:077132e37b24c3627e4746848bf6b1e466638f0e40b6be5068ea874922d2f215",
+      "candidate": "sha256:214a8ad6ed9078ac3d0fccb7f7823d5a81bcf9df751dc206292405613c8959f8",
+      "renderer": "sha256:713e6d7c98349075f13427e83a2a6f4174088fc209bf1efd499b99979a2c8ce0"
+    },
+    "checkout": {
+      "clean": true,
+      "head": "f223e5bde569ebcd8b4eee0497ef313d142abc9e",
+      "postflight_clean": true,
+      "postflight_head": "f223e5bde569ebcd8b4eee0497ef313d142abc9e"
+    },
+    "production_changed": false,
+    "scope": "generated B0 with production startup cardinality; not all-profile or whole-production service cost parity"
+  },
+  "current_whole_b0": {
+    "run": 37051186981,
+    "status": "in_progress",
+    "source_revision": "2320553ac663c97e9c114d850242e3bb7e10806b",
+    "actual_report_required": true
+  }
+}

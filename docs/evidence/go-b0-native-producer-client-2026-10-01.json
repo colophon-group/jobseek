@@ -1,0 +1,97 @@
+{
+  "checkpoint": "authenticated native B0 producer control client",
+  "date": "2026-10-01",
+  "runtime_source_revision": "8d2874e6b0bd311c9deb491163cd50cdc2f3b46d",
+  "candidate_version": "0.13.904",
+  "pr": 10210,
+  "draft": true,
+  "production_changed": false,
+  "full_migration_goal": "active",
+  "protocol": {
+    "version": "jobseek.lightpanda.producer/v1",
+    "socket": "/run/jobseek-lightpanda-producer/control.sock",
+    "producer_uid": 10001,
+    "directory_mode": "0700",
+    "socket_mode": "0600",
+    "linux_peer": "SO_PEERCRED",
+    "deadline_seconds": 3,
+    "prefix_inclusive_frame_bytes": 262144,
+    "hidden_retries": 0,
+    "request_corpus_cases": 5,
+    "python_corpus_sha256": "8037b4960b437a850b4f7f26b43569cfd8fde53b57a346ee438f4307d4553cf9"
+  },
+  "local_validation": {
+    "platform": "Darwin ARM64",
+    "new_client_races": "passed; exact socket/framing/EOF/metadata/peer/replacement/operation/digest/cancellation/deadline/one-attempt faults and actual Python wire corpus",
+    "non_linux_peer_override": "private test helper only; production peer rejects",
+    "contracts_races": "all packages passed before final client boundary/metadata additions; final changed package races passed",
+    "supervisor_races": "passed",
+    "linux_installed_fixture": "compiled for AMD64 and ARM64; Linux integration vet passed; not executed locally",
+    "python_producer_client_tests": 8,
+    "python_capture": "regeneration, Ruff check/format and Pyright passed",
+    "workflow": "actionlint passed",
+    "version_check": "0.13.903 to 0.13.904 passed"
+  },
+  "fresh_ci_required": [
+    "full current-source Linux workflow including corrected conservation fixture",
+    "full current-source CI",
+    "both installed ordinary images and executable fixtures on corrected source",
+    "whole current-source B0 admission"
+  ],
+  "prior_checkpoint_findings": {
+    "source_revision": "387ccaa56733b8478397f3702ae22d5d0b855f04",
+    "linux_run": 36915145816,
+    "linux_result": "success both architectures",
+    "full_ci_run": 36915189141,
+    "full_ci_result": "success",
+    "installed_run": 36915193122,
+    "installed_result": "ARM64 success; AMD64 conservation assertion failure; no full installed admission",
+    "diagnostic_source_revision": "55adcb52707e25860d0c13a492b3f57fa1ef7152",
+    "diagnostic_linux_run": 36918915274,
+    "diagnostic_result": "AMD64 failure at later combined conservation seam and early metrics observation; native conservation finding unresolved"
+  },
+  "next": [
+    "retain complete native PostgreSQL-derived forward transfer manifest before first producer mutation",
+    "bind exact reservation, target, source, current canonical/legacy queue state, capacity and per-task approved digest",
+    "prove partial transfer, acknowledged SAVE/readback and exact restart recovery",
+    "finish fresh restored ordinary/B0 ownership, sentinel/host receipt and ADR006 full release readiness",
+    "finish all enabled effective profiles/runtime consumers, parity/freshness/queue/resource/cost evidence, exact gates/rollout/rollback window and production Python/Playwright/Chromium retirement"
+  ],
+  "linux_native_client": {
+    "run": 36919506114,
+    "source_revision": "8d2874e6b0bd311c9deb491163cd50cdc2f3b46d",
+    "step": "Verify native producer socket and actual Python wire compatibility",
+    "amd64": "success",
+    "arm64": "success",
+    "whole_run": "AMD64 conservation fixture failed on naturally expiring private rate bucket; ARM64 success"
+  },
+  "installed_producer_uds": {
+    "run": 36920039235,
+    "job": 110563817514,
+    "source_revision": "94979ef6cd84cda915cb9dba100225291d4ef15d",
+    "result": "success",
+    "scope": "actual compiled producer UID10001, private Redis, unchanged pinned actual Lua, native fixed socket client",
+    "verified": [
+      "manifest",
+      "approved transfer",
+      "exact approved operator retry",
+      "wrong-digest rejection",
+      "lifetime occupancy conservation",
+      "already-activated enqueue",
+      "terminal reactivation",
+      "readiness/fencing",
+      "hard Redis restart"
+    ],
+    "full_ci": "still running at observation"
+  },
+  "fixture_followup": {
+    "production_changed": false,
+    "finding": "actual source claim creates a three-second private rate-limit bucket; natural expiry during longer AMD64 admin commands caused strict snapshot failure",
+    "correction": "verify actual positive TTL immediately after claim, then PERSIST only that private bucket before any conservation baseline; exact value and all queue keys remain compared",
+    "metrics": "wait within original deadline for completed DB, Redis ACK, outcome accounting and released active claims",
+    "local_actual_executable_repetitions": 3,
+    "local_seconds": 26.846,
+    "cleanup": true,
+    "fresh_linux_and_installed_checks": "required on corrected fixture source"
+  }
+}

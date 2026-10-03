@@ -1,0 +1,76 @@
+{
+  "schema": "jobseek.migration.host-cold-cleanup-observation/v1",
+  "date": "2026-10-03",
+  "parent": "564e7f70ac1a72a5738ef3c6c95618ce1f7169ed",
+  "runtime_version": "0.13.904",
+  "implementation": [
+    "Fresh queue observation requires the live original host SQL backend and exclusive barriers; re-derives exact retained ordinary restoration against current source reversal, allocator R, canonical profiles and restored B0 tombstone; actual source Go SQL fence count must be zero",
+    "Exact eight-field tombstone must be persistent, and all seven native source queue keys plus global legacy guard must be absent; Redis incarnation remains stable",
+    "Opaque host observation requires original live mutation flock and selected Redis/host/SQL scopes, completed ordinary inspection with exact protected predecessor/completion ancestry, retained target and reviewed Lua; protected inputs are re-read before private durable evidence retention",
+    "Native cleanup primitive rejects an expiring tombstone before retaining a cleanup request or clearing sentinel/Redis authority",
+    "Disposable selected-Redis fixture retires only its exact reserved candidate plan by digest, epoch and source at test cleanup, after all evidence/conservation and backend retries; prevents active-plan residue between forward and restoration fixtures without weakening runtime uniqueness"
+  ],
+  "validation": {
+    "required_private_PostgreSQL_and_Unix_Redis_queue_race_seconds": 72.14,
+    "required_private_PostgreSQL_and_Unix_Redis_worker_race_seconds": 49.813,
+    "final_host_nonempty_restoration_observation_race_seconds": 3.733,
+    "native_unit_race_seconds": 3.108,
+    "native_real_Redis_Lua_SAVE_race_seconds": 1.479,
+    "both_Linux_integration_vet_tidy_format": true,
+    "source_drift_missing_or_expired_scope_foreign_or_expiring_owner_source_queue_refused": true,
+    "canonical_rows_and_complete_Redis_values_conserved": true,
+    "exact_protected_host_evidence_bytes_retained": true,
+    "repository_tests_passed": 94,
+    "optional_skips": 3,
+    "repository_test_seconds": 46.03,
+    "log_sha256": {
+      "ordinary-cold-cleanup-observation-focused-tests.log": "9a30de76e2b10be5baa1f4aefb8e9b5abedc6d1b2475ffbbcaa3064da388c4a0",
+      "ordinary-cold-cleanup-observation-full-race-tests.log": "c97cde6892018980e1e442e1688e4eb0be134103b51a2ab748199317f386fa0a",
+      "ordinary-cold-cleanup-observation-native-tests.log": "6db52de5c3af7fda082778eeb8304a61e2369cf846b4cf44e6ed827608913c50",
+      "ordinary-cold-cleanup-observation-vet.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ordinary-cold-cleanup-observation-final-worker-tests.log": "798073811d8ff5a14dd4f7826a314b3ebc906c8a5edbfac9094ca110cb3ba38b",
+      "ordinary-cold-cleanup-observation-repository-tests.log": "6adf6f8d388211eae86bc64462ab8c8d0326e3454f325ecd8b5ef88d5fbbcfd8"
+    }
+  },
+  "published_parent_evidence": {
+    "source": "995056addbe5942fc86592beb86fb9c2332a102e",
+    "installed_run": 37102222073,
+    "installed_ARM64_initial_and_eleven_forward_raw_phases_independently_verified": true,
+    "installed_ARM64_restoration_failed_before_first_phase": "duplicate key ordinary_worker_one_active_plan SQLSTATE 23505 from preceding fixture active candidate plan",
+    "installed_AMD64": "same private active-plan uniqueness collision before restoration first phase; eleven forward raw phases independently verified",
+    "positive_restoration_journal_verified": false,
+    "partial_summary_sha256": "a9cde5d21b654529329074a5da5c2c9bb5dc5443d4ef8ea881bbd4afd9592967",
+    "whole_B0_run": 37102190932,
+    "whole_B0_recomputed_arms": 16,
+    "whole_B0_recomputed_pairs": 8,
+    "whole_B0_density_range": [
+      5.56105541240726,
+      13.710399371780838
+    ],
+    "whole_B0_scope": "generated B0 with production startup cardinality; not all-profile or whole-production service cost parity",
+    "whole_B0_summary_sha256": "93d994c272ae1034ef9a4af48884274e14b1a14b1c911cbdba02a6be54ef7b5e",
+    "installed_run_conclusion": "failure",
+    "installed_initial_and_eleven_forward_raw_phases_independently_verified_architectures": [
+      "amd64",
+      "arm64"
+    ],
+    "installed_restoration_failure_architectures": [
+      "amd64",
+      "arm64"
+    ],
+    "shared_readiness_bootstrap_and_forward_actual_raw_verifier_regression": "both boundaries verify exact owned membership and unrelated member/score/expiry conservation; unrelated score/expiry drift refused",
+    "private_strict_installed_verifier_sha256": "e5b0678f3def5d88b6b14ae64349250efa0aae6d3ae75b282d27d1112a532fc0",
+    "verifier_correction": "Exact shared-index member conservation also checked around actual native bootstrap, binding owned browser tier0 to remaining legacy schedule; full restoration required unchanged"
+  },
+  "remaining": [
+    "Checked actual stopped source producer, absent socket, exact original sentinel and immutable installed image/executable identity before durable protected native cleanup delegation",
+    "Checked pending recovery when tombstone and sentinel are already absent; the current pre-cleanup observation cannot substitute for effect history",
+    "Actual installed UID/GID10001 cleanup command, real restoration/cleanup SIGKILL and RDB reload, reserved R native initialization",
+    "Complete nonempty reactivation/finalization graph, exact spec/env/data/image restoration, SQL release and full-stack startup/readiness under original flock",
+    "Every enabled profile and consumer, output/database/publisher/freshness/queue parity, comparable whole-service cost, required exact-source gates, quiesced cutover/cold reversal and rollback window before production Python retirement"
+  ],
+  "fixture_state": "Owned PostgreSQL stopped; native library private Redis stopped; no local root/native producer/Docker execution",
+  "runtime_admission": false,
+  "production_changed": false,
+  "goal_status": "active"
+}

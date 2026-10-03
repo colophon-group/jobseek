@@ -41,6 +41,11 @@ from src.metrics import (
     tasks_total,
     worker_heartbeat_ts,
 )
+from src.ordinary_ownership import (
+    LegacyOwnership,
+    legacy_ownership_barrier,
+    prepare_legacy_ownership,
+)
 from src.redis_queue import (
     BoardWork,
     ScrapeWork,
@@ -927,6 +932,7 @@ async def _discovery_worker(
     browser: bool = False,
     monitor_semaphore: asyncio.Semaphore | None = None,
     progress_callback: Callable[[], None] | None = None,
+    ownership: LegacyOwnership | None = None,
 ) -> None:
     """Single discovery worker coroutine.
 
@@ -967,7 +973,11 @@ async def _discovery_worker(
             if progress_callback is not None:
                 progress_callback()
             try:
-                work = await claim_work(browser=browser)
+                async with legacy_ownership_barrier(local_pool, ownership):
+                    if ownership is None:
+                        work = await claim_work(browser=browser)
+                    else:
+                        work = await claim_work(browser=browser, ownership=ownership)
             except Exception:
                 worker_log.warning("pipeline.claim_error", exc_info=True)
                 with contextlib.suppress(TimeoutError):
@@ -1783,6 +1793,7 @@ async def run_pipeline(
     would be silently abandoned (claimed-then-lost).
     """
     seed_registered_runtime_capabilities()
+    ownership = await prepare_legacy_ownership(local_pool)
     concurrency = settings.discovery_concurrency
     monitor_cap = settings.monitor_concurrency
     monitor_sem = asyncio.Semaphore(monitor_cap) if monitor_cap > 0 else None
@@ -1823,6 +1834,7 @@ async def run_pipeline(
                     browser=browser,
                     monitor_semaphore=monitor_sem,
                     progress_callback=record_progress,
+                    ownership=ownership,
                 ),
                 name=f"discovery-{i}",
             )

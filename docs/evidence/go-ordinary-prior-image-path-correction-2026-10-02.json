@@ -1,0 +1,220 @@
+{
+  "schema": "jobseek.migration.prior-ordinary-image-path-correction/v1",
+  "candidate_parent": "4372e452b915a88217ab29971a8418e94265777e",
+  "preceding_runtime_source": "86cfb44f3e0afc669fb05d6feb8038c9dca5b020",
+  "first_image_run": {
+    "run": 37019475580,
+    "architectures": [
+      "amd64",
+      "arm64"
+    ],
+    "actual_historical_image_build_and_identity_pass": true,
+    "restored_R_admitted": false,
+    "cause": "closed image proof validator incorrectly allowed only flat asset names; installed source data includes nested images/epfl/icon.png and logo.png",
+    "failed_log_sha256": "ea87eaa39d5a3e6bf40dcf431e2e8c72b3a02a9b9aba98a0fee54ee405698d63"
+  },
+  "correction": [
+    "allow only safe relative asset paths with fs.ValidPath; exact count/hash and every Git blob byte still verified",
+    "regression fixture includes real nested image paths; absolute paths, dot, traversal, repeated separators and backslash paths refuse",
+    "Python image proof map explicitly sorted to match Go canonical JSON",
+    "retain safe proof/identity/hash/test-log artifacts on failure as well as success"
+  ],
+  "local": {
+    "compiler": "go1.26.0",
+    "real_prior_executable_and_closed_image_proof_races_pass": true,
+    "package_seconds": 3.506,
+    "command_seconds": 7.113,
+    "log_sha256": "346f8b1cf47b6f6fba94552f99c776cd7f969e6fd80dd76d54c5602bcb58da3f",
+    "owned_fixture_cleanup": true,
+    "repository_checks_passed": 188,
+    "repository_log_sha256": "19cda30072edfab1d7985a96ded55564100536c98efb4daa316d0b5685db4c7e",
+    "linux_integration_tag_vet": [
+      "amd64",
+      "arm64"
+    ],
+    "actionlint_zizmor": "passed"
+  },
+  "preceding_linux": {
+    "source": "86cfb44f3e0afc669fb05d6feb8038c9dca5b020",
+    "run": 37019475876,
+    "tested_merge": "4f363091c1b4e7d40755e100b681e40a753d8089",
+    "parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "86cfb44f3e0afc669fb05d6feb8038c9dca5b020"
+    ],
+    "log_sha256": "ae48eca04efa7ca817f0ca3e2989787697561499f0dc817575723abcb425ba4d",
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+        "prior_binary_sha256": "cec244e6eaa0a2159324687ee3f04fd63c2c7f2786f4ac5a1a6975af709ae322",
+        "actual_prior_restored_R_and_native_legacy_root_finalizer_pass": true
+      },
+      {
+        "architecture": "arm64",
+        "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+        "prior_binary_sha256": "4ed19362c9d76b0d569c330a36e0dd2da0ae48c0f1974b0690fb0f10c8c6d9e1",
+        "actual_prior_restored_R_and_native_legacy_root_finalizer_pass": true
+      }
+    ],
+    "no_failed_or_skipped_tests": true,
+    "production_changed": false,
+    "scope": "actual prior clean source binary restored R plus native/legacy root finalizer crashes; historical host/release labels synthetic; no immutable prior image or complete host admission"
+  },
+  "preceding_full_ci": {
+    "source": "86cfb44f3e0afc669fb05d6feb8038c9dca5b020",
+    "run": 37019495975,
+    "conclusion": "success"
+  },
+  "preceding_installed_ci": {
+    "source": "86cfb44f3e0afc669fb05d6feb8038c9dca5b020",
+    "run": 37019499992,
+    "both_architectures_source_ca_four_process_fixtures_and_34_assets_verified": true
+  },
+  "preceding_whole_b0": {
+    "schema": "jobseek.migration.synthetic-b0-admission/v1",
+    "pr": 10210,
+    "pr_head": "7da02ee71cc5cc5eaabee5a04a4331cbe7e7339e",
+    "tested_merge_checkout": "21107c485195b2ba32fcc9c7edc11581633aa2e2",
+    "verified_merge_parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "7da02ee71cc5cc5eaabee5a04a4331cbe7e7339e"
+    ],
+    "run": 37016270437,
+    "report_sha256": "6ecb4c06f2cdf67b76d51d1cb56e9d381e694e97f1b36b932a690412b48456de",
+    "mode": "synthetic",
+    "arms": 16,
+    "pairs": 8,
+    "admitted": true,
+    "verdict_recomputed": true,
+    "density_range": [
+      5.505170713443615,
+      13.911950167545251
+    ],
+    "verdict": {
+      "admitted": true,
+      "reasons": [],
+      "density_ratios": [
+        5.505170713443615,
+        5.659709151377798,
+        5.941770404194746,
+        11.353698592428275,
+        13.50153654962547,
+        13.911950167545251,
+        13.518910794834232,
+        13.702674228492919
+      ],
+      "pair_metrics": [
+        {
+          "pair": "c1-p1",
+          "density_ratio": 5.505170713443615,
+          "elapsed_ratio": 1.4291885224445782,
+          "p99_ratio": 0.7043332926869796,
+          "peak_rss_ratio": 0.2596083930611821,
+          "cpu_seconds_candidate": 1.669571,
+          "cpu_seconds_control": 2.453792,
+          "lifetime_cpu_seconds_candidate": 3.987787,
+          "lifetime_cpu_seconds_control": 5.936686
+        },
+        {
+          "pair": "c1-p2",
+          "density_ratio": 5.659709151377798,
+          "elapsed_ratio": 1.4726937346520712,
+          "p99_ratio": 0.6809335375441714,
+          "peak_rss_ratio": 0.2602066104922651,
+          "cpu_seconds_candidate": 1.637509,
+          "cpu_seconds_control": 2.445308,
+          "lifetime_cpu_seconds_candidate": 3.912448,
+          "lifetime_cpu_seconds_control": 5.910979
+        },
+        {
+          "pair": "c1-p3",
+          "density_ratio": 5.941770404194746,
+          "elapsed_ratio": 1.4461242435379922,
+          "p99_ratio": 0.691865364492879,
+          "peak_rss_ratio": 0.24338272015981355,
+          "cpu_seconds_candidate": 1.651391,
+          "cpu_seconds_control": 2.418439,
+          "lifetime_cpu_seconds_candidate": 3.9292890000000003,
+          "lifetime_cpu_seconds_control": 5.893529
+        },
+        {
+          "pair": "c4-p1",
+          "density_ratio": 11.353698592428275,
+          "elapsed_ratio": 1.29878309856403,
+          "p99_ratio": 0.7635547674665687,
+          "peak_rss_ratio": 0.11439295204033179,
+          "cpu_seconds_candidate": 2.299152,
+          "cpu_seconds_control": 5.755955,
+          "lifetime_cpu_seconds_candidate": 4.544382,
+          "lifetime_cpu_seconds_control": 10.215809
+        },
+        {
+          "pair": "c4-p2",
+          "density_ratio": 13.50153654962547,
+          "elapsed_ratio": 1.5691741313063214,
+          "p99_ratio": 0.6402265247609497,
+          "peak_rss_ratio": 0.11622189263709028,
+          "cpu_seconds_candidate": 2.400329,
+          "cpu_seconds_control": 5.878417,
+          "lifetime_cpu_seconds_candidate": 4.719307,
+          "lifetime_cpu_seconds_control": 10.379276
+        },
+        {
+          "pair": "c4-p3",
+          "density_ratio": 13.911950167545251,
+          "elapsed_ratio": 1.5502448450133524,
+          "p99_ratio": 0.6459875332609232,
+          "peak_rss_ratio": 0.11143260479971166,
+          "cpu_seconds_candidate": 2.392441,
+          "cpu_seconds_control": 5.807443,
+          "lifetime_cpu_seconds_candidate": 4.681757,
+          "lifetime_cpu_seconds_control": 10.328544
+        },
+        {
+          "pair": "c4-p4",
+          "density_ratio": 13.518910794834232,
+          "elapsed_ratio": 1.550175252158932,
+          "p99_ratio": 0.6372733561105797,
+          "peak_rss_ratio": 0.11466717072733966,
+          "cpu_seconds_candidate": 2.363028,
+          "cpu_seconds_control": 6.064783,
+          "lifetime_cpu_seconds_candidate": 4.651524,
+          "lifetime_cpu_seconds_control": 10.562067
+        },
+        {
+          "pair": "c4-p5",
+          "density_ratio": 13.702674228492919,
+          "elapsed_ratio": 1.513392502374101,
+          "p99_ratio": 0.6612794227900595,
+          "peak_rss_ratio": 0.1104450472322548,
+          "cpu_seconds_candidate": 2.302691,
+          "cpu_seconds_control": 5.83724,
+          "lifetime_cpu_seconds_candidate": 4.598669,
+          "lifetime_cpu_seconds_control": 10.369344
+        }
+      ]
+    },
+    "images": {
+      "browser": "sha256:9b145e5ee356b8708db84944fa5c25932178ad495d8e6a8da48fa7228b6b9553",
+      "candidate": "sha256:83591b4e821643a6ec8edb3fd9326535099c45179ede5e40fb4b5f64e12d105f",
+      "renderer": "sha256:55b56471f4a592fa141407134cbd67a53969853cd0b7c3c29e99a87be96ef46d"
+    },
+    "checkout": {
+      "clean": true,
+      "head": "21107c485195b2ba32fcc9c7edc11581633aa2e2",
+      "postflight_clean": true,
+      "postflight_head": "21107c485195b2ba32fcc9c7edc11581633aa2e2"
+    },
+    "production_changed": false,
+    "scope": "generated B0 with production startup cardinality; not all-profile or whole-production service cost parity"
+  },
+  "host_plan": "docs/plans/go-ordinary-host-integration.md",
+  "fresh_actual_prior_image_execution_required": true,
+  "production_changed": false,
+  "full_goal": "active; actual legacy prior runtime and independent host all-writer/release/cutover/readiness/reversal, enabled profiles/consumers, full parity/cost/gates/deployment/window and Python/browser retirement remain",
+  "changed_file_sha256": {
+    ".github/workflows/go-ordinary-prior-image.yml": "28417537bf5428c2d5fa9501795a47d1105473d010830220cbd499f0f9ccd0e7",
+    "apps/crawler/go/ordinary-queue/cold_ordinary_prior_image_integration_test.go": "d96af6d54af275aad913ed113d8d8e0492d7d4c1003c73d59e48bec67dee4442"
+  }
+}

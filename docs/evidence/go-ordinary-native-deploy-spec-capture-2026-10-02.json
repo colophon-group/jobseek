@@ -1,0 +1,44 @@
+{
+  "version": "jobseek.migration.native-deploy-spec-capture/v1",
+  "date": "2026-10-02",
+  "preceding_source": "ad39c519d27dcbba1eb936b157639f9a1a92daa5",
+  "api": [
+    "CaptureSpecs",
+    "DecodeSpecArchive",
+    "RetainSpecArchive"
+  ],
+  "installed_operation": "--capture-deploy-specs",
+  "phase": "spec_archive_retained",
+  "contract": [
+    "Explicit active generation/owner/file evidence hash, deployment directory, protected artifact path and compiled source; optional expected archive/capture hashes bind retries",
+    "Exact deployed nine-spec presence order, bytes and Unix modes; committed Compose snapshot overrides mutable live Compose; explicit absent files preserved",
+    "Bounded uncompressed regular USTAR only; duplicate/extra/missing/traversal/link/PAX/manifest/hash/mode/trailer/end-block drift refused",
+    "Complete source and generation readback; canonical capture metadata binds preceding file evidence; deployment script contents never emitted",
+    "Immutable private archive publication with file fsync, exclusive hard link, temporary unlink and directory fsync; exact retry does not replace inode/content",
+    "Actual executable returns before runtime configuration with invalid database/Redis inputs; rejects drift before publication and archive destinations inside generation including symlink aliases"
+  ],
+  "local_verification": {
+    "compiler": "go1.26.0",
+    "library_races_seconds": 2.284,
+    "actual_file_and_spec_executable_races_seconds": 4.2,
+    "linux_integration_tag_vet": [
+      "amd64",
+      "arm64"
+    ],
+    "go_mod_tidy_diff": "pass",
+    "library_log_sha256": "694fa044faf591298881f4beb571c55c59f255637a72dfbd73689a58b719693e",
+    "worker_log_sha256": "ea730d84574142c1e3d23ebdc68dd8e943464643e126ce0e32195832724fc2be",
+    "offline_oracles": "actual deployed Python USTAR writer decoded natively; actual deployed extractor accepts both complete and first-rollout absent native archives and rejects four corresponding drifts"
+  },
+  "installed_ci": "existing TestRealNativeExecutable selector now includes sixth fixture; source-adaptive independent verifier requires it; fresh actual installed image execution required",
+  "production_changed": false,
+  "full_goal_active": true,
+  "open_work": [
+    "Host-bound intent/spec archive selection and restore, retained capture receipt and native host coordinator consumer",
+    "Complete writer/exporter/one-off exclusion and SQL barriers/leases",
+    "Image source/binary/mount/user identities and complete selected generations",
+    "Actual host crash recovery at archive/intent/spec selection/readiness seams and full cold cutover/reversal",
+    "Every enabled profile/consumer, canonical parity/freshness/queue/publisher, comparable full-service resources/cost",
+    "Exact required gates/merge/deploy, actual rollback window and production runtime retirement"
+  ]
+}

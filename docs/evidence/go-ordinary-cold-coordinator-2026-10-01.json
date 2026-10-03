@@ -1,0 +1,92 @@
+{
+  "version": "jobseek.go-ordinary.cold-coordinator-evidence/v1",
+  "observed_at": "2026-10-01T16:02:59.629724+00:00",
+  "runtime_source_head": "6f0ceca14fed1ec34ed92ba289a3d5173cb1a6ce",
+  "candidate_version": "0.13.904",
+  "pr": "https://github.com/colophon-group/jobseek/pull/10210",
+  "production_selected": false,
+  "production_changed": false,
+  "implemented": [
+    "seven protected compiled-source-bound native commands: B0 target capture, exact canonical intent, fresh reservation, exact retained-history inspection, preparation, publication, activation",
+    "exact protected regular non-symlink bounded files and canonical JSON/digests; no high-water/latest plan adoption; ambiguous worker environment fields rejected",
+    "explicit intent previous epoch for begin/reserve, exact journal reserved epoch/plan before prepare/publication/activation effects",
+    "pool capacity PG1 and Redis2; statement10s, critical transaction15s, command30s; bounded identity output and constant sanitized errors",
+    "actual executable SIGKILL after MSET+SAVE+readback before PostgreSQL publication commit; retained publishing/staged state and exact source/intent restart",
+    "exact retries conserve canonical boards/postings/descriptions/deadlines/receipts and all other Redis keys; missing joint witness contained without repair"
+  ],
+  "local": {
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "results": [
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=90s",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 27.723,
+        "log": "ordinary-cold-admin-full.log"
+      }
+    ],
+    "cleanup": true,
+    "production_changed": false
+  },
+  "repository_checks": {
+    "node_tests": 126,
+    "vet_worker": true,
+    "vet_queue": true,
+    "gofmt": true,
+    "diff_check": true,
+    "version_gate": "stacked base 86813918a20a499c5d59a39ca8c33797161f8743 .903 to .904 passed"
+  },
+  "previous_exact_head": {
+    "head": "a487631cebac3a27e608568cc93e969a59ebaf38",
+    "linux_run": 36877346278,
+    "full_ci_run": 36877544747,
+    "installed_images_run": 36877551175,
+    "whole_b0_run": 36877346343,
+    "all_four_conclusions": "success",
+    "downloaded_installed_proof": {
+      "amd64": {
+        "source": "a487631cebac3a27e608568cc93e969a59ebaf38",
+        "architecture": "amd64",
+        "image_id": "sha256:a875a1c7e9f854069f134a8e854b9ef19a557935dac0262f27ac809eabf569ba",
+        "binary_sha256": "d63eea05f724de4c30b1a915feb0ba4f7f334c3e5b948f407325d1ab8add513e",
+        "asset_count": 34,
+        "tests": [
+          "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain",
+          "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+          "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership"
+        ],
+        "scope": "image-extracted native binary/assets on Linux/private PG17/Redis; no actual joint coordinator process or public fetch proof"
+      },
+      "arm64": {
+        "source": "a487631cebac3a27e608568cc93e969a59ebaf38",
+        "architecture": "arm64",
+        "image_id": "sha256:bab8d01c4e189041424146660510b162bb605e34d3e8410d034b6734227b9e8c",
+        "binary_sha256": "12a2289fc54d8c001cdf72bfa8d7ccdea79e1dd3ffb5edfcd2af2c576988a52e",
+        "asset_count": 34,
+        "tests": [
+          "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain",
+          "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+          "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership"
+        ],
+        "scope": "image-extracted native binary/assets on Linux/private PG17/Redis; no actual joint coordinator process or public fetch proof"
+      }
+    },
+    "actual_deploy_gate": "failure; draft intentionally unpromotable"
+  },
+  "later_source_admission": "fresh exact pushed-head Linux/fullCI/both installed architectures/B0 still required",
+  "limits": [
+    "native one-shot executable with exact retained-history readback/private PG18.6/Redis proof; current installed image process fixture pending at new source",
+    "does not attest all-writer host quiescence, release/rollback generation/spec/env/image/data/sentinel/receipt identities or service readiness",
+    "does not transfer complete PG-derived B0 task manifest or replace its sentinel/receipt evidence",
+    "full cold reversal, all phase SIGKILL/recovery seams and changed/disabled-cohort reversal remain",
+    "ordinary worker startup/claims still need complete joint journal/witness admission integrated with supported host wrapper",
+    "no actual container/public fetch/effective-settings or full fleet output/freshness/cost proof; production Python retirement incomplete"
+  ]
+}

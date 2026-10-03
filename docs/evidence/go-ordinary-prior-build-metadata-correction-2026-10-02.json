@@ -1,0 +1,61 @@
+{
+  "schema": "jobseek.migration.prior-ordinary-build-metadata-correction/v1",
+  "candidate_parent": "7da02ee71cc5cc5eaabee5a04a4331cbe7e7339e",
+  "linux_failure": {
+    "run": 37016271209,
+    "architectures": [
+      "amd64",
+      "arm64"
+    ],
+    "failed_step": "Verify independently pinned prior executable at restored R",
+    "cause": "Go 1.26.0 ignores .git files in linked worktrees; strict binary VCS verification rejects missing revision before restoration admission",
+    "log_sha256": "4922a7be5b086b78ab1c26942c0e003b482d6b711e63d3b40c16db0c646ad4ec",
+    "upstream_issue": "https://github.com/golang/go/issues/58218"
+  },
+  "local_reproduction": {
+    "compiler": "go1.26.0",
+    "linked_worktree_explicit_buildvcs_true_missing_revision": true,
+    "standalone_shallow_checkout_clean_before_and_after": true,
+    "source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+    "binary_sha256": "d4878d726d00f0306832792d52f182f4230a6d7acd7c6908759fa68880c948ba",
+    "vcs_revision_matches": true,
+    "vcs_modified": false,
+    "linked_source_ca_profile_match": true
+  },
+  "correction": "CI fetches exact pinned source into an independent temporary .git-directory checkout; same Go 1.26.0 compiler, explicit -buildvcs=true, unchanged actual prior code/assets and strict identity checks. Log only verified source/hash or mismatched VCS metadata.",
+  "local_real_pg_redis_prior_test": {
+    "compiler": "go1.26.0",
+    "test_seconds": 3.63,
+    "package_seconds": 5.299,
+    "total_command_seconds": 42.559,
+    "passed": true,
+    "owned_fixture_cleanup": true,
+    "log_sha256": "662a8f9a1dffc09c2601e7ecc7adb121370cb7ea354a50ac69982eb64ec7b9a2",
+    "same_restored_R_and_real_RDB_contract_as_preceding_proof": true
+  },
+  "required_repository_checks": {
+    "passed": 188,
+    "failed": 0,
+    "log_sha256": "32363f75713da2b0c96cb9775207e0c3ab8862c769032e4fd9b12ab782c8eaff"
+  },
+  "preceding_full_ci": {
+    "run": 37016312827,
+    "source": "7da02ee71cc5cc5eaabee5a04a4331cbe7e7339e",
+    "conclusion": "success"
+  },
+  "fresh_linux_execution_required": true,
+  "production_changed": false,
+  "full_goal": "active; immutable prior image, independent host admission/cutover/reversal, every enabled profile/consumer, complete parity/cost/gates/deployment/rollback window and production Python/browser retirement remain",
+  "changed_file_sha256": {
+    ".github/workflows/go-ordinary-queue.yml": "28d8d4f3ce930f7b624b1771f26596b0d61dae0449c651deed25d3e875c97c63",
+    "apps/crawler/go/ordinary-queue/cold_ordinary_prior_executable_integration_test.go": "4a14ab968c2d15209c7a6716313fb288e093b6eccdfbf9f9f981bea5294b10d1"
+  },
+  "integration_tag_vet": {
+    "compiler": "go1.26.0",
+    "architectures": [
+      "linux-amd64",
+      "linux-arm64"
+    ],
+    "passed": true
+  }
+}

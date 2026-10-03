@@ -1,0 +1,792 @@
+[
+  {
+    "name": "url-sanity-and-canonicalization",
+    "board_url": "https://job-boards.greenhouse.io/fixture",
+    "raw_jobs": [
+      {
+        "absolute_url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Job 0",
+        "content": "<p>Job 0</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://job-boards.greenhouse.io/fixture/",
+        "title": "Job 1",
+        "content": "<p>Job 1</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://job-boards.greenhouse.io/fixture#0",
+        "title": "Job 2",
+        "content": "<p>Job 2</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://job-boards.greenhouse.io/fixture?id=1",
+        "title": "Job 3",
+        "content": "<p>Job 3</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://example.com",
+        "title": "Job 4",
+        "content": "<p>Job 4</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://example.com/?id=1",
+        "title": "Job 5",
+        "content": "<p>Job 5</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "/relative/jobs/1",
+        "title": "Job 6",
+        "content": "<p>Job 6</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https:///missing/jobs/1",
+        "title": "Job 7",
+        "content": "<p>Job 7</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "mailto:job@example.com",
+        "title": "Job 8",
+        "content": "<p>Job 8</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "ftp://example.com/jobs/1",
+        "title": "Job 9",
+        "content": "<p>Job 9</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://[bad]/jobs/1",
+        "title": "Job 10",
+        "content": "<p>Job 10</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://[::1]/jobs/1",
+        "title": "Job 11",
+        "content": "<p>Job 11</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://[v1.future]/jobs/1",
+        "title": "Job 12",
+        "content": "<p>Job 12</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "HTTPS://EXAMPLE.COM/jobs/1",
+        "title": "Job 13",
+        "content": "<p>Job 13</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://example.com/jobs/%zz",
+        "title": "Job 14",
+        "content": "<p>Job 14</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://example.com/jobs/1;session=x",
+        "title": "Job 15",
+        "content": "<p>Job 15</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://example.com/;session=x",
+        "title": "Job 16",
+        "content": "<p>Job 16</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": " \t\nhttps://example.com/jobs/1\r",
+        "title": "Job 17",
+        "content": "<p>Job 17</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://example.com／bad/jobs/1",
+        "title": "Job 18",
+        "content": "<p>Job 18</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://[127.0.0.1]/jobs/1",
+        "title": "Job 19",
+        "content": "<p>Job 19</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://example.com:bad/jobs/1",
+        "title": "Job 20",
+        "content": "<p>Job 20</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://career.successfactors.eu/career?company=x&_s.crb=abc&jobAlertController_jobAlertName=name&browserTimeZone=x&career_job_req_id=1#job",
+        "title": "Job 21",
+        "content": "<p>Job 21</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://career.successfactors.eu/career?_S.CRB=keep&blank=&_s.crb=drop&dup=1&dup=2",
+        "title": "Job 22",
+        "content": "<p>Job 22</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://jobs.sapsf.com/jobs/1?_s.crb=x&a=%zz&b=%FF&c=hello+world",
+        "title": "Job 23",
+        "content": "<p>Job 23</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://careers.overwolf.com/jobs/1?src=x&t=123&id=1",
+        "title": "Job 24",
+        "content": "<p>Job 24</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://careers.overwolf.com/jobs/1?SRC=x&T=١٢٣&id=1",
+        "title": "Job 25",
+        "content": "<p>Job 25</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://careers.overwolf.com/jobs/1?t=not-numeric&src=x",
+        "title": "Job 26",
+        "content": "<p>Job 26</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://careers.overwolf.com/jobs/1?t=&blank=&src=x",
+        "title": "Job 27",
+        "content": "<p>Job 27</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://careers.overwolf.com:443/jobs/1?src=keep&t=123",
+        "title": "Job 28",
+        "content": "<p>Job 28</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://careers.overwolf.com/jobs/1?ｓｒｃ=keep&src=x",
+        "title": "Job 29",
+        "content": "<p>Job 29</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://careers.overwolf.com/jobs/1?src=x&t=²",
+        "title": "Job 30",
+        "content": "<p>Job 30</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://foo.tal.net/brand-6/xf-767829ced96c/candidate/opp/1/en-GB",
+        "title": "Job 31",
+        "content": "<p>Job 31</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://tal.net/xf-abcd/xf-123/opp/1;session=x?a=1#fragment",
+        "title": "Job 32",
+        "content": "<p>Job 32</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://foo.tal.net/xf-ABCD/opp/1",
+        "title": "Job 33",
+        "content": "<p>Job 33</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://foo.tal.net/opp/1/xf-abcd",
+        "title": "Job 34",
+        "content": "<p>Job 34</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://[::ffff:127.0.0.1]/jobs/1",
+        "title": "Job 35",
+        "content": "<p>Job 35</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://prefix[::1]/jobs/1",
+        "title": "Job 36",
+        "content": "<p>Job 36</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://[::1]suffix/jobs/1",
+        "title": "Job 37",
+        "content": "<p>Job 37</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://[fe80::1%zone]/jobs/1",
+        "title": "Job 38",
+        "content": "<p>Job 38</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://jobs.sapsf.com/jobs/1?_s.crb=x&a=%F0%9F&b=%E1%80%FF&c=%E0%80",
+        "title": "Job 39",
+        "content": "<p>Job 39</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      }
+    ],
+    "truncated": false,
+    "discovered": 40,
+    "drop_reasons": {
+      "bare_host": 3,
+      "board_homepage": 2,
+      "invalid": 8
+    },
+    "jobs": [
+      {
+        "url": " \t\nhttps://example.com/jobs/1\r",
+        "title": "Job 17",
+        "description": "<p>Job 17</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "HTTPS://EXAMPLE.COM/jobs/1",
+        "title": "Job 13",
+        "description": "<p>Job 13</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "ftp://example.com/jobs/1",
+        "title": "Job 9",
+        "description": "<p>Job 9</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://[::1]/jobs/1",
+        "title": "Job 11",
+        "description": "<p>Job 11</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://[::ffff:127.0.0.1]/jobs/1",
+        "title": "Job 35",
+        "description": "<p>Job 35</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://[fe80::1%zone]/jobs/1",
+        "title": "Job 38",
+        "description": "<p>Job 38</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://[v1.future]/jobs/1",
+        "title": "Job 12",
+        "description": "<p>Job 12</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://career.successfactors.eu/career?_S.CRB=keep&blank=&dup=1&dup=2",
+        "title": "Job 22",
+        "description": "<p>Job 22</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://career.successfactors.eu/career?company=x&career_job_req_id=1#job",
+        "title": "Job 21",
+        "description": "<p>Job 21</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://careers.overwolf.com/jobs/1?%EF%BD%93%EF%BD%92%EF%BD%83=keep",
+        "title": "Job 29",
+        "description": "<p>Job 29</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://careers.overwolf.com/jobs/1?id=1",
+        "title": "Job 25",
+        "description": "<p>Job 25</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://careers.overwolf.com/jobs/1?t=%C2%B2",
+        "title": "Job 30",
+        "description": "<p>Job 30</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://careers.overwolf.com/jobs/1?t=&blank=",
+        "title": "Job 27",
+        "description": "<p>Job 27</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://careers.overwolf.com/jobs/1?t=not-numeric",
+        "title": "Job 26",
+        "description": "<p>Job 26</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://careers.overwolf.com:443/jobs/1?src=keep&t=123",
+        "title": "Job 28",
+        "description": "<p>Job 28</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://example.com/jobs/%zz",
+        "title": "Job 14",
+        "description": "<p>Job 14</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://example.com/jobs/1;session=x",
+        "title": "Job 15",
+        "description": "<p>Job 15</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://example.com:bad/jobs/1",
+        "title": "Job 20",
+        "description": "<p>Job 20</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://foo.tal.net/brand-6/candidate/opp/1/en-GB",
+        "title": "Job 31",
+        "description": "<p>Job 31</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://foo.tal.net/opp/1/xf-abcd",
+        "title": "Job 34",
+        "description": "<p>Job 34</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://foo.tal.net/xf-ABCD/opp/1",
+        "title": "Job 33",
+        "description": "<p>Job 33</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Job 0",
+        "description": "<p>Job 0</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://job-boards.greenhouse.io/fixture?id=1",
+        "title": "Job 3",
+        "description": "<p>Job 3</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://jobs.sapsf.com/jobs/1?a=%25zz&b=%EF%BF%BD&c=hello+world",
+        "title": "Job 23",
+        "description": "<p>Job 23</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://jobs.sapsf.com/jobs/1?a=%EF%BF%BD&b=%EF%BF%BD%EF%BF%BD&c=%EF%BF%BD%EF%BF%BD",
+        "title": "Job 39",
+        "description": "<p>Job 39</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      },
+      {
+        "url": "https://tal.net/opp/1;session=x?a=1#fragment",
+        "title": "Job 32",
+        "description": "<p>Job 32</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      }
+    ]
+  },
+  {
+    "name": "last-raw-url-wins",
+    "board_url": "https://job-boards.greenhouse.io/fixture",
+    "raw_jobs": [
+      {
+        "absolute_url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "First",
+        "content": "<p>First</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Last",
+        "content": "<p>Last</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      }
+    ],
+    "truncated": false,
+    "discovered": 1,
+    "drop_reasons": {},
+    "jobs": [
+      {
+        "url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Last",
+        "description": "<p>Last</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      }
+    ]
+  },
+  {
+    "name": "interleaved-duplicate-dictionary-order",
+    "board_url": "https://job-boards.greenhouse.io/fixture",
+    "raw_jobs": [
+      {
+        "absolute_url": "https://foo.tal.net/xf-111/opp/1",
+        "title": "First",
+        "content": "<p>First</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://foo.tal.net/xf-222/opp/1",
+        "title": "Middle",
+        "content": "<p>Middle</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://foo.tal.net/xf-111/opp/1",
+        "title": "Last",
+        "content": "<p>Last</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      }
+    ],
+    "truncated": false,
+    "discovered": 2,
+    "drop_reasons": {},
+    "jobs": [
+      {
+        "url": "https://foo.tal.net/opp/1",
+        "title": "Middle",
+        "description": "<p>Middle</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      }
+    ]
+  },
+  {
+    "name": "canonical-alias-last-content-wins",
+    "board_url": "https://job-boards.greenhouse.io/fixture",
+    "raw_jobs": [
+      {
+        "absolute_url": "https://foo.tal.net/xf-111/opp/1",
+        "title": "First",
+        "content": "<p>First</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://foo.tal.net/xf-222/opp/1",
+        "title": "Last",
+        "content": "<p>Last</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      }
+    ],
+    "truncated": false,
+    "discovered": 2,
+    "drop_reasons": {},
+    "jobs": [
+      {
+        "url": "https://foo.tal.net/opp/1",
+        "title": "Last",
+        "description": "<p>Last</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      }
+    ]
+  },
+  {
+    "name": "truncated-retains-duplicates-and-all-collected",
+    "board_url": "https://job-boards.greenhouse.io/fixture",
+    "raw_jobs": [
+      {
+        "absolute_url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "First",
+        "content": "<p>First</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Last",
+        "content": "<p>Last</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      },
+      {
+        "absolute_url": "https://job-boards.greenhouse.io/fixture/",
+        "title": "Navigation",
+        "content": "<p>Navigation</p>",
+        "location": {
+          "name": "Zurich"
+        },
+        "language": "en"
+      }
+    ],
+    "truncated": true,
+    "discovered": 2,
+    "drop_reasons": {
+      "board_homepage": 1
+    },
+    "jobs": [
+      {
+        "url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Last",
+        "description": "<p>Last</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en"
+      }
+    ]
+  },
+  {
+    "name": "empty",
+    "board_url": "https://job-boards.greenhouse.io/fixture",
+    "raw_jobs": [],
+    "truncated": false,
+    "discovered": 0,
+    "drop_reasons": {},
+    "jobs": []
+  }
+]

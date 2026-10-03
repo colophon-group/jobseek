@@ -1,0 +1,560 @@
+{
+  "checkpoint": "retained prior Go B0 reactivation at reserved retirement R",
+  "date": "2026-10-02",
+  "runtime_source_revision": "5cb8d2e35ee21f25b6045c0c23176767c8229ffc",
+  "candidate_version": "0.13.904",
+  "pr": 10210,
+  "draft": true,
+  "production_changed": false,
+  "full_migration_goal": "active",
+  "migration": "0046",
+  "surface": "native queue API; protected CLI and actual producer execution remain required",
+  "contract": {
+    "context": "exact immutable ordinary restoration decision, reserved reversal, fences-cleared B0 restoration, current retirement R and no active ordinary owner",
+    "prior_receipt": "strict bounded ASCII host receipt, retained raw byte SHA256, exact prior epoch/cohort/namespace/shard; native ordinary predecessor source matches prior release revision",
+    "effect": "reuse unchanged Lua and shared forward transfer codec/classifier; one activation per pending task; explicit recovery skips exact completed effects",
+    "completion": "immutable SQL receipt only after acknowledged SAVE and full canonical/source/target/producer/Redis readback",
+    "retry": "same receipt and exact snapshot without activation or SAVE; lost evidence refuses repair",
+    "inspection": "read-only history without Redis or allocator/ownership barriers",
+    "not_granted": [
+      "R+1 allocation",
+      "ordinary projection or active owner",
+      "joint reversal completion",
+      "sentinel clearing",
+      "release selection",
+      "service startup or host readiness"
+    ]
+  },
+  "local_validation": {
+    "focused_real_pg_redis": {
+      "database": "owned fully migrated PostgreSQL18.6",
+      "redis": "private per-test Redis UDS",
+      "results": [
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "--no-sync",
+            "alembic",
+            "-c",
+            "src/migrations/alembic.ini",
+            "upgrade",
+            "head"
+          ],
+          "exit_code": 0,
+          "seconds": 0.44,
+          "log": "ordinary-b0-reactivation-migration-upgrade.log"
+        },
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "--no-sync",
+            "alembic",
+            "-c",
+            "src/migrations/alembic.ini",
+            "downgrade",
+            "0045"
+          ],
+          "exit_code": 0,
+          "seconds": 0.26,
+          "log": "ordinary-b0-reactivation-migration-downgrade-0045.log"
+        },
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "--no-sync",
+            "alembic",
+            "-c",
+            "src/migrations/alembic.ini",
+            "upgrade",
+            "head"
+          ],
+          "exit_code": 0,
+          "seconds": 0.271,
+          "log": "ordinary-b0-reactivation-migration-upgrade-head.log"
+        },
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "-run",
+            "^Test(RealColdB0Reactivation|ColdB0Reactivation)",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 11.246,
+          "log": "ordinary-b0-reactivation-executable-race.log"
+        }
+      ],
+      "cleanup": true,
+      "production_changed": false
+    },
+    "full_real_pg_redis": {
+      "database": "owned fully migrated PostgreSQL18.6",
+      "redis": "private per-test Redis UDS",
+      "results": [
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 74.559,
+          "log": "ordinary-b0-reactivation-final-queue-race.log"
+        },
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 33.143,
+          "log": "ordinary-b0-reactivation-final-worker-race.log"
+        },
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 4.872,
+          "log": "ordinary-b0-reactivation-final-exporter-race.log"
+        },
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "--no-sync",
+            "pytest",
+            "-q",
+            "tests/test_ordinary_ownership.py",
+            "tests/test_lightpanda_activation.py",
+            "tests/test_redis_queue.py",
+            "tests/test_pipeline.py",
+            "tests/test_rich_monitor_contract.py"
+          ],
+          "exit_code": 0,
+          "seconds": 6.253,
+          "log": "ordinary-b0-reactivation-final-legacy.log"
+        }
+      ],
+      "cleanup": true,
+      "production_changed": false
+    },
+    "legacy": "295 passed, no skips, 5.84s test time",
+    "linux_cross_compile_and_vet": "queue actual integration tag and worker, AMD64/ARM64; all exit zero",
+    "schema": "exact SQL copy; empty downgrade 0045/reupgrade and retained-history downgrade refusal",
+    "adapter_limitation": "private producer control executes actual queue Lua; does not prove real UID-10001 socket parser/sentinel/host release behavior",
+    "cases": [
+      "legacy and native ordinary predecessors",
+      "exact canonical/queue conservation and recurring fractional source guard",
+      "lost reply, SAVE denial and SQL failure after SAVE",
+      "RDB restart and exact completed retry",
+      "source/allocator/canonical/profile/lease/producer/projection/witness/lost-record drift refusals",
+      "strict rehashed malformed receipt data",
+      "immutable approval/completion history and read-only inspection while barriers held"
+    ]
+  },
+  "preceding_preparation_ci": {
+    "source_revision": "de3ee9b689d1fd4b23a2e822db5961c1d7370d2f",
+    "linux_pg17_redis": {
+      "source_revision": "de3ee9b689d1fd4b23a2e822db5961c1d7370d2f",
+      "run": 36936491296,
+      "architectures": [
+        {
+          "architecture": "amd64",
+          "job": 110617864607,
+          "actual_pg17_redis_ordinary_queue_worker_restoration": "PASS",
+          "actual_producer_recovery_and_completion_bound_publication": "PASS",
+          "log": "ordinary-ordinary-restoration-ci-de3ee9b68-amd64.log",
+          "sha256": "c1bbf60354826ac56ffed599bf00c02eaa0e4f5522a7c61f08fe728c609bd7fd"
+        },
+        {
+          "architecture": "arm64",
+          "job": 110617864957,
+          "actual_pg17_redis_ordinary_queue_worker_restoration": "PASS",
+          "actual_producer_recovery_and_completion_bound_publication": "PASS",
+          "log": "ordinary-ordinary-restoration-ci-de3ee9b68-arm64.log",
+          "sha256": "98f8d560d295206d27522e6d866192d13ea143b01fdd9181c97f5a41d1047e7b"
+        }
+      ],
+      "production_changed": false
+    },
+    "full_ci": {
+      "run": 36936645570,
+      "result": "success"
+    },
+    "installed_images": {
+      "source_revision": "de3ee9b689d1fd4b23a2e822db5961c1d7370d2f",
+      "run": 36936649045,
+      "production_changed": false,
+      "architectures": [
+        {
+          "architecture": "amd64",
+          "image_id": "sha256:0a3c4eb0b698e97902e49d81e0c266311f2d02fe875ac7ae22a3a184432c2ba2",
+          "binary_sha256": "a6586b795b1608968203fe19ab5aa08b87c533799170f3f87edfdfbb450ed3af",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "asset_hashes_verified": 34
+        },
+        {
+          "architecture": "arm64",
+          "image_id": "sha256:e951fb39e7c997881473856bed4e76a713bd32939128325cce9476098e2d7ed8",
+          "binary_sha256": "1f0fc0a48510c203eacd7ec849daa7898581874507ade563b8f9119799d9b27d",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "asset_hashes_verified": 34
+        }
+      ]
+    },
+    "whole_b0": {
+      "run": 36936491185,
+      "result": "in_progress; preserve running source"
+    },
+    "dormant_renderer": {
+      "run": 36936491173,
+      "result": "success; publish/deploy skipped"
+    },
+    "actual_deploy_gate": "FAILURE draft; evaluator success is not deployment authority"
+  },
+  "completed_prior_whole_b0": [
+    {
+      "schema": "jobseek.migration.synthetic-b0-admission/v1",
+      "pr": 10210,
+      "pr_head": "f33590cd0810e48c8000453374b97783f1b644ce",
+      "tested_merge_checkout": "5339206feb0ec8c9549942e9fcfde45038039be7",
+      "verified_merge_parents": [
+        "86813918a20a499c5d59a39ca8c33797161f8743",
+        "f33590cd0810e48c8000453374b97783f1b644ce"
+      ],
+      "run": 36933306741,
+      "job": 110612592189,
+      "report_sha256": "23aae66530123eacf6b17bbc7a13b5fc5180c0c1c8b7c003b847523be625bd68",
+      "mode": "synthetic",
+      "arms": 16,
+      "pairs": 8,
+      "admitted": true,
+      "verdict_recomputed": true,
+      "images": {
+        "browser": "sha256:87b2c0b7bcc53cc9baa94e06456f3e4af7414ede4ad842f2b2f8d8da9073b2fb",
+        "candidate": "sha256:d3c5511e1ed40eca2eb9eb1a004d35079da8e3a645f7662851fd2a8e18f6c1c4",
+        "renderer": "sha256:1d252a4acf072c1945e3c50f992fab915a7e7d87b8ebb82b3ef188aa3a4065b9"
+      },
+      "checkout": {
+        "clean": true,
+        "head": "5339206feb0ec8c9549942e9fcfde45038039be7",
+        "postflight_clean": true,
+        "postflight_head": "5339206feb0ec8c9549942e9fcfde45038039be7"
+      },
+      "verdict": {
+        "admitted": true,
+        "density_ratios": [
+          7.2883628876348725,
+          5.992415894048672,
+          5.553062607486037,
+          13.061197400439346,
+          12.940863249950398,
+          13.637606910124306,
+          13.884336046602666,
+          13.797312703921552
+        ],
+        "pair_metrics": [
+          {
+            "cpu_seconds_candidate": 1.690072,
+            "cpu_seconds_control": 2.497913,
+            "density_ratio": 7.2883628876348725,
+            "elapsed_ratio": 1.8460296994788152,
+            "lifetime_cpu_seconds_candidate": 3.949618,
+            "lifetime_cpu_seconds_control": 6.066232,
+            "p99_ratio": 0.5324339229000837,
+            "pair": "c1-p1",
+            "peak_rss_ratio": 0.2532845479758851
+          },
+          {
+            "cpu_seconds_candidate": 1.708954,
+            "cpu_seconds_control": 2.558097,
+            "density_ratio": 5.992415894048672,
+            "elapsed_ratio": 1.450231756582136,
+            "lifetime_cpu_seconds_candidate": 4.017886,
+            "lifetime_cpu_seconds_control": 6.104877,
+            "p99_ratio": 0.6892076569667168,
+            "pair": "c1-p2",
+            "peak_rss_ratio": 0.24201119919303737
+          },
+          {
+            "cpu_seconds_candidate": 1.697816,
+            "cpu_seconds_control": 2.474718,
+            "density_ratio": 5.553062607486037,
+            "elapsed_ratio": 1.4334619836336495,
+            "lifetime_cpu_seconds_candidate": 3.988759,
+            "lifetime_cpu_seconds_control": 6.009285,
+            "p99_ratio": 0.6907457972863883,
+            "pair": "c1-p3",
+            "peak_rss_ratio": 0.25813899193234585
+          },
+          {
+            "cpu_seconds_candidate": 2.357808,
+            "cpu_seconds_control": 5.961611,
+            "density_ratio": 13.061197400439346,
+            "elapsed_ratio": 1.5508425318871129,
+            "lifetime_cpu_seconds_candidate": 4.635456,
+            "lifetime_cpu_seconds_control": 10.509686,
+            "p99_ratio": 0.6394427546527377,
+            "pair": "c4-p1",
+            "peak_rss_ratio": 0.1187366276107998
+          },
+          {
+            "cpu_seconds_candidate": 2.332865,
+            "cpu_seconds_control": 5.955464,
+            "density_ratio": 12.940863249950398,
+            "elapsed_ratio": 1.5558489668235136,
+            "lifetime_cpu_seconds_candidate": 4.6169709999999995,
+            "lifetime_cpu_seconds_control": 10.51469,
+            "p99_ratio": 0.6396531245603994,
+            "pair": "c4-p2",
+            "peak_rss_ratio": 0.12022760280922348
+          },
+          {
+            "cpu_seconds_candidate": 2.35355,
+            "cpu_seconds_control": 5.972557,
+            "density_ratio": 13.637606910124306,
+            "elapsed_ratio": 1.5743253082795843,
+            "lifetime_cpu_seconds_candidate": 4.631381,
+            "lifetime_cpu_seconds_control": 10.497554,
+            "p99_ratio": 0.630981365241729,
+            "pair": "c4-p3",
+            "peak_rss_ratio": 0.11543999754904463
+          },
+          {
+            "cpu_seconds_candidate": 2.335784,
+            "cpu_seconds_control": 5.770985,
+            "density_ratio": 13.884336046602666,
+            "elapsed_ratio": 1.5651947840845357,
+            "lifetime_cpu_seconds_candidate": 4.620476,
+            "lifetime_cpu_seconds_control": 10.282939,
+            "p99_ratio": 0.6392670407052266,
+            "pair": "c4-p4",
+            "peak_rss_ratio": 0.11273097819232923
+          },
+          {
+            "cpu_seconds_candidate": 2.396596,
+            "cpu_seconds_control": 5.940846,
+            "density_ratio": 13.797312703921552,
+            "elapsed_ratio": 1.608261925910785,
+            "lifetime_cpu_seconds_candidate": 4.673668,
+            "lifetime_cpu_seconds_control": 10.583975,
+            "p99_ratio": 0.6251639680416021,
+            "pair": "c4-p5",
+            "peak_rss_ratio": 0.11656341784974371
+          }
+        ],
+        "reasons": []
+      },
+      "scope": "Generated B0 fixture with production startup cardinality and exact canonical/per-task/source-response/write/Redis/cleanup. Does not prove all crawler profiles or full production service cost.",
+      "production_changed": false
+    },
+    {
+      "schema": "jobseek.migration.synthetic-b0-admission/v1",
+      "pr": 10210,
+      "pr_head": "f2bc20dc32e4a3a5b780e8f4b13da45e436d4baa",
+      "tested_merge_checkout": "ff42d24003e36e12eaf6b89f6dc43b65b5990be6",
+      "verified_merge_parents": [
+        "86813918a20a499c5d59a39ca8c33797161f8743",
+        "f2bc20dc32e4a3a5b780e8f4b13da45e436d4baa"
+      ],
+      "run": 36931282462,
+      "job": 110600840433,
+      "artifact": 11197512989,
+      "report_sha256": "0c9efd69c0a36aec37a45d825241a0a6726365478d382f08978944c1ba257d99",
+      "mode": "synthetic",
+      "arms": 16,
+      "pairs": 8,
+      "admitted": true,
+      "verdict_recomputed": true,
+      "images": {
+        "browser": "sha256:f56b07f796f17baf1df33277c7bbd949b837ab0a059da6f8960d971fb9c7a187",
+        "candidate": "sha256:06306a34e3a6583d40f6836fb33f5267800ec9437ed745578f155a1ad069d8c5",
+        "renderer": "sha256:b0bf4da88e6f35b6fb07192b188e2471242fc22b9497380522aca4dd11f964c1"
+      },
+      "checkout": {
+        "clean": true,
+        "head": "ff42d24003e36e12eaf6b89f6dc43b65b5990be6",
+        "postflight_clean": true,
+        "postflight_head": "ff42d24003e36e12eaf6b89f6dc43b65b5990be6"
+      },
+      "verdict": {
+        "admitted": true,
+        "reasons": [],
+        "density_ratios": [
+          5.805026876680881,
+          5.411432119499038,
+          7.359174469420977,
+          14.439954352528352,
+          13.343008477808247,
+          14.040654841352987,
+          13.548521036174677,
+          13.847839585520571
+        ],
+        "pair_metrics": [
+          {
+            "pair": "c1-p1",
+            "density_ratio": 5.805026876680881,
+            "elapsed_ratio": 1.4465898262186943,
+            "p99_ratio": 0.6928510675977345,
+            "peak_rss_ratio": 0.24919606006127668,
+            "cpu_seconds_candidate": 1.7248839999999999,
+            "cpu_seconds_control": 2.520626,
+            "lifetime_cpu_seconds_candidate": 4.024304,
+            "lifetime_cpu_seconds_control": 6.110047
+          },
+          {
+            "pair": "c1-p2",
+            "density_ratio": 5.411432119499038,
+            "elapsed_ratio": 1.4612954592982283,
+            "p99_ratio": 0.6921925331597601,
+            "peak_rss_ratio": 0.270038582583848,
+            "cpu_seconds_candidate": 1.725575,
+            "cpu_seconds_control": 2.50399,
+            "lifetime_cpu_seconds_candidate": 4.024831,
+            "lifetime_cpu_seconds_control": 6.065329
+          },
+          {
+            "pair": "c1-p3",
+            "density_ratio": 7.359174469420977,
+            "elapsed_ratio": 1.8369055537138226,
+            "p99_ratio": 0.5347831610967995,
+            "peak_rss_ratio": 0.24960755603044574,
+            "cpu_seconds_candidate": 1.678717,
+            "cpu_seconds_control": 2.535056,
+            "lifetime_cpu_seconds_candidate": 3.95769,
+            "lifetime_cpu_seconds_control": 6.110556
+          },
+          {
+            "pair": "c4-p1",
+            "density_ratio": 14.439954352528352,
+            "elapsed_ratio": 1.617228352722554,
+            "p99_ratio": 0.6225791520648021,
+            "peak_rss_ratio": 0.11199677736096075,
+            "cpu_seconds_candidate": 2.414576,
+            "cpu_seconds_control": 6.217815,
+            "lifetime_cpu_seconds_candidate": 4.710512,
+            "lifetime_cpu_seconds_control": 10.86189
+          },
+          {
+            "pair": "c4-p2",
+            "density_ratio": 13.343008477808247,
+            "elapsed_ratio": 1.5704161641852867,
+            "p99_ratio": 0.625005287039865,
+            "peak_rss_ratio": 0.11769580801789664,
+            "cpu_seconds_candidate": 2.388214,
+            "cpu_seconds_control": 6.138854,
+            "lifetime_cpu_seconds_candidate": 4.678751,
+            "lifetime_cpu_seconds_control": 10.831154
+          },
+          {
+            "pair": "c4-p3",
+            "density_ratio": 14.040654841352987,
+            "elapsed_ratio": 1.5641855465747438,
+            "p99_ratio": 0.6407923893724508,
+            "peak_rss_ratio": 0.11140403095501318,
+            "cpu_seconds_candidate": 2.372913,
+            "cpu_seconds_control": 6.02518,
+            "lifetime_cpu_seconds_candidate": 4.678191,
+            "lifetime_cpu_seconds_control": 10.628908
+          },
+          {
+            "pair": "c4-p4",
+            "density_ratio": 13.548521036174677,
+            "elapsed_ratio": 1.5500067837094733,
+            "p99_ratio": 0.6430580412096287,
+            "peak_rss_ratio": 0.11440413160749728,
+            "cpu_seconds_candidate": 2.452027,
+            "cpu_seconds_control": 6.13344,
+            "lifetime_cpu_seconds_candidate": 4.760795,
+            "lifetime_cpu_seconds_control": 10.767283
+          },
+          {
+            "pair": "c4-p5",
+            "density_ratio": 13.847839585520571,
+            "elapsed_ratio": 1.6025300205585915,
+            "p99_ratio": 0.6253074075580122,
+            "peak_rss_ratio": 0.11572419009202067,
+            "cpu_seconds_candidate": 2.431376,
+            "cpu_seconds_control": 6.144713,
+            "lifetime_cpu_seconds_candidate": 4.746444,
+            "lifetime_cpu_seconds_control": 10.837147
+          }
+        ]
+      },
+      "scope": "Generated B0 fixture with production startup cardinality, exact canonical/per-task/source-response/write/Redis/cleanup and whole-lane resource contract. Does not prove all crawler profiles or full production service cost.",
+      "production_changed": false
+    }
+  ],
+  "fresh_admission_required": [
+    "new exact-source Linux PG17/private Redis races on both architectures",
+    "new exact-source installed image proof on both architectures",
+    "new exact-source whole B0 numeric verification; finish running predecessor without cancellation",
+    "protected CLI and actual producer reactivation execution"
+  ],
+  "next": [
+    "Expose protected source-bound reactivation CLI; prove real authenticated UID-10001 producer, root sentinel clear/reinitialization and crash/restart seams",
+    "Restore compatible ordinary joint authority at R, publish/readback durable projection/witness and close original reversal only after exact B0 completion",
+    "Complete supported ADR006 all-writer wrapper with independent immutable releases/data/spec/env/images, mutation lock, durable receipts, acknowledged SAVE/readback, release selection and full cold readiness/reversal",
+    "Preserve every enabled profile and consumer with canonical/publisher/freshness/queue parity",
+    "Admit comparable whole-service CPU/RAM/density/attributable cost, exact CI/deploy gate promotion, actual schedule-dependent rollback window and production Python/Playwright/Chromium/runtime-only asset retirement; keep useful offline Python isolated"
+  ],
+  "private_log_sha256": {
+    "ordinary-b0-reactivation-migration-upgrade.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ordinary-b0-reactivation-migration-downgrade-0045.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ordinary-b0-reactivation-migration-upgrade-head.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ordinary-b0-reactivation-executable-race.log": "2b5a3d795fd682edadec1fb10495434c3121317a6b51c12690934259a29b3672",
+    "ordinary-b0-reactivation-final-queue-race.log": "963a8ccddc5748109638efcb256eb9019ebe61d5e69f6bc3cee4396b585d5a26",
+    "ordinary-b0-reactivation-final-worker-race.log": "e3bd9520fb0cfe2328c3cdc56812233850252cc485adada1b621012e7fd9482b",
+    "ordinary-b0-reactivation-final-exporter-race.log": "271dfa7a374883eb424d91ef49e118d38b8fd4cc20f7436b302c56179a0893f6",
+    "ordinary-b0-reactivation-final-legacy.log": "4614df70806d7368ffc1d25bc943b3e5afd19981c904f407575fbabd5471e243"
+  },
+  "fresh_reactivation_ci": {
+    "head": "b61f1fe28ef89352c5b351cd2e31d8a7dc8ad3f0",
+    "run": 36939626059,
+    "jobs": [
+      110627839794,
+      110627840024
+    ],
+    "result": "failure on both architectures; root fixture skipped",
+    "evidence_sha256": "e794f8e26417c0f346b81cbdff76cf6d5b657c4ebcad118726aec53f63c5a1f3",
+    "finding": "only fractional guard spelling assertion failed: Linux Redis emitted 1925089445.1000011 vs local 1925089445.100001",
+    "correction": "require exact retained Redis source score bytes and canonical schedule millisecond ceiling 1925089445101; preserve complete canonical snapshot; no queue transfer algorithm changed",
+    "admitted": false
+  }
+}

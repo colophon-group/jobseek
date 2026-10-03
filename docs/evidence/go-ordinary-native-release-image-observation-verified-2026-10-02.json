@@ -1,0 +1,20 @@
+{
+  "version": "jobseek.migration.native-release-image-observation-verified/v1",
+  "date": "2026-10-02",
+  "source": "ad39c519d27dcbba1eb936b157639f9a1a92daa5",
+  "run": 37033316023,
+  "tested_merge": "f9dd47c484be1e9fb03fafdda51a63fcd515df33",
+  "parents": [
+    "86813918a20a499c5d59a39ca8c33797161f8743",
+    "ad39c519d27dcbba1eb936b157639f9a1a92daa5"
+  ],
+  "log_sha256": "c518002d231d6e5ab3e203fa273b326d8da6e60b8bd9471eef8beb26f10f11a2",
+  "architectures": [
+    "amd64",
+    "arm64"
+  ],
+  "actual_cleared_compose_and_local_image_test_passed": true,
+  "root_home_compose_version_available": false,
+  "scope": "existing disposable Actions public PostgreSQL image; synthetic crawler/browser identities; command boundary only, no selected production release/source/mount/user/writer/readiness admission",
+  "production_changed": false
+}

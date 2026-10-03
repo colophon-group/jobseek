@@ -1,0 +1,650 @@
+{
+  "checkpoint": "completion-bound native joint publication",
+  "date": "2026-10-02",
+  "runtime_source_revision": "3dc88089ea55bf5f3953ed8e37f8209d55415fda",
+  "candidate_version": "0.13.904",
+  "pr": 10210,
+  "draft": true,
+  "production_changed": false,
+  "full_migration_goal": "active",
+  "operations": [
+    "cold-forward-prepare",
+    "cold-forward-publish",
+    "cold-forward-activate"
+  ],
+  "authority": {
+    "required": "exact immutable forward approval/completion/request/intent/source/E/ordinary plan/target plus fixed authenticated producer",
+    "barriers": "same exclusive transaction barriers as every publication effect",
+    "before_activation": "exact fresh canonical rows and complete transferred snapshot must match completion",
+    "phase_retry": "only exact known prior/pending/published projection and witness pairs; no reconstruction",
+    "active_retry": "historical completion stays immutable while canonical schedules legitimately progress; existing current routing/target/owner audits still required",
+    "bypass_refusal": "any retained forward approval prevents use of older component publication primitives, prepared or completed",
+    "host_limit": "does not attest full-writer quiescence, immutable release selection, host sentinel/receipts or full readiness"
+  },
+  "local_validation": {
+    "platform": "Darwin ARM64",
+    "focused_real_pg_redis": {
+      "database": "owned fully migrated PostgreSQL18.6",
+      "redis": "private per-test Redis UDS",
+      "results": [
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "--no-sync",
+            "alembic",
+            "-c",
+            "src/migrations/alembic.ini",
+            "upgrade",
+            "head"
+          ],
+          "exit_code": 0,
+          "seconds": 0.27,
+          "log": "ordinary-forward-publication-migration-upgrade.log"
+        },
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "--no-sync",
+            "alembic",
+            "-c",
+            "src/migrations/alembic.ini",
+            "downgrade",
+            "0043"
+          ],
+          "exit_code": 0,
+          "seconds": 0.267,
+          "log": "ordinary-forward-publication-migration-downgrade-0043.log"
+        },
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "--no-sync",
+            "alembic",
+            "-c",
+            "src/migrations/alembic.ini",
+            "upgrade",
+            "head"
+          ],
+          "exit_code": 0,
+          "seconds": 0.27,
+          "log": "ordinary-forward-publication-migration-upgrade-head.log"
+        },
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "-run",
+            "^Test(RealColdForwardPublication|ColdB0Forward|ColdPublication)",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 6.359,
+          "log": "ordinary-forward-publication-executable-race.log"
+        }
+      ],
+      "cleanup": true,
+      "production_changed": false
+    },
+    "full_real_pg_redis": {
+      "database": "owned fully migrated PostgreSQL18.6",
+      "redis": "private per-test Redis UDS",
+      "results": [
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 54.516,
+          "log": "ordinary-forward-publication-final-queue-race.log"
+        },
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 32.03,
+          "log": "ordinary-forward-publication-final-worker-race.log"
+        },
+        {
+          "command": [
+            "go",
+            "test",
+            "-race",
+            "-count=1",
+            "-timeout=90s",
+            "./..."
+          ],
+          "exit_code": 0,
+          "seconds": 4.851,
+          "log": "ordinary-forward-publication-final-exporter-race.log"
+        },
+        {
+          "command": [
+            "uv",
+            "run",
+            "--frozen",
+            "--no-sync",
+            "pytest",
+            "-q",
+            "tests/test_ordinary_ownership.py",
+            "tests/test_lightpanda_activation.py",
+            "tests/test_redis_queue.py",
+            "tests/test_pipeline.py",
+            "tests/test_rich_monitor_contract.py"
+          ],
+          "exit_code": 0,
+          "seconds": 6.167,
+          "log": "ordinary-forward-publication-final-legacy.log"
+        }
+      ],
+      "cleanup": true,
+      "production_changed": false
+    },
+    "legacy_tests": {
+      "passed": 295,
+      "skipped": 0
+    },
+    "tests": [
+      "prepared/missing/wrong approval or completion cannot publish",
+      "canonical/source/producer drift refuses before effects",
+      "older publication cannot bypass retained approval",
+      "Redis pending witness before SQL publishing failure and exact retry",
+      "Redis published witness/SAVE before SQL published failure, real RDB reload and exact recovery",
+      "completed activation preserves all logical queue and canonical values",
+      "active canonical progression retains historical receipt identity"
+    ],
+    "linux_extension": "AMD64/ARM64 cross-compile and integration vet pass; actual root CLI completion-bound prepare/publish/activate/retry execution still required",
+    "fixture_limit": "private synthetic producer preparation adapter with actual frozen Lua; actual UID10001 source-bound fixture supplies operational producer authority"
+  },
+  "preceding_application_checkpoint": {
+    "source_revision": "f2bc20dc32e4a3a5b780e8f4b13da45e436d4baa",
+    "linux": {
+      "source_revision": "f2bc20dc32e4a3a5b780e8f4b13da45e436d4baa",
+      "run": 36931282603,
+      "result": "success both complete jobs",
+      "architectures": [
+        {
+          "architecture": "amd64",
+          "job": 110600839999,
+          "actual_uid10001_producer_pg_cli_fixture": "PASS",
+          "uncertain_reply_sigkill_after_save_rdb_reload_sentinel_restart": "PASS",
+          "private_log": "ordinary-native-forward-application-ci-f2bc20dc3-amd64.log",
+          "sha256": "8e8609ed7eabed4298361350d27a0541502933f7b88f931c1e24d7aecfa9dbe7"
+        },
+        {
+          "architecture": "arm64",
+          "job": 110600840369,
+          "actual_uid10001_producer_pg_cli_fixture": "PASS",
+          "uncertain_reply_sigkill_after_save_rdb_reload_sentinel_restart": "PASS",
+          "private_log": "ordinary-native-forward-application-ci-f2bc20dc3-arm64.log",
+          "sha256": "0cf3ead94d771a5fd9c2e147353e7b6b1559b3de4dd8e074bacd918713d24c0f"
+        }
+      ],
+      "production_changed": false
+    },
+    "full_ci": {
+      "run": 36931290132,
+      "result": "success"
+    },
+    "installed_images": {
+      "run": 36931294380,
+      "result": "success both images; downloaded artifacts verified",
+      "architectures": [
+        {
+          "architecture": "amd64",
+          "image_id": "sha256:f157278da50164a58534dd4be0ed1f280178128f2930eba27d6d6015863478ad",
+          "binary_sha256": "b3e179add0907bb9d350425efeaef344713e1eefeee5973907f9f6e9dbf48e48",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "asset_hashes_verified": 34
+        },
+        {
+          "architecture": "arm64",
+          "image_id": "sha256:919d3d845b0d46ebb257680eb2a6fbf69db7ca98bd859106afb534355694be1f",
+          "binary_sha256": "7cfeb98a58499a8f957827272ce86b4fee0dee8d3b3587e16d7701a4cfd1c7cd",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "asset_hashes_verified": 34
+        }
+      ]
+    },
+    "whole_b0": {
+      "run": 36931282462,
+      "result": "success; numeric artifact verification still pending"
+    },
+    "dormant_renderer": {
+      "run": 36931282270,
+      "result": "success; publish/deploy skipped"
+    },
+    "actual_deploy_gate": "FAILURE draft; evaluator workflow SUCCESS is not merge authority"
+  },
+  "fresh_admission_required": [
+    "new source combined actual producer/CLI application recovery plus completion-bound publication on both Linux architectures",
+    "full CI",
+    "both installed images/executable fixtures",
+    "whole B0"
+  ],
+  "next": [
+    "fresh legacy/prior-native rollback ordinary ownership at retained retirement R without reopening retired plans",
+    "supported ADR006 all-writer wrapper, independent immutable releases, Go-owned sentinel/host receipts, acknowledged SAVE/readback and full readiness",
+    "all enabled profiles/runtime consumers; canonical/publisher/freshness/queue parity; comparable whole-service CPU/RAM/density/cost; exact gates/deployment; actual rollback window; production Python/Playwright/Chromium retirement"
+  ],
+  "private_log_sha256": {
+    "ordinary-forward-publication-final-queue-race.log": "3e26b1bdd7a264e34dd14dd80c7a184beefbe27148b7e973d38402381b1fb59e",
+    "ordinary-forward-publication-final-worker-race.log": "0cb044873f4476994a9e71d3ff187a80e843f9b84beb03ee9efb4b57d52d1639",
+    "ordinary-forward-publication-final-exporter-race.log": "bbad06c31ce095db7997451a8abe95c94001cf64ffb45ab5a2e11b28343e02c8",
+    "ordinary-forward-publication-final-legacy.log": "82a7def18d1aaa11560b901cb6c62bb2c7d7fe5167859059d0ace8a315e8671e",
+    "ordinary-forward-publication-migration-upgrade.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ordinary-forward-publication-migration-downgrade-0043.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ordinary-forward-publication-migration-upgrade-head.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "ordinary-forward-publication-executable-race.log": "193ee51c6e7b0c0dc0928f38a87ae785cd394288ea452a091b50c0bfabb5715a"
+  },
+  "fresh_publication_ci": {
+    "source_revision": "f33590cd0810e48c8000453374b97783f1b644ce",
+    "linux_pg17_redis": {
+      "source_revision": "f33590cd0810e48c8000453374b97783f1b644ce",
+      "run": 36933306768,
+      "architectures": [
+        {
+          "architecture": "amd64",
+          "job": 110607607036,
+          "actual_producer_pg_cli_recovery_and_completion_bound_publication": "PASS",
+          "log": "ordinary-native-forward-publication-ci-f33590cd0-amd64.log",
+          "sha256": "3d2418d53a74b0d60b13579a86d51d48ebad241d863bd458348edaa1ca7e9465"
+        },
+        {
+          "architecture": "arm64",
+          "job": 110607607237,
+          "actual_producer_pg_cli_recovery_and_completion_bound_publication": "PASS",
+          "log": "ordinary-native-forward-publication-ci-f33590cd0-arm64.log",
+          "sha256": "e49ff5ae9ff98157d8c0aaf5adc20026b9cb7cb9d0e5a237bfc1a90211b540ec"
+        }
+      ],
+      "production_changed": false
+    },
+    "full_ci": {
+      "run": 36933347206,
+      "result": "success"
+    },
+    "installed_images": {
+      "source_revision": "f33590cd0810e48c8000453374b97783f1b644ce",
+      "run": 36933350194,
+      "production_changed": false,
+      "architectures": [
+        {
+          "architecture": "amd64",
+          "image_id": "sha256:3da9cf4a515e919ed43dbcc06d104fc5779980a187635e6b9a35ea1748e6360e",
+          "binary_sha256": "7c14da22c484a5932e9ad6ea513d471d30d9113eb9e8874926ecc6f6e30513ad",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "asset_hashes_verified": 34
+        },
+        {
+          "architecture": "arm64",
+          "image_id": "sha256:6120d3a1bc1e79578f2d1feff7984cb2bcf5f7a699a6f4cebad1ad493623b8b3",
+          "binary_sha256": "d2d276d1475cb8f3ebf3d59379b72b258553bfdd2c3a75b51a75aad11e2a87a3",
+          "source_ca_identity_verified": true,
+          "actual_executable_fixtures": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "asset_hashes_verified": 34
+        }
+      ],
+      "installed_asset_sha256": {
+        "README.md": "f4449496c21178aa003e28a17a7135f207d848aa74421eeb46abff9c1370fd26",
+        "boards.csv": "416c5939d22faa9ee928155d20a1c3ee294f26b3c496ed93637eae13e8b492e1",
+        "companies.csv": "a15ccf834c0e0d3e11c7a0c8cea5aa7df5930b085264683689e2cef4eee04c65",
+        "company_descriptions.csv": "99c016c51713bb5937593ad1267c596f7cf208c4424a5f17c83410761f10dde7",
+        "images/avera-icon.png": "94225e0ecf08cdbf6eff0d197030e27d60c1bcd28d410f584e589dec867ac393",
+        "images/avera-logo.png": "6c1d3514864d40cbd8d51661b6b2aa905f40bfc57cff84b1f68cb12f668a9b1e",
+        "images/bae-systems-icon.png": "d4b21210623413bf11e723e19336ac41043bae110237513e220e479998b4d8e6",
+        "images/bae-systems-logo.svg": "36a6c9e949fa4b9d913ffed811e4b88515deee4af4eaf2de720d09a8516f58dc",
+        "images/banner-health-icon.png": "4a95ca7481e999700637cf3b58705c249c15bba3acbfc8839d928f0a33b40e20",
+        "images/banner-health-logo.svg": "b97938bf23013ffc64f20118f42f09481c30e6b6a920202028633ddb7cabb1d1",
+        "images/capgemini-icon.png": "b764b1abe10194e9370b69528933762fa502dfa454932c80b9c6eafdac60e05e",
+        "images/capgemini.png": "3e4b021ad539b695290353a9811f02c13933c65716fd710a55ead1a055c6b9fc",
+        "images/drees-sommer-icon.png": "e804fe381612328706a9ec314545a66b74eea36a831576340ad080c4ba3ca0e5",
+        "images/drees-sommer-logo.svg": "ab80c4e211746308c0952f64614a4220b61af0acbedc86a24c98f10e752988e6",
+        "images/epfl/icon.png": "9af4578f7f87fabea840044b4a9fe388dc2847f5e301317944eaf1255d7000bc",
+        "images/epfl/logo.png": "f9f64c61b3e52eb82d4b6144d85843c0001201cd2d75f1128fa34642e4f8983a",
+        "images/fulenwider-enterprises-icon.png": "2862579dd64d28782e8deeec0095264fc91d50cc21911f0ed00b24ddacd531a8",
+        "images/fulenwider-enterprises-logo.png": "326a67f1d0faddf840345d22873ff732d7b71e386c22d096740689f776802ed0",
+        "images/mediamarktsaturn-icon.webp": "37fa4d863ef3d13f87b7be4590f8d41f0cddec282db557aec4db30df9a14de39",
+        "images/mediamarktsaturn-logo.svg": "47f1f499c28f30c96cae0d428ae13eef36df923feaf6d9e07a48bc209f5f5cfc",
+        "images/singapore-public-service-icon.png": "23fa7bf3fd10506cc3679f70e2aaa7f52ed684b46055d75fcb67335334c4518c",
+        "images/singapore-public-service-logo.svg": "dbd644d3eb74771e725aeed2e6686feddd5e6fd6517920c79cbd5733aa844537",
+        "images/swiss-post-icon.png": "e1c297617f8d7a8614f3a4366168dad693085b1385a872bb2e0abe347e3090e2",
+        "images/swiss-post-logo.png": "e1c297617f8d7a8614f3a4366168dad693085b1385a872bb2e0abe347e3090e2",
+        "industries.csv": "3fae2b061b36e907b83fc03648aa4df512df01d7fc324b5b83bf11bb1e8f25b3",
+        "industries.svg": "163aaa518b8d11b3b0d24905e053c8fc249894681784b7bd00b0eae8a3562c09",
+        "labeller_optout.txt": "c802b5e4878133598994cbc7cbdd432fc6cfeff7e4608d7e94f7d3bb879b09ff",
+        "occupation_domains.csv": "6d2458a0ce106da21ee6898a66896f18d774a65c72d476969be4394a47461d9b",
+        "occupations.csv": "97ce6fa825130597639bf2c3cd2e19f114610cc5de3006d69c31c07018397d01",
+        "occupations.svg": "d1e399827f71d3558712746b636e13c3c7d859d6c5d7dfdb75195dd40a861c78",
+        "seniority.csv": "a00c21d795baff88e7c0e4733922eff26f24fb0d24251f7ae1fb0db20ecb5004",
+        "seniority.svg": "549e9c57dc14e0195eb3263c288afa3f48280d7715ce37c375db9fd97974feb5",
+        "technologies.csv": "6894e31c7e854d5efddf3a57b52cd83ed7326ac5753a12ee7c743c02721d9bde",
+        "technologies.svg": "935a8307c03617ed1532ccf1c9f445a440f4ac95118e4e5a673b77a4f6fc0374"
+      }
+    },
+    "whole_b0": {
+      "run": 36933306741,
+      "result": "in_progress; preserve running source"
+    },
+    "dormant_renderer": {
+      "run": 36933306659,
+      "result": "success; publish/deploy skipped"
+    },
+    "actual_deploy_gate": "FAILURE draft; evaluator success is not deployment authority"
+  },
+  "completed_prior_whole_b0": [
+    {
+      "schema": "jobseek.migration.synthetic-b0-admission/v1",
+      "pr": 10210,
+      "pr_head": "f33590cd0810e48c8000453374b97783f1b644ce",
+      "tested_merge_checkout": "5339206feb0ec8c9549942e9fcfde45038039be7",
+      "verified_merge_parents": [
+        "86813918a20a499c5d59a39ca8c33797161f8743",
+        "f33590cd0810e48c8000453374b97783f1b644ce"
+      ],
+      "run": 36933306741,
+      "job": 110612592189,
+      "report_sha256": "23aae66530123eacf6b17bbc7a13b5fc5180c0c1c8b7c003b847523be625bd68",
+      "mode": "synthetic",
+      "arms": 16,
+      "pairs": 8,
+      "admitted": true,
+      "verdict_recomputed": true,
+      "images": {
+        "browser": "sha256:87b2c0b7bcc53cc9baa94e06456f3e4af7414ede4ad842f2b2f8d8da9073b2fb",
+        "candidate": "sha256:d3c5511e1ed40eca2eb9eb1a004d35079da8e3a645f7662851fd2a8e18f6c1c4",
+        "renderer": "sha256:1d252a4acf072c1945e3c50f992fab915a7e7d87b8ebb82b3ef188aa3a4065b9"
+      },
+      "checkout": {
+        "clean": true,
+        "head": "5339206feb0ec8c9549942e9fcfde45038039be7",
+        "postflight_clean": true,
+        "postflight_head": "5339206feb0ec8c9549942e9fcfde45038039be7"
+      },
+      "verdict": {
+        "admitted": true,
+        "density_ratios": [
+          7.2883628876348725,
+          5.992415894048672,
+          5.553062607486037,
+          13.061197400439346,
+          12.940863249950398,
+          13.637606910124306,
+          13.884336046602666,
+          13.797312703921552
+        ],
+        "pair_metrics": [
+          {
+            "cpu_seconds_candidate": 1.690072,
+            "cpu_seconds_control": 2.497913,
+            "density_ratio": 7.2883628876348725,
+            "elapsed_ratio": 1.8460296994788152,
+            "lifetime_cpu_seconds_candidate": 3.949618,
+            "lifetime_cpu_seconds_control": 6.066232,
+            "p99_ratio": 0.5324339229000837,
+            "pair": "c1-p1",
+            "peak_rss_ratio": 0.2532845479758851
+          },
+          {
+            "cpu_seconds_candidate": 1.708954,
+            "cpu_seconds_control": 2.558097,
+            "density_ratio": 5.992415894048672,
+            "elapsed_ratio": 1.450231756582136,
+            "lifetime_cpu_seconds_candidate": 4.017886,
+            "lifetime_cpu_seconds_control": 6.104877,
+            "p99_ratio": 0.6892076569667168,
+            "pair": "c1-p2",
+            "peak_rss_ratio": 0.24201119919303737
+          },
+          {
+            "cpu_seconds_candidate": 1.697816,
+            "cpu_seconds_control": 2.474718,
+            "density_ratio": 5.553062607486037,
+            "elapsed_ratio": 1.4334619836336495,
+            "lifetime_cpu_seconds_candidate": 3.988759,
+            "lifetime_cpu_seconds_control": 6.009285,
+            "p99_ratio": 0.6907457972863883,
+            "pair": "c1-p3",
+            "peak_rss_ratio": 0.25813899193234585
+          },
+          {
+            "cpu_seconds_candidate": 2.357808,
+            "cpu_seconds_control": 5.961611,
+            "density_ratio": 13.061197400439346,
+            "elapsed_ratio": 1.5508425318871129,
+            "lifetime_cpu_seconds_candidate": 4.635456,
+            "lifetime_cpu_seconds_control": 10.509686,
+            "p99_ratio": 0.6394427546527377,
+            "pair": "c4-p1",
+            "peak_rss_ratio": 0.1187366276107998
+          },
+          {
+            "cpu_seconds_candidate": 2.332865,
+            "cpu_seconds_control": 5.955464,
+            "density_ratio": 12.940863249950398,
+            "elapsed_ratio": 1.5558489668235136,
+            "lifetime_cpu_seconds_candidate": 4.6169709999999995,
+            "lifetime_cpu_seconds_control": 10.51469,
+            "p99_ratio": 0.6396531245603994,
+            "pair": "c4-p2",
+            "peak_rss_ratio": 0.12022760280922348
+          },
+          {
+            "cpu_seconds_candidate": 2.35355,
+            "cpu_seconds_control": 5.972557,
+            "density_ratio": 13.637606910124306,
+            "elapsed_ratio": 1.5743253082795843,
+            "lifetime_cpu_seconds_candidate": 4.631381,
+            "lifetime_cpu_seconds_control": 10.497554,
+            "p99_ratio": 0.630981365241729,
+            "pair": "c4-p3",
+            "peak_rss_ratio": 0.11543999754904463
+          },
+          {
+            "cpu_seconds_candidate": 2.335784,
+            "cpu_seconds_control": 5.770985,
+            "density_ratio": 13.884336046602666,
+            "elapsed_ratio": 1.5651947840845357,
+            "lifetime_cpu_seconds_candidate": 4.620476,
+            "lifetime_cpu_seconds_control": 10.282939,
+            "p99_ratio": 0.6392670407052266,
+            "pair": "c4-p4",
+            "peak_rss_ratio": 0.11273097819232923
+          },
+          {
+            "cpu_seconds_candidate": 2.396596,
+            "cpu_seconds_control": 5.940846,
+            "density_ratio": 13.797312703921552,
+            "elapsed_ratio": 1.608261925910785,
+            "lifetime_cpu_seconds_candidate": 4.673668,
+            "lifetime_cpu_seconds_control": 10.583975,
+            "p99_ratio": 0.6251639680416021,
+            "pair": "c4-p5",
+            "peak_rss_ratio": 0.11656341784974371
+          }
+        ],
+        "reasons": []
+      },
+      "scope": "Generated B0 fixture with production startup cardinality and exact canonical/per-task/source-response/write/Redis/cleanup. Does not prove all crawler profiles or full production service cost.",
+      "production_changed": false
+    },
+    {
+      "schema": "jobseek.migration.synthetic-b0-admission/v1",
+      "pr": 10210,
+      "pr_head": "f2bc20dc32e4a3a5b780e8f4b13da45e436d4baa",
+      "tested_merge_checkout": "ff42d24003e36e12eaf6b89f6dc43b65b5990be6",
+      "verified_merge_parents": [
+        "86813918a20a499c5d59a39ca8c33797161f8743",
+        "f2bc20dc32e4a3a5b780e8f4b13da45e436d4baa"
+      ],
+      "run": 36931282462,
+      "job": 110600840433,
+      "artifact": 11197512989,
+      "report_sha256": "0c9efd69c0a36aec37a45d825241a0a6726365478d382f08978944c1ba257d99",
+      "mode": "synthetic",
+      "arms": 16,
+      "pairs": 8,
+      "admitted": true,
+      "verdict_recomputed": true,
+      "images": {
+        "browser": "sha256:f56b07f796f17baf1df33277c7bbd949b837ab0a059da6f8960d971fb9c7a187",
+        "candidate": "sha256:06306a34e3a6583d40f6836fb33f5267800ec9437ed745578f155a1ad069d8c5",
+        "renderer": "sha256:b0bf4da88e6f35b6fb07192b188e2471242fc22b9497380522aca4dd11f964c1"
+      },
+      "checkout": {
+        "clean": true,
+        "head": "ff42d24003e36e12eaf6b89f6dc43b65b5990be6",
+        "postflight_clean": true,
+        "postflight_head": "ff42d24003e36e12eaf6b89f6dc43b65b5990be6"
+      },
+      "verdict": {
+        "admitted": true,
+        "reasons": [],
+        "density_ratios": [
+          5.805026876680881,
+          5.411432119499038,
+          7.359174469420977,
+          14.439954352528352,
+          13.343008477808247,
+          14.040654841352987,
+          13.548521036174677,
+          13.847839585520571
+        ],
+        "pair_metrics": [
+          {
+            "pair": "c1-p1",
+            "density_ratio": 5.805026876680881,
+            "elapsed_ratio": 1.4465898262186943,
+            "p99_ratio": 0.6928510675977345,
+            "peak_rss_ratio": 0.24919606006127668,
+            "cpu_seconds_candidate": 1.7248839999999999,
+            "cpu_seconds_control": 2.520626,
+            "lifetime_cpu_seconds_candidate": 4.024304,
+            "lifetime_cpu_seconds_control": 6.110047
+          },
+          {
+            "pair": "c1-p2",
+            "density_ratio": 5.411432119499038,
+            "elapsed_ratio": 1.4612954592982283,
+            "p99_ratio": 0.6921925331597601,
+            "peak_rss_ratio": 0.270038582583848,
+            "cpu_seconds_candidate": 1.725575,
+            "cpu_seconds_control": 2.50399,
+            "lifetime_cpu_seconds_candidate": 4.024831,
+            "lifetime_cpu_seconds_control": 6.065329
+          },
+          {
+            "pair": "c1-p3",
+            "density_ratio": 7.359174469420977,
+            "elapsed_ratio": 1.8369055537138226,
+            "p99_ratio": 0.5347831610967995,
+            "peak_rss_ratio": 0.24960755603044574,
+            "cpu_seconds_candidate": 1.678717,
+            "cpu_seconds_control": 2.535056,
+            "lifetime_cpu_seconds_candidate": 3.95769,
+            "lifetime_cpu_seconds_control": 6.110556
+          },
+          {
+            "pair": "c4-p1",
+            "density_ratio": 14.439954352528352,
+            "elapsed_ratio": 1.617228352722554,
+            "p99_ratio": 0.6225791520648021,
+            "peak_rss_ratio": 0.11199677736096075,
+            "cpu_seconds_candidate": 2.414576,
+            "cpu_seconds_control": 6.217815,
+            "lifetime_cpu_seconds_candidate": 4.710512,
+            "lifetime_cpu_seconds_control": 10.86189
+          },
+          {
+            "pair": "c4-p2",
+            "density_ratio": 13.343008477808247,
+            "elapsed_ratio": 1.5704161641852867,
+            "p99_ratio": 0.625005287039865,
+            "peak_rss_ratio": 0.11769580801789664,
+            "cpu_seconds_candidate": 2.388214,
+            "cpu_seconds_control": 6.138854,
+            "lifetime_cpu_seconds_candidate": 4.678751,
+            "lifetime_cpu_seconds_control": 10.831154
+          },
+          {
+            "pair": "c4-p3",
+            "density_ratio": 14.040654841352987,
+            "elapsed_ratio": 1.5641855465747438,
+            "p99_ratio": 0.6407923893724508,
+            "peak_rss_ratio": 0.11140403095501318,
+            "cpu_seconds_candidate": 2.372913,
+            "cpu_seconds_control": 6.02518,
+            "lifetime_cpu_seconds_candidate": 4.678191,
+            "lifetime_cpu_seconds_control": 10.628908
+          },
+          {
+            "pair": "c4-p4",
+            "density_ratio": 13.548521036174677,
+            "elapsed_ratio": 1.5500067837094733,
+            "p99_ratio": 0.6430580412096287,
+            "peak_rss_ratio": 0.11440413160749728,
+            "cpu_seconds_candidate": 2.452027,
+            "cpu_seconds_control": 6.13344,
+            "lifetime_cpu_seconds_candidate": 4.760795,
+            "lifetime_cpu_seconds_control": 10.767283
+          },
+          {
+            "pair": "c4-p5",
+            "density_ratio": 13.847839585520571,
+            "elapsed_ratio": 1.6025300205585915,
+            "p99_ratio": 0.6253074075580122,
+            "peak_rss_ratio": 0.11572419009202067,
+            "cpu_seconds_candidate": 2.431376,
+            "cpu_seconds_control": 6.144713,
+            "lifetime_cpu_seconds_candidate": 4.746444,
+            "lifetime_cpu_seconds_control": 10.837147
+          }
+        ]
+      },
+      "scope": "Generated B0 fixture with production startup cardinality, exact canonical/per-task/source-response/write/Redis/cleanup and whole-lane resource contract. Does not prove all crawler profiles or full production service cost.",
+      "production_changed": false
+    }
+  ]
+}

@@ -1,0 +1,539 @@
+# Native ordinary processing assembly
+
+`ObserveHostColdB0Cleanup` retains fresh cleanup evidence inside the original
+live mutation flock and checked host/SQL/selected-Redis scopes. It joins completed
+ordinary restoration inspection and protected ancestry to a fresh queue witness,
+re-reads protected bytes and durably retains the evidence. Its opaque result or
+serialized digest grants no permission for later sentinel/tombstone cleanup.
+Actual stopped producer, marker and installed release checks, durable delegated
+command/recovery and subsequent R initialization remain separate requirements.
+
+This package connects the standard Greenhouse token/skip inventory to the
+existing native enrichment, owned rich batches and terminal board lifecycle.
+The native executable now connects this assembly to protected startup, bounded
+claims, heartbeat, deadlines, metrics and drain. Installed image/fault admission
+and supported all-writer cutover proof remain required before production selection.
+
+`RunGreenhouseClaim` now connects one installed opaque claim to the entire native
+path. `VerifiedDirectHTTP` seals its transport/redirect/cookie configuration.
+The runner consumes its own completed response, binds the initial token endpoint
+to the claim and records the final resource URL for provider404 or publisher
+headers. Publisher signals precede status/body parsing; redirect-only headers,
+partial bodies, refused redirects and cancellations never grant final-resource
+authority. Pre-existing reservations and shared-circuit deferrals perform no
+fetch. Provider404 bypasses generic host outcomes; publisher outcomes retain
+Python's successful host-reset behavior. A racing reservation after a committed
+prefix preserves that prefix without another chunk, absence or failure budget.
+
+A recovered receipt settles without network/CPU work or repeated circuit
+accounting. A result is a settled completion only when `Settled` is true; errors
+can retain an already committed receipt for durable recovery. Diagnostics are
+bounded symbols, and arbitrary upstream/preparation/SQL messages do not enter
+logged error text. Cancellation abandons uncommitted work to lease recovery.
+The Redis reschedule script now preflights all queue/index types and numeric
+inputs before effects, preserving the lease/snapshot on corrupt ready state.
+
+`DiscoverGreenhouse` performs one logical GET through a caller-owned persistent
+HTTP client. It checks only the final fully read response's resource headers,
+before provider-404/status/body interpretation, and accepts all successful 2xx
+statuses. Repeated headers, Python header decoding/whitespace and JSON byte
+encoding detection match 52 captures from the actual Python monitor. Failed or
+canceled reads and malformed inventories expose no partial jobs. Private final
+resource observations preserve redirected publisher/provider evidence without
+granting queue/write authority; the connected owned runner proves its
+redirected-source lifecycle adapters. The inherited native 64 MiB response bound requires cohort
+admission. Errors carry bounded symbols, never source bodies or diagnostics.
+
+`NewDirectHTTP` now creates one persistent verified HTTP/1.1 client from an
+explicit trusted CA bundle and frozen startup internal-host allowlist. It
+preserves the effective 100-connection/20-keepalive/five-second pool, separate
+30-second network/pool deadlines, 20 redirects and a process-owned cookie jar.
+Every request to a public hostname, including redirects and reused connections,
+revalidates all DNS answers; new public connections pin
+only validated literals, with staggered address fallback. The compiled address
+policy, including mapped IPv4 and private-range exceptions, is regenerated from
+Python. Refused targets never enter origin/failure accounting. A private
+non-rewindable empty GET body prevents net/http's hidden retry without changing
+wire method/body/header semantics. Explicit request headers remain authoritative.
+
+`ObserveHTTP` provides detached request/response/no-response and encoded-byte
+snapshots for runtime circuit/metrics adapters. Compressed bytes are
+counted before lazy gzip/zlib/raw-deflate decoding; 25 actual httpx cases cover
+combined encodings, members/trailers and errors. Decoder completion never masks
+an incomplete HTTP body. Encoded and decoded body bounds both remain 64 MiB and
+require cohort admission. This is prepared transport, not installed startup,
+publisher/provider write authority or global metric publication.
+
+`NormalizeGreenhouseInventory` matches the default Python non-streaming rich
+monitor's raw-URL dictionary, URL sanity/canonicalization and canonical alias
+content rules. Raw duplicate URLs retain their first dictionary position and
+last content. Canonical aliases then retain the last raw dictionary entry's
+content. Jobs are sorted only after those decisions, before native chunks.
+Truncation preserves every collected job and suppresses absence through the
+terminal cycle. No provider identity or alternate/filter/proxy profile is
+introduced.
+
+`NativeRichPreparer` reuses `Processor.PrepareRichMonitor`, including its model,
+immutable taxonomy/currency snapshot and serialized native location index.
+`OpenOrdinaryLookupStore` gives the ordinary reader its own attribution, a
+one-connection budget and a read-only PostgreSQL default. The separate owned
+authority remains the writer. The fixture proves native lookups/locations work
+through that reader and rejects a board update through it.
+`PersistGreenhouseInventory` validates inventory accounting, prepares each whole
+500-row chunk outside the PostgreSQL transaction, writes only prepared chunks
+through the opaque owned cycle, and finalizes only the complete processing run.
+Every failed/canceled preparation or persistence path invalidates later
+success/absence authority; earlier committed chunks survive for failure or
+lease recovery. Terminal deadlines still come from the database receipt.
+
+The ordinary queue workflow requires PostgreSQL17 and private Redis on both
+Linux architectures. It regenerates 40 URL, six inventory, 52 HTTP, 233 address,
+nine DNS and 25 content-decoding cases from the
+actual Python functions, rejecting stale captures, and exercises inventories
+above the 50,000-job flag without slicing. Real native assembly proof loads
+reference tables and the SQLite location index in an owned schema, processes
+one verified native TLS HTTP 202 inventory of 1,001 postings across three batches,
+checks request/encoded-byte and enrichment/description/R2/absence
+effects and settles the exact canonical deadline. A separate preparation failure
+after the first committed 500 rows proves that no partial second chunk or
+success/absence receipt survives, while canonical failure scheduling remains
+available.
+
+`cmd/live` builds `go-ordinary-worker`. The binary's `--health` probes the installed process without another DB pool,
+requires matching source/plan/epoch and live claim-loop progress, and follows no
+redirects. Its `--identity` prints only
+its immutable source revision, CA SHA256 and profile. Startup compares its own
+clean Go VCS metadata or protected linker revision with
+`ORDINARY_OWNERSHIP_SOURCE_REVISION`, the exact plan SHA256, installed projection
+SHA1 and canonical routing epoch. It cannot activate a plan, rebuild a projection
+or adopt the allocator. Docker release, CI and B0 builders inject the checked-out
+revision with `CRAWLER_SOURCE_REVISION`; a missing or malformed build identity
+fails the image build. Both crawler images carry the binary, but no service is
+selected or started by this change.
+
+Runtime requires `ORDINARY_GO_WORKER_MODE=enabled`, all four
+`ORDINARY_OWNERSHIP_*` fields, `LOCAL_DATABASE_URL` and `REDIS_URL`. It loads native
+models from protected `ORDINARY_GO_DATA_DIRECTORY` (default `/app/data`), one
+ordinary authority connection and one read-only lookup connection. The CA asset
+is the exact certifi2026.2.25 snapshot from `uv.lock`, hash
+`fc9165a12403263e7ebfbdad7be7a3eac0fa5d325d3c70465f28d3690072ca28`;
+its bundled MPL notice is in `trust/LICENSE`. Runtime invokes no Python and
+substitutes no system CA. Internal-host exemptions derive once from protected
+service/proxy endpoints and `INTERNAL_HOSTS_ALLOW`, never queue/board evidence.
+
+Active monitor claims are bounded by the smaller discovery/monitor concurrency
+(default five; a zero monitor setting retains bounded discovery concurrency).
+There is no claimed-work prefetch beyond these slots. Defaults preserve the
+600-second lease, 120-second renewal, two-second queue fallback delay and ten
+domain probes. Every heartbeat revalidates the exact installed owner. A local
+settlement guard prevents an acknowledged terminal lease from racing its own
+renewal; PostgreSQL/token barriers remain the cross-process authority.
+
+`ORDINARY_GO_TASK_TIMEOUT_SECONDS` defaults to600 and requires cohort duration
+admission. The process stops claims on signal, keeps task contexts/heartbeats live
+for `SHUTDOWN_GRACE_SECONDS` (default30), then cancels unfinished work without
+inventing failure/success or removing its recoverable lease. Individual tasks and
+process shutdown have bounded cancellation grace (default5); uncooperative work
+forces process exit and skips blocking resource cleanup. A600-second default
+claim-loop watchdog also makes a responsive metrics server unhealthy during a
+claim outage. The listener defaults to `127.0.0.1:9104`, configurable through
+protected `ORDINARY_GO_METRICS_ADDRESS`.
+
+The runtime exports bounded legacy task/status/duration, heartbeat/drain and
+monitor posting metrics, native extraction duration/output and conserved
+origin/response/transport-error/encoded-byte counters. Extraction timing excludes
+posting persistence; recovered receipts and no-fetch deferrals emit no extraction
+execution. Partial processing results retain only confirmed committed batch
+counts, never whole-inventory success authority. Errors and public metrics expose
+no credentials, upstream URLs, hosts or arbitrary exception strings.
+
+Real fixtures build and run the native command against migrated private
+PostgreSQL/Redis, actual reference/model/location assets and the exact fixture
+plan. They prove no-fetch reservation settlement, health/metrics, signal drain
+and refusal of a wrong installed projection. Real TLS/queue token loss cancels a
+blocked fetch without canonical failure or fabricated terminal receipt. Race
+fixtures cover bounded claims, live renewal during drain, task deadlines,
+acknowledgement/renewal serialization, watchdogs and uncooperative cancellation.
+The real SIGKILL/guarded-reaper/restart fixture also preserves committed receipts,
+canonical board/posting rows, future deadlines, failure budget and unrelated host
+outcomes without HTTP or extraction replay. Checkpoint `16de7543b` passed this
+fixture using the actual image-extracted AMD64 binary and read-only model assets
+on Linux against private PostgreSQL/Redis (run 36860358274). That is installed
+component evidence, not full production-container/public-network or cold cutover
+authority. Fresh AMD64/ARM64 installed-image admission is now prepared.
+
+## Native ownership preparation
+
+The same source-bound executable provides `--stage-ownership` and
+`--inspect-ownership`. They use distinct protected `ORDINARY_GO_WORKER_MODE`
+values `stage-ownership` and `inspect-ownership`, the compiled matching
+`ORDINARY_OWNERSHIP_SOURCE_REVISION`, an explicit current
+`ORDINARY_OWNERSHIP_ROUTING_EPOCH`, and protected database/Redis URLs. They never
+allocate/adopt an epoch, claim work, activate ownership or publish its projection.
+
+Staging requires `ORDINARY_GO_COHORT_FILE`: an absolute regular non-symlink file,
+not writable by group/others, containing a bounded JSON array of distinct
+canonical board UUIDs. `ORDINARY_OWNERSHIP_PLAN_SHA256` and projection SHA1 must
+be absent. The tool stages fresh canonical eligible configurations and performs
+another exact readback. Inspection requires only the expected plan SHA256;
+cohort file and projection SHA1 must be absent. It rejects active/retired plans,
+configuration/eligibility drift, wrong source/digest and stale epochs. Both modes
+emit bounded document identities, not board configuration or credentials.
+
+Activation remains part of the coordinated all-writer ordinary/B0 cold protocol.
+The B0-only allocator now takes the ordinary lease barrier before its epoch
+barrier and declines an active ordinary plan before burning another epoch. It
+retains compatibility when the ordinary schema is absent and may allocate after
+the old ordinary plan is retired. Installed process fixtures cover staging,
+idempotent readback, drift/disabled-board rejection, epoch/source binding and
+unchanged canonical/queue/owner state; production selection remains disabled.
+
+Continue with installed image/process fault admission, supported all-writer
+startup/projection/cutover and B0's shared epoch cold reversal before selection.
+The [continuation plan](../../../../docs/27-go-lightpanda-continuation-plan.md)
+retains every enabled effective profile, remaining runtime consumers, whole-service
+output/freshness/queue/cost, the rollback window and production Python/Playwright/
+Chromium retirement. Python's effective direct transport remains100/20/five-second,
+HTTP1.1/20redirects/separate30-second operations; admit deployment/profile TLS,
+cookie, body-size and task-duration compatibility against that baseline.
+
+## Protected cold coordinator primitives
+
+The compiled-source-bound executable now accepts fourteen distinct one-shot commands:
+
+| Argument / matching `ORDINARY_GO_WORKER_MODE` | Operation |
+| --- | --- |
+| `--cold-b0-target` / `cold-b0-target` | Capture exact fresh PG/Redis fixed B0 board configurations. |
+| `--cold-begin` / `cold-begin` | Retain exact canonical intent before any sequence allocation. |
+| `--cold-reserve` / `cold-reserve` | Allocate or inspect the exact intent's fresh reservation. |
+| `--cold-inspect` / `cold-inspect` | Read retained phase/reservation by exact intent, granting no authority. |
+| `--cold-prepare` / `cold-prepare` | Retain pending Redis witness before committed publishing phase. |
+| `--cold-publish` / `cold-publish` | Audit actual B0 queues and publish/persist/read back joint routing. |
+| `--cold-activate` / `cold-activate` | Atomically install the exact ordinary DB owner and active journal. |
+| `--cold-reversal-begin` / `cold-reversal-begin` | Retain exact reversal intent and contain the forward owner before allocation. |
+| `--cold-reversal-reserve` / `cold-reversal-reserve` | Allocate a fresh retirement epoch or retry its exact retained reservation. |
+| `--cold-reversal-inspect` / `cold-reversal-inspect` | Read retained reversal progress without allocation locks or restore authority. |
+| `--cold-b0-rollback-plan` / `cold-b0-rollback-plan` | Derive the exact PG-backed B0 restoration manifest without queue effects. |
+| `--cold-b0-rollback-retain` / `cold-b0-rollback-retain` | Re-derive and retain the approved manifest before Redis effects. |
+| `--cold-b0-rollback-restore` / `cold-b0-rollback-restore` | Apply pinned rollback Lua, SAVE/read back its tombstone, then clear exact historical SQL fences. |
+| `--cold-b0-rollback-inspect` / `cold-b0-rollback-inspect` | Read immutable manifest/progress without allocation locks or Redis observation. |
+
+All require protected database/Redis URLs, compiled matching
+`ORDINARY_OWNERSHIP_SOURCE_REVISION` and canonical positive
+`ORDINARY_COLD_ROUTING_EPOCH`. Worker ownership epoch/plan/projection and cohort
+file fields must be absent. Capture uses the current caller-attested epoch;
+begin/reserve/inspect bind the intent's previous epoch, including pending burned-epoch
+recovery. Prepare/publish/activate require the exact reserved epoch and
+`ORDINARY_COLD_PLAN_SHA256`; neither a high-water nor a latest-plan selector is
+accepted. PostgreSQL pool capacity is one; statements are bounded to ten seconds,
+each critical transaction to fifteen and the one-shot operation to thirty.
+
+Capture requires `ORDINARY_COLD_B0_NAMESPACE`, `ORDINARY_COLD_B0_SHARD_ID`,
+`ORDINARY_COLD_B0_COHORT` and `ORDINARY_COLD_B0_LUA_FILE`. Its bounded JSON output
+contains a target SHA256 plus canonical `target` object with board IDs/slugs and
+configuration hashes. The host must durably save those exact object bytes; no
+credentials or raw configuration are returned. Capture creates no ownership.
+
+Other forward operations require `ORDINARY_COLD_INTENT_FILE` and
+`ORDINARY_COLD_INTENT_SHA256`. Except reservation/inspection, they also require
+`ORDINARY_COLD_B0_TARGET_FILE`, `ORDINARY_COLD_B0_TARGET_SHA256` and
+`ORDINARY_COLD_B0_LUA_FILE`. Reservation and inspection reject those unused fields. Files must
+be absolute regular non-symlink files, not group/other writable; intent/target/Lua
+limits are 4 KiB/16 KiB/128 KiB. Canonical JSON rejects duplicate/unknown fields,
+trailing data and reformatted bytes even with a matching hash. The actual B0 Lua
+must match its reviewed SHA256. Input hashes and source must bind the exact intent;
+the immutable journal binds the reserved epoch/plan before publication effects.
+
+Inspection returns `retained_phase` and any exact recorded reservation, including
+after publication interruption or witness loss. It does not attest live allocator,
+configuration, Redis routing or permission to start an owner.
+
+Outputs identify the completed primitive and exact documents, not host readiness
+or permission to start services. Errors are constant and omit inputs/credentials.
+A real executable fixture kills publication with SIGKILL after MSET, acknowledged
+SAVE and readback, before PostgreSQL commit. Its retained publishing intent and
+staged plan recover through exact publication/activation retries without changing
+canonical rows/deadlines/receipts or other Redis keys. Missing witnesses remain
+contained. The installed-image workflow runs this fixture on both architectures.
+
+Reversal and B0 restoration operations require both the original protected intent file/hash and
+`ORDINARY_COLD_REVERSAL_FILE`/`ORDINARY_COLD_REVERSAL_SHA256` (canonical JSON,
+at most 4 KiB). They require the explicit forward source epoch/plan in
+`ORDINARY_COLD_ROUTING_EPOCH`/`ORDINARY_COLD_PLAN_SHA256`; they reject all unused
+B0 target/Lua/selector fields for the three reversal commands. The reversal binds the exact forward intent,
+source revision/epoch/plan/phase, previous ordinary plan/B0 receipt, rollback
+release and independently attested cold-host digest. Begin can contain a
+disabled or changed candidate or a lost Redis witness. Reservation retires an
+active source owner and records a fresh epoch while leaving Redis and canonical
+rows/receipts/future deadlines untouched. A sequence burn before SQL commit
+retains pending intent; exact recovery allocates another fresh epoch.
+
+Reversal output includes `reversal_sha256`; reservation/inspection also report
+`reversal_phase` and `retirement_routing_epoch`. Begin omits phase because an
+exact retry may already be reserved. Routing epoch/plan in output remain the
+explicit source identity. Inspection observes retained history through a
+read-only transaction, even while allocation is paused, and grants no live
+allocator authority. Migration 0041 keeps the forward journal reversing and
+claims blocked until a complete restoration protocol is implemented and proven.
+Retirement alone cannot mark it reversed. The actual executable fixture kills
+reservation after nextval/owner retirement, observes pending state independently,
+and proves SQL rollback and fresh-epoch recovery without replaying data effects.
+
+B0 restoration additionally requires canonical protected
+`ORDINARY_COLD_B0_RESTORE_REQUEST_FILE`/`ORDINARY_COLD_B0_RESTORE_REQUEST_SHA256`
+(at most 4 KiB). Its request binds reversal/source, exact retirement epoch,
+explicit B0 source epoch and independently verified source receipt digest.
+`ORDINARY_COLD_ROUTING_EPOCH`/`ORDINARY_COLD_PLAN_SHA256` still identify the forward
+source. Preview rejects `ORDINARY_COLD_B0_RESTORATION_PLAN_SHA256`; retain/restore/
+inspect require that exact approved digest. Preview/retain/restore require the
+original target file/hash and pinned Lua; inspection rejects these unused inputs.
+All reject B0 namespace/shard/cohort selectors. Preview returns canonical
+`b0_rollback_plan` and its `b0_rollback_plan_sha256`; subsequent operations report
+`b0_restoration_phase`. The host must durably save and approve exact preview bytes.
+
+Migration 0042 commits the immutable plan before any Redis mutation. Restore
+compares the protected request to retained bytes before effects and re-derives the
+approved plan under SQL barriers/row locks. An atomic observation CAS precedes the
+unchanged actual rollback Lua. Acknowledged SAVE and exact permanent tombstone
+readback precede `redis-restored`; a subsequent transaction removes only the
+manifest's historical Go source-epoch/shard fences and commits `fences-cleared`.
+Exact tombstone recovery never replays canonical callbacks. Lost, expired,
+mismatched or partial evidence rejects. Read-only inspection remains available
+while mutation is paused. The actual executable fixture proves SIGKILL after
+SAVE/readback before SQL progress, then exact restart and repeated cleanup with
+canonical rows, receipts and microsecond future deadlines conserved.
+
+Full ordinary/B0 ownership restoration, sentinel/host receipt recovery and release
+readiness still require the supported ADR006 all-writer wrapper under its mutation
+lock. B0 restoration leaves the forward journal reversing and ordinary claims
+blocked. The host must independently verify cold-host/release/data/spec/env/image
+and receipt identities before these primitives can select production authority.
+Ordinary production remains Python until that complete protocol, readiness and
+full reversal are proven.
+
+## Native joint runtime admission
+
+Migration 0040 retains the exact canonical B0 configuration target before
+publishing phase commits. Its content/hash are immutable; the schema binds each
+reserved ordinary plan to at most one journal. Publishing/published/active phases
+require the retained target, and downgrade refuses any target or journal history.
+No witness is recreated automatically after a publishing phase has committed.
+
+For an active joint plan the native worker requires
+`ORDINARY_GO_B0_AUDIT_LUA_FILE`: an absolute regular non-symlink file, not writable
+by group/others and at most 128 KiB. Its bytes must match the reviewed actual B0
+Lua SHA256. Missing/untrusted Lua rejects startup before claiming. Foundation
+fixtures without any unfinished joint transition retain their standalone binding;
+they are not production selection proof.
+
+Startup and each native claim/write/heartbeat/settlement freshly bind the exact
+active journal to the approved ordinary plan/source/epoch and retained B0 target.
+The target's PG eligibility/configuration and Redis stable fields are re-attested.
+One read-only EVAL invokes the unmodified source-pinned B0 conservation audit and
+checks exact fixed selectors plus permanent ordinary projection/joint witness/
+B0 route/producer owner. Conserved live inflight/dead/terminal B0 states are valid;
+runtime admission does not impose the cutover's zero-inflight/dead requirement.
+Lost/expired/changed evidence declines authority and never adopts a later owner.
+Final Redis checks also guard the operation's held claim/receipt. Supported
+ownership/configuration mutators must honor the existing lease/epoch barriers.
+
+Private tests reject 15 journal/target/config/route/selector/record/type/TTL faults
+before pop without changing state. A real B0 inflight claim remains compatible
+with ordinary execution, while witness loss fences heartbeat, canonical callback
+and settlement of a real completed receipt with a future due. The actual worker
+process becomes ready under joint authority, then exits without popping future
+work or changing canonical state after witness loss. Installed-image tests run
+this behavior on both architectures before admission of the later source.
+
+Legacy ordinary startup and every claim now use the same retained journal/target,
+source-pinned actual B0 audit, fixed selectors and permanent shared witnesses.
+The installed `ORDINARY_GO_B0_AUDIT_LUA_FILE` requirement also applies to a
+journalled legacy owner. Unselected legacy claims hold the existing DB barriers
+and refuse unfinished joint intent. This does not add legacy write/settlement
+fences; all legacy inflight work must finish while the supported host drains and
+stops every writer before a transition.
+
+Metadata configuration hashes compare exact numeric values across PostgreSQL
+JSONB and Redis spelling, without binary float rounding. A shared Go/Python
+corpus covers precise integers, decimal/scientific spelling, negative zero,
+string escaping, duplicate/deep malformed objects and bounded exponents.
+Changed target hashes require a freshly captured and approved target before
+intent; no installed witness is automatically repaired or replaced.
+
+The real native coordinator publishes the journal/target used by an actual
+Python startup/claim probe. Nine reversible owned-fixture evidence faults block
+both admission paths without changing any Redis value/expiry class or canonical
+state. A real B0 inflight lease remains compatible with legacy admission. These
+checks run inside the fourth installed executable fixture on both architectures.
+
+The supported all-writer wrapper, complete PG-derived B0 transfer, full cold reversal,
+remaining interruption seams and real production container/public-fetch proof
+also remain before ordinary native selection. Full migration scope is unchanged.
+
+### Native B0 forward commands
+
+| Argument / protected mode | Effect |
+| --- | --- |
+| `--cold-b0-forward-plan` / `cold-b0-forward-plan` | Derive the complete PG/source-bound manifest through the fixed authenticated producer. |
+| `--cold-b0-forward-retain` / `cold-b0-forward-retain` | Freshly re-derive and retain approved bytes before activation. |
+| `--cold-b0-forward-apply` / `cold-b0-forward-apply` | Apply only retained approval; persist completion after SAVE and full readback. |
+| `--cold-b0-forward-inspect` / `cold-b0-forward-inspect` | Read immutable approval/completion history without allocator locks or Redis/producer observation. |
+
+These require the original protected intent file/hash, exact reserved
+`ORDINARY_COLD_ROUTING_EPOCH`/`ORDINARY_COLD_PLAN_SHA256` and canonical
+`ORDINARY_COLD_B0_FORWARD_REQUEST_FILE`/`ORDINARY_COLD_B0_FORWARD_REQUEST_SHA256`
+(at most 4 KiB). The request binds intent SHA256, compiled source revision,
+routing epoch and ordinary plan SHA256. Preview, retention and application require the
+exact target file/hash and reviewed lifecycle Lua. Preview rejects an approval
+selector; retention, application and inspection require `ORDINARY_COLD_B0_FORWARD_PLAN_SHA256`.
+Inspection rejects unused target/Lua fields and never observes Redis or the
+producer socket. All unrelated operations reject forward request/approval fields.
+
+Output includes `b0_forward_plan_sha256` and the complete exact `b0_forward_plan`
+object, bounded to 32 MiB. It includes task source URLs and queue/canonical source
+evidence; the host must retain output privately and durably. Preview and retention
+use the fixed authenticated producer client, with no socket/UID/route override.
+Retention commits immutable PostgreSQL approval. Application reports
+`b0_forward_phase=redis-transferred` and `b0_forward_receipt_sha256` only after
+acknowledged SAVE, exact full readback and committed immutable completion.
+Inspection reports `prepared` while completion is absent, including when a
+process died after SAVE. An uncertain mutation is not retried internally; an
+explicit invocation skips exactly observed completed transfers. A completed
+retry verifies the same persisted snapshot and returns the original receipt.
+These commands grant no release selection or service startup authority. The real
+Linux root fixture combines private PG/Redis, the UID-10001 producer and
+source-bound CLI with actual lost replies, SIGKILL and RDB recovery; it must pass
+on both architectures before claiming this operational contract verified.
+
+### Completion-bound joint publication commands
+
+| Argument / protected mode | Effect |
+| --- | --- |
+| `--cold-forward-prepare` / `cold-forward-prepare` | Verify exact durable transfer completion before retaining the joint pending witness. |
+| `--cold-forward-publish` / `cold-forward-publish` | Publish and persist the joint projection/witness only with exact completed transfer evidence. |
+| `--cold-forward-activate` / `cold-forward-activate` | Install the exact ordinary database owner after completion-bound publication. |
+
+All three require the protected forward request, approval selector, target/Lua,
+original joint intent and reserved epoch/ordinary plan fields described above,
+plus `ORDINARY_COLD_B0_FORWARD_RECEIPT_SHA256`. Other operations reject this
+completion selector. Output preserves the exact approval and receipt identities.
+The fixed producer and complete transferred state are re-attested under the
+publication transaction barriers before activation. Retained forward approval
+also prevents the older publication commands from bypassing this path.
+
+The actual root producer/PG/CLI fixture covers application recovery followed by
+these three commands and exact activation retry. Fresh execution on both Linux
+architectures is required before admitting this extension. Full host quiescence,
+release selection, receipts and readiness are still required before service start.
+
+### Ordinary rollback preparation commands
+
+| Argument / protected mode | Effect |
+| --- | --- |
+| `--cold-ordinary-rollback-plan` / `cold-ordinary-rollback-plan` | Preview the exact legacy or fresh native rollback decision. |
+| `--cold-ordinary-rollback-retain` / `cold-ordinary-rollback-retain` | Atomically retain approved history and any fresh staged ordinary plan. |
+| `--cold-ordinary-rollback-inspect` / `cold-ordinary-rollback-inspect` | Read immutable decision history without Redis or ownership barriers. |
+
+All require the protected original forward intent, reversal, source epoch/plan,
+compiled coordinator source, exact `ORDINARY_COLD_B0_RESTORATION_PLAN_SHA256`,
+and `ORDINARY_COLD_ORDINARY_RESTORE_REQUEST_FILE` plus its exact
+`ORDINARY_COLD_ORDINARY_RESTORE_REQUEST_SHA256`. The canonical request contains
+`reversal_sha256`, `source_revision`, `retirement_epoch`,
+`b0_restoration_plan_sha256` and `rollback_source_revision`. The last field is
+empty for a legacy ordinary predecessor or the exact prior native binary revision.
+The retirement epoch must be the reversal's reserved R; no new epoch is allocated.
+
+Preview/retention require protected B0 target and pinned Lua. Retention/inspection
+add `ORDINARY_COLD_ORDINARY_RESTORATION_PLAN_SHA256`; preview rejects that selector.
+Inspection rejects target/Lua inputs and needs only parseable Redis configuration,
+which may point to an unavailable socket. Other operations reject these new fields.
+Output reports `ordinary_restoration_plan_sha256`, the full bounded canonical
+`ordinary_restoration_plan` and `ordinary_restoration_mode`. Retain it privately
+and durably with release evidence. These commands do not publish ownership, complete
+a joint reversal, select a release or grant permission to start services.
+
+### Prior Go B0 reactivation commands
+
+| Argument / protected mode | Effect |
+| --- | --- |
+| `--cold-b0-reactivation-plan` / `cold-b0-reactivation-plan` | Preview transfer to the prior Go B0 owner at reserved retirement R. |
+| `--cold-b0-reactivation-retain` / `cold-b0-reactivation-retain` | Retain the exact approved reactivation manifest. |
+| `--cold-b0-reactivation-apply` / `cold-b0-reactivation-apply` | Apply pending transfers and retain completion after SAVE/readback. |
+| `--cold-b0-reactivation-inspect` / `cold-b0-reactivation-inspect` | Inspect retained approval/completion without a producer or Redis connection. |
+
+All require the protected original forward intent and reversal files/digests,
+compiled coordinator source, original source E/plan and exact
+`ORDINARY_COLD_ORDINARY_RESTORATION_PLAN_SHA256`. `ORDINARY_COLD_ROUTING_EPOCH`
+continues to name source E; `ORDINARY_COLD_RETIREMENT_EPOCH` names the already
+reserved R explicitly. The retained ordinary decision must bind that reversal
+and R. Retention/application/inspection additionally require
+`ORDINARY_COLD_B0_REACTIVATION_PLAN_SHA256`; preview refuses the approval selector.
+Unrelated operation fields and worker/staging selectors are refused.
+
+Preview/retention/application require protected B0 target/pinned Lua and
+`ORDINARY_COLD_PRIOR_B0_RECEIPT_FILE` plus its exact
+`ORDINARY_COLD_PRIOR_B0_RECEIPT_SHA256`. The receipt hash must match the original
+intent and reversal's prior Go B0 identity. Receipt text is never adopted as shell
+or environment configuration. Prior cohort/revision/epoch checks and every effect
+remain bound to the native queue API and fixed authenticated producer. Historical
+inspection forbids target/Lua/receipt inputs and does not open Redis; its configured
+Redis URL may point to an unavailable socket.
+
+Output reports the exact bounded canonical `b0_reactivation_plan`,
+`b0_reactivation_plan_sha256` and reserved retirement identity. Application and
+inspection report `b0_reactivation_phase` (`prepared` or `redis-reactivated`) and
+`b0_reactivation_receipt_sha256` only when completion is committed. Keep output
+privately and durably. Completed application retries verify exact persisted state
+without activation or SAVE. Missing evidence is never reconstructed.
+
+The Linux root fixture exercises the actual UID-10001 producer and source-bound
+CLI, SIGKILL after SAVE before SQL completion, RDB/producer restart, exact retry
+and historical inspection while ownership barriers are held. Fresh execution must
+pass on both architectures. Its controlled prior receipt and Lua restoration do
+not prove independent immutable production releases or full sentinel clearing.
+These commands publish no ordinary owner, close no reversal and grant no release
+selection, service start or full host readiness.
+
+## Protected ordinary restoration finalizer
+
+The executable recognizes only these explicit one-shot commands:
+`--cold-ordinary-finalization-plan`, `--cold-ordinary-finalization-retain`,
+`--cold-ordinary-finalization-prepare`, `--cold-ordinary-finalization-publish`,
+`--cold-ordinary-finalization-complete` and `--cold-ordinary-finalization-inspect`.
+Set `ORDINARY_GO_WORKER_MODE` to the same command name without `--` and bind
+`ORDINARY_OWNERSHIP_SOURCE_REVISION` to the compiled candidate source.
+
+All commands require protected original intent/reversal files and their SHA256s,
+`ORDINARY_COLD_ROUTING_EPOCH` for the original source E, `ORDINARY_COLD_PLAN_SHA256`
+for its exact source plan, explicit `ORDINARY_COLD_RETIREMENT_EPOCH` R,
+`ORDINARY_COLD_ORDINARY_RESTORATION_PLAN_SHA256` for the retained 0045 decision,
+and `ORDINARY_COLD_B0_REACTIVATION_PLAN_SHA256` for completed 0046 reactivation.
+`ORDINARY_COLD_FINALIZATION_REQUEST_FILE` and its `_SHA256` bind the closed canonical
+request: restoration/reactivation plan SHA256s, compiled source, a new transition
+UUID, active release SHA256 and independently verified all-writer cold attestation
+SHA256. Evidence hashes are identities; the ADR006 host verifies the underlying
+release/quiescence evidence independently.
+
+Preview rejects `ORDINARY_COLD_FINALIZATION_PLAN_SHA256`; all other commands require
+the exact approved digest. Operational commands require protected B0 target file/hash,
+reviewed Lua and Redis configuration, and use the fixed authenticated producer client.
+The completed B0 receipt already binds prior release history, so prior B0 receipt
+files and unrelated restore/forward inputs are rejected. A changed protected request
+cannot drive a retained approval. No command adopts a latest epoch, allocates R+1,
+selects a release or starts services.
+
+Inspection rejects live target/Lua inputs and needs no `REDIS_URL`; it opens neither
+Redis nor producer and acquires no ownership/allocator barrier. Output includes the
+exact canonical approval, retained phase, publication/completion digests and canonical
+completion receipt when present, plus the fresh prior-source ordinary identity when
+native. Prepared output is not a service startup or readiness grant.
+
+Real PG/Redis executable tests verify historical inspection without live inputs,
+source/hash/epoch/input refusals, exact receipt retention and inspection under both
+barriers after allocator advancement. The Linux root fixture uses the actual
+UID-10001 producer and actual compiled CLI for both native and legacy decisions. It
+kills the CLI after SAVE before publication SQL commit and during atomic completion,
+reloads the actual RDB and producer, and verifies exact recovery and claim containment.
+Fresh source-bound Linux execution is required before admitting these seams. Synthetic
+prior release labels and a current-source v1 reader do not prove an independently
+pinned prior immutable worker image.

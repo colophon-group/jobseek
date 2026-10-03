@@ -28,7 +28,9 @@ permissions:
 
 concurrency:
   group: crawler-b0-whole-lane-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Preserve the complete numeric report for the running source. Keep only the
+  # newest pending candidate; its own exact-source admission is still required.
+  cancel-in-progress: false
 
 jobs:
   measure:
@@ -56,9 +58,11 @@ jobs:
           set -euo pipefail
           source_sha="$(git rev-parse HEAD)"
           docker build --target slim \
+            --build-arg "CRAWLER_SOURCE_REVISION=${source_sha}" \
             --label "org.opencontainers.image.revision=${source_sha}" \
             --tag "jobseek-b0-candidate:${source_sha}" apps/crawler
           docker build --target benchmark-browser \
+            --build-arg "CRAWLER_SOURCE_REVISION=${source_sha}" \
             --label "org.opencontainers.image.revision=${source_sha}" \
             --tag "jobseek-b0-control:${source_sha}" apps/crawler
           docker build --build-context contracts=apps/crawler/contracts \

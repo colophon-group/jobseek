@@ -1,0 +1,190 @@
+{
+  "version": "jobseek.go-ordinary.joint-admission-evidence/v1",
+  "observed_at": "2026-10-01T16:43:09.710037+00:00",
+  "runtime_source_head": "d1a2316f0d1662e06aa95f6924c3a09840ec3ae2",
+  "candidate_version": "0.13.904",
+  "pr": "https://github.com/colophon-group/jobseek/pull/10210",
+  "production_selected": false,
+  "production_changed": false,
+  "implemented": [
+    "migration0040 retains canonical B0 target with publishing phase; immutable payload/history and one reserved plan per journal binding",
+    "schema publishing/published/active transitions require retained target; later missing target contained, downgrade refuses retained target/journal history",
+    "native worker requires protected regular non-symlink bounded actual B0 Lua file for a journalled plan; byte SHA256 pins the reviewed audit",
+    "exact active journal binds approved ordinary plan/source/epoch and retained canonical target; fresh PG/Redis B0 eligibility/configuration attestations before operations",
+    "read-only single EVAL invokes unmodified actual B0 conservation audit, fixed selectors and exact permanent ordinary projection/joint marker/B0 route/producer owner",
+    "healthy conserved B0 inflight/dead/terminal states allowed; runtime does not impose publication quiescence constraints",
+    "native startup/claims/writes/heartbeat/host circuits/settlement retain bound joint checks; unfinished intent blocks unselected native claimants",
+    "real native process starts with exact joint authority and stops after witness loss without pop or canonical/future queue changes"
+  ],
+  "local": {
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "results": [
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "alembic",
+          "-c",
+          "src/migrations/alembic.ini",
+          "upgrade",
+          "head"
+        ],
+        "exit_code": 0,
+        "seconds": 0.553,
+        "log": "ordinary-joint-admission-migration-upgrade-head.log"
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "alembic",
+          "-c",
+          "src/migrations/alembic.ini",
+          "downgrade",
+          "0038"
+        ],
+        "exit_code": 0,
+        "seconds": 0.321,
+        "log": "ordinary-joint-admission-migration-downgrade-0038.log"
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "alembic",
+          "-c",
+          "src/migrations/alembic.ini",
+          "upgrade",
+          "head"
+        ],
+        "exit_code": 0,
+        "seconds": 0.311,
+        "log": "ordinary-joint-admission-migration-upgrade-head.log"
+      },
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=90s",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 36.234,
+        "log": "ordinary-joint-admission-queue-race.log"
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "pytest",
+          "tests/test_ordinary_ownership.py",
+          "tests/test_lightpanda_activation.py",
+          "tests/test_redis_queue.py",
+          "tests/test_pipeline.py",
+          "tests/test_rich_monitor_contract.py",
+          "-q"
+        ],
+        "exit_code": 0,
+        "seconds": 6.132,
+        "log": "ordinary-joint-admission-legacy-contracts.log"
+      },
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=90s",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 30.134,
+        "log": "ordinary-joint-admission-worker-race.log"
+      }
+    ],
+    "cleanup": true,
+    "production_changed": false,
+    "development_fixture_alignment": "Owned empty development cache aligned before normal downgrade/re-upgrade; final complete migration applied by Alembic. No production mutation."
+  },
+  "real_tests": {
+    "authority_fault_cases": 15,
+    "before_pop_no_state_changes": true,
+    "actual_b0_inflight_compatible": true,
+    "actual_completed_receipt_with_future_due_fenced_after_witness_loss": true,
+    "actual_worker_rejects_missing_wrong_hash_symlink_audit": true,
+    "actual_worker_joint_startup_and_witness_loss_exit": true,
+    "legacy_tests": 290,
+    "legacy_skips": 0,
+    "node_checks": 126,
+    "vet_queue_worker": true,
+    "ruff_format_check": true,
+    "pyright": "0 errors/warnings/information"
+  },
+  "previous_exact_head": {
+    "head": "79da5b27ad6ac74cbcadc773a1ac32279b291779",
+    "linux": {
+      "id": 36889628805,
+      "conclusion": "success"
+    },
+    "full_ci": {
+      "id": 36889641277,
+      "conclusion": "success"
+    },
+    "installed_images": {
+      "id": 36889645493,
+      "conclusion": "success",
+      "downloaded_verified": {
+        "amd64": {
+          "source": "79da5b27ad6ac74cbcadc773a1ac32279b291779",
+          "architecture": "amd64",
+          "image_id": "sha256:bce58d08a1fc4673a5a3c88fb4ea0f430f87fed1b4f292abadc023033578abc2",
+          "binary_sha256": "df071ceaefd2c108e7c1ee7b29e6422cd27d21d6bab8a63b0c0bef7098558a95",
+          "asset_count": 34,
+          "tests": [
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent"
+          ],
+          "scope": "image-extracted binary/assets on Linux private PG17/Redis; protected coordinator SIGKILL/recovery included, later joint runtime admission source not covered"
+        },
+        "arm64": {
+          "source": "79da5b27ad6ac74cbcadc773a1ac32279b291779",
+          "architecture": "arm64",
+          "image_id": "sha256:c522b23b0e1be0427114829b43d45a4582ccb5ce038ac613ff682cdbc9219ab5",
+          "binary_sha256": "335cc4893166fcaa94b1fae7aa1aea939a68d1d3660a3d8f860db9f60c517af4",
+          "asset_count": 34,
+          "tests": [
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent"
+          ],
+          "scope": "image-extracted binary/assets on Linux private PG17/Redis; protected coordinator SIGKILL/recovery included, later joint runtime admission source not covered"
+        }
+      }
+    },
+    "whole_b0": {
+      "id": 36889628434,
+      "status": "in_progress",
+      "conclusion": null
+    },
+    "actual_deploy_gate": "failure; draft intentionally unpromotable"
+  },
+  "later_source_admission": "fresh exact pushed-head Linux/fullCI/both installed architectures/B0 still required",
+  "limits": [
+    "native component proof; remaining Python legacy ordinary worker joint guard still required before supported mixed-owner selection",
+    "supported ADR006 host wrapper/all-writer quiescence, immutable release/rollback/data/spec/env/image/sentinel/receipt verification and full PG-derived B0 transfer remain",
+    "full cold reversal, remaining actual process interruption seams, changed/disabled-cohort rollback remain",
+    "current process proof deliberately uses future work and no public fetch; actual container/public fetch/effective settings not proven",
+    "B0 full audit is bounded at 1600 records but adds per-operation work; whole-fleet resource/density/cost and scale admission still needed",
+    "all enabled profiles/runtime consumers, fleet canonical/publisher/freshness/queue parity, actual rollback window and production Python/Playwright/Chromium retirement incomplete"
+  ]
+}

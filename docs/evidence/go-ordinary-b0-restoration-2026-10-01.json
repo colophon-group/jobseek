@@ -1,0 +1,409 @@
+{
+  "checkpoint": "durable native B0 restoration and exact historical fence cleanup",
+  "date": "2026-10-01",
+  "runtime_source_revision": "9d252deccfbe031ea1c4dbffee05996261b68db2",
+  "candidate_version": "0.13.904",
+  "pr": 10210,
+  "draft": true,
+  "production_changed": false,
+  "full_migration_goal": "active",
+  "local_full_races": {
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "results": [
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=90s",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 45.589,
+        "log": "ordinary-b0-restoration-final-queue-race.log"
+      },
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=90s",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 31.263,
+        "log": "ordinary-b0-restoration-final-worker-race.log"
+      },
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=90s",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 4.891,
+        "log": "ordinary-b0-restoration-final-exporter-race.log"
+      }
+    ],
+    "cleanup": true,
+    "production_changed": false
+  },
+  "mandatory_legacy_regression": {
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "results": [
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "--no-sync",
+          "alembic",
+          "-c",
+          "src/migrations/alembic.ini",
+          "upgrade",
+          "head"
+        ],
+        "exit_code": 0,
+        "seconds": 0.327,
+        "log": "ordinary-b0-restoration-migration-upgrade.log"
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "--no-sync",
+          "pytest",
+          "tests/test_ordinary_ownership.py",
+          "tests/test_lightpanda_activation.py",
+          "tests/test_redis_queue.py",
+          "tests/test_pipeline.py",
+          "tests/test_rich_monitor_contract.py",
+          "-q"
+        ],
+        "exit_code": 0,
+        "seconds": 6.031,
+        "log": "ordinary-b0-restoration-final-legacy.log"
+      }
+    ],
+    "cleanup": true,
+    "production_changed": false,
+    "tests_passed": 295,
+    "skips": 0
+  },
+  "actual_executable_sigkill": {
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "results": [
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "--no-sync",
+          "alembic",
+          "-c",
+          "src/migrations/alembic.ini",
+          "upgrade",
+          "head"
+        ],
+        "exit_code": 0,
+        "seconds": 0.502,
+        "log": "ordinary-b0-restoration-migration-upgrade.log"
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "--no-sync",
+          "alembic",
+          "-c",
+          "src/migrations/alembic.ini",
+          "downgrade",
+          "0041"
+        ],
+        "exit_code": 0,
+        "seconds": 0.269,
+        "log": "ordinary-b0-restoration-migration-downgrade-0041.log"
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "--no-sync",
+          "alembic",
+          "-c",
+          "src/migrations/alembic.ini",
+          "upgrade",
+          "head"
+        ],
+        "exit_code": 0,
+        "seconds": 0.261,
+        "log": "ordinary-b0-restoration-migration-upgrade-head.log"
+      },
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=90s",
+          "-run",
+          "^TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent$",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 12.209,
+        "log": "ordinary-b0-restoration-executable-race.log"
+      }
+    ],
+    "cleanup": true,
+    "production_changed": false
+  },
+  "focused_library_faults_and_migration_round_trip": {
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "results": [
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "--no-sync",
+          "alembic",
+          "-c",
+          "src/migrations/alembic.ini",
+          "upgrade",
+          "head"
+        ],
+        "exit_code": 0,
+        "seconds": 0.375,
+        "log": "ordinary-b0-restoration-migration-upgrade.log"
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "--no-sync",
+          "alembic",
+          "-c",
+          "src/migrations/alembic.ini",
+          "downgrade",
+          "0041"
+        ],
+        "exit_code": 0,
+        "seconds": 0.271,
+        "log": "ordinary-b0-restoration-migration-downgrade-0041.log"
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "--no-sync",
+          "alembic",
+          "-c",
+          "src/migrations/alembic.ini",
+          "upgrade",
+          "head"
+        ],
+        "exit_code": 0,
+        "seconds": 0.27,
+        "log": "ordinary-b0-restoration-migration-upgrade-head.log"
+      },
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=90s",
+          "-run",
+          "^Test(RealColdB0Restoration|ColdB0Restoration)",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 8.27,
+        "log": "ordinary-b0-restoration-focused-race.log"
+      }
+    ],
+    "cleanup": true,
+    "production_changed": false
+  },
+  "repository_tests": 37,
+  "static_checks": "queue/worker go vet, go mod tidy -diff and gofmt; affected Python ruff check/format and migration0042 pyright passed",
+  "fixture_runner_correction": "Initial broad helper selected two nonexistent legacy test filenames; pytest exited before collection. Corrected helper then ran the five actual mandatory files: 295 passed with zero skips. Go races did not need rerunning. Owned database stopped after each helper.",
+  "proof": [
+    "Migration0042 commits immutable exact approved manifest bytes before Redis effects; rewrite/delete/skip are refused and downgrade retains history.",
+    "Fresh source-pinned actual audit/read-only snapshots and PG-derived approved plan compare under SQL barriers/row locks; atomic CAS compares records/guards/legacy authority before unchanged actual rollback_legacy Lua.",
+    "Actual Redis SAVE acknowledgement and permanent exact eight-field rollback tombstone readback precede SQL redis-restored progress.",
+    "A later transaction clears only exact manifest-bound Go source epoch/shard SQL fences, rejects live leases, and commits fences-cleared atomically.",
+    "Ready/dead/terminal plans preserve schedules/config/drop effects, exact bigint hashes, transfer intent and canonical microsecond future due times without fetch/parser/enrichment/canonical callback replay.",
+    "SAVE denial, post-Redis SQL failure, historical fence-progress failure and fresh independent Redis process RDB load all recover by retained plan and exact tombstone; no lost-witness reconstruction.",
+    "Protected compiled-source-bound native preview/retain/restore/inspect commands bind original intent/reversal, canonical explicit request and approved plan. Wrong protected receipt request rejects before effects. Read-only inspect rejects unused target/Lua/selector fields.",
+    "Actual native executable SIGKILL after SAVE/readback before SQL progress leaves prepared manifest, durable tombstone and historical fence. Read-only actual CLI inspection works while progress is paused. Restart/retry reaches fences-cleared at the same retirement epoch with canonical rows/ordinary receipts/future deadlines unchanged."
+  ],
+  "previous_checkpoint": {
+    "head": "de9fc4f5217fdb04fd9b6dff395b50f1ce5caf16",
+    "runtime": "a7502f1bb87a80a2acb8df818080b4f1acee6ae8",
+    "linux": {
+      "id": 36908705159,
+      "conclusion": "success"
+    },
+    "full_ci": {
+      "id": 36908788510,
+      "conclusion": "success"
+    },
+    "installed_images": {
+      "id": 36908792798,
+      "conclusion": "success",
+      "verified_artifacts": {
+        "amd64": {
+          "source": "de9fc4f5217fdb04fd9b6dff395b50f1ce5caf16",
+          "architecture": "amd64",
+          "image_id": "sha256:f516db881198b05acd40eda39a71abee763689ff77b8a1b6aaba178cbccbb301",
+          "binary_sha256": "462151a6b8d8190bbaf13877d84ec4d4ffaaa446aa9a7255cb1eeadc71bb62c3",
+          "asset_count": 34,
+          "tests": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "scope": "image-extracted native binary/assets on Linux private PG17/Redis; preceding PG-derived B0 rollback preparation source; current uncommitted native B0 restoration is not covered."
+        },
+        "arm64": {
+          "source": "de9fc4f5217fdb04fd9b6dff395b50f1ce5caf16",
+          "architecture": "arm64",
+          "image_id": "sha256:7e6d2b0163135a5db451345d6e4b2000f1cd453e531d55154efa157e3940492a",
+          "binary_sha256": "5ed224eb3c7f5373c099e80fb479537cd2b1eda09d279e1f8b816db3fa399d09",
+          "asset_count": 34,
+          "tests": [
+            "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+            "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+            "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+            "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain"
+          ],
+          "scope": "image-extracted native binary/assets on Linux private PG17/Redis; preceding PG-derived B0 rollback preparation source; current uncommitted native B0 restoration is not covered."
+        }
+      }
+    },
+    "whole_b0": {
+      "id": 36908705415,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    "actual_deploy_gate": "failure: Draft PR; no merge authority is granted; evaluator success is not authority",
+    "all_four": "success"
+  },
+  "previous_retirement_whole_b0": {
+    "head": "286810cfc074cc201d3d9b51700cd03886525654",
+    "id": 36905777358,
+    "conclusion": "success"
+  },
+  "current_source_ci": "Required after push; preceding source reports do not admit this source. Expanded actual executable fixture automatically runs in both installed image jobs.",
+  "limits": [
+    "B0 queue restoration and historical fence cleanup leave the forward journal reversing; no fresh ordinary/B0 restored owner or service-start authority.",
+    "Ordinary projection/joint witness, sentinel and host receipt remain intact pending the complete restoration protocol.",
+    "Source receipt/host/release digests are integrity bindings. Independent immutable release/data/spec/env/image/sentinel/receipt identity and all-writer cold-host evidence belong to the supported ADR006 wrapper.",
+    "Private process/Redis/PG fixtures do not prove production deployment, container effective settings/public fetch, fleet coverage or resource/cost admission."
+  ],
+  "next": "Complete ordinary/B0 fresh ownership restoration, sentinel/receipt recovery and supported ADR006 all-writer host wrapper with independently verified active/target/rollback generation/spec/env/data/image identities and full readiness. Finish forward PG-derived B0 transfer and remaining actual process interruption seams. Continue every enabled effective profile/runtime consumer, canonical/publisher/freshness/queue parity, comparable whole-service CPU/RAM/density/cost, exact gates/rollout, actual rollback window and production Python/Playwright/Chromium retirement while preserving useful isolated offline Python.",
+  "final_fixture_source_revision": "37c0bd723d980be6df845af625f55cc03edba466",
+  "final_worker_races_after_logical_snapshot_correction": {
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "results": [
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "--no-sync",
+          "alembic",
+          "-c",
+          "src/migrations/alembic.ini",
+          "upgrade",
+          "head"
+        ],
+        "exit_code": 0,
+        "seconds": 0.316,
+        "log": "ordinary-b0-restoration-migration-upgrade.log"
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "--no-sync",
+          "alembic",
+          "-c",
+          "src/migrations/alembic.ini",
+          "downgrade",
+          "0041"
+        ],
+        "exit_code": 0,
+        "seconds": 0.268,
+        "log": "ordinary-b0-restoration-migration-downgrade-0041.log"
+      },
+      {
+        "command": [
+          "uv",
+          "run",
+          "--frozen",
+          "--no-sync",
+          "alembic",
+          "-c",
+          "src/migrations/alembic.ini",
+          "upgrade",
+          "head"
+        ],
+        "exit_code": 0,
+        "seconds": 0.271,
+        "log": "ordinary-b0-restoration-migration-upgrade-head.log"
+      },
+      {
+        "command": [
+          "go",
+          "test",
+          "-race",
+          "-count=1",
+          "-timeout=90s",
+          "./..."
+        ],
+        "exit_code": 0,
+        "seconds": 30.722,
+        "log": "ordinary-b0-restoration-final-worker-race.log"
+      }
+    ],
+    "cleanup": true,
+    "production_changed": false
+  },
+  "linux_snapshot_follow_up": {
+    "head": "8bdb1783289bbf7e8a0378a83ed826db31e04731",
+    "run": 36913625577,
+    "attempts": [
+      {
+        "attempt": 1,
+        "result": "AMD64 opaque DUMP/canonical combined mismatch at retirement; ARM64 passed"
+      },
+      {
+        "attempt": 2,
+        "result": "AMD64 opaque DUMP/canonical combined mismatch at preparation/retention; ARM64 result retained from attempt1"
+      }
+    ],
+    "correction": "Compare canonical exact logical Redis bytes (including non-UTF8), type, sorted hash/set entries, zset members/scores, list order and expiry classes; internal DUMP encoding/order is outside the runtime contract. Separate canonical and changed-key diagnostics. Regression proves reinsertion of equal values is conserved and actual value/type/microsecond-score/expiry/binary-byte drift is detected.",
+    "cause_status": "Internal encoding/order is the working diagnosis; fresh exact-source Linux/image admission is required before closing the CI finding.",
+    "production_runtime_changed_by_correction": false
+  }
+}

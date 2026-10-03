@@ -1,0 +1,62 @@
+{
+  "schema": "jobseek.migration.ordinary-process-crash-evidence/v1",
+  "implementation_head": "ad8cc268f9a02ca72b646fb1fa1d3ad296991601",
+  "runtime_parent_source_head": "2b775782f275a48b6a5890463bbfc9ac96b37d17",
+  "pull_request": "https://github.com/colophon-group/jobseek/pull/10210",
+  "candidate_version": "0.13.904",
+  "selected_in_production": false,
+  "local": {
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "targeted_native_executable_race_seconds": 11.088,
+    "full_native_worker_race_seconds": 36.973,
+    "scope": "Current-source native child executable with synthetic fixture revision; no installed Linux image claim",
+    "node_runtime_version_checks": 35,
+    "vet_tidy_format_actionlint": "passed",
+    "cleanup": true,
+    "production_changed": false
+  },
+  "verified": [
+    "Private scoped PostgreSQL terminal-update trigger and advisory lock pause the actual executable before commit; no production fault hooks or relaxed CA/endpoint policy.",
+    "A corrupt disposable Redis ready index after claim refuses acknowledgement while retaining the exact lease token and board snapshot; PostgreSQL completed receipt and canonical future due are committed.",
+    "Actual child exit is attested as SIGKILL, then production reap_expired.lua runs under WithOrdinaryLeaseRetirement; the killed claim generation is revoked.",
+    "Same binary/source/plan/epoch restarts with a new claim token and recovers the completed receipt. No HTTP attempts or native extraction executions; no repeated canonical board/posting effects, failure budget or deadline changes.",
+    "Recovered Redis deadline equals canonical PostgreSQL microsecond deadline; later unrelated host-circuit failure survives; no inflight token remains; identity-bound health and signal drain pass.",
+    "Protected CI workflow now extracts the actual built image binary and /app/data, verifies binary SHA256 against the image, makes extracted assets read-only and runs both real executable tests on Linux with mandatory PostgreSQL17/private Redis. Exact source/image ID/binary/asset hashes and test log are saved."
+  ],
+  "installed_image_limitation": "New image-extracted executable/asset CI proof is prepared, awaiting execution. It proves those installed components on Linux, not the complete production container environment or full verified public network fetch.",
+  "previous_process_checkpoint": {
+    "head": "c32640c66eb06e49831ab3c6d9912b75907b00e4",
+    "linux": {
+      "run": 36856484383,
+      "amd64": "success",
+      "arm64": "success"
+    },
+    "full_ci": {
+      "run": 36856561101,
+      "conclusion": "success"
+    },
+    "installed_runtime_identity": {
+      "run": 36856620870,
+      "conclusion": "success"
+    },
+    "b0_admission": {
+      "run": 36856484342,
+      "status": "in_progress"
+    },
+    "actual_deploy_gate": "failure while draft",
+    "limitation": "Earlier-head checks do not cover this later crash/image-proof implementation."
+  },
+  "not_verified": [
+    "Fresh implementation-head Linux, installed image executable/asset, full CI and B0 checks; actual green deploy gate.",
+    "Production-container full verified fetch/processing and comparable operational task/resource settings.",
+    "Supported exclusive all-writer ordinary ownership/projection installation, exact source/image/plan/epoch startup, shared B0 epoch cutover and cold reversal.",
+    "Every enabled effective monitor/detail/browser profile and runtime consumer; fleet canonical output, publisher policy, freshness, queue conservation and whole-service attributable cost.",
+    "Actual rollback observation window and removal of production Python/Playwright/Chromium/runtime-only assets, preserving useful isolated offline Python."
+  ],
+  "next": "Finish exact-source installed executable and asset proof; implement one coordinated cold ownership transition for ordinary workers and B0 under ADR006, including interrupted publication/reversal. Then expand to all enabled effective profiles/consumers and prove fleet/freshness/queue/cost/window retirement. Full migration goal remains active.",
+  "pacing": {
+    "b0_concurrency": "One active measurement finishes; newest pending candidate waits.",
+    "authority": "Earlier-source reports do not satisfy later-source admission."
+  }
+}

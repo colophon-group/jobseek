@@ -1,0 +1,92 @@
+{
+  "schema": "jobseek.migration.ordinary-runtime-evidence/v1",
+  "runtime_source_head": "2b775782f275a48b6a5890463bbfc9ac96b37d17",
+  "pull_request": "https://github.com/colophon-group/jobseek/pull/10210",
+  "candidate_version": "0.13.904",
+  "draft": true,
+  "selected_in_production": false,
+  "local": {
+    "source_head": "2b775782f275a48b6a5890463bbfc9ac96b37d17",
+    "database": "owned fully migrated PostgreSQL18.6",
+    "redis": "private per-test Redis UDS",
+    "migration": "head0037/down0036/head0037 passed",
+    "full_native_queue_race_seconds": 21.292,
+    "full_native_runtime_assembly_race_seconds": 42.679,
+    "reader_and_preparation_race_seconds": 15.437,
+    "mandatory_legacy_python_tests": 185,
+    "legacy_python_skips": 0,
+    "image_pin_and_claimant_deployment_python_tests": 96,
+    "workflow_runtime_version_documentation_node_tests": 130,
+    "vet_module_format_actionlint": "passed",
+    "linux_cross_build": [
+      "amd64",
+      "arm64"
+    ],
+    "cleanup": true,
+    "production_changed": false,
+    "timing_limitation": "Local test wall times include concurrent cross-build load; these are test completion evidence, not comparable fleet performance or cost."
+  },
+  "local_cross_compiled_binary_sha256": {
+    "amd64": "bb1f5459a00c519fd8604127b38a68154a04f7ad28377a2cfc52ac7aff802499",
+    "arm64": "145bd0dec1d83da5830c1a5e8a674f1301f417e048d93e763c150152ac0474f6"
+  },
+  "pinned_ca": {
+    "provider": "certifi2026.2.25 from uv.lock",
+    "sha256": "fc9165a12403263e7ebfbdad7be7a3eac0fa5d325d3c70465f28d3690072ca28",
+    "runtime_python_required": false,
+    "license": "apps/crawler/go/ordinary-worker/trust/LICENSE"
+  },
+  "runtime_defaults": {
+    "active_claims": 5,
+    "lease_seconds": 600,
+    "heartbeat_seconds": 120,
+    "task_timeout_seconds": 600,
+    "shutdown_grace_seconds": 30,
+    "cancellation_grace_seconds": 5,
+    "stall_watchdog_seconds": 600,
+    "fallback_domain_delay_seconds": 2,
+    "max_domain_probes": 10,
+    "authority_postgres_connections": 1,
+    "lookup_read_only_postgres_connections": 1,
+    "redis_pool_connections": 2
+  },
+  "verified": [
+    "Native command protected source/plan/projection/epoch startup, real taxonomy/currency/SQLite location assets and native pinned CA; no Python subprocess in worker.",
+    "Exact fixture-owned native executable completes a no-fetch publisher reservation, settles canonical PG due into Redis, preserves failure budget, emits bounded metrics and drains on signal.",
+    "Native executable --identity reports compiled source/CA/profile; --health requires matching installed source/plan/epoch and live claim-loop progress without extra database pool or redirects.",
+    "Wrong installed projection refuses native process startup. Frozen protected internal-host derivation, canonical numeric identities, resource bounds and secret-safe errors.",
+    "Bounded claims without prefetched excess; live heartbeat during signal drain; claim loss cancels work; task deadlines and uncooperative execution/cancellation return bounded fatal process errors rather than blocking cleanup.",
+    "Real verified TLS token-loss fixture cancels blocked fetch without canonical failure/terminal receipt, preserving network outcome conservation.",
+    "Local acknowledgement guard serializes settlement against its own heartbeat; canonical SQL/token barriers retain cross-process authority.",
+    "Legacy bounded task/status/duration/heartbeat/drain/posting metrics and conserved origin response/transport-error/body bytes; native extraction excludes persistence; no-fetch/recovered work emits no extraction execution.",
+    "Partial processing observations retain confirmed committed-prefix counts without inventing whole-inventory success; existing resilience/1001-posting/native enrichment/recovery fixtures pass.",
+    "Docker slim/full wiring installs binary; release/full CI/runtime contract/B0 builders pass immutable checked-out source argument; fresh image workflow verifies identity in a networkless read-only container. Image execution remains awaiting CI.",
+    "Head0037/down0036/head0037, 185 mandatory legacy tests without skips, 96 image/deployment tests, 130 Node tests, full real DB/Redis races, vet/tidy/format/actionlint and AMD64/ARM64 cross-build passed; fixtures stopped."
+  ],
+  "not_verified": [
+    "Fresh current-source Linux/full/installed image/B0 checks and actual green deploy gate.",
+    "Immutable installed Linux worker full fetch/processing, SIGKILL after terminal commit before acknowledgement and restart/recovery under the executable.",
+    "Supported all-writer exclusive ownership/projection install/cutover and shared B0 epoch cold reversal; no native ordinary service selected or started in production.",
+    "Deployment/profile TLS/cookie/body/task-duration admission and every enabled effective monitor/detail/browser profile/runtime consumer.",
+    "Production fleet output/freshness/queue conservation, comparable whole-service CPU/RAM/density/attributable cost and actual rollback window before Python/Playwright/Chromium retirement."
+  ],
+  "previous_claim_run_checkpoint": {
+    "head": "426a6c47da7066480797c4b47e30ee723a853965",
+    "linux": {
+      "run": 36851878686,
+      "amd64": "success",
+      "arm64": "success"
+    },
+    "full_ci": {
+      "run": 36851882626,
+      "conclusion": "success"
+    },
+    "b0_admission": {
+      "run": 36851878654,
+      "conclusion": "success"
+    },
+    "actual_deploy_gate": "failure while draft",
+    "limitation": "Earlier-head success does not cover later ordinary process/image source or authorize merging a draft."
+  },
+  "next": "Prove the exact immutable installed Linux ordinary worker image and process faults, including task cancellation/lease loss and true SIGKILL after commit-before-ack restart/recovery. Prepare supported all-writer ownership/projection installation, exact source/plan/epoch startup and shared B0 epoch cutover/cold reversal before selecting a native ordinary cohort. Then complete every enabled effective profile and runtime consumer, fleet output/freshness/queue conservation, comparable whole-service CPU/RAM/density/attributable cost and the rollback window before retiring production Python/Playwright/Chromium. Preserve useful isolated offline Python. The full migration goal remains active."
+}

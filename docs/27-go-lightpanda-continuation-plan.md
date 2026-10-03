@@ -1,5 +1,1724 @@
 # Go and Lightpanda migration continuation plan
 
+Fresh cleanup evidence now binds the live original host flock, selected Redis
+and exclusive SQL scopes to completed restoration ancestry. It re-derives the
+retained decision against current source/allocator R, requires zero actual source
+Go SQL fences, exact persistent rollback tombstone and absent source queues/guard,
+checks Redis incarnation and protected history, and durably retains the observed
+bytes. Missing/escaped scopes, changed source/plan/target, foreign or expiring
+owner and leftover queues refuse. The native cleanup primitive also refuses an
+expiring tombstone before effects. These observations grant no later cleanup or
+runtime authority; stopped producer/sentinel/image checks and durable delegated
+execution/recovery still remain.
+
+Required private PostgreSQL/Redis full queue and worker races pass in
+72.140/49.813s; final host observation regression passes in 3.733s. Native unit
+and real Redis/Lua/SAVE races pass in 3.108/1.479s; both Linux integration vets,
+tidy/format and 94 repository tests pass (three optional skips, 46.03s).
+
+Published `995056add` raw evidence independently verifies initial four
+and all eleven installed-producer forward phases on AMD64 and ARM64. Both
+restoration fixtures fail
+before the first phase because the preceding fixture leaves an active candidate
+SQL plan. The prepared correction retires only its exact reservation after all
+proof/conservation reads and retries; fresh installed execution is still needed.
+Both failed runs and their raw forward proofs are preserved. Whole-B0
+`37102190932` independently
+recomputes 16 arms/eight pairs, density 5.561–13.710, for generated startup-cardinality
+B0 only. Full-service cost and complete migration admission remain unproven.
+See [cleanup observation evidence](evidence/go-ordinary-native-host-cold-cleanup-observation-2026-10-03.json).
+
+Next publish these validated local slices and collect fresh exact-source
+installed restoration evidence. Bind actual stopped producer, exact sentinel/image/executable and
+live cleanup evidence to protected durable delegation; verify installed cleanup,
+real crash/reload, R initialization and complete reactivation/finalization plus
+spec/env/data/image restoration, SQL release and full-stack readiness under the
+original flock. Continue all enabled profile/consumer parity and whole-service
+cost, gates, supported cutover/cold reversal and rollback window before retiring
+production Python. Goal active; PR #10210 draft; production unchanged.
+
+The native producer now has a protected `--cleanup-cold` one-shot command to
+replace Python sentinel/tombstone cleanup. It requires mode `off`, fixed UID10001
+and root client identity, absent socket and the shared lifecycle flock. A closed
+root-owned canonical decision binds source N, reserved R, exact marker/rollback
+plan/source receipt, SQL cleanup/all-writer receipts and compiled release/Lua
+identity. Private request history precedes marker and reviewed Lua effects;
+acknowledged Redis SAVE and absent-authority readback precede completion. Pending
+exact retries recover sentinel-only and returned-effect/SAVE failure; completed
+retries refuse new authority and repeat no SAVE. Missing/changed history fails.
+
+Native race tests (2.318s), real private Unix Redis/Lua/SAVE recovery and refusal
+tests (1.458s), both Linux integration vets/format/tidy, workflow parsing and 94
+repository tests pass (three optional skips, 44.36s). Full CI now includes the
+cleanup library/history integration tests. SQL/host receipt hashes identify
+independently checked evidence; the producer has no SQL credentials and does not
+verify those host predicates itself. Actual installed UID10001 cleanup, checked
+durable host journal delegation, real crash/reload and complete reactivation /
+finalization/startup remain unproven. See [native cleanup evidence](evidence/go-ordinary-native-producer-cold-cleanup-2026-10-03.json).
+
+This local follow-on preserves published `995056add` installed run `37102222073`
+and whole-B0 run `37102190932` before publication. Its full CI passes; raw Linux
+lifecycle/three private SIGKILL proofs and historical native/legacy artifacts
+independently verify on both architectures. Keep the complete migration scope:
+every enabled profile/consumer and output/database/publisher/freshness/queue
+parity, whole-service cost, exact gates, cutover/cold reversal and rollback window
+before production Python/Playwright/Chromium retirement. Goal active, PR #10210
+draft, production unchanged. Earlier entries retain their source scopes.
+
+The disposable installed fixture now extends actual native candidate N forward
+publication through active reversal and nonempty B0/ordinary restoration: 21
+retained phases under the original host flock. It stops the image-bound UID10001
+producer before restoration, binds exact R to the actual N transfer receipt,
+preserves unattempted microsecond schedules, restores SQL bigint hash/interval,
+drops inactive terminal work and checks complete source retirement/conservation.
+Four returned-effect recovery seams and explicit historical retries on a new SQL
+backend are prepared. Raw closed requests/results/plans and complete snapshots
+are required by the strict source-adaptive verifier. Actual new fixture execution
+is not yet verified; both Linux integration vets/format/tidy, workflow parsing
+and 94 repository tests pass (three optional skips, 44.33 seconds).
+
+The candidate activation sentinel and exact rollback tombstone remain retained.
+Existing Python cleanup requires producer-off, sentinel absence, exact plan and
+source receipt, and no source SQL fences. Positive primitive reactivation tests
+perform tombstone cleanup as fixture setup. The native durable cleanup/R
+initialization handoff still needs checked host authority before reactivation,
+finalization and startup; this fixture does not grant it.
+
+Published `27b665433` full CI passes. Linux raw proof independently verifies both
+architectures' lifecycle deadlines and all three private SIGKILL seams; both
+historical native/legacy image artifacts verify. Installed run `37099665504`
+fails both architectures after all eleven stages return with nil context error;
+the assertion incorrectly treats the owned browser readiness change as unrelated.
+Initial four-phase raw proofs independently verify on both architectures; no
+positive forward proof was emitted. The correction checks all eight shared
+readiness indexes at member level, exact unrelated domains/scores/type/expiry,
+owned-domain removal after forward transfer and exact first-time restoration.
+Its regression test and independent verifier refuse unrelated drift. Whole-B0
+run `37099640940` independently recomputes 16 arms/eight pairs with density
+5.651–13.541; generated startup-cardinality B0 only, whole-service cost unproven. See [installed restoration fixture](evidence/go-ordinary-native-installed-restoration-fixture-2026-10-03.json).
+
+Next publish this prepared fixture/correction and collect positive installed
+candidate-N reversal/nonempty restoration and real crash evidence. Authenticate
+and journal producer/sentinel/tombstone cleanup plus R initialization, finish
+reactivation/finalization and complete restoration/SQL release/full-stack
+startup/readiness under the original flock. Every enabled profile and consumer,
+canonical outputs, database/publisher/freshness/queue conservation, comparable
+whole-service cost, exact gates, supported cutover/cold reversal and rollback
+window remain required before production Python/Playwright/Chromium retirement.
+Goal active; PR #10210 draft; production unchanged. Earlier entries retain their
+source scopes.
+
+The complete cold graph now has a fixed thirty-minute coordinator/SQL lifecycle
+only when the coordinator holds the live original opaque outer host flock.
+Standalone calls retain five minutes. Earlier caller and cumulative outer
+deadlines still apply; native operations retain thirty seconds, SQL statements
+ten seconds and idle transactions fifteen seconds. The same SQL backend, three
+exclusive barriers, live-lease refusal, immutable host/resource guards and exact
+journal checks remain required. No runtime admission is granted by this budget.
+
+Actual private SQL tests verify both ceilings, earlier deadline inheritance,
+writer exclusion, cancellation/escape refusal and connection/barrier release.
+The full required queue/worker race suites pass in 76.461/51.546 seconds, native
+and both Linux integration vets/format/tidy pass, and 94 repository tests pass
+(three optional skips). Each installed stage now logs its elapsed time, remaining
+deadline and actual context error.
+
+Preserved installed run `37097363346` at `2fa8567e1` is terminal failure. AMD64
+hits the nested trimpath compile limit; the compile/metadata budgets are fixed
+in the preceding local commit. ARM64 passes forward planning, then refuses at
+retention after 302.13 seconds. This matches the old five-minute ceiling; the
+original log has no direct context-error observation, so that diagnosis remains
+an inference pending the instrumented run. Its raw initial four-phase proof is
+independently verified on ARM64 only; full producer/forward admission remains
+false. Whole-B0 run `37097321947` is independently recomputed successful for all
+16 arms/eight pairs (density 5.4001–13.5540), a generated startup workload rather
+than full-service cost/profile proof. See [lifecycle checkpoint](evidence/go-ordinary-native-host-cold-lifecycle-2026-10-03.json).
+
+Next publish the retained outer-lock/lifecycle slices and verify fresh exact-source
+installed forward proof on both architectures. Then complete the positive
+31-phase nonempty reversal/restoration/reactivation/finalization graph and real
+crash recovery, authenticate expected host changes, and verify complete
+restoration, SQL release and full-stack startup/readiness under the original
+flock. Every enabled profile/consumer, canonical outputs, database/publisher/
+freshness/queue conservation, comparable whole-service cost, exact gates,
+supported cutover/cold reversal and rollback window remain required before
+runtime Python/Playwright/Chromium retirement. Goal active; PR #10210 draft;
+production unchanged. Earlier entries retain their source scopes.
+
+The coordinator now has a fixed-path opaque outer host mutation scope that
+retains the original verified flock descriptor across sequential cold phases,
+SQL release and later restoration/readiness work. Phases borrow that exact
+handle; they cannot reopen, duplicate or unlock it. Parallel, nested, escaped,
+cancelled, foreign-path and replaced-inode scopes refuse. The outer ceiling is
+30 minutes; existing five-minute phase and SQL ceilings remain. This supplies
+exclusion only: intentional host changes and startup still require authorization.
+
+Actual private PostgreSQL tests observe the cold backend gone and all three SQL
+barriers released while the original host flock remains held for a later phase.
+A real Go test-binary SIGKILL after SQL release joins the two earlier crash seams:
+the retained marker and exact retry preserve the reservation, canonical rows and
+complete Redis values. Full worker and producer race suites pass in 47.335 and
+2.637 seconds; native/both Linux integration vets, format/tidy and 94 repository
+tests pass (three optional skips). The root installed fixture now keeps this
+outer scope through both SQL backends, exact retry and producer shutdown; its
+new-source execution remains unproven.
+
+Published `2fa8567e1` full CI passes and both historical image artifacts verify.
+Its Linux conservation test fails: the completed fixture claim leaves a short
+origin throttle that can expire between snapshots. Only that owned setup key is
+removed before the permanent baseline after its claimant is gone; comparisons
+remain strict and failure diagnostics now identify changed keys. Installed AMD64
+fails when a cold nested trimpath compilation reaches 90 seconds; compilation
+now has a separate five-minute ceiling and actual metadata queries five seconds.
+ARM64 installed and whole-B0 evidence are still running and must be preserved.
+See [outer mutation checkpoint](evidence/go-ordinary-native-host-outer-mutation-2026-10-03.json).
+
+Next verify fresh installed forward/outer-scope proof, complete positive installed
+31-phase reversal/restoration/reactivation/finalization and real crash recovery,
+then authenticate intentional host changes and complete restoration/startup/
+readiness under the original flock. Every enabled profile and consumer, canonical
+outputs, database/publisher/freshness/queue conservation, whole-service cost,
+exact gates, supported cutover/cold reversal and rollback window remain required
+before runtime Python/Playwright/Chromium retirement. Goal active; PR #10210
+draft; production unchanged. Earlier entries retain their source scopes.
+
+The protected journal now includes all ten B0 reactivation and ordinary
+finalization commands after restoration. Closed requests and immutable ancestry
+bind original E, forward N/plan, reversal, exact R, restored ordinary plan and
+canonical prior receipt. Finalization also binds the live selected release/cold
+attestation and exact reactivation/publication/final receipts. Rehashed foreign
+receipts, skipped stages and unresolved successors refuse. Reactivation plans
+have an explicit 64 MiB ceiling and envelopes 96 MiB; generic limits remain.
+Pending-link recovery now handles a bounded 1024-entry history, with actual 56 MiB
+plan and 320-entry interruption/recovery tests.
+
+Actual private PostgreSQL/Redis restoration now covers nonempty historical work:
+its recurring schedule is exactly `1925089445.100001`, SQL bigint hash
+`-9223372036854775808` and interval 24 hours. Queue/guard/write fences retire,
+canonical rows and unrelated Redis values are conserved, and fourteen historical
+retries retain R without replay or R+1. Missing fixed producer authority leaves
+reactivation unresolved and permits only exact retry. The full required worker
+race suite passes in 47.552 seconds, native/both Linux integration vets, format,
+tidy and 94 repository tests pass (three optional skips). Positive installed
+reactivation/finalization and real restoration/completion SIGKILL remain open.
+
+Installed run `37094394773` at `cd71940f0` fails both architectures at native
+forward planning after reaching the producer. Initial four-phase raw proofs are
+independently verified; full installed admission remains false. Source inspection
+and an exact private SQL/reviewed-Lua regression reproduce the missing producer
+owner initialization: a listening producer alone supplies no queue authority.
+The corrected disposable fixture uses actual native preparation/activation of
+one owned inactive posting, then reviewed claim/completion. Its source snapshot
+retains that terminal task; transfer must preserve its exact record/guard and
+lifetime occupancy `1 + 2 = 3`. Fresh installed proof is required; runtime
+predicates remain strict.
+
+Source `cd71940f0` full CI is green, and Linux plus both historical image artifacts
+are independently verified. Whole-B0 run `37094397554` is independently recomputed
+successful (16 arms/eight pairs, density 7.0337–13.8959); this generated startup
+workload does not establish whole-service cost or every-profile parity. See
+[completion checkpoint](evidence/go-ordinary-native-host-completion-journal-2026-10-03.json).
+
+Next collect fresh installed bootstrap/forward proof, complete positive installed
+reactivation/finalization and candidate-N nonempty reversal with real crash
+recovery, then authenticate intentional host changes and retain the outer lock
+through complete restoration, SQL release and full-stack startup/readiness.
+Every enabled profile/consumer/output/database/publisher/freshness/queue,
+whole-service resource/cost, exact gates, cutover/cold reversal and rollback
+window requirements remain active before runtime Python/Playwright/Chromium
+retirement. The full migration goal remains active, PR #10210 draft, production
+unchanged. Earlier entries retain their source-scoped observations.
+
+The protected journal now adds seven B0/ordinary restoration stages after the
+exact reversal reservation. Requests retain original E, forward N/ordinary plan,
+reversal, R and canonical typed inputs. Immutable ancestry binds target/Lua and
+source receipts: historical E uses the original prior receipt; candidate N must
+name the completed forward transfer receipt. Canonical plans are content hashed
+and fsynced before their successors; inspection cannot adopt a latest epoch.
+
+Actual private PostgreSQL/Redis tests complete fourteen phases and exact historical
+retries without R+1. Altered source/retirement/receipt/target/Lua/native mode refuse
+before effects; B0 restoration and ordinary retention recover returned-effect
+interruptions. Canonical rows and unrelated Redis values remain unchanged, the
+source tombstone binds the exact plan/receipt, and historical native queue keys
+are retired. This uses an empty B0 queue and synthetic prior receipt/host labels.
+The full worker race suite passes in 42.910 seconds, producer races in 2.269
+seconds, both Linux architecture vets/tidy and 94 repository tests pass (three
+optional skips). Nonempty restoration, SIGKILL restoration, reactivation,
+finalization and full startup/readiness still require proof.
+
+Installed run `37091474326` at `a7d669e2b` failed on both architectures before
+producer start: trimpath omits linker flags from Go build metadata. Its initial
+four-phase raw host/selected-Redis proofs are now independently verified. A new
+read-only `--build-info` command reports the actual linked source, OS, architecture
+and Go version without runtime configuration. The fixture joins it to extracted
+image bytes and existing process/fixed-peer checks; fresh installed forward proof
+is required. Whole-B0 run `37088947323` at `eb607acac` is independently recomputed
+successful; its generated startup workload does not establish full-service cost
+or every-profile parity. See [restoration checkpoint](evidence/go-ordinary-native-host-restoration-journal-2026-10-03.json).
+
+Next prove the fresh installed forward fixture, finish nonempty restoration and
+the reactivation/finalization journal, then authenticate expected host changes
+and retain the original outer lock through complete restoration, SQL release and
+full-stack readiness. Every enabled profile/consumer/output/database/publisher/
+freshness/queue, whole-service resources/cost, exact gates, cutover/cold reversal
+and rollback window remain required before runtime Python/Playwright/Chromium
+retirement. The full migration goal remains active, PR #10210 draft, production
+unchanged. Earlier entries retain their source-scoped observations.
+
+The protected journal now adds reversal begin, retirement reservation and exact
+inspection. Closed requests bind original E, forward N/ordinary plan and a
+protected canonical reversal specification. Only a completed forward anchor may
+branch; its retained stage identifies reserved/publishing/published/active source
+state. Immutable ancestry joins the original target/intent/reservation. The
+specification must match the original cold attestation, rollback release and
+prior ordinary/B0 identities. Unresolved forward effects still require their
+exact native retry before a completed reversal branch. Inspection explicitly
+names R; historical retries cannot adopt a latest epoch or allocate R+1.
+
+The actual private PostgreSQL/Redis reserved-source test passes: nine changed
+specification fields refuse before effects, reversal/retirement returned-effect
+interruption recovers, historical retries retain R, and canonical rows/complete
+Redis values remain unchanged. The full required private worker race suite passes
+in 39.664 seconds, native/both Linux integration vets and format/tidy pass, and
+94 focused repository tests pass (three optional skips). Host/release/listener
+labels remain fixtures; successful publishing/published/active source execution,
+process SIGKILL reversal, complete restoration and production admission remain
+unproven. See [reversal evidence](evidence/go-ordinary-native-host-reversal-journal-2026-10-03.json).
+
+Published producer fixture source `a7d669e2b` passes full CI, Linux, both
+historical image and renderer jobs; its installed producer fixture is still
+running. Preserve that evidence before publishing another source. Next extend
+the journal through B0/ordinary restoration, reactivation and finalization, then
+phase-authenticated expected host changes and outer-lock retention through full
+restoration/SQL release/startup/readiness. All every-profile/consumer parity,
+whole-service resources/cost, exact gates, cutover/cold reversal and rollback
+window requirements remain active before runtime Python/Playwright/Chromium
+retirement. PR #10210 remains draft and production unchanged.
+
+Earlier entries retain their source-scoped observations and pending states.
+
+Installed run `37088941835` at `eb607acac1814a08975ef7ca0af4a4b3d6f7e928`
+executed the actual initial host/selected-Redis four-phase fixture successfully
+on AMD64 and ARM64 (424.64/423.35 seconds). The jobs then failed uploading the
+root-owned private proof. Independent raw-artifact verification remains required.
+The harness now transfers only the exact regular proof inode to the runner under
+a held no-follow descriptor, preserving mode 0600. Failed jobs retain available
+partial evidence without satisfying the positive test or admission requirements.
+
+The next required fixture joins the same installed image's native producer to
+all eleven initial and B0-aware forward journal phases. It verifies compiled
+source/architecture and actual UID/GID10001, empty supplementary groups, fixed
+socket/executable stability and exact selected Redis. Two legacy postings exercise
+first/recurring schedule precision, cached hints versus SQL truth and pruned work.
+Transfer and publication returned-effect interruption must recover; a new SQL
+backend must preserve the epoch, historical outcomes and complete Redis values.
+Raw proofs permit independent hash/graph/task/value verification. Local vets,
+format/tidy/actionlint and 94 repository tests pass (three optional skips); actual
+forward producer execution still awaits fresh CI. See [fixture evidence](evidence/go-ordinary-native-host-forward-producer-fixture-2026-10-03.json).
+
+Source `eb607acac` full CI, Linux and both historical image restoration runs pass;
+Linux and both historical image artifacts are independently verified. Preserve
+ongoing whole-B0 evidence. Next prove the installed producer fixture, then finish
+the protected reversal/reactivation/finalization graph and complete host lifecycle.
+The full migration goal remains active, PR #10210 draft and production unchanged.
+
+Earlier entries retain their source-scoped observations and pending states.
+
+The protected native journal now includes the B0-aware forward plan, retention,
+application, inspection and ordinary publication primitives. Closed requests
+name the exact reserved epoch and ordinary plan, protected typed forward request,
+B0 forward plan and transferred receipt. A bounded immutable ancestry walk joins
+these stages to the original intent/target/Lua inputs across inspection and exact
+retry events. Only completed predecessors permit successors. Ordinary-only
+publication shortcuts are refused. Canonical native plans are retained with an
+explicit 32 MiB limit; result envelopes have a 48 MiB limit while general host
+requests/evidence retain their existing smaller ceiling.
+
+The full required private PostgreSQL/Redis worker race suite passes, including
+substituted request/source/epoch/plan and skipped-stage refusal before effects.
+Missing fixed native producer authority retains an unresolved result, admits only
+an exact native retry and conserves the original epoch, canonical data and complete
+Redis values. The original two SIGKILL journal seams also pass. Both Linux
+architecture integration vets, formatting/tidy and 94 focused repository tests
+pass (three optional skips). Successful native producer transfer/publication
+through this journal is still unproven. See [forward journal evidence](evidence/go-ordinary-native-host-forward-journal-2026-10-03.json).
+
+Published parent `52cc87581098a634bb8a09438cbcf9ce242cb042` corrects the disposable
+joined fixture's mutation-lock ownership transfer. Installed run `37086577331`
+at `db0a5ac46` failed before test invocation because Linux `protected_regular`
+refused util-linux flock's create/write reopen in sticky `/run/lock`. The harness
+now opens the existing inode read-only without links, acquires its bounded flock,
+verifies the named inode, and fchowns the held descriptor. Production predicates
+remain strict. Installed run `37088090237` attempts one and two failed earlier
+while fetching the unchanged pinned uv image from GHCR (HTTP 429); they produced
+no positive joined proof. Full `db0a5ac46` CI passes, and Linux plus both historical
+image restoration artifacts were independently verified. Preserve all running
+whole-B0 evidence; generated startup density is not full-service admission.
+
+Next prove the positive joined initial fixture and forward transfer/publication
+with the actual source-bound native producer. Extend the complete reversal,
+reactivation and finalization graph, including reversal from reserved/publishing/
+published/active states. Authenticate deliberate host resource changes and retain
+the outer mutation lock through complete spec/env/data restoration, SQL release,
+full-stack startup and readiness. Every enabled profile/consumer, canonical/output/
+database/publisher/freshness/queue parity, full-service resources and attributable
+cost, required gates/exact identities, supported quiesced cutover/cold reversal
+and rollback window remain required before production Python/Playwright/Chromium
+retirement. Preserve offline Python, every board and the B0 deployment guard.
+PR #10210 remains draft, production unchanged and the full migration goal active.
+
+Earlier entries retain their source-scoped observations and pending states.
+
+The cold journal now opens Redis through `WithSelectedHostColdRedis` inside
+`WithHostQuiescence`. The endpoint comes from the selected generation's verified
+Compose and image defaults, matched observed consumer execution, and the live
+Redis daemon. A unique IPv4 loopback listener must belong to that daemon's PID;
+another IPv6 listener, stopped daemon or changed socket refuses. Connection values
+stay in memory. The protected endpoint receipt records hashes and daemon/socket
+identities, with `runtime_admission:false`.
+
+Version-2 phase requests bind that endpoint and the read-only Redis server
+incarnation. `RunHostColdPhase` accepts the context, SQL pool and request hash;
+it cannot accept a caller Redis client or URL. Every phase checks its issued
+scope, selected evidence and incarnation. Changed endpoint/incarnation bindings
+refuse before effects, including on retries. Earlier version-1 requests require
+their original source; this candidate does not silently upgrade or adopt them.
+
+Local endpoint races pass in 4.675 seconds; the full worker race suite passes in
+41.659 seconds, including linear outcomes, unresolved exact-input retries and
+two real SIGKILL recovery seams with canonical and complete Redis conservation.
+All 188 repository checks, workflow lint, both Linux integration-tag vets and
+module/format checks pass. Actual endpoint/socket execution is newly required
+in the disposable AMD64/ARM64 Linux harness and awaits this source's CI. The
+installed harness also requires refusal of caller fallback when the selected
+fixture has no Redis consumer/daemon. A positive joined actual host callback,
+selected Redis connection and journal phase remains required.
+
+Preceding source `5b9de6c95127c61e203fee62fc777561499979a5` passes full CI
+37081788776, installed 37081791187, Linux 37081759604, renderer 37081759526 and
+historical native/legacy image runs 37081759525/37081759513. Both architecture
+artifacts and exact merge parents are independently verified. Linux logs verify
+individual borrowed-scope/journal recovery markers; installed logs verify opaque
+host bindings, held flock/SQL exclusion and escaped-context refusal. Draft gate
+evaluator 37081756188 passes; it grants no production deployment authority.
+
+Whole-B0 runs 37081759539 (source 5b9) and 37078496358 (source 6b) are
+independently recomputed for 16 arms/eight pairs. Their density ranges are
+5.536874666–12.043544980 and 5.791507447–14.167318383 respectively. These generated
+startup fixtures do not establish every-profile or full-service resource/cost
+parity. See [selected Redis evidence](evidence/go-ordinary-native-host-selected-redis-2026-10-03.json).
+
+Next prove the positive selected-connection journal handoff on actual Linux
+containers, then extend the protected phase graph through complete native
+forward/reversal/reactivation/finalization with producer and lease exclusion.
+Authenticate deliberate spec/selection changes and keep the outer mutation lock
+through full spec/env/data restoration, SQL-scope release, startup and readiness.
+Then prove every enabled profile and deployment/maintenance consumer, canonical
+output/database/publisher/freshness/queue parity, full-service resources and
+attributable cost. Required CI and Crawler Deploy Gate, fresh exact revision/image
+and merge authority, quiesced deployment, cold reversal, naturally due work and
+the rollback window precede production Python/Playwright/Chromium retirement.
+Preserve useful offline Python, every enabled board and the deployment guard.
+PR #10210 remains draft; production is unchanged and the full migration goal active.
+
+Earlier entries below retain the evidence and pending states recorded at their
+original source checkpoints; the current status is above.
+
+The native host callback now issues an opaque cold phase scope and retains a
+protected journal for target capture, transition intent, epoch reservation and
+inspection. Requests name exact host/containment bindings and hashed input blobs
+in the rooted private store. They contain no shell commands, caller paths or
+endpoint URLs. The transition intent must match the independently verified
+active/incoming/rollback file-evidence hashes and stable cold attestation. SQL
+backend retries preserve that attestation while every invocation requires the
+live host/SQL scope; serialized or escaped contexts cannot grant another phase.
+
+The journal fsyncs an immutable request/child claim before native effects, then
+retains the exact outcome and completion index before allowing a successor.
+Native errors produce durable unresolved outcomes without claiming zero effects;
+only a separate exact-input retry event can follow them. Completed exact retries
+return historical retained results. Interrupted result publication recovers only
+the original inode/bytes. Publication, selection and startup operations are not
+accepted by this initial phase graph.
+
+Actual private PostgreSQL/Redis tests pass, including release/cold-binding
+refusals, competing-child refusal, unresolved begin/retry, missing predecessor
+completion, post-reservation recovery and two real Go test-binary SIGKILL seams
+(after reservation and during result hard-link publication). Epochs, canonical
+rows and complete Redis values are conserved. Full worker races pass in39.472s;
+final strengthened journal races pass in3.630s. SQL regressions, Go vet/tidy/format,
+both Linux integration-tag vets, workflow lint and all188 repository checks pass.
+Local release/container bindings remain fixture hashes. The installed harness
+now additionally requires actual opaque host phase bindings and escaped-context
+refusal; fresh exact-source execution of that extension remains required.
+
+Preceding source `6b64229f7ab6c89f5f8a63ca58b74bd1713be8e5` full CI37078521391,
+Linux37078496271, installed37078523573, renderer37078496340 and historical
+native/legacy images37078496324/37078496266 pass. Installed/historical artifacts
+are independently verified on both architectures, including actual callback
+flock/SQL exclusion, failure containment and backend release. Linux logs verify
+the whole required-fixture worker suite, but lack individual worker test markers;
+the workflow now emits those markers for the new journal recovery tests.
+
+Source4a whole-B0 run37075932266 is independently verified for16 arms/8pairs,
+density5.554032138–11.932410876. Source6b whole37078496358 is still running.
+These synthetic startup fixtures cannot establish all-profile/full-service/cost
+parity. See [phase journal evidence](evidence/go-ordinary-native-host-cold-phase-journal-2026-10-03.json).
+
+Next bind the borrowed Redis client to verified effective selected service
+execution, extend the protected graph through complete native forward/reversal/
+reactivation/finalization, and authenticate intentional spec/selection changes.
+Keep the outer host lock across staged present-spec/env/data restoration, bridge
+verification, final absence, SQL-scope release, full-stack startup and readiness.
+Actual full-host SIGKILL/recovery/naturally due work, build/runtime/maintenance
+exclusion, every enabled profile/consumer, canonical/database/publisher/freshness/
+queue parity, full-service resources/cost, required gates/rollout/rollback window
+and runtime retirement remain required. Preserve offline Python/every board and
+the deployment guard. PR#10210 stays draft; production is unchanged and the full
+migration goal active.
+
+Earlier entries below retain their source-scoped evidence.
+
+The connected native `--host-quiesce` phase now joins writer containment to
+SQL exclusion. It uses the exact protected selected generation's database URL,
+clears caller PG settings, and holds ordinary, routing and CDC exclusive session
+barriers with zero live board/posting leases. Cold transactions commit separately
+on that same backend, preserving durable intent before nontransactional effects.
+The shared host lock and fresh cold Docker checks cover receipt publication.
+Failure closes the private session and releases its locks; live leases refuse
+without being cleared. A returned receipt is a past observation and explicitly
+reports `runtime_admission:false`. Further cold phases must execute inside the
+live SQL scope rather than use this receipt as continuing authority.
+
+Real PostgreSQL 18 tests pass against a fully migrated private loopback fixture,
+including independent commits, rollback after a consumed sequence reservation,
+all three writer barriers, live board/posting lease refusal and session release.
+Selected credential/config tests, host race tests, Linux AMD64/ARM64 integration
+vet, workflow lint and all 188 repository checks pass. The installed-image harness
+now requires actual selected-database quiescence, shared-writer waiting, kernel
+SQL-session SIGKILL release and exact intent recovery on both architectures.
+Fresh exact-source installed execution remains required.
+
+Installed containment runs 37072555329 (source `7e0869412`) and 37073839735
+(source `3bc98daab`) refused preflight on both architectures before stopping.
+Bounded diagnostics identify strict declared environment drift. GitHub adds
+`GITHUB_ACTIONS=true` and `CI=true` to its PostgreSQL service container; the fixture
+now explicitly declares these two fields. The runtime predicate remains strict.
+See [connected SQL quiescence evidence](evidence/go-ordinary-native-host-quiescence-2026-10-03.json).
+
+Preceding source `351629ae0b1cb6f5747039e02123fcdff060dc6e` is independently
+verified for full CI, both-architecture Linux/installed/native and legacy image
+checks, and whole-B0 run 37067928269. The whole fixture admits 16 arms/8 pairs,
+with density 5.779994309–13.250103908; a63 whole 37065462529 is also independently
+verified. These generated startup fixtures do not establish full-service profile
+parity or attributable cost. Preserve running evidence and verify every new source.
+
+Next retain this live SQL scope through the complete cold forward/reversal state
+machine and spec/environment/data restoration, then prove full-stack recovery and
+readiness. Full build/selection authenticity, effective runtime/maintenance
+exclusion, every enabled profile/consumer, canonical/database/publisher/freshness/
+queue parity and complete-service resources/cost remain required before production
+rollout, the rollback window and Python/Playwright/Chromium retirement. Preserve
+useful offline Python and every enabled board. Keep the deployment guard; PR #10210
+remains draft, production unchanged and the full migration goal active.
+
+Earlier entries below retain their source-scoped evidence.
+
+The connected native `--host-contain` phase now retains exact container IDs,
+configuration hashes and original restart policies before any Docker effect.
+It requires the bound preflight intent/spec archive and installed-file coverage
+for every regular writer, including exporter, and holds the shared mutation
+lock. Fixed commands disable restarts; an immutable fsynced barrier precedes
+stopping. Complete fresh daemon readback must satisfy the existing cold Docker
+predicate. Unknown live containers, unbound services, uncovered writers and
+request/selection/image/spec/config/mount drift refuse. Already cold maintenance
+one-offs remain unchanged. Failure never starts a container; exact retries use
+the retained IDs. SQL barriers and runtime admission remain explicitly false.
+
+Go 1.26 race tests and Linux AMD64/ARM64 integration-tag vet pass, along with
+workflow lint and all 188 repository checks. The disposable installed-image
+harness now requires actual writer/exporter stop commands, matched live Postgres,
+uncovered-exporter/archive refusal, two SIGKILL publication seams and exact retry.
+The writer processes are sleeping stand-ins. Fresh execution on both architectures
+is required before claiming this operational contract passes.
+See [writer containment evidence](evidence/go-ordinary-native-host-containment-2026-10-03.json).
+
+Preceding source `351629ae0b1cb6f5747039e02123fcdff060dc6e` now independently
+passes Linux 37067928233, installed 37068013054 and historical native/legacy
+37067928300/37067928232 on both architectures; full CI 37068009987 also passes.
+Selected active pointer/marker binding and all three selection substitutions
+are verified in the actual installed command. Whole-B0 1c87 run 37064123025
+independently admits 16 arms/8 pairs (density 5.959525103–13.685961051), within
+its synthetic startup-cardinality scope. a63 whole 37065462529 has succeeded
+and awaits independent artifact verification; 3516 whole 37067928269 is running.
+Preserve running evidence under the newest-pending policy.
+
+Next connect actual SQL writer lease/barrier checks, full effective runtime and
+build/selection authentication, and durable cold forward/reversal/spec restoration
+through readiness. Finish every enabled profile/consumer and complete-service
+parity/resource/cost gate, then authorized production rollout, rollback window
+and Python/Playwright/Chromium retirement. The deployment guard remains in place;
+PR #10210 remains draft and the full migration goal active.
+
+Earlier entries below retain their source-scoped evidence.
+
+The native host preflight now requires its requested active generation to match
+the deployment's actual `.crawler-active-release` pointer under the fixed
+`.crawler-release-generations` root and the live success marker. Protected
+physical paths, trusted ownership/modes, exact selected file/marker hashes and
+complete inode/target/content readback refuse arbitrary active labels, aliases
+and replacement. The shared-lock preflight reobserves selection after every
+image/container/installed/spec observation and binds it into the fsynced intent
+and receipt. Local Go1.26 races and the actual deployed file-only loader oracle
+pass; actual selected-command/three selection-fault fixtures are required on
+both architectures. See [selected active-file evidence](evidence/go-ordinary-native-selected-active-files-2026-10-02.json).
+
+Sourcea63 fullCI37065508982, Linux37065462569, installed37065512469 and historical
+native/legacy37065462544/37065462624 now independently pass on both architectures.
+The actual installed native image/service/container/source join and all ten
+substitution refusals pass; raw loopback manifests independently match digest/
+config image ID and retained source/binary/CA/34 Git assets. Original connected
+preflight and all six worker fixtures also pass. Keep running1c87 whole37064123025;
+newer pending whole sources follow the workflow's newest-pending policy. Startup
+fixture admission cannot replace complete-service/profile/cost evidence.
+
+Selected active files still do not authenticate production build provenance or
+incoming/rollback selection, prove full effective runtime fidelity, exclude every
+writer/maintenance process and SQL lease, or complete cold recovery/readiness.
+Continue those connected gates and every profile/consumer/parity/resources/cost/
+cutover/reversal/production gate/rollout/window/retirement requirement. PR#10210
+remains draft; full goal active; production unchanged.
+
+Earlier entries below retain their source-scoped evidence.
+
+The installed host-preflight harness now requires a positive native installed-runtime
+join and ten substitution refusals before intent/archive retention. A disposable
+loopback registry binds the exact built native image to a retained immutable
+manifest/config digest; a never-started scoped service container and three distinct
+synthetic release directories exercise the actual installed command. Source,
+image, service, missing/unscoped container and binary/CA/asset substitutions must
+refuse with a live context. The required artifact includes the raw manifest for
+independent digest/config verification. Linux Go 1.26 vet and workflow checks plus
+all 188 repository checks pass; fresh actual execution remains required.
+See [installed host-join evidence](evidence/go-ordinary-native-host-installed-join-2026-10-02.json).
+
+Prior62c whole-B0 37057439521 is now independently verified: 16arms/8pairs,
+density5.859682829–13.250151409, exact source/image/clean checkout and recomputed
+verdict. Startup-cardinality scope remains distinct from complete-service/profile
+parity and cost. Source1c87 Linux37064122898 is independently verified on both
+architectures; its actual installed preflight/CI/image jobs remain in progress.
+All receipts still report `runtime_admission:false`; production selection, full
+runtime fidelity, writer/SQL exclusion, connected cold recovery/readiness,
+profile/consumer coverage, full parity/cost, gates/rollout/window/retirement remain
+required. PR#10210 remains draft; full goal active; production unchanged.
+
+Earlier entries below retain their source-scoped evidence.
+
+The connected native `--host-preflight` entrypoint now holds the shared host
+mutation lock across requested active/incoming/rollback file/image observations,
+complete inventory and declared execution, optional bound installed-file requests,
+and exact spec capture. It fsyncs immutable intent before the spec archive and
+an immutable receipt before returning; retries reobserve and reject request/spec
+substitution. Local Go 1.26 races include actual SIGKILL, contention, aliases,
+inode replacement and unexplained-link refusal; Linux vet/workflow checks pass.
+Fresh actual installed command execution is required. Its receipts explicitly
+report `runtime_admission:false`; full selection/authentication, runtime fidelity,
+writer containment/SQL barriers and connected cold recovery/readiness remain open.
+See [host preflight evidence](evidence/go-ordinary-native-host-preflight-2026-10-02.json).
+
+Source `62c23ada87e3a08254545a89891ede04f35c0114` full CI37057487103, Linux37057439527,
+installed37057490728 and historical native/legacy37057439528/37057439566 are now
+independently verified on both architectures and exact source/merge association.
+The NEW actual legacy file observer verifies interpreter/system-CA/CLI/source/
+installed package/assets and exact eight declared drift refusals. Native file
+observation and all six worker fixtures/source/pinned CA/34 assets also pass.
+Beb whole37055617495 independently admits 16arms/8pairs, density
+6.145383195–14.664204101; preserve current62c whole37057439521. This generated
+startup-cardinality evidence does not establish complete-service/profile parity
+or cost. Keep the full host coordinator/profile/consumer/parity/resources/cost/
+cutover/reversal/readiness/gates/rollout/window/retirement goal active. PR#10210
+remains draft; production unchanged.
+
+Earlier checkpoint entries retain their source-scoped evidence.
+
+The installed-file observer now requires the legacy runtime's complete installed
+Python 3.13 package and CLI entrypoint, separately from `/app/src`, alongside the
+interpreter/system-CA/assets. The unchanged historical legacy-image job now
+requires actual read-only observation and declared byte/membership drift refusal
+on both architectures; fresh execution is required. Local Go 1.26 races, Linux
+vet and workflow checks pass. Neither expected hashes nor rebuilt historical
+images authenticate selected production provenance or provide full host admission.
+See [legacy installed-file evidence](evidence/go-ordinary-legacy-installed-file-observation-2026-10-02.json).
+
+Source `beb51fed7fa797251a494620cc103a3409d0a12c` Linux 37055617472 is independently
+verified on both architectures, including actual Compose/container/execution
+contracts. Its new native installed-file checks and other source-scoped image/CI
+jobs remain live. Whole-B0 37051186981 for prior `2320553ac` now independently
+admits all 16 arms/8 pairs, density 5.759805213–13.667405929; startup-cardinality
+scope remains distinct from complete-service/profile parity and cost.
+
+Continue the complete host coordinator and every profile/runtime consumer through
+full parity, resources/cost, supported cutover/reversal/readiness, exact gates,
+production rollout and actual rollback window, then production Python retirement.
+PR#10210 remains draft; production unchanged; the full migration goal stays active.
+
+Earlier entries below retain their source-scoped evidence.
+
+Verified source `2320553ac663c97e9c114d850242e3bb7e10806b` passes full CI
+37051180960, Linux 37051186913, installed 37051184881 and historical native/legacy
+image runs 37051186992/37051187352. Exact merge/source and both architectures are
+independently verified. Actual declared settings, relative binds and drift checks
+now pass with complete inventory v2; all six installed executable tests, source/CA
+and 34 assets pass. See [closed execution evidence](evidence/go-ordinary-native-container-execution-verified-2026-10-02.json).
+
+The next read-only library slice binds binary/system-CA/exact assets and optional
+legacy source-file hashes to a retained canonical expectation and exact existing
+container/image/platform. Two streamed archives and final complete inventory
+readback refuse content/membership drift and unsafe links/modes/metadata. Nothing is extracted
+or executed. Expected hashes and source/build association need independent host
+authentication; the receipt reports `runtime_admission:false`. Local races/vet
+and all 188 required script checks pass; fresh native actual observation and an
+actual legacy counterpart remain required. See [the installed-byte contract](evidence/go-ordinary-native-installed-file-observation-2026-10-02.json).
+
+D1 whole-B0 37048510704 independently admits 16 arms/8 pairs, density
+5.339661589–14.129990056; preserve current232 whole-B0 37051186981 in progress.
+This is startup-cardinality evidence, not full-service/profile parity or cost.
+Continue the full [host plan](plans/go-ordinary-host-integration.md), every enabled
+profile/consumer, canonical/database/publisher/freshness/queue parity, full-service
+resources/cost, supported cold cutover/reversal/readiness and exact gates/rollout,
+actual rollback window and production Python retirement. PR#10210 remains draft;
+production unchanged; the full migration goal remains active.
+
+Earlier checkpoint entries below describe their timestamped evidence.
+
+Source `fccd0db5ff97d64c2f836134d0c824b9b8805076` passes the corrected
+unit fixture on both architectures, then fails actual Linux inventory readback
+in run 37049300117. An unordered two-mount permutation reproduces a false refusal
+locally. Inventory v2 now sorts the complete mount set by unique destination,
+retains all fields/numeric precision and refuses actual field drift or ambiguous
+members. Closed diagnostic classes disclose no private values. Fresh actual
+Linux execution must still close the failure; the suspected cause is not yet a
+verified fix. See [canonical mount evidence](evidence/go-ordinary-native-canonical-container-mounts-2026-10-02.json).
+
+D1 source `d1a4b5bdd411628561e85d098fb74d7da63532be` installed run
+37048508111 and historical native/legacy image runs 37048510670/37048510695
+are independently verified on both architectures, with exact source/merge
+parents, all six installed executable tests, source/CA and 34 assets. Those
+proofs do not waive the separate observer failures. Continue the complete
+[host delivery plan](plans/go-ordinary-host-integration.md), every enabled
+profile/consumer, full parity/resources/cost, cutover/reversal/readiness, exact
+gates/rollout, actual rollback window and production Python retirement. PR#10210
+stays draft; production unchanged; full migration goal remains active.
+
+Earlier checkpoint entries below describe their timestamped evidence.
+
+Execution-settings source `d1a4b5bdd411628561e85d098fb74d7da63532be`
+failed Linux queue run 37048510734 on both architectures: its mode-drift unit
+fixture changed an already-0755 directory to 0755. The correction explicitly
+starts the fixture at 0700, making the injected change deterministic. The
+production predicate is unchanged; focused Go 1.26 races pass. Actual execution
+settings are still unverified until fresh exact-source Linux checks pass. See
+[the failure and correction evidence](evidence/go-ordinary-execution-fixture-mode-correction-2026-10-02.json).
+
+Preceding source `771c576a157c5736e5732ca14e2ec8da586dabbc` whole-B0
+37041380157 now independently admits all 16 arms/8 pairs, density
+7.018678972–13.740068173, with exact source/merge/image identity and recomputed
+verdict. This proves generated startup-cardinality behavior; complete-service
+and all-profile parity/cost remain open. Keep PR #10210 draft and complete
+[the host delivery plan](plans/go-ordinary-host-integration.md), every enabled
+profile/consumer, full cutover/reversal and readiness, exact gates and rollout,
+the actual rollback window and production Python retirement. Production is
+unchanged and the full goal remains active.
+
+Earlier checkpoint entries below describe their timestamped evidence.
+
+Latest verified runtime `771c576a157c5736e5732ca14e2ec8da586dabbc` passes full CI
+37041370630, Linux 37041380087, installed 37041375022 and historical native/legacy
+image runs 37041380211/37041380109. Exact merge parents and both-architecture
+artifacts are independently verified. Actual whole-daemon created/running/stopped/
+restart-policy observations pass; global live PostgreSQL correctly prevents a
+cold receipt. All six actual installed executable tests, source/CA and 34 assets
+pass. See [verified container evidence](evidence/go-ordinary-native-container-observation-verified-2026-10-02.json).
+
+The next library slice verifies release-bound command/entrypoint, complete
+configured environment, configured numeric UID/GID, working directory and mount
+identities. An explicit protected deployment base preserves relative mount
+semantics independently of the verified snapshot. Local races/Linux vet pass;
+fresh actual execution is required. Its receipt reports `runtime_admission:false`;
+effective process identities, installed source/binary provenance, mounted-content
+fidelity and complete namespaces/networks/security settings still need their
+own checks. See [execution evidence](evidence/go-ordinary-native-container-execution-2026-10-02.json).
+
+B852 whole-B0 37037814550 independently admits 16 arms/8 pairs, density
+5.305001770–14.338742900. Preserve current 771 whole-B0 37041380157 in progress.
+The complete [host delivery plan](plans/go-ordinary-host-integration.md), every
+enabled profile/consumer, canonical output/database/publisher/freshness/queue
+parity, comparable complete-service CPU/RAM/density/cost, exact actual gates and
+supported rollout, actual rollback window and production Python/Playwright/
+Chromium retirement remain required. Draft PR #10210; production unchanged;
+full migration goal remains active.
+
+Earlier checkpoint entries below describe their timestamped evidence.
+
+Latest verified runtime: `b852b59bd4c946e32c593358056e38dd0d9334c6` passes
+full CI 37037807350, Linux 37037814524, installed 37037813202 and historical
+native/legacy image runs 37037814605/37037814647. Exact merge parents and both
+architecture artifacts are independently verified. All six actual installed
+executable fixtures pass, including native deployment-spec archive retention,
+with source/CA identity and 34 assets. See
+[installed archive evidence](evidence/go-ordinary-native-deploy-spec-capture-verified-2026-10-02.json).
+
+The next native library slice observes every daemon container and requires all
+writers/exporter/one-offs and unaccounted containers stopped with automatic
+restarts disabled. Exact release-image bindings, full inventory readback and
+credential-free process/restart/config/mount evidence are implemented. Known
+project or image drift refuses. Local Go races and Linux vet pass; fresh actual
+Actions execution is required. Its synthetic exporter fixture preserves the
+independent live PostgreSQL in the global inventory and must refuse a cold receipt.
+See [container predicate evidence](evidence/go-ordinary-native-container-observation-2026-10-02.json).
+This Docker state predicate still needs complete runtime/source/mount/user checks,
+SQL barriers/leases and integration into the locked durable host coordinator.
+
+Ad39 whole-B0 37033316042 independently admits 16 arms/8 pairs, density
+5.796526675–14.091574076. Preserve latest b852 whole-B0 37037814550 in progress.
+The full [host delivery plan](plans/go-ordinary-host-integration.md), every enabled
+profile/runtime consumer, canonical parity/freshness/queue/publisher, comparable
+whole-service resources/cost, exact required gates and supported rollout, actual
+rollback window and production Python/Playwright/Chromium retirement remain
+required. PR #10210 stays draft; production unchanged; the full goal is active.
+
+Earlier checkpoint entries below describe their timestamped evidence.
+
+Verified runtime checkpoint: `ad39c519d27dcbba1eb936b157639f9a1a92daa5` passes
+full CI 37033309829, Linux 37033316023, installed 37033313737 and actual historical
+native/legacy image runs 37033315966/37033316594. Both-architecture artifacts and
+exact merge parents are independently verified. The corrected native Compose/
+image observer passes its actual cleared-environment fixture on both architectures;
+version-only probes confirm the old root-home command fails on those runners.
+See [portable observation evidence](evidence/go-ordinary-native-release-image-observation-verified-2026-10-02.json).
+Historical Python restoration at R preserves all 599 installed source/Lua files,
+34 assets and policy/queue/health/drain/content/database effects. Selected
+production image identity and complete host restoration remain required.
+
+The next installed native operation, `--capture-deploy-specs`, preserves the exact
+ADR006 nine-spec presence/absence/mode/hash contract, substitutes the committed
+Compose snapshot, and privately retains an immutable fsynced USTAR archive.
+Canonical metadata binds compiled source and preceding file evidence. Exact
+retries preserve the archive; drift and generation-internal destinations or
+aliases refuse. Go 1.26 library/actual executable races and both Linux vet checks
+pass; actual deployed writer/extractor interoperability is verified offline.
+Fresh installed-image checks must include the sixth executable fixture. See
+[the archive contract](evidence/go-ordinary-native-deploy-spec-capture-2026-10-02.json).
+This operation does not arm rollback, select/restore specs or grant cold authority.
+
+Ecb whole-B0 run 37029126420 independently admits 16 arms/8 pairs with density
+7.200530254–14.414637683. This is startup-cardinality evidence, not all-profile or
+whole-service cost parity. Preserve current ad39 whole-B0 37033316042 and retain
+source-specific admission for each newer runtime.
+
+Continue [the host plan](plans/go-ordinary-host-integration.md): selected release/
+spec/source/binary/mount/user evidence, every writer plus exporter/one-offs excluded,
+disabled restarts, bound durable intent and spec selection/restoration, full cold
+cutover/reversal/readiness. Keep the existing B0 deployment guard. Then complete
+every enabled profile and runtime consumer, output/database/publisher/freshness/
+queue parity, comparable whole-service CPU/RAM/density/cost, exact required gates
+and supported rollout, an actual rollback window, and production Python/Playwright/
+Chromium retirement while preserving useful isolated offline Python and every
+board. PR #10210 remains draft; production unchanged; the full goal remains active.
+
+Earlier checkpoint entries below describe their timestamped evidence.
+
+Prior-image run 37019475580 builds and identifies the historical image on both
+architectures, then rejects its nested installed asset paths before restoration.
+The proof decoder now accepts safe relative paths such as `images/epfl/icon.png`
+while refusing traversal, absolute/dot/repeated-separator/backslash paths. Exact
+34-asset count, Git bytes, image/source/binary/platform and canonical proof hashes
+remain mandatory. Map keys are explicitly sorted; failed runs retain safe evidence.
+Regression and actual prior executable races pass locally (3.506s), all 188
+repository checks, both Linux integration-tag vet and workflow security pass.
+Fresh actual prior-image execution remains required.
+
+Preceding source `86cfb44f3` passes full CI 37019495975, Linux 37019475876 and
+installed-image 37019499992; exact parents, actual prior process/root recovery,
+source/CA, four installed process tests and 34 assets are independently verified.
+7da whole-B0 37016270437 admits all 16 arms/8 pairs after recomputation, density
+5.505171–13.911950. Preserve the running 86cf whole measurement. The full goal
+remains active, production unchanged, and the supported host path is sequenced in
+[the host integration plan](plans/go-ordinary-host-integration.md). See
+[path correction evidence](evidence/go-ordinary-prior-image-path-correction-2026-10-02.json).
+
+The supported host delivery is sequenced in the
+[host integration plan](plans/go-ordinary-host-integration.md): independently
+verify generations, exclude every writer plus exporter/one-offs, retain durable
+coordinator phases, and prove full release/data/image reversal and actual prior
+runtime readiness. The last recorded production Python source lacks the new
+ownership readers, so its restored legacy process needs separate proof.
+
+Corrected prior executable source `097027ac43481456efe810b683858fd66970060a`
+passes Linux 37018098304 on both architectures. Exact merge
+`43cd31c696af86addbf5aa73d48d93ce65447ff7` parents are verified, with no failed or
+skipped tests. Actual pinned prior source, binary hashes, restored-R admission and
+native/legacy root finalizer recovery pass. Preceding 7da installed-image artifacts
+37016317006 also verify both source/CA identities, four process tests and 34 assets.
+
+A separate AMD64/ARM64 CI fixture now builds the unchanged historical Dockerfile,
+inspects its immutable image ID, and exercises the extracted actual prior binary
+at restored R. Closed source/image/binary/platform/Dockerfile/asset evidence and
+negative decoder checks are implemented; fresh actual image execution remains
+required. Local original prior-source capability and decoder races pass (3.394s),
+both Linux integration-tag vet checks and workflow security checks pass. Host
+release/readiness/full reversal and the complete migration remain outstanding.
+See [prior image fixture evidence](evidence/go-ordinary-prior-image-capability-fixture-2026-10-02.json).
+
+Linux prior-executable run 37016271209 rejects missing VCS metadata on both
+architectures before restoration. Go 1.26.0 reproduces this locally in linked
+worktrees, even with explicit `-buildvcs=true` ([Go #58218](https://github.com/golang/go/issues/58218)).
+CI now fetches the exact pinned source into a clean standalone temporary checkout
+with a `.git` directory and retains the same compiler and strict source/hash/VCS
+checks. That Go 1.26.0 actual prior binary passes the real PG/Redis restored-R test
+locally (3.63s; package 5.299s), including RDB reload and publisher/queue conservation.
+Full CI 37016312827 passes preceding source `7da02ee71`; fresh corrected Linux
+execution remains required. No immutable prior image, host or production admission
+is claimed. See [build correction evidence](evidence/go-ordinary-prior-build-metadata-correction-2026-10-02.json).
+
+An actual executable from pinned clean prior source
+`3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4` now passes the restored-R capability
+fixture locally (6.393s). Build VCS/linked source, binary hash and prior taxonomy
+match. The original prior plan, receipt and fresh R restoration bind that source.
+The actual prior process rejects staged and saved-projection-only authority, then
+consumes the existing v1 journal/witness after a real RDB reload and atomic
+completion. Its reserved-publisher cycle proves no origin attempt, R fence/ACK,
+health, signal drain, canonical due, failure-budget/content preservation and no
+retired-plan reactivation or R+1. Linux CI now requires this independently built
+prior executable on both architectures. Fresh Linux execution remains required;
+synthetic prior host/release labels and small startup reference rows are no complete
+host or immutable image admission.
+
+Corrected source `ab1f5308e34a76aee54449a62731ab7d391533bd` passes full CI
+37005764219, Linux contracts 37005707852 and installed contracts 37005767743.
+Actual native/legacy finalizer recovery, publication and atomic-completion SIGKILL,
+RDB/producer restarts and exact inspection/retries pass both architectures; exact
+merge parents are verified. Installed source/CA, four executable fixtures and all
+34 asset hashes match. Whole-B0 37005707818 is independently recomputed: 16 arms/
+8 pairs admit, density 7.053747–13.835899. Generated B0 evidence does not prove all
+profiles or whole-production cost. Full queue races pass in 72.178s and all 188
+required repository script checks pass. See
+[prior executable evidence](evidence/go-ordinary-prior-executable-capability-2026-10-02.json).
+Next: verify actual Linux prior executable capability and immutable prior image,
+complete ADR006 host cutover/readiness/full reversal, then finish all profiles and
+consumers, comparable whole-service performance/cost, required exact-source gates,
+deployment, rollback window and production Python/browser retirement. The full
+goal stays active, PR #10210 remains draft and production unchanged.
+
+Actual reload diagnostics for run 36952683732 isolate one expired key:
+`ratelimit:jobs.example.test`, before producer startup, in both ordinary decisions.
+The private root fixture now freezes that existing bucket before any SAVE/reload
+baseline and verifies its value is unchanged. Full-state snapshot comparisons and
+publication conservation remain strict; runtime rate expiry is unchanged.
+
+Earlier whole-B0 candidate c4-p3 failed Docker renderer endpoint allocation.
+The benchmark networks now allocate dynamic endpoints from the upper /25 of each
+existing /24, disjoint from fixed renderer/DB/fixture addresses. All 24 focused
+admission checks and Ruff pass, including address separation regression coverage.
+Linux integration compilation/vet pass; corrected root execution and whole-B0
+measurement are still required. Preceding af9 required CI 36952698999 and installed
+contracts 36952701423 pass. The full goal remains active and production unchanged.
+See [fixture correction evidence](evidence/go-ordinary-recovery-fixture-correction-2026-10-02.json).
+
+The bounded suite correction passes Linux queue races in run 36952124481.
+Actual root finalizer recovery then fails its full saved-snapshot comparison after
+publication SIGKILL and RDB reload, for native and legacy decisions. This checkpoint
+splits the comparison before producer startup and after startup and reports only
+changed key names/presence/hashes. Exact conservation remains mandatory; no reload
+or finalizer admission is claimed. Fresh diagnostic execution is required.
+
+Preceding CLI source `21f8cee232b9d4d02397d236d8e14fa7dfa15368` now passes
+full CI 36951102837 and installed contracts 36951105023; downloaded source/CA,
+four executable fixtures and all 34 assets are verified on both architectures.
+Earlier whole-B0 36949023109 fails candidate c4-p3 because Docker refuses the
+renderer network allocation with `Address already in use`; that run is unadmitted.
+Preserve newer running/pending benchmarks while investigating network allocation.
+
+A separately isolated clean prior source `3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4`
+now builds an actual local ARM64 executable whose linked identity and Git VCS
+revision/clean flag match. Restored-R runtime admission and immutable Linux image
+capability still require proof. See [reload investigation evidence](evidence/go-ordinary-finalizer-reload-investigation-2026-10-02.json).
+The full migration goal stays active; production remains unchanged.
+
+Linux finalizer checkpoint `21f8cee232b9d4d02397d236d8e14fa7dfa15368`
+failed run 36951034703 on both architectures at the aggregate 120-second queue
+race-suite limit, before root finalizer execution. Both then-current subtests had
+run for less than one second; the preceding successful suites took 104.331s and
+109.841s. The executable inspection fixture now shares one build, bounded to 60s,
+before opening either database fixture. CI gives the full suite 180s and emits
+per-test timings. Local full queue races pass in 89.468s, queue vet passes and
+all 188 exact CI repository script checks pass. Owned fixtures are stopped.
+See [suite evidence](evidence/go-ordinary-finalizer-suite-budget-2026-10-02.json).
+Fresh Linux root execution remains required; this is no deployment admission.
+The full migration goal remains active and production is unchanged.
+
+The protected finalizer CLI now exposes preview, retain, prepare, publish,
+complete and inspect commands bound to original intent/reversal, source E/plan,
+explicit reserved R, retained 0045 decision, completed 0046 reactivation and a
+closed canonical request/hash. Operational calls use the fixed authenticated
+producer; inspection rejects live target/Lua inputs and requires no Redis URL.
+Output retains exact approval and publication/completion identities, canonical
+completion bytes and any fresh prior-source ordinary identity.
+
+The actual Linux root/UID-10001 producer fixture now covers native and legacy
+ordinary decisions through finalization. It kills the real CLI after SAVE before
+publication SQL commit and during atomic completion, reloads the real RDB/producer,
+recovers exact receipts, and checks owner containment and historical inspection.
+The fixture compiles/vets for AMD64 and ARM64; fresh execution is required.
+Current-source v1 reader checks and synthetic prior release labels do not admit an
+independently pinned prior immutable worker. That capability proof and the complete
+ADR006 host integration remain next after actual Linux finalizer execution.
+
+Local full real PG/Redis queue/worker/exporter races pass
+(84.334s/30.610s/4.964s), including actual executable history inspection without
+Redis/producer access under both barriers after allocator advancement. All 295
+legacy and 128 repository contract tests pass; configuration races, Go vet and
+both Linux integration-tag compilations pass. See
+[CLI evidence](evidence/go-ordinary-finalizer-cli-2026-10-02.json) and
+[protected CLI contract](../apps/crawler/go/ordinary-worker/README.md).
+
+Preceding API checkpoint `86fa1a61a3c92177bbddda1dafd63f1fdda48451` passes full
+CI 36949046237, Linux queue/root contracts 36949023175 and installed image
+contracts 36949048752. Downloaded Linux logs verify tested merge
+`eff051c1d302cbe71d1aef8b1167e1b35ce3e759` and exact base/head parents;
+installed source/CA, four actual executable fixtures and 34 asset hashes match
+both architectures. This verifies the earlier private producer cleanup correction.
+These results precede the new finalizer CLI and do not admit its crash seams.
+
+Whole B0 8d run 36944918711 is downloaded and its verdict recomputed: report
+SHA256 `4e09dd5cb1b144fa1274558cd50f614b122b40809c7f9798ed22a45fbd2d5ba1`,
+16 arms/8 pairs admit, density 5.380881–11.668166; tested merge
+`e66771f6af9c32951bedee7cec6e0711225f833c` has verified base/8d parents.
+This generated B0 workload does not establish all-profile or whole-service cost
+parity. Preserve running 86fa whole B0 36949023109 while the newest source waits.
+
+Next: verify new-source actual Linux finalizer recovery and installed/full CI;
+prove an independently pinned prior immutable worker consumes the restored R v1
+journal/projection/witness; then deliver supported ADR006 all-writer cutover,
+readiness and full cold reversal. Every enabled profile/consumer, canonical and
+publisher/freshness/queue parity, whole-service CPU/RAM/density/cost, exact required
+gates, actual rollback window and production Python/Playwright/Chromium retirement
+remain required. The full goal stays active, PR #10210 stays draft, and production
+is unchanged. Earlier pending observations below are historical and superseded.
+
+This checkpoint adds completed-B0-bound ordinary restoration finalization at the
+already reserved retirement R (migration 0047 and native queue APIs). Approval,
+pending/published routing bytes, SAVE/readback and atomic SQL completion are distinct.
+The final transaction closes the original reversal/journal, activates only a freshly
+staged native R plan when present, retains a compatible existing v1 joint journal,
+and writes immutable completion. Deferred SQL constraints prevent a partial authority
+commit. Legacy restoration retains a distinct durable witness and clears the native
+projection. Retired plans remain retired; no R+1 is allocated.
+
+Real PG/Redis queue/worker/exporter races pass (77.839s/33.635s/4.895s), including
+native/legacy finalization, SAVE and SQL failure recovery, real RDB reload, drift and
+partial Lua refusal, direct SQL containment, retained-history downgrade refusal and
+inspection while both barriers are held. All 295 legacy and 128 repository contract
+tests pass; Go vet, supervisor races and Linux AMD64/ARM64 queue compilation pass.
+See [finalization evidence](evidence/go-ordinary-finalization-2026-10-02.json) and
+[native authority contract](../apps/crawler/go/ordinary-queue/README.md).
+
+Preceding checkpoint `8d14150acdca72dc86984a6247821373b04b806c` completed Linux root
+run 36944918706 successfully on both architectures at tested merge
+`e66771f6af9c32951bedee7cec6e0711225f833c`, whose exact base/head parents were verified.
+That execution proves native cold initialization and protected B0 reactivation CLI
+through actual SIGKILL, RDB/producer restart and exact recovery. Installed image run
+36944956151 also passes both architectures; source/CA, four actual executable
+fixtures and all 34 installed asset hashes are independently verified. Required CI
+36944953091 failed only its installed-producer fixture cleanup: `.lifecycle-v1.lock`
+remained after children stopped. This checkpoint removes that private fixture lock
+at cleanup; fresh required CI must verify the correction. The earlier root failure
+and pending observations below are historical and superseded by these results.
+
+Whole B0 run 36941887541 on source `3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4`
+now completes and its report/verdict are independently verified: SHA256
+`265d1d4e12896848f33fecbf9636a2953d204ce435cf8373b36788b825c28890`,
+16 arms/8 pairs admit, density 5.478028–13.748197. Tested merge
+`8b8433c779ad8ab94ad3740fffee1a14c1ab6eb7` has verified base/head parents.
+This generated B0 workload does not prove all-profile or whole-service performance.
+Preserve the current 8d whole-B0 run while new-source CI is dispatched once.
+
+Next: protect the finalizer CLI inputs and receipts; extend actual Linux root
+producer/CLI recovery through final publication and atomic completion; prove admission
+with an independently source-pinned immutable prior worker. Then complete ADR006
+all-writer host cutover/readiness/full reversal before expanding enabled profiles and
+consumers. The full migration, whole-service resource/cost parity, required exact-source
+gates, actual rollback window and production Python/Playwright/Chromium retirement
+remain the goal. PR #10210 stays draft and production is unchanged.
+
+Repeated private Redis reload correction `2b3466b3df62ae73c99c48dc1af8850a948c5ea6`
+gives each restart its own exclusive private log, preserving earlier logs. Linux
+run 36944444318 on checkpoint `1bc63f1995c7ab2135ef3189279d810cd1cff23d`
+executed the actual native initializer, wrong/rehashed approval refusals, completed
+retry, initial RDB reload, serving exclusion and CLI application through the
+post-SAVE/pre-SQL-commit SIGKILL seam on both architectures. Both then failed at the
+second Redis reload because the fixture reused `restart.log`. Overall root
+reactivation remains unadmitted until the corrected source completes. The focused
+real PG/Redis publication race now proves two no-save RDB reloads, unchanged canonical
+data and exact activation retry (5.449s); owned fixtures are cleaned up.
+
+Completed whole B0 run 36941143997 is downloaded and independently recomputed:
+report SHA256 `513f5961406ccad75bb271750e4eb71059fd10d133530b6f6141a057a8b0b849`,
+all 16 arms/8 pairs admit, tested merge `1cd7c11fa6c18e9876a04a7bf191ddbe51dd5144`
+has verified parents base `86813918a20a499c5d59a39ca8c33797161f8743` and checkpoint
+`cfe31376d6bc5a2b838b2fd61bc00d64243fc0a2`. Density is 5.685842–14.304343
+for the generated B0 workload with production startup cardinality. This does not
+prove every profile or whole-production-service performance. Preserve running whole
+B0 3cc source and installed 1bc source; dispatch new-source contracts once.
+
+Next is actual corrected Linux root execution, exact-source full CI/installed/image
+and numeric admission, compatible ordinary finalization at R and complete ADR006
+host restoration/cutover/reversal, then full profile migration and retirement as
+specified below. Production is unchanged and the full goal stays active. This
+supersedes earlier pending observations in this checkpoint.
+
+Native cold initialization source `faba3427cac82d1bfa1c759d2725f38f6ae358d2`
+adds a protected producer one-shot command that establishes only the empty native
+sentinel/Redis pair at explicit reserved R. The caller independently verifies the
+retained 0045 decision, reversal, all-writer quiescence and immutable release; the
+producer receives no database credentials. A canonical root-owned decision binds
+those evidence identities, compiled producer source, pinned image label, reviewed
+Lua and fixed cohort/namespace/shard/R. Request history is fsynced before normal
+native bootstrap; completion follows acknowledged SAVE and full empty-authority
+readback. Exact retry performs no initialization or SAVE. A lifecycle flock excludes
+native serving and initialization; missing/changed history or an orphan pair fail
+closed. This grants no task transfer, ordinary ownership, journal closure or host
+readiness. See [producer contract](../apps/crawler/go/lightpanda-b0-supervisor/README.md).
+
+This fixes the actual startup gap caught by Linux run 36941887568 on checkpoint
+`3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4`: full queue races and the prior root
+forward fixture passed on both architectures, while reactivation startup refused
+fixture-initialized Redis without a native sentinel. The updated Linux fixture
+omits manual R initialization and runs the real UID-10001 initializer, exact retry,
+rehashed source/cohort/epoch/Lua/image refusals, RDB reload and serving exclusion
+before native task application and CLI SIGKILL recovery. Fresh execution on both
+architectures is required; synthetic host labels do not prove production evidence.
+
+Full real PG/Redis queue/worker/exporter races pass (67.729s/31.204s/3.527s),
+295 legacy tests and 104 workflow contract tests pass without skips. Supervisor
+races and real Redis native initialization/SAVE-denial/recovery/no-task/orphan checks
+pass. Linux integration-tag queue/supervisor vet and AMD64/ARM64 queue compilation
+pass. VERSION remains 0.13.904 within this stacked PR. No production deployment
+or ready/merge authority is claimed. See [cold initialization evidence](evidence/go-b0-cold-initialization-2026-10-02.json).
+
+Preceding checkpoint 3cc passed full CI 36941991786 and installed contracts
+36941995477; downloaded source/CA, all four actual executable fixtures and all 34
+asset hashes were verified on both architectures. The earlier cfe installed run
+36941158368 is verified to the same scope. These installed proofs do not exercise
+the new initializer. Whole B0 cfe run 36941143997 has now completed successfully;
+download/recompute its report next. Whole B0 3cc run 36941887541 is running and must
+finish without cancellation. These generated workload results are separate from
+all-profile and whole-production-service performance proof.
+
+Continue by verifying the new-source actual Linux root execution, full CI, installed
+image source/CA/assets and numeric B0 evidence. Then complete compatible ordinary
+joint authority at R with persisted projection/witness and atomic reversal closure,
+followed by the supported ADR006 all-writer host integration and independently
+verified immutable prior release. Every enabled profile/consumer, canonical output,
+publisher/freshness/queue conservation, comparable whole-service CPU/RAM/density/cost,
+required exact-source gates, actual rollback window and production Python/Playwright/
+Chromium/runtime-only retirement remain required. The full migration goal is active;
+production is unchanged. This update supersedes earlier pending observations below.
+
+Score assertion correction `6c9df26bef1ee1e319a70dedb5198e1b6c979344` compares
+reactivation guards with posting-matched raw `Snapshot.Legacy` source bytes.
+The producer request's `LegacyScheduleScore` field is normalized and therefore
+cannot prove exact Redis decimal spelling. Run 36941143947 on checkpoint
+`cfe31376d6bc5a2b838b2fd61bc00d64243fc0a2` caught this distinction on both
+architectures and skipped root execution. Focused real PG/Redis races now pass
+(10.785s); empty migration downgrade/re-upgrade and fixture cleanup pass.
+Fresh Linux execution must admit the correction and actual root/producer CLI
+fixture before that operational contract can be claimed verified.
+
+Preceding whole B0 36936491185 finished without cancellation. Its downloaded
+report SHA256 is `9efeb8f53adba7309accf805eac4a604942ca1b3a5c3e6d4332c5a9835dd8826`.
+The verdict recomputes exactly, all 16 arms/8 pairs admit, and merge parents bind
+base `86813918a20a499c5d59a39ca8c33797161f8743` and checkpoint
+`de3ee9b689d1fd4b23a2e822db5961c1d7370d2f`. Density is 7.060704–14.300277 for
+the generated B0 workload with production startup cardinality; this does not
+prove all-profile or whole-production-service cost parity. See
+[updated CLI evidence](evidence/go-b0-reactivation-cli-2026-10-02.json).
+The full migration goal remains active and production is unchanged.
+
+Protected reactivation CLI source `5957f001e9b63da675a3ac8e1a31860007e0b4d6`
+adds native `cold-b0-reactivation-plan`, `cold-b0-reactivation-retain`,
+`cold-b0-reactivation-apply` and `cold-b0-reactivation-inspect` commands. All bind
+the original protected intent/reversal, compiled candidate source, original E/plan,
+explicit reserved R and exact ordinary restoration decision. Live operations bind
+the protected prior host receipt to original and retained identity and use the fixed
+authenticated producer. Preview rejects an approval selector; retain/apply/inspect
+require the exact immutable approval SHA. Historical inspection rejects live
+inputs, opens neither Redis nor producer, and does not acquire ownership barriers.
+Output reports bounded canonical manifest and committed completion identity without
+publishing ordinary ownership, closing the reversal or granting host readiness.
+
+Full real PG/Redis queue/worker/exporter races pass (68.065s/30.898s/4.883s),
+all 295 legacy tests pass without skips (5.85s), and 104 CI/runtime workflow
+contract tests pass. Protected configuration race checks pass; the actual Linux
+integration file cross-compiles on AMD64/ARM64, Linux integration-tag queue vet and
+worker vet pass. The new root fixture uses the real UID-10001 producer and compiled
+CLI, SIGKILL after SAVE/readback before SQL completion, RDB/producer restart, exact
+completed retry and historical inspection while barriers are held. Fresh execution
+on both architectures remains required. Its controlled prior receipt and Lua
+restoration do not prove independent production releases or full sentinel clearing.
+See [CLI evidence](evidence/go-b0-reactivation-cli-2026-10-02.json).
+
+Preceding checkpoint `b61f1fe28ef89352c5b351cd2e31d8a7dc8ad3f0` failed both
+Linux jobs in run 36939626059: the test required the local decimal spelling of a
+fractional Redis ZSET score. Linux preserved `1925089445.1000011` whereas local
+Redis emitted `1925089445.100001`. The check now requires exact retained source
+bytes and the canonical millisecond ceiling; complete canonical schedule
+conservation remains checked independently. The queue transfer algorithm is
+unchanged. Those jobs skipped actual root execution and do not admit the source.
+The growing full queue race suite is now bounded at 120s (preceding jobs took
+83.085s/88.406s); the root fixture stays bounded at 90s.
+
+Continue by executing and verifying the new exact-source combined root producer,
+PG/CLI proof, full CI and installed images. Preserve whole B0 36936491185's running
+preceding source and recompute its completed report; admit the new numeric evidence.
+Then restore compatible ordinary joint authority at R, persist/read back the exact
+projection/witness and close the original reversal only after durable B0 completion.
+Complete supported ADR006 all-writer immutable release/sentinel/receipt/readiness
+and cold reversal. Every enabled profile/consumer, canonical/publisher/freshness/
+queue parity, comparable whole-service CPU/RAM/density/cost, exact required gates,
+actual rollback window and production Python/Playwright/Chromium/runtime-only asset
+retirement remain full-goal requirements. Keep useful offline Python isolated and
+preserve every enabled board. Production is unchanged; the full goal stays active.
+
+This checkpoint supersedes older implementation/pending-status observations below.
+
+Prior Go B0 reactivation source `5cb8d2e35ee21f25b6045c0c23176767c8229ffc`
+adds migration 0046 and native queue APIs for preview, immutable approval,
+application and historical inspection at the already reserved retirement R. Exact
+ordinary restoration history, reserved reversal, completed B0 fence cleanup and
+strict prior host receipt identity are required. A native ordinary predecessor
+must remain freshly staged at R with the prior release revision. Shared forward
+classification reuses the unchanged queue Lua: one activation per pending task,
+explicit recovery skips exact completed effects, and immutable completion commits
+only after acknowledged SAVE and full source/canonical/target/producer readback.
+Completed retries preserve the receipt and snapshot without activation or SAVE.
+No ordinary owner is published and the original reversal remains open.
+
+Focused real PG/Redis races pass (11.246s), including strict hashed receipt parsing,
+empty migration downgrade/re-upgrade and retained-history refusal. Full queue,
+worker and exporter races pass (74.559s/33.143s/4.872s); all 295 legacy tests pass
+without skips (5.84s test time). Both Linux architectures cross-compile; queue
+integration-tag and worker vet pass. Tests cover legacy/native ordinary
+predecessors, exact recurring fractional guards, uncertain replies, SAVE denial,
+SQL failure after SAVE, persisted RDB restart, drift refusals and historical
+inspection. They use a private producer control adapter executing the real Lua.
+Protected CLI and actual root/UID-10001 producer reactivation execution remain
+required. See [reactivation evidence](evidence/go-b0-reactivation-2026-10-02.json).
+
+Preceding checkpoint `de3ee9b689d1fd4b23a2e822db5961c1d7370d2f` passes both
+Linux PG17/Redis jobs (36936491296), full CI (36936645570) and installed-image
+execution (36936649045). Downloaded Linux logs prove actual producer/application
+recovery and completion-bound publication on AMD64/ARM64. Both image artifacts
+verify exact source/CA, all four executable fixtures and 34 installed asset hashes.
+Whole B0 36936491185 is running; finish it without cancellation. Completed prior
+whole B0 36933306741 and 36931282462 are now numerically verified: stored verdicts
+recompute exactly, all 16 arms/8 pairs admit and tested merge parents bind their
+respective PR heads. Density ratios are 5.553063–13.884336 and 5.411432–14.439954.
+These generated B0 workloads with production startup cardinality do not prove all
+profiles or full production service cost. The actual deploy gate still refuses
+draft. Production ownership is unchanged and the full migration goal stays active.
+
+Continue in this order:
+
+1. Expose protected, source-bound reactivation commands and prove actual
+   authenticated producer/root sentinel clearing, reinitialization and crash/restart
+   seams. Admit the exact new source on both Linux architectures and installed
+   images; retain completed whole-B0 numeric evidence without observation restarts.
+2. Restore compatible ordinary joint authority at R, publish/read back the durable
+   projection and witness, and close the original reversal only after exact B0
+   completion. Never reopen a retired plan, allocate R+1 implicitly or switch a
+   prior Go B0 owner silently back to Python.
+3. Complete the supported ADR006 all-writer host wrapper: independent immutable
+   releases/data/spec/env/images, mutation lock, durable host receipts, acknowledged
+   SAVE/readback, release selection, full readiness and complete cold reversal.
+4. Cover every enabled profile and runtime consumer with native authority and
+   canonical output, publisher-policy, freshness and queue conservation proofs.
+5. Admit comparable whole-service CPU/RAM/density/attributable cost; promote exact
+   required CI/deploy-gate identities, exercise the real schedule-dependent rollback
+   window, then retire production Python, Playwright, Chromium and legacy runtime
+   assets. Keep useful offline Python isolated. Preserve every enabled board.
+
+This checkpoint supersedes pending status observations in the historical sections
+below. Their implementation details and original evidence remain historical.
+
+Ordinary rollback preparation source `c9c42faa6216c2aed5098da8f6dc233b4137ee9b`
+adds migration 0045 and protected native preview/retain/inspect commands. It
+requires the exact reserved reversal, retirement R and completed B0 fence cleanup
+with durable tombstone. Legacy rollback retains an explicit no-native-owner
+decision. Prior native rollback preserves its retired immutable cohort and stages
+a freshly validated replacement at R, bound to the prior binary revision. Cohort
+identity is enforced by both canonical decoding and SQL; repeated canonical/Redis
+profile observation and live-lease refusal occur under the ownership barriers.
+Fresh staging and immutable retention are atomic. Preparation publishes no
+projection, activates no owner, completes no reversal and starts no services.
+
+Focused real PG/Redis races pass (5.385s), including actual retained-history
+Alembic downgrade refusal and empty downgrade/re-upgrade. Full queue/worker/
+exporter races pass (60.428s/33.458s/4.896s); all 295 legacy tests pass without
+skips (5.76s test time). The actual compiled CLI exercises legacy preview, wrong
+approval refusal, exact retention/retry and historical inspection with Redis
+unavailable. Prior native API tests conserve the cohort and source, leave the old
+owner retired and the fresh owner staged, and prove drift/lease refusal, immutable
+history and atomic retention. Both Linux architectures cross-compile, including
+the actual integration tag, and vet passes. New-source Linux and installed-image
+execution remains required. See
+[ordinary preparation evidence](evidence/go-ordinary-restoration-preparation-2026-10-02.json).
+
+Preceding publication checkpoint `f33590cd0810e48c8000453374b97783f1b644ce`
+passes both Linux PG17/Redis jobs (36933306768), full CI (36933347206) and both
+installed images (36933350194). Downloaded Linux logs verify actual authenticated
+producer/application crash recovery followed by completion-bound publication and
+exact activation retry. Both installed artifacts verify exact source/CA, all four
+executable fixtures and 34 matching data asset hashes. Whole B0 36933306741 is
+still running and must finish without cancellation; prior whole B0 36931282462
+completed successfully, with numeric artifact verification pending. Dormant
+renderer validation/build passes with publication/deployment skipped. These proofs
+remain bound to the preceding source. The actual deploy gate refuses draft.
+No production ownership changed; the full migration goal remains active.
+
+Continue in this order:
+
+1. Admit this exact new source on both Linux architectures and installed images;
+   retain comparable whole-lane B0 numeric evidence from each completed run.
+2. Apply the retained ordinary rollback decision at R with compatible fresh joint
+   authority, target/projection/witness and durable completion. Never reopen a
+   retired plan or silently switch a prior Go B0 owner back to Python. Existing
+   Go-owned sentinel clearing is implemented and must be reused with its exact
+   rollback tombstone/receipt checks.
+3. Complete the supported ADR006 all-writer host wrapper: independent immutable
+   releases/data/spec/env/images, mutation lock, durable host receipts, acknowledged
+   SAVE/readback, release selection, full readiness and complete cold reversal.
+4. Cover every enabled profile and runtime consumer with native authority and
+   canonical output, publisher-policy, freshness and queue conservation proofs.
+5. Admit comparable whole-service CPU/RAM/density/attributable cost; promote exact
+   required CI/deploy-gate identities, exercise the real schedule-dependent rollback
+   window, then retire production Python, Playwright, Chromium and legacy runtime
+   assets. Keep useful offline Python isolated. Preserve every enabled board.
+
+The checkpoint above supersedes earlier pending status observations below; older
+sections remain historical implementation and evidence records.
+
+Completion-bound publication source `3dc88089ea55bf5f3953ed8e37f8209d55415fda`
+adds protected native `cold-forward-prepare`, `cold-forward-publish` and
+`cold-forward-activate` commands. They require exact immutable forward approval
+and completion digests, original protected request/intent, shared epoch/ordinary
+plan/target and the fixed authenticated producer. Before activation, each effect
+rechecks fresh canonical rows and the complete transferred snapshot under the
+same exclusive barriers. Only exact known prior/pending/published witness pairs
+are accepted across SQL commit seams. Missing evidence is never reconstructed.
+Any retained forward approval blocks older publication primitives, including
+while transfer remains merely prepared. Active canonical schedule progression
+preserves historical completion identity; existing current ownership audits apply.
+
+Focused real PG/Redis tests pass (6.359s), full queue/worker/exporter races pass
+(54.516s/32.030s/4.851s), and all 295 legacy tests pass without skips. The tests
+cover wrong/missing/prepared completion, drift, bypass refusal, both Redis-to-SQL
+witness seams, RDB reload, exact activation and complete logical queue/canonical
+conservation. Both Linux architectures cross-compile and integration vet pass.
+The combined actual root producer/PG/CLI fixture now extends recovered application
+through the three completion-bound publication commands and exact activation
+retry; fresh execution is required. See
+[publication evidence](evidence/go-b0-native-forward-publication-2026-10-02.json).
+
+Preceding application source `f2bc20dc32e4a3a5b780e8f4b13da45e436d4baa` passes
+Linux PG17/Redis 36931282603, full CI 36931290132 and both installed images
+36931294380. Both actual producer/CLI lost-reply/SIGKILL/RDB/sentinel-restart logs
+and both image artifacts are downloaded and verified: exact source/CA, four
+executable fixtures and 34 matching asset hashes. Whole B0 36931282462 is still
+running and must finish without cancellation or an observation-driven restart.
+Dormant renderer 36931282270 passes with publication/deployment skipped. This
+preceding evidence does not admit the new publication extension. The actual
+deploy gate refuses draft, production ownership is unchanged, and the full goal
+remains active.
+
+After fresh publication admission, complete fresh legacy/prior-native rollback
+ownership at retained retirement R and supported ADR006 all-writer host cutover,
+independent immutable releases, Go-owned sentinel/host receipts and full readiness.
+Every enabled profile/runtime consumer, output/freshness/queue parity, comparable
+whole-service resource/cost admission, exact promotion, actual rollback window and
+production Python/Playwright/Chromium retirement remain delivery requirements.
+
+Native forward-application source `da579a54bbad0014dd5cb494a79409d4231cb552`
+now applies only immutable retained B0 approval through the authenticated producer.
+It classifies every task as exact original source or exact pinned Lua effect and
+skips completed transfers after uncertain replies. Migration 0044 commits immutable
+completion only after acknowledged SAVE and full source/target/canonical/producer
+readback. Completed retries verify the retained snapshot without activation or
+SAVE; lost or changed evidence refuses repair. Inspection remains read-only.
+
+Full real PG/Redis queue/worker/exporter races pass (55.469s/32.063s/4.839s),
+all 295 legacy tests pass without skips, and focused application/retention races
+pass (13.056s). Empty 0044 downgrade/re-upgrade and retained-history refusal pass.
+Tests cover uncertain effects, SAVE denial, SQL failure after SAVE, actual RDB
+reload, partial recovery and source/canonical/target drift. Both Linux
+architectures cross-compile and integration vet pass. The expanded actual root
+fixture additionally loses a real producer reply, SIGKILLs the CLI after SAVE
+before SQL commit, reloads the RDB and restarts the UID-10001 producer at its
+fsynced sentinel; fresh execution is still required. See
+[application evidence](evidence/go-b0-native-forward-application-2026-10-01.json).
+
+Preceding checkpoint `450dedda27478771a6d5c07ee367ec427f3ce09a` passes Linux
+PG17/Redis 36927121073, full CI 36927195353, both installed images 36927199598
+and whole B0 36927121161. Both actual root preparation fixture logs and both
+image artifacts were downloaded and verified: exact source/CA, all four executable
+fixtures and 34 asset hashes. ARM64's first image build hit a Go dependency proxy
+stream error; its failed-only exact-source rerun passed. Dormant renderer
+36927120998 passes with publication/deployment skipped. This is preceding-source
+evidence; the new application source needs fresh admission. The actual deploy
+gate refuses draft. Production ownership remains unchanged and the full goal
+remains active.
+
+The next ownership slice requires verified completion before joint publication,
+then connects supported full cold cutover/reversal and host readiness. All enabled
+profile/runtime coverage, output/freshness/queue parity, resource/cost admission,
+production rollback window and Python runtime retirement remain delivery gates.
+
+Native forward-preparation source `4adab07e19245c9cd54f94660aca752cacd28604`
+now derives complete B0 transfer manifests from canonical PostgreSQL schedules,
+atomic source/legacy Redis observations and the authenticated producer. Migration
+0043 retains exact approved bytes before activation; the same intent cannot change
+approval. Preview, retention and read-only history inspection have protected
+source-bound CLI commands. Cached hints, canonical microsecond due times,
+first-time source scores, pruned unqueued work and unscheduled terminal history
+are preserved. Retained decoding re-derives request fields from source evidence.
+
+Final full real PG/Redis queue/worker/exporter races passed
+(55.047s/30.739s/4.828s), all 295 mandatory legacy tests passed without skips,
+and final focused forward races passed (6.388s). Migration 0043 empty downgrade/
+re-upgrade and retained-history downgrade refusal pass. The combined Linux root
+fixture uses the actual UID-10001 producer, PG/Redis and native CLI; AMD64/ARM64
+compilation/vet pass, and fresh execution is required. See
+[forward preparation evidence](evidence/go-b0-native-forward-preparation-2026-10-01.json).
+The next slice applies only retained approval, proves partial transfer/uncertain
+reply/SAVE/readback and exact restart, then connects full cold ownership/readiness.
+
+Preceding checkpoint `d82a3b16439c5e85c1bf6e5fbd24d9c813070951` now passes Linux
+PG17/Redis 36920581526, full CI 36920604964, both installed images 36920610473
+and whole B0 36920581681. Both downloaded image artifacts verify exact source,
+CA, all four executable fixtures and 34 matching asset hashes. Dormant renderer
+36920581739 passes with publication/deployment skipped. The earlier conservation
+and metrics-observation findings are resolved on that source. This is historical
+component evidence; the new forward source needs fresh checks. The actual deploy
+gate continues to refuse draft. Production ownership remains unchanged.
+
+Latest native client source `8d2874e6b0bd311c9deb491163cd50cdc2f3b46d` adds the
+authenticated Go producer control client and shared installed wire types.
+Manifest, prepare, approved activation and enqueue use the fixed UID-10001 socket,
+Linux kernel peer credentials, exact canonical bounded framing and one attempt
+per mutation. The actual installed producer/private Redis fixture now exercises
+this client, including exact operator retry, wrong-digest rejection and terminal
+reactivation. Actual Python wire captures and private socket fault/deadline race
+tests pass locally; both Linux architectures compile the installed fixture.
+Linux native socket/capture steps passed on both architectures in 36919506114.
+The actual UID-10001 producer/private Redis test and hard restart passed in
+full-CI job 110563817514 at `94979ef6c`: exact approved operator retry,
+wrong-digest rejection, occupancy conservation and terminal reactivation.
+This verifies the client component; full current-source admission remains required. See
+[native client evidence](evidence/go-b0-native-producer-client-2026-10-01.json).
+
+Restoration checkpoint `387ccaa56` passed Linux PG17/Redis on both architectures
+and full CI. Installed-image ARM64 passed; AMD64 conservation failed, so that
+checkpoint is not admitted. Diagnostic source `55adcb527` reproduced a failure
+at a later conservation seam and exposed a separate metrics-observation race:
+database completion/Redis ACK precede outcome accounting and claim release.
+The fixture now waits for the whole settled metrics contract within the same
+bounded readiness window. Both conservation seams separately identify Redis
+and canonical effects. Linux 36919506114 identified the changed key as the real
+source claim's three-second `ratelimit:jobs.example.test` bucket. The fixture
+now verifies that actual expiry, then makes only the private source bucket
+permanent before all conservation baselines. Its exact value remains included
+in strict snapshots; no production rate-limit behavior changes. Three local
+repetitions of both actual executable fixtures passed after this fix (26.846s).
+Fresh Linux and installed checks must resolve the finding. Initial restoration checkpoint
+`8bdb17832` whole B0 36913625698 has now passed; this is historical source evidence.
+
+Latest native runtime source `9d252deccfbe031ea1c4dbffee05996261b68db2` adds durable B0 restoration and
+exact historical fence cleanup through migration 0042. Approved manifest bytes
+commit before Redis effects. Fresh PG-derived plan and atomic source-pinned actual
+queue observations precede the unchanged rollback Lua; acknowledged SAVE and exact
+permanent tombstone readback precede SQL progress. A subsequent transaction clears
+only retained Go source-epoch/shard fence IDs. Exact interrupted retries preserve
+canonical rows, ordinary receipts and microsecond future deadlines.
+
+Four protected source-bound commands expose preview, retention, restoration and
+read-only progress inspection. The actual native executable survives SIGKILL after
+SAVE/readback before SQL progress; independent inspection works while paused,
+then exact restart and repeated cleanup reach fences-cleared at the same epoch.
+Full queue/worker/exporter races passed (45.589s/31.263s/4.891s), all 295 mandatory
+legacy tests passed without skips, migration downgrade-0041/re-upgrade and 37
+repository checks passed. See
+[durable restoration evidence](evidence/go-ordinary-b0-restoration-2026-10-01.json).
+
+Preceding planner checkpoint `de9fc4f52` passed Linux PG17/Redis 36908705159,
+full CI 36908788510 and both installed images 36908792798. Both downloaded artifacts
+verify all four actual executable fixtures, exact source/image/binary and matching
+34 asset hashes. Whole B0 36908705415 also passed, completing all four workflows. Earlier retirement checkpoint
+`286810cfc` has now passed all four workflows, including whole B0 36905777358.
+The actual deploy gate refuses draft. Current-source checks remain required.
+
+Final fixture source `37c0bd723d980be6df845af625f55cc03edba466` compares exact logical Redis bytes,
+types, scores and expiry classes. Linux AMD64 on the initial restoration checkpoint
+reported opaque combined DUMP/canonical mismatches at different read-only seams;
+ARM64 passed. DUMP embeds internal encoding/iteration order, so the fixture now
+uses stable logical observations, separates canonical diagnostics and proves real
+value/type/microsecond-score/expiry/non-UTF8 drift detection. Full corrected worker
+races passed (30.722s). Fresh exact-source Linux and image checks must resolve the
+CI finding before admission; no production runtime was changed by this correction.
+
+Next complete fresh ordinary/B0 restored ownership, sentinel/host receipt recovery
+and full release readiness through the supported ADR006 all-writer host wrapper.
+Finish forward PG-derived B0 transfer and remaining actual SIGKILL seams. The
+completed B0 restoration deliberately leaves the forward journal reversing,
+ordinary projection/joint witness in place and ordinary claims blocked. Every
+enabled effective profile/runtime consumer, canonical/publisher/freshness/queue
+parity, comparable whole-service resource/cost, exact-gated rollout, actual rollback
+window and Python/Playwright/Chromium retirement remain required by the active full
+migration goal. Preserve useful isolated offline Python tooling.
+
+Preceding runtime `a7502f1bb87a80a2acb8df818080b4f1acee6ae8` introduced the
+canonical PG-derived B0 rollback manifest and its bounded actual-Lua preparation
+proof. Keep its
+[preparation evidence](evidence/go-ordinary-b0-rollback-preparation-2026-10-01.json)
+as the historical preparation checkpoint.
+
+Current verified joint checkpoint, October 1: `f2b82c73d` passed Linux AMD64/ARM64
+PostgreSQL/Redis (36899324776), full CI (36899366997), both installed images
+(36899371310) and whole B0 (36899324501). Both downloaded artifacts bind exact
+source/image/binary and all four executable fixtures with matching 34 asset
+hashes. Dormant renderer 36899324562 passed build-only; publish/deploy skipped.
+The actual deploy gate refuses draft. These results do not admit later source.
+
+Previous runtime source `c0f46f848db6862f185a548b183a87b615aeb6eb` adds migration 0041 and three protected
+native reversal commands: begin, reserve and retained-history inspection. Exact
+reversal intent commits before allocation, contains the forward owner and binds
+source/rollback identities. Fresh retirement survives disabled/changed candidates
+and lost Redis evidence. Actual SIGKILL after nextval/owner retirement leaves SQL
+rolled back and intent pending; recovery allocates another fresh epoch. Independent
+read-only inspection observes pending state while allocation is paused. Canonical
+rows, receipts, future deadlines and Redis values/expiry classes remain unchanged.
+Full private queue/worker races and 295 legacy tests passed; migration downgrade/
+re-upgrade and 132 repository checks passed. See
+[retirement evidence](evidence/go-ordinary-cold-retirement-2026-10-01.json).
+Claims remain blocked: retirement does not complete restoration or host readiness.
+Current-source Linux/full CI/both installed-image/B0 checks are required after push.
+
+Previous runtime source `aab47b5e8857e6521a7bfb38f8cc174391988e52` completes legacy
+ordinary startup/claim joint admission. Every claim, including an unselected
+worker, holds existing DB lease/epoch barriers and refuses unfinished joint
+intent. A journalled owner requires protected installed actual B0 Lua and exact
+active journal/source/epoch/plan, retained target, fresh PG/Redis B0 configuration,
+fixed selectors, conservation audit and permanent shared projection/witness/route/
+producer identity. No latest owner or lost witness is adopted or repaired.
+
+Go and Python now hash exact numeric values across JSONB/Redis spellings without
+float rounding. Fifteen shared canonical cases and fourteen invalid inputs cover
+precision, decimal/scientific spelling, negative zero, HTML/Unicode escaping,
+duplicates, depth and bounded normalized exponents. New target hashes require
+fresh capture/approval before intent. The actual native coordinator publishes the
+journal/target consumed by a real Python startup/claim probe; nine faults reject
+both paths without Redis value/expiry-class or canonical changes. Real B0 inflight
+work remains compatible. The pipeline's unselected loop cannot pop during intent.
+See [legacy joint evidence](evidence/go-ordinary-legacy-joint-admission-2026-10-01.json).
+Fresh exact pushed-source Linux/full CI/both installed-image/B0 checks are required.
+
+Native runtime source `d1a2316f0d1662e06aa95f6924c3a09840ec3ae2` and migration
+0040 previously completed immutable target/journal bindings and native fresh
+startup/claim/write/heartbeat/circuit/settlement admission. Fifteen real faults,
+healthy B0 inflight and fencing a completed future-due ordinary receipt are proven.
+Legacy writes/settlement still rely on the supported host draining/stopping all
+writers before ownership changes; the new guard specifically covers admission.
+The native [joint evidence](evidence/go-ordinary-joint-admission-2026-10-01.json)
+remains its historical component proof.
+
+Coordinator runtime source `6f0ceca14fed1ec34ed92ba289a3d5173cb1a6ce` exposes seven
+protected compiled-source-bound coordinator commands: B0 target capture, exact
+canonical intent, reservation, retained-history inspection, preparation, publication
+and activation. Exact
+bounded non-symlink files bind digests and source. Begin/reserve require intent's
+previous epoch; prepare/publish/activate require the exact reserved epoch/plan.
+A real executable SIGKILL after MSET/SAVE/readback and before SQL publication
+commit leaves publishing intent and staged plan. Exact restart/retries recover
+without replaying canonical or other Redis effects. Missing witnesses remain
+contained. Full worker races passed (27.723s); 126 repository checks and vet passed.
+See [coordinator evidence](evidence/go-ordinary-cold-coordinator-2026-10-01.json).
+Fresh pushed-source Linux/full CI/both installed-image/B0 checks remain required.
+
+Publication runtime source `28d155566b50297b65933757294d5ff8bfb442d3` adds native
+shared-epoch publication/activation through migration 0039. A fresh canonical/
+Redis B0 target binds fixed selectors and exact configuration hashes. Redis
+pending witness precedes committed `publishing`; only then can the unmodified,
+SHA256-pinned actual B0 conservation audit and prior-byte CAS publish ordinary
+projection plus joint witness in one MSET. SAVE acknowledgement and exact atomic
+readback precede `published`; exact ordinary DB owner and journal become active
+in one subsequent transaction. Missing witnesses cause containment, not repair.
+A successor binds the exact active generation and refuses an old B0 epoch.
+
+Real private full queue/worker races passed (30.145s/43.047s), 290 mandatory
+legacy tests passed without skips, final publication races passed (7.400s), and
+130 repository checks plus vet/ruff/pyright passed. SAVE denial, post-SAVE SQL
+failure and activation rollback/retry conserve canonical rows/deadlines/receipts
+and every other Redis key. A no-save Redis shutdown and fresh process load prove
+durable RDB witness/projection/B0 records/guards. See
+[publication evidence](evidence/go-ordinary-cold-publication-2026-10-01.json).
+Fresh pushed-source Linux/full CI/installed-image/B0 checks remain required.
+
+Protected commands now expose the completed native primitives; no supported
+production selection wrapper exists yet. They do not replace complete PG-derived
+B0 task-transfer/sentinel/receipt evidence or attest all-writer host quiescence,
+release/rollback identities and readiness. Next complete restoration using the retained retirement intent/epoch and the
+supported host wrapper; prove all remaining interruption seams and full cold reversal (including changed/disabled cohorts).
+Do not redo completed staging, worker process/crash, intent/reservation,
+publication/activation, protected coordinator commands or completed native/legacy
+joint admission guards or completed cold-retirement intent/SIGKILL recovery.
+Production ordinary remains Python and the full migration goal is active.
+Running B0 and installed-image measurements finish while the newest pending
+candidate waits; each source needs its own report and admission.
+
+The next delivery sequence is:
+
+1. Preserve the completed Linux image binary/asset tests, retaining exact source,
+   image ID, binary/asset hashes and result logs. Prove the deployed container's
+   effective settings and full public fetch/processing before selecting a cohort.
+   The no-fetch crash fixture does not supply public TLS/profile admission.
+2. Complete the coordinated ownership protocol described below, then prove its real
+   all-writer cutover, interrupted-publication containment and cold reversal on
+   private PostgreSQL/Redis and installed containers before production selection.
+3. Promote the queue foundation and ordinary runtime through current exact-head
+   Required CI and Crawler Deploy Gate. Recheck source/base/draft/holds/operator
+   state immediately before each merge; rebuild/retest after any changed head.
+4. Refresh the canonical census of every enabled effective configuration. Admit
+   strict Greenhouse first; extend the assembled worker to the remaining native
+   HTTP/API monitors, detail extraction and Lightpanda profiles in bounded slices.
+   Preserve enabled suspect/quarantined/gone_pending/gone rows and unsupported
+   configurations in the remaining owner until their replacements are proven.
+5. Replace remaining runtime scheduling, reconciliation, maintenance, publication
+   and deployment consumers. For each slice, compare actual canonical output,
+   database effects, publisher policy, due times and queue/freshness conservation.
+6. Run comparable whole-service output and CPU/RAM/density/attributable-cost
+   measurements with recorded images, settings, inputs and windows. Exercise the
+   supported full cold reversal and complete the actual rollback window. Remove
+   production Python, Playwright, Chromium and legacy runtime-only assets only
+   after replacement coverage and operational authority are established; retain
+   useful isolated offline Python tooling.
+
+## Coordinated ordinary and B0 ownership protocol to complete
+
+Ordinary ownership and B0 use the same PostgreSQL routing-epoch allocator. An
+ordinary transition cannot advance it while B0 continues claiming, and a later
+B0-only reversal cannot silently retire an active ordinary owner. Extend the
+supported deployment/ownership protocol under ADR006; the existing B0 active
+receipt intentionally prevents an ordinary image release until cold reversal.
+Do not bypass that receipt or patch a running environment to activate Go.
+The prepared B0-only allocator now refuses an active ordinary plan before burning
+a new epoch, taking the ordinary lease barrier before its epoch barrier. Real
+PostgreSQL proves preserved owner/sequence and allocation after retirement; legacy
+absent-schema behavior remains compatible. Fresh deployed-source checks are required.
+
+Native journal preparation/reservation now persists canonical intent before
+`nextval`. It validates the prepared current-epoch cohort against fresh PG/Redis
+state, retires an exact old ordinary owner, stages its replacement at a fresh
+shared epoch and records reservation in one bounded transaction. A rolled-back
+allocation can burn a sequence value: exact pending recovery allocates another
+fresh epoch; it never adopts the high-water. Exact reserved retry rechecks the
+current epoch and fresh staged cohort without reallocating. B0-only allocation
+refuses unfinished journal phases, and rollback cannot delete retained history.
+Protected native commands now expose these database primitives; input evidence
+digests do not prove host quiescence or release identity. Publication and its
+actual SIGKILL/restart seam are proven locally; remaining interruption seams,
+supported all-writer selection and full cold reversal remain to implement/prove.
+
+Shared publication now captures exact canonical/Redis B0 board configurations
+and fixed producer selectors without adopting an epoch. Redis pending witness
+commits before journal `publishing`. One EVAL uses the actual source-pinned B0
+conservation audit to guard exact new shared route/selectors, conserved nonempty
+records and zero inflight/dead work, then uses one MSET for ordinary projection
+and joint witness. Acknowledged SAVE and exact readback precede `published`;
+subsequent exact owner/active-journal installation is atomic. SQL/Save failures
+retain inspectable recovery phases. Lost/expired/partial witnesses are contained.
+An exact active predecessor can be retained as superseded; its release/plan/epoch
+and prior projection/witness must match. A stale B0 route prevents publication.
+Protected source-bound commands expose these primitives, with actual publication,
+retirement and B0 restoration interruption/recovery proof. They still require the
+supported host wrapper, complete forward B0 task transfer and full cold reversal
+before selecting production ownership.
+
+Bind one protected transition to the exact active and candidate release generation,
+immutable crawler/browser/renderer image identities, installed binary sources,
+canonical data/runtime contracts, ordinary cohort configuration digests and B0
+selectors. Native `--stage-ownership`/`--inspect-ownership` now prepare and inspect an exact
+staged ordinary plan. They require protected modes, compiled source and explicit
+current epoch; staging cannot activate ownership or adopt an allocator epoch. A changed board or
+projection invalidates the proposed transition and requires fresh preparation.
+
+Under the host mutation lock, stop and attest every claimant/writer, exporter,
+description drain and competing Compose one-off. Preserve complete rollback
+spec/env/image/data/receipt evidence before mutation. Allocate one fresh epoch
+while the lane is cold, stage and validate the new ordinary plan against fresh
+canonical configurations, and install both ordinary and B0 ownership at that
+same epoch. Record a durable pending transition before any cross-store mutation.
+Only exact installed plan/epoch/source/projection readback and persisted Redis
+state may advance the transition to active and release the complete stack.
+Native and remaining Python workers must bind the same ordinary projection;
+startup/config drift or lost projection must contain the lane.
+
+Cold reversal must retire both old owners while all writers are stopped, allocate
+a new epoch, restore the exact rollback release and data tree, rebuild its supported
+queue projections and resync canonical future deadlines before any Python worker
+restarts. Keep committed ordinary receipts and learned-host evidence recoverable;
+never replay completed network/persistence work or invent an empty inventory.
+Interrupted activation/reversal retains its journal/receipts and stopped writers
+until deterministic recovery completes. Cover faults at database transition,
+Redis publication/persistence, receipt publication, startup and readiness boundaries.
+A failed reversal must leave the affected lane stopped, with its recovery authority
+intact. Then verify one naturally due owned cycle, old-owner exclusion, posting/
+description/upload continuity, due times and remaining-owner freshness.
+
+### Remaining ownership and host work in dependency order
+
+1. Native PG-derived planning/immutable approval and retained application are
+   implemented by migrations 0043/0044. Completion-bound publication and
+   no-bypass ordering are implemented in the native library/protected CLI.
+   Verify fresh actual producer/PG/CLI recovery plus publication on both
+   architectures, then integrate these commands with the supported host workflow. Preserve
+   full retained manifests, legacy intent, terminal history and bounded capacity;
+   no completed work may replay or disappear during recovery.
+2. Restore both supported rollback targets: a legacy ordinary owner and a prior
+   native ordinary owner. The native target needs a fresh plan at the retained
+   retirement epoch bound to the rollback binary's source and freshly validated
+   effective configurations. Retired plans remain immutable. Existing native
+   admission requires an exact active journal and B0 target/projection/witness;
+   closing the old reversal without that replacement would leave it unowned.
+   Design and prove the atomic history/owner completion before releasing claims.
+3. Independently verify immutable active/target/rollback generation, complete data
+   tree and runtime contract, spec present/absent manifest, env and image/binary
+   identities. Under `/run/lock/jobseek-crawler-mutation.lock`, stop and attest
+   ordinary/browser/native claimants, producer, exporter, drain, maintenance and
+   competing one-offs. Integrate the protected native commands with the supported
+   ADR006 host workflow; preserve the existing active B0 receipt as recovery authority.
+4. Complete Go-owned sentinel and durable host receipt recovery, acknowledged
+   Redis persistence and exact readback, final fresh database/queue ownership and
+   full-stack readiness. Actual SIGKILL must cover historical fence cleanup before
+   commit, sentinel/receipt publication, release selection and readiness failure.
+   Any failed restore leaves every writer stopped and the exact recovery record intact.
+5. Prove installed container/public-fetch settings and a naturally due owned cycle,
+   then promote through fresh exact-head gates. Refresh all enabled effective
+   profiles and port remaining monitor/detail/browser and runtime consumers with
+   canonical/publisher/freshness/queue conservation. Complete comparable whole-service
+   resource/cost admission and the actual rollback window before runtime retirement.
+
+## Historical delivery record
+
 Reviewed 2026-09-30 against `origin/main`
 `c571568167b7abf7dfa80a7f9c73bcbb29d49cb2` and current GitHub PR/check state.
 This is the forward plan for completing the crawler service migration. Start
@@ -23,13 +1742,178 @@ immutable images, observations and limits. Whole-service cost and fleet output
 are still incomplete. The independent ordinary queue foundation is saved in
 draft [PR #10207](https://github.com/colophon-group/jobseek/pull/10207), with real
 Linux AMD64/ARM64 Redis contracts passed. It now also prepares native
-PostgreSQL attempt authority, guarded reaping and canonical deadline recovery;
-new exact-head Linux PostgreSQL/Redis proof remains a candidate gate. See the
+PostgreSQL attempt authority, guarded reaping and canonical deadline recovery.
+At head `86813918a`, Required CI, installed runtime contracts, both Linux
+PostgreSQL/Redis architectures and all 16 synthetic B0 admission arms passed.
+Stacked draft [PR #10210](https://github.com/colophon-group/jobseek/pull/10210)
+adds strict Greenhouse eligibility and canonical PostgreSQL/Redis observation;
+implementation head `e5ecd5d29` passed both real Linux database/queue jobs.
+Its subsequent `6a71c4c99` ownership implementation adds immutable durable
+staged/active/retired cohorts and exact active readback; both Linux PostgreSQL17/
+Redis architectures passed run 36790040524. Subsequent `f7ccc7b06` binds native
+and legacy claims to the exact active plan, canonical configuration and atomic
+before-pop selection; both Linux architectures passed run 36793700617 with
+mandatory real legacy PostgreSQL/Redis attestation tests. Rich processing source
+`8a5834e61` now adds native content preparation against 18 captured Python cases
+and owned atomic 500-posting insert/touch/relist/description batches; both Linux
+architectures passed run 36796933484. Follow-up `449e58052` rechecks the current
+board publisher reservation under the canonical write lock and passed local
+real database/queue races. Checkpoint `01b7366f5` subsequently passed both Linux
+architectures in run 36797683763 and full CI in run 36797708877; its B0 admission
+run 36797683889 was still measuring when the next implementation was saved.
+Those results do not cover later source or grant merge authority for a draft.
+
+Latest implementation `8a6f1bc08` binds owned Greenhouse batches to a terminal
+board cycle. It applies disappearance/empty/partial/confirmed-contraction,
+quarantine/backoff, provider-404 and publisher-reservation policies under the
+same PostgreSQL attempt authority and commits the canonical due time with the
+receipt. Enabled suspect/quarantined/gone_pending/gone states retain their
+installed native owner; fresh PostgreSQL metadata avoids stale Redis baseline
+and confirmation state. Local real database/queue proof includes 41 actual
+Python decision cases, 10 lifecycle integration groups and commit-before-ack
+recovery in changed board states. See the
+[portable lifecycle evidence](evidence/go-ordinary-lifecycle-2026-10-01.json).
+Checkpoint `7e1094733` passed both Linux architectures in run 36800629362,
+full CI in run 36800624392 and B0 admission in run 36800629213. The actual
+deploy gate still rejects the draft; earlier-head greens grant no later-head
+merge authority. Production ordinary workers remain Python.
+
+Processing assembly `9d7a8f5a8` adds the
+[native ordinary package](../apps/crawler/go/ordinary-worker/README.md).
+Forty URL and six full-inventory captures match the actual default Python rich
+monitor's dictionary, sanity/canonicalization and alias content rules, including
+interleaved duplicates. Native normalization keeps every collected job above
+the 50,000-job flag. A real owned PostgreSQL/Redis fixture now connects native
+models, lookup/currency snapshots, SQLite locations, three 500/500/1 posting
+batches, terminal disappearance and canonical receipt settlement for 1,001
+postings. Preparation failure after a committed prefix invalidates later
+success/absence authority. Checkpoint `654ed153e` passed full CI in run
+36831279197 and B0 admission in run 36831284162. Linux run 36831284128 passed
+ARM64, but AMD64 first timed out fetching dependencies and then rejected a
+different dictionary ordering in the saved Python drop-count capture. Runtime
+counts matched; the next source makes capture serialization deterministic.
+See [portable pipeline evidence](evidence/go-ordinary-pipeline-2026-10-01.json).
+
+Latest source `aa99863e3` connects native Greenhouse discovery to the real
+1,001-posting owned fixture through one HTTP 202 response. It preserves the
+Python monitor's successful 2xx statuses, final-resource publisher headers
+before provider/status/body checks, redirects and JSON byte encoding behavior
+against 52 freshly captured Python cases. Failed reads and malformed inventories
+never expose partial jobs. A real redirect fixture checks process-owned cookies
+and client reuse. Ordinary taxonomy/currency/location lookups now use a separate
+read-only one-connection reader with their own attribution. Local full native
+assembly races (15.394 seconds), native reader/preparation races (3.069 seconds),
+39 runtime/version/documentation checks and linters passed; all three oracles
+were stable across three Python hash seeds. Production remains unchanged. See
+[portable discovery evidence](evidence/go-ordinary-discovery-2026-10-01.json).
+See the
 [ordinary authority checkpoint](30-native-ordinary-authority-checkpoint-2026-09-30.md).
-It selects no ordinary worker. Next, complete exclusive effective profile
-ownership and native ordinary processing with installed fault/cold-reversal proof, then
-every enabled profile and runtime consumer before final Python/Chromium
-retirement. The full migration goal remains active.
+It selects no ordinary worker in production. Discovery checkpoint `c249e1742`
+passed both Linux PostgreSQL/Redis architectures (36835150216), full CI
+(36835149192) and B0 admission (36835150489). Its actual deploy gate remains
+failed while draft; earlier-head results grant no later-head authority.
+
+Latest runtime source `593a7c902` prepares a persistent verified native HTTP/1.1
+client with an explicit CA bundle, process-owned cookies, 100 connections,
+20 keepalive connections, five-second expiry, 20 redirects and separate
+30-second operation deadlines. Every public hostname request rechecks the
+Python address policy, including redirects and reused connections; new public
+dials pin validated addresses. Native metering preserves request/response/
+no-response conservation and encoded bytes. Hidden Go request retries are
+suppressed. Gzip/deflate decoding matches 25 actual Python HTTPX captures;
+233 address and nine DNS answer cases match the Python SSRF policy.
+Verified TLS now feeds the real 1,001-posting owned database/queue assembly.
+Local assembly races (24.672 seconds), reader/preparation races (3.357 seconds),
+39 repository checks and linters passed; capture regeneration is byte-identical
+across three hash seeds, and private fixtures shut down. See the
+[portable direct transport evidence](evidence/go-ordinary-direct-http-2026-10-01.json).
+This is prepared transport; ordinary production workers remain Python.
+
+Transport checkpoint `8001134bc` passed both Linux architectures (36842233353),
+full CI (36842225559) and B0 admission (36842233274). Its actual deploy gate
+still rejects the draft; these checks do not cover the later circuit source.
+
+Latest runtime source `8a84d82ca` prepares the shared host circuit path on the
+existing Redis keys and byte-identical production Lua. Native preflight uses
+the learned failure host, then configured board hostname; open and occupied
+half-open circuits commit future PostgreSQL deferrals with opaque receipts.
+Failure finalization records one protective circuit outcome per actual run and
+commits its lower bound alongside normal backoff. Migration0037 retains the
+learned host with the terminal receipt, and token-guarded Redis settlement
+publishes it atomically after lease retirement. Commit-before-ack recovery keeps
+that host and deadline without a second circuit increment. The inflight claim
+snapshot remains unchanged. Circuit trouble fails open; fresh attempt authority
+still guards every canonical effect.
+
+Real migrated PostgreSQL/private Redis queue races (17.140 seconds), native
+assembly races (22.135 seconds), reader/preparation races (3.276 seconds), 185
+mandatory legacy tests without skips and 39 repository checks passed. Migration
+head/down0036/head and fixture cleanup passed. The TLS 1,001-posting fixture
+recovers its observed API circuit; a failed preparation fixture publishes its
+fallback host at settlement. See the
+[portable host circuit evidence](evidence/go-ordinary-host-circuit-2026-10-01.json).
+This prepared library still selects no production ordinary worker.
+
+Circuit checkpoint `3684247cc` passed both Linux architectures (36846132716),
+full CI (36846125648) and B0 admission (36846132352). Its actual deploy gate
+still rejects the draft; those results do not cover later source.
+
+Latest runtime source `3e9aef091` connects the complete claim-bound Greenhouse
+runner to a sealed verified transport. Initial token identity remains bound to
+the owned claim while completed final-resource responses authorize redirected
+provider404 and publisher policy. The runner connects preflight, native full
+inventory/preparation/batches/lifecycle, host outcomes and receipt settlement.
+It recovers committed receipts without HTTP, CPU or circuit replay. Concurrent
+publisher reservation retains committed batches without spending failure budget
+or absence authority. Redis settlement now validates all relevant index types
+and numeric inputs before any mutations, preserving the lease and durable host
+receipt when an index is corrupt.
+
+Real TLS/PostgreSQL/Redis runner fixtures include the 1,001-posting assembly,
+eight redirected policy/provider/error outcomes, no-fetch deferrals/reservations,
+mid-body cancellation, reservation after a 500-posting prefix, true process-loss/
+reap/reclaim recovery and thirteen atomic-settlement rejection cases. Full queue
+races (26.414 seconds), assembly races (20.259 seconds), reader/preparation races
+(2.875 seconds), 185 mandatory legacy tests without skips, 39 repository checks
+and vet/format passed. Private fixtures shut down; production is unchanged. See
+[portable claim-run evidence](evidence/go-ordinary-claim-run-2026-10-01.json).
+Fresh candidate checks are required; this library selects no production worker.
+
+Claim-run checkpoint `426a6c47d` passed both Linux architectures (36851878686),
+full CI (36851882626) and B0 admission (36851878654). Its actual deploy gate
+still rejects the draft; those results do not cover the later process source.
+
+Latest runtime source `2b775782f` prepares `go-ordinary-worker`: exact compiled
+source/plan/projection/epoch startup, pinned certifi CA and native model/reference/
+location assets, five default active claims, lease renewal, task deadlines,
+bounded signal drain/cancellation, claim-loop watchdog and stable bounded metrics.
+Its identity-bound health probe opens no additional database pool and follows no
+redirects. Docker slim/full wiring now embeds the checked-out source revision;
+release, full CI, runtime-contract and B0 builders supply that exact argument.
+No ordinary service is selected or started by this wiring.
+
+A real native executable fixture completes and settles an owned no-fetch publisher
+cycle, exposes identity/health/network/queue metrics, drains on signal and rejects
+a wrong installed projection. Real TLS token loss cancels a blocked fetch without
+canonical failure or terminal receipt. Race fixtures prove bounded claims, live
+renewal during drain, own-acknowledgement serialization, deadlines/watchdogs and
+uncooperative cancellation. Committed partial batches retain observed counts
+without granting inventory completion. Full queue races (21.292 seconds), runtime/
+assembly races (42.679 seconds), reader/preparation races (15.437 seconds), 185
+mandatory legacy tests without skips, 96 deployment/image tests, 130 repository
+checks, linters and both Linux cross-builds passed. These local wall times include
+parallel build load and are not fleet performance/cost measurements. Private
+fixtures shut down; production is unchanged. See
+[portable ordinary process evidence](evidence/go-ordinary-runtime-2026-10-01.json).
+Fresh installed-image/source checks remain required.
+
+Next, prove the immutable installed Linux worker and process faults, including
+SIGKILL after commit before acknowledgement and restart/recovery. Prepare supported
+all-writer ownership/projection installation and shared B0 epoch cutover/cold
+reversal before selecting a native ordinary cohort. Then complete every enabled
+effective profile and runtime consumer, fleet output/freshness/queue conservation,
+comparable whole-service CPU/RAM/density/cost and the rollback window before retiring
+production Python/Playwright/Chromium. The full migration goal remains active.
 
 This initial review made no production changes and did not reread the live hosts.
 Production details below are the latest recorded checkpoint, corroborated by

@@ -1,0 +1,145 @@
+{
+  "schema": "jobseek.migration.host-restoration-checkpoint/v1",
+  "date": "2026-10-03",
+  "parent": "23604669110672554037d449b31204b7eb8d832f",
+  "runtime_version": "0.13.904",
+  "operations": [
+    "cold-b0-rollback-plan",
+    "cold-b0-rollback-retain",
+    "cold-b0-rollback-restore",
+    "cold-b0-rollback-inspect",
+    "cold-ordinary-rollback-plan",
+    "cold-ordinary-rollback-retain",
+    "cold-ordinary-rollback-inspect"
+  ],
+  "contracts": [
+    "closed protected requests bind original E, reserved N/ordinary plan, reversal and exact R",
+    "bounded immutable ancestry binds original target/Lua across inspections and exact retries",
+    "historical E source receipt equals original prior B0 receipt; candidate N requires retained completed forward transfer receipt",
+    "typed canonical B0/ordinary request and retained native plan bytes; original legacy/native ordinary decision",
+    "no unresolved-effect successor; content-hashed/fsynced plans and completed results before next stage"
+  ],
+  "validation": {
+    "actual_private_SQL_Redis_seven_restoration_stages": true,
+    "fourteen_exact_historical_phase_retries_keep_R_without_R_plus_one": true,
+    "changed_source_retirement_receipt_target_Lua_and_native_mode_refuse_before_effects": true,
+    "B0_restore_and_ordinary_retention_returned_effect_interruption_recover": true,
+    "canonical_rows_and_unrelated_Redis_values_conserved": true,
+    "exact_source_tombstone_and_native_queue_retirement_verified": true,
+    "full_required_private_worker_race_suite_seconds": 42.91,
+    "producer_race_suite_seconds": 2.269,
+    "both_Linux_architecture_vet_and_tidy": true,
+    "repository_tests_passed": 94,
+    "optional_skips": 3,
+    "logs_sha256": {
+      "ordinary-host-restoration-tests.log": "8c1b4dccb483420569235cdb4600ba9097ce3cd51f0370734f4e702242bfcca1",
+      "ordinary-host-restoration-pure-tests.log": "eb003e2ac10a4163ae4c04c69539ddee65560376dfb3620bc4b53289bc279b11",
+      "ordinary-host-restoration-worker-suite.log": "366dcbbc67a8f561ba3bc84f28a369e2de86c635df5e86eeae2be9ec54e2bb80",
+      "ordinary-host-restoration-vet.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ordinary-host-restoration-tidy.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ordinary-host-restoration-repository-tests.log": "1a13c85db030e05a84290d5e4e186510277bfe5d3801647ca203d9724ae64e86",
+      "ordinary-producer-build-identity-tests.log": "6ff19f3fcaf1501c6512ce391ac349840ee1f90b5658f347513c6779e91a1cb6",
+      "ordinary-producer-build-identity-vet.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ordinary-producer-build-identity-tidy.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ordinary-producer-build-identity-worker-amd64-vet.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ordinary-producer-build-identity-worker-arm64-vet.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ordinary-host-restoration-final-amd64-vet.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ordinary-host-restoration-final-arm64-vet.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "altered_native_result_request_target_digest_retirement_refused": true
+  },
+  "producer_build_identity_fix": {
+    "failed_installed_run": 37091474326,
+    "failed_source": "a7d669e2b66ef5f359bf9e3cc154dad5bfd553f8",
+    "architectures": [
+      "amd64",
+      "arm64"
+    ],
+    "reason": "trimpath omits linker flags from debug/buildinfo; source check failed before native producer start",
+    "read_only_command": "--build-info",
+    "schema": "jobseek.lightpanda-b0.build-identity/v1",
+    "actual_trimpath_built_binary_reports_linked_source_without_runtime_config": true,
+    "image_extracted_byte_hash_static_module_GoVersion_architecture_fixed_peer_process_UID_and_socket_checks_preserved": true,
+    "fresh_installed_forward_proof_required": true
+  },
+  "preceding_installed_initial_partial": {
+    "source_revision": "a7d669e2b66ef5f359bf9e3cc154dad5bfd553f8",
+    "run": 37091474326,
+    "job_conclusion": "failure",
+    "scope": "independently verified initial four-phase raw host/selected-Redis journal only; failed forward fixture has no positive producer proof",
+    "full_installed_verifier_admission": false,
+    "forward_producer_execution_verified": false,
+    "runtime_admission": false,
+    "production_changed": false,
+    "verifier_sha256": "fa50dacf77ca737314ab14c664c1e3fa975c7c125af5fefedb89f2df9af10955",
+    "architectures": [
+      {
+        "actual_joined_host_selected_Redis_initial_journal_four_phases_and_exact_retry_pass": true,
+        "actual_SQL_backend_retry_Redis_client_release_and_conservation_pass": true,
+        "joined_reservation_epoch": 13,
+        "joined_proof_scope": "actual native library callback with installed image preflight, sleeping consumer stand-ins and private SQL/Redis; complete installed cold CLI/phase graph/producer exclusion/runtime admission unproven",
+        "complete_installed_cold_CLI_phase_graph_producer_exclusion_runtime_admission": false,
+        "architecture": "amd64",
+        "image_id": "sha256:62a8194db9435d327e48b08f926ef3f5c0d63caa895135920cba09cffabbd57b",
+        "binary_sha256": "a511001d09ba796ebd0332bb0d2f9f3a44bcb8d03c1b729b5c18492a7b8562b4",
+        "initial_proof_sha256": "5ee33b3561f50a65f568aba8c236e582c791d75224898a95325174b72944b44a",
+        "forward_fixture_failed_before_producer_start": true,
+        "forward_log_sha256": "0aede3037e13e80ed3e04d155a564f91d342a3824077366d422a6a4e6ea7c22b"
+      },
+      {
+        "actual_joined_host_selected_Redis_initial_journal_four_phases_and_exact_retry_pass": true,
+        "actual_SQL_backend_retry_Redis_client_release_and_conservation_pass": true,
+        "joined_reservation_epoch": 13,
+        "joined_proof_scope": "actual native library callback with installed image preflight, sleeping consumer stand-ins and private SQL/Redis; complete installed cold CLI/phase graph/producer exclusion/runtime admission unproven",
+        "complete_installed_cold_CLI_phase_graph_producer_exclusion_runtime_admission": false,
+        "architecture": "arm64",
+        "image_id": "sha256:0661950aa724b7d40618060ec1855e3669433edafb08424af7f4fafa8b4b5f03",
+        "binary_sha256": "b1e5a854c83aa6b3379afe25e00148a4db3b0b83ad4abe88b7b0ab63a720e388",
+        "initial_proof_sha256": "315241030695833e7cd6489eed456cbe35e8b63f82fff19d6eeff2c721f4b6eb",
+        "forward_fixture_failed_before_producer_start": true,
+        "forward_log_sha256": "6519637bf1ffd0d3df13adfb262ac4a4ded6b1ca421e60a7fd518290f2d747ad"
+      }
+    ]
+  },
+  "preceding_whole_B0": {
+    "pr_head": "eb607acac1814a08975ef7ca0af4a4b3d6f7e928",
+    "run": 37088947323,
+    "report_sha256": "277eb653cc88b12ebfcbe52120bbe7091492ed54c3220b2d836d9b4759c88f28",
+    "density_range": [
+      7.051382942383147,
+      13.778027943384647
+    ],
+    "scope": "generated B0 with production startup cardinality; not all-profile or whole-production service cost parity"
+  },
+  "source_files_sha256": {
+    "apps/crawler/go/ordinary-worker/host_cold_phase.go": "76e0361a98b9cf0b0db51dee3937864064b682ac3f4290e505b02fad69df487d",
+    "apps/crawler/go/ordinary-worker/host_cold_reversal_phase.go": "bc6a9f67a5c9b958745d47a37538212c5084799e7dc232c8d4be0f6ccc5de7e0",
+    "apps/crawler/go/ordinary-worker/host_cold_restoration_phase.go": "f74eb66c022de4b3e59a8916e817b765170c47ff2fc7a97411a59bb78e367949",
+    "apps/crawler/go/ordinary-worker/host_cold_restoration_phase_test.go": "32e64e564ccc809f7cbb401ddd494d7ab165f8d81f6548735ba3abd7ae2cf526",
+    "apps/crawler/go/ordinary-worker/host_cold_restoration_integration_test.go": "432c376b3fbecc3d361f4441818eac6bbbf46ac7ce5b671e91eaa13dde70cafa",
+    "apps/crawler/go/ordinary-worker/host_forward_producer_integration_test.go": "0295e9584bf8a94e7b8478b3d4ae77155a8b33eff1a69493e96965532e98cef0",
+    "apps/crawler/go/lightpanda-b0-supervisor/main.go": "2efc9c44be142d8572e2ed316cb4e86d2017a5f094be2561c20ef32346e70fa0",
+    "apps/crawler/go/lightpanda-b0-supervisor/build_identity.go": "695e82bc7436838cf4f38cc211313800c8fa8cd9c1253b1f92a21e3e9a90e2db",
+    "apps/crawler/go/lightpanda-b0-supervisor/build_identity_test.go": "b1e4c70bda68cdca7b8124e00e78ac9f15dbe9064c0fe59e62e08bc1327918c6"
+  },
+  "private_verifiers_sha256": {
+    "verify-ordinary-installed-artifact.py": "21f7dfc6595de009f2cde3dfd9ca6056d57d58b8655f351b329df1e1a03d04ae",
+    "verify-ordinary-installed-initial-partial.py": "58d3ee7a743e793b76e97c674a3d71c73b7c16cc6ae00ec9e8a54452a6f568f0",
+    "verify-ordinary-prior-linux.py": "6fe77ff0b15c308e269f2b1e77bc3ebe3b41e8ea1a5c4f11d39c078ef5a509f6"
+  },
+  "scope": "actual private empty historical B0 queue, synthetic prior receipt and host/release/listener authority; native journal restoration with returned-effect interruptions only",
+  "nonempty_restoration_through_host_journal_verified": false,
+  "actual_SIGKILL_restoration_through_host_journal_verified": false,
+  "complete_reactivation_finalization_host_lifecycle_implemented": false,
+  "fresh_installed_forward_producer_verified": false,
+  "runtime_admission": false,
+  "production_changed": false,
+  "goal_status": "active",
+  "next": [
+    "fresh exact-source installed producer eleven-phase fixture and independent raw-proof verification",
+    "nonempty B0/native ordinary restoration and reactivation/finalization journal at exact R",
+    "phase-authenticated intentional host changes and original outer lock through complete spec/env/data restoration, SQL release, full-stack startup/readiness",
+    "every enabled profile/consumer/canonical/output/database/publisher/freshness/queue parity, comparable whole-service resources and attributable cost",
+    "required exact-source gates, authorized quiesced cutover/cold reversal and rollback window before production Python/Playwright/Chromium retirement"
+  ]
+}

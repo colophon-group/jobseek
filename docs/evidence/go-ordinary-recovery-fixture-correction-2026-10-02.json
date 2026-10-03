@@ -1,0 +1,40 @@
+{
+  "schema": "jobseek.migration.ordinary-recovery-fixture-correction/v1",
+  "candidate_parent": "af9fe871de4b1999c9e1725d7f953e3e63e74a2f",
+  "changed_file_sha256": {
+    "apps/crawler/go/ordinary-queue/cold_b0_reactivation_linux_integration_test.go": "ba7c8cf06247a250c42c9e8a2d1eecd09b868c381e8f6c5e8b5f2d6775f07c42",
+    "apps/crawler/admission/lightpanda_b0/compose.yml": "5b4d62c4d3b0ac58df7137d1066817e6a7b86d2067d07a126b2cdb6f205a5bc5",
+    "apps/crawler/admission/lightpanda_b0/test_admission.py": "12d128652e4084f6d721cf244f05831d6bdad33b2d0306a1e92c1fd3677deb21"
+  },
+  "root_failure": {
+    "run": 36952683732,
+    "source": "af9fe871de4b1999c9e1725d7f953e3e63e74a2f",
+    "diagnostic_log_sha256": "fbb044fd1f63b06ace68e4ea94f1d1b67b957a1fdf5773733a4ab1eb7bd36267",
+    "sole_changed_key": "ratelimit:jobs.example.test",
+    "stage": "RDB reload before producer startup",
+    "cause": "normal short-lived private claim rate bucket expires during multi-stage recovery fixture",
+    "correction": "freeze expiry of existing private rate bucket before any SAVE/reload baselines; assert unchanged value; retain exact full-state comparisons",
+    "runtime_expiry_changed": false
+  },
+  "benchmark_network": {
+    "failed_run": 36949023109,
+    "cause": "candidate renderer Docker endpoint allocation Address already in use",
+    "correction": "dynamic endpoints allocate upper /25 of each existing /24, disjoint from every fixed address; automatic service startup cannot take fixed IPs",
+    "verification": "24 focused admission checks passed; regression checks fixed uniqueness, subnet containment and disjoint allocation ranges; Ruff check/format passed",
+    "actual_new_whole_benchmark_required": true
+  },
+  "local_linux": "ARM64 integration-tag executable compiled; AMD64 integration-tag go vet passed",
+  "preceding_source_ci": {
+    "source": "af9fe871de4b1999c9e1725d7f953e3e63e74a2f",
+    "required_ci": 36952698999,
+    "installed_contracts": 36952701423,
+    "conclusion": "success; installed artifact verification pending"
+  },
+  "production_changed": false,
+  "full_goal": "active; no narrower completion claim",
+  "next": [
+    "actual corrected Linux native/legacy finalizer recovery",
+    "independent actual prior worker admission at restored R and immutable image verification",
+    "ADR006 host integration and full migration/retirement requirements"
+  ]
+}

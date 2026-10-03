@@ -1,0 +1,180 @@
+{
+  "version": "jobseek.migration.native-host-containment/v1",
+  "date": "2026-10-03",
+  "preceding_verified_source": "351629ae0b1cb6f5747039e02123fcdff060dc6e",
+  "preceding_ci": {
+    "full": {
+      "run": 37068009987,
+      "conclusion": "success",
+      "headSha": "351629ae0b1cb6f5747039e02123fcdff060dc6e",
+      "status": "completed"
+    },
+    "installed": {
+      "run": 37068013054,
+      "conclusion": "success",
+      "headSha": "351629ae0b1cb6f5747039e02123fcdff060dc6e",
+      "status": "completed"
+    },
+    "linux": {
+      "run": 37067928233,
+      "conclusion": "success",
+      "headSha": "351629ae0b1cb6f5747039e02123fcdff060dc6e",
+      "status": "completed"
+    },
+    "prior_native": {
+      "run": 37067928300,
+      "conclusion": "success",
+      "headSha": "351629ae0b1cb6f5747039e02123fcdff060dc6e",
+      "status": "completed"
+    },
+    "prior_legacy": {
+      "run": 37067928232,
+      "conclusion": "success",
+      "headSha": "351629ae0b1cb6f5747039e02123fcdff060dc6e",
+      "status": "completed"
+    },
+    "renderer": {
+      "run": 37067928255,
+      "conclusion": "success",
+      "headSha": "351629ae0b1cb6f5747039e02123fcdff060dc6e",
+      "status": "completed"
+    },
+    "draft_gate_evaluator": {
+      "run": 37067924224,
+      "conclusion": "success",
+      "headSha": "351629ae0b1cb6f5747039e02123fcdff060dc6e",
+      "status": "completed"
+    }
+  },
+  "preceding_installed": {
+    "source_revision": "351629ae0b1cb6f5747039e02123fcdff060dc6e",
+    "run": 37068013054,
+    "production_changed": false,
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "image_id": "sha256:cda4892e5d7aab3e9f0b5ca34b665d3aa9cfc672dc8185a1384f3159b92bef29",
+        "binary_sha256": "b2c895685b4b1bc876bf09d5374a6ebe74c5c28ded6c3ce7ca4c0a3a37106f99",
+        "source_ca_identity_verified": true,
+        "actual_executable_fixtures": [
+          "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+          "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+          "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+          "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain",
+          "TestRealNativeExecutableVerifiesReleaseFilesWithoutRuntimeAuthority",
+          "TestRealNativeExecutableCapturesRetainedDeploymentSpecsWithoutRuntimeAuthority"
+        ],
+        "asset_hashes_verified": 34,
+        "actual_installed_file_observation_pass": true,
+        "system_ca_sha256": "714d457d580922dbf1d0be8bd35ba236a842b50b0072ae791582a19adef772a5",
+        "file_observation_log_sha256": "4d8e470dcc749e0d55f5d77be42f4c252561ca55a250066eb315a6e5a40ffe8a",
+        "actual_installed_host_preflight_pass": true,
+        "host_preflight_log_sha256": "ef4d149e294cfe917b8c9bb572f6a348bf7aafd3966fc081e04f85aac50bcfe2",
+        "actual_installed_host_join_pass": true,
+        "join_immutable_reference": "localhost:15000/native@sha256:2eb160cc2ec26efe42e76c358844b4d56cde5057a7df6a6713ca0b3c6197a30e",
+        "join_manifest_sha256": "2eb160cc2ec26efe42e76c358844b4d56cde5057a7df6a6713ca0b3c6197a30e",
+        "join_substitution_refusals": 10,
+        "actual_selected_active_files_bound_to_intent_receipt_pass": true,
+        "actual_active_selection_substitution_refusals": 3
+      },
+      {
+        "architecture": "arm64",
+        "image_id": "sha256:b8fdb9a7239d816768140566d7b82eab094b47a67408c79e4f72f2de79b5c2a0",
+        "binary_sha256": "f1b70023acfda938d9a237e95031799914aa289e8b6766cb7d3ffdf6299f3b43",
+        "source_ca_identity_verified": true,
+        "actual_executable_fixtures": [
+          "TestRealNativeExecutableColdPublicationSIGKILLRecoversExactIntent",
+          "TestRealNativeExecutableSIGKILLAfterCommitBeforeAckRecoversWithoutReplay",
+          "TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership",
+          "TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain",
+          "TestRealNativeExecutableVerifiesReleaseFilesWithoutRuntimeAuthority",
+          "TestRealNativeExecutableCapturesRetainedDeploymentSpecsWithoutRuntimeAuthority"
+        ],
+        "asset_hashes_verified": 34,
+        "actual_installed_file_observation_pass": true,
+        "system_ca_sha256": "714d457d580922dbf1d0be8bd35ba236a842b50b0072ae791582a19adef772a5",
+        "file_observation_log_sha256": "f373ce67f6b1f265e8f07014ed33e3dc45de648de3098aa38e7bc8d039b8245c",
+        "actual_installed_host_preflight_pass": true,
+        "host_preflight_log_sha256": "500d4eecf7fa582e952d907645d813b0631413400c38dcbda5705e52aaec2b44",
+        "actual_installed_host_join_pass": true,
+        "join_immutable_reference": "localhost:15000/native@sha256:cc2d9545b688b1e015419849e139a5e507355efaf46d1ce66d4a6dd5c86a671c",
+        "join_manifest_sha256": "cc2d9545b688b1e015419849e139a5e507355efaf46d1ce66d4a6dd5c86a671c",
+        "join_substitution_refusals": 10,
+        "actual_selected_active_files_bound_to_intent_receipt_pass": true,
+        "actual_active_selection_substitution_refusals": 3
+      }
+    ]
+  },
+  "preceding_linux": {
+    "source": "351629ae0b1cb6f5747039e02123fcdff060dc6e",
+    "run": 37067928233,
+    "tested_merge": "7cbae7a687dbd8cb4ef4be624e0f9960dcf56b44",
+    "parents": [
+      "86813918a20a499c5d59a39ca8c33797161f8743",
+      "351629ae0b1cb6f5747039e02123fcdff060dc6e"
+    ],
+    "log_sha256": "9d7bb7c3cee00f5aa1c69ad9bb4cdb86519515e10152e1f97a7f41521caa13a2",
+    "architectures": [
+      {
+        "architecture": "amd64",
+        "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+        "prior_binary_sha256": "cec244e6eaa0a2159324687ee3f04fd63c2c7f2786f4ac5a1a6975af709ae322",
+        "actual_prior_restored_R_and_native_legacy_root_finalizer_pass": true
+      },
+      {
+        "architecture": "arm64",
+        "prior_source": "3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4",
+        "prior_binary_sha256": "4ed19362c9d76b0d569c330a36e0dd2da0ae48c0f1974b0690fb0f10c8c6d9e1",
+        "actual_prior_restored_R_and_native_legacy_root_finalizer_pass": true
+      }
+    ],
+    "no_failed_or_skipped_tests": true,
+    "production_changed": false,
+    "scope": "actual prior clean source binary restored R plus native/legacy root finalizer crashes; historical host/release labels synthetic; no immutable prior image or complete host admission"
+  },
+  "contract": [
+    "Explicit mutation mode, compiled source, bound protected canonical request and exact retained preflight intent/spec archive before observation/effects",
+    "Private fsynced immutable full-daemon exact-ID plan before effects; regular writer installed-file coverage includes exporter and future service names",
+    "Full host config normalization removes only RestartPolicy; config/image/mount/label/whole daemon identity drift refuses; unknown live and restartable foreign objects refuse",
+    "Already cold maintenance one-offs remain outside mutation authority; only matched passive Redis/Postgres/Alloy may stay live",
+    "Held fixed shared lock and repeated selected/file/image/installed/spec/retained-byte guards; fixed cleared-environment Docker commands with Linux parent-death binding",
+    "Observed no/zero restart policies and fsynced restart barrier before stop; exact retry never selects replacement IDs and rejects regained policies after barrier",
+    "Complete actual fresh cold Docker predicate and immutable receipt before returning; SQL barriers and runtime admission explicitly false"
+  ],
+  "local_verification": {
+    "compiler": "go1.26.0",
+    "release_races_seconds": 2.516,
+    "host_races_seconds": 2.296,
+    "linux_amd64_arm64_integration_tag_vet": "pass",
+    "actionlint": "1.7.12 pass",
+    "zizmor": "1.26.1 offline pass",
+    "repository_checks": 188,
+    "logs": {
+      "ordinary-host-containment-host-tests.log": "e002e41efd96ab866635746bf33bc38069af7fb7bdd863ebeb1d5bc71ed88bd3",
+      "ordinary-host-containment-release-tests.log": "357f10f36506c56d7d5b99b3658be8ce1414d4487fe68012d1f4bb7858ddc2c4",
+      "ordinary-host-containment-repository-tests.log": "80f5b3bc6e3e7393a79522e68968b8b81db442f750159af32cc99694379c4dc8"
+    }
+  },
+  "actual_execution": {
+    "status": "fresh exact-source AMD64/ARM64 execution required",
+    "fixture": "two sleeping writer/exporter stand-ins using actual installed native image bytes; explicit matched live public Postgres; disposable Actions only",
+    "requires": [
+      "actual installed preflight and containment command",
+      "uncovered exporter before intent/effects refusal",
+      "two retained-file kernel SIGKILL phases and exact recovery",
+      "actual global inventory writer restart=no/PID=0 readback and retained exact-ID plan",
+      "matched Postgres remains running",
+      "exact retry and changed rollback archive refusal"
+    ]
+  },
+  "runtime_admission": false,
+  "sql_barriers_observed": false,
+  "production_changed": false,
+  "full_goal_active": true,
+  "remaining": [
+    "Actual SQL writer barriers/leases, host timer/maintenance exclusion and full effective runtime/build/selection authenticity",
+    "Connected full native cold phases and spec/environment/data restore, daemon in-flight reconciliation, actual full-stack SIGKILL/readiness/forward/reversal",
+    "Every enabled profile/runtime consumer and full canonical/database/publisher/freshness/queue parity, complete-service resources/attributable cost",
+    "Actual exact gates/merge/deploy, production rollback window then runtime Python/Playwright/Chromium retirement; preserve isolated offline tools/every board"
+  ]
+}

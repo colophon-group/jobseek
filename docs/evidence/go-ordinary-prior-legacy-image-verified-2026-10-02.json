@@ -1,0 +1,46 @@
+{
+  "candidate_source": "ecb21d62c4bd9939f417f8c71feea273c1c0765c",
+  "run": 37029126654,
+  "tested_merge": "04d7bb54381fcb9ed8902b33d12f79e83f81fce4",
+  "parents": [
+    "86813918a20a499c5d59a39ca8c33797161f8743",
+    "ecb21d62c4bd9939f417f8c71feea273c1c0765c"
+  ],
+  "prior_source": "b75ccb9456bf29c9477f9747c0c2cc3908ad79bb",
+  "architectures": [
+    {
+      "architecture": "amd64",
+      "image_id": "sha256:f5d371214a9435ecb4dadfe66d85f5a47680d4fd7d2954fbb1072086954a1b24",
+      "python_version": "3.13.15",
+      "entrypoint_sha256": "9b93a8161ff11af80fec30f7942918fd69c942c908c897b812f31722f4fe9418",
+      "dockerfile_sha256": "b517191aabac57df4c346152de82d286fa3497e23566765049e132652824826b",
+      "source_files": 599,
+      "assets": 34,
+      "proof_sha256": "7e52268b516fdfab7caee308bae233df6458aa0c3d4949eec4249b5a8261650f",
+      "actual_historical_legacy_container_at_R_pass": true
+    },
+    {
+      "architecture": "arm64",
+      "image_id": "sha256:682b20f215c105fd3443ae60cf8fbe6289258ac3d7c62f5ab9fee369100e80ff",
+      "python_version": "3.13.15",
+      "entrypoint_sha256": "9b93a8161ff11af80fec30f7942918fd69c942c908c897b812f31722f4fe9418",
+      "dockerfile_sha256": "b517191aabac57df4c346152de82d286fa3497e23566765049e132652824826b",
+      "source_files": 599,
+      "assets": 34,
+      "proof_sha256": "0d0c12b751e53dbd334ef4701e44d59eeb0b7448750e40b009846ca4088a8071",
+      "actual_historical_legacy_container_at_R_pass": true
+    }
+  ],
+  "log_sha256": "170cef9e97d89234a43063cbf571c4feaeb70e86103791897d5e54293863f094",
+  "production_changed": false,
+  "scope": "rebuilt unchanged last-recorded production source image; completed synthetic host-label legacy restoration and no-fetch policy cycle at R; not selected production image digest, all-profile parity or complete host admission",
+  "version": "jobseek.migration.prior-legacy-image-verified/v1",
+  "verified_contract": [
+    "Unchanged historical slim Dockerfile and actual installed Python 3.13.15 CLI",
+    "Every one of 599 source/Lua files and 34 assets matches exact historical Git bytes",
+    "Completed native legacy finalization, reserved R, full RDB reload and both journals closed before process startup",
+    "Actual historical immutable container consumes reserved policy schedule, zero origin attempts, queue ACK, health and SIGTERM drain",
+    "Canonical content/database due/failure budget and restored B0 witness unchanged; no native projection or R+1",
+    "Historical +60 minute queue interval preserved explicitly; host exclusion required because old source lacks joint readers"
+  ]
+}

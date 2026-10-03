@@ -4,6 +4,29 @@ on:
   pull_request:
     paths:
       - "apps/crawler/go/ordinary-queue/**"
+      - "apps/crawler/go/ordinary-worker/**"
+      - "apps/crawler/go/greenhouse-monitor/**"
+      - "apps/crawler/go/lightpanda-b0-executor/**"
+      - "apps/crawler/go/lightpanda-b0-supervisor/**"
+      - "apps/crawler/go/job-enrichment/**"
+      - "apps/crawler/go/dom-detail/**"
+      - "apps/crawler/go/jsonld-detail/**"
+      - "apps/crawler/go/publisher-policy/**"
+      - "apps/crawler/contracts/**"
+      - "apps/crawler/data/**"
+      - "apps/crawler/src/queries/monitor.py"
+      - "apps/crawler/src/processing/board.py"
+      - "apps/crawler/src/processing/gone_policy.py"
+      - "apps/crawler/src/processing/tdm.py"
+      - "apps/crawler/src/shared/tdm.py"
+      - "apps/crawler/src/processing/cpu.py"
+      - "apps/crawler/src/processing/scrape.py"
+      - "apps/crawler/src/core/job_content.py"
+      - "apps/crawler/src/core/monitor.py"
+      - "apps/crawler/src/core/monitors/greenhouse.py"
+      - "apps/crawler/src/shared/truncation.py"
+      - "apps/crawler/src/shared/http.py"
+      - "apps/crawler/src/shared/ssrf.py"
       - "apps/crawler/src/lua/claim_work.lua"
       - "apps/crawler/src/lua/heartbeat_task.lua"
       - "apps/crawler/src/lua/complete_task.lua"
@@ -11,6 +34,17 @@ on:
       - "apps/crawler/src/lua/reap_expired.lua"
       - "apps/crawler/go/typesense-exporter/**"
       - "apps/crawler/src/migrations/**"
+      - "apps/crawler/src/ordinary_ownership.py"
+      - "apps/crawler/src/lightpanda/activation.py"
+      - "apps/crawler/src/lightpanda/producer_client.py"
+      - "apps/crawler/src/redis_queue.py"
+      - "apps/crawler/src/config.py"
+      - "apps/crawler/src/workers/pipeline.py"
+      - "apps/crawler/tests/test_ordinary_ownership.py"
+      - "apps/crawler/tests/test_lightpanda_activation.py"
+      - "apps/crawler/tests/test_redis_queue.py"
+      - "apps/crawler/tests/test_pipeline.py"
+      - "apps/crawler/tests/test_rich_monitor_contract.py"
       - "apps/crawler/Dockerfile"
       - "apps/crawler/uv.lock"
       - ".github/workflows/go-ordinary-queue.yml"
@@ -55,6 +89,8 @@ jobs:
         working-directory: apps/crawler/go/ordinary-queue
     env:
       JOBSEEK_ORDINARY_QUEUE_REQUIRE_REDIS: "1"
+      JOBSEEK_CRAWLER_RELEASE_REQUIRE_PYTHON: "1"
+      JOBSEEK_CRAWLER_RELEASE_REQUIRE_DOCKER_OBSERVATION: "1"
       JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES: "1"
       LOCAL_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test
       JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test
@@ -97,10 +133,106 @@ jobs:
       - name: Verify real database authority and private queue transitions
         run: |
           set -euo pipefail
-          go test -race -count=1 -timeout=90s ./...
+          # The preceding suite takes 104–110s on Linux before executable
+          # finalizer coverage. Preserve bounded individual operations and emit
+          # per-test timings within a three-minute aggregate race-test budget.
+          go test -race -count=1 -timeout=180s -v ./...
           go vet ./...
           go mod tidy -diff
           test -z "$(gofmt -l .)"
+
+      - name: Verify actual Compose image and whole-daemon container observations
+        run: |
+          set -euo pipefail
+          # Version-only probe uses no release environment and prints no
+          # credentials. Distinguish the root-home boundary on this runner.
+          if env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/root \
+            DOCKER_HOST=unix:///var/run/docker.sock \
+            /usr/bin/docker compose version --short >/dev/null 2>&1; then
+            echo 'root_home_compose_version_available=true'
+          else
+            echo 'root_home_compose_version_available=false'
+          fi
+          env -i PATH=/usr/local/bin:/usr/bin:/bin HOME=/ \
+            DOCKER_CONFIG=/var/empty/jobseek-docker-read \
+            DOCKER_HOST=unix:///var/run/docker.sock \
+            /usr/bin/docker compose version --short
+          # The image observer is read-only. The container fixture creates and
+          # contains only its own bounded synthetic exporter on this disposable
+          # runner; its independent PostgreSQL must prevent a cold receipt.
+          # Agents never receive a host Docker socket.
+          go test -race -tags=integration -count=1 -timeout=180s -v \
+            -run '^TestActual(ClearedComposeAndLocalImageObservation|WholeDaemonContainerStateAndRestartObservation)$' ./releaseevidence
+
+      - name: Verify selected Redis endpoint and actual daemon socket ownership
+        run: |
+          set -euo pipefail
+          # Only this disposable runner creates/removes its own bounded fixtures.
+          # The trusted root test process reads the selected Redis daemon's /proc
+          # descriptor view; agents do not receive a Docker socket or invoke it.
+          redis_image="redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241"
+          docker pull "$redis_image"
+          endpoint_binary="${RUNNER_TEMP}/ordinary-selected-redis-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.test"
+          go test -race -c -tags=integration -o "$endpoint_binary" ./releaseevidence
+          chmod 0755 "$endpoint_binary"
+          trap 'rm -f "$endpoint_binary"' EXIT
+          sudo env GITHUB_ACTIONS=true JOBSEEK_CRAWLER_RELEASE_REQUIRE_SELECTED_REDIS=1 \
+            "$endpoint_binary" \
+            -test.run '^TestActualSelectedRedisEndpointJoinsDeclaredConsumerAndDaemonSocket$' \
+            -test.count=1 -test.timeout=150s -test.v
+
+      - name: Verify independently pinned prior executable at restored R
+        run: |
+          set -euo pipefail
+          prior_source="3cccd9fc33e8251ee8b043d8c6e91a3806c7f5b4"
+          prior_checkout="${RUNNER_TEMP}/ordinary-prior-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          prior_binary="${RUNNER_TEMP}/ordinary-prior-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.bin"
+          git fetch --no-tags origin "$prior_source"
+          # Go 1.26 does not stamp VCS metadata in linked worktrees (Go #58218).
+          # Use an independent .git-directory checkout with the same compiler.
+          git init --quiet "$prior_checkout"
+          trap 'rm -f "$prior_binary"; rm -rf "$prior_checkout"' EXIT
+          git -C "$prior_checkout" fetch --quiet --depth=1 --no-tags "$GITHUB_WORKSPACE" "$prior_source"
+          git -C "$prior_checkout" checkout --detach FETCH_HEAD
+          test "$(git -C "$prior_checkout" rev-parse HEAD)" = "$prior_source"
+          test -z "$(git -C "$prior_checkout" status --porcelain)"
+          (cd "$prior_checkout/apps/crawler/go/ordinary-worker" && go build -buildvcs=true -trimpath -ldflags="-X main.sourceRevision=${prior_source}" -o "$prior_binary" ./cmd/live)
+          test -z "$(git -C "$prior_checkout" status --porcelain)"
+          prior_hash="$(sha256sum "$prior_binary" | cut -d ' ' -f1)"
+          JOBSEEK_ORDINARY_PRIOR_REQUIRE=1 \
+          JOBSEEK_ORDINARY_PRIOR_BINARY="$prior_binary" \
+          JOBSEEK_ORDINARY_PRIOR_BINARY_SHA256="$prior_hash" \
+          JOBSEEK_ORDINARY_PRIOR_DATA_DIRECTORY="$prior_checkout/apps/crawler/data" \
+            go test -race -tags=integration -count=1 -timeout=60s -v \
+            -run '^TestPriorNativeExecutableConsumesRestoredV1AuthorityAtR$' ./...
+          printf 'prior_source=%s\nprior_binary_sha256=%s\n' "$prior_source" "$prior_hash"
+
+      - name: Verify native forward planning with the installed UID 10001 producer
+        run: |
+          set -euo pipefail
+          fixture_prefix="/tmp/jobseek-b0-forward-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          producer_binary="${fixture_prefix}-producer"
+          worker_binary="${fixture_prefix}-worker"
+          integration_binary="${fixture_prefix}.test"
+          lua_fixture="${fixture_prefix}.lua"
+          (cd ../lightpanda-b0-supervisor && go build -buildvcs=false -ldflags="-X main.sourceRevision=${GITHUB_SHA}" -o "$producer_binary" .)
+          (cd ../ordinary-worker && go build -buildvcs=false -ldflags="-X main.sourceRevision=${GITHUB_SHA}" -o "$worker_binary" ./cmd/live)
+          go test -race -c -tags=integration -o "$integration_binary" .
+          chmod 0755 "$producer_binary" "$worker_binary" "$integration_binary"
+          install -m 0644 ../../src/lua/lightpanda_b0_queue.lua "$lua_fixture"
+          sudo install -d -m 0700 -o 10001 -g 10001 /run/jobseek-lightpanda-producer
+          trap 'sudo rmdir /run/jobseek-lightpanda-producer; rm -f "$producer_binary" "$worker_binary" "$integration_binary" "$lua_fixture"' EXIT
+          sudo env \
+            JOBSEEK_ORDINARY_QUEUE_REQUIRE_REDIS=1 \
+            JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES=1 \
+            JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL="$JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL" \
+            JOBSEEK_B0_FORWARD_PRODUCER_BINARY="$producer_binary" \
+            JOBSEEK_B0_FORWARD_WORKER_BINARY="$worker_binary" \
+            JOBSEEK_B0_FORWARD_SOURCE_REVISION="$GITHUB_SHA" \
+            JOBSEEK_B0_FORWARD_LUA_FILE="$lua_fixture" \
+            "$integration_binary" \
+            -test.run '^TestInstalledNativeColdB0(ForwardPreparesAndRetainsExactManifest|ReactivationUsesRetainedRollbackAtR)$' \
+            -test.count=1 -test.timeout=90s -test.v
 
       - name: Verify the production Go reaper participates in database retirement
         working-directory: apps/crawler/go/typesense-exporter
@@ -109,3 +241,63 @@ jobs:
           go test -race -count=1 -timeout=90s -run '^TestLeaseReaper' ./...
           go vet ./...
           go mod tidy -diff
+
+      - name: Regenerate ordinary inventory, URL and HTTP captures from Python
+        working-directory: apps/crawler
+        run: |
+          set -euo pipefail
+          uv run --frozen python go/ordinary-worker/testdata/collect_inventory.py
+          git diff --exit-code -- go/ordinary-worker/testdata/python_inventory.json go/ordinary-worker/testdata/python_urls.json
+          uv run --frozen python go/ordinary-worker/testdata/collect_discovery.py
+          git diff --exit-code -- go/ordinary-worker/testdata/python_discovery.json
+          uv run --frozen python go/ordinary-worker/testdata/collect_ssrf.py
+          uv run --frozen python go/ordinary-worker/testdata/collect_http_transport.py
+          git diff --exit-code -- go/ordinary-worker/ssrf_networks.json go/ordinary-worker/testdata/python_ssrf.json go/ordinary-worker/testdata/python_http_decoding.json
+
+      - name: Verify native producer socket and actual Python wire compatibility
+        working-directory: apps/crawler
+        run: |
+          set -euo pipefail
+          uv run --frozen python contracts/v1/b0producer/testdata/collect.py
+          git diff --exit-code -- contracts/v1/b0producer/testdata/python_protocol.json
+          cd contracts
+          go test -race -count=1 -timeout=30s ./v1/b0producer
+          go vet ./v1/b0producer
+
+      - name: Verify assembled native inventory and owned processing pipeline
+        working-directory: apps/crawler/go/ordinary-worker
+        run: |
+          set -euo pipefail
+          go test -race -count=1 -timeout=90s -v ./...
+          go vet ./...
+          go mod tidy -diff
+          test -z "$(gofmt -l .)"
+
+      - name: Verify the rich oracle still matches the actual Python writer
+        working-directory: apps/crawler
+        run: |
+          set -euo pipefail
+          uv run --frozen python go/lightpanda-b0-executor/testdata/collect_rich_monitor.py
+          git diff --exit-code -- go/lightpanda-b0-executor/testdata/python_rich_monitor.json
+
+      - name: Verify disappearance and provider-gone oracles against Python
+        working-directory: apps/crawler
+        run: |
+          set -euo pipefail
+          uv run --frozen python go/ordinary-queue/testdata/collect_lifecycle.py
+          git diff --exit-code -- go/ordinary-queue/testdata/python_lifecycle.json go/ordinary-queue/testdata/python_gone.json
+
+      - name: Verify native rich preparation against captured Python output
+        working-directory: apps/crawler/go/lightpanda-b0-executor
+        run: |
+          set -euo pipefail
+          go test -race -count=1 -timeout=90s -run '^Test(RichMonitorPreparation|PreparedContent|OrdinaryLookupStore)' ./...
+          go vet ./...
+          go mod tidy -diff
+          test -z "$(gofmt -l .)"
+
+      - name: Verify legacy ownership attestation and private queue exclusion
+        working-directory: apps/crawler
+        run: |
+          set -euo pipefail
+          uv run --frozen pytest tests/test_ordinary_ownership.py tests/test_lightpanda_activation.py tests/test_redis_queue.py tests/test_pipeline.py tests/test_rich_monitor_contract.py -q

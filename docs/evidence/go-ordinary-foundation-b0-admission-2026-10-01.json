@@ -1,0 +1,135 @@
+{
+  "schema": "jobseek.migration.synthetic-b0-admission/v1",
+  "pr": 10207,
+  "pr_head": "86813918a20a499c5d59a39ca8c33797161f8743",
+  "tested_merge_checkout": "db7ed34c48d125ca3f47c91348003a0893a4ff4a",
+  "run": 36783332384,
+  "job": 110118719402,
+  "artifact": 11129772408,
+  "report_sha256": "662aefe67d0f8c7c5996406fff05858e6b16addb7e4282b59181cc3af51aec85",
+  "mode": "synthetic",
+  "arms": 16,
+  "pairs": 8,
+  "admitted": true,
+  "all_pair_canonical_and_per_task_hashes_equal": true,
+  "all_pair_source_response_hashes_equal": true,
+  "all_terminal_persisted_write_counts_exact": true,
+  "all_redis_metric_conservation_exact": true,
+  "all_cleanup_exact": true,
+  "images": {
+    "browser": "sha256:52d84af8f829233b1ee032857028026c1080a6af50ab0eb883f53ee4cdc743e9",
+    "candidate": "sha256:dbda5214f65ebb3e29f92ac9d189206d6f85dd2c6798a25a73af5c2277aba299",
+    "renderer": "sha256:6351401e1741a4b868b753dfd60e5b46833bcee85ca1f42adb6e91188557a36d"
+  },
+  "checkout": {
+    "clean": true,
+    "head": "db7ed34c48d125ca3f47c91348003a0893a4ff4a",
+    "postflight_clean": true,
+    "postflight_head": "db7ed34c48d125ca3f47c91348003a0893a4ff4a"
+  },
+  "verdict": {
+    "admitted": true,
+    "density_ratios": [
+      5.7281235032920526,
+      7.473637003751691,
+      5.845414093615948,
+      13.99603710503855,
+      14.27998078202517,
+      11.669969299099108,
+      13.81845667511122,
+      13.314937807154823
+    ],
+    "pair_metrics": [
+      {
+        "cpu_seconds_candidate": 1.740465,
+        "cpu_seconds_control": 2.492391,
+        "density_ratio": 5.7281235032920526,
+        "elapsed_ratio": 1.4137193233633694,
+        "lifetime_cpu_seconds_candidate": 4.058115,
+        "lifetime_cpu_seconds_control": 6.092277,
+        "p99_ratio": 0.6958434941710532,
+        "pair": "c1-p1",
+        "peak_rss_ratio": 0.2468032196845756
+      },
+      {
+        "cpu_seconds_candidate": 1.697875,
+        "cpu_seconds_control": 2.497374,
+        "density_ratio": 7.473637003751691,
+        "elapsed_ratio": 1.8332020906506676,
+        "lifetime_cpu_seconds_candidate": 3.987884,
+        "lifetime_cpu_seconds_control": 6.000263,
+        "p99_ratio": 0.5383874185059757,
+        "pair": "c1-p2",
+        "peak_rss_ratio": 0.24528915302287477
+      },
+      {
+        "cpu_seconds_candidate": 1.6879119999999999,
+        "cpu_seconds_control": 2.433611,
+        "density_ratio": 5.845414093615948,
+        "elapsed_ratio": 1.4232924612940225,
+        "lifetime_cpu_seconds_candidate": 3.988156,
+        "lifetime_cpu_seconds_control": 5.955874,
+        "p99_ratio": 0.6998185288263582,
+        "pair": "c1-p3",
+        "peak_rss_ratio": 0.24348873125147238
+      },
+      {
+        "cpu_seconds_candidate": 2.375476,
+        "cpu_seconds_control": 5.80855,
+        "density_ratio": 13.99603710503855,
+        "elapsed_ratio": 1.515323797955278,
+        "lifetime_cpu_seconds_candidate": 4.656977,
+        "lifetime_cpu_seconds_control": 10.282443,
+        "p99_ratio": 0.6488877410255198,
+        "pair": "c4-p1",
+        "peak_rss_ratio": 0.108268060922028
+      },
+      {
+        "cpu_seconds_candidate": 2.350444,
+        "cpu_seconds_control": 5.850661,
+        "density_ratio": 14.27998078202517,
+        "elapsed_ratio": 1.578714285673977,
+        "lifetime_cpu_seconds_candidate": 4.642958,
+        "lifetime_cpu_seconds_control": 10.396367,
+        "p99_ratio": 0.6350906617452058,
+        "pair": "c4-p2",
+        "peak_rss_ratio": 0.11055437046954385
+      },
+      {
+        "cpu_seconds_candidate": 2.36396,
+        "cpu_seconds_control": 5.790049,
+        "density_ratio": 11.669969299099108,
+        "elapsed_ratio": 1.2965138253779163,
+        "lifetime_cpu_seconds_candidate": 4.657636,
+        "lifetime_cpu_seconds_control": 10.273413,
+        "p99_ratio": 0.7715762975615306,
+        "pair": "c4-p3",
+        "peak_rss_ratio": 0.11109830644353141
+      },
+      {
+        "cpu_seconds_candidate": 2.383966,
+        "cpu_seconds_control": 5.918883,
+        "density_ratio": 13.81845667511122,
+        "elapsed_ratio": 1.5289296965984378,
+        "lifetime_cpu_seconds_candidate": 4.691348,
+        "lifetime_cpu_seconds_control": 10.496202,
+        "p99_ratio": 0.6451028664419884,
+        "pair": "c4-p4",
+        "peak_rss_ratio": 0.11064402722716733
+      },
+      {
+        "cpu_seconds_candidate": 2.385428,
+        "cpu_seconds_control": 5.796113,
+        "density_ratio": 13.314937807154823,
+        "elapsed_ratio": 1.5798095767805351,
+        "lifetime_cpu_seconds_candidate": 4.6948,
+        "lifetime_cpu_seconds_control": 10.266027,
+        "p99_ratio": 0.6379591749506007,
+        "pair": "c4-p5",
+        "peak_rss_ratio": 0.1186494146395201
+      }
+    ],
+    "reasons": []
+  },
+  "scope": "synthetic generated production-cardinality taxonomy B0 whole-lane comparator; not enabled fleet output/production whole-service cost or ordinary worker execution"
+}

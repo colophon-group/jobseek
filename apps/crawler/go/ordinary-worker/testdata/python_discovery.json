@@ -1,0 +1,1829 @@
+[
+  {
+    "name": "success-200",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": []
+      }
+    ],
+    "kind": "",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "jobs": [
+      {
+        "url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Senior Café Engineer 東京",
+        "description": "<p>Role</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-09-30T01:00:00Z",
+        "base_salary": null,
+        "language": "en",
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "requisition_id": "1"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "success-201",
+    "responses": [
+      {
+        "status": 201,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": []
+      }
+    ],
+    "kind": "",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "jobs": [
+      {
+        "url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Senior Café Engineer 東京",
+        "description": "<p>Role</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-09-30T01:00:00Z",
+        "base_salary": null,
+        "language": "en",
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "requisition_id": "1"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "success-202",
+    "responses": [
+      {
+        "status": 202,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": []
+      }
+    ],
+    "kind": "",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "jobs": [
+      {
+        "url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Senior Café Engineer 東京",
+        "description": "<p>Role</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-09-30T01:00:00Z",
+        "base_salary": null,
+        "language": "en",
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "requisition_id": "1"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "success-203",
+    "responses": [
+      {
+        "status": 203,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": []
+      }
+    ],
+    "kind": "",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "jobs": [
+      {
+        "url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Senior Café Engineer 東京",
+        "description": "<p>Role</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-09-30T01:00:00Z",
+        "base_salary": null,
+        "language": "en",
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "requisition_id": "1"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "success-206",
+    "responses": [
+      {
+        "status": 206,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": []
+      }
+    ],
+    "kind": "",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "jobs": [
+      {
+        "url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Senior Café Engineer 東京",
+        "description": "<p>Role</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-09-30T01:00:00Z",
+        "base_salary": null,
+        "language": "en",
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "requisition_id": "1"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "success-299",
+    "responses": [
+      {
+        "status": 299,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": []
+      }
+    ],
+    "kind": "",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "jobs": [
+      {
+        "url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Senior Café Engineer 東京",
+        "description": "<p>Role</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-09-30T01:00:00Z",
+        "base_salary": null,
+        "language": "en",
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "requisition_id": "1"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "status-204",
+    "responses": [
+      {
+        "status": 204,
+        "body_base64": "bm90IEpTT04=",
+        "headers": []
+      }
+    ],
+    "kind": "invalid_inventory",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "status-205",
+    "responses": [
+      {
+        "status": 205,
+        "body_base64": "bm90IEpTT04=",
+        "headers": []
+      }
+    ],
+    "kind": "invalid_inventory",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "status-300",
+    "responses": [
+      {
+        "status": 300,
+        "body_base64": "bm90IEpTT04=",
+        "headers": []
+      }
+    ],
+    "kind": "http_status",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "status-301",
+    "responses": [
+      {
+        "status": 301,
+        "body_base64": "bm90IEpTT04=",
+        "headers": []
+      }
+    ],
+    "kind": "http_status",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "status-304",
+    "responses": [
+      {
+        "status": 304,
+        "body_base64": "bm90IEpTT04=",
+        "headers": []
+      }
+    ],
+    "kind": "http_status",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "status-400",
+    "responses": [
+      {
+        "status": 400,
+        "body_base64": "bm90IEpTT04=",
+        "headers": []
+      }
+    ],
+    "kind": "http_status",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "status-404",
+    "responses": [
+      {
+        "status": 404,
+        "body_base64": "bm90IEpTT04=",
+        "headers": []
+      }
+    ],
+    "kind": "provider_gone",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "status-410",
+    "responses": [
+      {
+        "status": 410,
+        "body_base64": "bm90IEpTT04=",
+        "headers": []
+      }
+    ],
+    "kind": "http_status",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "status-429",
+    "responses": [
+      {
+        "status": 429,
+        "body_base64": "bm90IEpTT04=",
+        "headers": []
+      }
+    ],
+    "kind": "http_status",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "status-500",
+    "responses": [
+      {
+        "status": 500,
+        "body_base64": "bm90IEpTT04=",
+        "headers": []
+      }
+    ],
+    "kind": "http_status",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "reservation-before-404",
+    "responses": [
+      {
+        "status": 404,
+        "body_base64": "YmFk",
+        "headers": [
+          {
+            "name": "tdm-reservation",
+            "value_base64": "MQ=="
+          }
+        ]
+      }
+    ],
+    "kind": "publisher_reserved",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "policy_url": null,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "reservation-before-invalid-json",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "YmFk",
+        "headers": [
+          {
+            "name": "tdm-reservation",
+            "value_base64": "MQ=="
+          }
+        ]
+      }
+    ],
+    "kind": "publisher_reserved",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "policy_url": null,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "reservation-policy",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": [
+          {
+            "name": "tdm-reservation",
+            "value_base64": "IDEg"
+          },
+          {
+            "name": "tdm-policy",
+            "value_base64": "aHR0cHM6Ly9wb2xpY3kuaW52YWxpZC9saWNlbnNl"
+          }
+        ]
+      }
+    ],
+    "kind": "publisher_reserved",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "policy_url": "https://policy.invalid/license",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "reservation-unicode-whitespace",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": [
+          {
+            "name": "tdm-reservation",
+            "value_base64": "wqAxwqA="
+          }
+        ]
+      }
+    ],
+    "kind": "publisher_reserved",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "policy_url": null,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "reservation-latin1-whitespace",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": [
+          {
+            "name": "tdm-reservation",
+            "value_base64": "oDGg"
+          }
+        ]
+      }
+    ],
+    "kind": "publisher_reserved",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "policy_url": null,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "reservation-python-strip-controls",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": [
+          {
+            "name": "tdm-reservation",
+            "value_base64": "HDEf"
+          }
+        ]
+      }
+    ],
+    "kind": "publisher_reserved",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "policy_url": null,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "duplicate-reservations-unset",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": [
+          {
+            "name": "tdm-reservation",
+            "value_base64": "MQ=="
+          },
+          {
+            "name": "tdm-reservation",
+            "value_base64": "MQ=="
+          }
+        ]
+      }
+    ],
+    "kind": "",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "jobs": [
+      {
+        "url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Senior Café Engineer 東京",
+        "description": "<p>Role</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-09-30T01:00:00Z",
+        "base_salary": null,
+        "language": "en",
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "requisition_id": "1"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "duplicate-policy-joined",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": [
+          {
+            "name": "tdm-reservation",
+            "value_base64": "MQ=="
+          },
+          {
+            "name": "tdm-policy",
+            "value_base64": "Zmlyc3Q="
+          },
+          {
+            "name": "tdm-policy",
+            "value_base64": "c2Vjb25k"
+          }
+        ]
+      }
+    ],
+    "kind": "publisher_reserved",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "policy_url": "first, second",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "empty-policy-none",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": [
+          {
+            "name": "tdm-reservation",
+            "value_base64": "MQ=="
+          },
+          {
+            "name": "tdm-policy",
+            "value_base64": ""
+          }
+        ]
+      }
+    ],
+    "kind": "publisher_reserved",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "policy_url": null,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "whitespace-policy-retained",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": [
+          {
+            "name": "tdm-reservation",
+            "value_base64": "MQ=="
+          },
+          {
+            "name": "tdm-policy",
+            "value_base64": "IA=="
+          }
+        ]
+      }
+    ],
+    "kind": "publisher_reserved",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "policy_url": " ",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "latin1-policy",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": [
+          {
+            "name": "tdm-reservation",
+            "value_base64": "MQ=="
+          },
+          {
+            "name": "tdm-policy",
+            "value_base64": "Y2Fm6Q=="
+          }
+        ]
+      }
+    ],
+    "kind": "publisher_reserved",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "policy_url": "café",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "unrelated-latin1-header-changes-policy-decoding",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": [
+          {
+            "name": "tdm-reservation",
+            "value_base64": "MQ=="
+          },
+          {
+            "name": "tdm-policy",
+            "value_base64": "Y2Fmw6k="
+          },
+          {
+            "name": "x-other",
+            "value_base64": "/w=="
+          }
+        ]
+      }
+    ],
+    "kind": "publisher_reserved",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "policy_url": "cafÃ©",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "nonliteral-reservation-unset",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": [
+          {
+            "name": "tdm-reservation",
+            "value_base64": "dHJ1ZQ=="
+          }
+        ]
+      }
+    ],
+    "kind": "",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "jobs": [
+      {
+        "url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Senior Café Engineer 東京",
+        "description": "<p>Role</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-09-30T01:00:00Z",
+        "base_salary": null,
+        "language": "en",
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "requisition_id": "1"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "html-meta-does-not-override-api-header",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "PG1ldGEgbmFtZT0idGRtLXJlc2VydmF0aW9uIiBjb250ZW50PSIwIj4=",
+        "headers": [
+          {
+            "name": "tdm-reservation",
+            "value_base64": "MQ=="
+          }
+        ]
+      }
+    ],
+    "kind": "publisher_reserved",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "policy_url": null,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "partial-job-parse-rejects-all",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "eyJqb2JzIjpbeyJhYnNvbHV0ZV91cmwiOiJodHRwczovL2V4YW1wbGUuY29tLzEifSx7fV19",
+        "headers": []
+      }
+    ],
+    "kind": "invalid_inventory",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "invalid-json",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "PGh0bWw+YmFkPC9odG1sPg==",
+        "headers": []
+      }
+    ],
+    "kind": "invalid_inventory",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "invalid-utf8",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "eyJqb2JzIjpbXSwieCI6Iv8ifQ==",
+        "headers": []
+      }
+    ],
+    "kind": "invalid_inventory",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "wrong-root",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "W10=",
+        "headers": []
+      }
+    ],
+    "kind": "invalid_inventory",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "missing-jobs",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "e30=",
+        "headers": []
+      }
+    ],
+    "kind": "invalid_inventory",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "json-utf-8-sig",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "77u/eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": [
+          {
+            "name": "content-type",
+            "value_base64": "YXBwbGljYXRpb24vanNvbjsgY2hhcnNldD1pc28tODg1OS0x"
+          }
+        ]
+      }
+    ],
+    "kind": "",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "jobs": [
+      {
+        "url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Senior Café Engineer 東京",
+        "description": "<p>Role</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-09-30T01:00:00Z",
+        "base_salary": null,
+        "language": "en",
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "requisition_id": "1"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "json-utf-16",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "//57ACIAagBvAGIAcwAiADoAIABbAHsAIgBhAGIAcwBvAGwAdQB0AGUAXwB1AHIAbAAiADoAIAAiAGgAdAB0AHAAcwA6AC8ALwBqAG8AYgAtAGIAbwBhAHIAZABzAC4AZwByAGUAZQBuAGgAbwB1AHMAZQAuAGkAbwAvAGYAaQB4AHQAdQByAGUALwBqAG8AYgBzAC8AMQAiACwAIAAiAHQAaQB0AGwAZQAiADoAIAAiAFMAZQBuAGkAbwByACAAQwBhAGYA6QAgAEUAbgBnAGkAbgBlAGUAcgAgAHFnrE4iACwAIAAiAGMAbwBuAHQAZQBuAHQAIgA6ACAAIgA8AHAAPgBSAG8AbABlADwALwBwAD4APABhAD4ATABlAGEAcgBuACAAbQBvAHIAZQA8AC8AYQA+ACIALAAgACIAbABvAGMAYQB0AGkAbwBuACIAOgAgAHsAIgBuAGEAbQBlACIAOgAgACIAIABaAPwAcgBpAGMAaAAgACIAfQAsACAAIgBmAGkAcgBzAHQAXwBwAHUAYgBsAGkAcwBoAGUAZAAiADoAIAAiADIAMAAyADYALQAwADkALQAzADAAVAAwADEAOgAwADAAOgAwADAAWgAiACwAIAAiAGwAYQBuAGcAdQBhAGcAZQAiADoAIAAiAGUAbgAiACwAIAAiAHIAZQBxAHUAaQBzAGkAdABpAG8AbgBfAGkAZAAiADoAIAAiADEAIgB9AF0AfQA=",
+        "headers": [
+          {
+            "name": "content-type",
+            "value_base64": "YXBwbGljYXRpb24vanNvbjsgY2hhcnNldD1pc28tODg1OS0x"
+          }
+        ]
+      }
+    ],
+    "kind": "",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "jobs": [
+      {
+        "url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Senior Café Engineer 東京",
+        "description": "<p>Role</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-09-30T01:00:00Z",
+        "base_salary": null,
+        "language": "en",
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "requisition_id": "1"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "json-utf-16-le",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "ewAiAGoAbwBiAHMAIgA6ACAAWwB7ACIAYQBiAHMAbwBsAHUAdABlAF8AdQByAGwAIgA6ACAAIgBoAHQAdABwAHMAOgAvAC8AagBvAGIALQBiAG8AYQByAGQAcwAuAGcAcgBlAGUAbgBoAG8AdQBzAGUALgBpAG8ALwBmAGkAeAB0AHUAcgBlAC8AagBvAGIAcwAvADEAIgAsACAAIgB0AGkAdABsAGUAIgA6ACAAIgBTAGUAbgBpAG8AcgAgAEMAYQBmAOkAIABFAG4AZwBpAG4AZQBlAHIAIABxZ6xOIgAsACAAIgBjAG8AbgB0AGUAbgB0ACIAOgAgACIAPABwAD4AUgBvAGwAZQA8AC8AcAA+ADwAYQA+AEwAZQBhAHIAbgAgAG0AbwByAGUAPAAvAGEAPgAiACwAIAAiAGwAbwBjAGEAdABpAG8AbgAiADoAIAB7ACIAbgBhAG0AZQAiADoAIAAiACAAWgD8AHIAaQBjAGgAIAAiAH0ALAAgACIAZgBpAHIAcwB0AF8AcAB1AGIAbABpAHMAaABlAGQAIgA6ACAAIgAyADAAMgA2AC0AMAA5AC0AMwAwAFQAMAAxADoAMAAwADoAMAAwAFoAIgAsACAAIgBsAGEAbgBnAHUAYQBnAGUAIgA6ACAAIgBlAG4AIgAsACAAIgByAGUAcQB1AGkAcwBpAHQAaQBvAG4AXwBpAGQAIgA6ACAAIgAxACIAfQBdAH0A",
+        "headers": [
+          {
+            "name": "content-type",
+            "value_base64": "YXBwbGljYXRpb24vanNvbjsgY2hhcnNldD1pc28tODg1OS0x"
+          }
+        ]
+      }
+    ],
+    "kind": "",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "jobs": [
+      {
+        "url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Senior Café Engineer 東京",
+        "description": "<p>Role</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-09-30T01:00:00Z",
+        "base_salary": null,
+        "language": "en",
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "requisition_id": "1"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "json-utf-16-be",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "AHsAIgBqAG8AYgBzACIAOgAgAFsAewAiAGEAYgBzAG8AbAB1AHQAZQBfAHUAcgBsACIAOgAgACIAaAB0AHQAcABzADoALwAvAGoAbwBiAC0AYgBvAGEAcgBkAHMALgBnAHIAZQBlAG4AaABvAHUAcwBlAC4AaQBvAC8AZgBpAHgAdAB1AHIAZQAvAGoAbwBiAHMALwAxACIALAAgACIAdABpAHQAbABlACIAOgAgACIAUwBlAG4AaQBvAHIAIABDAGEAZgDpACAARQBuAGcAaQBuAGUAZQByACBncU6sACIALAAgACIAYwBvAG4AdABlAG4AdAAiADoAIAAiADwAcAA+AFIAbwBsAGUAPAAvAHAAPgA8AGEAPgBMAGUAYQByAG4AIABtAG8AcgBlADwALwBhAD4AIgAsACAAIgBsAG8AYwBhAHQAaQBvAG4AIgA6ACAAewAiAG4AYQBtAGUAIgA6ACAAIgAgAFoA/AByAGkAYwBoACAAIgB9ACwAIAAiAGYAaQByAHMAdABfAHAAdQBiAGwAaQBzAGgAZQBkACIAOgAgACIAMgAwADIANgAtADAAOQAtADMAMABUADAAMQA6ADAAMAA6ADAAMABaACIALAAgACIAbABhAG4AZwB1AGEAZwBlACIAOgAgACIAZQBuACIALAAgACIAcgBlAHEAdQBpAHMAaQB0AGkAbwBuAF8AaQBkACIAOgAgACIAMQAiAH0AXQB9",
+        "headers": [
+          {
+            "name": "content-type",
+            "value_base64": "YXBwbGljYXRpb24vanNvbjsgY2hhcnNldD1pc28tODg1OS0x"
+          }
+        ]
+      }
+    ],
+    "kind": "",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "jobs": [
+      {
+        "url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Senior Café Engineer 東京",
+        "description": "<p>Role</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-09-30T01:00:00Z",
+        "base_salary": null,
+        "language": "en",
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "requisition_id": "1"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "json-utf-32",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "//4AAHsAAAAiAAAAagAAAG8AAABiAAAAcwAAACIAAAA6AAAAIAAAAFsAAAB7AAAAIgAAAGEAAABiAAAAcwAAAG8AAABsAAAAdQAAAHQAAABlAAAAXwAAAHUAAAByAAAAbAAAACIAAAA6AAAAIAAAACIAAABoAAAAdAAAAHQAAABwAAAAcwAAADoAAAAvAAAALwAAAGoAAABvAAAAYgAAAC0AAABiAAAAbwAAAGEAAAByAAAAZAAAAHMAAAAuAAAAZwAAAHIAAABlAAAAZQAAAG4AAABoAAAAbwAAAHUAAABzAAAAZQAAAC4AAABpAAAAbwAAAC8AAABmAAAAaQAAAHgAAAB0AAAAdQAAAHIAAABlAAAALwAAAGoAAABvAAAAYgAAAHMAAAAvAAAAMQAAACIAAAAsAAAAIAAAACIAAAB0AAAAaQAAAHQAAABsAAAAZQAAACIAAAA6AAAAIAAAACIAAABTAAAAZQAAAG4AAABpAAAAbwAAAHIAAAAgAAAAQwAAAGEAAABmAAAA6QAAACAAAABFAAAAbgAAAGcAAABpAAAAbgAAAGUAAABlAAAAcgAAACAAAABxZwAArE4AACIAAAAsAAAAIAAAACIAAABjAAAAbwAAAG4AAAB0AAAAZQAAAG4AAAB0AAAAIgAAADoAAAAgAAAAIgAAADwAAABwAAAAPgAAAFIAAABvAAAAbAAAAGUAAAA8AAAALwAAAHAAAAA+AAAAPAAAAGEAAAA+AAAATAAAAGUAAABhAAAAcgAAAG4AAAAgAAAAbQAAAG8AAAByAAAAZQAAADwAAAAvAAAAYQAAAD4AAAAiAAAALAAAACAAAAAiAAAAbAAAAG8AAABjAAAAYQAAAHQAAABpAAAAbwAAAG4AAAAiAAAAOgAAACAAAAB7AAAAIgAAAG4AAABhAAAAbQAAAGUAAAAiAAAAOgAAACAAAAAiAAAAIAAAAFoAAAD8AAAAcgAAAGkAAABjAAAAaAAAACAAAAAiAAAAfQAAACwAAAAgAAAAIgAAAGYAAABpAAAAcgAAAHMAAAB0AAAAXwAAAHAAAAB1AAAAYgAAAGwAAABpAAAAcwAAAGgAAABlAAAAZAAAACIAAAA6AAAAIAAAACIAAAAyAAAAMAAAADIAAAA2AAAALQAAADAAAAA5AAAALQAAADMAAAAwAAAAVAAAADAAAAAxAAAAOgAAADAAAAAwAAAAOgAAADAAAAAwAAAAWgAAACIAAAAsAAAAIAAAACIAAABsAAAAYQAAAG4AAABnAAAAdQAAAGEAAABnAAAAZQAAACIAAAA6AAAAIAAAACIAAABlAAAAbgAAACIAAAAsAAAAIAAAACIAAAByAAAAZQAAAHEAAAB1AAAAaQAAAHMAAABpAAAAdAAAAGkAAABvAAAAbgAAAF8AAABpAAAAZAAAACIAAAA6AAAAIAAAACIAAAAxAAAAIgAAAH0AAABdAAAAfQAAAA==",
+        "headers": [
+          {
+            "name": "content-type",
+            "value_base64": "YXBwbGljYXRpb24vanNvbjsgY2hhcnNldD1pc28tODg1OS0x"
+          }
+        ]
+      }
+    ],
+    "kind": "",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "jobs": [
+      {
+        "url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Senior Café Engineer 東京",
+        "description": "<p>Role</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-09-30T01:00:00Z",
+        "base_salary": null,
+        "language": "en",
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "requisition_id": "1"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "json-utf-32-le",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "ewAAACIAAABqAAAAbwAAAGIAAABzAAAAIgAAADoAAAAgAAAAWwAAAHsAAAAiAAAAYQAAAGIAAABzAAAAbwAAAGwAAAB1AAAAdAAAAGUAAABfAAAAdQAAAHIAAABsAAAAIgAAADoAAAAgAAAAIgAAAGgAAAB0AAAAdAAAAHAAAABzAAAAOgAAAC8AAAAvAAAAagAAAG8AAABiAAAALQAAAGIAAABvAAAAYQAAAHIAAABkAAAAcwAAAC4AAABnAAAAcgAAAGUAAABlAAAAbgAAAGgAAABvAAAAdQAAAHMAAABlAAAALgAAAGkAAABvAAAALwAAAGYAAABpAAAAeAAAAHQAAAB1AAAAcgAAAGUAAAAvAAAAagAAAG8AAABiAAAAcwAAAC8AAAAxAAAAIgAAACwAAAAgAAAAIgAAAHQAAABpAAAAdAAAAGwAAABlAAAAIgAAADoAAAAgAAAAIgAAAFMAAABlAAAAbgAAAGkAAABvAAAAcgAAACAAAABDAAAAYQAAAGYAAADpAAAAIAAAAEUAAABuAAAAZwAAAGkAAABuAAAAZQAAAGUAAAByAAAAIAAAAHFnAACsTgAAIgAAACwAAAAgAAAAIgAAAGMAAABvAAAAbgAAAHQAAABlAAAAbgAAAHQAAAAiAAAAOgAAACAAAAAiAAAAPAAAAHAAAAA+AAAAUgAAAG8AAABsAAAAZQAAADwAAAAvAAAAcAAAAD4AAAA8AAAAYQAAAD4AAABMAAAAZQAAAGEAAAByAAAAbgAAACAAAABtAAAAbwAAAHIAAABlAAAAPAAAAC8AAABhAAAAPgAAACIAAAAsAAAAIAAAACIAAABsAAAAbwAAAGMAAABhAAAAdAAAAGkAAABvAAAAbgAAACIAAAA6AAAAIAAAAHsAAAAiAAAAbgAAAGEAAABtAAAAZQAAACIAAAA6AAAAIAAAACIAAAAgAAAAWgAAAPwAAAByAAAAaQAAAGMAAABoAAAAIAAAACIAAAB9AAAALAAAACAAAAAiAAAAZgAAAGkAAAByAAAAcwAAAHQAAABfAAAAcAAAAHUAAABiAAAAbAAAAGkAAABzAAAAaAAAAGUAAABkAAAAIgAAADoAAAAgAAAAIgAAADIAAAAwAAAAMgAAADYAAAAtAAAAMAAAADkAAAAtAAAAMwAAADAAAABUAAAAMAAAADEAAAA6AAAAMAAAADAAAAA6AAAAMAAAADAAAABaAAAAIgAAACwAAAAgAAAAIgAAAGwAAABhAAAAbgAAAGcAAAB1AAAAYQAAAGcAAABlAAAAIgAAADoAAAAgAAAAIgAAAGUAAABuAAAAIgAAACwAAAAgAAAAIgAAAHIAAABlAAAAcQAAAHUAAABpAAAAcwAAAGkAAAB0AAAAaQAAAG8AAABuAAAAXwAAAGkAAABkAAAAIgAAADoAAAAgAAAAIgAAADEAAAAiAAAAfQAAAF0AAAB9AAAA",
+        "headers": [
+          {
+            "name": "content-type",
+            "value_base64": "YXBwbGljYXRpb24vanNvbjsgY2hhcnNldD1pc28tODg1OS0x"
+          }
+        ]
+      }
+    ],
+    "kind": "",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "jobs": [
+      {
+        "url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Senior Café Engineer 東京",
+        "description": "<p>Role</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-09-30T01:00:00Z",
+        "base_salary": null,
+        "language": "en",
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "requisition_id": "1"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "json-utf-32-be",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "AAAAewAAACIAAABqAAAAbwAAAGIAAABzAAAAIgAAADoAAAAgAAAAWwAAAHsAAAAiAAAAYQAAAGIAAABzAAAAbwAAAGwAAAB1AAAAdAAAAGUAAABfAAAAdQAAAHIAAABsAAAAIgAAADoAAAAgAAAAIgAAAGgAAAB0AAAAdAAAAHAAAABzAAAAOgAAAC8AAAAvAAAAagAAAG8AAABiAAAALQAAAGIAAABvAAAAYQAAAHIAAABkAAAAcwAAAC4AAABnAAAAcgAAAGUAAABlAAAAbgAAAGgAAABvAAAAdQAAAHMAAABlAAAALgAAAGkAAABvAAAALwAAAGYAAABpAAAAeAAAAHQAAAB1AAAAcgAAAGUAAAAvAAAAagAAAG8AAABiAAAAcwAAAC8AAAAxAAAAIgAAACwAAAAgAAAAIgAAAHQAAABpAAAAdAAAAGwAAABlAAAAIgAAADoAAAAgAAAAIgAAAFMAAABlAAAAbgAAAGkAAABvAAAAcgAAACAAAABDAAAAYQAAAGYAAADpAAAAIAAAAEUAAABuAAAAZwAAAGkAAABuAAAAZQAAAGUAAAByAAAAIAAAZ3EAAE6sAAAAIgAAACwAAAAgAAAAIgAAAGMAAABvAAAAbgAAAHQAAABlAAAAbgAAAHQAAAAiAAAAOgAAACAAAAAiAAAAPAAAAHAAAAA+AAAAUgAAAG8AAABsAAAAZQAAADwAAAAvAAAAcAAAAD4AAAA8AAAAYQAAAD4AAABMAAAAZQAAAGEAAAByAAAAbgAAACAAAABtAAAAbwAAAHIAAABlAAAAPAAAAC8AAABhAAAAPgAAACIAAAAsAAAAIAAAACIAAABsAAAAbwAAAGMAAABhAAAAdAAAAGkAAABvAAAAbgAAACIAAAA6AAAAIAAAAHsAAAAiAAAAbgAAAGEAAABtAAAAZQAAACIAAAA6AAAAIAAAACIAAAAgAAAAWgAAAPwAAAByAAAAaQAAAGMAAABoAAAAIAAAACIAAAB9AAAALAAAACAAAAAiAAAAZgAAAGkAAAByAAAAcwAAAHQAAABfAAAAcAAAAHUAAABiAAAAbAAAAGkAAABzAAAAaAAAAGUAAABkAAAAIgAAADoAAAAgAAAAIgAAADIAAAAwAAAAMgAAADYAAAAtAAAAMAAAADkAAAAtAAAAMwAAADAAAABUAAAAMAAAADEAAAA6AAAAMAAAADAAAAA6AAAAMAAAADAAAABaAAAAIgAAACwAAAAgAAAAIgAAAGwAAABhAAAAbgAAAGcAAAB1AAAAYQAAAGcAAABlAAAAIgAAADoAAAAgAAAAIgAAAGUAAABuAAAAIgAAACwAAAAgAAAAIgAAAHIAAABlAAAAcQAAAHUAAABpAAAAcwAAAGkAAAB0AAAAaQAAAG8AAABuAAAAXwAAAGkAAABkAAAAIgAAADoAAAAgAAAAIgAAADEAAAAiAAAAfQAAAF0AAAB9",
+        "headers": [
+          {
+            "name": "content-type",
+            "value_base64": "YXBwbGljYXRpb24vanNvbjsgY2hhcnNldD1pc28tODg1OS0x"
+          }
+        ]
+      }
+    ],
+    "kind": "",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "jobs": [
+      {
+        "url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Senior Café Engineer 東京",
+        "description": "<p>Role</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-09-30T01:00:00Z",
+        "base_salary": null,
+        "language": "en",
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "requisition_id": "1"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "invalid-utf16-surrogate",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "//57ACIAeAAiADoAIgAA2CIAfQA=",
+        "headers": []
+      }
+    ],
+    "kind": "invalid_inventory",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "invalid-utf32-scalar",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "//4AAAAAEQA=",
+        "headers": []
+      }
+    ],
+    "kind": "invalid_inventory",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "empty-body",
+    "responses": [
+      {
+        "status": 200,
+        "body_base64": "",
+        "headers": []
+      }
+    ],
+    "kind": "invalid_inventory",
+    "final_url": "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  },
+  {
+    "name": "redirect-success",
+    "responses": [
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2ZpbmFs"
+          }
+        ]
+      },
+      {
+        "status": 200,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": []
+      }
+    ],
+    "kind": "",
+    "final_url": "https://boards-api.greenhouse.io/final",
+    "jobs": [
+      {
+        "url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Senior Café Engineer 東京",
+        "description": "<p>Role</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-09-30T01:00:00Z",
+        "base_salary": null,
+        "language": "en",
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "requisition_id": "1"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+      "https://boards-api.greenhouse.io/final"
+    ]
+  },
+  {
+    "name": "redirect-provider-gone",
+    "responses": [
+      {
+        "status": 307,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "aHR0cHM6Ly9yZWRpcmVjdC5pbnZhbGlkL2ZpbmFs"
+          }
+        ]
+      },
+      {
+        "status": 404,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": []
+      }
+    ],
+    "kind": "provider_gone",
+    "final_url": "https://redirect.invalid/final",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+      "https://redirect.invalid/final"
+    ]
+  },
+  {
+    "name": "redirect-publisher-reserved",
+    "responses": [
+      {
+        "status": 308,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L3Jlc2VydmVk"
+          }
+        ]
+      },
+      {
+        "status": 500,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": [
+          {
+            "name": "tdm-reservation",
+            "value_base64": "MQ=="
+          }
+        ]
+      }
+    ],
+    "kind": "publisher_reserved",
+    "final_url": "https://boards-api.greenhouse.io/reserved",
+    "policy_url": null,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+      "https://boards-api.greenhouse.io/reserved"
+    ]
+  },
+  {
+    "name": "redirect-header-only-ignored",
+    "responses": [
+      {
+        "status": 301,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2ZpbmFs"
+          },
+          {
+            "name": "tdm-reservation",
+            "value_base64": "MQ=="
+          }
+        ]
+      },
+      {
+        "status": 200,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": []
+      }
+    ],
+    "kind": "",
+    "final_url": "https://boards-api.greenhouse.io/final",
+    "jobs": [
+      {
+        "url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Senior Café Engineer 東京",
+        "description": "<p>Role</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-09-30T01:00:00Z",
+        "base_salary": null,
+        "language": "en",
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "requisition_id": "1"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+      "https://boards-api.greenhouse.io/final"
+    ]
+  },
+  {
+    "name": "twenty-redirects",
+    "responses": [
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0w"
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0x"
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0y"
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0z"
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC00"
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC01"
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC02"
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC03"
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC04"
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC05"
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0xMA=="
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0xMQ=="
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0xMg=="
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0xMw=="
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0xNA=="
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0xNQ=="
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0xNg=="
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0xNw=="
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0xOA=="
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0xOQ=="
+          }
+        ]
+      },
+      {
+        "status": 200,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": []
+      }
+    ],
+    "kind": "",
+    "final_url": "https://boards-api.greenhouse.io/hop-19",
+    "jobs": [
+      {
+        "url": "https://job-boards.greenhouse.io/fixture/jobs/1",
+        "title": "Senior Café Engineer 東京",
+        "description": "<p>Role</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-09-30T01:00:00Z",
+        "base_salary": null,
+        "language": "en",
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "requisition_id": "1"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+      "https://boards-api.greenhouse.io/hop-0",
+      "https://boards-api.greenhouse.io/hop-1",
+      "https://boards-api.greenhouse.io/hop-2",
+      "https://boards-api.greenhouse.io/hop-3",
+      "https://boards-api.greenhouse.io/hop-4",
+      "https://boards-api.greenhouse.io/hop-5",
+      "https://boards-api.greenhouse.io/hop-6",
+      "https://boards-api.greenhouse.io/hop-7",
+      "https://boards-api.greenhouse.io/hop-8",
+      "https://boards-api.greenhouse.io/hop-9",
+      "https://boards-api.greenhouse.io/hop-10",
+      "https://boards-api.greenhouse.io/hop-11",
+      "https://boards-api.greenhouse.io/hop-12",
+      "https://boards-api.greenhouse.io/hop-13",
+      "https://boards-api.greenhouse.io/hop-14",
+      "https://boards-api.greenhouse.io/hop-15",
+      "https://boards-api.greenhouse.io/hop-16",
+      "https://boards-api.greenhouse.io/hop-17",
+      "https://boards-api.greenhouse.io/hop-18",
+      "https://boards-api.greenhouse.io/hop-19"
+    ]
+  },
+  {
+    "name": "twenty-one-redirects-rejected",
+    "responses": [
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0w"
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0x"
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0y"
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0z"
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC00"
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC01"
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC02"
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC03"
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC04"
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC05"
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0xMA=="
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0xMQ=="
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0xMg=="
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0xMw=="
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0xNA=="
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0xNQ=="
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0xNg=="
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0xNw=="
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0xOA=="
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0xOQ=="
+          }
+        ]
+      },
+      {
+        "status": 302,
+        "body_base64": "",
+        "headers": [
+          {
+            "name": "location",
+            "value_base64": "L2hvcC0yMA=="
+          }
+        ]
+      },
+      {
+        "status": 200,
+        "body_base64": "eyJqb2JzIjogW3siYWJzb2x1dGVfdXJsIjogImh0dHBzOi8vam9iLWJvYXJkcy5ncmVlbmhvdXNlLmlvL2ZpeHR1cmUvam9icy8xIiwgInRpdGxlIjogIlNlbmlvciBDYWbDqSBFbmdpbmVlciDmnbHkuqwiLCAiY29udGVudCI6ICI8cD5Sb2xlPC9wPjxhPkxlYXJuIG1vcmU8L2E+IiwgImxvY2F0aW9uIjogeyJuYW1lIjogIiBaw7xyaWNoICJ9LCAiZmlyc3RfcHVibGlzaGVkIjogIjIwMjYtMDktMzBUMDE6MDA6MDBaIiwgImxhbmd1YWdlIjogImVuIiwgInJlcXVpc2l0aW9uX2lkIjogIjEifV19",
+        "headers": []
+      }
+    ],
+    "kind": "request_failed",
+    "final_url": "",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true",
+      "https://boards-api.greenhouse.io/hop-0",
+      "https://boards-api.greenhouse.io/hop-1",
+      "https://boards-api.greenhouse.io/hop-2",
+      "https://boards-api.greenhouse.io/hop-3",
+      "https://boards-api.greenhouse.io/hop-4",
+      "https://boards-api.greenhouse.io/hop-5",
+      "https://boards-api.greenhouse.io/hop-6",
+      "https://boards-api.greenhouse.io/hop-7",
+      "https://boards-api.greenhouse.io/hop-8",
+      "https://boards-api.greenhouse.io/hop-9",
+      "https://boards-api.greenhouse.io/hop-10",
+      "https://boards-api.greenhouse.io/hop-11",
+      "https://boards-api.greenhouse.io/hop-12",
+      "https://boards-api.greenhouse.io/hop-13",
+      "https://boards-api.greenhouse.io/hop-14",
+      "https://boards-api.greenhouse.io/hop-15",
+      "https://boards-api.greenhouse.io/hop-16",
+      "https://boards-api.greenhouse.io/hop-17",
+      "https://boards-api.greenhouse.io/hop-18",
+      "https://boards-api.greenhouse.io/hop-19"
+    ]
+  },
+  {
+    "name": "transport-failure",
+    "responses": [],
+    "kind": "request_failed",
+    "final_url": "",
+    "requests": [
+      "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true"
+    ]
+  }
+]

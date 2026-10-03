@@ -256,8 +256,10 @@ services:
     mem_limit: 256m
     memswap_limit: 256m
 networks:
-  claim: {internal: true, ipam: {config: [{subnet: 172.30.250.0/24}]}}
-  origin: {internal: true, ipam: {config: [{subnet: 11.252.0.0/24}]}}
+  # Keep automatic endpoints away from the fixed renderer/DB/fixture addresses.
+  # Concurrent service startup otherwise lets a dynamic endpoint take one first.
+  claim: {internal: true, ipam: {config: [{subnet: 172.30.250.0/24, ip_range: 172.30.250.128/25}]}}
+  origin: {internal: true, ipam: {config: [{subnet: 11.252.0.0/24, ip_range: 11.252.0.128/25}]}}
 volumes:
   producer-socket: {}
   executor-socket: {}

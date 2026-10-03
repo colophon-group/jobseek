@@ -33,7 +33,9 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Finish installed-source evidence already being collected; retain only the
+  # newest pending revision. Each newer source still needs its own admission.
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -198,17 +200,404 @@ jobs:
             --require-installed
 
   image-parity:
-    name: Installed image parity
+    name: Installed image parity (${{ matrix.arch }})
     needs: bindings-and-conformance
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    # Full installed host readbacks run across every joined cold phase/retry.
+    timeout-minutes: 75
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: crawler
+          POSTGRES_PASSWORD: crawler
+          POSTGRES_DB: jobseek_ordinary_worker_test
+        options: >-
+          --health-cmd "pg_isready -U crawler -d jobseek_ordinary_worker_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+          --label com.docker.compose.project=jobseek-native-host-contain
+          --label com.docker.compose.service=postgres
+          --label com.docker.compose.oneoff=False
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/crawler/go/ordinary-worker/go.mod
+          cache-dependency-path: apps/crawler/go/ordinary-worker/go.sum
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13.15"
+
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: "0.12.3"
+          enable-cache: true
+          prune-cache: true
+          cache-dependency-glob: apps/crawler/uv.lock
+
+      - name: Prepare isolated native process database and Redis fixtures
+        working-directory: apps/crawler
+        env:
+          LOCAL_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends redis-server
+          uv sync --frozen --group dev
+          uv run --frozen alembic -c src/migrations/alembic.ini upgrade head
+
       - name: Build slim crawler image
-        run: docker build --target slim --tag jobseek-crawler:runtime-v1 apps/crawler
+        run: docker build --target slim --build-arg "CRAWLER_SOURCE_REVISION=${GITHUB_SHA}" --tag jobseek-crawler:runtime-v1 apps/crawler
+
+      - name: Verify installed native ordinary source and CA identity
+        run: |
+          set -euo pipefail
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --entrypoint go-ordinary-worker jobseek-crawler:runtime-v1 --identity \
+            > "$RUNNER_TEMP/ordinary-identity.json"
+          python3 - "$RUNNER_TEMP/ordinary-identity.json" "$GITHUB_SHA" <<'PY'
+          import json, sys
+          identity = json.load(open(sys.argv[1], encoding="utf-8"))
+          assert identity == {"source_revision": sys.argv[2], "ca_sha256": "fc9165a12403263e7ebfbdad7be7a3eac0fa5d325d3c70465f28d3690072ca28", "profile": "greenhouse.token-skip/v1"}
+          PY
+
+      - name: Verify image-installed native process crash and receipt recovery
+        id: ordinary-image-process
+        working-directory: apps/crawler/go/ordinary-worker
+        env:
+          JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL: postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test
+          JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES: "1"
+          JOBSEEK_ORDINARY_QUEUE_REQUIRE_REDIS: "1"
+          JOBSEEK_ORDINARY_IMAGE_SOURCE_REVISION: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          fixture_directory="$(mktemp -d "$RUNNER_TEMP/ordinary-image.XXXXXX")"
+          chmod 0700 "$fixture_directory"
+          fixture_container="$(docker create jobseek-crawler:runtime-v1)"
+          join_container=''
+          fixture_registry=''
+          containment_worker=''
+          containment_exporter=''
+          cleanup_image_fixtures() {
+            if [ -n "$containment_worker" ]; then docker rm -f "$containment_worker" >/dev/null; fi
+            if [ -n "$containment_exporter" ]; then docker rm -f "$containment_exporter" >/dev/null; fi
+            if [ -n "$join_container" ]; then docker rm "$join_container" >/dev/null; fi
+            if [ -n "$fixture_registry" ]; then docker rm -f -v "$fixture_registry" >/dev/null; fi
+            docker rm "$fixture_container" >/dev/null
+          }
+          trap cleanup_image_fixtures EXIT
+          docker cp "$fixture_container:/usr/local/bin/go-ordinary-worker" "$fixture_directory/ordinary-worker"
+          docker cp "$fixture_container:/usr/local/bin/lightpanda-b0-supervisor" "$fixture_directory/installed-producer"
+          docker cp "$fixture_container:/etc/ssl/certs/ca-certificates.crt" "$fixture_directory/system-ca.pem"
+          docker cp "$fixture_container:/app/data" "$fixture_directory/data"
+          chmod -R a-w "$fixture_directory/data"
+          export JOBSEEK_ORDINARY_IMAGE_BINARY="$fixture_directory/ordinary-worker"
+          echo "binary=$fixture_directory/ordinary-worker" >> "$GITHUB_OUTPUT"
+          export JOBSEEK_ORDINARY_IMAGE_DATA_DIRECTORY="$fixture_directory/data"
+          echo "data_directory=$fixture_directory/data" >> "$GITHUB_OUTPUT"
+          echo "producer_binary=$fixture_directory/installed-producer" >> "$GITHUB_OUTPUT"
+          docker image inspect --format '{{.Id}}' jobseek-crawler:runtime-v1 > "$fixture_directory/image-id"
+          docker image inspect --format '{{.Architecture}}' jobseek-crawler:runtime-v1 > "$fixture_directory/image-architecture"
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --entrypoint sha256sum jobseek-crawler:runtime-v1 \
+            /usr/local/bin/go-ordinary-worker > "$fixture_directory/installed-binary-sha256"
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --entrypoint sha256sum jobseek-crawler:runtime-v1 \
+            /usr/local/bin/lightpanda-b0-supervisor > "$fixture_directory/installed-producer-sha256"
+          python3 - "$fixture_directory" "$GITHUB_SHA" "$RUNNER_TEMP/ordinary-image-proof.json" "${{ matrix.arch }}" <<'PY'
+          import hashlib, json, pathlib, sys
+          root = pathlib.Path(sys.argv[1])
+          architecture = (root / "image-architecture").read_text().strip()
+          assert architecture == sys.argv[4] and architecture in {"amd64", "arm64"}
+          binary_sha = hashlib.sha256((root / "ordinary-worker").read_bytes()).hexdigest()
+          assert binary_sha == (root / "installed-binary-sha256").read_text().split()[0]
+          assets = {str(path.relative_to(root / "data")): hashlib.sha256(path.read_bytes()).hexdigest()
+                    for path in sorted((root / "data").rglob("*")) if path.is_file()}
+          assert assets
+          proof = {"source_revision": sys.argv[2], "image_id": (root / "image-id").read_text().strip(), "architecture": architecture,
+                   "binary_sha256": binary_sha, "system_ca_sha256": hashlib.sha256((root / "system-ca.pem").read_bytes()).hexdigest(),
+                   "installed_asset_sha256": assets,
+                   "scope": "image-extracted native binary and assets on Linux; private PostgreSQL/Redis",
+                   "production_changed": False}
+          pathlib.Path(sys.argv[3]).write_text(json.dumps(proof, indent=2) + "\n")
+          producer_sha = hashlib.sha256((root / "installed-producer").read_bytes()).hexdigest()
+          assert producer_sha == (root / "installed-producer-sha256").read_text().split()[0]
+          producer = {"source_revision": sys.argv[2], "image_id": proof["image_id"], "architecture": architecture,
+                      "producer_binary_sha256": producer_sha,
+                      "scope": "exact native supervisor extracted from same independently verified image; fixture only",
+                      "production_changed": False}
+          pathlib.Path(sys.argv[3]).with_name("ordinary-host-producer-image-proof.json").write_text(json.dumps(producer, indent=2) + "\n")
+          PY
+          go test -race -count=1 -timeout=90s -v -run '^TestRealNativeExecutable' ./... \
+            | tee "$RUNNER_TEMP/ordinary-image-process-tests.log"
+          # Read the already-owned, never-started container through the native
+          # host evidence library. Do not create or mutate containers here.
+          # Expected source/build authentication remains a separate host gate.
+          (
+            cd ../ordinary-queue
+            JOBSEEK_CRAWLER_RELEASE_REQUIRE_INSTALLED_FILES=1 \
+            JOBSEEK_CRAWLER_RELEASE_IMAGE_FILE_PROOF="$RUNNER_TEMP/ordinary-image-proof.json" \
+            JOBSEEK_CRAWLER_RELEASE_IMAGE_CONTAINER="$fixture_container" \
+              go test -race -tags=integration -count=1 -timeout=180s -v \
+                -run '^TestActualInstalledContainerFilesRequireExactRetainedManifest$' ./releaseevidence
+          ) | tee "$RUNNER_TEMP/ordinary-installed-files-tests.log"
+          # Only this disposable harness publishes to a loopback registry and
+          # creates the scoped, never-started native container. The installed
+          # coordinator observes it read-only; no agent receives Docker access.
+          fixture_registry="$(docker run -d --restart=no -p 127.0.0.1:15000:5000 \
+            registry:2.8.3@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373)"
+          curl --fail --silent --retry 12 --retry-connrefused --retry-delay 1 \
+            http://127.0.0.1:15000/v2/ >/dev/null
+          docker tag jobseek-crawler:runtime-v1 localhost:15000/native:fixture
+          docker push localhost:15000/native:fixture
+          docker image inspect --format '{{json .RepoDigests}}' jobseek-crawler:runtime-v1 \
+            > "$fixture_directory/repository-digests.json"
+          python3 - "$fixture_directory/repository-digests.json" "$RUNNER_TEMP/ordinary-image-proof.json" \
+            "$RUNNER_TEMP/ordinary-host-installed-join-proof.json" "$fixture_directory/immutable-reference" \
+            "$RUNNER_TEMP/ordinary-host-installed-manifest.json" <<'PY'
+          import hashlib, json, pathlib, re, sys, urllib.request
+          refs = [ref for ref in json.loads(pathlib.Path(sys.argv[1]).read_text())
+                  if re.fullmatch(r'localhost:15000/native@sha256:[0-9a-f]{64}', ref)]
+          assert len(refs) == 1
+          ref = refs[0]
+          digest = ref.split('@', 1)[1]
+          request = urllib.request.Request('http://127.0.0.1:15000/v2/native/manifests/' + digest,
+              headers={'Accept': 'application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json'})
+          with urllib.request.urlopen(request, timeout=20) as response:
+              raw = response.read(1 << 20)
+              assert response.headers['Docker-Content-Digest'] == digest
+          assert 'sha256:' + hashlib.sha256(raw).hexdigest() == digest
+          manifest = json.loads(raw)
+          original = json.loads(pathlib.Path(sys.argv[2]).read_text())
+          assert manifest['config']['digest'] == original['image_id']
+          proof = dict(original, immutable_reference=ref, registry_manifest_sha256=digest.split(':', 1)[1],
+                       manifest_config_image_id=manifest['config']['digest'],
+                       scope='disposable loopback publication of exact native image; synthetic release roles; no production build/selection admission')
+          pathlib.Path(sys.argv[3]).write_text(json.dumps(proof, indent=2) + '\n')
+          pathlib.Path(sys.argv[4]).write_text(ref + '\n')
+          pathlib.Path(sys.argv[5]).write_bytes(raw)
+          PY
+          join_container="$(docker create --user 10001:10001 \
+            --label com.docker.compose.project=jobseek-native-installed-join \
+            --label com.docker.compose.service=worker \
+            --label com.docker.compose.oneoff=False \
+            "$(cat "$fixture_directory/immutable-reference")")"
+          # Execute the connected preflight on this disposable Linux host,
+          # using the independently image-installed binary. It retains only
+          # fixture evidence and grants no cold or runtime admission.
+          JOBSEEK_CRAWLER_RELEASE_REQUIRE_HOST_PREFLIGHT=1 \
+          JOBSEEK_CRAWLER_RELEASE_REQUIRE_HOST_INSTALLED_JOIN=1 \
+          JOBSEEK_CRAWLER_RELEASE_HOST_JOIN_PROOF="$RUNNER_TEMP/ordinary-host-installed-join-proof.json" \
+          JOBSEEK_CRAWLER_RELEASE_HOST_JOIN_CONTAINER="$join_container" \
+          JOBSEEK_CRAWLER_RELEASE_HOST_UNSCOPED_CONTAINER="$fixture_container" \
+            go test -race -tags=integration -count=1 -timeout=180s -v \
+              -run '^TestActualInstalledNativeHostPreflight' ./... \
+            | tee "$RUNNER_TEMP/ordinary-host-preflight-tests.log"
+          # The installed coordinator's only effects in this fixture disable
+          # restarts and stop these two disposable sleeping writer stand-ins.
+          # This does not grant SQL, full runtime fidelity or rollout admission.
+          # Remove the foreign live registry before whole-daemon containment;
+          # immutable image inspection uses already installed local identities.
+          docker rm -f -v "$fixture_registry" >/dev/null
+          fixture_registry=''
+          containment_worker="$(docker run -d --restart=always --user 10001:10001 \
+            --label com.docker.compose.project=jobseek-native-host-contain \
+            --label com.docker.compose.service=worker --label com.docker.compose.oneoff=False \
+            --entrypoint /bin/sleep "$(cat "$fixture_directory/immutable-reference")" 600)"
+          containment_exporter="$(docker run -d --restart=always --user 10001:10001 \
+            --label com.docker.compose.project=jobseek-native-host-contain \
+            --label com.docker.compose.service=exporter --label com.docker.compose.oneoff=False \
+            --entrypoint /bin/sleep "$(cat "$fixture_directory/immutable-reference")" 600)"
+          JOBSEEK_CRAWLER_RELEASE_REQUIRE_HOST_CONTAINMENT=1 \
+          JOBSEEK_CRAWLER_RELEASE_HOST_JOIN_PROOF="$RUNNER_TEMP/ordinary-host-installed-join-proof.json" \
+          JOBSEEK_CRAWLER_RELEASE_CONTAINMENT_WORKER="$containment_worker" \
+          JOBSEEK_CRAWLER_RELEASE_CONTAINMENT_EXPORTER="$containment_exporter" \
+            go test -race -tags=integration -count=1 -timeout=600s -v \
+              -run '^TestActualInstalledNativeHostContainment' ./... \
+            | tee "$RUNNER_TEMP/ordinary-host-containment-tests.log"
+          JOBSEEK_CRAWLER_RELEASE_REQUIRE_HOST_QUIESCENCE=1 \
+          JOBSEEK_CRAWLER_RELEASE_HOST_JOIN_PROOF="$RUNNER_TEMP/ordinary-host-installed-join-proof.json" \
+          JOBSEEK_CRAWLER_RELEASE_CONTAINMENT_WORKER="$containment_worker" \
+          JOBSEEK_CRAWLER_RELEASE_CONTAINMENT_EXPORTER="$containment_exporter" \
+            go test -race -tags=integration -count=1 -timeout=600s -v \
+              -run '^TestActualInstalledNativeHostQuiescence' ./... \
+            | tee "$RUNNER_TEMP/ordinary-host-quiescence-tests.log"
+
+      - name: Verify actual selected Redis host callback and retained journal phases
+        working-directory: apps/crawler/go/ordinary-worker
+        run: |
+          set -euo pipefail
+          # Only this disposable harness runs the owned root fixture. The
+          # coordinator needs the official Redis daemon's host /proc PID/fd
+          # observation; agents do not receive or invoke the Docker socket.
+          docker pull redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
+          joined_binary="${RUNNER_TEMP}/ordinary-host-selected-redis-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.test"
+          go test -race -c -tags=integration -o "$joined_binary" .
+          chmod 0755 "$joined_binary"
+          trap 'rm -f "$joined_binary"' EXIT
+          installed_binary="${{ steps.ordinary-image-process.outputs.binary }}"
+          installed_data="${{ steps.ordinary-image-process.outputs.data_directory }}"
+          test -x "$installed_binary"
+          test -d "$installed_data"
+          # Earlier fixture commands created this shared inode as the runner
+          # user. Transfer only its disposable ownership while holding that
+          # same lock, so the strict root coordinator owner predicate holds.
+          test -f /run/lock/jobseek-crawler-mutation.lock
+          test ! -L /run/lock/jobseek-crawler-mutation.lock
+          # util-linux flock opens with O_CREAT|O_RDWR. Linux protected_regular
+          # refuses that open for an existing runner-owned file in /run/lock's
+          # sticky directory, including as root. Open the exact existing inode
+          # read-only without following links; fchown only after its flock.
+          sudo python3 - <<'PY'
+          import fcntl, os, stat, time
+          path = '/run/lock/jobseek-crawler-mutation.lock'
+          fd = os.open(path, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW)
+          try:
+              opened = os.fstat(fd)
+              assert stat.S_ISREG(opened.st_mode) and opened.st_nlink == 1
+              assert opened.st_mode & 0o022 == 0
+              deadline = time.monotonic() + 5
+              while True:
+                  try:
+                      fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                      break
+                  except BlockingIOError:
+                      if time.monotonic() >= deadline:
+                          raise TimeoutError('owned fixture mutation lock busy')
+                      time.sleep(0.025)
+              named = os.lstat(path)
+              assert (opened.st_dev, opened.st_ino) == (named.st_dev, named.st_ino)
+              os.fchown(fd, 0, 0)
+          finally:
+              os.close(fd)
+          PY
+          sudo env PATH=/usr/bin:/bin GITHUB_ACTIONS=true \
+            JOBSEEK_CRAWLER_RELEASE_REQUIRE_HOST_SELECTED_REDIS=1 \
+            JOBSEEK_CRAWLER_RELEASE_HOST_JOIN_PROOF="$RUNNER_TEMP/ordinary-host-installed-join-proof.json" \
+            JOBSEEK_CRAWLER_RELEASE_HOST_SELECTED_REDIS_PROOF="$RUNNER_TEMP/ordinary-host-selected-redis-proof.json" \
+            JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES=1 \
+            JOBSEEK_ORDINARY_QUEUE_REQUIRE_REDIS=1 \
+            JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL=postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test \
+            JOBSEEK_ORDINARY_IMAGE_SOURCE_REVISION="$GITHUB_SHA" \
+            JOBSEEK_ORDINARY_IMAGE_BINARY="$installed_binary" \
+            JOBSEEK_ORDINARY_IMAGE_DATA_DIRECTORY="$installed_data" \
+            "$joined_binary" \
+            -test.run '^TestActualHostSelectedRedisJournalJoinsScopeAndExactReservation$' \
+            -test.count=1 -test.timeout=960s -test.v \
+            | tee "$RUNNER_TEMP/ordinary-host-selected-redis-tests.log"
+          # This second owned fixture executes the exact image-extracted native
+          # producer as UID/GID 10001 with no supplementary groups. It preserves
+          # fixed socket authentication and every runtime host/SQL predicate.
+          installed_producer="${{ steps.ordinary-image-process.outputs.producer_binary }}"
+          test -x "$installed_producer"
+          sudo env PATH=/usr/bin:/bin GITHUB_ACTIONS=true \
+            JOBSEEK_CRAWLER_RELEASE_REQUIRE_HOST_SELECTED_REDIS=1 \
+            JOBSEEK_CRAWLER_RELEASE_HOST_JOIN_PROOF="$RUNNER_TEMP/ordinary-host-installed-join-proof.json" \
+            JOBSEEK_CRAWLER_RELEASE_HOST_FORWARD_JOURNAL_PROOF="$RUNNER_TEMP/ordinary-host-forward-journal-proof.json" \
+            JOBSEEK_HOST_FORWARD_PRODUCER_BINARY="$installed_producer" \
+            JOBSEEK_HOST_FORWARD_PRODUCER_IMAGE_PROOF="$RUNNER_TEMP/ordinary-host-producer-image-proof.json" \
+            JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES=1 \
+            JOBSEEK_ORDINARY_QUEUE_REQUIRE_REDIS=1 \
+            JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL=postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test \
+            JOBSEEK_ORDINARY_IMAGE_SOURCE_REVISION="$GITHUB_SHA" \
+            JOBSEEK_ORDINARY_IMAGE_BINARY="$installed_binary" \
+            JOBSEEK_ORDINARY_IMAGE_DATA_DIRECTORY="$installed_data" \
+            "$joined_binary" \
+            -test.run '^TestActualHostSelectedRedisForwardJournalUsesInstalledProducer$' \
+            -test.count=1 -test.timeout=1860s -test.v \
+            | tee "$RUNNER_TEMP/ordinary-host-forward-journal-tests.log"
+          # Complete an active candidate-N cold reversal and nonempty restoration.
+          # Its prior E receipt/consumers remain fixtures; producer sentinel
+          # cleanup/reactivation/finalization/startup are separate admission work.
+          sudo env PATH=/usr/bin:/bin GITHUB_ACTIONS=true \
+            JOBSEEK_CRAWLER_RELEASE_REQUIRE_HOST_SELECTED_REDIS=1 \
+            JOBSEEK_CRAWLER_RELEASE_HOST_JOIN_PROOF="$RUNNER_TEMP/ordinary-host-installed-join-proof.json" \
+            JOBSEEK_CRAWLER_RELEASE_HOST_RESTORATION_JOURNAL_PROOF="$RUNNER_TEMP/ordinary-host-restoration-journal-proof.json" \
+            JOBSEEK_HOST_FORWARD_PRODUCER_BINARY="$installed_producer" \
+            JOBSEEK_HOST_FORWARD_PRODUCER_IMAGE_PROOF="$RUNNER_TEMP/ordinary-host-producer-image-proof.json" \
+            JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES=1 \
+            JOBSEEK_ORDINARY_QUEUE_REQUIRE_REDIS=1 \
+            JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL=postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test \
+            JOBSEEK_ORDINARY_IMAGE_SOURCE_REVISION="$GITHUB_SHA" \
+            JOBSEEK_ORDINARY_IMAGE_BINARY="$installed_binary" \
+            JOBSEEK_ORDINARY_IMAGE_DATA_DIRECTORY="$installed_data" \
+            "$joined_binary" \
+            -test.run '^TestActualHostSelectedRedisRestorationJournalUsesInstalledProducer$' \
+            -test.count=1 -test.timeout=1860s -test.v \
+            | tee "$RUNNER_TEMP/ordinary-host-restoration-journal-tests.log"
+
+      - name: Retain private root fixture evidence for runner upload
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          # Root emits private 0600 evidence. Give the uploader access only to
+          # these exact owned regular files, preserving mode and inode identity.
+          retain_root_fixture_proof() {
+            sudo python3 - "$1" "$(id -u)" "$(id -g)" <<'PY'
+          import os, stat, sys
+          path, uid, gid = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
+          fd = os.open(path, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW)
+          try:
+              opened, named = os.fstat(fd), os.lstat(path)
+              assert stat.S_ISREG(opened.st_mode) and opened.st_nlink == 1
+              assert stat.S_IMODE(opened.st_mode) == 0o600 and opened.st_uid == 0
+              assert (opened.st_dev, opened.st_ino) == (named.st_dev, named.st_ino)
+              os.fchown(fd, uid, gid)
+              retained, named = os.fstat(fd), os.lstat(path)
+              assert stat.S_IMODE(retained.st_mode) == 0o600
+              assert retained.st_uid == uid and retained.st_gid == gid
+              assert (retained.st_dev, retained.st_ino) == (named.st_dev, named.st_ino)
+          finally:
+              os.close(fd)
+          PY
+          }
+          for proof in ordinary-host-selected-redis-proof.json ordinary-host-forward-journal-proof.json ordinary-host-restoration-journal-proof.json; do
+            # A failed test may have no proof; preserving partial evidence cannot
+            # satisfy the required positive test and independently checked proof.
+            if sudo test -e "$RUNNER_TEMP/$proof" || sudo test -L "$RUNNER_TEMP/$proof"; then
+              retain_root_fixture_proof "$RUNNER_TEMP/$proof"
+            fi
+          done
+
+      - name: Save installed native process identities and test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ordinary-image-process-${{ matrix.arch }}-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/ordinary-identity.json
+            ${{ runner.temp }}/ordinary-image-proof.json
+            ${{ runner.temp }}/ordinary-image-process-tests.log
+            ${{ runner.temp }}/ordinary-installed-files-tests.log
+            ${{ runner.temp }}/ordinary-host-preflight-tests.log
+            ${{ runner.temp }}/ordinary-host-installed-join-proof.json
+            ${{ runner.temp }}/ordinary-host-installed-manifest.json
+            ${{ runner.temp }}/ordinary-host-containment-tests.log
+            ${{ runner.temp }}/ordinary-host-quiescence-tests.log
+            ${{ runner.temp }}/ordinary-host-selected-redis-tests.log
+            ${{ runner.temp }}/ordinary-host-selected-redis-proof.json
+            ${{ runner.temp }}/ordinary-host-producer-image-proof.json
+            ${{ runner.temp }}/ordinary-host-forward-journal-tests.log
+            ${{ runner.temp }}/ordinary-host-forward-journal-proof.json
+            ${{ runner.temp }}/ordinary-host-restoration-journal-tests.log
+            ${{ runner.temp }}/ordinary-host-restoration-journal-proof.json
+          if-no-files-found: error
 
       - name: Import the installed contract surface from the image
         run: |

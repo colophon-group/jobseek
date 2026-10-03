@@ -1,0 +1,44 @@
+{
+  "schema": "jobseek.migration.ordinary-finalizer-suite-budget/v1",
+  "candidate_parent": "21f8cee232b9d4d02397d236d8e14fa7dfa15368",
+  "changed_file_sha256": {
+    ".github/workflows/go-ordinary-queue.yml": "6697269225ea8f3faf390ebce0fead9999200ef3d37b63820a50842417376f2b",
+    "apps/crawler/go/ordinary-queue/cold_ordinary_finalization_executable_test.go": "e8ffaa9fe6b0b0e5f1717f7722c79f0a31c0c914a7a7b4ce1e81b0aeea92d175"
+  },
+  "linux_failure": {
+    "run": 36951034703,
+    "architectures": [
+      "amd64",
+      "arm64"
+    ],
+    "reason": "aggregate race suite exhausted 120s; running subtests were at 0s, preceding suites took 104.331s/109.841s",
+    "failed_log_sha256": "d7aa1584d9a90087d30ac2da53e5ea2f9605d0c8b7d805c4ef4d729adb7fc33d",
+    "root_finalizer_execution_reached": false
+  },
+  "correction": "one 60s-bounded executable build before either fixture; 180s aggregate suite with per-test timing; no runtime authority change",
+  "local_queue_race": {
+    "package_seconds": 89.468,
+    "command_seconds": 92.789,
+    "exit_code": 0,
+    "log_sha256": "c67aa54428e1d08d240fc7181f253d3108138b53e2220affb5f3e7df04818ff9",
+    "owned_fixture_cleanup": true
+  },
+  "required_repository_scripts": {
+    "tests": 188,
+    "passed": 188,
+    "failed": 0,
+    "skipped": 0,
+    "log_sha256": "3549cbf46a8f23d5e39d01a69c7f5bc2bf9d346797e325d37dfe922dc288ee38"
+  },
+  "queue_vet": true,
+  "production_changed": false,
+  "full_goal": "active",
+  "still_required": [
+    "new-source actual Linux root finalizer execution",
+    "actual prior immutable worker admission",
+    "complete ADR006 host cutover/reversal",
+    "all enabled profiles and consumers, parity and whole-service resource/cost evidence",
+    "required exact-source gates, deployment and rollback window",
+    "production Python and browser legacy retirement"
+  ]
+}

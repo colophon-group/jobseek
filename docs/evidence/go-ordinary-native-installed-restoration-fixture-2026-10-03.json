@@ -1,0 +1,97 @@
+{
+  "schema": "jobseek.migration.installed-candidate-restoration-fixture/v1",
+  "date": "2026-10-03",
+  "parent": "27b665433c39a5ea4f97299ec08942c12c5b6af1",
+  "runtime_version": "0.13.904",
+  "prepared_fixture": [
+    "actual image-extracted UID10001 native candidate producer, native bootstrap/forward/publication then active candidate-N reversal and nonempty restoration in 21 retained phases",
+    "candidate producer process and Redis connections stop before restoration; its activation sentinel remains byte-for-byte for a separately checked cleanup handoff",
+    "exact R and actual source transfer receipt bind restoration; two unattempted legacy scores preserve original microseconds, SQL bigint hash/interval are restored, inactive terminal work is dropped, native source queue/guard/fences retire",
+    "four native returned-effect interruption/recovery seams and a fresh SQL backend retry of explicit historical phases [0,2,13,16,20] under original outer flock",
+    "raw request/result/completion/typed-plan/source/receipt/canonical/Redis proof retained in disposable Actions, with source-adaptive strict verifier requiring it only for sources containing the fixture"
+  ],
+  "actual_new_fixture_execution_verified": false,
+  "validation": {
+    "both_Linux_integration_vet_format_tidy": true,
+    "workflow_YAML_parsed": true,
+    "repository_tests_passed": 94,
+    "optional_skips": 3,
+    "repository_tests_seconds": 44.33,
+    "logs_sha256": {
+      "ordinary-host-installed-restoration-vet.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ordinary-host-installed-restoration-repository-tests.log": "3d8c839a01b66caca8b45b595930172264466af3e37bee689fe86c64418a2dd1",
+      "ordinary-host-installed-readiness-tests.log": "7d3b829807f4824608044b7c817a9a88c9bae00b64549a283858587bdb050bfb",
+      "ordinary-host-installed-readiness-repository-tests.log": "4ab1e1e7160dd2d5430fc2f95516286bcf08bdad7b2d9c7bc70e506ebc1f4bdf"
+    }
+  },
+  "preceding_source": {
+    "source": "27b665433c39a5ea4f97299ec08942c12c5b6af1",
+    "full_CI": {
+      "run": 37099667311,
+      "conclusion": "success"
+    },
+    "Linux": {
+      "run": 37099640953,
+      "conclusion": "success",
+      "independently_verified": true,
+      "both_architectures_lifecycle_and_three_SIGKILL_seams": true,
+      "summary_sha256": "291a6e7676d546590432449799739c1baee4cdd5f5aad90d6cab25f50a6e721f"
+    },
+    "historical_native": {
+      "run": 37099640970,
+      "conclusion": "success",
+      "independently_verified": true,
+      "summary_sha256": "4957aff8a6b4567ad1673534b3206701ffbcaa94a283c349c8ccd74ba3ba57a8"
+    },
+    "historical_legacy": {
+      "run": 37099640997,
+      "conclusion": "success",
+      "independently_verified": true,
+      "summary_sha256": "9a605498f072399ebb25d6db98815c251d68a5880bfca7bda3db3670d21739cc"
+    },
+    "installed": {
+      "run": 37099665504,
+      "status": "completed",
+      "preserve": true,
+      "conclusion": "failure",
+      "initial_four_phase_raw_proofs_both_architectures_verified": true,
+      "positive_eleven_stage_forward_proof_verified": false,
+      "failure": "Both architectures returned all eleven stages with nil context error; unrelated-value assertion then refused ready:browser:0. The transfer Lua rebuilds owned-domain legacy readiness; source correction proves member-level conservation and expected owned readiness.",
+      "summary_sha256": "50869d0693e91e462e5da737af9bfd2bb2906bfe3e7c4a67a401c3ea17d9ccbc"
+    },
+    "whole_B0": {
+      "run": 37099640940,
+      "status": "completed",
+      "preserve": true,
+      "conclusion": "success",
+      "independently_recomputed": true,
+      "arms": 16,
+      "pairs": 8,
+      "density_range": [
+        5.650707223379762,
+        13.54125388301411
+      ],
+      "scope": "generated B0 at production startup cardinality; whole-service cost/all-profile parity unproven",
+      "summary_sha256": "dab7a61224f4e9b2ff38d8573ce613952c54eb0f322a9e1fe94a061725076ed7"
+    }
+  },
+  "native_cleanup_gap": "existing Python cleanup requires producer-off, absent activation sentinel, exact tombstone plan/source receipt and no source SQL fences; positive queue reactivation tests clear tombstone as fixture setup. Native checked durable cleanup and R initialization are still required before complete reactivation/finalization/startup. This fixture intentionally preserves the sentinel and tombstone rather than granting that authority.",
+  "remaining": [
+    "fresh exact-source installed forward/outer-lifecycle proof on both architectures",
+    "positive new installed candidate-N reversal/nonempty restoration evidence with real restoration SIGKILL",
+    "authenticated durable producer stop/sentinel/tombstone cleanup and native R initialization, then full reactivation/finalization",
+    "complete spec/env/data/image restoration, SQL release and full-stack startup/readiness under original flock",
+    "all enabled profiles/consumers/output/database/publisher/freshness/queue parity and comparable whole-service cost",
+    "exact gates, supported cutover/cold reversal and rollback window before runtime Python/Playwright/Chromium retirement; preserve useful isolated offline Python tooling"
+  ],
+  "runtime_admission": false,
+  "production_changed": false,
+  "goal_status": "active",
+  "readiness_correction": {
+    "all_eight_shared_indexes_member_level_conservation": true,
+    "unrelated_member_score_type_expiry_exact": true,
+    "expected_owned_domain_forward_removal_and_first_time_restoration": true,
+    "focused_regression_test_passed": true,
+    "independent_verifier_negative_regression_passed": true
+  }
+}

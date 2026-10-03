@@ -1,0 +1,104 @@
+{
+  "schema": "jobseek.migration.ordinary-discovery-evidence/v1",
+  "runtime_source_head": "aa99863e3302b4709db463c848065002f74dcd4f",
+  "pull_request": "https://github.com/colophon-group/jobseek/pull/10210",
+  "candidate_version": "0.13.904",
+  "draft": true,
+  "selected_in_production": false,
+  "local": {
+    "source_head": "aa99863e3302b4709db463c848065002f74dcd4f",
+    "database": "owned fully migrated PostgreSQL18.6; private reference schema",
+    "redis": "private per-test Redis UDS",
+    "full_native_assembly_race_seconds": 15.394,
+    "reader_and_preparation_race_seconds": 3.069,
+    "actual_python_http_cases": 52,
+    "actual_python_url_cases": 40,
+    "actual_python_inventory_cases": 6,
+    "oracle_hash_seeds": [
+      "1",
+      "2",
+      "37"
+    ],
+    "oracle_regeneration": "byte-identical",
+    "runtime_version_documentation_node_tests": 39,
+    "vet_module_format_ruff_actionlint": "passed",
+    "cleanup": true
+  },
+  "effective_python_direct_transport": {
+    "httpx": "0.28.1",
+    "httpcore": "1.0.9",
+    "declared_max_connections": 20,
+    "declared_max_keepalive": 10,
+    "effective_max_connections": 100,
+    "effective_max_keepalive": 20,
+    "effective_keepalive_expiry_seconds": 5.0,
+    "http2": false,
+    "max_redirects": 20,
+    "timeout": {
+      "connect": 30.0,
+      "read": 30.0,
+      "write": 30.0,
+      "pool": 30.0
+    },
+    "network_requests": 0
+  },
+  "previous_pipeline_checkpoint": {
+    "head": "654ed153e78738c53b68adbbc3872a4c9225fcb3",
+    "full_ci": {
+      "run": 36831279197,
+      "conclusion": "success"
+    },
+    "b0_admission": {
+      "run": 36831284162,
+      "conclusion": "success"
+    },
+    "linux": {
+      "run": 36831284128,
+      "arm64": "success",
+      "amd64_attempt1": "dependency download timeout before tests",
+      "amd64_attempt2": "capture serialization key-order difference; counts unchanged; fixed in this source"
+    },
+    "actual_deploy_gate": "failure while draft",
+    "limitation": "does not cover later source or grant draft merge authority"
+  },
+  "verified": [
+    "one logical token GET feeds a real HTTP202 response into normalization, native lookup/location enrichment, three owned500/500/1 posting batches, terminal disappearance and canonical receipt settlement",
+    "actual Python final-resource header reservation precedes provider404/status/JSON; redirect-only headers do not become final-resource reservations",
+    "all successful 2xx statuses parsed; provider404 and generic statuses remain separate bounded outcomes",
+    "duplicate header joins and whole-header-set UTF8/Latin1 decoding preserve publisher evidence; private observation cannot be mutated by detached policy pointer",
+    "UTF8BOM/UTF16/UTF32 JSON byte detection matches Python response.json regardless of Content-Type charset; invalid rawUnicode rejected",
+    "all fetch/read/cancel/body-limit/malformed-inventory failures reject partial posting inventory",
+    "real local HTTP redirect cookie/shared-client proof and response replay with full request/body-close accounting",
+    "ordinary native reader uses its own application attribution, one-connection budget and read-only PostgreSQL default; actual board UPDATE rejected",
+    "saved inventory, URL and HTTP captures are deterministic across three Python hash seeds"
+  ],
+  "not_verified": [
+    "fresh current-source Linux/full/installed/B0 checks and actual deploy gate",
+    "production persistent verified transport, per-operation deadlines, every-hop SSRF, complete cookies/TLS behavior and attributable request/body meters",
+    "redirected-source publisher/provider outcomes in the owned terminal lifecycle",
+    "shared host circuits, canonical deferrals/lower bounds and fenced learned-egress publication without mutating inflight claim snapshot",
+    "native exact-source executable startup/concurrency/heartbeat/shutdown and installed crash/cancel recovery",
+    "supported all-writer ownership/projection cutover/cold reversal with shared B0 epoch",
+    "every enabled effective profile and runtime consumer, fleet output/freshness/queue/cost and rollback window before production Python/Playwright/Chromium retirement"
+  ],
+  "next": "Reuse discovery, normalization, preparation, owned posting batches and lifecycle. Implement a process-owned verified direct transport against the effective pinned baseline; bind final-resource outcomes to the exact installed claim and preserve immutable projection through settlement. Prove shared host circuits/deferrals and installed process/cutover/reversal before selection. Full migration goal remains active.",
+  "checkpoint_checks": {
+    "head": "c249e1742c24e10f6b50eceb935a648e333bd320",
+    "linux": {
+      "run": 36835150216,
+      "amd64": "success",
+      "arm64": "success"
+    },
+    "full_ci": {
+      "run": 36835149192,
+      "conclusion": "success"
+    },
+    "b0_admission": {
+      "run": 36835150489,
+      "conclusion": "success"
+    },
+    "actual_deploy_gate": "failure while draft",
+    "limitation": "earlier-head success does not cover this source or authorize draft merge"
+  },
+  "continued_by_runtime_source_head": "593a7c9021e36076a20c7b61faa9f6ce393634b2"
+}
