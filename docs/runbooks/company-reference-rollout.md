@@ -23,6 +23,40 @@ Restore a recent protected backup into an isolated database and rerun preflight,
 expansion and postflight there before production. Keep private backup credentials
 and row values out of CI/public artifacts; publish counts/digests only.
 
+The executable protected rehearsal is `Operate Web PostgreSQL Backup (Hetzner)`
+(`operate-web-postgresql-backup.yml`), mode `rehearse`, target
+`0100_company_references`, confirmation `REHEARSE-COMPANY-REFERENCE-0100`.
+First deploy the reviewed backup helper at current main through `Deploy Data
+Backups`, service `web-postgresql`, then use protected `verify`, `backup` and
+`restore` modes. A fresh encrypted **v3** packet must include retained
+`company_description` and the complete six-FK inventory. Existing v1/v2 packets
+remain restorable with their exact original boundaries, but cannot certify this
+rehearsal.
+
+The deploy workflow builds a self-contained bundle from locked dependencies and
+actual verifier/normalizer sources, exact SQL, journal and consumer inventory.
+Its manifest binds the clean source revision, every bundled resource and the
+digest-pinned Node24 runtime; the host installs only root-owned read-only files.
+The operation uses existing deployment/service locks and an internal isolated
+PostgreSQL17 network. The helper receives only the disposable password file,
+exact restore hostname and reviewed identities. It receives no production URL,
+backup/SSH secret, host network or Docker socket and installs nothing at runtime.
+Only isolated role scaffolding is added before actual preflight, bounded exact
+SQL plus ledger transaction, and postflight. Every retained owner/filter/history
+row count and digest must remain unchanged. The final-contract target, when added
+by its reviewed PR, must also preserve every existing canonical reference.
+
+A successful operation proves removal of both containers, the internal network,
+credentials and restored plaintext before publishing its counts/digests artifact.
+Apply Routine requires `rehearsal_run_id` from that successful owner-dispatched
+main run. It verifies the workflow path, actor, current main SHA, attempt, fresh
+completion (within nine hours), v3 archive identity, exact migration hash/timestamp,
+rebuilt manifest/runtime identity, preservation and cleanup. It repeats this check
+immediately before live DDL; changed main, failed/expired evidence, missing
+inventory or a different target blocks apply. No rehearsal run is evidence of
+successful production DDL. If main changes during isolated work, rerun against
+the new reviewed revision; the stale operation cannot publish eligible evidence.
+
 With the protected direct web database environment, run:
 
 ```sh
@@ -41,7 +75,8 @@ and trigger; the runner sets bounded lock/statement timeouts.
 Merge the reviewed expansion PR only after required CI and current head/base
 checks. Use `Apply Routine Web Migration` (`apply-web-routine-migration.yml`) at
 current main with its exact journal tag `0100_company_references`, timestamp and
-SHA-256 from `drizzle/routine-migrations.json`. Its confirmation binds all three.
+SHA-256 from `drizzle/routine-migrations.json`, plus the bound successful
+`rehearsal_run_id`. Its confirmation binds all three migration fields.
 The workflow owner dispatch and `production-migrations`/`production` environments
 are the authorization/execution boundary. Do not use `db:push`, an ad hoc SQL
 session, crawler sync, mutable tags or live copies as a replacement.

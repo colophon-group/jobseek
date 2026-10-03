@@ -29,3 +29,6 @@ __pycache__/
 /apps/crawler/traces/
 .vercel
 .mcpregistry_*
+
+# Protected rehearsal bundle is generated from the exact reviewed revision.
+/deploy/backups/web-postgresql/company-reference-bundle/

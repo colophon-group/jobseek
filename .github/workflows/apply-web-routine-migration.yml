@@ -19,6 +19,10 @@ on:
         description: "Exact lowercase SHA-256 of the SQL migration"
         required: true
         type: string
+      rehearsal_run_id:
+        description: Successful protected archive rehearsal run at this exact main revision (required for company references)
+        required: false
+        type: string
       confirmation:
         description: "APPLY-ROUTINE-WEB-MIGRATION:<tag>:<timestamp>:<hash>"
         required: true
@@ -26,6 +30,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -34,6 +39,7 @@ env:
   ROUTINE_MIGRATION_TAG: ${{ inputs.migration_tag }}
   ROUTINE_MIGRATION_CREATED_AT: ${{ inputs.migration_created_at }}
   ROUTINE_MIGRATION_HASH: ${{ inputs.migration_hash }}
+  REHEARSAL_RUN_ID: ${{ inputs.rehearsal_run_id }}
   ROUTINE_MIGRATION_CONFIRMATION: ${{ inputs.confirmation }}
 
 concurrency:
@@ -70,7 +76,7 @@ jobs:
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - name: Install locked dependencies
@@ -79,6 +85,16 @@ jobs:
       - name: Validate the reviewed local migration identity
         working-directory: apps/web
         run: pnpm db:migrate:validate-routine
+
+      - name: Require the exact protected archive rehearsal before company reference DDL
+        if: startsWith(env.ROUTINE_MIGRATION_TAG, '0100_') || startsWith(env.ROUTINE_MIGRATION_TAG, '0101_')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          pnpm --filter @jobseek/web build:company-reference:rehearsal
+          export REHEARSAL_EXPECTED_MANIFEST_SHA256="$(sha256sum deploy/backups/web-postgresql/company-reference-bundle/manifest.json | cut -d' ' -f1)"
+          node .github/scripts/verify-company-reference-rehearsal.mjs
 
       - name: Test routine migration safety contracts
         working-directory: apps/web
@@ -133,7 +149,7 @@ jobs:
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - name: Install locked dependencies
@@ -162,6 +178,16 @@ jobs:
           test "$(git rev-parse HEAD)" = "$ROUTINE_MIGRATION_REVISION"
           remote_main_sha="$(gh api "repos/$REPOSITORY/git/ref/heads/main" --jq .object.sha)"
           test "$remote_main_sha" = "$ROUTINE_MIGRATION_REVISION"
+
+      - name: Require the exact protected archive rehearsal before company reference DDL
+        if: startsWith(env.ROUTINE_MIGRATION_TAG, '0100_') || startsWith(env.ROUTINE_MIGRATION_TAG, '0101_')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          pnpm --filter @jobseek/web build:company-reference:rehearsal
+          export REHEARSAL_EXPECTED_MANIFEST_SHA256="$(sha256sum deploy/backups/web-postgresql/company-reference-bundle/manifest.json | cut -d' ' -f1)"
+          node .github/scripts/verify-company-reference-rehearsal.mjs
 
       - name: Apply exactly one reviewed migration under the ledger lock
         working-directory: apps/web

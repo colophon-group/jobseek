@@ -47,6 +47,9 @@ SAVED_JOB_DIGEST=""
 COMPANY_REFERENCE_PHASE="legacy"
 COMPANY_REFERENCE_ROWS=0
 COMPANY_REFERENCE_DIGEST=""
+PACKET_VERSION=1
+REHEARSAL_PROOF=""
+REHEARSAL_CONTAINER="${EXPECTED_CONTAINER}-verifier"
 RESTORE_PATH=""
 CREDENTIAL_PATH=""
 
@@ -72,6 +75,8 @@ write_status() {
   COMPANY_REFERENCE_PHASE="$COMPANY_REFERENCE_PHASE" \
   COMPANY_REFERENCE_ROWS="$COMPANY_REFERENCE_ROWS" \
   COMPANY_REFERENCE_DIGEST="$COMPANY_REFERENCE_DIGEST" \
+  PACKET_VERSION="$PACKET_VERSION" \
+  REHEARSAL_PROOF="$REHEARSAL_PROOF" \
   STATUS_FILE="$STATUS_FILE" \
   python3 - <<'PY'
 import json
@@ -81,6 +86,8 @@ from pathlib import Path
 path = Path(os.environ["STATUS_FILE"])
 record = {
     "schema_version": 1,
+    "packet_version": int(os.environ["PACKET_VERSION"]),
+    "company_reference_rehearsal": json.loads(os.environ["REHEARSAL_PROOF"]) if os.environ["REHEARSAL_PROOF"] else None,
     "service": "web-postgresql-restore",
     "started_at": os.environ["STARTED_AT"],
     "finished_at": os.environ["FINISHED_AT"],
@@ -135,6 +142,8 @@ cleanup() {
   local exit_code=$? cleanup_failed=false
   trap - EXIT HUP INT TERM
   set +e
+  docker rm -f "$REHEARSAL_CONTAINER" >/dev/null 2>&1
+  if ! docker_resource_absent container "$REHEARSAL_CONTAINER"; then cleanup_failed=true; fi
   docker rm -f "$CONTAINER" >/dev/null 2>&1
   if ! docker_resource_absent container "$CONTAINER"; then
     cleanup_failed=true
@@ -347,6 +356,13 @@ phase = manifest.get("company_reference_phase", "legacy")
 reference = manifest["fingerprints"].get("public.company_reference", {"rows": 0, "digest": "legacy"})
 print(phase, reference["rows"], reference["digest"])
 PY
+)
+read -r PACKET_VERSION ARCHIVE_SHA256 < <(python3 - "$MANIFEST_PATH" <<'PY_REHEARSAL_IDENTITY'
+import json,sys
+from pathlib import Path
+manifest=json.loads(Path(sys.argv[1]).read_text())
+print(manifest["schema_version"],manifest["archive_sha256"])
+PY_REHEARSAL_IDENTITY
 )
 [[ "$COMPANY_REFERENCE_PHASE" =~ ^(legacy|expanded|reference)$ ]]
 [[ "$COMPANY_REFERENCE_ROWS" =~ ^[0-9]+$ ]]
@@ -653,6 +669,31 @@ INSERT INTO outreach_draft (signal_id, contact_name, subject, body) VALUES
   ('00000000-0000-0000-0000-000000000107', 'Restore Smoke', 'Restore Smoke', 'Restore Smoke');
 ROLLBACK;
 SQL
+
+# A separate protected operation rehearses only an immutable allowlisted target
+# after the ordinary exact archived-phase restore and rollback-only smoke pass.
+if [[ -n "${WEB_POSTGRES_REHEARSAL_MIGRATION_TAG:-}" ]]; then
+  test "$PACKET_VERSION" = 3
+  rehearsal_root=/usr/local/share/jobseek-backup/company-reference-rehearsal
+  rehearsal_identity="$(python3 /usr/local/sbin/jobseek-verify-company-reference-rehearsal \
+    "$rehearsal_root" "$DEPLOY_SHA" "$WEB_POSTGRES_REHEARSAL_MANIFEST_SHA256" "$WEB_POSTGRES_REHEARSAL_MIGRATION_TAG")"
+  rehearsal_image="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["runtimeImage"])' <<<"$rehearsal_identity")"
+  rehearsal_output="$OPERATION_ROOT/rehearsal-proof.json"
+  # Explicit environment and read-only mounts: no production URL, Restic/SSH
+  # credential, host network, Docker socket, runtime install or mutable image.
+  docker run --rm --name "$REHEARSAL_CONTAINER" --pull=never \
+    --network "$NETWORK" --read-only --cap-drop ALL --security-opt no-new-privileges:true \
+    --pids-limit 128 --memory 256m --cpus 1 --tmpfs /tmp:rw,nosuid,nodev,noexec,size=16m \
+    --label jobseek.backup.service=web-postgresql-restore --label "jobseek.backup.operation=$OPERATION_ID" \
+    --volume "$rehearsal_root:/opt/rehearsal:ro" --volume "$PASSWORD_FILE:/run/secrets/postgres-password:ro" \
+    --workdir /opt/rehearsal --entrypoint node \
+    --env "REHEARSAL_OPERATION_ID=$OPERATION_ID" --env "REHEARSAL_DATABASE_HOST=$CONTAINER" \
+    --env "REHEARSAL_SOURCE_REVISION=$DEPLOY_SHA" --env "REHEARSAL_ARCHIVE_SHA256=$ARCHIVE_SHA256" \
+    --env "REHEARSAL_MANIFEST_SHA256=$WEB_POSTGRES_REHEARSAL_MANIFEST_SHA256" --env "REHEARSAL_RUNTIME_IMAGE=$rehearsal_image" \
+    --env "REHEARSAL_MIGRATION_TAG=$WEB_POSTGRES_REHEARSAL_MIGRATION_TAG" \
+    "$rehearsal_image" rehearse.mjs >"$rehearsal_output" 2>"$OPERATION_ROOT/rehearsal-errors.json"
+  REHEARSAL_PROOF="$(cat "$rehearsal_output")"
+fi
 
 read -r TABLE_COUNT ROW_COUNT ARCHIVE_SHA256 < <(
   python3 - "$MANIFEST_PATH" <<'PY'

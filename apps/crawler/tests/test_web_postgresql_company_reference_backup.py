@@ -179,7 +179,9 @@ def test_new_packet_never_falls_back_to_historical_contract(tmp_path, mutation):
         "archive_sha256": backup._sha256_file(dump),
         "bootstrap": bootstrap.name,
         "bootstrap_sha256": backup._sha256_file(bootstrap),
-        "tables": [f"{schema}.{table}" for schema, table in backup.WEB_POSTGRES_REFERENCE_TABLES],
+        "tables": [
+            f"{schema}.{table}" for schema, table in backup._web_postgres_tables("expanded", 2)
+        ],
         "sequences": [f"{schema}.{table}" for schema, table in backup.WEB_POSTGRES_SEQUENCES],
     }
     if mutation == "missing_phase":
@@ -225,7 +227,16 @@ def local_clusters():
                 socket = root / f"{name}-socket"
                 socket.mkdir()
                 command(
-                    ["initdb", "-D", str(data), "-U", "postgres", "--auth=trust", "--no-locale"]
+                    [
+                        "initdb",
+                        "-D",
+                        str(data),
+                        "-U",
+                        "postgres",
+                        "--auth=trust",
+                        "--no-locale",
+                        "--encoding=UTF8",
+                    ]
                 )
                 command(
                     [
@@ -248,9 +259,20 @@ def local_clusters():
                     command(["pg_ctl", "-D", str(root / name), "-m", "immediate", "-w", "stop"])
 
 
-@pytest.mark.parametrize("phase", backup.WEB_POSTGRES_REFERENCE_PHASES)
+@pytest.mark.parametrize(
+    "phase,packet_version",
+    [
+        ("legacy", 1),
+        ("legacy", 2),
+        ("expanded", 2),
+        ("reference", 2),
+        ("legacy", 3),
+        ("expanded", 3),
+        ("reference", 3),
+    ],
+)
 def test_actual_selective_archive_restores_reference_phase_and_smoke(
-    monkeypatch, local_clusters, phase
+    monkeypatch, local_clusters, phase, packet_version
 ):
     """Real pg_dump/pg_restore, no Docker socket, no production connection.
 
@@ -332,6 +354,23 @@ def test_actual_selective_archive_restores_reference_phase_and_smoke(
         "INSERT INTO followed_company(user_id,company_id) VALUES ('backup-fixture','0"
         "0000000-0000-0000-0000-000000000201');"
     )
+    if packet_version == 3 and phase == "legacy":
+        journal = json.loads((ROOT / "apps/web/drizzle/meta/_journal.json").read_text())
+        prerequisite = next(
+            row for row in journal["entries"] if row["tag"] == "0099_product_news_consent"
+        )
+        prerequisite_hash = backup._sha256_file(
+            ROOT / "apps/web/drizzle/0099_product_news_consent.sql"
+        )
+        psql(
+            "INSERT INTO drizzle.__drizzle_migrations(hash,created_at) "
+            f"VALUES ('{prerequisite_hash}',{prerequisite['when']})"
+        )
+    if packet_version == 3:
+        psql(
+            "INSERT INTO company_description(company_id,locale,description) "
+            "VALUES ('00000000-0000-0000-0000-000000000201','en','Retained description')"
+        )
     migration_root = ROOT / "apps/crawler/tests/fixtures/company-reference"
     for name, timestamp, expected in (
         (
@@ -368,10 +407,12 @@ def test_actual_selective_archive_restores_reference_phase_and_smoke(
         )
     monkeypatch.setattr(backup, "_web_psql", lambda sql, **_: psql(sql))
     assert backup._web_postgres_reference_phase(env={}) == phase
-    backup._validate_web_postgres_boundary(env={}, phase=phase)
-    dependencies = backup._web_postgres_dependencies(env={}, phase=phase)
+    backup._validate_web_postgres_boundary(env={}, phase=phase, packet_version=packet_version)
+    dependencies = backup._web_postgres_dependencies(
+        env={}, phase=phase, packet_version=packet_version
+    )
     assert dependencies == sorted(backup.WEB_POSTGRES_DEPENDENCY_SQL)
-    before = backup._web_postgres_fingerprints(env={}, phase=phase)
+    before = backup._web_postgres_fingerprints(env={}, phase=phase, packet_version=packet_version)
     sequences = backup._web_postgres_sequence_fingerprints(env={})
     dump = root / "web-postgresql.dump"
     argv = [
@@ -389,13 +430,18 @@ def test_actual_selective_archive_restores_reference_phase_and_smoke(
         "-f",
         str(dump),
     ]
-    for schema, table in (*backup._web_postgres_tables(phase), *backup.WEB_POSTGRES_SEQUENCES):
+    for schema, table in (
+        *backup._web_postgres_tables(phase, packet_version),
+        *backup.WEB_POSTGRES_SEQUENCES,
+    ):
         argv += ["--table", backup._qualified_table(schema, table)]
     command(argv)
-    backup._validate_web_postgres_archive(command(["pg_restore", "--list", str(dump)]), phase)
+    backup._validate_web_postgres_archive(
+        command(["pg_restore", "--list", str(dump)]), phase, packet_version
+    )
     bootstrap = root / "bootstrap.sql"
     bootstrap.write_text(
-        backup._web_postgres_bootstrap_sql(phase, None if phase == "legacy" else dependencies)
+        backup._web_postgres_bootstrap_sql(phase, None if packet_version == 1 else dependencies)
     )
     manifest = {
         "schema_version": 1,
@@ -404,13 +450,16 @@ def test_actual_selective_archive_restores_reference_phase_and_smoke(
         "archive_sha256": backup._sha256_file(dump),
         "bootstrap": bootstrap.name,
         "bootstrap_sha256": backup._sha256_file(bootstrap),
-        "tables": [f"{schema}.{table}" for schema, table in backup._web_postgres_tables(phase)],
+        "tables": [
+            f"{schema}.{table}"
+            for schema, table in backup._web_postgres_tables(phase, packet_version)
+        ],
         "sequences": [f"{schema}.{table}" for schema, table in backup.WEB_POSTGRES_SEQUENCES],
         "fingerprints": before,
         "sequence_fingerprints": sequences,
     }
-    if phase != "legacy":
-        manifest["schema_version"] = 2
+    if packet_version in (2, 3):
+        manifest["schema_version"] = packet_version
         manifest["company_reference_phase"] = phase
         manifest["dependencies"] = dependencies
     manifest_path = root / "manifest.json"
@@ -441,27 +490,34 @@ def test_actual_selective_archive_restores_reference_phase_and_smoke(
     psql(access, target)
     monkeypatch.setattr(backup, "_web_psql", lambda sql, **_: psql(sql, target))
     assert backup._web_postgres_reference_phase(env={}) == phase
-    assert backup._web_postgres_fingerprints(env={}, phase=phase) == before
+    assert (
+        backup._web_postgres_fingerprints(env={}, phase=phase, packet_version=packet_version)
+        == before
+    )
     assert backup._web_postgres_sequence_fingerprints(env={}) == sequences
     monkeypatch.setattr(backup, "_web_postgres_env", lambda: {})
     verified = backup.verify_web_postgresql_restore(manifest_path, dump, bootstrap)
     assert verified["company_reference_phase"] == phase
-    if phase == "legacy":
-        # The same pre-expansion catalogue must also round-trip the new packet
-        # contract; historical fallback remains bound only to version1 bytes.
+    if packet_version in (1, 2):
+        # Historical rows/bootstrap remain exact. Relabelling its incomplete
+        # table boundary as a v3 packet must never certify the new inventory.
+        historical_manifest = manifest.copy()
         manifest.update(
-            {"schema_version": 2, "company_reference_phase": phase, "dependencies": dependencies}
+            {"schema_version": 3, "company_reference_phase": phase, "dependencies": dependencies}
         )
-        bootstrap.write_text(backup._web_postgres_bootstrap_sql(phase, dependencies))
-        manifest["bootstrap_sha256"] = backup._sha256_file(bootstrap)
         manifest_path.write_text(json.dumps(manifest))
-        backup.prepare_web_postgresql_restore(manifest_path, dump, bootstrap, compatibility)
-        assert compatibility.read_text() == ""
+        with pytest.raises(backup.BackupError, match="table boundary"):
+            backup.prepare_web_postgresql_restore(manifest_path, dump, bootstrap, compatibility)
+        manifest = historical_manifest
+        manifest_path.write_text(json.dumps(manifest))
+    else:
         assert (
-            backup.verify_web_postgresql_restore(manifest_path, dump, bootstrap)[
-                "company_reference_phase"
-            ]
-            == phase
+            psql(
+                "SELECT description FROM company_description "
+                "WHERE company_id='00000000-0000-0000-0000-000000000201'",
+                target,
+            )
+            == "Retained description"
         )
     if phase != "legacy":
         assert (
@@ -500,7 +556,10 @@ def test_actual_selective_archive_restores_reference_phase_and_smoke(
         ],
         input=smoke,
     )
-    assert backup._web_postgres_fingerprints(env={}, phase=phase) == before
+    assert (
+        backup._web_postgres_fingerprints(env={}, phase=phase, packet_version=packet_version)
+        == before
+    )
     if phase != "legacy":
         assert psql(
             "SELECT source || '|' || verified_at::text FROM company_reference WHERE id='0"
@@ -526,6 +585,64 @@ def test_actual_selective_archive_restores_reference_phase_and_smoke(
         )
         with pytest.raises(backup.BackupError, match="reference_checks"):
             backup._web_postgres_reference_phase(env={})
+
+    if packet_version == 3 and phase == "legacy":
+        command(["pnpm", "--dir", str(ROOT / "apps/web"), "build:company-reference:rehearsal"])
+        bundle = ROOT / "deploy/backups/web-postgresql/company-reference-bundle"
+        allowlist = json.loads((bundle / "manifest.json").read_text())
+        script = """
+          import { createRequire } from 'node:module';
+          import { pathToFileURL } from 'node:url';
+          const require=createRequire(process.env.REHEARSAL_APP_PACKAGE);
+          const postgres=require('postgres');
+          const moduleUrl=pathToFileURL(process.env.REHEARSAL_BUNDLE).href;
+          const {rehearseCompanyReference}=await import(moduleUrl);
+          const sql=postgres({host:process.env.REHEARSAL_SOCKET,database:'postgres',
+            username:'postgres',max:1,prepare:false});
+          try {
+            const target=JSON.parse(process.env.REHEARSAL_TARGET);
+            let refused=false;
+            try { await rehearseCompanyReference(sql,{...target,createdAt:target.createdAt+1}); }
+            catch { refused=true; }
+            if (!refused) throw new Error('Incorrect journal timestamp was accepted');
+            console.log(JSON.stringify(await rehearseCompanyReference(sql,target)));
+          }
+          finally { await sql.end(); }
+        """
+        completed = subprocess.run(
+            ["node", "--input-type=module", "-e", script],
+            cwd=bundle,
+            env={
+                **os.environ,
+                "REHEARSAL_APP_PACKAGE": str(ROOT / "apps/web/package.json"),
+                "REHEARSAL_BUNDLE": str(bundle / "rehearse.mjs"),
+                "REHEARSAL_SOCKET": str(target),
+                "REHEARSAL_TARGET": json.dumps(allowlist["migrations"][0]),
+            },
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        assert completed.returncode == 0, completed.stderr
+        proof = json.loads(completed.stdout)
+        assert proof["preflight"] == proof["postflight"] == "passed"
+        assert proof["dependencies"]["foreignKeyCount"] == 6
+        assert proof["referenceRows"] == 1
+        assert set(proof["preserved"]) == {
+            table
+            for schema, table in backup._web_postgres_tables("legacy", 3)
+            if schema == "public"
+        }
+        after_rehearsal = backup._web_postgres_fingerprints(
+            env={}, phase="legacy", packet_version=3
+        )
+        assert {
+            key: value for key, value in after_rehearsal.items() if not key.startswith("drizzle.")
+        } == {key: value for key, value in before.items() if not key.startswith("drizzle.")}
+        assert (
+            after_rehearsal["drizzle.__drizzle_migrations"]["rows"]
+            == before["drizzle.__drizzle_migrations"]["rows"] + 1
+        )
 
 
 @pytest.mark.parametrize(

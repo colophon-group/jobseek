@@ -42,7 +42,8 @@
     "test:jev-live": "tsx scripts/test-jev-ai-filter-live.ts",
     "typecheck": "next typegen && tsc",
     "test:company-reference": "vitest run --config vitest.company-reference.config.ts",
-    "test:company-reference:browser": "pnpm compile && tsx scripts/test-company-reference-browser.ts"
+    "test:company-reference:browser": "pnpm compile && tsx scripts/test-company-reference-browser.ts",
+    "build:company-reference:rehearsal": "tsx scripts/build-company-reference-rehearsal.ts"
   },
   "dependencies": {
     "@formatjs/intl-localematcher": "^0.8.13",
@@ -104,6 +105,7 @@
     "@vitest/ui": "^5.0.0",
     "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.10",
+    "esbuild": "0.28.1",
     "eslint": "^10.10.0",
     "happy-dom": "^20.14.3",
     "playwright": "^1.63.0",

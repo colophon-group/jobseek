@@ -90,7 +90,9 @@ is_company_reference_path() {
   local file="$1"
   case "$file" in
     apps/web/* | apps/crawler/src/* | apps/crawler/go/typesense-exporter/* | \
-      apps/crawler/data/companies.csv | .github/* | scripts/company-reference-ci.test.mjs | \
+      apps/crawler/data/companies.csv | .github/* | scripts/company-reference*.mjs | \
+      scripts/jobseek-data-backup.py | deploy/backups/* | apps/crawler/tests/test_web_postgresql*.py | \
+      apps/crawler/tests/test_company_reference_rehearsal.py | apps/crawler/tests/test_data_backup.py | \
       packages/mcp-server/* | package.json | pnpm-lock.yaml | pnpm-workspace.yaml | patches/*)
       return 0 ;;
   esac

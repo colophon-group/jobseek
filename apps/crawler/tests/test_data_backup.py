@@ -117,6 +117,7 @@ esac
             'write_status() { printf "%s" "$SUCCESS" > "$STATUS_CAPTURE"; }',
             "SUCCESS=true",
             'CONTAINER="test-restore"',
+            'REHEARSAL_CONTAINER="test-restore-verifier"',
             'NETWORK="test-restore-network"',
             'RESTORE_PATH="$TEST_RESTORE_PATH"',
             'CREDENTIAL_PATH="$TEST_CREDENTIAL_PATH"',
@@ -496,7 +497,7 @@ def test_web_postgresql_backup_dumps_only_the_allowlist_and_cleans(
 ) -> None:
     commands: list[list[str]] = []
     fingerprint = "\n".join(
-        f"{schema}.{table}|1|{'a' * 32}" for schema, table in backup.WEB_POSTGRES_TABLES
+        f"{schema}.{table}|1|{'a' * 32}" for schema, table in backup.WEB_POSTGRES_V3_TABLES
     )
     sequence_fingerprint = "\n".join(
         f"{schema}.{sequence}|42|t" for schema, sequence in backup.WEB_POSTGRES_SEQUENCES
@@ -531,7 +532,7 @@ def test_web_postgresql_backup_dumps_only_the_allowlist_and_cleans(
             (host_path / "web-postgresql.dump").write_bytes(b"portable-logical-dump")
         if "pg_restore" in argv and "--list" in argv:
             toc = []
-            for schema, table in backup.WEB_POSTGRES_TABLES:
+            for schema, table in backup.WEB_POSTGRES_V3_TABLES:
                 toc.append(f"1; 1259 1 TABLE {schema} {table} postgres")
                 toc.append(f"2; 0 1 TABLE DATA {schema} {table} postgres")
             for schema, sequence in backup.WEB_POSTGRES_SEQUENCES:
@@ -557,8 +558,8 @@ def test_web_postgresql_backup_dumps_only_the_allowlist_and_cleans(
 
     result = backup.web_postgresql_backup()
 
-    assert result["table_count"] == len(backup.WEB_POSTGRES_TABLES)
-    assert result["row_count"] == len(backup.WEB_POSTGRES_TABLES)
+    assert result["table_count"] == len(backup.WEB_POSTGRES_V3_TABLES)
+    assert result["row_count"] == len(backup.WEB_POSTGRES_V3_TABLES)
     assert result["repository_snapshot_id"] == "abcdef01"
     assert not (tmp_path / "web-postgresql" / "staging" / "20260803T120000Z").exists()
     dump_command = next(command for command in commands if "pg_dump" in command)
@@ -570,7 +571,7 @@ def test_web_postgresql_backup_dumps_only_the_allowlist_and_cleans(
         if argument == "--table"
     ]
     assert selected == [
-        backup._qualified_table(schema, table) for schema, table in backup.WEB_POSTGRES_TABLES
+        backup._qualified_table(schema, table) for schema, table in backup.WEB_POSTGRES_V3_TABLES
     ] + [
         backup._qualified_table(schema, sequence)
         for schema, sequence in backup.WEB_POSTGRES_SEQUENCES

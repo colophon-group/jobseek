@@ -209,7 +209,7 @@ jobs:
             go_http_pilot:
               - '{pilots/go-http-sitemap/**,.github/workflows/crawler-go-sitemap-shadow.yml,.github/workflows/crawler-sitemap-fleet-benchmark.yml,apps/crawler/Dockerfile,apps/crawler/uv.lock,apps/crawler/data/boards.csv,apps/crawler/src/core/__init__.py,apps/crawler/src/core/monitor.py,apps/crawler/src/core/monitors/raw.py,apps/crawler/src/core/monitors/sitemap.py,apps/crawler/src/shared/__init__.py,apps/crawler/src/shared/ssrf.py,apps/crawler/src/shared/tdm.py}'
             company_reference:
-              - '{apps/web/**,apps/crawler/src/**,apps/crawler/go/typesense-exporter/**,apps/crawler/data/companies.csv,.github/**,scripts/company-reference-ci.test.mjs,packages/mcp-server/**,package.json,pnpm-lock.yaml,pnpm-workspace.yaml,patches/**}'
+              - '{apps/web/**,apps/crawler/src/**,apps/crawler/go/typesense-exporter/**,apps/crawler/data/companies.csv,.github/**,scripts/company-reference*.mjs,scripts/jobseek-data-backup.py,deploy/backups/**,apps/crawler/tests/test_web_postgresql*.py,apps/crawler/tests/test_company_reference_rehearsal.py,apps/crawler/tests/test_data_backup.py,packages/mcp-server/**,package.json,pnpm-lock.yaml,pnpm-workspace.yaml,patches/**}'
             boards_csv:
               - 'apps/crawler/data/boards.csv'
 
@@ -1536,6 +1536,20 @@ jobs:
         run: pnpm --filter @jobseek/web test:company-reference
       - name: Prove authenticated picker save and persisted reload
         run: pnpm --filter @jobseek/web test:company-reference:browser
+
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      - name: Install matching isolated PostgreSQL 17 restore tools
+        run: |
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-17 postgresql-client-17
+          echo /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
+      - name: Prove historical packet compatibility and actual compiled migration rehearsal
+        env:
+          WEB_POSTGRES_BACKUP_LOCAL_RESTORE: "1"
+        run: |
+          node --test scripts/company-reference-rehearsal.test.mjs
+          cd apps/crawler
+          uv run --frozen pytest tests/test_web_postgresql_company_reference_backup.py tests/test_company_reference_rehearsal.py tests/test_web_postgresql_backup_operations.py tests/test_data_backup.py tests/test_web_postgresql_backup_image_gc.py -q
 
   test-web-typesense-e2e:
     name: Test Web Typesense E2E
