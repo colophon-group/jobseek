@@ -133,8 +133,11 @@ export async function auditCompanyReferences(sql: Sql, mode: CompanyReferenceMod
       SELECT has_table_privilege(current_user, 'public.company_reference', 'SELECT')
         AND has_table_privilege(current_user, 'public.company_reference', 'INSERT')
         AND has_table_privilege(current_user, 'public.company_reference', 'UPDATE')
-        AND (r.rolsuper OR r.rolbypassrls OR c.relowner=r.oid) AS allowed
-      FROM pg_roles r, pg_class c WHERE r.rolname=current_user AND c.oid='public.company_reference'::regclass`;
+        AND has_table_privilege(current_user, 'public.company', 'INSERT')
+        AND (r.rolsuper OR r.rolbypassrls OR c.relowner=r.oid)
+        AND (NOT legacy.relrowsecurity OR r.rolsuper OR r.rolbypassrls OR legacy.relowner=r.oid) AS allowed
+      FROM pg_roles r, pg_class c, pg_class legacy WHERE r.rolname=current_user
+        AND c.oid='public.company_reference'::regclass AND legacy.oid='public.company'::regclass`;
     assert(runtime[0]?.allowed, "Connected runtime role cannot read/write company references through RLS");
     const browser = await tx<{ role: string; allowed: boolean }[]>`
       SELECT rolname AS role, has_table_privilege(rolname, 'public.company_reference', 'SELECT,INSERT,UPDATE,DELETE') AS allowed

@@ -163,6 +163,8 @@ describe.skipIf(!url)("company reference expansion with PostgreSQL", () => {
       await restricted.unsafe("SET ROLE company_reference_runtime_fixture");
       await expect(auditCompanyReferences(restricted, "postflight")).rejects.toThrow("runtime role cannot read/write");
       await sql.unsafe("GRANT INSERT, UPDATE ON company_reference TO company_reference_runtime_fixture");
+      await expect(auditCompanyReferences(restricted, "postflight")).rejects.toThrow("runtime role cannot read/write");
+      await sql.unsafe("GRANT INSERT ON company TO company_reference_runtime_fixture");
       expect(await auditCompanyReferences(restricted, "postflight")).toMatchObject({ status: "passed" });
     } finally { await restricted.end(); }
   });
