@@ -1,0 +1,161 @@
+import { randomUUID } from "node:crypto";
+import { AsyncLocalStorage } from "node:async_hooks";
+import type { Sql } from "postgres";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { companyDocument, fixtureClient, resetFixture, seedUser } from "./company-reference/fixture";
+
+const runtime = vi.hoisted(() => ({ client: null as Sql | null, user: null as AsyncLocalStorage<string | null> | null,
+  companies: new Map<string, Record<string, unknown>>(), requests: 0, outage: false }));
+vi.mock("server-only", () => ({}));
+vi.mock("next/server", () => ({ after: () => {} }));
+vi.mock("next/cache", () => ({ revalidatePath: () => {}, updateTag: () => {}, cacheLife: () => {}, cacheTag: () => {} }));
+vi.mock("@/lib/sessionCache", () => ({ getSessionUserId: async () => runtime.user?.getStore() ?? null }));
+vi.mock("@/db", async () => {
+  const { drizzle } = await import("drizzle-orm/postgres-js");
+  const schema = await import("@/db/schema");
+  const { fixtureClient } = await import("./company-reference/fixture");
+  runtime.client = fixtureClient();
+  return { db: drizzle(runtime.client, { schema }) };
+});
+vi.mock("@/lib/cache", () => ({ cached: async (_key: string, load: () => unknown) => load(), invalidate: async () => {},
+  kvMget: async (keys: unknown[]) => keys.map(() => null), kvGet: async () => null, kvSet: async () => {} }));
+vi.mock("@/lib/rate-limit", () => ({ sharedWatchlistCloneLimiter: { limit: async () => ({ success: true }) } }));
+// Fixture sits at the external provider boundary: all company validation/materialization and SQL run unchanged.
+vi.mock("@/lib/search/typesense-client", () => ({ getSearchClient: () => ({ collections: () => ({ documents: (id?: string) => ({
+  retrieve: async () => {
+    runtime.requests++;
+    if (runtime.outage) throw Object.assign(new Error("fixture unavailable"), { httpStatus: 503 });
+    const document = id && runtime.companies.get(id);
+    if (!document) throw Object.assign(new Error("fixture absent"), { httpStatus: 404 });
+    return document;
+  },
+  search: async (params: { filter_by?: string }) => {
+    runtime.requests++;
+    if (runtime.outage) throw Object.assign(new Error("fixture unavailable"), { httpStatus: 503 });
+    const hits = [...runtime.companies.values()].filter((doc) => !params.filter_by || params.filter_by.includes(String(doc.id)) || params.filter_by.includes(String(doc.slug))).map(document => ({ document }));
+    return { found: hits.length, hits };
+  },
+}) }) }), getWriteClient: () => null }));
+
+import * as watchlists from "../src/lib/services/watchlists";
+import { toggleStarredCompany, getStarredCompanyIds } from "../src/lib/actions/starred-companies";
+
+let sql: ReturnType<typeof fixtureClient>;
+let owner: string;
+let stranger: string;
+const as = <T>(id: string | null, fn: () => Promise<T>) => runtime.user!.run(id, fn);
+const document = () => { const doc = companyDocument(); runtime.companies.set(doc.id, doc); return doc; };
+async function create(ids: string[] = []) {
+  const result = await as(owner, () => watchlists.createWatchlist({ title: "Fixture watchlist", companyIds: ids, filters: { anyCompany: false } }));
+  expect(result).not.toHaveProperty("error");
+  if (!("id" in result)) throw new Error("Fixture create failed");
+  return result.id;
+}
+async function membership(id: string) {
+  return (await sql`SELECT company_id FROM watchlist_company WHERE watchlist_id=${id} ORDER BY company_id`).map(row => row.company_id);
+}
+async function absent(id: string) {
+  expect(await sql`SELECT id FROM company_reference WHERE id=${id}`).toHaveLength(0);
+  expect(await sql`SELECT id FROM company WHERE id=${id}`).toHaveLength(0);
+}
+
+beforeAll(() => { runtime.user = new AsyncLocalStorage(); sql = runtime.client!;
+  vi.stubEnv("TYPESENSE_HOST", "127.0.0.1"); vi.stubEnv("TYPESENSE_PORT", "1"); vi.stubEnv("TYPESENSE_PROTOCOL", "http"); vi.stubEnv("TYPESENSE_SEARCH_KEY", "fixture");
+});
+beforeEach(async () => {
+  await resetFixture(sql); owner = (await seedUser(sql)).id; stranger = (await seedUser(sql)).id;
+  runtime.companies.clear(); runtime.requests = 0; runtime.outage = false;
+});
+afterAll(async () => { await sql?.end({ timeout: 5 }); });
+
+describe("company selection persistence against real PostgreSQL", () => {
+  it("creates from canonical search without either pre-existing representation and reloads/shares/copies", async () => {
+    const doc = document(); await absent(doc.id);
+    const id = await create([doc.id]);
+    expect(await membership(id)).toEqual([doc.id]);
+    expect((await sql`SELECT name, slug, source, verified_at FROM company_reference WHERE id=${doc.id}`)[0]).toMatchObject({ name: doc.name, slug: doc.slug, source: "typesense" });
+    expect((await sql`SELECT verified_at FROM company_reference WHERE id=${doc.id}`)[0].verified_at).toBeInstanceOf(Date);
+    const detail = await watchlists.getOwnedWatchlistById(id, owner);
+    expect(detail?.companies).toEqual([{ id: doc.id, name: doc.name, slug: doc.slug, icon: null }]);
+    expect(await as(owner, () => watchlists.shareWatchlist(id))).toHaveProperty("ok", true);
+    expect((await watchlists.getSharedWatchlistById(id))?.companies.map(company => company.id)).toEqual([doc.id]);
+    const copy = await as(stranger, () => watchlists.copySharedWatchlist(id));
+    expect(copy).toHaveProperty("id");
+    if ("id" in copy) expect(await membership(copy.id)).toEqual([doc.id]);
+  });
+
+  it("replaces membership, adds one company, stars, and hydrates handoff slugs", async () => {
+    const id = await create();
+    const replaced = document(); await absent(replaced.id);
+    expect(await as(owner, () => watchlists.updateWatchlist({ watchlistId: id, companyIds: [replaced.id] }))).toHaveProperty("slug");
+    const added = document(); await absent(added.id);
+    expect(await as(owner, () => watchlists.addCompanyToWatchlist(id, added.id))).toMatchObject({ ok: true });
+    const starred = document(); await absent(starred.id);
+    expect(await as(owner, () => toggleStarredCompany(starred.id))).toMatchObject({ starred: true });
+    expect(await as(owner, getStarredCompanyIds)).toEqual([starred.id]);
+    const handed = document(); await absent(handed.id);
+    const result = await as(owner, () => watchlists.createWatchlistFromHandoff({ title: "Handoff fixture", companySlugs: [handed.slug] }));
+    expect(result).toHaveProperty("id");
+    if ("id" in result) expect(await membership(result.id)).toEqual([handed.id]);
+  });
+
+  it("fails whole replacement for a partially missing batch without changing membership, title, or references", async () => {
+    const existing = document(); const id = await create([existing.id]);
+    const fresh = document(); const unknown = randomUUID();
+    const before = await sql`SELECT title, slug FROM watchlist WHERE id=${id}`;
+    expect(await as(owner, () => watchlists.updateWatchlist({ watchlistId: id, title: "Rejected replacement", companyIds: [fresh.id, unknown] }))).toEqual({ error: "unknown_company" });
+    expect(await membership(id)).toEqual([existing.id]);
+    expect(await sql`SELECT title, slug FROM watchlist WHERE id=${id}`).toEqual(before);
+    await absent(fresh.id);
+  });
+
+  it("preserves existing selections during outage/retirement and explicitly rejects unknown references", async () => {
+    const existing = document(); const id = await create([existing.id]);
+    runtime.companies.delete(existing.id); runtime.outage = true;
+    expect(await as(owner, () => watchlists.updateWatchlist({ watchlistId: id, companyIds: [existing.id] }))).toHaveProperty("slug");
+    expect(await create([existing.id])).toBeTruthy();
+    expect((await watchlists.getOwnedWatchlistById(id, owner))?.companies[0].name).toBe(existing.name);
+    const unknown = randomUUID();
+    expect(await as(owner, () => watchlists.updateWatchlist({ watchlistId: id, companyIds: [unknown] }))).toEqual({ error: "company_lookup_unavailable" });
+    expect(await membership(id)).toEqual([existing.id]);
+    expect(await as(owner, () => watchlists.removeCompanyFromWatchlist(id, existing.id))).toMatchObject({ ok: true });
+    expect(await membership(id)).toEqual([]);
+  });
+
+  it("authorizes before provider lookup or materialization, and rejects unauthenticated stars", async () => {
+    const id = await create(); const fresh = document();
+    runtime.requests = 0;
+    expect(await as(stranger, () => watchlists.updateWatchlist({ watchlistId: id, companyIds: [fresh.id] }))).toEqual({ error: "not_found" });
+    expect(await as(stranger, () => watchlists.addCompanyToWatchlist(id, fresh.id))).toMatchObject({ ok: false });
+    expect(await as(null, () => toggleStarredCompany(fresh.id))).rejects.toThrow("Not authenticated");
+    expect(runtime.requests).toBe(0); await absent(fresh.id);
+  });
+
+  it("creates the same missing reference concurrently with idempotent SQL insertion", async () => {
+    const fresh = document(); await absent(fresh.id);
+    const results = await Promise.all([create([fresh.id]), create([fresh.id]), as(stranger, () => toggleStarredCompany(fresh.id))]);
+    expect(results[2]).toMatchObject({ starred: true });
+    expect(await sql`SELECT id FROM company_reference WHERE id=${fresh.id}`).toHaveLength(1);
+    expect(await sql`SELECT id FROM company WHERE id=${fresh.id}`).toHaveLength(1);
+  });
+
+  it("keeps the account capacity check atomic without orphaning new references", async () => {
+    for (let i = 0; i < 9; i++) await create();
+    const one = document(); const two = document();
+    const results = await Promise.all([one, two].map(doc => as(owner, () => watchlists.createWatchlist({ title: `Capacity ${doc.id}`, companyIds: [doc.id] }))));
+    expect(results.filter(result => "id" in result)).toHaveLength(1);
+    expect(results.filter(result => "error" in result)).toEqual([{ error: "limit_reached" }]);
+    const persisted = await sql`SELECT id FROM company_reference WHERE id IN (${one.id}, ${two.id})`;
+    expect(persisted).toHaveLength(1);
+  });
+
+  it("enforces real foreign keys and rolls back reference inserts when membership insertion fails", async () => {
+    const fresh = document();
+    await sql.unsafe(`CREATE FUNCTION reject_fixture_membership() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'fixture rejection'; END $$;
+      CREATE TRIGGER reject_fixture_membership BEFORE INSERT ON watchlist_company FOR EACH ROW EXECUTE FUNCTION reject_fixture_membership()`);
+    expect(await as(owner, () => watchlists.createWatchlist({ title: "Rollback", companyIds: [fresh.id] }))).rejects.toThrow();
+    expect(await sql`SELECT id FROM watchlist`).toHaveLength(0); await absent(fresh.id);
+    const other = randomUUID();
+    await expect(sql`INSERT INTO followed_company (user_id, company_id) VALUES (${owner}, ${other})`).rejects.toMatchObject({ code: "23503" });
+  });
+});

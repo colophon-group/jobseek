@@ -84,6 +84,7 @@ jobs:
           scripts/vercel-web-deploy-paths.test.mjs
           scripts/vercel-server-action-key.test.mjs
           scripts/vercel-smoke-response.test.mjs
+          scripts/company-reference-ci.test.mjs
           scripts/vercel-company-cache.test.mjs
           scripts/vercel-production-sha.test.mjs
           scripts/vercel-promotion-identity.test.mjs
@@ -135,6 +136,7 @@ jobs:
       crawler_code: ${{ steps.manual-default.outputs.crawler_code || steps.manual-pr.outputs.crawler_code || steps.filter-combined.outputs.crawler_code }}
       go_http_pilot: ${{ steps.manual-default.outputs.go_http_pilot || steps.manual-pr.outputs.go_http_pilot || steps.filter.outputs.go_http_pilot }}
       boards_csv: ${{ steps.manual-default.outputs.boards_csv || steps.manual-pr.outputs.boards_csv || steps.filter.outputs.boards_csv }}
+      company_reference: ${{ steps.manual-default.outputs.company_reference || steps.manual-pr.outputs.company_reference || steps.filter.outputs.company_reference }}
       is_pr: ${{ steps.manual-default.outputs.is_pr || steps.manual-pr.outputs.is_pr || steps.pull-request.outputs.is_pr }}
       base_ref: ${{ steps.manual-default.outputs.base_ref || steps.manual-pr.outputs.base_ref || steps.pull-request.outputs.base_ref }}
     steps:
@@ -147,6 +149,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.pr == ''
         run: |
           {
+            echo "company_reference=true"
             echo "code=true"
             echo "crawler_code=false"
             echo "go_http_pilot=true"
@@ -205,6 +208,8 @@ jobs:
               - '{apps/crawler/data/{industries,occupations,seniority,technologies}.csv,scripts/{derive-crawler-runtime-contract.mjs,verify-crawler-release-bridge.py}}'
             go_http_pilot:
               - '{pilots/go-http-sitemap/**,.github/workflows/crawler-go-sitemap-shadow.yml,.github/workflows/crawler-sitemap-fleet-benchmark.yml,apps/crawler/Dockerfile,apps/crawler/uv.lock,apps/crawler/data/boards.csv,apps/crawler/src/core/__init__.py,apps/crawler/src/core/monitor.py,apps/crawler/src/core/monitors/raw.py,apps/crawler/src/core/monitors/sitemap.py,apps/crawler/src/shared/__init__.py,apps/crawler/src/shared/ssrf.py,apps/crawler/src/shared/tdm.py}'
+            company_reference:
+              - '{apps/web/**,apps/crawler/src/**,apps/crawler/go/typesense-exporter/**,apps/crawler/data/companies.csv,.github/**,scripts/company-reference-ci.test.mjs,packages/mcp-server/**,package.json,pnpm-lock.yaml,pnpm-workspace.yaml,patches/**}'
             boards_csv:
               - 'apps/crawler/data/boards.csv'
 
@@ -1411,6 +1416,42 @@ jobs:
 
       - run: pnpm --filter @jobseek/trace-viewer build
 
+  test-company-reference:
+    name: Test Company Reference Contract
+    needs: changes
+    if: needs.changes.outputs.company_reference == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        env:
+          POSTGRES_DB: jobseek_company_reference_ci_fixture
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d jobseek_company_reference_ci_fixture"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      COMPANY_REFERENCE_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/jobseek_company_reference_ci_fixture
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Prove first-use references and transaction invariants
+        run: pnpm --filter @jobseek/web test:company-reference
+      - name: Install browser
+        run: pnpm --filter @jobseek/web exec playwright install --with-deps chromium
+      - name: Prove authenticated picker save and persisted reload
+        run: pnpm --filter @jobseek/web test:company-reference:browser
+
   test-web-typesense-e2e:
     name: Test Web Typesense E2E
     needs: changes
@@ -2049,6 +2090,7 @@ jobs:
       - type-all
       - test-web
       - test-web-typesense-e2e
+      - test-company-reference
       - test-web-isr
       - test-shim
       - test-crawler
@@ -2080,6 +2122,7 @@ jobs:
           const eventName = process.env.EVENT_NAME;
           const code = needs.changes?.outputs?.code === "true";
           const crawlerCode = needs.changes?.outputs?.crawler_code === "true";
+          const companyReference = needs.changes?.outputs?.company_reference === "true";
           const goHttpPilot = needs.changes?.outputs?.go_http_pilot === "true";
           const boardsCsv = needs.changes?.outputs?.boards_csv === "true";
           const isPr = needs.changes?.outputs?.is_pr === "true";
@@ -2100,6 +2143,7 @@ jobs:
           requireSuccess("workflow-security");
           requireSuccess("changes");
           requireSuccess("data-validation");
+          requireSuccess("test-company-reference", companyReference);
           requireSuccess("test-go-http-pilot", goHttpPilot);
           requireSuccess("test-go-b0-supervisor", crawlerCode);
           requireSuccess("test-go-b0-executor", crawlerCode);
