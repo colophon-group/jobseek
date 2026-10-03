@@ -136,6 +136,7 @@ func TestRealFirstOwnershipHostContainersCutoverAndRecovery(t *testing.T) {
 				`"$(id -un)" == deploy`:                        `"$(id -un)" == "$(id -un)"`,
 				"expected_image=$CRAWLER_IMAGE_REF":            "expected_image=$FIXTURE_IMAGE_ID",
 				"expected_image=$BROWSER_IMAGE_REF":            "expected_image=$FIXTURE_IMAGE_ID",
+				`"false:no:$CRAWLER_IMAGE_REF"`:                `"false:no:$FIXTURE_IMAGE_ID"`,
 			} {
 				if !strings.Contains(wrapper, old) {
 					t.Fatal("host fixture replacement no longer matches the production driver")
@@ -206,6 +207,10 @@ func TestRealFirstOwnershipHostContainersCutoverAndRecovery(t *testing.T) {
 			if _, err := os.Stat(filepath.Join(dir, ".ordinary-go-owner-v1")); !os.IsNotExist(err) {
 				t.Fatal("successful recovery retained a pending owner")
 			}
+			if id := strings.TrimSpace(string(must("docker", "compose", "--profile", "ordinary-go", "ps", "-aq", "ordinary-go"))); id != "" {
+				t.Fatal("successful retirement retained a stopped prior-image native container")
+			}
+			must("docker", "image", "inspect", "-f", "{{.Id}}", image)
 			var state string
 			if err := f.pg.QueryRow(ctx, "SELECT state FROM ordinary_worker_ownership_plan WHERE plan_sha256=$1", plan.SHA256()).Scan(&state); err != nil || state != "retired" {
 				t.Fatal("physical recovery did not retire SQL ownership", err)
