@@ -1,5 +1,42 @@
 # Go and Lightpanda migration continuation plan
 
+The protected journal now adds seven B0/ordinary restoration stages after the
+exact reversal reservation. Requests retain original E, forward N/ordinary plan,
+reversal, R and canonical typed inputs. Immutable ancestry binds target/Lua and
+source receipts: historical E uses the original prior receipt; candidate N must
+name the completed forward transfer receipt. Canonical plans are content hashed
+and fsynced before their successors; inspection cannot adopt a latest epoch.
+
+Actual private PostgreSQL/Redis tests complete fourteen phases and exact historical
+retries without R+1. Altered source/retirement/receipt/target/Lua/native mode refuse
+before effects; B0 restoration and ordinary retention recover returned-effect
+interruptions. Canonical rows and unrelated Redis values remain unchanged, the
+source tombstone binds the exact plan/receipt, and historical native queue keys
+are retired. This uses an empty B0 queue and synthetic prior receipt/host labels.
+The full worker race suite passes in 42.910 seconds, producer races in 2.269
+seconds, both Linux architecture vets/tidy and 94 repository tests pass (three
+optional skips). Nonempty restoration, SIGKILL restoration, reactivation,
+finalization and full startup/readiness still require proof.
+
+Installed run `37091474326` at `a7d669e2b` failed on both architectures before
+producer start: trimpath omits linker flags from Go build metadata. Its initial
+four-phase raw host/selected-Redis proofs are now independently verified. A new
+read-only `--build-info` command reports the actual linked source, OS, architecture
+and Go version without runtime configuration. The fixture joins it to extracted
+image bytes and existing process/fixed-peer checks; fresh installed forward proof
+is required. Whole-B0 run `37088947323` at `eb607acac` is independently recomputed
+successful; its generated startup workload does not establish full-service cost
+or every-profile parity. See [restoration checkpoint](evidence/go-ordinary-native-host-restoration-journal-2026-10-03.json).
+
+Next prove the fresh installed forward fixture, finish nonempty restoration and
+the reactivation/finalization journal, then authenticate expected host changes
+and retain the original outer lock through complete restoration, SQL release and
+full-stack readiness. Every enabled profile/consumer/output/database/publisher/
+freshness/queue, whole-service resources/cost, exact gates, cutover/cold reversal
+and rollback window remain required before runtime Python/Playwright/Chromium
+retirement. The full migration goal remains active, PR #10210 draft, production
+unchanged. Earlier entries retain their source-scoped observations.
+
 The protected journal now adds reversal begin, retirement reservation and exact
 inspection. Closed requests bind original E, forward N/ordinary plan and a
 protected canonical reversal specification. Only a completed forward anchor may

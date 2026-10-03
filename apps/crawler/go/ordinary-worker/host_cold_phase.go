@@ -19,26 +19,30 @@ import (
 // Inputs are content hashes in the existing private host store, never paths,
 // connection URLs, shell commands, environment maps or a request for "latest".
 type HostColdPhaseRequest struct {
-	Version              string                   `json:"version"`
-	Binding              queue.HostColdSQLBinding `json:"binding"`
-	RedisEndpointSHA256  string                   `json:"redis_endpoint_sha256"`
-	RedisInstanceSHA256  string                   `json:"redis_instance_sha256"`
-	PredecessorSHA256    string                   `json:"predecessor_result_sha256,omitempty"`
-	Operation            string                   `json:"operation"`
-	PreviousEpoch        int64                    `json:"previous_epoch"`
-	IntentSHA256         string                   `json:"intent_sha256,omitempty"`
-	TargetSHA256         string                   `json:"target_sha256,omitempty"`
-	LuaSHA256            string                   `json:"lua_sha256,omitempty"`
-	Namespace            string                   `json:"namespace,omitempty"`
-	Shard                string                   `json:"shard,omitempty"`
-	Cohort               string                   `json:"cohort,omitempty"`
-	RoutingEpoch         int64                    `json:"routing_epoch,omitempty"`
-	PlanSHA256           string                   `json:"plan_sha256,omitempty"`
-	ForwardRequestSHA256 string                   `json:"forward_request_sha256,omitempty"`
-	ForwardPlanSHA256    string                   `json:"forward_plan_sha256,omitempty"`
-	ForwardReceiptSHA256 string                   `json:"forward_receipt_sha256,omitempty"`
-	ReversalSHA256       string                   `json:"reversal_sha256,omitempty"`
-	RetirementEpoch      int64                    `json:"retirement_epoch,omitempty"`
+	Version                       string                   `json:"version"`
+	Binding                       queue.HostColdSQLBinding `json:"binding"`
+	RedisEndpointSHA256           string                   `json:"redis_endpoint_sha256"`
+	RedisInstanceSHA256           string                   `json:"redis_instance_sha256"`
+	PredecessorSHA256             string                   `json:"predecessor_result_sha256,omitempty"`
+	Operation                     string                   `json:"operation"`
+	PreviousEpoch                 int64                    `json:"previous_epoch"`
+	IntentSHA256                  string                   `json:"intent_sha256,omitempty"`
+	TargetSHA256                  string                   `json:"target_sha256,omitempty"`
+	LuaSHA256                     string                   `json:"lua_sha256,omitempty"`
+	Namespace                     string                   `json:"namespace,omitempty"`
+	Shard                         string                   `json:"shard,omitempty"`
+	Cohort                        string                   `json:"cohort,omitempty"`
+	RoutingEpoch                  int64                    `json:"routing_epoch,omitempty"`
+	PlanSHA256                    string                   `json:"plan_sha256,omitempty"`
+	ForwardRequestSHA256          string                   `json:"forward_request_sha256,omitempty"`
+	ForwardPlanSHA256             string                   `json:"forward_plan_sha256,omitempty"`
+	ForwardReceiptSHA256          string                   `json:"forward_receipt_sha256,omitempty"`
+	ReversalSHA256                string                   `json:"reversal_sha256,omitempty"`
+	RetirementEpoch               int64                    `json:"retirement_epoch,omitempty"`
+	RestoreRequestSHA256          string                   `json:"restore_request_sha256,omitempty"`
+	B0RollbackPlanSHA256          string                   `json:"b0_rollback_plan_sha256,omitempty"`
+	OrdinaryRequestSHA256         string                   `json:"ordinary_request_sha256,omitempty"`
+	OrdinaryRestorationPlanSHA256 string                   `json:"ordinary_restoration_plan_sha256,omitempty"`
 }
 
 type HostColdPhaseResult struct {
@@ -164,7 +168,11 @@ func decodeHostColdPhase(body []byte, sha string, binding queue.HostColdSQLBindi
 			return r, errHostPreflight
 		}
 	default:
-		if hostColdReversalOperation(r.Operation) {
+		if hostColdRestorationOperation(r.Operation) {
+			if validateHostColdRestorationRequest(r) != nil {
+				return r, errHostPreflight
+			}
+		} else if hostColdReversalOperation(r.Operation) {
 			if validateHostColdReversalRequest(r) != nil {
 				return r, errHostPreflight
 			}
@@ -172,10 +180,10 @@ func decodeHostColdPhase(body []byte, sha string, binding queue.HostColdSQLBindi
 			return r, errHostPreflight
 		}
 	}
-	if !coldB0ForwardOperation(r.Operation) && !hostColdReversalOperation(r.Operation) && (r.RoutingEpoch != 0 || r.PlanSHA256 != "" || r.ForwardRequestSHA256 != "" || r.ForwardPlanSHA256 != "" || r.ForwardReceiptSHA256 != "") {
+	if !coldB0ForwardOperation(r.Operation) && !hostColdRetirementOperation(r.Operation) && (r.RoutingEpoch != 0 || r.PlanSHA256 != "" || r.ForwardRequestSHA256 != "" || r.ForwardPlanSHA256 != "" || r.ForwardReceiptSHA256 != "") {
 		return r, errHostPreflight
 	}
-	if !hostColdReversalOperation(r.Operation) && (r.ReversalSHA256 != "" || r.RetirementEpoch != 0) {
+	if !hostColdRetirementOperation(r.Operation) && (r.ReversalSHA256 != "" || r.RetirementEpoch != 0) || !hostColdRestorationOperation(r.Operation) && !hostColdRestorationInputsEmpty(r) {
 		return r, errHostPreflight
 	}
 	return r, nil
@@ -222,7 +230,11 @@ func (s *hostColdPhaseScope) predecessor(r HostColdPhaseRequest) (*HostColdPhase
 			return nil, nil, errHostPreflight
 		}
 	default:
-		if hostColdReversalOperation(r.Operation) {
+		if hostColdRestorationOperation(r.Operation) {
+			if s.restorationPredecessor(r, *prior, parent) != nil {
+				return nil, nil, errHostPreflight
+			}
+		} else if hostColdReversalOperation(r.Operation) {
 			if s.reversalPredecessor(r, *prior, parent) != nil {
 				return nil, nil, errHostPreflight
 			}
@@ -282,13 +294,17 @@ func (s *hostColdPhaseScope) config(r HostColdPhaseRequest) (ColdAdminConfig, ma
 		return filepath.Join(s.store.path, name), nil
 	}
 	env := map[string]string{"LOCAL_DATABASE_URL": "host-bound-connection", "REDIS_URL": "host-bound-connection", "ORDINARY_GO_WORKER_MODE": r.Operation, "ORDINARY_OWNERSHIP_SOURCE_REVISION": r.Binding.SourceRevision, "ORDINARY_COLD_ROUTING_EPOCH": strconv.FormatInt(r.PreviousEpoch, 10), "ORDINARY_COLD_B0_NAMESPACE": r.Namespace, "ORDINARY_COLD_B0_SHARD_ID": r.Shard, "ORDINARY_COLD_B0_COHORT": r.Cohort}
-	if coldB0ForwardOperation(r.Operation) || hostColdReversalOperation(r.Operation) {
+	if coldB0ForwardOperation(r.Operation) || hostColdRetirementOperation(r.Operation) {
 		env["ORDINARY_COLD_ROUTING_EPOCH"] = strconv.FormatInt(r.RoutingEpoch, 10)
 		env["ORDINARY_COLD_PLAN_SHA256"] = r.PlanSHA256
 	}
 	if coldB0ForwardOperation(r.Operation) {
 		env["ORDINARY_COLD_B0_FORWARD_PLAN_SHA256"] = r.ForwardPlanSHA256
 		env["ORDINARY_COLD_B0_FORWARD_RECEIPT_SHA256"] = r.ForwardReceiptSHA256
+	}
+	if hostColdRestorationOperation(r.Operation) {
+		env["ORDINARY_COLD_B0_RESTORATION_PLAN_SHA256"] = r.B0RollbackPlanSHA256
+		env["ORDINARY_COLD_ORDINARY_RESTORATION_PLAN_SHA256"] = r.OrdinaryRestorationPlanSHA256
 	}
 	for _, input := range []struct {
 		hash, fileKey, hashKey string
@@ -299,6 +315,8 @@ func (s *hostColdPhaseScope) config(r HostColdPhaseRequest) (ColdAdminConfig, ma
 		{r.TargetSHA256, "ORDINARY_COLD_B0_TARGET_FILE", "ORDINARY_COLD_B0_TARGET_SHA256", 16384},
 		{r.ForwardRequestSHA256, "ORDINARY_COLD_B0_FORWARD_REQUEST_FILE", "ORDINARY_COLD_B0_FORWARD_REQUEST_SHA256", 4096},
 		{r.ReversalSHA256, "ORDINARY_COLD_REVERSAL_FILE", "ORDINARY_COLD_REVERSAL_SHA256", 4096},
+		{r.RestoreRequestSHA256, "ORDINARY_COLD_B0_RESTORE_REQUEST_FILE", "ORDINARY_COLD_B0_RESTORE_REQUEST_SHA256", 4096},
+		{r.OrdinaryRequestSHA256, "ORDINARY_COLD_ORDINARY_RESTORE_REQUEST_FILE", "ORDINARY_COLD_ORDINARY_RESTORE_REQUEST_SHA256", 4096},
 	} {
 		if input.hash == "" {
 			continue
@@ -323,7 +341,13 @@ func (s *hostColdPhaseScope) config(r HostColdPhaseRequest) (ColdAdminConfig, ma
 		if err != nil || spec.SourceRevision != r.Binding.SourceRevision || spec.PreviousEpoch != r.PreviousEpoch || spec.ActiveReleaseSHA256 != s.info.ActiveReleaseSHA256 || spec.TargetReleaseSHA256 != s.info.TargetReleaseSHA256 || spec.RollbackReleaseSHA256 != s.info.RollbackReleaseSHA256 || spec.ColdAttestationSHA256 != s.info.ColdAttestationSHA256 || r.Operation == "cold-begin" && spec.TargetB0ManifestSHA256 != r.TargetSHA256 {
 			return ColdAdminConfig{}, nil, errHostPreflight
 		}
-		if hostColdReversalOperation(r.Operation) && s.checkReversalSpec(r, spec, inputs) != nil {
+		if hostColdRetirementOperation(r.Operation) && s.checkReversalSpec(r, spec, inputs) != nil {
+			return ColdAdminConfig{}, nil, errHostPreflight
+		}
+		if hostColdRestorationOperation(r.Operation) && validateHostColdRestorationInputs(r, spec, inputs) != nil {
+			return ColdAdminConfig{}, nil, errHostPreflight
+		}
+		if coldB0RestorationOperation(r.Operation) && s.checkRestorationSourceReceipt(r, spec, inputs) != nil {
 			return ColdAdminConfig{}, nil, errHostPreflight
 		}
 	}
@@ -362,6 +386,9 @@ func validateHostColdPhaseResult(r HostColdPhaseRequest, result *HostColdPhaseRe
 			return errHostPreflight
 		}
 	default:
+		if hostColdRestorationOperation(r.Operation) {
+			return validateHostColdRestorationResult(r, n, inputs, parent)
+		}
 		if hostColdReversalOperation(r.Operation) {
 			return validateHostColdReversalResult(r, n, parent)
 		}
@@ -479,6 +506,19 @@ func runHostColdPhase(ctx context.Context, pool *pgxpool.Pool, requestSHA string
 	if result.Native != nil && len(result.Native.B0ForwardPlan) != 0 {
 		if s.store.retainLimit("cold-input-"+result.Native.B0ForwardPlanSHA256, result.Native.B0ForwardPlan, nil, 32<<20) != nil {
 			return nil, errHostPreflight
+		}
+	}
+	if result.Native != nil {
+		for _, plan := range []struct {
+			sha  string
+			body []byte
+		}{
+			{result.Native.B0RollbackPlanSHA256, result.Native.B0RollbackPlan},
+			{result.Native.OrdinaryRestorationPlanSHA256, result.Native.OrdinaryRestorationPlan},
+		} {
+			if len(plan.body) != 0 && s.store.retainLimit("cold-input-"+plan.sha, plan.body, nil, 32<<20) != nil {
+				return nil, errHostPreflight
+			}
 		}
 	}
 	if guard() != nil || s.store.retainLimit("cold-result-"+requestSHA+".json", resultBody, hook, 48<<20) != nil || guard() != nil {

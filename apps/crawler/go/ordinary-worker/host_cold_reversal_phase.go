@@ -7,7 +7,7 @@ func hostColdReversalOperation(operation string) bool {
 }
 
 func validateHostColdReversalRequest(r HostColdPhaseRequest) error {
-	if !hostColdReversalOperation(r.Operation) || !planPattern.MatchString(r.PredecessorSHA256) || r.RoutingEpoch <= r.PreviousEpoch || r.RoutingEpoch >= 9999999999999 || !planPattern.MatchString(r.IntentSHA256) || !planPattern.MatchString(r.PlanSHA256) || !planPattern.MatchString(r.ReversalSHA256) || r.TargetSHA256 != "" || r.LuaSHA256 != "" || r.Namespace != "" || r.Shard != "" || r.Cohort != "" || r.ForwardRequestSHA256 != "" || r.ForwardPlanSHA256 != "" || r.ForwardReceiptSHA256 != "" {
+	if !hostColdReversalOperation(r.Operation) || !hostColdRestorationInputsEmpty(r) || !planPattern.MatchString(r.PredecessorSHA256) || r.RoutingEpoch <= r.PreviousEpoch || r.RoutingEpoch >= 9999999999999 || !planPattern.MatchString(r.IntentSHA256) || !planPattern.MatchString(r.PlanSHA256) || !planPattern.MatchString(r.ReversalSHA256) || r.TargetSHA256 != "" || r.LuaSHA256 != "" || r.Namespace != "" || r.Shard != "" || r.Cohort != "" || r.ForwardRequestSHA256 != "" || r.ForwardPlanSHA256 != "" || r.ForwardReceiptSHA256 != "" {
 		return errHostPreflight
 	}
 	if r.Operation == "cold-reversal-inspect" {
@@ -70,20 +70,38 @@ func (s *hostColdPhaseScope) reversalPredecessor(r, prior HostColdPhaseRequest, 
 	if checkHostColdReversalLink(r, prior, parent) != nil {
 		return errHostPreflight
 	}
+	return s.retirementAncestry(r)
+}
+
+func (s *hostColdPhaseScope) retirementAncestry(r HostColdPhaseRequest) error {
 	// Re-check each immutable ancestor, including the completed forward anchor
 	// and original reservation. A retained JSON hash alone cannot grant a branch.
 	seen := map[string]bool{}
+	prior := r
+	var target, lua string
 	for depth := 0; ; depth++ {
 		if depth >= 64 || seen[prior.PredecessorSHA256] {
 			return errHostPreflight
 		}
 		seen[prior.PredecessorSHA256] = true
+		if prior.TargetSHA256 != "" {
+			if target != "" && target != prior.TargetSHA256 {
+				return errHostPreflight
+			}
+			target = prior.TargetSHA256
+		}
+		if prior.LuaSHA256 != "" {
+			if lua != "" && lua != prior.LuaSHA256 {
+				return errHostPreflight
+			}
+			lua = prior.LuaSHA256
+		}
 		p, result, err := s.loadPredecessor(prior)
 		if err != nil {
 			return errHostPreflight
 		}
 		if result == nil {
-			if prior.Operation != "cold-b0-target" {
+			if prior.Operation != "cold-b0-target" || target == "" || lua == "" {
 				return errHostPreflight
 			}
 			return nil
@@ -92,7 +110,11 @@ func (s *hostColdPhaseScope) reversalPredecessor(r, prior HostColdPhaseRequest, 
 			return errHostPreflight
 		}
 		if result.Outcome == "completed" {
-			if hostColdReversalOperation(prior.Operation) {
+			if hostColdRestorationOperation(prior.Operation) {
+				if checkHostColdRestorationLink(prior, *p, result) != nil {
+					return errHostPreflight
+				}
+			} else if hostColdReversalOperation(prior.Operation) {
 				if checkHostColdReversalLink(prior, *p, result) != nil {
 					return errHostPreflight
 				}
@@ -116,7 +138,7 @@ func (s *hostColdPhaseScope) checkReversalSpec(r HostColdPhaseRequest, intent qu
 		if err != nil || prior == nil || parent == nil {
 			return errHostPreflight
 		}
-		if !hostColdReversalOperation(prior.Operation) {
+		if !hostColdRetirementOperation(prior.Operation) {
 			if parent.Outcome != "completed" || reversal.SourcePhase != hostColdReversalSourcePhase(prior.Operation) {
 				return errHostPreflight
 			}

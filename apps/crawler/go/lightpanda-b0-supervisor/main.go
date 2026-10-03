@@ -18,6 +18,13 @@ const (
 )
 
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "--build-info" {
+		if err := writeBuildIdentity(os.Stdout); err != nil {
+			_, _ = fmt.Fprintln(os.Stderr, "Lightpanda B0 build identity unavailable:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(os.Args) == 2 && os.Args[1] == "executor-health" {
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
@@ -80,7 +87,7 @@ func main() {
 		return
 	}
 	if len(os.Args) != 1 {
-		_, _ = fmt.Fprintln(os.Stderr, "usage: lightpanda-b0-supervisor [--healthcheck|--validate-dark]|producer [--healthcheck|--check-activation-sentinel-clearable|--check-activation-sentinel-absent|--clear-activation-sentinel|--initialize-cold ABSOLUTE_DECISION_FILE SHA256]")
+		_, _ = fmt.Fprintln(os.Stderr, "usage: lightpanda-b0-supervisor [--build-info|--healthcheck|--validate-dark]|producer [--healthcheck|--check-activation-sentinel-clearable|--check-activation-sentinel-absent|--clear-activation-sentinel|--initialize-cold ABSOLUTE_DECISION_FILE SHA256]")
 		os.Exit(2)
 	}
 	if err := run(); err != nil {

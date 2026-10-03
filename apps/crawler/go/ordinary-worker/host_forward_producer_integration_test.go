@@ -3,9 +3,11 @@
 package worker
 
 import (
+	"bytes"
 	"context"
 	"debug/buildinfo"
 	"encoding/json"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -28,6 +30,15 @@ type hostForwardFixturePosting struct {
 	First   bool   `json:"first_time"`
 	Score   string `json:"legacy_score"`
 	ReadyMS int64  `json:"ready_ms"`
+}
+
+type hostForwardBuildIdentityOutput struct{ bytes.Buffer }
+
+func (w *hostForwardBuildIdentityOutput) Write(body []byte) (int, error) {
+	if len(body) > 4096-w.Len() {
+		return 0, io.ErrShortBuffer
+	}
+	return w.Buffer.Write(body)
 }
 
 type hostForwardFixtureSeed struct {
@@ -102,24 +113,14 @@ func startHostForwardInstalledProducer(t *testing.T, ctx context.Context, source
 	if err != nil || info.Path != "github.com/colophon-group/jobseek/apps/crawler/go/lightpanda-b0-supervisor" || info.GoVersion != "go1.26.4" {
 		t.Fatal("producer compiled identity")
 	}
-	var compiledSource, compiledArch string
+	var compiledArch string
 	for _, setting := range info.Settings {
 		if setting.Key == "GOARCH" {
 			compiledArch = setting.Value
 		}
-		if setting.Key == "-ldflags" {
-			for _, word := range strings.Fields(setting.Value) {
-				if strings.HasPrefix(word, "main.sourceRevision=") {
-					if compiledSource != "" {
-						t.Fatal("ambiguous producer source flag")
-					}
-					compiledSource = strings.TrimPrefix(word, "main.sourceRevision=")
-				}
-			}
-		}
 	}
-	if compiledSource != source || compiledArch != arch {
-		t.Fatal("producer linked source/architecture")
+	if compiledArch != arch {
+		t.Fatal("producer compiled architecture")
 	}
 	parent := filepath.Dir(b0producer.SocketPath)
 	if os.Mkdir(parent, 0700) != nil {
@@ -150,6 +151,28 @@ func startHostForwardInstalledProducer(t *testing.T, ctx context.Context, source
 		return path
 	}
 	executable := write("installed-producer", binary, 0500)
+	identityCtx, identityCancel := context.WithTimeout(ctx, 5*time.Second)
+	defer identityCancel()
+	identityCommand := exec.CommandContext(identityCtx, executable, "--build-info")
+	identityCommand.Env = []string{}
+	identityCommand.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: 10001, Gid: 10001, Groups: []uint32{}}}
+	var identityOutput hostForwardBuildIdentityOutput
+	identityCommand.Stdout = &identityOutput
+	if identityCommand.Run() != nil {
+		t.Fatal("installed producer read-only build identity")
+	}
+	var identity struct {
+		Schema    string `json:"schema"`
+		Source    string `json:"source_revision"`
+		OS        string `json:"goos"`
+		Arch      string `json:"goarch"`
+		GoVersion string `json:"go_version"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(identityOutput.Bytes()))
+	decoder.DisallowUnknownFields()
+	if decoder.Decode(&identity) != nil || decoder.Decode(new(any)) != io.EOF || identity.Schema != "jobseek.lightpanda-b0.build-identity/v1" || identity.Source != source || identity.OS != "linux" || identity.Arch != arch || identity.GoVersion != info.GoVersion {
+		t.Fatal("producer linked source/architecture identity")
+	}
 	luaPath := write("reviewed-queue.lua", lua, 0400)
 	log, err := os.OpenFile(filepath.Join(parent, "producer.log"), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 	if err != nil {
@@ -213,7 +236,7 @@ func startHostForwardInstalledProducer(t *testing.T, ctx context.Context, source
 	if !ok || stat.Uid != 10001 || stat.Gid != 10001 || stat.Nlink != 1 || stat.Ino == 0 {
 		t.Fatal("actual producer socket inode")
 	}
-	return map[string]any{"source_revision": source, "image_id": image, "architecture": arch, "binary_sha256": proof.Binary, "go_version": info.GoVersion, "pid": pid, "uid": 10001, "gid": 10001, "supplementary_groups": []int{}, "socket_path": b0producer.SocketPath, "socket_device": uint64(stat.Dev), "socket_inode": stat.Ino, "authenticated_fixed_peer_manifest": true, "routing_epoch": epoch, "namespace": "host-selected-redis"}, stop
+	return map[string]any{"source_revision": source, "image_id": image, "architecture": arch, "binary_sha256": proof.Binary, "go_version": info.GoVersion, "build_identity_json": identityOutput.String(), "build_identity_sha256": hostDigest(identityOutput.Bytes()), "pid": pid, "uid": 10001, "gid": 10001, "supplementary_groups": []int{}, "socket_path": b0producer.SocketPath, "socket_device": uint64(stat.Dev), "socket_inode": stat.Ino, "authenticated_fixed_peer_manifest": true, "routing_epoch": epoch, "namespace": "host-selected-redis"}, stop
 }
 
 func validateHostForwardSeedPlan(t *testing.T, seed *hostForwardFixtureSeed, raw json.RawMessage) {
