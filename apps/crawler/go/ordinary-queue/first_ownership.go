@@ -39,7 +39,7 @@ type FirstOwnershipResult struct {
 
 // ActivateFirstOwnershipInHostScope adopts the first ordinary owner without
 // rotating an already proven B0 incarnation. It refuses any other served or
-// retired ordinary plan, native attempt or changed epoch.
+// retired ordinary plan, an attempt before first adoption or changed epoch.
 // The source-pinned B0 conservation audit runs atomically with projection CAS.
 // Projection SAVE is acknowledged BEFORE SQL activation. An active exact retry
 // only observes; it cannot reconstruct a missing projection or repeat SAVE.
@@ -74,7 +74,7 @@ func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client,
  EXISTS(SELECT 1 FROM public.ordinary_worker_write_fence WHERE state='active')`, digest).Scan(&prior, &attempts); err != nil {
 			return err
 		}
-		if prior || attempts {
+		if prior {
 			return ErrAuthorityLost
 		}
 		var body string
@@ -88,6 +88,12 @@ func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client,
 		}
 		plan, err = decodeOwnership(body, digest)
 		if err != nil || plan.SourceRevision() != source || plan.Epoch() != epoch || (!retire && state == "retired") {
+			return ErrAuthorityLost
+		}
+		// A completed exact activation retry observes the same existing owner;
+		// its interrupted attempts must remain available to normal reaping and
+		// recovery when the host restarts that complete, unchanged stack.
+		if attempts && (retire || state != "active") {
 			return ErrAuthorityLost
 		}
 		if !retire {

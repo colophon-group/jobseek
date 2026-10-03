@@ -1970,6 +1970,7 @@ async def test_run_pipeline_drains_in_flight_within_grace(monkeypatch):
         shutdown_event.set()
 
     with (
+        patch("src.workers.pipeline.prepare_legacy_ownership", new=AsyncMock(return_value=None)),
         patch("src.workers.pipeline._discovery_worker", new=fake_worker),
         patch(
             "src.workers.pipeline._reaper_loop",
@@ -2035,6 +2036,7 @@ async def test_run_pipeline_cancels_after_grace_timeout(monkeypatch):
 
     start = time.monotonic()
     with (
+        patch("src.workers.pipeline.prepare_legacy_ownership", new=AsyncMock(return_value=None)),
         patch("src.workers.pipeline._discovery_worker", new=stuck_worker),
         patch(
             "src.workers.pipeline._reaper_loop",
@@ -2092,6 +2094,7 @@ async def test_run_pipeline_browser_drain_outcome_label(monkeypatch):
         shutdown_event.set()
 
     with (
+        patch("src.workers.pipeline.prepare_legacy_ownership", new=AsyncMock(return_value=None)),
         patch("src.workers.pipeline._discovery_worker", new=quick_worker),
         patch(
             "src.workers.pipeline._reaper_loop",
@@ -2145,6 +2148,7 @@ async def test_run_pipeline_zero_grace_cancels_immediately(monkeypatch):
 
     start = time.monotonic()
     with (
+        patch("src.workers.pipeline.prepare_legacy_ownership", new=AsyncMock(return_value=None)),
         patch("src.workers.pipeline._discovery_worker", new=stuck_worker),
         patch(
             "src.workers.pipeline._reaper_loop",

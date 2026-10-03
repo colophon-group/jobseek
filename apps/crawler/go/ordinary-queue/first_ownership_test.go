@@ -195,6 +195,18 @@ func TestRealFirstOwnershipNativeClaimCommitAndRetirement(t *testing.T) {
 	if _, err := applyFirstFixture(t, p, true); !errors.Is(err, ErrAuthorityLost) {
 		t.Fatal("retirement crossed an active native attempt", err)
 	}
+	// A failed full-stack startup retains its pending identity. Repeating
+	// activation observes the already selected owner without touching a live
+	// attempt or repeating SAVE, so the exact native stack can recover it.
+	beforeRetry := snapshot(t, p.f.client)
+	firstFixtureSave(t, p, false)
+	if result, err := applyFirstFixture(t, p, false); err != nil || result.State != "active" {
+		t.Fatal("exact active retry refused its retained native attempt", err)
+	}
+	if !reflect.DeepEqual(beforeRetry, snapshot(t, p.f.client)) {
+		t.Fatal("activation retry changed a native lease or schedule")
+	}
+	firstFixtureSave(t, p, true)
 	due := time.Now().UTC().Add(time.Hour)
 	receipt, err := native.Write(ctx, claim, true, func(ctx context.Context, tx pgx.Tx) error {
 		_, err := tx.Exec(ctx, "UPDATE job_board SET next_check_at=$2 WHERE id=$1::uuid", p.f.task.ID, due)

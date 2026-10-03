@@ -64,6 +64,7 @@ docker() {
       *' --stage-ownership') printf '{"state":"staged"}\n'; return 0 ;;
       *' --activate-first-ownership'|*' --retire-first-ownership')
         [[ -f "$RECEIPT" && -f "$REQUEST" && -f "$DEPLOY_DIR/stopped" ]] || return 93
+        [[ "$TEST_FAILURE" != signal ]] || kill -TERM "$$"
         [[ "$TEST_FAILURE" != admin ]] || return 91
         printf 'native-effect\n' >>"$TEST_LOG"; return 0 ;;
       *' stop --timeout 60 '*) touch "$DEPLOY_DIR/stopped"; return 0 ;;
@@ -151,7 +152,7 @@ def test_complete_first_owner_cutover_and_retirement(
     assert (deploy / ".lightpanda-b0-active-v1").read_bytes() == b0
 
 
-@pytest.mark.parametrize("failure", ["image", "admin", "health", "arm"])
+@pytest.mark.parametrize("failure", ["image", "admin", "health", "arm", "signal"])
 def test_failed_cutover_retains_identity_and_disables_restarts(
     host: tuple[Path, Path, dict[str, str]], failure: str
 ) -> None:

@@ -141,6 +141,9 @@ contain() {
   exit "$status"
 }
 trap contain EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 # Arm recovery before any writer stop or restart-policy effect.
 armed=1
 if [[ "$operation" == activate ]]; then write_receipt pending; else write_receipt retiring; fi

@@ -58,15 +58,21 @@ Recovery fixture expansion has taken too much effort while production ordinary
 and browser workers remain Python. Deliver in this order:
 
 1. Connect and deploy the existing `greenhouse.token-skip/v1` native worker.
-   The main-based `fix-crawler/native-ordinary-cutover` candidate contains the
+   The main-based [PR #10229](https://github.com/colophon-group/jobseek/pull/10229) contains the
    existing processing/persistence code, three ownership/fencing migrations,
    exact legacy exclusion, installed-image source binding, an opt-in native
    Compose service and a first-owner host driver. First adoption and retirement
    preserve the current B0 epoch and receipt. Real private PostgreSQL/Redis tests
    cover native claims, commits, settlement, projection durability and the actual
    compiled administrative command. Shell tests cover complete startup and
-   containment after image, administrative, readiness and restart-arming failure.
-   Next prove the built image and complete host cutover/reversal. Interrupted
+   containment after image, administrative, readiness, restart-arming and signal
+   failure. Native ordinary execution and installed-binary execution passed in
+   CI on the initial `9b6edecc62a77eb7e6c25c4f3e2be0b55993c3f2` candidate;
+   its full crawler suite found four shutdown mocks requiring the new ownership
+   startup dependency. Those fixtures now pass with the affected pipeline/queue
+   suite (170 tests). Exact active retries preserve interrupted leases and repeat
+   no SAVE, allowing the unchanged complete native stack to recover normally.
+   Rerun required CI at the updated head, then prove complete host cutover/reversal. Interrupted
    claims still leave active SQL fences: retirement deliberately refuses these,
    and supported recovery must be completed before production activation.
    Foundation PR #10207 and worker PR #10210 remain preserved drafts; their joint

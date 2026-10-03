@@ -44,7 +44,8 @@ if not ok or type(plan) ~= "table" or type(plan.members) ~= "table" then
     return redis.error_reply("first ordinary ownership rejected")
 end
 for _, member in ipairs(plan.members) do
-    if redis.call("ZSCORE", KEYS[10], "monitor|" .. member.domain .. "|" .. member.board_id) then
+    if operation ~= "inspect-active"
+        and redis.call("ZSCORE", KEYS[10], "monitor|" .. member.domain .. "|" .. member.board_id) then
         return redis.error_reply("first ordinary ownership rejected")
     end
 end
