@@ -66,6 +66,7 @@ Status tags:
   `[runbook]` - salary rollout, native location candidate, actual taxonomy replay,
   and the remaining native executor/worker delivery boundaries.
 - [30 - Native Ordinary Worker Continuation (2026-10-03)](30-native-ordinary-worker-checkpoint-2026-10-03.md)
+- [31 - Native Runtime Consumers Checkpoint (2026-10-03)](31-native-runtime-consumers-checkpoint-2026-10-03.md)
   `[runbook]` - deployed native worker, verified cold recovery, current enabled
   profile inventory and remaining full-migration delivery order.
 
