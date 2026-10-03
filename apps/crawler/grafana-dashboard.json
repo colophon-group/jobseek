@@ -576,7 +576,7 @@
             "type": "prometheus",
             "uid": "grafanacloud-prom"
           },
-          "expr": "sum by (kind, status) (rate(crawler_tasks_total{instance=~\"worker-.*\"}[$__rate_interval])) * 60",
+          "expr": "sum by (kind, status) (rate(crawler_tasks_total{instance=~\"worker-.*|ordinary-go\"}[$__rate_interval])) * 60",
           "legendFormat": "{{kind}}-{{status}}"
         }
       ],
@@ -632,7 +632,7 @@
             "type": "prometheus",
             "uid": "grafanacloud-prom"
           },
-          "expr": "sum(rate(crawler_tasks_total{instance=~\"worker-.*\", status=\"succeeded\"}[5m])) / sum(rate(crawler_tasks_total{instance=~\"worker-.*\"}[5m]))",
+          "expr": "sum(rate(crawler_tasks_total{instance=~\"worker-.*|ordinary-go\", status=\"succeeded\"}[5m])) / sum(rate(crawler_tasks_total{instance=~\"worker-.*|ordinary-go\"}[5m]))",
           "legendFormat": "Success Rate"
         }
       ],
@@ -684,7 +684,7 @@
             "type": "prometheus",
             "uid": "grafanacloud-prom"
           },
-          "expr": "sum by (action) (rate(crawler_monitor_jobs_discovered_total{instance=~\"worker-.*\"}[$__rate_interval])) * 60",
+          "expr": "sum by (action) (rate(crawler_monitor_jobs_discovered_total{instance=~\"worker-.*|ordinary-go\"}[$__rate_interval])) * 60",
           "legendFormat": "{{action}}"
         }
       ],
