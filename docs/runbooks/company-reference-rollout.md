@@ -108,6 +108,27 @@ writes after contract. This ordering prevents coexistence deadlocks.
 Keep its immutable release available as the rollback floor. Exercise a dedicated
 authenticated canary user/watchlist: a newly published company absent from both
 web representations must survive first save, edit, star, sharing/reload and removal.
+The deployment workflow first runs this full lifecycle against the immutable
+staged URL, then verifies promotion owns `jseek.co`, and runs the same lifecycle
+again through exactly `https://jseek.co` with a different company still absent
+from both representations. Public mode uses normal authentication and never
+requires or sends the automation bypass secret. It reattests the alias's exact
+immutable deployment ID, source SHA and URL immediately before authenticated
+requests and after lifecycle cleanup, using bounded read-only management API GETs.
+Only aggregate phase/proof fields escape; raw provider/auth output and customer
+identifiers stay private. A changed alias, unavailable identity lookup, missing
+first-use fixture or failed cleanup fails the deployment. Identity checks bracket
+the lifecycle; they do not certify that no outside operator changed the alias
+briefly between checks. Do not change aliases concurrently with verification.
+Before declaring bridge acceptance, require both canary contracts to pass and
+retain the promoted immutable artifact for the applicable rollback phase.
+Picker diagnostics use fixed scope/open/search/locate/click/close/persistence
+phases and bounded error types, without locator text. Clone verification waits
+for the sign-in import's committed copy and real redirect; it must not hard-reload
+the overview while that import is in flight. Cleanup emits separate aggregate
+recovery/deletion/residual/session evidence even when the lifecycle fails. More
+than two exact-namespace rows remains an ambiguity failure requiring scoped
+operator recovery; never broaden that cap to hide duplicate imports.
 Verify partial/unknown lookup failures leave counts/filters unchanged, and existing
 reference edit/removal works without search. Never mutate the reporter's watchlist
 as a canary. Compare persisted membership UUID/count digests before/after promotion.

@@ -293,6 +293,20 @@ jobs:
           fi
           echo "Production remains current for web inputs at main $current_main"
 
+      - name: Prove the promoted company lifecycle through the public alias
+        if: steps.promote.outputs.promoted == 'true'
+        env:
+          COMPANY_REFERENCE_CANARY_TARGET: production
+          DEPLOYMENT_URL: https://jseek.co
+          EXPECTED_SHA: ${{ steps.paths.outputs.current_sha }}
+          EXPECTED_DEPLOYMENT_ID: ${{ steps.stage.outputs.id }}
+          EXPECTED_DEPLOYMENT_URL: ${{ steps.stage.outputs.url }}
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+          COMPANY_REFERENCE_CANARY_USER_ID: ${{ secrets.COMPANY_REFERENCE_CANARY_USER_ID }}
+          COMPANY_REFERENCE_CANARY_EMAIL: ${{ secrets.COMPANY_REFERENCE_CANARY_EMAIL }}
+          COMPANY_REFERENCE_CANARY_PASSWORD: ${{ secrets.COMPANY_REFERENCE_CANARY_PASSWORD }}
+        run: pnpm --filter @jobseek/web exec tsx scripts/verify-company-reference-staged.ts
+
       - name: Submit published blog URLs to IndexNow
         if: steps.promote.outputs.promoted == 'true'
         env:

@@ -7,6 +7,7 @@ import { chromium, type Page } from "playwright";
 import { hashPassword } from "better-auth/crypto";
 import { companyDocument, fixtureClient, fixtureDatabaseUrl, resetFixture, seedUser } from "./company-reference/fixture";
 import { exerciseCanaryLifecycle, type CanaryLifecycleState } from "./company-reference/canary-lifecycle";
+import { selectCanaryCompany, canaryCompanyRow } from "./company-reference/canary-picker";
 import { logExternalError } from "../src/lib/safe-external-error";
 import { startTypesenseFixture } from "./company-reference/typesense-fixture";
 
@@ -72,12 +73,8 @@ async function main() {
     await page.waitForURL(/\/en\/watchlists\/[0-9a-f-]{36}/);
     const watchlistId = page.url().split("/").pop()!;
     browserPhase = "select_company";
-    await page.getByRole("button", { name: "Any company", exact: true }).click();
-    await page.getByRole("button", { name: "Company", exact: true }).click();
+    await selectCanaryCompany(page, doc.name, next => { browserPhase = next; });
     const dialog = page.getByRole("dialog");
-    await dialog.getByPlaceholder("Search companies...").fill(doc.name);
-    await dialog.getByRole("button", { name: new RegExp(doc.name) }).click();
-    await dialog.getByRole("button", { name: "Close", exact: true }).click();
     await page.getByText(doc.name, { exact: true }).waitFor();
     // UI optimistic state alone is insufficient: wait for the actual owner-scoped committed row.
     const deadline = Date.now() + 15_000;
@@ -97,7 +94,7 @@ async function main() {
     browserPhase = "later_scope_during_provider_lookup";
     await page.getByRole("button", { name: "Company", exact: true }).click();
     await dialog.getByPlaceholder("Search companies...").fill(delayedDoc.name);
-    await dialog.getByRole("button", { name: new RegExp(delayedDoc.name) }).click();
+    await canaryCompanyRow(page, delayedDoc.name).click();
     await dialog.getByRole("button", { name: "Close", exact: true }).click();
     // This later edit must stay later than the in-flight membership request,
     // whose provider lookup intentionally takes longer than the filter debounce.

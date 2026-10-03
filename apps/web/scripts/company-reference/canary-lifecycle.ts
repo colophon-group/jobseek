@@ -16,6 +16,23 @@ async function until(probe: () => Promise<boolean>, code: string) {
   throw Object.assign(new Error(code), { code });
 }
 
+/** PPR may retain a hidden auth subtree: require one visible complete form, never an arbitrary first match. */
+export async function signInCanaryAccount(page: Page, email: string, password: string, onPhase?: (phase: string) => void) {
+  onPhase?.("canary_clone_sign_in_form");
+  const form = page.locator("form").filter({ visible: true })
+    .filter({ has: page.getByLabel("Email or username", { exact: true }).filter({ visible: true }) })
+    .filter({ has: page.getByLabel("Password", { exact: true }).filter({ visible: true }) })
+    .filter({ has: page.getByRole("button", { name: "Sign in", exact: true }) });
+  await until(async () => (await form.count()) === 1, "CANARY_SIGN_IN_FORM_AMBIGUOUS");
+  const emailInput = form.getByLabel("Email or username", { exact: true }).filter({ visible: true });
+  const passwordInput = form.getByLabel("Password", { exact: true }).filter({ visible: true });
+  await until(async () => (await emailInput.count()) === 1 && (await passwordInput.count()) === 1, "CANARY_SIGN_IN_FIELDS_AMBIGUOUS");
+  onPhase?.("canary_clone_sign_in_credentials");
+  await emailInput.fill(email); await passwordInput.fill(password);
+  onPhase?.("canary_clone_sign_in_submit");
+  await form.getByRole("button", { name: "Sign in", exact: true }).click();
+}
+
 export async function restoreCanaryStar(page: Page, sql: Sql, userId: string, state: CanaryLifecycleState) {
   if (!state.starTouched || state.initialStarred === undefined) return;
   const current = await sql`SELECT 1 FROM followed_company WHERE user_id=${userId} AND company_id=${state.company.id}`;
@@ -63,14 +80,14 @@ export async function exerciseCanaryLifecycle(input: {
     // Browser-backed clone handoff, followed by a real dedicated-account sign-in.
     input.onPhase?.("canary_clone_sign_in");
     await shared.goto(`/en/sign-in?next=${encodeURIComponent("/en/watchlists")}`);
-    await shared.getByLabel("Email or username", { exact: true }).fill(email);
-    await shared.getByLabel("Password", { exact: true }).fill(password);
-    await shared.getByRole("button", { name: "Sign in", exact: true }).click();
+    await signInCanaryAccount(shared, email, password, input.onPhase);
     await shared.waitForURL(url => url.pathname.startsWith("/en/watchlists"));
     const session = await anonymous.request.get("/api/auth/get-session", { maxRedirects: 0 });
     check(session.status() === 200 && (await session.json()).user?.id === userId, "CANARY_CLONE_IDENTITY_MISMATCH");
     input.onPhase?.("canary_clone_handoff");
-    await shared.goto("/en/watchlists");
+    // Sign-in already mounted the overview and started importing its pending clone.
+    // A hard navigation here can interrupt removal of that intent and replay the copy.
+    // Wait for the existing import and its real redirect instead.
     let cloneId: string | undefined;
     await until(async () => {
       const copies = await sql`SELECT id FROM watchlist WHERE user_id=${userId} AND title=${targetTitle} AND id<>${watchlistId}`;

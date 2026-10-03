@@ -61,3 +61,21 @@ test("bridge promotion requires a nonoptional authenticated first-use canary", (
   assert.match(step, /COMPANY_REFERENCE_CANARY_PASSWORD: \$\{\{ secrets\./);
   assert.match(step, /scripts\/verify-company-reference-staged\.ts/);
 });
+
+test("promotion success requires the same lifecycle through the exact public alias", () => {
+  const deploy = readFileSync(".github/workflows/deploy-web-production.yml", "utf8");
+  const ownership = deploy.indexOf("      - name: Verify the promoted deployment owns production");
+  const live = deploy.indexOf("      - name: Prove the promoted company lifecycle through the public alias");
+  const next = deploy.indexOf("      - name: Submit published blog URLs to IndexNow", live);
+  assert.ok(ownership >= 0 && live > ownership && next > live);
+  const step = deploy.slice(live, next);
+  assert.match(step, /if: steps\.promote\.outputs\.promoted == 'true'/);
+  assert.match(step, /COMPANY_REFERENCE_CANARY_TARGET: production/);
+  assert.match(step, /DEPLOYMENT_URL: https:\/\/jseek\.co/);
+  assert.match(step, /EXPECTED_SHA: \$\{\{ steps\.paths\.outputs\.current_sha \}\}/);
+  assert.match(step, /EXPECTED_DEPLOYMENT_ID: \$\{\{ steps\.stage\.outputs\.id \}\}/);
+  assert.match(step, /EXPECTED_DEPLOYMENT_URL: \$\{\{ steps\.stage\.outputs\.url \}\}/);
+  assert.match(step, /COMPANY_REFERENCE_CANARY_PASSWORD: \$\{\{ secrets\./);
+  assert.match(step, /scripts\/verify-company-reference-staged\.ts/);
+  assert.doesNotMatch(step, /continue-on-error|VERCEL_AUTOMATION_BYPASS|CANARY_ENABLED|CANARY_REQUIRED/);
+});
