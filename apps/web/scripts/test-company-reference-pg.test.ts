@@ -77,7 +77,12 @@ describe.each(["bridge", "reference"] as const)("company selection persistence a
     expect(await membership(id)).toEqual([doc.id]);
     expect(await sql`SELECT id FROM company WHERE id=${doc.id}`).toHaveLength(writeMode === "bridge" ? 1 : 0);
     if (writeMode === "reference") {
-      await expect(sql`DELETE FROM company_reference WHERE id=${doc.id}`).rejects.toMatchObject({ code: "23001" });
+      await expect(sql`DELETE FROM company_reference WHERE id=${doc.id}`).rejects.toMatchObject({
+        code: expect.stringMatching(/^(23503|23001)$/),
+        constraint_name: "watchlist_company_company_id_company_reference_id_fk",
+      });
+      expect(await sql`SELECT id FROM company_reference WHERE id=${doc.id}`).toHaveLength(1);
+      expect(await membership(id)).toEqual([doc.id]);
       await sql`INSERT INTO company (id, name, slug) VALUES (${doc.id}, 'Unrelated catalogue mirror', ${doc.slug})`;
       await sql`DELETE FROM company WHERE id=${doc.id}`;
       expect(await membership(id)).toEqual([doc.id]);

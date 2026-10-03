@@ -361,13 +361,13 @@ describe.skipIf(!url)("company reference selection contract with PostgreSQL", ()
   it("rejects schema-only or ledger-only contraction and weakened retention", async () => {
     await fixture(); await apply(); await applyContract();
     await sql`DELETE FROM drizzle.__drizzle_migrations WHERE created_at=${referenceContractIdentity.createdAt}`;
-    await expect(auditCompanyReferences(sql,"drift")).rejects.toThrow("Selection FK lifecycle");
+    await expect(auditCompanyReferences(sql,"drift")).rejects.toThrow("Company dependency inventory/catalog drift");
     await fixture(); await apply();
     await sql`INSERT INTO drizzle.__drizzle_migrations(hash,created_at) VALUES (${referenceContractIdentity.hash},${referenceContractIdentity.createdAt})`;
-    await expect(auditCompanyReferences(sql,"drift")).rejects.toThrow("Selection FK lifecycle");
+    await expect(auditCompanyReferences(sql,"drift")).rejects.toThrow("Company dependency inventory/catalog drift");
     await fixture(); await apply(); await applyContract();
     await sql.unsafe("ALTER TABLE watchlist_company DROP CONSTRAINT watchlist_company_company_id_company_reference_id_fk; ALTER TABLE watchlist_company ADD CONSTRAINT watchlist_company_company_id_company_reference_id_fk FOREIGN KEY(company_id) REFERENCES company_reference(id) ON DELETE CASCADE");
-    await expect(auditCompanyReferences(sql,"drift")).rejects.toThrow("Selection FK lifecycle");
+    await expect(auditCompanyReferences(sql,"drift")).rejects.toThrow("Company dependency inventory/catalog drift");
   });
   it("keeps auditor read-only while the reference-only runtime no longer needs legacy INSERT", async () => {
     await fixture(); await apply(); await applyContract();
@@ -377,7 +377,7 @@ describe.skipIf(!url)("company reference selection contract with PostgreSQL", ()
       GRANT INSERT,UPDATE ON company_reference TO company_reference_runtime_fixture;
       REVOKE INSERT ON company FROM company_reference_runtime_fixture;`);
     expect(await auditCompanyReferences(sql,"contract-postflight","company_reference_runtime_fixture")).toMatchObject({status:"passed"});
-    const auditorUrl=new URL(url!); auditorUrl.username="jobseek_migration_auditor"; auditorUrl.password="";
+    const auditorUrl=new URL(url!); auditorUrl.username="jobseek_migration_auditor"; auditorUrl.password="company-reference-auditor-fixture";
     const auditor=postgres(auditorUrl.href,{max:1,prepare:false,onnotice:()=>{}});
     try { expect(await auditCompanyReferences(auditor,"drift","company_reference_runtime_fixture")).toMatchObject({status:"passed",phase:"contract"}); }
     finally { await auditor.end(); }
