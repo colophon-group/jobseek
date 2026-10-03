@@ -229,7 +229,21 @@ for service in "${services[@]}"; do
   bounded 15s docker update --restart unless-stopped "$id" >/dev/null
   [[ "$(bounded 15s docker inspect -f '{{.State.Running}}:{{.HostConfig.RestartPolicy.Name}}' "$id")" == true:unless-stopped ]] || reject "restart arming failed"
 done
-if [[ "$effect" == retire ]]; then rm -f -- "$RECEIPT"; sync -f "$DEPLOY_DIR"; fi
+if [[ "$effect" == retire ]]; then
+  # The retired native container is stopped and restart-disabled. Leaving it
+  # behind makes the next release's cold image check see the prior image and
+  # refuse activation. Remove only this exact service container, preserving
+  # its immutable image and volumes for the supported rollback generation.
+  ids="$(bounded 15s "${compose[@]}" ps -aq ordinary-go)"
+  if [[ -n "$ids" ]]; then
+    [[ "$ids" =~ ^[0-9a-f]{64}$ ]] || reject "retired native service cardinality differs"
+    observation="$(bounded 15s docker inspect -f '{{.State.Running}}:{{.HostConfig.RestartPolicy.Name}}:{{.Config.Image}}' "$ids")"
+    [[ "$observation" == "false:no:$CRAWLER_IMAGE_REF" ]] || reject "retired native container is not cold at this image"
+    bounded 15s docker rm "$ids" >/dev/null
+  fi
+  rm -f -- "$RECEIPT"
+  sync -f "$DEPLOY_DIR"
+fi
 rm -f -- "$restart_override"
 sync -f "$DEPLOY_DIR"
 armed=0
