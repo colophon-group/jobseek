@@ -105,7 +105,8 @@ Bridge writes take each sorted UUID in legacy-company then reference order, matc
 the compatibility trigger. Its transient legacy seed is promoted to verified
 Typesense provenance in the same transaction; reference-only mode skips legacy
 writes after contract. This ordering prevents coexistence deadlocks.
-Keep its immutable release available as the rollback floor. Exercise a dedicated
+Keep its immutable bridge-mode release as the expansion/bridge rollback floor.
+This artifact is not the final reference-mode rollback floor. Exercise a dedicated
 authenticated canary user/watchlist: a newly published company absent from both
 web representations must survive first save, edit, star, sharing/reload and removal.
 The deployment workflow first runs this full lifecycle against the immutable
@@ -210,8 +211,14 @@ rather than weakening locks or bypassing checks.
 After successful contract-postflight, run the authenticated canary again. Switch
 `COMPANY_REFERENCE_WRITE_MODE` to `reference` only through a reviewed protected
 web deployment; this is the point at which new sparse references cease receiving
-legacy rows. Preserve the compatible bridge artifact, which supports both write
-modes. Verify a company with a reused slug can be selected without creating a
+legacy rows. Vercel bakes the write mode into each deployment's environment;
+changing the current project setting does not change an older artifact. Record
+a successful immutable build of the compatible code with reference mode against
+0101 as the final rollback floor, including its commit, deployment ID and canary
+evidence. The original bridge-mode artifact cannot serve as that floor: a new
+reference can reuse a slug already owned by another legacy UUID, and its later
+edit/copy/star would then fail the legacy unique constraint. Verify a company
+with a reused slug can be selected without creating a
 legacy row, legacy catalogue deletion cannot erase selections, selected reference
 deletion is restricted, and retiring search never broadens scope. Scheduled drift
 now checks the contract phase, zero missing selected references and absence of the
@@ -225,8 +232,20 @@ If migration fails, its transaction leaves schema/data/ledger unchanged; correct
 preflight and retry the same reviewed identity. A partial application transaction
 also rolls back reference/legacy/membership together.
 
-After the final contract, rollback stays at the compatible bridge release or uses
-a reviewed forward repair. Never restore historical cascade FKs or pre-bridge app
+The real PostgreSQL rollback contract exercises the unchanged compatible service
+code against exact 0101 in reference mode, retaining a reference-only reused-slug
+selection created after cutover through offline edit, copy and star/unstar. It
+also proves bridge-mode rejection leaves selections unchanged, and preserves
+pre-cutover ownership, filters, memberships and saved/interview history. This
+local service proof must be paired with the exact immutable floor's deployed
+authenticated canary; source compatibility alone does not certify an artifact.
+
+After the final contract, rollback stays at that recorded reference-mode release
+or uses a reviewed forward repair/rebuild at current approved main. Until the
+immutable reference-mode floor exists, recovery is that reviewed forward rebuild;
+never promote the original bridge-mode artifact. Stop final rollout closure if
+the floor's identity, mode or canary evidence is missing. Never restore historical
+cascade FKs or pre-bridge app
 releases as an automatic rollback. Schema restoration is a protected backup/restore
 operation with preserved selection data, not the destructive inverse of expansion.
 

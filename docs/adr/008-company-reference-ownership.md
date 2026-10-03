@@ -85,14 +85,20 @@ The expansion alone does not resolve #10214 or satisfy final retention behavior.
 4. After all active writers/readers and rollback artifacts support references,
    switch watchlist/star FKs to restrictive reference FKs in the separately reviewed
    `0101_company_reference_selection_contract` migration and remove its legacy
-   trigger/function. Stop legacy writes only after the bridge rollback floor
-   and canaries are proven. Preserve inactive legacy consumers until their own
+   trigger/function. Stop legacy writes only through a protected reference-mode
+   build, then record that immutable release and its canary as the final rollback
+   floor. Preserve inactive legacy consumers until their own
    retirement audit; do not drop `company` in this epic as an unexamined shortcut.
 
 Before contract, rollback to the compatible bridge retains both representations;
 old versions can run during expansion but still have the original first-use
-limitation. After stopping legacy writes, pre-bridge versions are unsupported:
-rollback must use the compatible bridge or a forward repair. After FK cutover,
+limitation. After stopping legacy writes, the original bridge-mode artifact and
+pre-bridge versions are unsupported: reference-only identities can reuse a slug
+owned by a different legacy UUID. The compatible code must be built in reference
+mode against 0101, with immutable artifact and deployed canary evidence, to serve
+as the final rollback floor. Until that floor exists, recovery uses a reviewed
+forward rebuild/repair. A project environment change does not rewrite an older
+Vercel artifact's configuration. After FK cutover,
 rollback never retargets FKs to incomplete catalogue mirrors or deletes selections.
 Schema expansion remains in place during application rollback.
 
