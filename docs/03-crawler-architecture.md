@@ -42,6 +42,14 @@ Postgres, with CDC publication to Typesense.
       CLI: crawler {run|run-browser|export|drain|sync|reconcile|board}
 ```
 
+The three legacy HTTP workers and browser worker use the packaged
+`go-ordinary-worker --worker-health=<port>` executable for their container root
+health probes on loopback ports 9095–9098. The probe requires no worker assets,
+SQL/Redis credentials or ordinary ownership, ignores proxy environment variables,
+and fails on a non-success response, redirect, missing listener or timeout.
+Worker execution migrates independently; changing these probes removes four
+routine Python launchers without claiming that the legacy workers are native.
+
 ## Redis Tiered Ready Queues
 
 Work distribution uses 6 tiered ready queues, managed by 3 Lua scripts for atomic operations:

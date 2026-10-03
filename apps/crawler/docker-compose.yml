@@ -151,7 +151,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:9095/\")'"]
+      test: ["CMD", "/usr/local/bin/go-ordinary-worker", "--worker-health=9095"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -180,7 +180,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:9096/\")'"]
+      test: ["CMD", "/usr/local/bin/go-ordinary-worker", "--worker-health=9096"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -209,7 +209,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:9097/\")'"]
+      test: ["CMD", "/usr/local/bin/go-ordinary-worker", "--worker-health=9097"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -325,7 +325,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:9098/\")'"]
+      test: ["CMD", "/usr/local/bin/go-ordinary-worker", "--worker-health=9098"]
       interval: 30s
       timeout: 5s
       retries: 3
