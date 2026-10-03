@@ -724,9 +724,16 @@ sync_release_data() {
     data_args=(-v "$ACTIVE_DATA_DIR:/app/data:ro")
   fi
   NAME="crawler-csv-data-sync-${BASHPID}"
+  # Normal publication has passed the exact runtime-contract gate and uses
+  # the installed Go synchronizer directly. Bootstrap/recovery may select a
+  # historical image whose supported entrypoint is still the Python CLI.
+  local command_args=(uv run --no-sync crawler sync)
+  if [[ "$role" == csv-sync ]]; then
+    command_args=(go-typesense-exporter --sync-registry)
+  fi
   docker run --rm --name "$NAME" --env-file "$RUNTIME_ENV" --network host \
     "${data_args[@]}" -e "CRAWLER_DB_ROLE=$role" "$image" \
-    uv run --no-sync crawler sync
+    "${command_args[@]}"
   rm -f "$RUNTIME_ENV"
   RUNTIME_ENV=""
   NAME=""

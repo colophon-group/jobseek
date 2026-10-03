@@ -1,5 +1,29 @@
 # Go and Lightpanda migration continuation plan
 
+Current candidate (2026-10-03): forward deployment and compatible CSV
+publication call `go-typesense-exporter --sync-registry` directly, removing
+Python from these two operational entrypoints. They use the same existing Go
+transaction, queue publication and Typesense implementation, immutable image,
+committed environment and read-only data mount. The exact runtime-contract gate
+still precedes CSV publication. Historical-image bootstrap, publication recovery
+and full rollback retain their prior supported CLI until those rollback targets
+expire; this is a temporary runtime Python dependency, not completed retirement.
+
+Local deployment/publication/rollback and registry bridge checks pass (62 tests).
+Private UTF-8 PostgreSQL/Unix Redis registry races pass, including actual repository
+CSV planning, durable identities, failed/ambiguous commit publication refusal and
+end-to-end queue effects. Installed CI now calls the native entrypoint for
+read-only mounted dry-run and missing-mount refusal. Production deployment and
+natural runtime execution of this candidate are not yet verified.
+
+Delivery priority remains native worker deployment and enabled-profile execution
+coverage, followed by removal of mandatory startup/deployment/maintenance Python
+consumers. Stop expanding recovery fixtures without a named production failure
+or missing acceptance check. Preserve exclusive ownership, complete quiesced
+rollback, deployment holds and the active-B0 guard. Existing ordinary-worker
+PR #10210 remains a separate draft; full migration remains active.
+
+
 Reviewed 2026-09-30 against `origin/main`
 `c571568167b7abf7dfa80a7f9c73bcbb29d49cb2` and current GitHub PR/check state.
 This is the forward plan for completing the crawler service migration. Start

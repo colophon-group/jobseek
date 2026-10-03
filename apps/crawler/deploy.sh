@@ -2331,7 +2331,7 @@ docker run --rm \
   "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
   --label com.docker.compose.service=deploy-sync \
   "$CRAWLER_IMAGE_REF" \
-  uv run --no-sync crawler sync
+  go-typesense-exporter --sync-registry
 
 # Revision 0021 is idempotent, but Alembic records it only once. If an earlier
 # forward attempt reached the migration and then rolled back, the restored
