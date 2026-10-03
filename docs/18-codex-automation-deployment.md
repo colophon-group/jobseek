@@ -13,6 +13,7 @@ deployment artifacts; do not treat them as source of truth.
 | `jobseek-codex-daily-error-review.timer` | daily, 09:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, Codex CLI, root-collected redacted evidence bundle | [14-error-review-routine.md](14-error-review-routine.md), [`.agents/skills/jobseek-error-review/SKILL.md`](../.agents/skills/jobseek-error-review/SKILL.md) | Sol 6.1/high orchestrator; no default subagents |
 | `jobseek-codex-governor.timer` | self-regulated, checked after each governor run | Hetzner crawler host, dedicated `codex-runner` user, Codex CLI, isolated worktree per issue | [01-agent-workflow.md](01-agent-workflow.md), `apps/crawler/AGENTS.md`, `ws task --issue <N>` | Sol 6.1/high orchestrator; Sol 6.1 and Luna `ws` subagents |
 | `jobseek-codex-docker-lifecycle.service` | continuous | root read-only event watcher producing allowlisted evidence for the isolated runner | this runbook and the committed unit/script | no model invocation |
+| `jobseek-codex-company-selection-observation.timer` | every 15 minutes, explicitly activated | isolated `codex-runner` account dispatches and verifies the fixed GitHub aggregate collector | [company-selection-observation.md](runbooks/company-selection-observation.md), #10243 | deterministic Python; no model invocation |
 
 The recurring company resolver and daily routines run on the Hetzner crawler
 host through the runner user's Codex CLI auth so they can use the
@@ -125,6 +126,42 @@ prompt, or routine source:
 If a host timer is unavailable, repair the committed runner/unit configuration
 or perform one bounded manual CLI run using the same ledger, lock, prompt, and
 verification contracts.
+
+### Company selection observation activation
+
+This deterministic timer has its own lock and never waits behind a four-hour
+Codex routine. It loads no runner, crawler, provider or database environment
+file. The root-owned dispatcher uses only the runner's existing GitHub CLI auth;
+its subprocess environment strips token overrides. That auth must belong to
+`viktor-shcherb` and already permit owner workflow dispatch plus aggregate
+artifact reads. Do not provision a broader token or copy Vercel credentials into
+the runner as a workaround. The service has no Docker membership/socket, model,
+sudo, production checkout, or write access outside its small dispatcher state.
+
+Ordinary runner deployment installs the new service/timer but preserves prior
+timer activation state. Even the historical broad `START_TIMERS=1` path cannot
+opt in this new timer. After a successful protected runner deployment at exact
+current main, the owner may use **Deploy Codex Runner (Hetzner)** with
+`operation=activate-observation`, `expected_sha=<exact current main SHA>`, and
+`confirmation=ACTIVATE-COMPANY-SELECTION-OBSERVATION`. The protected job validates
+both actor identities and main; its host entry point checks the matching
+installed root-owned release/units and exact bundle bytes, current GitHub main
+and authentic latest closed-window coverage. Its separate `--activation-ready`
+check requires exact source binding and a checkpoint no more than 20 minutes old.
+It prints historical missing/partial/expired counts and blocked period acceptance
+even when this narrow readiness gate passes. Historical gaps must not prevent
+future collection: the job queues only this service asynchronously, then enables
+only its timer; normal service checks still exit degraded for retained gaps. It
+does not redeploy the host, restart the crawler or activate other routines.
+
+Keep manual collection until two actual timer dispatch/collection cycles show
+validated artifact/history and complete closed-window coverage. API reads alone
+cannot prove dispatch scope. Record the protected activation run, installed SHA,
+timer state and aggregate cycle evidence in #10243. A failed/degraded systemd
+service remains visible in journald and the next timer retries; it sends no new
+notifications. A host/network/API outage approaching one-hour provider retention
+still requires owner recovery. A missing expired checkpoint blocks acceptance;
+neither timer nor dispatcher resets the observation start.
 
 ## Hetzner Codex Runner Implementation Plan
 

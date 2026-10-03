@@ -24,6 +24,18 @@ on:
       - 'scripts/jobseek_maintenance_provenance.py'
       - '.github/workflows/deploy-codex-runner.yml'
   workflow_dispatch:
+    inputs:
+      operation:
+        description: "Deploy runner surface or explicitly activate only observation"
+        type: choice
+        options: [deploy, activate-observation]
+        default: deploy
+      expected_sha:
+        description: "Exact current main SHA required for targeted activation"
+        type: string
+      confirmation:
+        description: "ACTIVATE-COMPANY-SELECTION-OBSERVATION for targeted activation"
+        type: string
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -36,6 +48,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.event_name == 'push' || inputs.operation == 'deploy'
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -65,7 +78,7 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: scripts/deploy-codex-runner-host.sh,scripts/codex-routine-status.py,scripts/codex-error-review-bundle.py,scripts/codex-docker-lifecycle-watch.py,scripts/jobseek_maintenance_provenance.py,scripts/jobseek-maintenance.py,deploy/systemd/jobseek-codex-*,deploy/codex-version
+          source: scripts/deploy-codex-runner-host.sh,scripts/codex-routine-status.py,scripts/codex-error-review-bundle.py,scripts/codex-docker-lifecycle-watch.py,scripts/codex-company-selection-observation-dispatch.py,scripts/jobseek_maintenance_provenance.py,scripts/jobseek-maintenance.py,deploy/systemd/jobseek-codex-*,deploy/codex-version
           target: /opt/jobseek-codex-deploy/${{ github.sha }}
 
       - name: Deploy Codex runner host surface
@@ -96,3 +109,47 @@ jobs:
               echo "codex-runner unexpectedly has Docker access" >&2
               exit 1
             fi
+
+  activate-observation:
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'activate-observation'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - name: Authorize exact owner-only observation activation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.actor }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+          REF: ${{ github.ref }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          test "$ACTOR" = viktor-shcherb
+          test "$TRIGGERING_ACTOR" = viktor-shcherb
+          test "$REF" = refs/heads/main
+          test "$CONFIRMATION" = ACTIVATE-COMPANY-SELECTION-OBSERVATION
+          test "$EXPECTED_SHA" = "$GITHUB_SHA"
+          test "$(gh api repos/colophon-group/jobseek/branches/main --jq .commit.sha)" = "$EXPECTED_SHA"
+      - name: Activate only the installed observation timer
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        env:
+          JOBSEEK_CODEX_OBSERVATION_CONFIRMATION: ${{ inputs.confirmation }}
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: root
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          envs: GITHUB_SHA,JOBSEEK_CODEX_OBSERVATION_CONFIRMATION
+          command_timeout: 5m
+          script: |
+            set -euo pipefail
+            export JOBSEEK_CODEX_BRANCH=main
+            export JOBSEEK_CODEX_EXPECTED_SHA="$GITHUB_SHA"
+            export JOBSEEK_CODEX_START_TIMERS=0
+            # Rechecks current main and current validated artifact coverage as
+            # the isolated runner before touching this one timer. No full host
+            # deployment, crawler restart or other timer activation occurs.
+            bash "/opt/jobseek-codex-deploy/${GITHUB_SHA}/scripts/deploy-codex-runner-host.sh" \
+              --activate-company-selection-observation

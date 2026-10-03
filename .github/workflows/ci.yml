@@ -119,6 +119,11 @@ jobs:
       - name: Verify privileged Codex filesystem boundary
         run: sudo python3 scripts/test-codex-privilege-boundary.py
 
+      - name: Verify bounded observation dispatch and timer activation
+        run: |
+          python3 scripts/test-company-selection-observation-dispatch.py
+          systemd-analyze verify deploy/systemd/jobseek-codex-company-selection-observation.service deploy/systemd/jobseek-codex-company-selection-observation.timer
+
       - name: actionlint
         # GitHub added vulnerability-alerts in 2026; actionlint support is pending upstream.
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -ignore 'SC(2002|2086|2129)|unknown permission scope "vulnerability-alerts"'
