@@ -14,6 +14,8 @@ import (
 	lever "github.com/colophon-group/jobseek/apps/crawler/go/lever-monitor"
 	executor "github.com/colophon-group/jobseek/apps/crawler/go/lightpanda-b0-executor"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
+	pinpoint "github.com/colophon-group/jobseek/apps/crawler/go/pinpoint-monitor"
+	recruitee "github.com/colophon-group/jobseek/apps/crawler/go/recruitee-monitor"
 )
 
 type RichDiscovery struct {
@@ -117,6 +119,47 @@ func DiscoverRichMonitor(ctx context.Context, client *http.Client, profile queue
 			}
 			description, err := executor.CoerceText(job.Description)
 			if err != nil {
+				return RichDiscovery{Response: response}, &DiscoveryError{Kind: "invalid_inventory"}
+			}
+			var locationType any
+			if job.JobLocationType != nil {
+				locationType = *job.JobLocationType
+			}
+			result.Jobs = append(result.Jobs, RichMonitorJob{URL: job.URL, Title: title, Description: description, Locations: job.Locations, DatePosted: job.DatePosted, Metadata: job.Metadata, EmploymentType: job.EmploymentType, JobLocationType: locationType})
+		}
+		return result, nil
+	}
+	if profile.Provider == "recruitee" || profile.Provider == "pinpoint" {
+		body, response, err := richPage(ctx, client, profile.Endpoint, false)
+		result.Response = response
+		if err != nil {
+			// Pinpoint raises an ordinary status error for 404; Recruitee
+			// explicitly supplies the provider-gone confirmation contract.
+			if profile.Provider == "pinpoint" && response != nil && response.status == 404 && !response.reserved {
+				err = &DiscoveryError{Kind: "http_status", Status: 404}
+			}
+			return result, err
+		}
+		var jobs []recruitee.Job
+		if profile.Provider == "recruitee" {
+			inventory, failure := recruitee.Parse(body)
+			jobs, result.Truncated, err = inventory.Jobs, inventory.Truncated, failure
+		} else {
+			inventory, failure := pinpoint.Parse(body)
+			result.Truncated, err = inventory.Truncated, failure
+			for _, job := range inventory.Jobs {
+				// Both parsers expose the same rich field boundary. This typed
+				// conversion stops compiling if their output contracts diverge.
+				jobs = append(jobs, recruitee.Job(job))
+			}
+		}
+		if err != nil {
+			return RichDiscovery{Response: response}, &DiscoveryError{Kind: "invalid_inventory"}
+		}
+		for _, job := range jobs {
+			title, titleErr := executor.CoerceText(job.Title)
+			description, descriptionErr := executor.CoerceText(job.Description)
+			if titleErr != nil || descriptionErr != nil {
 				return RichDiscovery{Response: response}, &DiscoveryError{Kind: "invalid_inventory"}
 			}
 			var locationType any

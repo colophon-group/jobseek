@@ -29,6 +29,11 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 	case "lever":
 		allowed["company"] = true
 		allowed["region"] = true
+	case "recruitee":
+		allowed["slug"], allowed["api_base"] = true, true
+		allowed["company"], allowed["company_slug"] = true, true
+	case "pinpoint":
+		allowed["slug"] = true
 	default:
 		return nil, ErrUnsupportedProfile
 	}
@@ -47,19 +52,31 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 		return GreenhouseMonitorProfile{}, err
 	}
 	var token, region string
-	if raw, exists := md["token"]; exists && json.Unmarshal(raw, &token) != nil {
-		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
-	}
-	if token == "" {
-		pattern := ashbyURLToken
-		if config["crawler_type"] == "lever" {
-			pattern = leverURLToken
+	var tenantEndpoint string
+	if config["crawler_type"] == "recruitee" || config["crawler_type"] == "pinpoint" {
+		tenantEndpoint, err = richTenantEndpoint(config, md)
+		if err != nil {
+			return GreenhouseMonitorProfile{}, err
 		}
-		if match := pattern.FindStringSubmatch(config["board_url"]); match != nil {
-			token = match[1]
-			ignored := map[string]bool{"api": true, "js": true, "css": true, "assets": true, "posting-api": config["crawler_type"] == "ashby", "v0": config["crawler_type"] == "lever"}
-			if ignored[token] {
-				token = ""
+	}
+	if tenantEndpoint != "" {
+		// These providers select slug/api_base, not the legacy token aliases.
+		token = "provider-token"
+	} else {
+		if raw, exists := md["token"]; exists && json.Unmarshal(raw, &token) != nil {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		if token == "" {
+			pattern := ashbyURLToken
+			if config["crawler_type"] == "lever" {
+				pattern = leverURLToken
+			}
+			if match := pattern.FindStringSubmatch(config["board_url"]); match != nil {
+				token = match[1]
+				ignored := map[string]bool{"api": true, "js": true, "css": true, "assets": true, "posting-api": config["crawler_type"] == "ashby", "v0": config["crawler_type"] == "lever"}
+				if ignored[token] {
+					token = ""
+				}
 			}
 		}
 	}
@@ -82,6 +99,25 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 	for key, value := range md {
 		if greenhouseMetadataFields[key] {
 			validationMD[key] = value
+		}
+	}
+	if tenantEndpoint != "" {
+		// Python skip monitors ignore leftover detail options unless an
+		// explicit nonempty enrich list delegates fields to detail scraping.
+		// Keep the original options in the binding while validating that no
+		// detail work is required (for example Ergon's retained DOM steps).
+		if raw, exists := md["scraper_config"]; exists {
+			var options map[string]json.RawMessage
+			if json.Unmarshal(raw, &options) != nil {
+				return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+			}
+			if raw, exists := options["enrich"]; exists {
+				var fields []json.RawMessage
+				if json.Unmarshal(raw, &fields) != nil || len(fields) != 0 {
+					return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+				}
+			}
+			validationMD["scraper_config"] = json.RawMessage("null")
 		}
 	}
 	// The common validator checks authority and transport policy. Provider
@@ -128,6 +164,10 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 			host = "api.eu.lever.co"
 		}
 		profile.Endpoint = "https://" + host + "/v0/postings/" + url.PathEscape(token) + "?limit=100&skip=0"
+	case "recruitee":
+		profile.Endpoint, profile.Profile = tenantEndpoint, "recruitee.api-skip/v1"
+	case "pinpoint":
+		profile.Endpoint, profile.Profile = tenantEndpoint, "pinpoint.slug-skip/v1"
 	}
 	return profile, nil
 }

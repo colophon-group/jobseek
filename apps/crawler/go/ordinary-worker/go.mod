@@ -65,3 +65,11 @@ require github.com/colophon-group/jobseek/apps/crawler/go/lever-monitor v0.0.0
 replace github.com/colophon-group/jobseek/apps/crawler/go/ashby-monitor => ../ashby-monitor
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/lever-monitor => ../lever-monitor
+
+require github.com/colophon-group/jobseek/apps/crawler/go/recruitee-monitor v0.0.0
+
+require github.com/colophon-group/jobseek/apps/crawler/go/pinpoint-monitor v0.0.0
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/recruitee-monitor => ../recruitee-monitor
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/pinpoint-monitor => ../pinpoint-monitor
