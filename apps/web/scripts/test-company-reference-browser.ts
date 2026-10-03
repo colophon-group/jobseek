@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
 import { createServer } from "node:net";
 import { once } from "node:events";
-import { chromium } from "playwright";
+import { chromium, type Page } from "playwright";
 import { hashPassword } from "better-auth/crypto";
 import { companyDocument, fixtureClient, fixtureDatabaseUrl, resetFixture, seedUser } from "./company-reference/fixture";
 import { logExternalError } from "../src/lib/safe-external-error";
@@ -31,7 +31,7 @@ async function main() {
   const doc = companyDocument(randomUUID(), `Reference fixture ${randomUUID().slice(0, 8)}`);
   const search = await startTypesenseFixture([doc]);
   const appPort = await freePort(); const baseUrl = `http://127.0.0.1:${appPort}`;
-  let child: ChildProcess | undefined;
+  let child: ChildProcess | undefined; let page: Page | undefined;
   const browser = await chromium.launch({ headless: true });
   try {
     await resetFixture(sql);
@@ -48,10 +48,9 @@ async function main() {
       BETTER_AUTH_URL: baseUrl, BETTER_AUTH_SECRET: "fixture-auth-secret-never-used-outside-local-tests", TRUSTED_ORIGINS: baseUrl,
       TYPESENSE_HOST: "127.0.0.1", TYPESENSE_PORT: String(search.port), TYPESENSE_PROTOCOL: "http", TYPESENSE_SEARCH_KEY: "fixture-read-key",
       NEXT_PUBLIC_TYPESENSE_HOST: "127.0.0.1", NEXT_PUBLIC_TYPESENSE_PORT: String(search.port), NEXT_PUBLIC_TYPESENSE_PROTOCOL: "http", NEXT_PUBLIC_TYPESENSE_SEARCH_KEY: "fixture-read-key",
-      // A refused loopback endpoint exercises existing cache/limiter outage fallback without cloud credentials.
-      UPSTASH_REDIS_REST_URL: "http://127.0.0.1:1", UPSTASH_REDIS_REST_TOKEN: "fixture-only", };
+      UPSTASH_REDIS_REST_URL: `http://127.0.0.1:${search.port}/redis`, UPSTASH_REDIS_REST_TOKEN: "fixture-only", };
     browserPhase = "app_startup";
-    child = spawn("pnpm", ["exec", "next", "dev", "--hostname", "127.0.0.1", "--port", String(appPort)], { env, stdio: ["ignore", "pipe", "pipe"] });
+    child = spawn("pnpm", ["exec", "next", "dev", "--hostname", "127.0.0.1", "--port", String(appPort)], { env, detached: process.platform !== "win32", stdio: ["ignore", "pipe", "pipe"] });
     // Do not dump auth-bearing app logs. Retain only a bounded diagnostic tail and redact on failure.
     let logs = ""; const append = (chunk: Buffer) => { logs = (logs + chunk.toString()).slice(-6000); };
     child.stdout?.on("data", append); child.stderr?.on("data", append);
@@ -62,10 +61,10 @@ async function main() {
     assert.equal(signedIn.status(), 200, "Real fixture sign-in must succeed");
     const session = await context.request.get("/api/auth/get-session");
     assert.equal((await session.json()).user.id, user.id, "Request-derived session must match dedicated fixture identity");
-    const page = await context.newPage(); page.setDefaultTimeout(45_000);
+    page = await context.newPage(); page.setDefaultTimeout(45_000);
     browserPhase = "create_watchlist";
     await page.goto("/en/watchlists");
-    await page.getByRole("button", { name: /Create.*watchlist|New watchlist/i }).first().click();
+    await page.getByRole("button", { name: "Create", exact: true }).click();
     await page.waitForURL(/\/en\/watchlists\/[0-9a-f-]{36}/);
     const watchlistId = page.url().split("/").pop()!;
     browserPhase = "select_company";
@@ -88,13 +87,26 @@ async function main() {
     assert.equal(persisted.length, 1, "Picker save must commit a materialized reference");
     assert.equal(persisted[0].user_id, user.id); assert.equal(persisted[0].source, "typesense"); assert.equal(persisted[0].alerts_enabled, false);
     browserPhase = "reload";
-    await page.reload(); await page.getByText(doc.name, { exact: true }).waitFor();
+    await page.reload(); await page.getByRole("button", { name: `Remove ${doc.name}`, exact: true }).waitFor();
     assert.ok(search.requests.some(request => request.pathname.includes("/company/")), "Production Typesense SDK must query company fixture");
+    browserPhase = "scoped_cleanup";
+    await page.getByRole("button", { name: "Delete", exact: true }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Delete", exact: true }).click();
+    await page.waitForURL(/\/en\/watchlists$/);
+    assert.equal((await sql`SELECT 1 FROM watchlist WHERE id=${watchlistId} AND user_id=${user.id}`).length, 0);
+    assert.equal((await sql`SELECT 1 FROM company_reference WHERE id=${doc.id}`).length, 1, "Cleanup must retain shared durable reference");
     console.log(JSON.stringify({ contract: "company_reference_authenticated_browser", outcome: "passed", absentLegacyBefore: true, absentReferenceBefore: true,
-      authenticatedMutation: true, committedMembership: true, persistedReload: true, notificationsEnabled: false }));
+      authenticatedMutation: true, committedMembership: true, persistedReload: true, notificationsEnabled: false, scopedCleanup: true }));
     await context.close();
+  } catch (error) {
+    await page?.screenshot({ path: "/tmp/jobseek-company-reference-browser-failure.png", fullPage: true });
+    throw error;
   } finally {
-    child?.kill("SIGTERM"); await browser.close(); search.server.close(); await sql.end({ timeout: 5 });
+    if (child?.pid) {
+      if (process.platform === "win32") child.kill("SIGTERM");
+      else { try { process.kill(-child.pid, "SIGTERM"); } catch { /* already exited */ } }
+    }
+    await browser.close(); search.server.close(); await sql.end({ timeout: 5 });
   }
 }
 void main().catch((error: unknown) => {

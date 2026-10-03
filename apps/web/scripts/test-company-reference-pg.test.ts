@@ -175,6 +175,37 @@ describe("company selection persistence against real PostgreSQL", () => {
     expect(await sql`SELECT id FROM company_reference WHERE id IN (${one.id}, ${two.id})`).toHaveLength(1);
   });
 
+  it("shares company-to-reference lock order with an overlapping legacy writer", async () => {
+    const fresh = document(); await absent(fresh.id);
+    // A second AFTER INSERT trigger pauses the old writer after its company row
+    // is locked but before the real production compatibility trigger runs.
+    await sql.unsafe(`CREATE FUNCTION pause_fixture_legacy_insert() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+      PERFORM pg_advisory_xact_lock(10227001); RETURN NEW; END $$;
+      CREATE TRIGGER aaa_pause_fixture_legacy_insert AFTER INSERT ON company FOR EACH ROW EXECUTE FUNCTION pause_fixture_legacy_insert()`);
+    let oldWriter: Promise<unknown> | undefined;
+    let newWriter: Promise<string> | undefined;
+    await sql.begin(async gate => {
+      await gate`SELECT pg_advisory_xact_lock(10227001)`;
+      oldWriter = Promise.resolve(sql`INSERT INTO company (id, name, slug) VALUES (${fresh.id}, 'Legacy overlap', ${fresh.slug})`);
+      const deadline = Date.now() + 5_000;
+      let waiting = false;
+      while (Date.now() < deadline) {
+        const activity = await sql`SELECT 1 FROM pg_stat_activity WHERE datname=current_database()
+          AND query ILIKE 'insert into company%' AND wait_event='advisory'`;
+        if (activity.length) { waiting = true; break; }
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+      expect(waiting).toBe(true);
+      newWriter = create([fresh.id]);
+      while (runtime.requests === 0) await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise(resolve => setTimeout(resolve, 100));
+    });
+    await Promise.all([oldWriter, newWriter]);
+    expect((await sql`SELECT name, source, verified_at IS NOT NULL AS verified FROM company_reference WHERE id=${fresh.id}`)[0])
+      .toMatchObject({ name: fresh.name, source: "typesense", verified: true });
+    expect(await membership(await newWriter!)).toEqual([fresh.id]);
+  });
+
   it("keeps the account capacity check atomic without orphaning new references", async () => {
     for (let i = 0; i < 9; i++) await create();
     const one = document(); const two = document();

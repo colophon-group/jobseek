@@ -28,6 +28,8 @@ async function main() {
   const sql = postgres(required("DATABASE_URL_UNPOOLED"), { max: 1, prepare: false,
     connection: { application_name: "jobseek-company-reference-canary-read-only", default_transaction_read_only: true, statement_timeout: 10_000 } });
   const values = parse(await readFile(new URL("../../../.vercel/.env.production.local", import.meta.url), "utf8"));
+  const writeMode = values.COMPANY_REFERENCE_WRITE_MODE ?? "bridge";
+  check(writeMode === "bridge" || writeMode === "reference", "INVALID_PRODUCTION_WRITE_MODE");
   const search = new Client({ nodes: [{ host: values.TYPESENSE_HOST, port: Number(values.TYPESENSE_PORT), protocol: values.TYPESENSE_PROTOCOL }],
     apiKey: values.TYPESENSE_SEARCH_KEY, logLevel: "silent", connectionTimeoutSeconds: 5 });
   const browser = await chromium.launch({ headless: true });
@@ -61,16 +63,22 @@ async function main() {
       if (!documents.length) break;
       const ids = documents.map(company => company.id);
       const existing = await sql`SELECT id FROM company_reference WHERE id=ANY(${ids}::uuid[]) UNION SELECT id FROM company WHERE id=ANY(${ids}::uuid[])`;
-      const seen = new Set(existing.map(row => row.id)); doc = documents.find(company => !seen.has(company.id));
+      const seen = new Set(existing.map(row => row.id));
+      for (const candidate of documents.filter(company => !seen.has(company.id))) {
+        const exact = await search.collections<{ id: string; name: string; slug: string }>("company").documents().search({
+          q: candidate.name, query_by: "name", prefix: false, num_typos: 0, per_page: 250,
+        });
+        if (exact.found <= 250 && (exact.hits ?? []).filter(hit => hit.document.name === candidate.name).length === 1) { doc = candidate; break; }
+      }
     }
     // Existing-reference success does not qualify as first-use verification. Never delete data to force this arm.
     check(doc, "FIRST_USE_CATALOGUE_FIXTURE_UNAVAILABLE");
     check(/^[0-9a-f-]{36}$/i.test(doc.id) && doc.name.length <= 300 && doc.slug.length <= 100, "INVALID_CANONICAL_FIXTURE");
 
     phase = "authenticated_request_identity";
-    const signedIn = await context.request.post("/api/auth/sign-in/email", { data: { email, password }, headers: { origin: base.origin, "x-vercel-protection-bypass": bypass } });
+    const signedIn = await context.request.post("/api/auth/sign-in/email", { data: { email, password }, headers: { origin: base.origin, "x-vercel-protection-bypass": bypass }, maxRedirects: 0 });
     check(signedIn.status() === 200, "CANARY_SIGN_IN_FAILED");
-    const session = await context.request.get("/api/auth/get-session", { headers: { "x-vercel-protection-bypass": bypass } });
+    const session = await context.request.get("/api/auth/get-session", { headers: { "x-vercel-protection-bypass": bypass }, maxRedirects: 0 });
     const sessionBody = await session.json();
     check(session.status() === 200 && sessionBody.user?.id === userId, "CANARY_SESSION_IDENTITY_MISMATCH");
 
@@ -89,31 +97,45 @@ async function main() {
     await page.getByRole("button", { name: "Company", exact: true }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByPlaceholder("Search companies...").fill(doc.name);
-    await dialog.getByRole("button").filter({ hasText: doc.name }).first().click();
+    await dialog.getByRole("button").filter({ has: dialog.getByText(doc.name, { exact: true }) }).click();
     await dialog.getByRole("button", { name: "Close", exact: true }).click();
     const deadline = Date.now() + 15_000;
     let persisted = false;
     while (Date.now() < deadline) {
-      const row = await sql`SELECT r.source, r.verified_at, w.alerts_enabled FROM watchlist_company wc
+      const row = await sql`SELECT r.source, r.verified_at, w.alerts_enabled, w.filters->>'anyCompany' AS any_company,
+        (SELECT count(*)::integer FROM watchlist_company all_wc WHERE all_wc.watchlist_id=w.id) AS membership_count FROM watchlist_company wc
         JOIN watchlist w ON w.id=wc.watchlist_id JOIN company_reference r ON r.id=wc.company_id
         WHERE wc.watchlist_id=${watchlistId} AND wc.company_id=${doc.id} AND w.user_id=${userId} AND w.title=${title}`;
-      if (row.length === 1 && row[0].source === "typesense" && row[0].verified_at && !row[0].alerts_enabled) { persisted = true; break; }
+      if (row.length === 1 && row[0].source === "typesense" && row[0].verified_at && !row[0].alerts_enabled && row[0].any_company === "false" && row[0].membership_count === 1) { persisted = true; break; }
       await pause();
     }
     check(persisted, "FIRST_USE_SELECTION_NOT_COMMITTED");
+    const legacy = await sql`SELECT 1 FROM company WHERE id=${doc.id}`;
+    check(legacy.length === (writeMode === "bridge" ? 1 : 0), "PRODUCTION_WRITE_MODE_CONTRACT_MISMATCH");
     phase = "persisted_reload";
-    await page.reload(); await page.getByText(doc.name, { exact: true }).waitFor();
+    await page.reload(); await page.getByRole("button", { name: `Remove ${doc.name}`, exact: true }).waitFor();
     const dangling = await sql`SELECT 1 FROM watchlist_company wc LEFT JOIN company_reference r ON r.id=wc.company_id WHERE wc.watchlist_id=${watchlistId} AND r.id IS NULL`;
     check(dangling.length === 0, "CANARY_SELECTION_REFERENCE_MISSING");
   } catch (error) { failure = error; failurePhase = phase; }
   finally {
+    // Recover a committed create even if navigation failed before recording its ID.
+    // The random namespace belongs only to this run; never search by broad prefix.
+    try {
+      const created = await sql`SELECT id FROM watchlist WHERE user_id=${userId} AND title=${title}`;
+      check(created.length <= 1, "CLEANUP_NAMESPACE_AMBIGUOUS");
+      if (created.length === 1) {
+        check(!watchlistId || watchlistId === created[0].id, "CLEANUP_IDENTITY_MISMATCH");
+        watchlistId = created[0].id;
+      }
+    } catch (error) { if (!failure) { failure = error; failurePhase = "cleanup_recovery"; } }
     if (watchlistId) {
       try {
         phase = "scoped_cleanup";
         const owned = await sql`SELECT user_id, title FROM watchlist WHERE id=${watchlistId}`;
         check(owned.length === 1 && owned[0].user_id === userId && owned[0].title === title, "CLEANUP_OWNERSHIP_MISMATCH");
         // Delete through the production authenticated action, after exact owner + fresh namespace checks.
-        await page!.goto(`/en/watchlists/${watchlistId}`);
+        page ??= await context.newPage();
+        await page.goto(`/en/watchlists/${watchlistId}`);
         await page!.getByRole("button", { name: "Delete", exact: true }).click();
         await page!.getByRole("alertdialog").getByRole("button", { name: "Delete", exact: true }).click();
         await page!.waitForURL(/\/en\/watchlists$/);
@@ -121,10 +143,14 @@ async function main() {
         check(retained.length === 0, "CANARY_CLEANUP_FAILED");
       } catch (error) { if (!failure) { failure = error; failurePhase = phase; } }
     }
+    try {
+      const signedOut = await context.request.post("/api/auth/sign-out", { headers: { origin: base.origin, "x-vercel-protection-bypass": bypass }, maxRedirects: 0 });
+      check(signedOut.status() === 200, "CANARY_SESSION_CLEANUP_FAILED");
+    } catch (error) { if (!failure) { failure = error; failurePhase = "session_cleanup"; } }
     await context.close(); await browser.close(); await sql.end({ timeout: 5 });
   }
   if (failure) { phase = failurePhase!; throw failure; }
-  console.log(JSON.stringify({ contract: CONTRACT, outcome: "passed", firstUse: true, realRequestIdentity: true, committedSelection: true, persistedReload: true, scopedCleanup: true }));
+  console.log(JSON.stringify({ contract: CONTRACT, outcome: "passed", firstUse: true, realRequestIdentity: true, committedSelection: true, persistedReload: true, scopedCleanup: true, writeMode, legacyRowsAfterSelection: writeMode === "bridge" ? 1 : 0 }));
 }
 void main().catch(error => {
   console.error(JSON.stringify({ contract: CONTRACT, outcome: "failed", phase }));

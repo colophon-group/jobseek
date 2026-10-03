@@ -1,4 +1,4 @@
-type AuthOriginEnvironment = Partial<Pick<NodeJS.ProcessEnv, "TRUSTED_ORIGINS" | "VERCEL" | "VERCEL_ENV" | "VERCEL_URL">>;
+type AuthOriginEnvironment = Record<string, string | undefined>;
 
 /**
  * The production artifact is tested at its exact Vercel deployment URL before

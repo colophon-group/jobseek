@@ -24,6 +24,23 @@ export async function startTypesenseFixture(companies: ReturnType<typeof company
       return { found: docs.length, hits: docs.map(document => ({ document, highlights: [], text_match: 1 })), facet_counts: [], search_time_ms: 1, page: 1 };
     };
     response.setHeader("content-type", "application/json");
+    // A deliberately cache-missing Redis REST fixture. Session identity always
+    // reaches real Better Auth/PostgreSQL; limiter commands receive ample local
+    // capacity so an absent external cache does not dominate browser latency.
+    if (url.pathname.startsWith("/redis")) {
+      const command = (parts: unknown[]) => {
+        const name = String(parts[0]).toUpperCase();
+        if (["EVAL", "EVALSHA"].includes(name)) return { result: [1000, 1000] };
+        if (name === "GET") return { result: null };
+        if (name === "MGET") return { result: parts.slice(1).map(() => null) };
+        if (name === "SCAN") return { result: ["MA==", []] };
+        if (["SET", "SETEX", "MSET"].includes(name)) return { result: "OK" };
+        if (["DEL", "EXPIRE", "INCR", "DECR"].includes(name)) return { result: 1 };
+        return { error: "Unsupported local Redis fixture command" };
+      };
+      const payload = JSON.parse(body);
+      return response.end(JSON.stringify(url.pathname.endsWith("/pipeline") || url.pathname.endsWith("/multi-exec") ? payload.map(command) : command(payload)));
+    }
     if (url.pathname === "/health") return response.end('{"ok":true}');
     if (url.pathname === "/multi_search") {
       return response.end(JSON.stringify({ results: JSON.parse(body).searches.map(search) }));
