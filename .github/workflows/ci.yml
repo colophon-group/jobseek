@@ -385,6 +385,14 @@ jobs:
           go mod tidy -diff
           test -z "$(gofmt -l .)"
 
+      - name: Test native cold cleanup recovery against real Redis
+        run: |
+          set -euo pipefail
+          # Isolated library/history tests; actual UID10001 delegated command
+          # and checked host journal handoff require installed-image evidence.
+          LIGHTPANDA_B0_INTEGRATION_REDIS_URL=redis://localhost:6379/15 \
+            go test -race -tags=integration -run '^TestColdProducerCleanup' -count=1 -v ./...
+
       - name: Test installed producer UDS against real Redis and Lua
         run: |
           set -euo pipefail

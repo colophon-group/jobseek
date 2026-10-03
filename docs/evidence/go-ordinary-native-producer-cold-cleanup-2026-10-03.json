@@ -1,0 +1,57 @@
+{
+  "schema": "jobseek.migration.native-producer-cold-cleanup/v1",
+  "date": "2026-10-03",
+  "parent": "995056addbe5942fc86592beb86fb9c2332a102e",
+  "runtime_version": "0.13.904",
+  "implementation": [
+    "Native producer --cleanup-cold ABSOLUTE_DECISION_FILE SHA256 requires off mode, fixed UID10001/root client identity, fixed socket absence and shared producer lifecycle flock",
+    "Closed canonical root-owned0640 decision binds exact source N/reserved R, original sentinel bytes, rollback plan/source receipt, SQL cleanup and all-writer receipt hashes, ordinary restoration/reversal and compiled source/reviewed Lua/immutable release identity",
+    "Durable private request before sentinel and exact reviewed Lua tombstone clearing; Redis SAVE and complete absent source-authority readback before immutable completion",
+    "Pending exact recovery handles sentinel-only and Lua-returned/SAVE-failure boundaries; completed retry refuses reappeared authority and never repeats clearing/SAVE; missing/changed history cannot be reconstructed",
+    "Full CI includes real Redis library/history recovery tests; no new deployment or production startup path"
+  ],
+  "validation": {
+    "native_unit_race_pass": true,
+    "native_unit_race_seconds": 2.318,
+    "private_unix_Redis_Lua_SAVE_race_pass": true,
+    "private_Redis_seconds": 1.458,
+    "foreign_owner_receipt_extra_fields_queue_guard_marker_absence_cancelled_refusals": true,
+    "sentinel_only_and_returned_Lua_effect_exact_recovery": true,
+    "denied_SAVE_no_completion_and_completed_retry_no_SAVE": true,
+    "unrelated_fractional_readiness_and_legacy_value_conserved": true,
+    "both_Linux_integration_vet_format_tidy_pass": true,
+    "workflow_YAML_parsed": true,
+    "repository_tests_passed": 94,
+    "optional_skips": 3,
+    "repository_tests_seconds": 44.36,
+    "logs_sha256": {
+      "ordinary-native-cold-cleanup-unit-tests.log": "8e782f713d16270b4f8a98d3228473ea2dca36a2657ffe3c661d1c881cb65d4e",
+      "ordinary-native-cold-cleanup-redis-tests.log": "8fb5c0277a32bd89561418fc36fc4410aedf11698de073a75a2bdfc1c4e0bc44",
+      "ordinary-native-cold-cleanup-vet.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ordinary-native-cold-cleanup-repository-tests.log": "681c9ff603857ad33aa0828d2ddb0bb5e4347301759f06fbb563a0347202652a"
+    }
+  },
+  "live_published_parent": {
+    "installed_run": 37102222073,
+    "whole_B0_run": 37102190932,
+    "preserve_before_publication": true,
+    "full_CI_run": 37102223604,
+    "full_CI_conclusion": "success",
+    "Linux_run": 37102191115,
+    "Linux_raw_proof_verified_both_architectures": true,
+    "historical_native_run": 37102190958,
+    "historical_native_artifacts_verified": true,
+    "historical_legacy_run": 37102191017,
+    "historical_legacy_artifacts_verified": true
+  },
+  "limits": [
+    "Protected hashes are identities, not independently observed SQL or host predicates. The host must bind actual stopped producer, zero source fences, checked SQL restoration, original host flock, writer exclusion and selected endpoint/release before delegating",
+    "Actual fixed UID10001 installed cleanup command, source-bound durable host journal handoff, real SIGKILL and RDB reload remain unproven",
+    "Existing native R initialization then complete reactivation/finalization, spec/env/data/image restoration and full-stack startup/readiness still required",
+    "Every enabled profile/consumer parity, output/database/publisher/freshness/queue conservation, comparable whole-service cost, gates/cutover/cold reversal/rollback window before production Python retirement"
+  ],
+  "local_fixture_state": "Owned Unix Redis stopped and removed; PostgreSQL fixture remains stopped; no local root/native producer/Docker execution",
+  "runtime_admission": false,
+  "production_changed": false,
+  "goal_status": "active"
+}

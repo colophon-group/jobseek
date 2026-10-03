@@ -1,4 +1,48 @@
-# Native producer cold initialization
+# Native producer cold lifecycle
+
+`lightpanda-b0-supervisor producer --cleanup-cold ABSOLUTE_DECISION_FILE SHA256`
+removes the restored source activation sentinel and exact rollback tombstone. It
+requires producer mode `off`, fixed UID/GID 10001/client UID 0, the fixed socket path,
+an absent socket and the same lifecycle lock used by serving and initialization.
+It allocates no epoch and creates no task, producer owner or ordinary authority.
+
+The host coordinator must authenticate the stopped source process, original host
+flock, SQL restoration and zero source write fences, selected Redis generation,
+complete writer quiescence and immutable producer release before delegating the
+decision. The producer has no SQL credentials; receipt hashes identify those
+independently checked predicates and cannot replace host checks. Native host
+journal integration and actual installed command evidence remain required.
+
+The root-owned single-link `0640` decision has group 10001 and uses canonical compact
+JSON with no trailing newline, at most 8192 bytes. Its sorted fields are:
+
+- `schema`: `jobseek.lightpanda.producer-cold-cleanup/v1`;
+- `activation_sentinel_sha256`: exact existing source marker bytes;
+- `all_writers_receipt_sha256`, `b0_restoration_plan_sha256`,
+  `ordinary_restoration_plan_sha256`, `reversal_sha256`, `source_receipt_sha256`,
+  `sql_cleanup_receipt_sha256`: exact retained, independently checked identities;
+- `cohort`, `namespace`, `shard_id`, `source_epoch`: exact configured source N;
+- `retirement_epoch`: already reserved R, with `0 < N < R`;
+- `source_revision`: revision compiled into the producer;
+- `runtime_image`: exact `ghcr.io/colophon-group/jobseek-crawler@sha256:…` release;
+- `lua_sha256`: the compiled, reviewed lifecycle script digest.
+
+Before effects, the command requires all source queue keys and the legacy guard
+to be absent, checks the exact eight-field source tombstone, binds the existing
+safe marker, and fsyncs `.cold-cleanup-v1-SHA256.request`. It clears the marker,
+uses the reviewed atomic Lua to clear only that exact tombstone, requires Redis
+SAVE and absent-authority readback, then fsyncs the same decision in `.complete`.
+The command has a thirty-second deadline and performs no automatic retry.
+
+Pending recovery accepts source absence only with the exact retained request.
+Completed retry verifies absence without clearing or saving again. A different
+owner, source marker, receipt, queue/guard, changed or missing history, cancelled
+context or denied SAVE never grants completion. It does not repair Redis loss or
+adopt authority created after cleanup. Keep both records in the runtime directory
+through host recovery. Library tests exercise real Redis/Lua/SAVE and boundary
+recovery; they do not establish installed command or host deployment admission.
+
+## Initialization at the reserved retirement epoch
 
 `lightpanda-b0-supervisor producer --initialize-cold ABSOLUTE_DECISION_FILE SHA256`
 establishes only an empty native producer authority/sentinel pair at the explicitly

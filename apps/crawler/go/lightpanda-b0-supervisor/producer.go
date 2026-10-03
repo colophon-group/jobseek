@@ -51,8 +51,12 @@ type producerConfig struct {
 }
 
 func producerConfigFromEnvironment() (producerConfig, error) {
-	if requiredEnv("LIGHTPANDA_B0_PRODUCER_MODE") != modeEnabled {
-		return producerConfig{}, errors.New("LIGHTPANDA_B0_PRODUCER_MODE must be exactly enabled")
+	return producerConfigForMode(modeEnabled)
+}
+
+func producerConfigForMode(mode string) (producerConfig, error) {
+	if (mode != modeEnabled && mode != "off") || requiredEnv("LIGHTPANDA_B0_PRODUCER_MODE") != mode {
+		return producerConfig{}, errors.New("LIGHTPANDA_B0_PRODUCER_MODE does not match the selected operation")
 	}
 	redisOptions, err := redis.ParseURL(requiredEnv("REDIS_URL"))
 	if err != nil || redisOptions == nil {

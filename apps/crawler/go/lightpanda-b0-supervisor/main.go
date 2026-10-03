@@ -35,7 +35,12 @@ func main() {
 		return
 	}
 	if len(os.Args) >= 2 && os.Args[1] == "producer" {
-		configured, err := producerConfigFromEnvironment()
+		cleanup := len(os.Args) == 5 && os.Args[2] == "--cleanup-cold"
+		mode := modeEnabled
+		if cleanup {
+			mode = "off"
+		}
+		configured, err := producerConfigForMode(mode)
 		if err == nil && len(os.Args) == 3 && os.Args[2] == "--healthcheck" {
 			err = checkProducerReady(configured.Socket, uint32(os.Geteuid()), configured.ClientUID)
 		} else if err == nil && len(os.Args) == 3 && os.Args[2] == "--check-activation-sentinel-clearable" {
@@ -50,12 +55,14 @@ func main() {
 			)
 		} else if err == nil && len(os.Args) == 5 && os.Args[2] == "--initialize-cold" {
 			err = runProducerColdInitialization(configured, os.Args[3], os.Args[4])
+		} else if err == nil && cleanup {
+			err = runProducerColdCleanup(configured, os.Args[3], os.Args[4])
 		} else if err == nil && len(os.Args) == 2 {
 			ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 			defer cancel()
 			err = runProducer(ctx, configured)
 		} else if err == nil {
-			err = errors.New("usage: lightpanda-b0-supervisor producer [--healthcheck|--check-activation-sentinel-clearable|--check-activation-sentinel-absent|--clear-activation-sentinel|--initialize-cold ABSOLUTE_DECISION_FILE SHA256]")
+			err = errors.New("usage: lightpanda-b0-supervisor producer [--healthcheck|--check-activation-sentinel-clearable|--check-activation-sentinel-absent|--clear-activation-sentinel|--initialize-cold ABSOLUTE_DECISION_FILE SHA256|--cleanup-cold ABSOLUTE_DECISION_FILE SHA256]")
 		}
 		if err != nil {
 			_, _ = fmt.Fprintln(os.Stderr, "Lightpanda B0 producer failed closed:", err)
@@ -87,7 +94,7 @@ func main() {
 		return
 	}
 	if len(os.Args) != 1 {
-		_, _ = fmt.Fprintln(os.Stderr, "usage: lightpanda-b0-supervisor [--build-info|--healthcheck|--validate-dark]|producer [--healthcheck|--check-activation-sentinel-clearable|--check-activation-sentinel-absent|--clear-activation-sentinel|--initialize-cold ABSOLUTE_DECISION_FILE SHA256]")
+		_, _ = fmt.Fprintln(os.Stderr, "usage: lightpanda-b0-supervisor [--build-info|--healthcheck|--validate-dark]|producer [--healthcheck|--check-activation-sentinel-clearable|--check-activation-sentinel-absent|--clear-activation-sentinel|--initialize-cold ABSOLUTE_DECISION_FILE SHA256|--cleanup-cold ABSOLUTE_DECISION_FILE SHA256]")
 		os.Exit(2)
 	}
 	if err := run(); err != nil {

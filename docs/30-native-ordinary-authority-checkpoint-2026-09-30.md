@@ -1,5 +1,33 @@
 # Native ordinary worker authority checkpoint
 
+The native producer now has a protected `--cleanup-cold` one-shot command to
+replace Python sentinel/tombstone cleanup. It requires mode `off`, fixed UID10001
+and root client identity, absent socket and the shared lifecycle flock. A closed
+root-owned canonical decision binds source N, reserved R, exact marker/rollback
+plan/source receipt, SQL cleanup/all-writer receipts and compiled release/Lua
+identity. Private request history precedes marker and reviewed Lua effects;
+acknowledged Redis SAVE and absent-authority readback precede completion. Pending
+exact retries recover sentinel-only and returned-effect/SAVE failure; completed
+retries refuse new authority and repeat no SAVE. Missing/changed history fails.
+
+Native race tests (2.318s), real private Unix Redis/Lua/SAVE recovery and refusal
+tests (1.458s), both Linux integration vets/format/tidy, workflow parsing and 94
+repository tests pass (three optional skips, 44.36s). Full CI now includes the
+cleanup library/history integration tests. SQL/host receipt hashes identify
+independently checked evidence; the producer has no SQL credentials and does not
+verify those host predicates itself. Actual installed UID10001 cleanup, checked
+durable host journal delegation, real crash/reload and complete reactivation /
+finalization/startup remain unproven. See [native cleanup evidence](evidence/go-ordinary-native-producer-cold-cleanup-2026-10-03.json).
+
+This local follow-on preserves published `995056add` installed run `37102222073`
+and whole-B0 run `37102190932` before publication. Its full CI passes; raw Linux
+lifecycle/three private SIGKILL proofs and historical native/legacy artifacts
+independently verify on both architectures. Keep the complete migration scope:
+every enabled profile/consumer and output/database/publisher/freshness/queue
+parity, whole-service cost, exact gates, cutover/cold reversal and rollback window
+before production Python/Playwright/Chromium retirement. Goal active, PR #10210
+draft, production unchanged. Earlier entries retain their source scopes.
+
 The disposable installed fixture now extends actual native candidate N forward
 publication through active reversal and nonempty B0/ordinary restoration: 21
 retained phases under the original host flock. It stops the image-bound UID10001
