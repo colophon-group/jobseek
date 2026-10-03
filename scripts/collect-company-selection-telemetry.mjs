@@ -227,7 +227,7 @@ export function replay(previous, next) {
 export function summarize(checkpoints, { from, until, observationStart, retention, now, fullDurationReady = true }) {
   const lookup = new Map(checkpoints.map(value => [Date.parse(value.from), value]));
   const start = Math.max(from, observationStart), counts = empty();
-  let expected = 0, missing = 0, partial = 0, exhausted = 0, expired = 0;
+  let expected = 0, missing = 0, partial = 0, exhausted = 0, expired = 0, positiveControl = false;
   const reasons = new Set();
   for (let quarter = Math.floor(start / QUARTER) * QUARTER; quarter < until; quarter += QUARTER) {
     expected++;
@@ -236,9 +236,9 @@ export function summarize(checkpoints, { from, until, observationStart, retentio
     if (value.queryCoverage === 'exhausted') exhausted++; else partial++;
     value.reasons.forEach(reason => reasons.add(reason));
     const values = parseCounts(value.counts);
+    if (values.size) positiveControl = true;
     for (const [pair, count] of values) counts.set(pair, (counts.get(pair) ?? 0) + count);
   }
-  const positiveControl = checkpoints.some(value => value.counts.length > 0);
   const blockers = [];
   if (!fullDurationReady) blockers.push('duration_not_reached');
   if (missing) blockers.push('missing_windows');
@@ -273,6 +273,17 @@ export async function collect({ observationStart, previous = [], run, project, s
   const periods = { '1h': 3600_000, '24h': 86400_000, '7d': 7 * 86400_000 };
   const reports = Object.fromEntries(Object.entries(periods).map(([name, duration]) => [name, summarize(checkpoints, { from: until - duration, until, observationStart: activation, retention, now: checkedAt, fullDurationReady: until - activation >= duration })]));
   reports.sinceRollout = summarize(checkpoints, { from: oldest, until, observationStart: activation, retention, now: checkedAt, fullDurationReady: until > activation });
+  reports.sinceRollout.countsFrom = reports.sinceRollout.from;
+  reports.sinceRollout.from = iso(activation);
+  reports.sinceRollout.completeness.entireDeclaredPeriodRetained = oldest <= activation;
+  if (oldest > activation) {
+    // Earlier coverage has left bounded state. Even if every retained quarter is
+    // healthy, never certify the complete declared period or forget its gaps.
+    reports.sinceRollout.completeness.queryCoverage = 'partial';
+    reports.sinceRollout.completeness.countsAreLowerBound = true;
+    reports.sinceRollout.completeness.zeroClaims = 'blocked';
+    reports.sinceRollout.completeness.rolloutAcceptanceBlockers.push('declared_period_exceeds_retained_horizon');
+  }
   return { checkpoints, report: { checkedAt: iso(checkedAt), checkpointMinutes: 15, cliVersion: CLI_VERSION, plan, retentionHours: retention ? retention / 3600_000 : null, observabilityPlus: 'not_established', reports } };
 }
 

@@ -185,3 +185,27 @@ test('workflow is inert without activation; readonly main-only scheduled and own
   const uses = [...workflow.matchAll(/uses: ([^\s#]+)/g)].map(value => value[1]);
   assert.deepEqual(uses, ['actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1', 'pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413', 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020', 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a']);
 });
+
+for (const hours of [1, 24]) test(`old positive event cannot certify silent current${hours}h period`, () => {
+  const end = Math.floor(NOW / QUARTER) * QUARTER;
+  const from = end - hours * 3600_000;
+  const history = [checkpoint(from - QUARTER, 1)];
+  for (let start = from; start < end; start += QUARTER) history.push(checkpoint(start, 0));
+  const report = summarize(history, { from, until: end, observationStart: from - QUARTER, retention: 3600_000, now: NOW });
+  assert.equal(report.counts.length, 0); assert.equal(report.completeness.positiveTelemetryObserved, false);
+  assert.equal(report.completeness.zeroClaims, 'blocked');
+});
+test('rolling7days cannot silently certify a longer declared rollout after an early gap leaves state', async () => {
+  const end = Math.floor((NOW - 300_000) / QUARTER) * QUARTER;
+  const activation = end - 8 * 86400_000, from = end - 7 * 86400_000;
+  const history = [];
+  for (let start = from; start < end; start += QUARTER) history.push(checkpoint(start));
+  const value = await collect({ observationStart: iso(activation), previous: history, plan: 'hobby', now: () => NOW, maxQueries: 0 });
+  assert.equal(value.report.reports['7d'].completeness.queryCoverage, 'exhausted');
+  assert.equal(value.report.reports['7d'].completeness.zeroClaims, 'observed_only_under_conditional_provider_capture');
+  assert.equal(value.report.reports.sinceRollout.from, iso(activation));
+  assert.equal(value.report.reports.sinceRollout.countsFrom, iso(from));
+  assert.equal(value.report.reports.sinceRollout.completeness.entireDeclaredPeriodRetained, false);
+  assert.equal(value.report.reports.sinceRollout.completeness.zeroClaims, 'blocked');
+  assert.ok(value.report.reports.sinceRollout.completeness.rolloutAcceptanceBlockers.includes('declared_period_exceeds_retained_horizon'));
+});

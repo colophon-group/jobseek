@@ -54,7 +54,12 @@ Workflow stdout and the job summary contain hourly, 24-hour, seven-day, and
 since-rollout reports. During warm-up, longer reports declare
 `duration_not_reached`. A gap or partial window fails the collector step but its
 bounded artifact is still uploaded. The next run can repair a recoverable gap;
-expired gaps remain visible. Replayed counts replace earlier counts rather than
+expired gaps remain visible within the retained period. After the declared
+period exceeds the seven-day checkpoint horizon, `sinceRollout` explicitly blocks
+acceptance with `declared_period_exceeds_retained_horizon`, reports the original
+start and a separate `countsFrom`, and cannot certify discarded earlier coverage.
+Rolling24h/7d reports describe only their own actual intervals; they cannot
+prove an earlier gap never happened. Replayed counts replace earlier counts rather than
 adding them. If counts decrease, the checkpoint retains the observed maxima,
 marks `replay_count_regression`, and cannot certify zero failures.
 
@@ -94,7 +99,7 @@ rows, failed queries, saturation, and missed/expired windows. The CLI does not
 prove absence of provider-side dropped messages, so even an exhausted report
 states `providerCaptureGuarantee: unknown`. Its zero claim means only
 `observed_only_under_conditional_provider_capture`, never a universal claim of
-zero mutations or failures. No positive telemetry anywhere in the period also
+zero mutations or failures. No positive telemetry within the requested report interval also
 blocks zero claims: a missing instrumented deployment must not look healthy.
 [Vercel runtime-log limits](https://vercel.com/docs/logs/runtime).
 
