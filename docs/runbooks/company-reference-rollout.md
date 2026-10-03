@@ -139,13 +139,27 @@ operator recovery; never broaden that cap to hide duplicate imports.
 The proxy shares a 30/minute IP budget across watchlist navigation and browsing
 actions, including authenticated requests. The remote deployment waits 65 seconds
 before each staged/public lifecycle so cache smoke and the earlier canary do not
-consume its starting burst budget. A canary document GET may retry once only on
+consume its starting burst budget. Each remote lifecycle also waits a fixed 65
+seconds after anonymous clone signout and context closure, before the star/removal
+tail. The protected runner derives this pacing from its validated staged/public
+target; the local harness explicitly selects a local policy. No locator budget,
+mutation replay or rate-limit exemption is added. A canary document GET may retry once only on
 an explicit HTTP429 with integer `Retry-After` of 1–65 seconds; an invalid/excessive
 delay or second denial fails. Server Actions, form submissions and the title-query
 navigation that initiates watchlist creation are never replayed. Removal/reload
 must render an authenticated editable owner shell before an absent pill counts as
 proof. Cleanup separately proves request identity, owner shell, deletion trigger,
 confirmation and persisted absence. Sustained-hour limits still fail the gate.
+Star restoration may reuse the current company route only with exact origin/path,
+one visible Account menu, the SQL-derived star control and no visible dialog or
+login control. Main cleanup may reuse only the same successfully verified
+post-removal owner route, with the exact owned editable title and the same guards.
+Unknown, foreign, modal or incomplete states retain the original document GET.
+The initial persisted reload and post-removal reload remain actual GETs; all SQL
+ownership/persistence proofs, cleanup request-session identity and signout remain
+mandatory. The fixed `navigation_budget` cleanup record reports reuse without
+paths or identities. Owner evidence still describes the most recent actual GET;
+reuse does not invent a new navigation or erase its passive status history.
 Verify partial/unknown lookup failures leave counts/filters unchanged, and existing
 reference edit/removal works without search. Never mutate the reporter's watchlist
 as a canary. Compare persisted membership UUID/count digests before/after promotion.

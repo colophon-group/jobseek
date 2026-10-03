@@ -1,11 +1,12 @@
 import { createServer, type Server } from "node:http";
 import { once } from "node:events";
+import { readFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import { chromium, type Page } from "playwright";
 import type { Sql } from "postgres";
 import { expect, test } from "vitest";
-import { navigateCanary, waitForCanaryOwnerShell, diagnoseCanaryOwnerReload, canaryBrowserError, captureCanaryDeleteAttempt, observeCanaryReadiness, type CanaryDeleteEvidence, type CanaryOwnerEvidence } from "./company-reference/canary-navigation";
-import { signInCanaryAccount, requireCanaryCleanup, readCanaryReadinessState } from "./company-reference/canary-lifecycle";
+import { navigateCanary, waitForCanaryOwnerShell, diagnoseCanaryOwnerReload, canaryBrowserError, captureCanaryDeleteAttempt, observeCanaryReadiness, navigateCanaryCleanup, settleCanaryTail, type CanaryDeleteEvidence, type CanaryOwnerEvidence } from "./company-reference/canary-navigation";
+import { signInCanaryAccount, requireCanaryCleanup, readCanaryReadinessState, restoreCanaryStar, type CanaryLifecycleState } from "./company-reference/canary-lifecycle";
 import { selectCanaryCompany, canaryCompanyRow } from "./company-reference/canary-picker";
 import { bootstrapDeploymentAccess } from "./company-reference/deployment-access";
 
@@ -370,4 +371,131 @@ test("successful delete emits completed evidence only after persistence and befo
     expect(emitted[0].requests).toEqual([expect.objectContaining({kind:'server_action_candidate',httpStatus:200})]);
     expect(JSON.stringify(emitted)).not.toMatch(/PRIVATE_|11111111|127.0.0.1/);
   }finally{await browser.close();await close(server);}
+});
+
+// Real browser requests use the production bucket sizes with an explicit test clock.
+// The clock changes only at the shared fixed boundary, after clone session/context cleanup.
+test.each([true, false])("remote tail boundary resets only the minute bucket, paced=%s", async paced => {
+  let now = 0; const minute: number[] = []; const hour: number[] = []; const counts = new Map<string, number>();
+  let anonymousClosed = false; const sleeps: number[] = [];
+  const server = createServer((req, res) => {
+    const key = `${req.method} ${req.url}`; counts.set(key, (counts.get(key) ?? 0) + 1);
+    if (req.method === 'POST' && req.url?.startsWith('/api/auth/')) { res.end('{}'); return; }
+    const limited = req.method === 'POST' || req.url === diagnosticPath;
+    if (limited) {
+      while (minute.length && minute[0] <= now - 60_000) minute.shift();
+      while (hour.length && hour[0] <= now - 3_600_000) hour.shift();
+      const denied = minute.length >= 30 || hour.length >= 300;
+      if (denied) { res.writeHead(429, { 'retry-after': '65' }); res.end(); return; }
+      minute.push(now); hour.push(now);
+    }
+    if (req.method === 'POST') { res.end('{}'); return; }
+    res.setHeader('content-type', 'text/html'); res.end(`<link rel="icon" href="data:,"><button>Account menu</button><h1><button>PRIVATE_TITLE</button></h1>
+      <button id="clone">Clone</button><button id="star">Star</button><button id="remove">Remove</button><button id="delete">Delete</button>
+      <form><label>Email or username<input></label><label>Password<input type="password"></label><button>Sign in</button></form><script>
+        for(const id of ['clone','star','remove','delete'])document.querySelector('#'+id).onclick=async()=>{const r=await fetch('/'+id,{method:'POST',headers:{'next-action':'PRIVATE_ACTION'}});document.body.dataset[id]=String(r.status);};
+        document.querySelector('form').onsubmit=async e=>{e.preventDefault();await fetch('/api/auth/sign-in/email',{method:'POST'});document.body.dataset.signedin='true';};
+      </script>`);
+  });
+  const port = await listen(server); const origin = `http://127.0.0.1:${port}`;
+  const browser = await chromium.launch({ headless: true }); const main = await browser.newContext({ baseURL: origin }); const anonymous = await browser.newContext({ baseURL: origin });
+  try {
+    const page = await main.newPage(); const shared = await anonymous.newPage();
+    await navigateCanary(page, origin + diagnosticPath); await shared.goto('/fixture');
+    await shared.getByRole('button', { name: 'Clone', exact: true }).click(); await shared.waitForFunction(() => document.body.dataset.clone === '200');
+    await signInCanaryAccount(shared, 'PRIVATE_EMAIL', 'PRIVATE_PASSWORD'); await shared.waitForFunction(() => document.body.dataset.signedin === 'true');
+    await shared.getByRole('button', { name: 'Delete', exact: true }).click(); await shared.waitForFunction(() => document.body.dataset.delete === '200');
+    // Opaque bootstrap traffic represents the already consumed head of the lifecycle.
+    await shared.evaluate(async () => { for (let n = 0; n < 26; n++) await fetch('/bootstrap', { method: 'POST', headers: { 'next-action': 'PRIVATE_BOOTSTRAP' } }); });
+    expect(minute).toHaveLength(29);
+    await anonymous.request.post('/api/auth/sign-out', { data: {} }); await anonymous.close(); anonymousClosed = true;
+    await settleCanaryTail({ target: paced ? 'production' : 'local' }, async ms => { expect(anonymousClosed).toBe(true); sleeps.push(ms); now += ms; });
+    await page.getByRole('button', { name: 'Star', exact: true }).click(); await page.waitForFunction(() => document.body.dataset.star === '200');
+    // Mandatory removal navigation and persisted reload remain actual GETs.
+    if (paced) {
+      await navigateCanary(page, origin + diagnosticPath);
+      await page.getByRole('button', { name: 'Remove', exact: true }).click(); await page.waitForFunction(() => document.body.dataset.remove === '200');
+      await navigateCanary(page, origin + diagnosticPath);
+      expect(counts.get(`GET ${diagnosticPath}`)).toBe(3); // Initial persisted reload plus removal navigation/reload.
+      const beforeCleanup = counts.get(`GET ${diagnosticPath}`);
+      expect(await navigateCanaryCleanup(page, { origin, path: diagnosticPath, title: 'PRIVATE_TITLE' }, true)).toBe(true);
+      expect(counts.get(`GET ${diagnosticPath}`)).toBe(beforeCleanup);
+      await page.getByRole('button', { name: 'Delete', exact: true }).click(); await page.waitForFunction(() => document.body.dataset.delete === '200');
+      expect(sleeps).toEqual([65_000]); expect(hour.length).toBeGreaterThan(29);
+      // A separate hour denial still fails. No retry or exemption is introduced.
+      hour.push(...Array.from({ length: 300 - hour.length }, () => now));
+      expect(hour).toHaveLength(300);
+      const denied = await page.evaluate(async () => (await fetch('/hour-probe', { method: 'POST', headers: { 'next-action': 'PRIVATE_ACTION' } })).status);
+      expect(denied).toBe(429); expect(counts.get('POST /hour-probe')).toBe(1);
+    } else {
+      await page.getByRole('button', { name: 'Remove', exact: true }).click(); await page.waitForFunction(() => document.body.dataset.remove === '429');
+      expect(sleeps).toEqual([]); expect(counts.get('POST /remove')).toBe(1);
+    }
+    await main.request.post('/api/auth/sign-out', { data: {} });
+    expect(counts.get('POST /clone')).toBe(1); expect(counts.get('POST /star')).toBe(1);
+    expect(counts.get('POST /remove')).toBe(1); expect(counts.get('POST /delete')).toBe(paced ? 2 : 1);
+    expect(counts.get('POST /api/auth/sign-in/email')).toBe(1); expect(counts.get('POST /api/auth/sign-out')).toBe(2);
+    expect(counts.get('GET /api/auth/get-session')).toBeUndefined();
+  } finally { await anonymous.close(); await main.close(); await browser.close(); await close(server); }
+});
+
+test("tail pacing is after clone signout and closure, with mandatory reloads and identities intact", async () => {
+  const lifecycle = await readFile(new URL('./company-reference/canary-lifecycle.ts', import.meta.url), 'utf8');
+  const runner = await readFile(new URL('./verify-company-reference-staged.ts', import.meta.url), 'utf8');
+  const signout = lifecycle.indexOf('const signedOut = await anonymous.request.post');
+  const closed = lifecycle.indexOf('await anonymous.close()', signout);
+  const pacing = lifecycle.indexOf('await settleCanaryTail(', closed);
+  const tail = lifecycle.indexOf('input.onPhase?.("canary_star")', pacing);
+  expect(signout).toBeGreaterThan(0); expect(closed).toBeGreaterThan(signout); expect(pacing).toBeGreaterThan(closed); expect(tail).toBeGreaterThan(pacing);
+  expect(lifecycle).toContain('input.tailPacing ?? { target: "production" }');
+  expect(runner).toContain('tailPacing: { target: target.kind }');
+  expect(lifecycle).toContain('await navigateCanary(page, page.url());');
+  expect(runner).toContain('await navigateCanary(page, page.url());');
+  expect(runner.indexOf('const owned = await sql')).toBeLessThan(runner.indexOf('const reused = await navigateCanaryCleanup'));
+  expect(runner.indexOf('const cleanupSession = await context.request.get')).toBeGreaterThan(runner.indexOf('const reused = await navigateCanaryCleanup'));
+  expect(runner).toContain('lifecycleProof?.removal === true && cleanupId === watchlistId');
+});
+
+test.each(['ready', 'unproven', 'path', 'origin', 'header', 'title', 'modal', 'login', 'query'])('cleanup navigation reuse is conservative for %s state', async state => {
+  let gets = 0;
+  const html = '<link rel="icon" href="data:,"><button id="account">Account menu</button><h1><button id="title">PRIVATE_TITLE</button></h1>';
+  const server = createServer((_, res) => { gets++; res.setHeader('content-type', 'text/html'); res.end(html); });
+  const port = await listen(server); const origin = `http://127.0.0.1:${port}`; const browser = await chromium.launch({ headless: true }); const page = await browser.newPage();
+  try {
+    await page.goto(origin + diagnosticPath);
+    if (state === 'path') await page.evaluate(() => history.replaceState({}, '', '/unknown'));
+    if (state === 'query') await page.evaluate(() => history.replaceState({}, '', '?unknown=PRIVATE'));
+    if (state === 'header') await page.locator('#account').evaluate(node => node.remove());
+    if (state === 'title') await page.locator('#title').evaluate(node => { node.textContent = 'PRIVATE_OTHER'; });
+    if (state === 'modal') await page.evaluate(() => document.body.insertAdjacentHTML('beforeend', '<div role="dialog" aria-hidden="true">PRIVATE_OVERLAY</div>'));
+    if (state === 'login') await page.evaluate(() => document.body.insertAdjacentHTML('beforeend', '<a href="/en/sign-in">Log in</a>'));
+    const expectedOrigin = state === 'origin' ? `http://localhost:${port}` : origin;
+    const before = gets; const reused = await navigateCanaryCleanup(page, { origin: expectedOrigin, path: diagnosticPath, title: 'PRIVATE_TITLE' }, state !== 'unproven');
+    expect(reused).toBe(state === 'ready'); expect(gets - before).toBe(state === 'ready' ? 0 : 1);
+    expect(new URL(page.url()).origin).toBe(expectedOrigin); expect(new URL(page.url()).pathname).toBe(diagnosticPath);
+    expect(() => requireCanaryCleanup({ recovered: true, residual: 1, starRestored: true, sessionClosed: true })).toThrow('CANARY_CLEANUP_INCOMPLETE');
+  } finally { await browser.close(); await close(server); }
+});
+
+test.each(['ready', 'path', 'modal', 'wrong_control'])('star restore retains one mutation and SQL proof with %s route', async state => {
+  let gets = 0; let mutations = 0; let starred = true;
+  const server = createServer((req, res) => {
+    if (req.method === 'POST') { mutations++; starred = false; res.end('{}'); return; }
+    gets++; res.setHeader('content-type', 'text/html'); res.end(`<link rel="icon" href="data:,"><button>Account menu</button><button id="star">Starred</button><script>
+      document.querySelector('#star').onclick=async()=>{await fetch('/star',{method:'POST',headers:{'next-action':'PRIVATE_ACTION'}});document.querySelector('#star').textContent='Star';};</script>`);
+  });
+  const port = await listen(server); const origin = `http://127.0.0.1:${port}`; const browser = await chromium.launch({ headless: true }); const context = await browser.newContext({ baseURL: origin }); const page = await context.newPage();
+  const sql = (() => Promise.resolve(starred ? [{ present: true }] : [])) as unknown as Sql;
+  const lifecycle: CanaryLifecycleState = { titles: ['PRIVATE_TITLE'], company: { id: 'PRIVATE_ID', name: 'PRIVATE_NAME', slug: 'fixture' }, initialStarred: false, starTouched: true };
+  const phases: string[] = [];
+  try {
+    await page.goto('/en/company/fixture');
+    if (state === 'path') await page.evaluate(() => history.replaceState({}, '', '/unknown'));
+    if (state === 'modal') await page.evaluate(() => document.body.insertAdjacentHTML('beforeend', '<div role="alertdialog">PRIVATE_MODAL</div>'));
+    if (state === 'wrong_control') await page.locator('#star').evaluate(node => { node.textContent = 'Star'; });
+    const before = gets; await restoreCanaryStar(page, sql, 'PRIVATE_USER', lifecycle, origin, phase => phases.push(phase));
+    expect(gets - before).toBe(state === 'ready' ? 0 : 1); expect(mutations).toBe(1); expect(starred).toBe(false); expect(lifecycle.starTouched).toBe(false);
+    expect(phases).toEqual([state === 'ready' ? 'canary_star_restore_reuse' : 'canary_star_restore_navigation']);
+    expect(JSON.stringify(phases)).not.toMatch(/PRIVATE_|127\.0\.0\.1|http:/);
+  } finally { await context.close(); await browser.close(); await close(server); }
 });

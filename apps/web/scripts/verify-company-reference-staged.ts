@@ -7,7 +7,7 @@ import { chromium, type Page } from "playwright";
 import { exerciseCanaryLifecycle, restoreCanaryStar, requireCanaryCleanup, readCanaryReadinessState, type CanaryLifecycleState } from "./company-reference/canary-lifecycle";
 import { openCanaryAccess, resolveCanaryTarget, reattestPublicCanaryIdentity, validateCanaryDeploymentIdentity, type CanaryDeploymentIdentity } from "./company-reference/canary-target";
 import { selectCanaryCompany, canaryFailureKind } from "./company-reference/canary-picker";
-import { navigateCanary, waitForCanaryOwnerShell, captureCanaryDeleteAttempt, type CanaryOwnerEvidence } from "./company-reference/canary-navigation";
+import { navigateCanary, waitForCanaryOwnerShell, captureCanaryDeleteAttempt, navigateCanaryCleanup, type CanaryOwnerEvidence } from "./company-reference/canary-navigation";
 import { logExternalError } from "../src/lib/safe-external-error";
 
 let contract = "company_reference_staged_canary";
@@ -134,7 +134,7 @@ async function main() {
     check(dangling.length === 0, "CANARY_SELECTION_REFERENCE_MISSING");
     phase = "complete_authenticated_lifecycle";
     lifecycleProof = await exerciseCanaryLifecycle({ page, sql, userId, email, password, origin: base.origin,
-      watchlistId, state: lifecycleState, onEvidence, readReadinessState, onPhase: next => { phase = next; }, createAnonymousContext: async () => {
+      watchlistId, state: lifecycleState, tailPacing: { target: target.kind }, onEvidence, readReadinessState, onPhase: next => { phase = next; }, createAnonymousContext: async () => {
         const anonymous = await browser.newContext({ baseURL: base.origin });
         try { await openCanaryAccess(anonymous, target, bypass); return anonymous; }
         catch (error) { await anonymous.close(); throw error; }
@@ -143,7 +143,7 @@ async function main() {
   finally {
     // Restore a dedicated account's exact pre-existing star state before deleting owned fixtures.
     if (page && lifecycleState) {
-      try { await restoreCanaryStar(page, sql, userId, lifecycleState); cleanupProof.starRestored = true; }
+      try { await restoreCanaryStar(page, sql, userId, lifecycleState, base.origin, next => { phase = next; }); cleanupProof.starRestored = true; }
       catch (error) { if (!failure) { failure = error; failurePhase = "star_cleanup"; } }
     }
     // Recover committed create/copy even if navigation failed before recording IDs.
@@ -163,7 +163,9 @@ async function main() {
         check(owned.length === 1 && owned[0].user_id === userId && titles.includes(owned[0].title), "CLEANUP_OWNERSHIP_MISMATCH");
         page ??= await context.newPage();
         phase = "cleanup_navigation";
-        await navigateCanary(page, `/en/watchlists/${cleanupId}`);
+        const reused = await navigateCanaryCleanup(page, { origin: base.origin, path: `/en/watchlists/${cleanupId}`, title: owned[0].title },
+          lifecycleProof?.removal === true && cleanupId === watchlistId);
+        console.log(JSON.stringify({ contract, outcome: "navigation_budget", stage: "cleanup", reused }));
         phase = "cleanup_request_session";
         const cleanupSession = await context.request.get("/api/auth/get-session", { maxRedirects: 0 });
         check(cleanupSession.status() === 200 && (await cleanupSession.json()).user?.id === userId, "CLEANUP_SESSION_IDENTITY_MISMATCH");

@@ -2,6 +2,41 @@ import type { Page, Request } from "playwright";
 
 function failed(code: string): never { throw Object.assign(new Error(code), { code }); }
 
+export type CanaryTailPolicy = { target: "staged" | "production" | "local" };
+
+/** A fixed remote burst-window boundary, never a retry or an increased locator budget. */
+export async function settleCanaryTail(policy: CanaryTailPolicy, sleep: (ms: number) => Promise<void>) {
+  if (policy.target === "local") return;
+  if (policy.target !== "staged" && policy.target !== "production") failed("CANARY_TAIL_POLICY_INVALID");
+  await sleep(65_000);
+}
+
+/** Reuse only an already visible canonical owner route; all unknown states fall back to a GET. */
+export async function canaryRouteReusable(page: Page, expected: {
+  origin: string; path: string; title?: string; button?: string;
+}) {
+  try {
+    const current = new URL(page.url());
+    if (current.origin !== expected.origin || current.pathname !== expected.path || current.search || current.hash ||
+        (!expected.title && !expected.button)) return false;
+    const account = page.getByRole("button", { name: "Account menu", exact: true }).filter({ visible: true });
+    const control = expected.title
+      ? page.getByRole("heading", { level: 1 }).getByRole("button", { name: expected.title, exact: true }).filter({ visible: true })
+      : page.getByRole("button", { name: expected.button, exact: true }).filter({ visible: true });
+    const [accounts, controls, dialogs, logins] = await Promise.all([account.count(), control.count(),
+      page.locator('[role="dialog"], [role="alertdialog"], dialog').filter({ visible: true }).count(),
+      page.getByRole("link", { name: "Log in", exact: true }).filter({ visible: true }).count()]);
+    return accounts === 1 && controls === 1 && dialogs === 0 && logins === 0 && await control.isEnabled({ timeout: 500 });
+  } catch { return false; }
+}
+
+/** Only a completed removal/reload may reuse its owner shell during main cleanup. */
+export async function navigateCanaryCleanup(page: Page, expected: { origin: string; path: string; title: string }, completedRemoval: boolean) {
+  const reused = completedRemoval && await canaryRouteReusable(page, expected);
+  if (!reused) await navigateCanary(page, `${expected.origin}${expected.path}`);
+  return reused;
+}
+
 /** The production proxy returns integer seconds. Refuse other formats and excessive delays. */
 export function canaryRetryAfter(value: string | undefined): number {
   if (!value || !/^[1-9][0-9]*$/.test(value)) return failed("CANARY_NAVIGATION_RETRY_AFTER_INVALID");

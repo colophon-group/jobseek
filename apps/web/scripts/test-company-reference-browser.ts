@@ -127,7 +127,7 @@ async function main() {
     const [owned] = await sql`SELECT title FROM watchlist WHERE id=${watchlistId} AND user_id=${user.id}`;
     const state: CanaryLifecycleState = { titles: [owned.title], company: doc, starTouched: false };
     const lifecycle = await exerciseCanaryLifecycle({ page, sql, userId: user.id, email: user.email, password,
-      origin: baseUrl, watchlistId, state, onPhase: next => { browserPhase = next; }, createAnonymousContext: () => browser.newContext({ baseURL: baseUrl }) });
+      origin: baseUrl, watchlistId, state, tailPacing: { target: "local" }, onPhase: next => { browserPhase = next; }, createAnonymousContext: () => browser.newContext({ baseURL: baseUrl }) });
     browserPhase = "cleanup_owner_shell";
     await waitForCanaryOwnerShell(page, state.titles[state.titles.length - 1]);
     browserPhase = "cleanup_delete_trigger";

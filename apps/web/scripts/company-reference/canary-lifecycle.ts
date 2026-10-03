@@ -1,6 +1,6 @@
 import type { BrowserContext, Page } from "playwright";
 import type { Sql } from "postgres";
-import { navigateCanary, waitForCanaryOwnerShell, type CanaryOwnerEvidence, type CanaryReadinessState } from "./canary-navigation";
+import { navigateCanary, waitForCanaryOwnerShell, canaryRouteReusable, settleCanaryTail, type CanaryTailPolicy, type CanaryOwnerEvidence, type CanaryReadinessState } from "./canary-navigation";
 
 export type CanaryLifecycleState = {
   titles: string[];
@@ -57,12 +57,15 @@ export async function signInCanaryAccount(page: Page, email: string, password: s
   await form.getByRole("button", { name: "Sign in", exact: true }).click();
 }
 
-export async function restoreCanaryStar(page: Page, sql: Sql, userId: string, state: CanaryLifecycleState) {
+export async function restoreCanaryStar(page: Page, sql: Sql, userId: string, state: CanaryLifecycleState, origin: string, onPhase?: (phase: string) => void) {
   if (!state.starTouched || state.initialStarred === undefined) return;
   const current = await sql`SELECT 1 FROM followed_company WHERE user_id=${userId} AND company_id=${state.company.id}`;
   check(current.length <= 1, "CANARY_STAR_STATE_AMBIGUOUS");
   if (Boolean(current.length) !== state.initialStarred) {
-    await navigateCanary(page, `/en/company/${state.company.slug}`);
+    const path = `/en/company/${state.company.slug}`;
+    const reused = await canaryRouteReusable(page, { origin, path, button: current.length ? "Starred" : "Star" });
+    onPhase?.(reused ? "canary_star_restore_reuse" : "canary_star_restore_navigation");
+    if (!reused) await navigateCanary(page, path);
     await page.getByRole("button", { name: "Account menu", exact: true }).waitFor();
     await page.getByRole("button", { name: current.length ? "Starred" : "Star", exact: true }).click();
     await until(async () => (await sql`SELECT 1 FROM followed_company WHERE user_id=${userId} AND company_id=${state.company.id}`).length === Number(state.initialStarred), "CANARY_STAR_RESTORE_FAILED");
@@ -79,6 +82,7 @@ export function requireCanaryCleanup(proof: { recovered: boolean; residual: numb
 export async function exerciseCanaryLifecycle(input: {
   page: Page; sql: Sql; userId: string; email: string; password: string; origin: string; watchlistId: string;
   state: CanaryLifecycleState; onPhase?: (phase: string) => void;
+  tailPacing?: CanaryTailPolicy;
   onEvidence?: (evidence: CanaryOwnerEvidence) => void;
   readReadinessState?: (page: Page, watchlistId: string, title: string, readiness: CanaryOwnerEvidence["readiness"]) => Promise<CanaryReadinessState>;
   createAnonymousContext: () => Promise<BrowserContext>;
@@ -149,6 +153,11 @@ export async function exerciseCanaryLifecycle(input: {
     } finally { await anonymous.close(); }
   }
 
+  // Both clone sign-out and context closure have completed. Remote tails must
+  // start in a fresh burst window; an omitted policy safely retains remote pacing.
+  input.onPhase?.("canary_tail_burst_settle");
+  await settleCanaryTail(input.tailPacing ?? { target: "production" }, ms => page.waitForTimeout(ms));
+
   input.onPhase?.("canary_star");
   const initialStar = await sql`SELECT 1 FROM followed_company WHERE user_id=${userId} AND company_id=${state.company.id}`;
   check(initialStar.length <= 1, "CANARY_STAR_STATE_AMBIGUOUS"); state.initialStarred = Boolean(initialStar.length);
@@ -159,7 +168,7 @@ export async function exerciseCanaryLifecycle(input: {
   state.starTouched = true;
   await page.getByRole("button", { name: state.initialStarred ? "Starred" : "Star", exact: true }).click();
   await until(async () => (await sql`SELECT 1 FROM followed_company WHERE user_id=${userId} AND company_id=${state.company.id}`).length === Number(!state.initialStarred), "CANARY_STAR_NOT_COMMITTED");
-  await restoreCanaryStar(page, sql, userId, state);
+  await restoreCanaryStar(page, sql, userId, state, origin, input.onPhase);
 
   input.onPhase?.("canary_removal");
   await navigateCanary(page, `/en/watchlists/${watchlistId}`);
