@@ -200,6 +200,14 @@ func TestActualInstalledNativeHostQuiescenceJoinsSQLExclusionAndRecoversSIGKILL(
 					t.Fatal("new backend changed exact host cold attestation")
 				}
 				originalColdContext, escapedPhaseContext, escapedPhasePool = phaseContext, scoped, pool
+				// This fixture intentionally has no selected Redis consumer or
+				// daemon. A caller URL must never fill that authority gap.
+				if WithSelectedHostColdRedis(scoped, pool, func(context.Context) error {
+					t.Fatal("caller endpoint filled missing selected Redis execution")
+					return nil
+				}) == nil || queue.CheckHostColdSQLScope(scoped, pool, source) != nil {
+					t.Fatal("missing selected Redis admitted or lost held SQL scope")
+				}
 				var observed struct {
 					PID  int32   `json:"backend_pid"`
 					Keys []int64 `json:"exclusive_barriers"`
@@ -243,6 +251,7 @@ func TestActualInstalledNativeHostQuiescenceJoinsSQLExclusionAndRecoversSIGKILL(
 		}
 		t.Log("actual in-process host callback held the shared mutation flock and all three SQL writer barriers; successful and rejected callbacks released their private SQL backend; callback failure retained cold exact-ID writer containment; returned observation grants no runtime admission")
 		t.Log("actual host callback issued an opaque cold phase context bound to the selected active/incoming/rollback file evidence and original containment request; cold attestation stable across private SQL backend retries; escaped callback context refused; phase effects and complete installed cold driver remain unproven")
+		t.Log("actual host callback refused caller Redis fallback when selected service execution had no Redis consumer/daemon; host/SQL scope remained held; full selected-connection phase handoff unproven")
 	})
 	// A current shared writer barrier prevents completion until its transaction
 	// exits. No runtime fault environment or unsafe direct Docker mutation.

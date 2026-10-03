@@ -1,5 +1,60 @@
 # Go and Lightpanda migration continuation plan
 
+The cold journal now opens Redis through `WithSelectedHostColdRedis` inside
+`WithHostQuiescence`. The endpoint comes from the selected generation's verified
+Compose and image defaults, matched observed consumer execution, and the live
+Redis daemon. A unique IPv4 loopback listener must belong to that daemon's PID;
+another IPv6 listener, stopped daemon or changed socket refuses. Connection values
+stay in memory. The protected endpoint receipt records hashes and daemon/socket
+identities, with `runtime_admission:false`.
+
+Version-2 phase requests bind that endpoint and the read-only Redis server
+incarnation. `RunHostColdPhase` accepts the context, SQL pool and request hash;
+it cannot accept a caller Redis client or URL. Every phase checks its issued
+scope, selected evidence and incarnation. Changed endpoint/incarnation bindings
+refuse before effects, including on retries. Earlier version-1 requests require
+their original source; this candidate does not silently upgrade or adopt them.
+
+Local endpoint races pass in 4.675 seconds; the full worker race suite passes in
+41.659 seconds, including linear outcomes, unresolved exact-input retries and
+two real SIGKILL recovery seams with canonical and complete Redis conservation.
+All 188 repository checks, workflow lint, both Linux integration-tag vets and
+module/format checks pass. Actual endpoint/socket execution is newly required
+in the disposable AMD64/ARM64 Linux harness and awaits this source's CI. The
+installed harness also requires refusal of caller fallback when the selected
+fixture has no Redis consumer/daemon. A positive joined actual host callback,
+selected Redis connection and journal phase remains required.
+
+Preceding source `5b9de6c95127c61e203fee62fc777561499979a5` passes full CI
+37081788776, installed 37081791187, Linux 37081759604, renderer 37081759526 and
+historical native/legacy image runs 37081759525/37081759513. Both architecture
+artifacts and exact merge parents are independently verified. Linux logs verify
+individual borrowed-scope/journal recovery markers; installed logs verify opaque
+host bindings, held flock/SQL exclusion and escaped-context refusal. Draft gate
+evaluator 37081756188 passes; it grants no production deployment authority.
+
+Whole-B0 runs 37081759539 (source 5b9) and 37078496358 (source 6b) are
+independently recomputed for 16 arms/eight pairs. Their density ranges are
+5.536874666–12.043544980 and 5.791507447–14.167318383 respectively. These generated
+startup fixtures do not establish every-profile or full-service resource/cost
+parity. See [selected Redis evidence](evidence/go-ordinary-native-host-selected-redis-2026-10-03.json).
+
+Next prove the positive selected-connection journal handoff on actual Linux
+containers, then extend the protected phase graph through complete native
+forward/reversal/reactivation/finalization with producer and lease exclusion.
+Authenticate deliberate spec/selection changes and keep the outer mutation lock
+through full spec/env/data restoration, SQL-scope release, startup and readiness.
+Then prove every enabled profile and deployment/maintenance consumer, canonical
+output/database/publisher/freshness/queue parity, full-service resources and
+attributable cost. Required CI and Crawler Deploy Gate, fresh exact revision/image
+and merge authority, quiesced deployment, cold reversal, naturally due work and
+the rollback window precede production Python/Playwright/Chromium retirement.
+Preserve useful offline Python, every enabled board and the deployment guard.
+PR #10210 remains draft; production is unchanged and the full migration goal active.
+
+Earlier entries below retain the evidence and pending states recorded at their
+original source checkpoints; the current status is above.
+
 The native host callback now issues an opaque cold phase scope and retains a
 protected journal for target capture, transition intent, epoch reservation and
 inspection. Requests name exact host/containment bindings and hashed input blobs

@@ -164,6 +164,23 @@ jobs:
           go test -race -tags=integration -count=1 -timeout=180s -v \
             -run '^TestActual(ClearedComposeAndLocalImageObservation|WholeDaemonContainerStateAndRestartObservation)$' ./releaseevidence
 
+      - name: Verify selected Redis endpoint and actual daemon socket ownership
+        run: |
+          set -euo pipefail
+          # Only this disposable runner creates/removes its own bounded fixtures.
+          # The trusted root test process reads the selected Redis daemon's /proc
+          # descriptor view; agents do not receive a Docker socket or invoke it.
+          redis_image="redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241"
+          docker pull "$redis_image"
+          endpoint_binary="${RUNNER_TEMP}/ordinary-selected-redis-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.test"
+          go test -race -c -tags=integration -o "$endpoint_binary" ./releaseevidence
+          chmod 0755 "$endpoint_binary"
+          trap 'rm -f "$endpoint_binary"' EXIT
+          sudo env GITHUB_ACTIONS=true JOBSEEK_CRAWLER_RELEASE_REQUIRE_SELECTED_REDIS=1 \
+            "$endpoint_binary" \
+            -test.run '^TestActualSelectedRedisEndpointJoinsDeclaredConsumerAndDaemonSocket$' \
+            -test.count=1 -test.timeout=150s -test.v
+
       - name: Verify independently pinned prior executable at restored R
         run: |
           set -euo pipefail

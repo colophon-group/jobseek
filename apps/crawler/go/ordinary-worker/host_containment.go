@@ -325,6 +325,13 @@ func runHostContainmentPhase(ctx context.Context, c HostContainmentConfig, lockP
 				return errHostPreflight
 			}
 			if withHostColdPhaseScope(sqlCtx, store, pool, sql, binding, r.Releases, actual.SHA256(), coldGuard, func(phaseCtx context.Context) error {
+				scope := phaseCtx.Value(hostColdPhaseKey{}).(*hostColdPhaseScope)
+				scope.redis = func() (*release.RedisEndpoint, error) {
+					if coldGuard() != nil {
+						return nil, errHostPreflight
+					}
+					return release.RequireSelectedRedisEndpoint(phaseCtx, r.Releases[0].FileEvidenceSHA256, guarded.Inventory, guarded.Images, guarded.Execution)
+				}
 				return driveCold(phaseCtx, pool, sql)
 			}) != nil || coldGuard() != nil || sql.Check(sqlCtx) != nil {
 				return errHostPreflight

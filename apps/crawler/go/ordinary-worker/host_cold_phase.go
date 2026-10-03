@@ -19,17 +19,19 @@ import (
 // Inputs are content hashes in the existing private host store, never paths,
 // connection URLs, shell commands, environment maps or a request for "latest".
 type HostColdPhaseRequest struct {
-	Version           string                   `json:"version"`
-	Binding           queue.HostColdSQLBinding `json:"binding"`
-	PredecessorSHA256 string                   `json:"predecessor_result_sha256,omitempty"`
-	Operation         string                   `json:"operation"`
-	PreviousEpoch     int64                    `json:"previous_epoch"`
-	IntentSHA256      string                   `json:"intent_sha256,omitempty"`
-	TargetSHA256      string                   `json:"target_sha256,omitempty"`
-	LuaSHA256         string                   `json:"lua_sha256,omitempty"`
-	Namespace         string                   `json:"namespace,omitempty"`
-	Shard             string                   `json:"shard,omitempty"`
-	Cohort            string                   `json:"cohort,omitempty"`
+	Version             string                   `json:"version"`
+	Binding             queue.HostColdSQLBinding `json:"binding"`
+	RedisEndpointSHA256 string                   `json:"redis_endpoint_sha256"`
+	RedisInstanceSHA256 string                   `json:"redis_instance_sha256"`
+	PredecessorSHA256   string                   `json:"predecessor_result_sha256,omitempty"`
+	Operation           string                   `json:"operation"`
+	PreviousEpoch       int64                    `json:"previous_epoch"`
+	IntentSHA256        string                   `json:"intent_sha256,omitempty"`
+	TargetSHA256        string                   `json:"target_sha256,omitempty"`
+	LuaSHA256           string                   `json:"lua_sha256,omitempty"`
+	Namespace           string                   `json:"namespace,omitempty"`
+	Shard               string                   `json:"shard,omitempty"`
+	Cohort              string                   `json:"cohort,omitempty"`
 }
 
 type HostColdPhaseResult struct {
@@ -54,6 +56,8 @@ type HostColdPhaseContext struct {
 	RollbackReleaseSHA256 string                   `json:"rollback_release_sha256"`
 	ColdAttestationSHA256 string                   `json:"cold_attestation_sha256"`
 	RuntimeAdmission      bool                     `json:"runtime_admission"`
+	RedisEndpointSHA256   string                   `json:"redis_endpoint_sha256,omitempty"`
+	RedisInstanceSHA256   string                   `json:"redis_instance_sha256,omitempty"`
 }
 
 type hostColdPhaseKey struct{}
@@ -64,6 +68,7 @@ type hostColdPhaseScope struct {
 	pool   *pgxpool.Pool
 	info   HostColdPhaseContext
 	guard  func() error
+	redis  hostRedisResolver
 }
 
 func withHostColdPhaseScope(ctx context.Context, store *hostStore, pool *pgxpool.Pool, sql *queue.HostColdSQL, binding queue.HostColdSQLBinding, releases []HostReleaseRequest, coldSHA string, guard func() error, fn func(context.Context) error) error {
@@ -123,12 +128,19 @@ func InspectHostColdPhaseContext(ctx context.Context, pool *pgxpool.Pool) (HostC
 	if s.check(ctx, pool) != nil {
 		return HostColdPhaseContext{}, errHostPreflight
 	}
-	return s.info, nil
+	info := s.info
+	if r, _ := ctx.Value(hostColdRedisKey{}).(*hostColdRedisScope); r != nil {
+		if r.check(ctx, s) != nil {
+			return HostColdPhaseContext{}, errHostPreflight
+		}
+		info.RedisEndpointSHA256, info.RedisInstanceSHA256 = r.endpointSHA, r.instanceSHA
+	}
+	return info, nil
 }
 
 func decodeHostColdPhase(body []byte, sha string, binding queue.HostColdSQLBinding) (HostColdPhaseRequest, error) {
 	var r HostColdPhaseRequest
-	if len(body) > 4096 || !planPattern.MatchString(sha) || hostDigest(body) != sha || canonicalHostDecode(body, &r) != nil || r.Version != "jobseek.crawler-host-cold-request/v1" || r.Binding != binding || r.PreviousEpoch < 1 || r.PreviousEpoch >= 9999999999999 || r.PredecessorSHA256 != "" && !planPattern.MatchString(r.PredecessorSHA256) {
+	if len(body) > 4096 || !planPattern.MatchString(sha) || hostDigest(body) != sha || canonicalHostDecode(body, &r) != nil || r.Version != "jobseek.crawler-host-cold-request/v2" || r.Binding != binding || !planPattern.MatchString(r.RedisEndpointSHA256) || !planPattern.MatchString(r.RedisInstanceSHA256) || r.PreviousEpoch < 1 || r.PreviousEpoch >= 9999999999999 || r.PredecessorSHA256 != "" && !planPattern.MatchString(r.PredecessorSHA256) {
 		return r, errHostPreflight
 	}
 	switch r.Operation {
@@ -185,7 +197,7 @@ func (s *hostColdPhaseScope) predecessor(r HostColdPhaseRequest) (*HostColdPhase
 	completed, e := s.store.read("cold-completed-"+c.RequestSHA256+".json", false)
 	request, re := s.store.read("cold-request-"+c.RequestSHA256+".json", false)
 	prior, de := decodeHostColdPhase(request, c.RequestSHA256, s.info.Binding)
-	if err != nil || e != nil || re != nil || de != nil || hostDigest(body) != c.ResultSHA256 || !bytes.Equal(index, completed) || parent.PredecessorSHA256 != prior.PredecessorSHA256 || prior.PreviousEpoch != r.PreviousEpoch {
+	if err != nil || e != nil || re != nil || de != nil || hostDigest(body) != c.ResultSHA256 || !bytes.Equal(index, completed) || parent.PredecessorSHA256 != prior.PredecessorSHA256 || prior.PreviousEpoch != r.PreviousEpoch || prior.RedisEndpointSHA256 != r.RedisEndpointSHA256 || prior.RedisInstanceSHA256 != r.RedisInstanceSHA256 {
 		return nil, nil, errHostPreflight
 	}
 	if parent.Outcome == "unresolved" {
@@ -299,15 +311,15 @@ func validateHostColdPhaseResult(r HostColdPhaseRequest, result *HostColdPhaseRe
 }
 
 // RunHostColdPhase executes one hashed, protected request within the callback
-// provided by WithHostQuiescence. The caller supplies its borrowed Redis client;
-// verifying that client's selected host endpoint remains the host driver's job.
+// provided by WithHostQuiescence and WithSelectedHostColdRedis. No caller client
+// or URL can replace the scope's verified selected Redis connection.
 // A completed retry returns retained historical bytes, not current admission.
-func RunHostColdPhase(ctx context.Context, pool *pgxpool.Pool, client *queue.Client, requestSHA string) (*HostColdPhaseResult, error) {
-	return runHostColdPhase(ctx, pool, client, requestSHA, nil)
+func RunHostColdPhase(ctx context.Context, pool *pgxpool.Pool, requestSHA string) (*HostColdPhaseResult, error) {
+	return runHostColdPhase(ctx, pool, requestSHA, nil)
 }
 
-func runHostColdPhase(ctx context.Context, pool *pgxpool.Pool, client *queue.Client, requestSHA string, hook func(string) error) (*HostColdPhaseResult, error) {
-	if ctx == nil || !planPattern.MatchString(requestSHA) || client == nil {
+func runHostColdPhase(ctx context.Context, pool *pgxpool.Pool, requestSHA string, hook func(string) error) (*HostColdPhaseResult, error) {
+	if ctx == nil || !planPattern.MatchString(requestSHA) {
 		return nil, errHostPreflight
 	}
 	s, _ := ctx.Value(hostColdPhaseKey{}).(*hostColdPhaseScope)
@@ -316,13 +328,14 @@ func runHostColdPhase(ctx context.Context, pool *pgxpool.Pool, client *queue.Cli
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.check(ctx, pool) != nil {
+	redis, _ := ctx.Value(hostColdRedisKey{}).(*hostColdRedisScope)
+	if s.check(ctx, pool) != nil || redis == nil || redis.check(ctx, s) != nil {
 		return nil, errHostPreflight
 	}
 	requestName := "cold-request-" + requestSHA + ".json"
 	body, err := s.store.read(requestName, true)
 	r, errDecode := decodeHostColdPhase(body, requestSHA, s.info.Binding)
-	if err != nil || errDecode != nil {
+	if err != nil || errDecode != nil || r.RedisEndpointSHA256 != redis.endpointSHA || r.RedisInstanceSHA256 != redis.instanceSHA {
 		return nil, errHostPreflight
 	}
 	prior, parent, err := s.predecessor(r)
@@ -345,7 +358,7 @@ func runHostColdPhase(ctx context.Context, pool *pgxpool.Pool, client *queue.Cli
 		return nil, errHostPreflight
 	}
 	guard := func() error {
-		if s.check(ctx, pool) != nil {
+		if s.check(ctx, pool) != nil || redis.check(ctx, s) != nil {
 			return errHostPreflight
 		}
 		current, err := s.store.read(requestName, false)
@@ -376,7 +389,7 @@ func runHostColdPhase(ctx context.Context, pool *pgxpool.Pool, client *queue.Cli
 	}
 	result, resultBody, err := s.readResult(requestSHA, true)
 	if errors.Is(err, fs.ErrNotExist) {
-		native, effectErr := RunColdAdminInHostScope(ctx, c, pool, client)
+		native, effectErr := RunColdAdminInHostScope(ctx, c, pool, redis.client)
 		if hook != nil && hook("native_effect_returned") != nil {
 			return nil, errHostPreflight
 		}

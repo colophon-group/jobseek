@@ -1,6 +1,6 @@
 # Native ordinary host integration delivery plan
 
-Status: connected containment and scoped SQL quiescence implemented; full host admission and production ownership change remain unproven.
+Status: connected containment, scoped SQL quiescence, retained initial phase journal and selected Redis connection implemented; full host admission and production ownership change remain unproven.
 Updated: 2026-10-03. Continue the full goal from
 [the migration plan](../27-go-lightpanda-continuation-plan.md) and
 [the source-bound checkpoint](../30-native-ordinary-authority-checkpoint-2026-09-30.md).
@@ -539,3 +539,32 @@ predicate until an exact durable next phase authorizes its deliberate change.
 Extend the outer host transaction across cold SQL scope release and whole-stack
 startup/readiness; the one-shot wrapper still ends its host lock on return.
 See [portable phase evidence](../evidence/go-ordinary-native-host-cold-phase-journal-2026-10-03.json).
+
+## Selected Redis connection and journal binding
+
+The production host callback supplies the Redis resolver from freshly guarded
+selected-role file/image/execution/inventory evidence. `WithSelectedHostColdRedis`
+opens its own native client inside the live host/SQL callback, retains a protected
+hash-only receipt and closes the client on every exit. Redis URLs come from
+resolved Compose and image defaults, including stopped matched consumers;
+`environment.env` need not contain `REDIS_URL`. All declared consumers must agree
+on a closed, explicit host-network loopback route and database. The actual official
+Redis daemon's command, image and host network must match, and Linux `/proc`
+must join its PID to the unique listening inode. No caller URL/client fallback or
+arbitrary kernel observation root is accepted by the production API.
+
+Version-2 requests bind endpoint and server-incarnation hashes. A changed PID,
+socket, selected configuration or incarnation invalidates the old authority;
+recovery must not silently adopt it. The journal still accepts only target,
+begin, reserve and inspect. Existing source-bound version-1 evidence remains
+historical; the candidate intentionally refuses implicit request upgrades.
+
+The disposable Linux harness must prove an actual selected consumer/daemon/socket
+join, read-only incarnation, ignored caller environment, wrong-PID refusal and
+stopped/restarted stale authority on both architectures. Its consumer sleeps;
+this is endpoint evidence, not producer/lease exclusion. The installed callback
+fixture separately refuses a missing selected Redis endpoint while retaining
+host/SQL exclusion. Positive full host callback -> selected Redis -> retained
+journal effects, complete forward/reversal graph, phase-authenticated expected
+host changes, outer lock through SQL release/startup/readiness and actual installed
+full-stack recovery remain the next connected delivery work.

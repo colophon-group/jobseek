@@ -20,13 +20,15 @@ import (
 )
 
 type hostPhaseTestDriver struct {
-	Binding    queue.HostColdSQLBinding `json:"binding"`
-	Releases   []HostReleaseRequest     `json:"releases"`
-	ColdSHA    string                   `json:"cold_sha256"`
-	Database   string                   `json:"database"`
-	Redis      string                   `json:"redis"`
-	RequestSHA string                   `json:"request_sha256"`
-	CrashPhase string                   `json:"crash_phase"`
+	Binding     queue.HostColdSQLBinding `json:"binding"`
+	Releases    []HostReleaseRequest     `json:"releases"`
+	ColdSHA     string                   `json:"cold_sha256"`
+	Database    string                   `json:"database"`
+	Redis       string                   `json:"redis"`
+	RequestSHA  string                   `json:"request_sha256"`
+	CrashPhase  string                   `json:"crash_phase"`
+	EndpointSHA string                   `json:"endpoint_sha256"`
+	InstanceSHA string                   `json:"instance_sha256"`
 }
 
 func runHostPhaseTestDriver(ctx context.Context, state string, pool *pgxpool.Pool, d hostPhaseTestDriver, fn func(context.Context, *hostStore) error) error {
@@ -46,7 +48,23 @@ func runHostPhaseTestDriver(ctx context.Context, state string, pool *pgxpool.Poo
 				return errHostPreflight
 			}
 			return store.verify()
-		}, func(scoped context.Context) error { return fn(scoped, store) })
+		}, func(scoped context.Context) error {
+			// These are explicit fixture bindings, not actual selected Docker or
+			// kernel endpoint evidence. Production uses WithSelectedHostColdRedis.
+			client, err := queue.Open(d.Redis, queue.Settings{LeaseTTL: time.Minute, MaxDomains: 10})
+			if err != nil {
+				return err
+			}
+			defer client.Close()
+			host := scoped.Value(hostColdPhaseKey{}).(*hostColdPhaseScope)
+			return withHostColdRedisScope(scoped, host, client, d.EndpointSHA, func() error {
+				instance, err := client.RedisInstanceSHA256(scoped)
+				if err != nil || instance != d.InstanceSHA {
+					return errHostPreflight
+				}
+				return nil
+			}, func(scoped context.Context) error { return fn(scoped, store) })
+		})
 	})
 }
 
@@ -87,6 +105,15 @@ func hostPhaseTestFixture(t *testing.T) (nativePipelineFixture, hostPhaseTestDri
 	})
 	state := hostPrivateDirectory(t)
 	d := hostPhaseTestDriver{Binding: queue.HostColdSQLBinding{SourceRevision: source, RequestSHA256: strings.Repeat("b", 64), ContainmentIntentSHA256: strings.Repeat("c", 64)}, ColdSHA: strings.Repeat("d", 64), Database: f.dsn, Redis: "unix://" + f.r.Options().Addr}
+	d.EndpointSHA = strings.Repeat("9", 64)
+	d.InstanceSHA, err = f.client.RedisInstanceSHA256(ctx)
+	if err != nil {
+		t.Fatal("private Redis incarnation")
+	}
+	binding, _ := json.Marshal(struct{ EndpointSHA, InstanceSHA string }{d.EndpointSHA, d.InstanceSHA})
+	if os.WriteFile(filepath.Join(state, "test-redis-binding.json"), binding, 0600) != nil {
+		t.Fatal("private Redis binding fixture")
+	}
 	for n, role := range []string{"active", "incoming", "rollback"} {
 		d.Releases = append(d.Releases, HostReleaseRequest{Role: role, FileEvidenceSHA256: strings.Repeat(string(rune('3'+n)), 64)})
 	}
@@ -119,6 +146,19 @@ func hostPhaseRetainTestRequest(t *testing.T, state string, r HostColdPhaseReque
 		t.Fatal("private test request store")
 	}
 	defer s.Close()
+	if r.RedisEndpointSHA256 == "" || r.RedisInstanceSHA256 == "" {
+		body, err := s.read("test-redis-binding.json", false)
+		var binding struct{ EndpointSHA, InstanceSHA string }
+		if err != nil || canonicalHostDecode(body, &binding) != nil {
+			t.Fatal("private Redis request binding")
+		}
+		if r.RedisEndpointSHA256 == "" {
+			r.RedisEndpointSHA256 = binding.EndpointSHA
+		}
+		if r.RedisInstanceSHA256 == "" {
+			r.RedisInstanceSHA256 = binding.InstanceSHA
+		}
+	}
 	body, _ := json.Marshal(r)
 	sha := hostDigest(body)
 	if s.retain("cold-request-"+sha+".json", body, nil) != nil {
@@ -174,13 +214,41 @@ func TestRealHostColdPhaseJournalRetainsLinearInputsAndOutcomes(t *testing.T) {
 			if queue.CheckHostColdSQLBinding(scoped, f.pg, wrong) == nil {
 				t.Fatal("different host intent adopted SQL scope")
 			}
-			result, err = runHostColdPhase(scoped, f.pg, f.client, sha, hook)
+			result, err = runHostColdPhase(scoped, f.pg, sha, hook)
 			return err
 		})
 		return result, err
 	}
-	targetRequest := HostColdPhaseRequest{Version: "jobseek.crawler-host-cold-request/v1", Binding: d.Binding, Operation: "cold-b0-target", PreviousEpoch: previous, LuaSHA256: luaSHA, Namespace: "host-phase", Shard: "lightpanda-b0", Cohort: "c1"}
+	targetRequest := HostColdPhaseRequest{Version: "jobseek.crawler-host-cold-request/v2", Binding: d.Binding, Operation: "cold-b0-target", PreviousEpoch: previous, LuaSHA256: luaSHA, Namespace: "host-phase", Shard: "lightpanda-b0", Cohort: "c1"}
 	targetSHA := hostPhaseRetainTestRequest(t, state, targetRequest)
+	if err := runHostPhaseTestDriver(ctx, state, f.pg, d, func(scoped context.Context, store *hostStore) error {
+		without := context.WithValue(scoped, hostColdRedisKey{}, nil)
+		if result, err := RunHostColdPhase(without, f.pg, targetSHA); err == nil || result != nil {
+			t.Fatal("host SQL scope alone adopted a caller Redis connection")
+		}
+		if WithSelectedHostColdRedis(without, f.pg, func(context.Context) error {
+			t.Fatal("fixture hashes granted production selected endpoint")
+			return nil
+		}) == nil {
+			t.Fatal("missing actual resolver admitted caller endpoint")
+		}
+		return nil
+	}); err != nil {
+		t.Fatal("unscoped Redis rejection", err)
+	}
+	for _, fault := range []string{"endpoint", "instance"} {
+		bad := targetRequest
+		bad.RedisEndpointSHA256 = d.EndpointSHA
+		bad.RedisInstanceSHA256 = d.InstanceSHA
+		if fault == "endpoint" {
+			bad.RedisEndpointSHA256 = strings.Repeat("8", 64)
+		} else {
+			bad.RedisInstanceSHA256 = strings.Repeat("8", 64)
+		}
+		if result, err := call(hostPhaseRetainTestRequest(t, state, bad), nil); err == nil || result != nil {
+			t.Fatal("different Redis endpoint/incarnation adopted phase", fault)
+		}
+	}
 	target, err := call(targetSHA, nil)
 	if err != nil || target.Outcome != "completed" {
 		t.Fatal("retained target", err)
@@ -312,7 +380,7 @@ func TestRealHostColdPhaseJournalRetainsLinearInputsAndOutcomes(t *testing.T) {
 	if old, err := call(targetSHA, nil); err != nil || !reflect.DeepEqual(old, target) {
 		t.Fatal("historical completed retry changed target", err)
 	}
-	if _, err := RunHostColdPhase(escaped, f.pg, f.client, inspectionSHA); err == nil {
+	if _, err := RunHostColdPhase(escaped, f.pg, inspectionSHA); err == nil {
 		t.Fatal("escaped host context granted a later phase")
 	}
 	if _, err := InspectHostColdPhaseContext(escaped, f.pg); err == nil {
@@ -328,11 +396,12 @@ func TestRealHostColdPhaseJournalRetainsLinearInputsAndOutcomes(t *testing.T) {
 }
 
 func TestHostColdPhaseRejectsUnscopedAndNoncanonicalRequests(t *testing.T) {
-	if _, err := RunHostColdPhase(context.Background(), nil, nil, strings.Repeat("a", 64)); err == nil {
+	if _, err := RunHostColdPhase(context.Background(), nil, strings.Repeat("a", 64)); err == nil {
 		t.Fatal("unscoped journal admitted")
 	}
 	b := queue.HostColdSQLBinding{SourceRevision: strings.Repeat("a", 40), RequestSHA256: strings.Repeat("b", 64), ContainmentIntentSHA256: strings.Repeat("c", 64)}
-	r := HostColdPhaseRequest{Version: "jobseek.crawler-host-cold-request/v1", Binding: b, Operation: "cold-b0-target", PreviousEpoch: 1, LuaSHA256: strings.Repeat("d", 64), Namespace: "fixture", Shard: "lightpanda-b0", Cohort: "c1"}
+	r := HostColdPhaseRequest{Version: "jobseek.crawler-host-cold-request/v2", Binding: b, Operation: "cold-b0-target", PreviousEpoch: 1, LuaSHA256: strings.Repeat("d", 64), Namespace: "fixture", Shard: "lightpanda-b0", Cohort: "c1"}
+	r.RedisEndpointSHA256, r.RedisInstanceSHA256 = strings.Repeat("e", 64), strings.Repeat("f", 64)
 	body, _ := json.Marshal(r)
 	if _, err := decodeHostColdPhase(body, hostDigest(body), b); err != nil {
 		t.Fatal("canonical phase refused")
@@ -385,13 +454,8 @@ func TestHostColdPhaseSIGKILLHelper(t *testing.T) {
 		os.Exit(2)
 	}
 	defer pool.Close()
-	client, err := queue.Open(d.Redis, queue.Settings{LeaseTTL: time.Minute, MaxDomains: 10})
-	if err != nil {
-		os.Exit(2)
-	}
-	defer client.Close()
 	_ = runHostPhaseTestDriver(ctx, state, pool, d, func(scoped context.Context, store *hostStore) error {
-		_, err := runHostColdPhase(scoped, pool, client, d.RequestSHA, func(phase string) error {
+		_, err := runHostColdPhase(scoped, pool, d.RequestSHA, func(phase string) error {
 			if phase == d.CrashPhase {
 				if syscall.Kill(os.Getpid(), syscall.SIGKILL) != nil {
 					os.Exit(3)
@@ -423,14 +487,14 @@ func TestRealHostColdPhaseJournalSIGKILLRecoversSameReservation(t *testing.T) {
 					if err != nil {
 						return err
 					}
-					result, err = RunHostColdPhase(scoped, f.pg, f.client, sha)
+					result, err = RunHostColdPhase(scoped, f.pg, sha)
 					return err
 				}); err != nil || result == nil || result.Outcome != "completed" {
 					t.Fatal("private phase execution", err)
 				}
 				return result
 			}
-			targetRequest := HostColdPhaseRequest{Version: "jobseek.crawler-host-cold-request/v1", Binding: d.Binding, Operation: "cold-b0-target", PreviousEpoch: previous, LuaSHA256: luaSHA, Namespace: "host-phase-kill", Shard: "lightpanda-b0", Cohort: "c1"}
+			targetRequest := HostColdPhaseRequest{Version: "jobseek.crawler-host-cold-request/v2", Binding: d.Binding, Operation: "cold-b0-target", PreviousEpoch: previous, LuaSHA256: luaSHA, Namespace: "host-phase-kill", Shard: "lightpanda-b0", Cohort: "c1"}
 			target := call(targetRequest)
 			intent := hostPhaseRetainTestInput(t, state, hostPhaseTestIntent(t, info, previous, prepared, target))
 			begun := call(HostColdPhaseRequest{Version: targetRequest.Version, Binding: d.Binding, PredecessorSHA256: hostPhaseResultSHA(t, target), Operation: "cold-begin", PreviousEpoch: previous, IntentSHA256: intent, TargetSHA256: target.Native.B0TargetSHA256, LuaSHA256: luaSHA})
