@@ -16,6 +16,7 @@ type StarredCompaniesContextValue = {
   isStarred: (id: string) => boolean;
   toggle: (id: string) => void;
   isToggling: (id: string) => boolean;
+  getError: (id: string) => string | undefined;
   starredIds: string[];
 };
 
@@ -23,6 +24,7 @@ const StarredCompaniesContext = createContext<StarredCompaniesContextValue>({
   isStarred: () => false,
   toggle: () => {},
   isToggling: () => false,
+  getError: () => undefined,
   starredIds: [],
 });
 
@@ -40,6 +42,8 @@ export function StarredCompaniesProvider({
     setStarredIdSet(new Set(initialIds));
   }, [initialIds]);
   const [togglingIds, setTogglingIds] = useState(() => new Set<string>());
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const getError = useCallback((id: string) => errors[id], [errors]);
   const lockRef = useRef(new Set<string>());
   const starredIdSetRef = useRef(starredIdSet);
   starredIdSetRef.current = starredIdSet;
@@ -55,6 +59,7 @@ export function StarredCompaniesProvider({
   const toggle = useCallback((id: string) => {
     if (lockRef.current.has(id)) return;
     lockRef.current.add(id);
+    setErrors((previous) => { const next = { ...previous }; delete next[id]; return next; });
 
     const wasStarred = starredIdSetRef.current.has(id);
 
@@ -69,6 +74,7 @@ export function StarredCompaniesProvider({
 
     toggleStarredCompany(id)
       .then((result) => {
+        if ("error" in result) throw { code: result.error };
         setStarredIdSet((prev) => {
           const next = new Set(prev);
           if (result.starred) next.add(id);
@@ -76,7 +82,9 @@ export function StarredCompaniesProvider({
           return next;
         });
       })
-      .catch(() => {
+      .catch((error: unknown) => {
+        const code = error && typeof error === "object" && "code" in error && typeof error.code === "string" ? error.code : "write_failed";
+        setErrors((previous) => ({ ...previous, [id]: code }));
         setStarredIdSet((prev) => {
           const next = new Set(prev);
           if (wasStarred) next.add(id);
@@ -101,6 +109,7 @@ export function StarredCompaniesProvider({
         toggle,
         isToggling,
         starredIds,
+        getError,
       }}
     >
       {children}

@@ -499,6 +499,19 @@ describe("WatchlistViewPage private detail", () => {
     expect(screen.getByRole("button", { name: "Remove Acme" })).toBeTruthy();
   });
 
+  it("retains the selection and explains a temporary catalogue failure", async () => {
+    mocks.updateWatchlist.mockResolvedValueOnce({ error: "company_lookup_unavailable" });
+    renderPage(true, {
+      filters: { ...detail.filters, anyCompany: false },
+      companies: [{ id: "company-1", name: "Acme", slug: "acme", icon: null }],
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Remove Acme" }));
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Company lookup is temporarily unavailable. Please try again.",
+    );
+    expect(screen.getByRole("button", { name: "Remove Acme" })).toBeTruthy();
+  });
+
   it("flushes a pending filter save when Back navigation unmounts the detail", async () => {
     vi.useFakeTimers();
     try {

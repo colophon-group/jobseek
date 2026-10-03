@@ -1,5 +1,7 @@
 import "server-only";
 
+import { readCompanyReferences } from "@/lib/services/company-reference-read";
+
 import { createHash } from "node:crypto";
 import { after } from "next/server";
 import { revalidatePath, updateTag } from "next/cache";
@@ -150,6 +152,7 @@ export type WatchlistDetail = {
     name: string;
     slug: string;
     icon: string | null;
+    unavailable?: boolean;
   }[];
 };
 
@@ -1144,7 +1147,7 @@ async function _getWatchlistDetailRow(
                 ORDER BY c.name
               )
               FROM watchlist_company wc
-              JOIN company c ON c.id = wc.company_id
+              JOIN company_reference c ON c.id = wc.company_id
               WHERE wc.watchlist_id = w.id
             ),
             '[]'::json
@@ -1244,7 +1247,7 @@ export async function getSharedWatchlistById(
               FROM (
                 SELECT c.id, c.name, c.slug, c.icon
                 FROM watchlist_company wc
-                JOIN company c ON c.id = wc.company_id
+                JOIN company_reference c ON c.id = wc.company_id
                 WHERE wc.watchlist_id = w.id
                 ORDER BY c.name
                 LIMIT ${WATCHLIST_COMPANY_MAX}
@@ -1841,27 +1844,8 @@ async function _resolveUserActivityPreviews(
 async function _hydrateActivityPreviewCompanies(
   companyIds: string[],
 ): Promise<Map<string, { id: string; name: string; icon: string | null }>> {
-  if (companyIds.length === 0) return new Map();
-  const pgArray = pgTextArrayLiteral(companyIds);
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        id: string;
-        name: string;
-        icon: string | null;
-      }>(sql`
-        SELECT c.id::text AS id, c.name, c.icon
-        FROM company c
-        WHERE c.id = ANY(${pgArray}::uuid[])
-      `),
-    { label: "watchlistActivityPreviewCompanies" },
-  );
-  return new Map(
-    (rows as unknown as Array<{ id: string; name: string; icon: string | null }>).map(
-      (company) => [company.id, company],
-    ),
-  );
+  const companies = await readCompanyReferences(companyIds);
+  return new Map(companies.map((company) => [company.id, company]));
 }
 
 export async function getWatchlistByUserAndSlug(
@@ -1929,7 +1913,7 @@ export async function getWatchlistByUserAndSlug(
               FROM (
                 SELECT c.id, c.name, c.slug, c.icon
                 FROM watchlist_company wc
-                JOIN company c ON c.id = wc.company_id
+                JOIN company_reference c ON c.id = wc.company_id
                 WHERE wc.watchlist_id = w.id
                 ORDER BY c.name
                 LIMIT ${WATCHLIST_COMPANY_MAX}
@@ -2063,7 +2047,7 @@ async function _fetchPublicWatchlistByUserAndSlug(
               FROM (
                 SELECT c.id, c.name, c.slug, c.icon
                 FROM watchlist_company wc
-                JOIN company c ON c.id = wc.company_id
+                JOIN company_reference c ON c.id = wc.company_id
                 WHERE wc.watchlist_id = w.id
                 ORDER BY c.name
                 LIMIT ${WATCHLIST_COMPANY_MAX}

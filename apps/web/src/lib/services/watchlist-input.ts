@@ -43,6 +43,7 @@ export type WatchlistFilters = {
 };
 
 export type NormalizedWatchlistCompany = {
+  unavailable?: boolean;
   id: string;
   name: string;
   slug: string;
@@ -529,6 +530,13 @@ export function normalizeWatchlistCompaniesForRead(
     const id = boundedText(item.id, COMPANY_ID_MAX_LENGTH, { allowEmpty: false, trim: true });
     const name = boundedText(item.name, 300, { allowEmpty: false, trim: true });
     const slug = boundedText(item.slug, COMPANY_SLUG_MAX_LENGTH, { allowEmpty: false, trim: true });
+    if (id !== null && UUID.test(id) && item.unavailable === true) {
+      if (!seen.has(id)) {
+        seen.add(id);
+        result.push({ id, name: "Company unavailable", slug: "", icon: null, unavailable: true });
+      }
+      continue;
+    }
     if (id === null || name === null || slug === null || !COMPANY_SLUG.test(slug)) continue;
     const icon = typeof item.icon === "string"
       ? boundedText(item.icon, 2_048, { allowEmpty: false, trim: true })

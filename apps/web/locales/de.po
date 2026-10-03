@@ -311,6 +311,12 @@ msgstr "Ein Stellentitel sagt nicht alles. Sag Narrowed, was dir wichtig ist. Es
 msgid "marketing.tracker.stepsTitle"
 msgstr "Ein Platz für jeden nächsten Schritt"
 
+#. Company selection save failed because a selected company cannot be verified
+#. js-lingui-explicit-id
+#: src/lib/company-reference-error-message.ts
+msgid "companies.selection.unavailable"
+msgstr "Ein ausgewähltes Unternehmen ist nicht mehr verfügbar. Entferne es oder wähle ein anderes Unternehmen."
+
 #. Public marketing page: alerts_proofBody
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
@@ -1198,6 +1204,12 @@ msgstr "Unternehmen"
 msgid "marketing.alerts.link"
 msgstr "Job-Alerts deiner Wunschunternehmen"
 
+#. Company selection save failed because the catalogue is temporarily unavailable
+#. js-lingui-explicit-id
+#: src/lib/company-reference-error-message.ts
+msgid "companies.selection.lookupUnavailable"
+msgstr "Die Unternehmenssuche ist vorübergehend nicht verfügbar. Bitte versuche es erneut."
+
 #. Label for the company name or careers-page URL request field
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/companies/request/company-request-page-form.tsx
@@ -1209,6 +1221,12 @@ msgstr "Unternehmensname oder URL der Karriereseite"
 #: app/[lang]/(app)/company/[slug]/not-found.tsx
 msgid "company.notFound.title"
 msgstr "Unternehmen nicht gefunden"
+
+#. Label for a retained company selection whose display data is unavailable
+#. js-lingui-explicit-id
+#: src/components/watchlist/company-pill.tsx
+msgid "companies.selection.unavailableLabel"
+msgstr "Unternehmen nicht verfügbar"
 
 #. WebApplication JSON-LD description for Job Seek.
 #. js-lingui-explicit-id
@@ -1416,7 +1434,7 @@ msgstr "Diese Kriterien konnten nicht entfernt werden. Versuche es erneut."
 
 #. Error shown when an edit to an owned watchlist cannot be saved
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-view-page.tsx
+#: src/lib/company-reference-error-message.ts
 msgid "watchlists.updateFailed"
 msgstr "Deine Änderungen konnten nicht gespeichert werden."
 
@@ -3195,6 +3213,12 @@ msgstr "Maximum von 10 Watchlists erreicht"
 msgid "watchlists.pending.limitDiscarded"
 msgstr "Das Maximum von 10 Watchlists ist erreicht. Zusätzliche gespeicherte Watchlists wurden verworfen."
 
+#. Company selection save failed because the watchlist company limit was exceeded
+#. js-lingui-explicit-id
+#: src/lib/company-reference-error-message.ts
+msgid "companies.selection.limitReached"
+msgstr "Maximal 250 Unternehmen pro Watchlist erreicht."
+
 #. Aria label for the region containing the MCP install one-liner
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx
@@ -4461,7 +4485,6 @@ msgstr "Entfernen"
 
 #. Aria label for the X button that removes a company pill; {name} is the company name
 #. js-lingui-explicit-id
-#. placeholder {0}: company.name
 #: src/components/watchlist/company-pill.tsx
 msgid "watchlists.companyPill.remove"
 msgstr "{0} entfernen"

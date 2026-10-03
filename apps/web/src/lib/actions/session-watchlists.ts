@@ -1,8 +1,6 @@
 "use server";
 
-import { inArray } from "drizzle-orm";
-import { db } from "@/db";
-import { company } from "@/db/schema";
+import { readCompanyReferences } from "@/lib/services/company-reference-read";
 import { getViewerJobLanguages } from "@/lib/actions/preferences";
 import { isLocale, type Locale } from "@/lib/i18n";
 import {
@@ -25,6 +23,7 @@ type SessionWatchlistCompany = {
   name: string;
   slug: string;
   icon: string | null;
+  unavailable?: boolean;
 };
 
 async function materializeSessionWatchlist(
@@ -58,22 +57,6 @@ async function materializeSessionWatchlist(
   };
 }
 
-async function hydrateCompanies(companyIds: string[]): Promise<SessionWatchlistCompany[]> {
-  if (companyIds.length === 0) return [];
-  const rows = await db
-    .select({
-      id: company.id,
-      name: company.name,
-      slug: company.slug,
-      icon: company.icon,
-    })
-    .from(company)
-    .where(inArray(company.id, companyIds));
-  const byId = new Map(rows.map((candidate) => [candidate.id, candidate]));
-  return companyIds
-    .map((id) => byId.get(id))
-    .filter((candidate): candidate is (typeof rows)[number] => candidate != null);
-}
 
 export async function getSessionWatchlistActivityPreviews(input: {
   entries: PendingWatchlistEntry[];
@@ -133,7 +116,7 @@ export async function getSessionWatchlistPageData(input: {
   const materialized = await materializeSessionWatchlist(input.intent);
   if (!materialized) return { error: "not_found" as const };
   const { draft } = materialized;
-  const companies = materialized.sourceCompanies ?? await hydrateCompanies(draft.companyIds);
+  const companies = materialized.sourceCompanies ?? await readCompanyReferences(draft.companyIds);
 
   const jobLanguages = await getViewerJobLanguages();
   const data = await buildWatchlistPageData({

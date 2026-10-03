@@ -311,6 +311,12 @@ msgstr "Un intitulé ne dit pas tout. Dites à Narrowed ce qui compte pour vous.
 msgid "marketing.tracker.stepsTitle"
 msgstr "Un espace pour chaque étape"
 
+#. Company selection save failed because a selected company cannot be verified
+#. js-lingui-explicit-id
+#: src/lib/company-reference-error-message.ts
+msgid "companies.selection.unavailable"
+msgstr "Une entreprise sélectionnée n’est plus disponible. Retirez-la ou choisissez une autre entreprise."
+
 #. Public marketing page: alerts_proofBody
 #. js-lingui-explicit-id
 #: src/content/marketing.ts
@@ -1198,6 +1204,12 @@ msgstr "Entreprise"
 msgid "marketing.alerts.link"
 msgstr "Alertes emploi par entreprise"
 
+#. Company selection save failed because the catalogue is temporarily unavailable
+#. js-lingui-explicit-id
+#: src/lib/company-reference-error-message.ts
+msgid "companies.selection.lookupUnavailable"
+msgstr "La recherche d’entreprises est temporairement indisponible. Veuillez réessayer."
+
 #. Label for the company name or careers-page URL request field
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/companies/request/company-request-page-form.tsx
@@ -1209,6 +1221,12 @@ msgstr "Nom de l’entreprise ou URL de la page Carrières"
 #: app/[lang]/(app)/company/[slug]/not-found.tsx
 msgid "company.notFound.title"
 msgstr "Entreprise introuvable"
+
+#. Label for a retained company selection whose display data is unavailable
+#. js-lingui-explicit-id
+#: src/components/watchlist/company-pill.tsx
+msgid "companies.selection.unavailableLabel"
+msgstr "Entreprise indisponible"
 
 #. WebApplication JSON-LD description for Job Seek.
 #. js-lingui-explicit-id
@@ -1416,7 +1434,7 @@ msgstr "Impossible de supprimer ces critères de correspondance. Réessayez."
 
 #. Error shown when an edit to an owned watchlist cannot be saved
 #. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-view-page.tsx
+#: src/lib/company-reference-error-message.ts
 msgid "watchlists.updateFailed"
 msgstr "Impossible d’enregistrer vos modifications."
 
@@ -3195,6 +3213,12 @@ msgstr "Maximum de 10 listes atteint"
 msgid "watchlists.pending.limitDiscarded"
 msgstr "La limite de 10 listes de suivi est atteinte. Les listes supplémentaires enregistrées ont été supprimées."
 
+#. Company selection save failed because the watchlist company limit was exceeded
+#. js-lingui-explicit-id
+#: src/lib/company-reference-error-message.ts
+msgid "companies.selection.limitReached"
+msgstr "Maximum de 250 entreprises par liste de suivi atteint."
+
 #. Aria label for the region containing the MCP install one-liner
 #. js-lingui-explicit-id
 #: src/components/search/request-company-success.tsx
@@ -4461,7 +4485,6 @@ msgstr "Supprimer"
 
 #. Aria label for the X button that removes a company pill; {name} is the company name
 #. js-lingui-explicit-id
-#. placeholder {0}: company.name
 #: src/components/watchlist/company-pill.tsx
 msgid "watchlists.companyPill.remove"
 msgstr "Supprimer {0}"

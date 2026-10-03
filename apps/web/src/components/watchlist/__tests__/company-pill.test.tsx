@@ -27,6 +27,14 @@ describe("CompanyPill", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 
+  it("keeps an unavailable selection removable without a fabricated company link", () => {
+    const onRemove = vi.fn();
+    render(<CompanyPill company={{ ...company, slug: "", unavailable: true }} onRemove={onRemove} />);
+    expect(screen.queryByRole("link")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Remove Company unavailable" }));
+    expect(onRemove).toHaveBeenCalledWith(company.id);
+  });
+
   it("keeps navigation and removal as independent owner controls", () => {
     const onRemove = vi.fn();
     const { container } = render(<CompanyPill company={company} onRemove={onRemove} />);
