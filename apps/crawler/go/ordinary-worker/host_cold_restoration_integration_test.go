@@ -63,6 +63,13 @@ func runHostColdRestorationJournalTest(t *testing.T, nonempty bool) {
 		if result, err := f.r.Eval(ctx, string(lua), keys, claimArgs...).Slice(); err != nil || len(result) != 12 || result[0] != "accepted" {
 			t.Fatal("owned historical task completion", err)
 		}
+		// This private fixture owns the origin and has completed its only
+		// claimant. Remove the short claim throttle before the permanent
+		// conservation baseline; its natural expiry must not look like a
+		// restoration effect on a slower runner.
+		if f.r.HLen(ctx, keys[6]).Val() != 0 || f.r.ZCard(ctx, keys[3]).Val() != 0 || f.r.Del(ctx, "ratelimit:jobs.example.test").Err() != nil {
+			t.Fatal("owned historical origin release")
+		}
 	} else {
 		args := []any{"initialize_producer", "lightpanda-b0", fmt.Sprint(previous), "go", "", "0", "", "0", "0", "0", "", "", "", "64", "2.0", "", "0", "host-restoration", "", "0", "c1", 1, "0", "browser-use-careers"}
 		if reply, err := f.r.Eval(ctx, string(lua), keys, args...).Slice(); err != nil || len(reply) != 12 || reply[0] != "accepted" {
@@ -256,8 +263,9 @@ func runHostColdRestorationJournalTest(t *testing.T, nonempty bool) {
 		}
 	}
 	var last int64
-	if f.pg.QueryRow(ctx, "SELECT last_value FROM lightpanda_b0_routing_epoch_seq").Scan(&last) != nil || last != r.RetirementEpoch || !reflect.DeepEqual(after, fullColdExecutableRedisSnapshot(t, f)) || canonical != coldExecutableCanonicalSnapshot(t, f) {
-		t.Fatal("exact retries changed R, canonical rows or complete Redis values")
+	afterRetry := fullColdExecutableRedisSnapshot(t, f)
+	if f.pg.QueryRow(ctx, "SELECT last_value FROM lightpanda_b0_routing_epoch_seq").Scan(&last) != nil || last != r.RetirementEpoch || !reflect.DeepEqual(after, afterRetry) || canonical != coldExecutableCanonicalSnapshot(t, f) {
+		t.Fatal("exact retries changed R, canonical rows or complete Redis values", "changed keys", coldSnapshotChangedKeys(after, afterRetry))
 	}
 	// Restoration intentionally replaces the source route with its tombstone.
 	if reflect.DeepEqual(before, after) {

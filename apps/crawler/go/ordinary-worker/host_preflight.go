@@ -269,11 +269,11 @@ func runHostPreflight(ctx context.Context, c HostPreflightConfig, lockPath strin
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
-	lock, err := acquireHostLock(ctx, lockPath)
+	lock, releaseLock, err := acquireHostPhaseLock(ctx, lockPath)
 	if err != nil {
 		return nil, errHostPreflight
 	}
-	defer lock.Close()
+	defer releaseLock()
 	store, err := openHostStore(c.directory)
 	if err != nil {
 		return nil, errHostPreflight

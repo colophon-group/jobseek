@@ -1,0 +1,93 @@
+{
+  "schema": "jobseek.migration.host-outer-mutation-checkpoint/v1",
+  "date": "2026-10-03",
+  "parent": "2fa8567e12e374bf241ee62620fbfa7401f53206",
+  "runtime_version": "0.13.904",
+  "contracts": [
+    "Linux fixed-path opaque in-process host mutation scope retains original verified flock descriptor across sequential preflight and cold phases, SQL release and later restoration/readiness work",
+    "30-minute outer ceiling; existing five-minute phase and SQL ceilings preserved",
+    "borrowed phases cannot duplicate/reopen/unlock the owner descriptor; simultaneous, nested, escaped, cancelled, foreign-path and replaced-inode scopes refuse without fresh-acquisition fallback",
+    "scope grants exclusion only; each release/resource/journal and eventual runtime admission predicate remains required"
+  ],
+  "validation": {
+    "actual_private_PG_SQL_backend_destroyed_and_three_barriers_released_under_original_flock": true,
+    "actual_private_later_phase_reuses_same_descriptor": true,
+    "actual_Go_test_binary_SIGKILL_seams": [
+      "native_effect_returned",
+      "file_linked",
+      "sql_scope_released"
+    ],
+    "post_SQL_release_SIGKILL_retained_marker_and_exact_epoch_retry_conservation": true,
+    "full_required_worker_race_suite_seconds": 47.335,
+    "producer_race_suite_seconds": 2.637,
+    "read_only_build_identity_only_local_native_subprocess": true,
+    "repository_passed": 94,
+    "repository_optional_skips": 3,
+    "native_and_both_Linux_integration_vet_format_tidy": true,
+    "logs_sha256": {
+      "ordinary-host-outer-mutation-tests.log": "7501d28116a9bf7c7df43244f40aa75419b41add08bf8f0624280616ecc68e8c",
+      "ordinary-host-outer-mutation-worker-tests.log": "a43b1f9697eaf834688c5958bf93054db6d40aff2a2887d693faa4748c049b11",
+      "ordinary-host-outer-mutation-producer-tests.log": "b46caf0fcc6c215056dbd3c70207c88c0d418f1d9d206cccb118e255aab20bc0",
+      "ordinary-host-outer-mutation-repository-tests.log": "9cb7af572014f8d0c6f3594ea3014f2121cd7f923053b0ff872f657d29d869bd",
+      "ordinary-host-outer-mutation-vet.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "installed_fixture_changes": {
+    "outer_original_flock_over_both_fresh_SQL_backends_and_exact_retry": true,
+    "producer_identity_stop_and_Redis_connection_release_inside_outer_scope": true,
+    "actual_positive_new_source_execution_proven": false
+  },
+  "preceding_source_CI": {
+    "source": "2fa8567e12e374bf241ee62620fbfa7401f53206",
+    "full": {
+      "run": 37097364725,
+      "conclusion": "success"
+    },
+    "Linux": {
+      "run": 37097321967,
+      "conclusion": "failure",
+      "failed_test": "TestRealHostColdRestorationNonemptyJournalRestoresCanonicalSchedule",
+      "failure": "exact retries changed R, canonical rows or complete Redis values",
+      "original_changed_keys_not_retained": true,
+      "source_diagnosis": "completed owned claim leaves a two-second origin throttle that can naturally expire between strict conservation snapshots on a slower runner",
+      "correction": "remove only the owned completed setup throttle before permanent baseline after verifying zero inflight/origin holders; strict full value/type/expiry comparison preserved and changed-key failure diagnostics added"
+    },
+    "installed": {
+      "run": 37097363346,
+      "conclusion": "in_progress",
+      "amd64_conclusion": "failure",
+      "amd64_failed_test": "TestTrimpathBuildIdentityReportsLinkedSourceWithoutRuntimeAuthority",
+      "amd64_nested_compile_killed_seconds": 90.28,
+      "correction": "five-minute cold trimpath compilation budget, separate five-second actual executable read-only metadata query; identity predicates unchanged",
+      "arm64_conclusion": "in_progress",
+      "full_installed_admission": false
+    },
+    "historical_native": {
+      "run": 37097321983,
+      "conclusion": "success",
+      "independently_verified": true,
+      "summary_sha256": "9680a2f7231aa9cf748b901f6ad6e6d8bfc5257cc9b31df1d39c0e5eebe37474"
+    },
+    "historical_legacy": {
+      "run": 37097321949,
+      "conclusion": "success",
+      "independently_verified": true,
+      "summary_sha256": "08236ca2e05de0117a769dac93aeadb8592f6bed3aca763538fa0f575b94d445"
+    },
+    "whole_B0": {
+      "run": 37097321947,
+      "conclusion": "in_progress",
+      "preserve_whole": true
+    }
+  },
+  "not_yet_proven": [
+    "fresh exact-source AMD64/ARM64 installed eleven-phase forward and outer-scope raw proof",
+    "positive installed complete 31-phase reversal/restoration/reactivation/finalization with nonempty candidate-N reversal and real process crashes",
+    "authenticated expected host resource/release changes and complete spec/env/data/image restoration followed by SQL release and full-stack startup/readiness under original flock",
+    "all enabled profile/consumer output/database/publisher/freshness/queue parity and comparable whole-service resources/cost",
+    "exact gates, authorized supported cutover/cold reversal and rollback window before runtime Python/Playwright/Chromium retirement"
+  ],
+  "full_runtime_admission": false,
+  "production_changed": false,
+  "goal_status": "active"
+}

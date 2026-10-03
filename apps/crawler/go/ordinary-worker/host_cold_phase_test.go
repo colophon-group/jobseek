@@ -32,11 +32,11 @@ type hostPhaseTestDriver struct {
 }
 
 func runHostPhaseTestDriver(ctx context.Context, state string, pool *pgxpool.Pool, d hostPhaseTestDriver, fn func(context.Context, *hostStore) error) error {
-	lock, err := acquireHostLock(ctx, filepath.Join(state, "mutation.lock"))
+	lock, releaseLock, err := acquireHostPhaseLock(ctx, filepath.Join(state, "mutation.lock"))
 	if err != nil {
 		return err
 	}
-	defer lock.Close()
+	defer releaseLock()
 	store, err := openHostStore(state)
 	if err != nil {
 		return err
@@ -440,7 +440,7 @@ func TestHostColdPhaseSIGKILLHelper(t *testing.T) {
 	body, err := s.read("test-driver.json", false)
 	s.Close()
 	var d hostPhaseTestDriver
-	if err != nil || canonicalHostDecode(body, &d) != nil || !planPattern.MatchString(d.RequestSHA) || (d.CrashPhase != "native_effect_returned" && d.CrashPhase != "file_linked") {
+	if err != nil || canonicalHostDecode(body, &d) != nil || !planPattern.MatchString(d.RequestSHA) || (d.CrashPhase != "native_effect_returned" && d.CrashPhase != "file_linked" && d.CrashPhase != "sql_scope_released") {
 		os.Exit(2)
 	}
 	u, err := url.Parse(d.Database)
@@ -454,23 +454,46 @@ func TestHostColdPhaseSIGKILLHelper(t *testing.T) {
 		os.Exit(2)
 	}
 	defer pool.Close()
-	_ = runHostPhaseTestDriver(ctx, state, pool, d, func(scoped context.Context, store *hostStore) error {
-		_, err := runHostColdPhase(scoped, pool, d.RequestSHA, func(phase string) error {
-			if phase == d.CrashPhase {
-				if syscall.Kill(os.Getpid(), syscall.SIGKILL) != nil {
-					os.Exit(3)
+	_ = withHostMutationScope(ctx, filepath.Join(state, "mutation.lock"), func(outer context.Context) error {
+		var escaped context.Context
+		err := runHostPhaseTestDriver(outer, state, pool, d, func(scoped context.Context, store *hostStore) error {
+			escaped = scoped
+			_, err := runHostColdPhase(scoped, pool, d.RequestSHA, func(phase string) error {
+				if phase == d.CrashPhase {
+					if syscall.Kill(os.Getpid(), syscall.SIGKILL) != nil {
+						os.Exit(3)
+					}
+					select {}
 				}
-				select {}
-			}
-			return nil
+				return nil
+			})
+			return err
 		})
+		if err == nil && d.CrashPhase == "sql_scope_released" {
+			if CheckHostMutationScope(outer) != nil || queue.CheckHostColdSQLScope(escaped, pool, d.Binding.SourceRevision) == nil {
+				os.Exit(3)
+			}
+			assertHostScopeFlock(t, filepath.Join(state, "mutation.lock"), true)
+			store, err := openHostStore(state)
+			marker, _ := json.Marshal(struct {
+				Version string `json:"version"`
+				Request string `json:"request_sha256"`
+			}{"jobseek.fixture.host-flock-after-sql-release/v1", d.RequestSHA})
+			if err != nil || store.retain("post-sql-release.json", marker, nil) != nil || store.Close() != nil {
+				os.Exit(3)
+			}
+			if syscall.Kill(os.Getpid(), syscall.SIGKILL) != nil {
+				os.Exit(3)
+			}
+			select {}
+		}
 		return err
 	})
 	os.Exit(4)
 }
 
 func TestRealHostColdPhaseJournalSIGKILLRecoversSameReservation(t *testing.T) {
-	for _, seam := range []string{"native_effect_returned", "file_linked"} {
+	for _, seam := range []string{"native_effect_returned", "file_linked", "sql_scope_released"} {
 		t.Run(seam, func(t *testing.T) {
 			f, d, state, previous, prepared, luaSHA := hostPhaseTestFixture(t)
 			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -516,6 +539,16 @@ func TestRealHostColdPhaseJournalSIGKILLRecoversSameReservation(t *testing.T) {
 			if !errors.As(err, &exit) || !exit.ProcessState.Sys().(syscall.WaitStatus).Signaled() || exit.ProcessState.Sys().(syscall.WaitStatus).Signal() != syscall.SIGKILL {
 				t.Fatal("native journal child was not killed at retained seam", err)
 			}
+			if seam == "sql_scope_released" {
+				marker, err := os.ReadFile(filepath.Join(state, "post-sql-release.json"))
+				var observed struct {
+					Version string `json:"version"`
+					Request string `json:"request_sha256"`
+				}
+				if err != nil || canonicalHostDecode(marker, &observed) != nil || observed.Version != "jobseek.fixture.host-flock-after-sql-release/v1" || observed.Request != d.RequestSHA {
+					t.Fatal("child did not reach original-flock post-SQL seam")
+				}
+			}
 			lock, err := os.OpenFile(filepath.Join(state, "mutation.lock"), os.O_RDWR, 0)
 			if err != nil || syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB) != nil {
 				t.Fatal("SIGKILL retained private host flock")
@@ -542,4 +575,5 @@ func TestRealHostColdPhaseJournalSIGKILLRecoversSameReservation(t *testing.T) {
 		})
 	}
 	t.Log("actual Go test-binary SIGKILL after SQL reservation and during protected result hard-link publication released the private host flock and SQL session; exact phase retry retained the original epoch and result, canonical and complete Redis values conserved; fixture role/container hashes only, installed full host cold driver and runtime admission unproven")
+	t.Log("actual Go test-binary also observes original outer host flock still held after cold SQL scope release before SIGKILL; exact retained reservation retry preserves epoch and canonical/complete Redis values without R+1; full production startup/readiness and runtime admission unproven")
 }

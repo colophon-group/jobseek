@@ -38,7 +38,10 @@ func TestBuildIdentityRefusesMissingSourceAndWriteFailure(t *testing.T) {
 }
 
 func TestTrimpathBuildIdentityReportsLinkedSourceWithoutRuntimeAuthority(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	// A trimpath build has a distinct cache and recompiles dependencies on a
+	// cold image builder shared with the other native modules. Keep that
+	// compilation budget separate from the read-only executable queries.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	binary := filepath.Join(t.TempDir(), "supervisor")
 	source := strings.Repeat("b", 40)
@@ -51,7 +54,7 @@ func TestTrimpathBuildIdentityReportsLinkedSourceWithoutRuntimeAuthority(t *test
 	}
 	build.Env = append(build.Env, "GOOS="+runtime.GOOS, "GOARCH="+runtime.GOARCH, "CGO_ENABLED=0", "GOFLAGS=")
 	if output, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("trimpath fixture build: %v: %s", err, output)
+		t.Fatalf("trimpath fixture build: %v (context: %v): %s", err, ctx.Err(), output)
 	}
 	info, err := buildinfo.ReadFile(binary)
 	if err != nil {
@@ -62,7 +65,9 @@ func TestTrimpathBuildIdentityReportsLinkedSourceWithoutRuntimeAuthority(t *test
 			t.Fatal("fixture no longer reproduces missing trimpath linker metadata")
 		}
 	}
-	command := exec.CommandContext(ctx, binary, "--build-info")
+	queryCtx, queryCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer queryCancel()
+	command := exec.CommandContext(queryCtx, binary, "--build-info")
 	// A metadata query must succeed independently of runtime/producer config.
 	command.Env = []string{"REDIS_URL=invalid", "LIGHTPANDA_B0_SUPERVISOR_MODE=invalid", "LIGHTPANDA_B0_PRODUCER_MODE=invalid", "LIGHTPANDA_B0_ROUTING_EPOCH=invalid", "CRAWLER_SOURCE_REVISION=" + strings.Repeat("c", 40)}
 	output, err := command.Output()
@@ -73,7 +78,7 @@ func TestTrimpathBuildIdentityReportsLinkedSourceWithoutRuntimeAuthority(t *test
 	if json.Unmarshal(output, &identity) != nil || len(identity) != 5 || identity["schema"] != buildIdentitySchema || identity["source_revision"] != source || identity["goos"] != runtime.GOOS || identity["goarch"] != runtime.GOARCH || identity["go_version"] != info.GoVersion {
 		t.Fatalf("linked identity mismatch: %s", output)
 	}
-	extra := exec.CommandContext(ctx, binary, "--build-info", "producer")
+	extra := exec.CommandContext(queryCtx, binary, "--build-info", "producer")
 	extra.Env = command.Env
 	if extra.Run() == nil {
 		t.Fatal("extra build-info arguments admitted")

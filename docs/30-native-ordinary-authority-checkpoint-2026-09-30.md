@@ -1,5 +1,42 @@
 # Native ordinary worker authority checkpoint
 
+The coordinator now has a fixed-path opaque outer host mutation scope that
+retains the original verified flock descriptor across sequential cold phases,
+SQL release and later restoration/readiness work. Phases borrow that exact
+handle; they cannot reopen, duplicate or unlock it. Parallel, nested, escaped,
+cancelled, foreign-path and replaced-inode scopes refuse. The outer ceiling is
+30 minutes; existing five-minute phase and SQL ceilings remain. This supplies
+exclusion only: intentional host changes and startup still require authorization.
+
+Actual private PostgreSQL tests observe the cold backend gone and all three SQL
+barriers released while the original host flock remains held for a later phase.
+A real Go test-binary SIGKILL after SQL release joins the two earlier crash seams:
+the retained marker and exact retry preserve the reservation, canonical rows and
+complete Redis values. Full worker and producer race suites pass in 47.335 and
+2.637 seconds; native/both Linux integration vets, format/tidy and 94 repository
+tests pass (three optional skips). The root installed fixture now keeps this
+outer scope through both SQL backends, exact retry and producer shutdown; its
+new-source execution remains unproven.
+
+Published `2fa8567e1` full CI passes and both historical image artifacts verify.
+Its Linux conservation test fails: the completed fixture claim leaves a short
+origin throttle that can expire between snapshots. Only that owned setup key is
+removed before the permanent baseline after its claimant is gone; comparisons
+remain strict and failure diagnostics now identify changed keys. Installed AMD64
+fails when a cold nested trimpath compilation reaches 90 seconds; compilation
+now has a separate five-minute ceiling and actual metadata queries five seconds.
+ARM64 installed and whole-B0 evidence are still running and must be preserved.
+See [outer mutation checkpoint](evidence/go-ordinary-native-host-outer-mutation-2026-10-03.json).
+
+Next verify fresh installed forward/outer-scope proof, complete positive installed
+31-phase reversal/restoration/reactivation/finalization and real crash recovery,
+then authenticate intentional host changes and complete restoration/startup/
+readiness under the original flock. Every enabled profile and consumer, canonical
+outputs, database/publisher/freshness/queue conservation, whole-service cost,
+exact gates, supported cutover/cold reversal and rollback window remain required
+before runtime Python/Playwright/Chromium retirement. Goal active; PR #10210
+draft; production unchanged. Earlier entries retain their source scopes.
+
 The protected journal now includes all ten B0 reactivation and ordinary
 finalization commands after restoration. Closed requests and immutable ancestry
 bind original E, forward N/plan, reversal, exact R, restored ordinary plan and
