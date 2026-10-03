@@ -29,7 +29,8 @@ async function main() {
   // This runner never loads .env files. Its app child receives only isolated dependency URLs.
   const databaseUrl = fixtureDatabaseUrl(); const sql = fixtureClient();
   const doc = companyDocument(randomUUID(), `Reference fixture ${randomUUID().slice(0, 8)}`);
-  const search = await startTypesenseFixture([doc]);
+  const delayedDoc = companyDocument(randomUUID(), `Delayed reference fixture ${randomUUID().slice(0, 8)}`);
+  const search = await startTypesenseFixture([doc, delayedDoc], { [delayedDoc.id]: 2000 });
   const appPort = await freePort(); const baseUrl = `http://127.0.0.1:${appPort}`;
   let child: ChildProcess | undefined; let page: Page | undefined;
   const browser = await chromium.launch({ headless: true });
@@ -90,6 +91,30 @@ async function main() {
     browserPhase = "reload";
     await page.reload(); await page.getByRole("button", { name: `Remove ${doc.name}`, exact: true }).waitFor();
     assert.ok(search.requests.some(request => request.pathname.includes("/company/")), "Production Typesense SDK must query company fixture");
+    browserPhase = "later_scope_during_provider_lookup";
+    await page.getByRole("button", { name: "Company", exact: true }).click();
+    await dialog.getByPlaceholder("Search companies...").fill(delayedDoc.name);
+    await dialog.getByRole("button", { name: new RegExp(delayedDoc.name) }).click();
+    await dialog.getByRole("button", { name: "Close", exact: true }).click();
+    // This later edit must stay later than the in-flight membership request,
+    // whose provider lookup intentionally takes longer than the filter debounce.
+    await page.getByRole("button", { name: "Any company", exact: true }).click();
+    const scopeDeadline = Date.now() + 15_000;
+    let coherent = false;
+    while (Date.now() < scopeDeadline) {
+      const rows = await sql`SELECT w.filters->>'anyCompany' AS any_company,
+        (SELECT count(*)::integer FROM watchlist_company wc WHERE wc.watchlist_id=w.id) AS membership_count
+        FROM watchlist w WHERE w.id=${watchlistId} AND w.user_id=${user.id}`;
+      if (rows[0]?.any_company === "true" && rows[0].membership_count === 2) { coherent = true; break; }
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.ok(coherent, "Later scope edit must remain persisted after slower provider-backed membership save");
+    assert.ok(search.requests.some(request => request.filter?.includes(delayedDoc.id) && request.delayMs === 2000), "Real production SDK must cross the delayed provider boundary");
+    await page.reload();
+    assert.equal(await page.getByRole("button", { name: "Company", exact: true }).isDisabled(), true);
+    assert.equal(await page.getByRole("button", { name: `Remove ${delayedDoc.name}`, exact: true }).count(), 0);
+    assert.equal((await sql`SELECT 1 FROM watchlist_company WHERE watchlist_id=${watchlistId} AND company_id=${delayedDoc.id}`).length, 1);
+    assert.equal((await sql`SELECT id FROM company WHERE id=${delayedDoc.id}`).length, process.env.COMPANY_REFERENCE_TEST_WRITE_MODE === "reference" ? 0 : 1);
     browserPhase = "scoped_cleanup";
     await page.getByRole("button", { name: "Delete", exact: true }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Delete", exact: true }).click();
@@ -97,7 +122,7 @@ async function main() {
     assert.equal((await sql`SELECT 1 FROM watchlist WHERE id=${watchlistId} AND user_id=${user.id}`).length, 0);
     assert.equal((await sql`SELECT 1 FROM company_reference WHERE id=${doc.id}`).length, 1, "Cleanup must retain shared durable reference");
     console.log(JSON.stringify({ contract: "company_reference_authenticated_browser", outcome: "passed", absentLegacyBefore: true, absentReferenceBefore: true,
-      authenticatedMutation: true, committedMembership: true, persistedReload: true, notificationsEnabled: false, scopedCleanup: true }));
+      authenticatedMutation: true, committedMembership: true, persistedReload: true, laterScopeDuringLookup: true, notificationsEnabled: false, scopedCleanup: true }));
     await context.close();
   } catch (error) {
     await page?.screenshot({ path: "/tmp/jobseek-company-reference-browser-failure.png", fullPage: true });

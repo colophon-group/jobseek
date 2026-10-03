@@ -4,17 +4,25 @@ import type { AddressInfo } from "node:net";
 import { companyDocument } from "./fixture";
 
 /** HTTP boundary fixture used by the unmodified Typesense SDK in the actual Next app. */
-export async function startTypesenseFixture(companies: ReturnType<typeof companyDocument>[]) {
-  const requests: { pathname: string; method: string; filter?: string }[] = [];
+export async function startTypesenseFixture(companies: ReturnType<typeof companyDocument>[], delays: Record<string, number> = {}) {
+  const requests: { pathname: string; method: string; filter?: string; delayMs?: number }[] = [];
   const server = createServer(async (request, response) => {
     const url = new URL(request.url!, "http://localhost");
     const chunks: Buffer[] = [];
     for await (const chunk of request) chunks.push(Buffer.from(chunk));
     const body = Buffer.concat(chunks).toString();
+    let delayMs = 0;
+    // Delay only server-side UUID preparation, leaving the user's name picker responsive.
+    if (url.pathname === "/collections/company/documents/search") {
+      const filter = url.searchParams.get("filter_by") ?? "";
+      for (const [id, milliseconds] of Object.entries(delays)) {
+        if (filter.includes(id)) { delayMs += milliseconds; await new Promise(resolve => setTimeout(resolve, milliseconds)); }
+      }
+    }
     const search = (query: Record<string, unknown>) => {
       const collection = query.collection ?? url.pathname.split("/")[2];
       const filter = String(query.filter_by ?? "");
-      requests.push({ pathname: url.pathname, method: request.method!, filter });
+      requests.push({ pathname: url.pathname, method: request.method!, filter, delayMs });
       if (collection !== "company") {
         return { found: 0, hits: [], facet_counts: [], grouped_hits: [], search_time_ms: 1, page: 1 };
       }
