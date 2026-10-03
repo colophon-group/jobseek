@@ -326,3 +326,20 @@ contract. After diagnosis, at most one separately authorized full lifecycle may
 run on a fresh dedicated fixture, with exact cleanup. Change application behavior
 only when instrumented evidence supports a concrete defect; do not expand waits
 or replay saves/removal just to obtain green.
+
+
+Cleanup confirmation now starts a separate passive capture window immediately
+before the existing single click. Its `cleanup_delete` evidence is emitted in
+that attempt's `finally`, before signout or browser/context closure, whether
+persistence succeeds or fails. It records only candidate request status/latency,
+fixed browser error categories, known deletion-failure alert/control counts and
+route/origin equality. It sends no HTTP request and replays no action. A 2xx
+candidate response does not certify a successful delete; the original route,
+SQL absence and residual-cleanup assertions still decide the outcome.
+
+Explicit navigation evidence retains at most two attempt statuses, attempt
+count and validated Retry-After seconds (1–65 only when the one permitted GET
+retry is taken). Final HTTP 200 or long elapsed time alone must not be labelled
+as a proven prior 429. Invalid/excessive Retry-After, a second 429, and non-2xx
+responses preserve their existing failures. Opaque action status evidence is
+still a candidate observation rather than an identified Server Action.

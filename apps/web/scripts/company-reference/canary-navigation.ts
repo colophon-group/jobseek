@@ -15,13 +15,27 @@ export async function navigateCanary(page: Page, destination: string, sleep = (m
   const observation = observeCanaryReadiness(page);
   observation.requests = []; observation.errors = []; observation.truncated = false;
   const started = Date.now();
+  observation.navigation = { httpStatus: null, elapsedMs: null, attemptCount: 0, attempts: [] };
   for (let attempt = 0; attempt < 2; attempt++) {
-    const response = await page.goto(destination);
-    observation.navigation = { httpStatus: response?.status() ?? null, elapsedMs: boundedElapsed(started) };
+    const attemptStarted = Date.now();
+    observation.navigation.attemptCount++;
+    let response;
+    try { response = await page.goto(destination); }
+    catch (error) {
+      observation.navigation.attempts.push({ httpStatus: null, elapsedMs: boundedElapsed(attemptStarted), retryAfterSeconds: null });
+      observation.navigation.httpStatus = null;
+      observation.navigation.elapsedMs = boundedElapsed(started);
+      throw error;
+    }
+    const result = { httpStatus: response?.status() ?? null, elapsedMs: boundedElapsed(attemptStarted), retryAfterSeconds: null as number | null };
+    observation.navigation.attempts.push(result);
+    observation.navigation.httpStatus = result.httpStatus; observation.navigation.elapsedMs = boundedElapsed(started);
     if (!response || response.request().method() !== "GET") return failed("CANARY_NAVIGATION_GET_NOT_PROVEN");
     if (response.status() === 429) {
       if (attempt !== 0) return failed("CANARY_NAVIGATION_RATE_LIMIT_EXHAUSTED");
-      await sleep(canaryRetryAfter(response.headers()["retry-after"]));
+      const delay = canaryRetryAfter(response.headers()["retry-after"]);
+      result.retryAfterSeconds = delay / 1_000;
+      await sleep(delay);
       continue;
     }
     if (response.status() < 200 || response.status() >= 300) return failed("CANARY_NAVIGATION_HTTP_FAILED");
@@ -39,7 +53,7 @@ export type CanaryReadinessState = {
 type Stage = "clone_cleanup" | "removal_reload" | "cleanup" | "readonly_reload";
 type Coverage = "first_use" | "existing_reference" | "unspecified";
 type Observation = {
-  navigation: { httpStatus: number | null; elapsedMs: number | null };
+  navigation: { httpStatus: number | null; elapsedMs: number | null; attemptCount: number; attempts: { httpStatus: number | null; elapsedMs: number; retryAfterSeconds: number | null }[] };
   requests: { kind: "session_get" | "server_action_candidate"; status: "pending" | "response" | "transport_failure"; httpStatus: number | null; elapsedMs: number | null }[];
   errors: { category: string; nextDigest: string | null }[];
   truncated: boolean;
@@ -77,7 +91,7 @@ export function canaryBrowserError(error: unknown): Observation["errors"][number
 /** Passive metadata only. An opaque Server Action cannot be identified as bootstrap. */
 export function observeCanaryReadiness(page: Page): Observation {
   const existing = observations.get(page); if (existing) return existing;
-  const observed: Observation = { navigation: { httpStatus: null, elapsedMs: null }, requests: [], errors: [], truncated: false };
+  const observed: Observation = { navigation: { httpStatus: null, elapsedMs: null, attemptCount: 0, attempts: [] }, requests: [], errors: [], truncated: false };
   observations.set(page, observed);
   const starts = new WeakMap<Request, { row: Observation["requests"][number]; started: number }>();
   page.on("request", request => {
@@ -105,6 +119,45 @@ export function observeCanaryReadiness(page: Page): Observation {
     observed.errors.push(canaryBrowserError(error));
   });
   return observed;
+}
+
+function copyNavigation(observation: Observation): Observation["navigation"] {
+  return { ...observation.navigation, attempts: observation.navigation.attempts.map(value => ({ ...value })) };
+}
+
+export type CanaryDeleteEvidence = {
+  stage: "cleanup_delete"; firstUse: false; actionOutcome: "completed" | "failed";
+  expectedRouteMatches: boolean | null; expectedOriginMatches: boolean | null;
+  navigation: Observation["navigation"]; elapsedMs: number;
+  visibility: { deleteFailureAlerts: number | null; deleteControls: number | null; alertDialogs: number | null };
+  requests: Observation["requests"]; browserErrors: Observation["errors"]; evidenceTruncated: boolean;
+};
+
+/** Observe one existing confirmation/persistence attempt; never replay or make a request. */
+export async function captureCanaryDeleteAttempt<T>(page: Page, options: {
+  expectedPath: string; expectedOrigin: string; onEvidence: (evidence: CanaryDeleteEvidence) => void;
+}, attempt: () => Promise<T>): Promise<T> {
+  const observation = observeCanaryReadiness(page); const started = Date.now();
+  observation.requests = []; observation.errors = []; observation.truncated = false;
+  let actionOutcome: CanaryDeleteEvidence["actionOutcome"] = "failed";
+  try { const result = await attempt(); actionOutcome = "completed"; return result; }
+  finally {
+    try {
+      const visibility: CanaryDeleteEvidence["visibility"] = { deleteFailureAlerts: null, deleteControls: null, alertDialogs: null };
+      const locators = { deleteFailureAlerts: page.getByRole("alert").filter({ hasText: /^Could not delete this watchlist\.$/ }),
+        deleteControls: page.getByRole("button", { name: "Delete", exact: true }), alertDialogs: page.getByRole("alertdialog") };
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try { await Promise.race([Promise.all(Object.entries(locators).map(async ([key, locator]) => {
+        visibility[key as keyof typeof visibility] = await locator.filter({ visible: true }).count().then(count => Math.min(9, count)).catch(() => null);
+      })), new Promise<void>(resolve => { timer = setTimeout(resolve, 500); })]); }
+      finally { clearTimeout(timer); }
+      let expectedRouteMatches: boolean | null = null; let expectedOriginMatches: boolean | null = null;
+      try { const url = new URL(page.url()); expectedRouteMatches = url.pathname === options.expectedPath; expectedOriginMatches = url.origin === options.expectedOrigin; } catch { /* No URL is emitted. */ }
+      options.onEvidence({ stage: "cleanup_delete", firstUse: false, actionOutcome, expectedRouteMatches, expectedOriginMatches,
+        navigation: copyNavigation(observation), elapsedMs: boundedElapsed(started), visibility: { ...visibility },
+        requests: observation.requests.map(value => ({ ...value })), browserErrors: observation.errors.map(value => ({ ...value })), evidenceTruncated: observation.truncated });
+    } catch { /* Supplemental evidence cannot replace the original action failure or certify cleanup. */ }
+  }
 }
 
 const unknownState: CanaryReadinessState = { persistedTitleMatches: null, companyMembershipCount: null, anyCompany: null, sessionStatus: null, sessionIdentityMatches: null };
@@ -140,7 +193,7 @@ async function ownerEvidence(page: Page, title: string, options: CanaryOwnerOpti
   let route: CanaryOwnerEvidence["route"] = "unavailable"; let expectedRouteMatches: boolean | null = null; let expectedOriginMatches: boolean | null = null;
   try { const url = new URL(page.url()); expectedOriginMatches = url.origin === options.expectedOrigin; const path = url.pathname; route = /^\/en\/watchlists\/[0-9a-f-]{36}$/.test(path) ? "owned_watchlist" : "other"; expectedRouteMatches = path === options.expectedPath; } catch { /* No URL is emitted. */ }
   return { stage: options.stage, referenceCoverage: options.referenceCoverage ?? "unspecified", firstUse: false, readiness,
-    route, expectedRouteMatches, expectedOriginMatches, navigation: { ...observation.navigation }, elapsedMs: boundedElapsed(started), visibility: { ...visibility }, state,
+    route, expectedRouteMatches, expectedOriginMatches, navigation: copyNavigation(observation), elapsedMs: boundedElapsed(started), visibility: { ...visibility }, state,
     requests: observation.requests.map(value => ({ ...value })), browserErrors: observation.errors.map(value => ({ ...value })), evidenceTruncated: observation.truncated };
 }
 

@@ -7,7 +7,7 @@ import { chromium, type Page } from "playwright";
 import { exerciseCanaryLifecycle, restoreCanaryStar, requireCanaryCleanup, readCanaryReadinessState, type CanaryLifecycleState } from "./company-reference/canary-lifecycle";
 import { openCanaryAccess, resolveCanaryTarget, reattestPublicCanaryIdentity, validateCanaryDeploymentIdentity, type CanaryDeploymentIdentity } from "./company-reference/canary-target";
 import { selectCanaryCompany, canaryFailureKind } from "./company-reference/canary-picker";
-import { navigateCanary, waitForCanaryOwnerShell, type CanaryOwnerEvidence } from "./company-reference/canary-navigation";
+import { navigateCanary, waitForCanaryOwnerShell, captureCanaryDeleteAttempt, type CanaryOwnerEvidence } from "./company-reference/canary-navigation";
 import { logExternalError } from "../src/lib/safe-external-error";
 
 let contract = "company_reference_staged_canary";
@@ -172,10 +172,13 @@ async function main() {
         phase = "cleanup_delete_trigger";
         await page.getByRole("button", { name: "Delete", exact: true }).click();
         phase = "cleanup_delete_confirmation";
-        await page.getByRole("alertdialog").getByRole("button", { name: "Delete", exact: true }).click();
-        phase = "cleanup_delete_persistence";
-        await page.waitForURL(/\/en\/watchlists$/);
-        check((await sql`SELECT 1 FROM watchlist WHERE id=${cleanupId}`).length === 0, "CANARY_CLEANUP_FAILED");
+        await captureCanaryDeleteAttempt(page, { expectedPath: `/en/watchlists/${cleanupId}`, expectedOrigin: base.origin,
+          onEvidence: evidence => console.log(JSON.stringify({ contract, outcome: "action_evidence", ...evidence })) }, async () => {
+          await page!.getByRole("alertdialog").getByRole("button", { name: "Delete", exact: true }).click();
+          phase = "cleanup_delete_persistence";
+          await page!.waitForURL(/\/en\/watchlists$/);
+          check((await sql`SELECT 1 FROM watchlist WHERE id=${cleanupId}`).length === 0, "CANARY_CLEANUP_FAILED");
+        });
         cleanupProof.deleted++;
       } catch (error) { if (!failure) { failure = error; failurePhase = phase; } }
     }

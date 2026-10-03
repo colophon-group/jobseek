@@ -4,7 +4,7 @@ import type { AddressInfo } from "node:net";
 import { chromium, type Page } from "playwright";
 import type { Sql } from "postgres";
 import { expect, test } from "vitest";
-import { navigateCanary, waitForCanaryOwnerShell, diagnoseCanaryOwnerReload, canaryBrowserError, type CanaryOwnerEvidence } from "./company-reference/canary-navigation";
+import { navigateCanary, waitForCanaryOwnerShell, diagnoseCanaryOwnerReload, canaryBrowserError, captureCanaryDeleteAttempt, observeCanaryReadiness, type CanaryDeleteEvidence, type CanaryOwnerEvidence } from "./company-reference/canary-navigation";
 import { signInCanaryAccount, requireCanaryCleanup, readCanaryReadinessState } from "./company-reference/canary-lifecycle";
 import { selectCanaryCompany, canaryCompanyRow } from "./company-reference/canary-picker";
 import { bootstrapDeploymentAccess } from "./company-reference/deployment-access";
@@ -134,6 +134,7 @@ test("explicit429 navigation retries exactly one GET after its bounded Retry-Aft
   try {
     await navigateCanary(page, `http://127.0.0.1:${port}/case`, async ms => {waits.push(ms);});
     expect(methods).toEqual(['GET','GET']); expect(waits).toEqual([65000]);
+    expect(observeCanaryReadiness(page).navigation).toMatchObject({httpStatus:200,attemptCount:2,attempts:[{httpStatus:429,retryAfterSeconds:65},{httpStatus:200,retryAfterSeconds:null}]});
     expect(await page.getByRole('heading').textContent()).toBe('Owner fixture');
   } finally {await browser.close(); await close(server);}
 });
@@ -303,4 +304,70 @@ test.each([true, false])("owner diagnostics request session only on failed readi
     expect(evidence[0].readiness).toBe(ready ? "ready" : "header_not_ready");
     expect(JSON.stringify(evidence)).not.toMatch(/PRIVATE_|11111111|127.0.0.1/);
   } finally { await browser.close(); await close(server); }
+});
+
+
+test.each([429, 200])("failed delete persistence emits passive post-click status %s before close without replay or extra GET", async status => {
+  let gets = 0; let deletes = 0; const emitted: CanaryDeleteEvidence[] = []; let emittedWhileOpen = false;
+  const server = createServer((req,res) => {
+    if(req.method === "POST") {
+      if(req.url === "/delete") { deletes++; res.writeHead(status, {"content-type":"application/json"}); res.end('{"ok":false,"private":"PRIVATE_RESPONSE"}'); }
+      else res.end("PRIVATE_BOOTSTRAP_RESPONSE");
+      return;
+    }
+    gets++; res.setHeader("content-type","text/html"); res.end(`<link rel="icon" href="data:,"><button id="trigger">Delete</button><div role="alertdialog" hidden><button id="confirm">Delete</button></div><script>
+      fetch('/bootstrap',{method:'POST',headers:{'next-action':'PRIVATE_BOOTSTRAP'}}).then(()=>document.body.dataset.boot='done');
+      document.querySelector('#trigger').onclick=()=>document.querySelector('[role=alertdialog]').hidden=false;
+      document.querySelector('#confirm').onclick=async()=>{
+        const result=await fetch('/delete',{method:'POST',headers:{'next-action':'PRIVATE_ACTION'},body:'PRIVATE_BODY'});
+        if(!result.ok || !(await result.json()).ok){document.querySelector('[role=alertdialog]').hidden=true;document.body.insertAdjacentHTML('beforeend','<span role="alert">Could not delete this watchlist.</span>');}
+      };
+    </script>`);
+  });
+  const port=await listen(server);const origin=`http://127.0.0.1:${port}`;const browser=await chromium.launch({headless:true});const page=await browser.newPage();
+  try {
+    page.setDefaultTimeout(200); await navigateCanary(page,origin+diagnosticPath);
+    await page.waitForFunction(()=>document.body.dataset.boot==='done');
+    const getsBefore=gets;
+    await page.getByRole('button',{name:'Delete',exact:true}).filter({visible:true}).click();
+    await expect(captureCanaryDeleteAttempt(page,{expectedPath:diagnosticPath,expectedOrigin:origin,onEvidence:value=>{emitted.push(value);emittedWhileOpen=!page.isClosed();}},async()=>{
+      await page.getByRole('alertdialog').getByRole('button',{name:'Delete',exact:true}).click();
+      await page.waitForURL(/\/en\/watchlists$/);
+    })).rejects.toMatchObject({name:'TimeoutError'});
+    expect(deletes).toBe(1);expect(gets).toBe(getsBefore);expect(emittedWhileOpen).toBe(true);
+    expect(emitted).toHaveLength(1);expect(emitted[0]).toMatchObject({stage:'cleanup_delete',actionOutcome:'failed',firstUse:false,expectedRouteMatches:true,expectedOriginMatches:true,visibility:{deleteFailureAlerts:1,deleteControls:1,alertDialogs:0}});
+    expect(emitted[0].requests).toEqual([expect.objectContaining({kind:'server_action_candidate',status:'response',httpStatus:status})]);
+    expect(JSON.stringify(emitted)).not.toMatch(/PRIVATE_|11111111|127.0.0.1|http:\/\//);
+    expect(()=>requireCanaryCleanup({recovered:true,residual:1,starRestored:true,sessionClosed:true})).toThrow('CANARY_CLEANUP_INCOMPLETE');
+  }finally{await browser.close();await close(server);}
+});
+
+test("passive delete evidence cannot replace the original persistence error when its consumer fails", async () => {
+  const browser=await chromium.launch({headless:true});const page=await browser.newPage();const original=new Error('PRIVATE_PERSISTENCE_FAILURE');
+  try {
+    await page.setContent('<button>Delete</button>');
+    await expect(captureCanaryDeleteAttempt(page,{expectedPath:diagnosticPath,expectedOrigin:'http://fixture.invalid',onEvidence:()=>{throw new Error('PRIVATE_CONSUMER_FAILURE');}},async()=>{throw original;})).rejects.toBe(original);
+  }finally{await browser.close();}
+});
+
+
+test("successful delete emits completed evidence only after persistence and before close", async () => {
+  let gets=0;let deletes=0;let persisted=false;const emitted:CanaryDeleteEvidence[]=[];let emittedWhileOpen=false;
+  const server=createServer((req,res)=>{
+    if(req.method==='POST'){deletes++;persisted=true;res.end('PRIVATE_RESPONSE');return;}
+    gets++;res.setHeader('content-type','text/html');res.end(`<link rel="icon" href="data:,"><div role="alertdialog"><button>Delete</button></div><script>
+      document.querySelector('button').onclick=async()=>{await fetch('/delete',{method:'POST',headers:{'next-action':'PRIVATE_ACTION'},body:'PRIVATE_BODY'});history.pushState({},'', '/en/watchlists');document.body.innerHTML='<h1>Watchlists</h1>';};
+    </script>`);
+  });
+  const port=await listen(server);const origin=`http://127.0.0.1:${port}`;const browser=await chromium.launch({headless:true});const page=await browser.newPage();
+  try {
+    await navigateCanary(page,origin+diagnosticPath);const getsBefore=gets;
+    const result=await captureCanaryDeleteAttempt(page,{expectedPath:diagnosticPath,expectedOrigin:origin,onEvidence:value=>{expect(persisted).toBe(true);emitted.push(value);emittedWhileOpen=!page.isClosed();}},async()=>{
+      await page.getByRole('alertdialog').getByRole('button',{name:'Delete',exact:true}).click();await page.waitForURL(/\/en\/watchlists$/);expect(persisted).toBe(true);return 'persisted';
+    });
+    expect(result).toBe('persisted');expect(deletes).toBe(1);expect(gets).toBe(getsBefore);expect(emittedWhileOpen).toBe(true);
+    expect(emitted[0]).toMatchObject({stage:'cleanup_delete',actionOutcome:'completed',firstUse:false,expectedRouteMatches:false,expectedOriginMatches:true,visibility:{deleteFailureAlerts:0,deleteControls:0,alertDialogs:0}});
+    expect(emitted[0].requests).toEqual([expect.objectContaining({kind:'server_action_candidate',httpStatus:200})]);
+    expect(JSON.stringify(emitted)).not.toMatch(/PRIVATE_|11111111|127.0.0.1/);
+  }finally{await browser.close();await close(server);}
 });
