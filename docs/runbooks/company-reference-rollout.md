@@ -312,7 +312,7 @@ read-state/evidence callbacks. This helper performs one explicit document GET
 (with only the existing bounded 429 GET retry), waits for the unchanged owner
 conditions and reports `firstUse=false`, `existing_reference`, `readOnlyReload`.
 Re-attest public alias identity after the diagnostic. The helper sends no
-mutation; normal page bootstrap may still make its own read Server Action.
+mutation; normal page bootstrap may still make its own bootstrap Server Action.
 
 BIH's canonical reference now exists. Any subsequent BIH lifecycle must label
 its `CanaryLifecycleState.referenceCoverage` as `existing_reference`; never delete
