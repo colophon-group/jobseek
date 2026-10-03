@@ -31,6 +31,7 @@ async function fixture(malformed = false) {
     DO $$ BEGIN CREATE ROLE anon; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
     DO $$ BEGIN CREATE ROLE authenticated; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
     DO $$ BEGIN CREATE ROLE jobseek_migration_auditor LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+    ALTER ROLE jobseek_migration_auditor PASSWORD 'company-reference-auditor-fixture';
     ALTER ROLE jobseek_migration_auditor SET default_transaction_read_only = on;`);
   await sql`INSERT INTO drizzle.__drizzle_migrations (hash, created_at) VALUES (${referencePrerequisiteIdentity.hash}, ${referencePrerequisiteIdentity.createdAt})`;
   await sql`INSERT INTO company (id,name,slug,icon,created_at,updated_at) VALUES (${id}, ${malformed ? " " : "First"}, 'first', 'https://example.test/icon.png', '2026-01-01 12:00:00', '2026-02-01 12:00:00')`;
@@ -180,7 +181,7 @@ describe.skipIf(!url)("company reference expansion with PostgreSQL", () => {
       GRANT SELECT ON company, watchlist_company, followed_company, drizzle.__drizzle_migrations TO jobseek_migration_auditor;
       GRANT SELECT,INSERT,UPDATE ON company_reference TO company_reference_runtime_fixture;
       GRANT INSERT ON company TO company_reference_runtime_fixture;`);
-    const auditorUrl = new URL(url!); auditorUrl.username="jobseek_migration_auditor"; auditorUrl.password="";
+    const auditorUrl = new URL(url!); auditorUrl.username="jobseek_migration_auditor"; auditorUrl.password="company-reference-auditor-fixture";
     const auditor = postgres(auditorUrl.href, { max: 1, prepare: false, onnotice: () => {} });
     try {
       expect((await auditor`SHOW default_transaction_read_only`)[0]!.default_transaction_read_only).toBe("on");
