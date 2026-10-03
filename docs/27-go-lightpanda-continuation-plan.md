@@ -1,5 +1,32 @@
 # Go and Lightpanda migration continuation plan
 
+Installed run `37088941835` at `eb607acac1814a08975ef7ca0af4a4b3d6f7e928`
+executed the actual initial host/selected-Redis four-phase fixture successfully
+on AMD64 and ARM64 (424.64/423.35 seconds). The jobs then failed uploading the
+root-owned private proof. Independent raw-artifact verification remains required.
+The harness now transfers only the exact regular proof inode to the runner under
+a held no-follow descriptor, preserving mode 0600. Failed jobs retain available
+partial evidence without satisfying the positive test or admission requirements.
+
+The next required fixture joins the same installed image's native producer to
+all eleven initial and B0-aware forward journal phases. It verifies compiled
+source/architecture and actual UID/GID10001, empty supplementary groups, fixed
+socket/executable stability and exact selected Redis. Two legacy postings exercise
+first/recurring schedule precision, cached hints versus SQL truth and pruned work.
+Transfer and publication returned-effect interruption must recover; a new SQL
+backend must preserve the epoch, historical outcomes and complete Redis values.
+Raw proofs permit independent hash/graph/task/value verification. Local vets,
+format/tidy/actionlint and 94 repository tests pass (three optional skips); actual
+forward producer execution still awaits fresh CI. See [fixture evidence](evidence/go-ordinary-native-host-forward-producer-fixture-2026-10-03.json).
+
+Source `eb607acac` full CI, Linux and both historical image restoration runs pass;
+Linux and both historical image artifacts are independently verified. Preserve
+ongoing whole-B0 evidence. Next prove the installed producer fixture, then finish
+the protected reversal/reactivation/finalization graph and complete host lifecycle.
+The full migration goal remains active, PR #10210 draft and production unchanged.
+
+Earlier entries retain their source-scoped observations and pending states.
+
 The protected native journal now includes the B0-aware forward plan, retention,
 application, inspection and ordinary publication primitives. Closed requests
 name the exact reserved epoch and ordinary plan, protected typed forward request,

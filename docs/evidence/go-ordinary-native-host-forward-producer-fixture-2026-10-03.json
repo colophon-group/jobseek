@@ -1,0 +1,65 @@
+{
+  "date": "2026-10-03",
+  "parent": "eb607acac1814a08975ef7ca0af4a4b3d6f7e928",
+  "scope": "required disposable installed-image host forward fixture; native library with actual installed preflight and UID10001 producer; fresh execution required",
+  "prior_initial_execution": {
+    "source": "eb607acac1814a08975ef7ca0af4a4b3d6f7e928",
+    "run": 37088941835,
+    "architectures": {
+      "amd64": {
+        "test_pass": true,
+        "seconds": 424.64
+      },
+      "arm64": {
+        "test_pass": true,
+        "seconds": 423.35
+      }
+    },
+    "run_conclusion": "failure",
+    "failure": "runner artifact upload EACCES for root-owned mode0600 initial proof",
+    "raw_joined_artifact_independently_verified": false
+  },
+  "implemented_fixture_contract": [
+    "same independently verified source/image and extracted native producer bytes; compiled source/Go1.26.4/architecture verification",
+    "actual process UID/GID10001, no supplementary groups; fixed authenticated socket inode, executable stability across exact retry",
+    "actual host flock and three SQL barriers hold through eleven initial/forward phases and returned-effect interruption at transfer/publication",
+    "two legacy queued postings with exact first/recurring scores and ceil-millisecond schedules; cached hash7 differs from SQL MININT64 truth; unqueued posting remains pruned",
+    "raw canonical inputs, complete Redis before/after, eleven canonical requests/results/completions, producer/process/connection proof retained",
+    "new SQL backend exact retry preserves epoch/results/full Redis values; canonical rows and unrelated Redis values conserved",
+    "stop only owned native producer; release clients/barriers; preserve runtime host predicates and original SQL deadline",
+    "root proof transferred through no-follow held file descriptor after exact inode/mode/owner checks; private0600 mode preserved even when retaining partial failed-job evidence"
+  ],
+  "local_validation": {
+    "linux_amd64_arm64_and_native_integration_vet": true,
+    "format_tidy_actionlint": true,
+    "repository_tests_passed": 94,
+    "optional_skips": 3,
+    "local_root_Docker_producer_execution": false,
+    "logs_sha256": {
+      "ordinary-forward-producer-vet.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ordinary-forward-producer-tidy.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ordinary-forward-producer-actionlint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "ordinary-forward-producer-repository-tests.log": "b78b31e906c005af71e0e9b32e8e9e9808ced1c285bdb24ec4efdc44879c159e",
+      "ordinary-installed-eb607acac-full.log": "3f77adb6096f713a18e6de0aea357ed8b3a9de4f6c7a55bf8a635efd46a7b203"
+    }
+  },
+  "source_files_sha256": {
+    ".github/workflows/crawler-runtime-contracts.yml": "86b8719339d2579e2531e4564e52a9e1fb979d3576695af28ee149b3f45fc645",
+    "apps/crawler/go/ordinary-worker/host_selected_redis_integration_test.go": "407d588061f992e4c2969ecbd317042f37f3f1eb62349e2ae29b441c497ec715",
+    "apps/crawler/go/ordinary-worker/host_forward_producer_integration_test.go": "ce115cf9be2655876cdabd73872a676887ec50ba1e8f7a5f1ce1fa92ed6ad1e4"
+  },
+  "artifact_verifier_sha256": "bb0c726e0404a9b568170ece5c60e9beed4088e334e96a252470818f08f66c61",
+  "positive_native_producer_forward_fixture_executed": false,
+  "positive_native_producer_forward_raw_artifact_verified": false,
+  "complete_installed_cold_CLI_verified": false,
+  "full_reversal_reactivation_finalization_graph_implemented": false,
+  "runtime_admission": false,
+  "production_changed": false,
+  "next": [
+    "collect exact-source AMD64/ARM64 positive fixture and independently verify raw artifacts without relaxing deadline/authentication/conservation",
+    "complete protected reversal/reactivation/finalization and phase-authenticated expected host changes",
+    "keep outer lock through full restoration/SQL release/startup/readiness; prove real full-stack crash recovery",
+    "finish every enabled profile and deployment/maintenance consumer, canonical/output/database/publisher/freshness/queue parity and whole-service resource/attributable cost",
+    "required gates and exact merge/release identities, supported quiesced cutover/cold reversal and rollback window before runtime Python/Playwright/Chromium retirement"
+  ]
+}

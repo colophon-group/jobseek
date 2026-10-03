@@ -616,3 +616,34 @@ and publication under this host journal still need the actual source-bound
 producer fixture. Reversal/reactivation/finalization, intentional host resource
 changes, installed outer cold driver, complete startup/readiness and production
 admission remain required. See the source-scoped forward journal evidence.
+
+## Installed producer forward fixture — 2026-10-03
+
+The actual initial joined fixture executes successfully on both architectures
+at eb607 run 37088941835, then fails artifact upload because the root-emitted
+0600 proof belongs to root. Its raw joined proof is not independently verified.
+The runner handoff now checks a no-follow held file descriptor, regular type,
+private mode, root owner and named inode before fchown; permissions stay 0600.
+Partial failed-job evidence is preserved and cannot grant admission.
+
+The required next root fixture uses the exact source/image-extracted native
+supervisor as UID/GID10001 without supplementary groups. Compiled source/Go
+version/architecture, live executable and fixed authenticated socket inode are
+checked. Under the actual host/selected-Redis/SQL scope it drives eleven retained
+initial/forward stages, recovering transfer/publication after returned-effect
+interruption. Two exact legacy schedules, cached hint versus SQL truth and an
+unqueued posting test transfer payloads and pruned work. A second SQL backend
+must return all historical outcomes without a new epoch or changed Redis values;
+canonical rows and unrelated Redis remain unchanged. The owned producer stops
+and all owned connections close. Raw canonical graph and complete value proofs
+are retained for independent verification.
+
+Local native and both Linux architecture integration vets, format/tidy,
+actionlint and 94 repository tests pass (three optional skips). Actual positive
+producer execution awaits fresh CI. This remains native library code plus
+installed preflight/producer and sleeping consumers. Returned-effect interruption
+is not a process SIGKILL. Complete installed cold CLI, producer lifecycle
+exclusion, protected reversal/reactivation/finalization, expected host resource
+changes, outer lock through restoration/SQL release/startup/readiness and full
+production admission remain required. See
+[fixture evidence](../evidence/go-ordinary-native-host-forward-producer-fixture-2026-10-03.json).

@@ -28,13 +28,25 @@ import (
 // containers, uses sleeping consumers, and proves the joined native library
 // path. Complete installed cold CLI/graph and producer exclusion remain open.
 func TestActualHostSelectedRedisJournalJoinsScopeAndExactReservation(t *testing.T) {
+	runActualHostSelectedRedisJournal(t, false)
+}
+
+func TestActualHostSelectedRedisForwardJournalUsesInstalledProducer(t *testing.T) {
+	runActualHostSelectedRedisJournal(t, true)
+}
+
+func runActualHostSelectedRedisJournal(t *testing.T, forward bool) {
 	if os.Getenv("JOBSEEK_CRAWLER_RELEASE_REQUIRE_HOST_SELECTED_REDIS") != "1" {
 		t.Skip("explicit disposable joined fixture required")
 	}
 	if runtime.GOOS != "linux" || os.Getenv("GITHUB_ACTIONS") != "true" || os.Geteuid() != 0 || os.Getenv("JOBSEEK_ORDINARY_IMAGE_BINARY") == "" {
 		t.Fatal("joined fixture requires disposable Linux root and installed image")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 900*time.Second)
+	limit := 900 * time.Second
+	if forward {
+		limit = 1800 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), limit)
 	defer cancel()
 	source := ordinaryFixtureSourceRevision(t)
 	const project = "jobseek-native-host-contain" // Owned Actions PostgreSQL labels.
@@ -129,6 +141,10 @@ func TestActualHostSelectedRedisJournalJoinsScopeAndExactReservation(t *testing.
 	}
 	t.Cleanup(func() { _ = client.Close() })
 	f.r, f.client = selected, client
+	var forwardSeed *hostForwardFixtureSeed
+	if forward {
+		forwardSeed = seedHostForwardFixture(t, ctx, f)
+	}
 	selectedInstance, err := client.RedisInstanceSHA256(ctx)
 	if err != nil {
 		t.Fatal("owned selected server incarnation")
@@ -142,6 +158,7 @@ func TestActualHostSelectedRedisJournalJoinsScopeAndExactReservation(t *testing.
 		return len(strings.Split(strings.TrimSpace(body), "\n"))
 	}
 	baselineClients := clientCount()
+	originalBaselineClients := baselineClients
 	canonicalBefore, redisBefore := coldExecutableCanonicalSnapshot(t, f), fullColdExecutableRedisSnapshot(t, f)
 	deployment := hostPrivateDirectory(t)
 	if os.WriteFile(filepath.Join(deployment, "docker-compose.yml"), []byte("services: {}\n"), 0600) != nil {
@@ -206,6 +223,11 @@ func TestActualHostSelectedRedisJournalJoinsScopeAndExactReservation(t *testing.
 	var requestSHAs []string
 	var outcomes []*HostColdPhaseResult
 	var sqlPIDs []int32
+	var producerProof map[string]any
+	var stopProducer func()
+	var forwardAfter map[string]string
+	var forwardPreview map[string]string
+	interrupted := []string{}
 	assertHeld := func(scoped context.Context, pool *pgxpool.Pool, sql *queue.HostColdSQL) {
 		t.Helper()
 		if queue.CheckHostColdSQLBinding(scoped, pool, originalInfo.Binding) != nil {
@@ -268,6 +290,19 @@ func TestActualHostSelectedRedisJournalJoinsScopeAndExactReservation(t *testing.
 					req.RedisInstanceSHA256 = info.RedisInstanceSHA256
 					req.PreviousEpoch = previous
 					sha := hostPhaseRetainTestRequest(t, state, req)
+					if forward && (req.Operation == "cold-b0-forward-apply" || req.Operation == "cold-forward-publish") {
+						result, err := runHostColdPhase(selectedCtx, pool, sha, func(stage string) error {
+							if stage == "native_effect_returned" {
+								return errHostPreflight
+							}
+							return nil
+						})
+						if err == nil || result != nil {
+							t.Fatal("forward retained-effect seam did not interrupt")
+						}
+						assertHeld(selectedCtx, pool, sql)
+						interrupted = append(interrupted, req.Operation)
+					}
 					result, err := RunHostColdPhase(selectedCtx, pool, sha)
 					if err != nil || result == nil || result.Outcome != "completed" || result.RuntimeAdmission {
 						t.Fatal("joined retained phase", req.Operation, err)
@@ -285,6 +320,39 @@ func TestActualHostSelectedRedisJournalJoinsScopeAndExactReservation(t *testing.
 					inspected := call(HostColdPhaseRequest{Operation: "cold-inspect", PredecessorSHA256: hostPhaseResultSHA(t, reserved), IntentSHA256: intent})
 					if inspected.Native.RoutingEpoch != reserved.Native.RoutingEpoch || inspected.Native.PlanSHA256 != reserved.Native.PlanSHA256 {
 						t.Fatal("joined inspection changed reservation")
+					}
+					if forward {
+						producerProof, stopProducer = startHostForwardInstalledProducer(t, ctx, source, proof.Image, proof.Architecture, selectedURL, reserved.Native.RoutingEpoch, lua)
+						producerProof["selected_redis_endpoint_sha256"] = info.RedisEndpointSHA256
+						producerProof["operator_client_uid"] = 0
+						producerProof["synthetic_prior_cleanup_digests"] = true
+						forwardRequest := queue.ColdB0ForwardRequest{IntentSHA256: intent, SourceRevision: source, RoutingEpoch: reserved.Native.RoutingEpoch, OrdinaryPlanSHA256: reserved.Native.PlanSHA256}
+						encoded, _ := json.Marshal(forwardRequest)
+						forwardSHA := hostPhaseRetainTestInput(t, state, encoded)
+						req := HostColdPhaseRequest{Operation: "cold-b0-forward-plan", PredecessorSHA256: hostPhaseResultSHA(t, inspected), IntentSHA256: intent, TargetSHA256: target.Native.B0TargetSHA256, LuaSHA256: luaSHA, RoutingEpoch: reserved.Native.RoutingEpoch, PlanSHA256: reserved.Native.PlanSHA256, ForwardRequestSHA256: forwardSHA}
+						planned := call(req)
+						validateHostForwardSeedPlan(t, forwardSeed, planned.Native.B0ForwardPlan)
+						if !reflect.DeepEqual(redisBefore, fullColdExecutableRedisSnapshot(t, f)) {
+							t.Fatal("producer preview changed Redis values")
+						}
+						req.Operation, req.ForwardPlanSHA256, req.PredecessorSHA256 = "cold-b0-forward-retain", planned.Native.B0ForwardPlanSHA256, hostPhaseResultSHA(t, planned)
+						retained := call(req)
+						forwardPreview = fullColdExecutableRedisSnapshot(t, f)
+						if !reflect.DeepEqual(redisBefore, forwardPreview) {
+							t.Fatal("producer retention changed Redis values")
+						}
+						req.Operation, req.PredecessorSHA256 = "cold-b0-forward-apply", hostPhaseResultSHA(t, retained)
+						applied := call(req)
+						req.Operation, req.PredecessorSHA256, req.TargetSHA256, req.LuaSHA256 = "cold-b0-forward-inspect", hostPhaseResultSHA(t, applied), "", ""
+						observed := call(req)
+						req.TargetSHA256, req.LuaSHA256, req.ForwardReceiptSHA256 = target.Native.B0TargetSHA256, luaSHA, observed.Native.B0ForwardReceiptSHA256
+						for _, operation := range []string{"cold-forward-prepare", "cold-forward-publish", "cold-forward-activate"} {
+							req.Operation, req.PredecessorSHA256 = operation, hostPhaseResultSHA(t, observed)
+							observed = call(req)
+						}
+						verifyHostForwardTransferredQueue(t, ctx, f, forwardSeed, planned.Native.B0ForwardPlan, reserved.Native.RoutingEpoch)
+						forwardAfter = fullColdExecutableRedisSnapshot(t, f)
+						assertHostForwardUnrelatedValues(t, redisBefore, forwardAfter, forwardSeed)
 					}
 				} else {
 					for n, sha := range requestSHAs {
@@ -305,8 +373,16 @@ func TestActualHostSelectedRedisJournalJoinsScopeAndExactReservation(t *testing.
 		if err != nil || result == nil || !result.SQLBarriersObserved || result.RuntimeAdmission {
 			t.Fatal("joined callback completion", err)
 		}
-		if clientCount() != baselineClients {
+		if forward && retry == 0 {
+			baselineClients = clientCount()
+			if baselineClients <= originalBaselineClients {
+				t.Fatal("native producer did not own a Redis connection")
+			}
+		} else if clientCount() != baselineClients {
 			t.Fatal("completed selected scope retained Redis connections")
+		}
+		if forward && !reflect.DeepEqual(forwardAfter, fullColdExecutableRedisSnapshot(t, f)) {
+			t.Fatal("exact forward retry changed Redis values")
 		}
 		if _, err := InspectHostColdPhaseContext(escaped, escapedPool); err == nil {
 			t.Fatal("escaped selected phase context admitted")
@@ -326,8 +402,18 @@ func TestActualHostSelectedRedisJournalJoinsScopeAndExactReservation(t *testing.
 	if f.pg.QueryRow(ctx, "SELECT last_value FROM lightpanda_b0_routing_epoch_seq").Scan(&lastEpoch) != nil || lastEpoch != outcomes[2].Native.RoutingEpoch {
 		t.Fatal("joined retry reserved another epoch")
 	}
-	if !reflect.DeepEqual(canonicalBefore, coldExecutableCanonicalSnapshot(t, f)) || !reflect.DeepEqual(redisBefore, fullColdExecutableRedisSnapshot(t, f)) {
+	if !reflect.DeepEqual(canonicalBefore, coldExecutableCanonicalSnapshot(t, f)) || !forward && !reflect.DeepEqual(redisBefore, fullColdExecutableRedisSnapshot(t, f)) {
 		t.Fatal("joined cold phase changed canonical rows or complete Redis values")
+	}
+	if forward {
+		verifyHostForwardProducerStillOwned(t, producerProof)
+		stopProducer()
+		if clientCount() != originalBaselineClients {
+			t.Fatal("stopped owned producer retained Redis connections")
+		}
+		if len(interrupted) != 2 || interrupted[0] != "cold-b0-forward-apply" || interrupted[1] != "cold-forward-publish" {
+			t.Fatal("forward effect/result seams not exercised")
+		}
 	}
 	retained := map[string]string{}
 	entries, err := os.ReadDir(state)
@@ -375,7 +461,16 @@ func TestActualHostSelectedRedisJournalJoinsScopeAndExactReservation(t *testing.
 		connectionReceipts[name] = string(body)
 	}
 	phaseInputs := map[string]string{}
-	for _, sha := range []string{luaSHA, outcomes[0].Native.B0TargetSHA256, outcomes[1].Native.IntentSHA256} {
+	inputSHAs := []string{luaSHA, outcomes[0].Native.B0TargetSHA256, outcomes[1].Native.IntentSHA256}
+	if forward {
+		var request HostColdPhaseRequest
+		b, err := os.ReadFile(filepath.Join(state, "cold-request-"+requestSHAs[4]+".json"))
+		if err != nil || json.Unmarshal(b, &request) != nil {
+			t.Fatal("forward retained typed request")
+		}
+		inputSHAs = append(inputSHAs, request.ForwardRequestSHA256, outcomes[4].Native.B0ForwardPlanSHA256)
+	}
+	for _, sha := range inputSHAs {
 		if !planPattern.MatchString(sha) {
 			t.Fatal("joined bounded retained input identity")
 		}
@@ -386,10 +481,32 @@ func TestActualHostSelectedRedisJournalJoinsScopeAndExactReservation(t *testing.
 		phaseInputs[sha] = string(body)
 	}
 	joinedProof := map[string]any{"version": "jobseek.fixture.host-selected-redis-journal/v1", "source_revision": source, "architecture": runtime.GOARCH, "installed_image_id": proof.Image, "installed_binary_sha256": proof.Binary, "selected_redis_endpoint_sha256": originalInfo.RedisEndpointSHA256, "redis_instance_sha256": originalInfo.RedisInstanceSHA256, "cold_attestation_sha256": originalInfo.ColdAttestationSHA256, "phase_request_sha256": requestSHAs, "reservation_epoch": lastEpoch, "sql_backend_pids": sqlPIDs, "connection_receipts_sha256": retained, "phase_context": originalInfo, "host_request_sha256": hostDigest(body), "phase_inputs": phaseInputs, "phase_records": phaseRecords, "connection_receipts": connectionReceipts, "released_redis_client_count": baselineClients, "canonical_and_complete_redis_values_conserved": true, "runtime_admission": false, "scope": "actual native library callback with installed image preflight, sleeping consumer stand-ins and private SQL/Redis; complete installed cold CLI/phase graph/producer exclusion/runtime admission unproven"}
-	encoded, err := json.MarshalIndent(joinedProof, "", "  ")
 	proofPath := os.Getenv("JOBSEEK_CRAWLER_RELEASE_HOST_SELECTED_REDIS_PROOF")
+	if forward {
+		joinedProof["version"] = "jobseek.fixture.host-selected-redis-forward/v1"
+		joinedProof["producer"] = producerProof
+		joinedProof["seed"] = forwardSeed
+		joinedProof["redis_before"] = redisBefore
+		joinedProof["redis_after"] = forwardAfter
+		joinedProof["redis_after_initial_preview"] = forwardPreview
+		joinedProof["canonical_before"] = canonicalBefore
+		joinedProof["canonical_after"] = coldExecutableCanonicalSnapshot(t, f)
+		joinedProof["interrupted_after_native_effect"] = interrupted
+		joinedProof["canonical_and_complete_redis_values_conserved"] = false
+		joinedProof["canonical_rows_and_unrelated_redis_values_conserved"] = true
+		joinedProof["exact_retry_complete_redis_values_conserved"] = true
+		joinedProof["producer_stopped_and_connections_released"] = true
+		joinedProof["released_redis_client_count"] = originalBaselineClients
+		joinedProof["scope"] = "actual native library host callback, installed preflight and source/image-bound UID10001 native producer through B0 transfer and ordinary publication, effect/result interruption recovery and exact retry; sleeping ordinary consumers, full installed cold CLI/reversal graph/startup/runtime admission unproven"
+		proofPath = os.Getenv("JOBSEEK_CRAWLER_RELEASE_HOST_FORWARD_JOURNAL_PROOF")
+	}
+	encoded, err := json.MarshalIndent(joinedProof, "", "  ")
 	if err != nil || proofPath == "" || os.WriteFile(proofPath, append(encoded, '\n'), 0600) != nil {
 		t.Fatal("joined fixture proof retention")
 	}
-	t.Log("actual host callback joined selected Compose/image/consumer execution and official Redis PID/listener inode to native target/intent/reservation/inspection journal effects; original mutation flock and all SQL barriers held across independent commits; new backend exact retry kept endpoint/incarnation, epoch and results, canonical and complete Redis values conserved, missing/escaped scope refused and resources released; installed preflight plus native library/sleeping consumer fixture only, complete cold CLI/phase graph/producer exclusion/runtime admission unproven")
+	if forward {
+		t.Log("actual host callback and selected official Redis joined installed UID10001 native producer to eleven retained phases through B0 task transfer and ordinary publication; exact schedules/hints/task payloads and pruned work verified, canonical rows and unrelated Redis values conserved; transfer and publication effect/result interruption recovered, new SQL backend exact retry kept epoch/results/complete Redis values, producer and owned connections released; native library plus installed preflight/producer only, complete installed cold CLI/reversal/startup/runtime admission unproven")
+	} else {
+		t.Log("actual host callback joined selected Compose/image/consumer execution and official Redis PID/listener inode to native target/intent/reservation/inspection journal effects; original mutation flock and all SQL barriers held across independent commits; new backend exact retry kept endpoint/incarnation, epoch and results, canonical and complete Redis values conserved, missing/escaped scope refused and resources released; installed preflight plus native library/sleeping consumer fixture only, complete cold CLI/phase graph/producer exclusion/runtime admission unproven")
+	}
 }

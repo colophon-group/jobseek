@@ -212,7 +212,7 @@ jobs:
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
     # Full installed host readbacks run across every joined cold phase/retry.
-    timeout-minutes: 45
+    timeout-minutes: 75
     services:
       postgres:
         image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
@@ -303,6 +303,7 @@ jobs:
           }
           trap cleanup_image_fixtures EXIT
           docker cp "$fixture_container:/usr/local/bin/go-ordinary-worker" "$fixture_directory/ordinary-worker"
+          docker cp "$fixture_container:/usr/local/bin/lightpanda-b0-supervisor" "$fixture_directory/installed-producer"
           docker cp "$fixture_container:/etc/ssl/certs/ca-certificates.crt" "$fixture_directory/system-ca.pem"
           docker cp "$fixture_container:/app/data" "$fixture_directory/data"
           chmod -R a-w "$fixture_directory/data"
@@ -310,11 +311,15 @@ jobs:
           echo "binary=$fixture_directory/ordinary-worker" >> "$GITHUB_OUTPUT"
           export JOBSEEK_ORDINARY_IMAGE_DATA_DIRECTORY="$fixture_directory/data"
           echo "data_directory=$fixture_directory/data" >> "$GITHUB_OUTPUT"
+          echo "producer_binary=$fixture_directory/installed-producer" >> "$GITHUB_OUTPUT"
           docker image inspect --format '{{.Id}}' jobseek-crawler:runtime-v1 > "$fixture_directory/image-id"
           docker image inspect --format '{{.Architecture}}' jobseek-crawler:runtime-v1 > "$fixture_directory/image-architecture"
           docker run --rm --network none --read-only --cap-drop ALL \
             --entrypoint sha256sum jobseek-crawler:runtime-v1 \
             /usr/local/bin/go-ordinary-worker > "$fixture_directory/installed-binary-sha256"
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --entrypoint sha256sum jobseek-crawler:runtime-v1 \
+            /usr/local/bin/lightpanda-b0-supervisor > "$fixture_directory/installed-producer-sha256"
           python3 - "$fixture_directory" "$GITHUB_SHA" "$RUNNER_TEMP/ordinary-image-proof.json" "${{ matrix.arch }}" <<'PY'
           import hashlib, json, pathlib, sys
           root = pathlib.Path(sys.argv[1])
@@ -331,6 +336,13 @@ jobs:
                    "scope": "image-extracted native binary and assets on Linux; private PostgreSQL/Redis",
                    "production_changed": False}
           pathlib.Path(sys.argv[3]).write_text(json.dumps(proof, indent=2) + "\n")
+          producer_sha = hashlib.sha256((root / "installed-producer").read_bytes()).hexdigest()
+          assert producer_sha == (root / "installed-producer-sha256").read_text().split()[0]
+          producer = {"source_revision": sys.argv[2], "image_id": proof["image_id"], "architecture": architecture,
+                      "producer_binary_sha256": producer_sha,
+                      "scope": "exact native supervisor extracted from same independently verified image; fixture only",
+                      "production_changed": False}
+          pathlib.Path(sys.argv[3]).with_name("ordinary-host-producer-image-proof.json").write_text(json.dumps(producer, indent=2) + "\n")
           PY
           go test -race -count=1 -timeout=90s -v -run '^TestRealNativeExecutable' ./... \
             | tee "$RUNNER_TEMP/ordinary-image-process-tests.log"
@@ -489,8 +501,63 @@ jobs:
             -test.run '^TestActualHostSelectedRedisJournalJoinsScopeAndExactReservation$' \
             -test.count=1 -test.timeout=960s -test.v \
             | tee "$RUNNER_TEMP/ordinary-host-selected-redis-tests.log"
+          # This second owned fixture executes the exact image-extracted native
+          # producer as UID/GID 10001 with no supplementary groups. It preserves
+          # fixed socket authentication and every runtime host/SQL predicate.
+          installed_producer="${{ steps.ordinary-image-process.outputs.producer_binary }}"
+          test -x "$installed_producer"
+          sudo env PATH=/usr/bin:/bin GITHUB_ACTIONS=true \
+            JOBSEEK_CRAWLER_RELEASE_REQUIRE_HOST_SELECTED_REDIS=1 \
+            JOBSEEK_CRAWLER_RELEASE_HOST_JOIN_PROOF="$RUNNER_TEMP/ordinary-host-installed-join-proof.json" \
+            JOBSEEK_CRAWLER_RELEASE_HOST_FORWARD_JOURNAL_PROOF="$RUNNER_TEMP/ordinary-host-forward-journal-proof.json" \
+            JOBSEEK_HOST_FORWARD_PRODUCER_BINARY="$installed_producer" \
+            JOBSEEK_HOST_FORWARD_PRODUCER_IMAGE_PROOF="$RUNNER_TEMP/ordinary-host-producer-image-proof.json" \
+            JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES=1 \
+            JOBSEEK_ORDINARY_QUEUE_REQUIRE_REDIS=1 \
+            JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL=postgresql://crawler:crawler@127.0.0.1:5432/jobseek_ordinary_worker_test \
+            JOBSEEK_ORDINARY_IMAGE_SOURCE_REVISION="$GITHUB_SHA" \
+            JOBSEEK_ORDINARY_IMAGE_BINARY="$installed_binary" \
+            JOBSEEK_ORDINARY_IMAGE_DATA_DIRECTORY="$installed_data" \
+            "$joined_binary" \
+            -test.run '^TestActualHostSelectedRedisForwardJournalUsesInstalledProducer$' \
+            -test.count=1 -test.timeout=1860s -test.v \
+            | tee "$RUNNER_TEMP/ordinary-host-forward-journal-tests.log"
+
+      - name: Retain private root fixture evidence for runner upload
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          # Root emits private 0600 evidence. Give the uploader access only to
+          # these exact owned regular files, preserving mode and inode identity.
+          retain_root_fixture_proof() {
+            sudo python3 - "$1" "$(id -u)" "$(id -g)" <<'PY'
+          import os, stat, sys
+          path, uid, gid = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
+          fd = os.open(path, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW)
+          try:
+              opened, named = os.fstat(fd), os.lstat(path)
+              assert stat.S_ISREG(opened.st_mode) and opened.st_nlink == 1
+              assert stat.S_IMODE(opened.st_mode) == 0o600 and opened.st_uid == 0
+              assert (opened.st_dev, opened.st_ino) == (named.st_dev, named.st_ino)
+              os.fchown(fd, uid, gid)
+              retained, named = os.fstat(fd), os.lstat(path)
+              assert stat.S_IMODE(retained.st_mode) == 0o600
+              assert retained.st_uid == uid and retained.st_gid == gid
+              assert (retained.st_dev, retained.st_ino) == (named.st_dev, named.st_ino)
+          finally:
+              os.close(fd)
+          PY
+          }
+          for proof in ordinary-host-selected-redis-proof.json ordinary-host-forward-journal-proof.json; do
+            # A failed test may have no proof; preserving partial evidence cannot
+            # satisfy the required positive test and independently checked proof.
+            if sudo test -e "$RUNNER_TEMP/$proof" || sudo test -L "$RUNNER_TEMP/$proof"; then
+              retain_root_fixture_proof "$RUNNER_TEMP/$proof"
+            fi
+          done
 
       - name: Save installed native process identities and test results
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ordinary-image-process-${{ matrix.arch }}-${{ github.sha }}
@@ -506,6 +573,9 @@ jobs:
             ${{ runner.temp }}/ordinary-host-quiescence-tests.log
             ${{ runner.temp }}/ordinary-host-selected-redis-tests.log
             ${{ runner.temp }}/ordinary-host-selected-redis-proof.json
+            ${{ runner.temp }}/ordinary-host-producer-image-proof.json
+            ${{ runner.temp }}/ordinary-host-forward-journal-tests.log
+            ${{ runner.temp }}/ordinary-host-forward-journal-proof.json
           if-no-files-found: error
 
       - name: Import the installed contract surface from the image
