@@ -210,6 +210,12 @@ describe("production migration safety", () => {
     const finalMainCheck = workflow.lastIndexOf(
       'test "$remote_main_sha" = "$ROUTINE_MIGRATION_REVISION"',
     );
+    const referencePreflight = workflow.indexOf("scripts/verify-company-references.ts preflight");
+    const referencePostflight = workflow.indexOf("scripts/verify-company-references.ts postflight");
+    expect(referencePreflight).toBeGreaterThan(0);
+    expect(referencePreflight).toBeLessThan(finalMainCheck);
+    expect(referencePostflight).toBeGreaterThan(workflow.indexOf("run: pnpm db:migrate:verify-head"));
+    expect(workflow.match(/if: env\.ROUTINE_MIGRATION_TAG == '0100_company_references'/g)).toHaveLength(2);
     const workflowMigration = workflow.indexOf(
       "timeout --signal=TERM --kill-after=15s 12m pnpm db:migrate",
     );

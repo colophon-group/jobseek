@@ -148,6 +148,20 @@ describe.skipIf(!url)("company reference expansion with PostgreSQL", () => {
     expect(await auditCompanyReferences(sql, "postflight")).toMatchObject({ status: "passed" });
     expect((await sql`SELECT name FROM company_reference WHERE id=${id}`)[0]!.name).toBe("First");
   });
+  it("requires every runtime privilege rather than accepting a SELECT-only role", async () => {
+    await fixture(); await apply();
+    await sql.unsafe(`DO $$ BEGIN CREATE ROLE company_reference_runtime_fixture BYPASSRLS; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+      GRANT USAGE ON SCHEMA public, drizzle TO company_reference_runtime_fixture;
+      GRANT SELECT ON ALL TABLES IN SCHEMA public, drizzle TO company_reference_runtime_fixture;
+      REVOKE INSERT, UPDATE ON company_reference FROM company_reference_runtime_fixture;`);
+    const restricted = postgres(url!, { max: 1, prepare: false, onnotice: () => {} });
+    try {
+      await restricted.unsafe("SET ROLE company_reference_runtime_fixture");
+      await expect(auditCompanyReferences(restricted, "postflight")).rejects.toThrow("runtime role cannot read/write");
+      await sql.unsafe("GRANT INSERT, UPDATE ON company_reference TO company_reference_runtime_fixture");
+      expect(await auditCompanyReferences(restricted, "postflight")).toMatchObject({ status: "passed" });
+    } finally { await restricted.end(); }
+  });
   it("detects disabled triggers, weakened checks, browser grants and wrong ledger", async () => {
     await fixture(); await apply();
     await sql.unsafe("ALTER TABLE company DISABLE TRIGGER company_reference_legacy_bridge");

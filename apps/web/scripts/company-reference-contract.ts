@@ -73,7 +73,8 @@ export async function auditCompanyReferences(sql: Sql, mode: CompanyReferenceMod
       : tx`SELECT id, name, slug, icon FROM public.company_reference ORDER BY id`;
     for await (const batch of renderRows.cursor(100)) {
       const rendered = normalizeWatchlistCompaniesForRead(batch);
-      nonrenderable += batch.length - (rendered?.length ?? 0);
+      nonrenderable += batch.length - (rendered?.length ?? 0)
+        + (rendered?.filter(row => "unavailable" in row && row.unavailable === true).length ?? 0);
     }
     assert(nonrenderable === 0, `Reference rendering contract refused: ${nonrenderable} nonrenderable companies`);
     const selectionForeignKeys = await tx<{ table: string; name: string; target: string; deleteAction: string; validated: boolean }[]>`
@@ -127,7 +128,9 @@ export async function auditCompanyReferences(sql: Sql, mode: CompanyReferenceMod
         LEFT JOIN public.company_reference r ON r.id=s.company_id WHERE r.id IS NULL)::integer AS "missingSelections"`;
     assert(coverage?.missingLegacy === 0 && coverage.mismatchedSeed === 0 && coverage.missingSelections === 0, "Reference/selection coverage drift");
     const runtime = await tx<{ allowed: boolean }[]>`
-      SELECT has_table_privilege(current_user, 'public.company_reference', 'SELECT,INSERT,UPDATE')
+      SELECT has_table_privilege(current_user, 'public.company_reference', 'SELECT')
+        AND has_table_privilege(current_user, 'public.company_reference', 'INSERT')
+        AND has_table_privilege(current_user, 'public.company_reference', 'UPDATE')
         AND (r.rolsuper OR r.rolbypassrls OR c.relowner=r.oid) AS allowed
       FROM pg_roles r, pg_class c WHERE r.rolname=current_user AND c.oid='public.company_reference'::regclass`;
     assert(runtime[0]?.allowed, "Connected runtime role cannot read/write company references through RLS");
