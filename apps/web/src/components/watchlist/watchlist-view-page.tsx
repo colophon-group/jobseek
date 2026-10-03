@@ -549,14 +549,24 @@ export function WatchlistViewPage({
     companyMutationInFlightRef.current = true;
     setMutationError("");
     setCompanies(nextCompanies);
+    // A company selection is meaningful only with its current scope. Flush
+    // older queued filters first and commit the latest mode with membership;
+    // a reload after this save must not revive a debounced any-company mode.
+    clearTimeout(saveFiltersTimeout.current);
+    const pendingFilters = pendingFiltersRef.current;
+    pendingFiltersRef.current = null;
+    const scopeFilters = buildFilters();
     try {
+      await filterSaveChainRef.current;
       const persisted = await persistWatchlistChanges({
         companyIds: nextCompanies.map((candidate) => candidate.id),
+        filters: scopeFilters,
       });
       if (!persisted) throw new Error("company_update_failed");
     } catch (error) {
       setCompanies(previousCompanies);
       setMutationError(updateErrorMessage(error));
+      if (pendingFilters) enqueueFilterSave(pendingFilters.filters, false, pendingFilters.scopeRevision);
     } finally {
       if (mountedRef.current) setPersistedScopeRevision(scopeRevision);
       companyMutationInFlightRef.current = false;
@@ -723,7 +733,7 @@ export function WatchlistViewPage({
       salaryMax: "salMax" in overrides ? overrides.salMax : salaryMax,
       experienceMin: "expMin" in overrides ? overrides.expMin : experienceMin,
       experienceMax: "expMax" in overrides ? overrides.expMax : experienceMax,
-      anyCompany: ac || undefined,
+      anyCompany: ac,
     };
   }
 

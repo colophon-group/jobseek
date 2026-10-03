@@ -73,7 +73,9 @@ vi.mock("@/components/watchlist/company-pill", () => ({
 }));
 
 vi.mock("@/components/watchlist/company-search-modal", () => ({
-  CompanySearchModal: () => null,
+  CompanySearchModal: ({ open, onToggle }: { open: boolean; onToggle: (company: { id: string; name: string; slug: string; icon: null }) => void }) => open
+    ? <button type="button" onClick={() => onToggle({ id: "33333333-3333-4333-8333-333333333333", name: "New company", slug: "new-company", icon: null })}>Select new company</button>
+    : null,
 }));
 
 vi.mock("@/components/watchlist/watchlist-action-bar", () => ({
@@ -492,11 +494,25 @@ describe("WatchlistViewPage private detail", () => {
     expect((await screen.findByRole("alert")).textContent).toBe(
       "Could not save your changes.",
     );
-    expect(mocks.updateWatchlist).toHaveBeenCalledWith({
+    expect(mocks.updateWatchlist).toHaveBeenCalledWith(expect.objectContaining({
       watchlistId: detail.id,
       companyIds: [],
-    });
+      filters: expect.objectContaining({ anyCompany: false }),
+    }));
     expect(screen.getByRole("button", { name: "Remove Acme" })).toBeTruthy();
+  });
+
+  it("commits first-use membership with the latest company scope before a debounce can finish", async () => {
+    renderPage(true, { filters: { anyCompany: true }, companies: [] });
+    fireEvent.click(screen.getByRole("button", { name: "Any company" }));
+    fireEvent.click(screen.getByRole("button", { name: "Company" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select new company" }));
+    await waitFor(() => expect(mocks.updateWatchlist).toHaveBeenCalledWith(expect.objectContaining({
+      watchlistId: detail.id,
+      companyIds: ["33333333-3333-4333-8333-333333333333"],
+      filters: expect.objectContaining({ anyCompany: false }),
+    })));
+    expect(mocks.updateWatchlist).toHaveBeenCalledTimes(1);
   });
 
   it("retains the selection and explains a temporary catalogue failure", async () => {
