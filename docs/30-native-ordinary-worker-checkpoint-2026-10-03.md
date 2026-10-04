@@ -1,5 +1,49 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Full delivery continuation and native API details — 2026-10-05
+
+The goal is full production migration to Go and self-hosted Lightpanda. Completion
+requires enabled crawling and canonical writes, maintenance, export/drain and
+deployment consumers to run through native paths; production Python orchestration
+and Playwright/Chromium dependencies must be retired where replacements are
+reasonable. Keep useful isolated offline Python. Finish supported production
+cutovers, natural output/queue correctness, comparable resource measurement and
+full reversal before removing legacy runtime assets.
+
+[PR #10300](https://github.com/colophon-group/jobseek/pull/10300) merged the UUID
+cursor correction as `5621926e5301865d914b696bd488190481cefc4a` (v0.13.926).
+The supported [deployment](https://github.com/colophon-group/jobseek/actions/runs/37237145385)
+built immutable images and completed deployment/promotion. Original source925 B0
+rollback restored all six legacy writers, removed receipts/projections and cleared
+all selectors at epoch172. Original source926 B0 activation then succeeded at
+epoch173, with source/image/receipt verification and all seven HTTP health endpoints
+passing. The larger ordinary JSON-LD/Workday cohort is awaiting fresh actual-route
+admission and original cold activation; configuration screening alone is insufficient.
+
+v0.13.927 adds SmartRecruiters and Workable details through the existing native
+worker. It reuses their Go parsers, verified direct HTTP, canonical ownership,
+shared enrichment/description persistence and SQL/Redis settlement. Independent
+detail adoption retains legacy monitors. Full board configuration hashes and
+actual posting URLs are rechecked at claims and writes. SmartRecruiters retains
+one GET; Workable retains one API GET and a single Markdown fallback on 429.
+Non-200 empty results, malformed/transport failures and positive header/meta
+publisher reservations preserve existing content and settlement behavior. Cold
+retirement restores each posting's actual host and canonical deadline. Existing
+Workday and monitor plan bytes remain compatible. Configured proxy/browser,
+insecure TLS or additional pipeline steps remain legacy until their contracts
+are implemented. This candidate does not activate these API owners. Full real PostgreSQL/Redis
+race suites pass (queue47.720s, worker77.313s), including actual TLS requests,
+canonical fields/descriptions, publisher policy, legacy coexistence and full cold
+retirement. [Portable candidate evidence](evidence/go-native-api-details-candidate-2026-10-05.json)
+records verification scope and limits.
+
+Continue in delivery order: activate and verify combined native JSON-LD/Workday;
+ship API details and native SmartRecruiters/Workable monitors; implement remaining
+enabled HTTP/browser profiles; then retire remaining mandatory Python consumers
+and runtime assets after complete replacement/reversal proof. The exporter and R2
+drain already execute in Go in production; reuse them. Avoid introducing another
+scheduler, ownership registry or persistence framework.
+
 ## Delivered source925 and cursor correction — 2026-10-04
 
 The full migration goal remains active. [PR #10297](https://github.com/colophon-group/jobseek/pull/10297)

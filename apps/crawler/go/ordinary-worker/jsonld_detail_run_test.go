@@ -13,6 +13,10 @@ import (
 )
 
 func jsonldOwnedFixture(t *testing.T) (nativePipelineFixture, *queue.Authority, *queue.Claim) {
+	return independentDetailOwnedFixture(t, `{"scraper_type":"json-ld","selector":"a.job","render":true,"scraper_config":{"defaults":{"language":"en"}}}`, "")
+}
+
+func independentDetailOwnedFixture(t *testing.T, metadata, source string) (nativePipelineFixture, *queue.Authority, *queue.Claim) {
 	t.Helper()
 	f := privatePipelineFixture(t)
 	ctx := context.Background()
@@ -24,7 +28,6 @@ func jsonldOwnedFixture(t *testing.T) (nativePipelineFixture, *queue.Authority, 
 		t.Fatal(err)
 	}
 	board := fixtureID(t)
-	const metadata = `{"scraper_type":"json-ld","selector":"a.job","render":true,"scraper_config":{"defaults":{"language":"en"}}}`
 	if _, err := f.pg.Exec(ctx, `INSERT INTO job_board(id,company_id,board_slug,board_url,crawler_type,metadata,check_interval_minutes,scrape_interval_hours,throttle_key,monitor_needs_browser,scraper_needs_browser) VALUES($1::uuid,$2::uuid,$3,'https://careers.example.net/jobs','dom',$4::jsonb,60,24,'careers.example.net',true,false)`, board, f.company, "jsonld-"+board, metadata); err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +36,9 @@ func jsonldOwnedFixture(t *testing.T) (nativePipelineFixture, *queue.Authority, 
 	if err := f.r.HSet(ctx, "board:"+board, config).Err(); err != nil {
 		t.Fatal(err)
 	}
-	source := "https://example.com/job/" + f.original
+	if source == "" {
+		source = "https://example.com/job/" + f.original
+	}
 	if _, err := f.pg.Exec(ctx, "UPDATE job_posting SET board_id=$2::uuid,source_url=$3,next_scrape_at=now()-interval '1 minute' WHERE id=$1::uuid", f.original, board, source); err != nil {
 		t.Fatal(err)
 	}

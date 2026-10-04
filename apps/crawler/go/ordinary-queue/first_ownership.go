@@ -128,7 +128,7 @@ func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client,
    (f.routing_epoch<$1 AND EXISTS(SELECT 1 FROM public.ordinary_worker_ownership_plan p
      WHERE p.state='retired' AND p.routing_epoch=f.routing_epoch
      AND EXISTS(SELECT 1 FROM jsonb_array_elements(p.payload::jsonb->'details') d
-       WHERE d->>'board_id'=f.board_id::text AND d->>'profile' IN ('workday.cxs-detail/v1','jsonld.direct-detail/v1') AND d->>'worker'='simple')))))))`, epoch, ids, detailIDs).Scan(&foreign); err != nil {
+       WHERE d->>'board_id'=f.board_id::text AND d->>'profile' IN ('workday.cxs-detail/v1','jsonld.direct-detail/v1','smartrecruiters.api-detail/v1','workable.api-detail/v1') AND d->>'worker'='simple')))))))`, epoch, ids, detailIDs).Scan(&foreign); err != nil {
 				return err
 			}
 			if foreign {

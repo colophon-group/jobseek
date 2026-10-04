@@ -1,0 +1,39 @@
+{
+  "schema": "jobseek.native-api-detail-candidate/v1",
+  "candidate_version": "0.13.927",
+  "base_revision": "5621926e5301865d914b696bd488190481cefc4a",
+  "profiles": [
+    "smartrecruiters.api-detail/v1",
+    "workable.api-detail/v1"
+  ],
+  "implementation": "existing ordinary worker and immutable independent detail owner; existing provider parsers, verified direct HTTP, shared enrichment/persistence and cold retirement",
+  "request_behavior": {
+    "smartrecruiters": "one public API GET; established non-200 empty-result behavior",
+    "workable": "one public API GET; single Markdown fallback only on429; established non-200 empty-result behavior"
+  },
+  "verification": {
+    "full_real_postgres_redis_queue_race": "PASS47.720s",
+    "full_real_postgres_redis_worker_race": "PASS77.313s",
+    "provider_smartrecruiters_race_and_vet": "PASS1.767s plus vet",
+    "provider_workable_race_and_vet": "PASS1.291s plus vet",
+    "typesense_exporter_race_and_vet": "PASS3.419s plus vet",
+    "focused_python_contracts": "PASS44 tests; real legacy write guard/cold operator tests recorded after completion",
+    "python_real_legacy_ownership_and_cold_operator": "PASS33 tests7.18s, actual migrated loopback PostgreSQL/Redis required"
+  },
+  "contracts": [
+    "actual canonical posting board/source ownership at claim and write",
+    "independent detail adoption retains legacy monitor",
+    "full immutable board config hash; legacy Workday/monitor plan byte compatibility",
+    "one-shot public API/Workable429 fallback through verified transport",
+    "header/meta reservation URL/source persisted even after concurrent posting removal",
+    "malformed/transport/non-200 failures preserve existing content and queue settlement",
+    "actual-host canonical deadline restoration for active, committed-before-ack, claim-before-sql and inactive cold retirement",
+    "pending descriptions retain established R2 hash/upload contract"
+  ],
+  "limits": [
+    "candidate has no production activation or API fleet admission proof",
+    "unsupported proxy/browser/insecure TLS/additional configured pipeline steps remain legacy",
+    "native SmartRecruiters/Workable monitor integration is the next delivery slice",
+    "full migration and resource savings are not yet proven"
+  ]
+}

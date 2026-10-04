@@ -98,6 +98,9 @@ func inspectDetailOwnership(boardID string, config map[string]string) (WorkdayDe
 		profile.Domain = "*"
 		return profile, nil
 	}
+	if profile, err := inspectAPIDetailOwnership(boardID, config); err == nil {
+		return profile, nil
+	}
 	return inspectWorkdayDetailOwnership(boardID, config)
 }
 
@@ -105,11 +108,14 @@ func inspectDetail(boardID string, config map[string]string, source string, work
 	if profile, err := InspectJSONLDDetail(boardID, config, source, worker); err == nil {
 		return profile, nil
 	}
+	if profile, err := InspectAPIDetail(boardID, config, source, worker); err == nil {
+		return profile, nil
+	}
 	return InspectWorkdayDetail(boardID, config, source, worker)
 }
 
 func detailDomainMatches(binding string, profile WorkdayDetailProfile) bool {
-	return binding == profile.Domain || (binding == "*" && profile.Profile == jsonldDetailProfile)
+	return binding == profile.Domain || (binding == "*" && independentDetailProfile(profile.Profile))
 }
 
 func detailSourceDomain(binding ownershipDetail, source string) (string, error) {
@@ -118,7 +124,7 @@ func detailSourceDomain(binding ownershipDetail, source string) (string, error) 
 		return "", ErrAuthorityLost
 	}
 	domain := strings.ToLower(parsed.Hostname())
-	if binding.Domain != domain && !(binding.Domain == "*" && binding.Profile == jsonldDetailProfile) {
+	if binding.Domain != domain && !(binding.Domain == "*" && independentDetailProfile(binding.Profile)) {
 		return "", ErrAuthorityLost
 	}
 	return domain, nil

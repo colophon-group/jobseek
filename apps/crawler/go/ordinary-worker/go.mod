@@ -87,6 +87,12 @@ require (
 	github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail v0.0.0
 	github.com/colophon-group/jobseek/apps/crawler/go/personio-monitor v0.0.0
 	github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy v0.0.0
+	github.com/colophon-group/jobseek/apps/crawler/go/smartrecruiters-monitor v0.0.0
+	github.com/colophon-group/jobseek/apps/crawler/go/workable-monitor v0.0.0
 )
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/personio-monitor => ../personio-monitor
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/smartrecruiters-monitor => ../smartrecruiters-monitor
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/workable-monitor => ../workable-monitor

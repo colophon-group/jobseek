@@ -20,6 +20,7 @@ type DetailResult struct {
 	FinalURL  string         `json:"final_url,omitempty"`
 	ErrorKind string         `json:"error_kind,omitempty"`
 	TDMPolicy string         `json:"tdm_policy,omitempty"`
+	TDMSource string         `json:"-"`
 	Error     string         `json:"error,omitempty"`
 }
 
@@ -46,6 +47,12 @@ func detailEndpoints(sourceURL, override string) (string, string, error) {
 		base + "/jobs/view/" + parts[2] + ".md", nil
 }
 
+// DetailEndpoints exposes the existing canonical route validation to ownership
+// admission. It performs no request and supplies no claim or write authority.
+func DetailEndpoints(sourceURL, override string) (string, string, error) {
+	return detailEndpoints(sourceURL, override)
+}
+
 // FetchDetail performs the same one-shot API request and 429 Markdown fallback
 // as the Python scraper. A non-200 response projects empty content for the
 // existing scrape retry policy; a transport or projection error remains a
@@ -53,6 +60,15 @@ func detailEndpoints(sourceURL, override string) (string, string, error) {
 func FetchDetail(ctx context.Context, sourceURL, override string) (DetailResult, error) {
 	client := newClient()
 	defer client.CloseIdleConnections()
+	return fetchDetail(ctx, sourceURL, override, client)
+}
+
+// FetchDetailWithClient retains API/429 Markdown semantics while using the
+// native worker's verified, observed HTTP client without another process.
+func FetchDetailWithClient(ctx context.Context, sourceURL, override string, client *http.Client) (DetailResult, error) {
+	if client == nil {
+		return DetailResult{}, errors.New("Workable detail client unavailable")
+	}
 	return fetchDetail(ctx, sourceURL, override, client)
 }
 
@@ -98,7 +114,7 @@ func detailAccounting(accounting FetchResult) DetailResult {
 	return DetailResult{
 		Requests: accounting.Requests, Responses: accounting.Responses, Bytes: accounting.Bytes,
 		Status: accounting.Status, FinalURL: accounting.FinalURL,
-		ErrorKind: accounting.ErrorKind, TDMPolicy: accounting.TDMPolicy,
+		ErrorKind: accounting.ErrorKind, TDMPolicy: accounting.TDMPolicy, TDMSource: accounting.TDMSource,
 	}
 }
 

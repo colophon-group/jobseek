@@ -108,10 +108,16 @@ def ownership_projection(payload: str) -> str:
             )
             or any(
                 d["worker"] != "simple"
-                or d["profile"] not in ("workday.cxs-detail/v1", "jsonld.direct-detail/v1")
+                or d["profile"]
+                not in (
+                    "workday.cxs-detail/v1",
+                    "jsonld.direct-detail/v1",
+                    "smartrecruiters.api-detail/v1",
+                    "workable.api-detail/v1",
+                )
                 or (d["profile"] == "workday.cxs-detail/v1" and d["board_id"] not in members)
                 or (
-                    d["profile"] == "jsonld.direct-detail/v1"
+                    d["profile"] != "workday.cxs-detail/v1"
                     and (
                         d["domain"] != "*"
                         or not isinstance(d.get("company_id"), str)

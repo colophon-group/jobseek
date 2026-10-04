@@ -159,7 +159,7 @@ func newNativeExecutableFixture(t *testing.T, f nativePipelineFixture, dsn strin
 	}
 	identityOutput, err := exec.Command(binary, "--identity").Output()
 	var identity BuildIdentity
-	if err != nil || json.Unmarshal(identityOutput, &identity) != nil || identity != (BuildIdentity{revision, pinnedCASHA256, "greenhouse.token-skip/v1", [11]string{"greenhouse.token-skip/v1", "ashby.token-skip/v1", "lever.token-skip/v1", "recruitee.api-skip/v1", "pinpoint.slug-skip/v1", "rss.teamtailor-skip/v1", "rss.successfactors-skip/v1", "personio.xml-skip/v1", "workday.cxs-urls/v1", "workday.cxs-detail/v1", "jsonld.direct-detail/v1"}}) {
+	if err != nil || json.Unmarshal(identityOutput, &identity) != nil || identity != (BuildIdentity{revision, pinnedCASHA256, "greenhouse.token-skip/v1", [13]string{"greenhouse.token-skip/v1", "ashby.token-skip/v1", "lever.token-skip/v1", "recruitee.api-skip/v1", "pinpoint.slug-skip/v1", "rss.teamtailor-skip/v1", "rss.successfactors-skip/v1", "personio.xml-skip/v1", "workday.cxs-urls/v1", "workday.cxs-detail/v1", "jsonld.direct-detail/v1", "smartrecruiters.api-detail/v1", "workable.api-detail/v1"}}) {
 		t.Fatal("native executable lost compiled source/CA/profile identities")
 	}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
