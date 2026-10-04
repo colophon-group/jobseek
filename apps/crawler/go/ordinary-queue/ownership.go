@@ -48,10 +48,13 @@ type ownershipDocument struct {
 // Detail membership stays in the same immutable board-owned plan. Posting IDs
 // remain canonical SQL observations, never a second routing registry.
 type ownershipDetail struct {
-	BoardID string     `json:"board_id"`
-	Domain  string     `json:"domain"`
-	Profile string     `json:"profile"`
-	Worker  WorkerType `json:"worker"`
+	BoardID             string            `json:"board_id"`
+	Domain              string            `json:"domain"`
+	Profile             string            `json:"profile"`
+	Worker              WorkerType        `json:"worker"`
+	CompanyID           string            `json:"company_id,omitempty"`
+	EffectiveConfigHash string            `json:"effective_config_sha256,omitempty"`
+	Config              map[string]string `json:"config,omitempty"`
 }
 
 // The Redis projection contains only routing membership. Full configurations and
@@ -166,17 +169,27 @@ func decodeOwnership(body, digest string) (*OwnershipPlan, error) {
 		boards[member.BoardID] = member
 	}
 	previous = ""
-	if len(doc.Details) > len(doc.Members) || (len(doc.Details) > 0 && doc.ProjectionVersion != ownershipProjectionVersion) {
+	if len(doc.Details) > 20000 || (len(doc.Details) > 0 && doc.ProjectionVersion != ownershipProjectionVersion) {
 		return nil, ErrAuthorityLost
 	}
 	for _, detail := range doc.Details {
-		member, ok := boards[detail.BoardID]
-		if !ok || detail.BoardID <= previous || detail.Worker != Simple {
+		if !canonicalUUID.MatchString(detail.BoardID) || detail.BoardID <= previous || detail.Worker != Simple {
 			return nil, ErrAuthorityLost
 		}
-		profile, err := inspectWorkdayDetailOwnership(member.BoardID, member.Config)
-		if err != nil || profile.Domain != detail.Domain || profile.Profile != detail.Profile {
-			return nil, ErrAuthorityLost
+		if detail.Profile == jsonldDetailProfile {
+			profile, err := inspectDetailOwnership(detail.BoardID, detail.Config)
+			if err != nil || profile.Profile != jsonldDetailProfile || profile.Domain != detail.Domain || profile.CompanyID != detail.CompanyID || profile.EffectiveBoardSHA256 != detail.EffectiveConfigHash {
+				return nil, ErrAuthorityLost
+			}
+		} else {
+			member, ok := boards[detail.BoardID]
+			if !ok || detail.CompanyID != "" || detail.EffectiveConfigHash != "" || detail.Config != nil {
+				return nil, ErrAuthorityLost
+			}
+			profile, err := inspectWorkdayDetailOwnership(member.BoardID, member.Config)
+			if err != nil || profile.Domain != detail.Domain || profile.Profile != detail.Profile {
+				return nil, ErrAuthorityLost
+			}
 		}
 		previous = detail.BoardID
 	}
@@ -217,8 +230,9 @@ func (a *Authority) StageGreenhouseOwnership(ctx context.Context, revision strin
 	return a.StageOwnership(ctx, revision, boardIDs, nil)
 }
 
-// StageOwnership explicitly includes eligible detail boards in the same immutable
-// monitor plan. Empty detail membership preserves retained monitor-only bytes.
+// StageOwnership records explicit monitor and detail membership in one immutable
+// plan. JSON-LD detail boards can retain legacy monitors; Workday details retain
+// their existing monitor subset. Empty details preserve monitor-only bytes.
 func (a *Authority) StageOwnership(ctx context.Context, revision string, boardIDs, detailBoardIDs []string) (*OwnershipPlan, error) {
 	if a == nil || a.pool == nil || a.queue == nil || !ownershipRevision.MatchString(revision) || len(boardIDs) < 1 || len(boardIDs) > 20000 {
 		return nil, ErrConfiguration
@@ -232,12 +246,11 @@ func (a *Authority) StageOwnership(ctx context.Context, revision string, boardID
 	}
 	detailIDs := append([]string(nil), detailBoardIDs...)
 	sort.Strings(detailIDs)
-	if len(detailIDs) > len(ids) {
+	if len(detailIDs) > 20000 {
 		return nil, ErrConfiguration
 	}
 	for i, id := range detailIDs {
-		index := sort.SearchStrings(ids, id)
-		if index == len(ids) || ids[index] != id || (i > 0 && detailIDs[i-1] == id) {
+		if !canonicalUUID.MatchString(id) || (i > 0 && detailIDs[i-1] == id) {
 			return nil, ErrConfiguration
 		}
 	}
@@ -260,12 +273,28 @@ func (a *Authority) StageOwnership(ctx context.Context, revision string, boardID
 			doc.Members = append(doc.Members, ownershipMember{id, profile.CompanyID, profile.Domain, Monitor, Simple, profile.Profile, profile.EffectiveConfigSHA256, stable})
 		}
 		for _, id := range detailIDs {
-			member := doc.Members[sort.SearchStrings(ids, id)]
-			profile, err := inspectWorkdayDetailOwnership(id, member.Config)
+			profile, cached, err := a.observeDetailOwnershipState(ctx, tx, id, false)
 			if err != nil {
 				return err
 			}
-			doc.Details = append(doc.Details, ownershipDetail{id, profile.Domain, profile.Profile, Simple})
+			detail := ownershipDetail{BoardID: id, Domain: profile.Domain, Profile: profile.Profile, Worker: Simple}
+			if profile.Profile == jsonldDetailProfile {
+				metadata, err := profileMetadataFields(cached["metadata"], nil)
+				if err != nil {
+					return err
+				}
+				stable, err := stableJSONLDConfig(cached, metadata)
+				if err != nil {
+					return err
+				}
+				detail.CompanyID, detail.EffectiveConfigHash, detail.Config = profile.CompanyID, profile.EffectiveBoardSHA256, stable
+			} else {
+				index := sort.SearchStrings(ids, id)
+				if index == len(ids) || ids[index] != id {
+					return ErrConfiguration
+				}
+			}
+			doc.Details = append(doc.Details, detail)
 		}
 		body, err := json.Marshal(doc)
 		if err != nil {
@@ -368,6 +397,19 @@ func (a *Authority) InspectStagedOwnership(ctx context.Context, digest, revision
 				return ErrAuthorityLost
 			}
 		}
+		for _, detail := range plan.document.Details {
+			profile, _, err := a.observeDetailOwnershipState(ctx, tx, detail.BoardID, false)
+			if err != nil {
+				return err
+			}
+			binding, err := plan.detailContext(detail)
+			if err != nil {
+				return err
+			}
+			if profile.Profile != detail.Profile || profile.Domain != detail.Domain || profile.CompanyID != binding.CompanyID || profile.EffectiveBoardSHA256 != binding.EffectiveConfigHash {
+				return ErrAuthorityLost
+			}
+		}
 		return nil
 	})
 	if err != nil {
@@ -385,4 +427,16 @@ func requireUnselectedAuthority(ctx context.Context, tx pgx.Tx) error {
 		return ErrAuthorityLost
 	}
 	return nil
+}
+
+func (p *OwnershipPlan) detailContext(detail ownershipDetail) (ownershipMember, error) {
+	if detail.Profile == jsonldDetailProfile {
+		return ownershipMember{BoardID: detail.BoardID, CompanyID: detail.CompanyID, Profile: detail.Profile, EffectiveConfigHash: detail.EffectiveConfigHash, Config: detail.Config}, nil
+	}
+	for _, member := range p.document.Members {
+		if member.BoardID == detail.BoardID {
+			return member, nil
+		}
+	}
+	return ownershipMember{}, ErrAuthorityLost
 }

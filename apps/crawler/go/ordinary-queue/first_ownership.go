@@ -127,8 +127,8 @@ func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client,
    (f.routing_epoch=$1 AND f.board_id=ANY($3::uuid[]) AND EXISTS(SELECT 1 FROM public.job_posting jp WHERE jp.id=f.task_id AND jp.board_id=f.board_id)) OR
    (f.routing_epoch<$1 AND EXISTS(SELECT 1 FROM public.ordinary_worker_ownership_plan p
      WHERE p.state='retired' AND p.routing_epoch=f.routing_epoch
-     AND p.payload::jsonb->'details' @> jsonb_build_array(jsonb_build_object(
-       'board_id',f.board_id::text,'profile','workday.cxs-detail/v1','worker','simple'))))))))`, epoch, ids, detailIDs).Scan(&foreign); err != nil {
+     AND EXISTS(SELECT 1 FROM jsonb_array_elements(p.payload::jsonb->'details') d
+       WHERE d->>'board_id'=f.board_id::text AND d->>'profile' IN ('workday.cxs-detail/v1','jsonld.direct-detail/v1') AND d->>'worker'='simple')))))))`, epoch, ids, detailIDs).Scan(&foreign); err != nil {
 				return err
 			}
 			if foreign {
@@ -143,6 +143,22 @@ func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client,
 					return err
 				}
 				if profile.CompanyID != member.CompanyID || profile.Domain != member.Domain || profile.EffectiveConfigSHA256 != member.EffectiveConfigHash {
+					return ErrAuthorityLost
+				}
+			}
+		}
+
+		if !retire {
+			for _, detail := range plan.document.Details {
+				profile, _, err := (&Authority{queue: client}).observeDetailOwnershipState(ctx, tx, detail.BoardID, false)
+				if err != nil {
+					return err
+				}
+				binding, err := plan.detailContext(detail)
+				if err != nil {
+					return err
+				}
+				if profile.Profile != detail.Profile || profile.Domain != detail.Domain || profile.CompanyID != binding.CompanyID || profile.EffectiveBoardSHA256 != binding.EffectiveConfigHash {
 					return ErrAuthorityLost
 				}
 			}

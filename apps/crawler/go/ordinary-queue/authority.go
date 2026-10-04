@@ -76,12 +76,14 @@ func withOrdinaryLeaseRetirementTx(ctx context.Context, pool *pgxpool.Pool, fn f
 }
 
 type Authority struct {
-	queue           *Client
-	pool            *pgxpool.Pool
-	epoch           int64
-	ownership       *OwnershipPlan
-	ownershipCursor int
-	ownershipMu     sync.Mutex
+	queue               *Client
+	pool                *pgxpool.Pool
+	epoch               int64
+	ownership           *OwnershipPlan
+	ownershipCursor     int
+	detailCursor        int
+	detailPostingCursor map[string]string
+	ownershipMu         sync.Mutex
 }
 
 // Claim is an immutable identity captured from a tokenized queue claim. A

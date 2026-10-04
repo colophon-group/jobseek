@@ -32,7 +32,8 @@ local function prepare_first_retirement(plan, raw, exists)
             member, kind, id = detail_members[row.board_id], "scrape", row.task_id
             if row.kind ~= "scrape" or type(id) ~= "string" or #id ~= 36 or string.find(id,"[^0-9a-f%-]") then return nil end
         elseif row.kind ~= nil or row.task_id ~= nil then return nil end
-        if not member or seen[kind.."|"..id] or row.board_id ~= member.board_id or row.domain ~= member.domain
+        if not member or seen[kind.."|"..id] or row.board_id ~= member.board_id or (row.domain ~= member.domain and not (kind == "scrape" and member.domain == "*"))
+            or type(row.domain) ~= "string" or #row.domain < 1 or #row.domain > 253 or string.find(row.domain,"[%c|]")
             or type(row.completed) ~= "boolean" or type(row.config) ~= "table"
             or type(row.learned_host) ~= "string" or #row.learned_host > 253
             or string.find(row.learned_host, "[%c|]") ~= nil

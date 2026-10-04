@@ -1,5 +1,64 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Native JSON-LD detail candidate — 2026-10-04
+
+The full migration goal remains active. v0.13.925 extends the existing native
+worker with direct JSON-LD details using the existing parser, verified HTTP
+transport, shared enrichment/persistence, opaque attempts and original SQL/Redis
+ownership plan. Detail boards can retain their legacy monitors. Every claim and
+write resolves the actual canonical posting board and source URL; no per-posting
+ownership registry is introduced. Workday and monitor-only plan bytes remain
+compatible. The JSON-LD board binding covers its actual public source hosts;
+queue selection and requests always use the canonical posting's actual host.
+
+Fresh read-only admission at source924/epoch169 selects **668 JSON-LD detail
+boards covering 309,092 scheduled postings**, including DOM, sitemap, iCIMS and
+other monitor families. Five additional supported boards retain legacy detail
+ownership because queued/inflight caches differ from canonical routes. Browser,
+proxy, insecure TLS and configured fallback/enrichment steps remain excluded
+until their native execution contracts are delivered. The admission does not
+activate an owner or prove that postings have already been fetched.
+
+Real PostgreSQL/Redis race suites pass for independent native ownership, legacy
+monitor coexistence, canonical write exclusion, publisher opt-outs, HTTP failure
+classes, extraction/enrichment, SQL/Redis settlement and complete cold retirement.
+Selection rotates past full candidate batches and uses bounded Redis pipelines.
+JSON-LD metadata hashes normalize nested SQL/Redis key ordering. Production query
+plans showed 64-row traversal taking up to 10.7 seconds while sorting complete
+board histories; migration 0039 adds `(board_id, id)` concurrently, including
+inactive/future receipts needed for interrupted ACK recovery. Its supported
+upgrade, downgrade and re-upgrade are checked against the private migrated
+PostgreSQL fixture. Production query cost after this index remains to be verified.
+
+[Portable candidate evidence](evidence/go-native-jsonld-detail-candidate-2026-10-04.json)
+records admission and verification limits. Production remains v0.13.924 at
+`a90e8635dc0b0389a3af92d41467a35836a3bc36`, epoch169, with 4,792 native
+monitor boards and 431 native Workday detail boards. The latest independent
+readback observes 67 settled detail receipts with matching SQL/Redis deadlines,
+zero mismatches and all eight HTTP health endpoints passing.
+
+Continue with exact-head Required CI, Crawler Deploy Gate and installed-image
+parity; then exercise the original source924 full cold reversal before supported
+source925 deployment. Reconcile fresh canonical/cache/actual routes, retain the
+existing admitted Workday detail cohort, add the eligible JSON-LD cohort through
+the original cold protocol, and verify exact source/images, all writers, natural
+outputs and deadlines. Validate indexed query cost and whole-lane freshness.
+Continue remaining enabled API/browser/monitor profiles and Python maintenance,
+scheduling and deployment consumers. Measure comparable whole-lane resources,
+exercise reversal and establish the rollback window before retiring production
+Python, Playwright and Chromium. Useful isolated offline Python tools may remain.
+
+The protected cohort schema is unchanged:
+
+```json
+{"version":"jobseek.ordinary.cohort/v1","monitors":["<eligible native monitor board UUID>"],"details":["<eligible independent JSON-LD detail board UUID>","<eligible Workday monitor board UUID>"]}
+```
+
+JSON-LD detail UUIDs may be independent of `monitors`; Workday detail UUIDs still
+must belong to the native monitor cohort. Full-board canonical configuration and
+actual posting routes remain mandatory admission checks.
+
+
 ## Active Workday detail delivery — 2026-10-04
 
 The full Go and Lightpanda migration goal remains active. Deliver all enabled

@@ -9,9 +9,11 @@ require github.com/colophon-group/jobseek/apps/crawler/go/workday-monitor v0.0.0
 replace github.com/colophon-group/jobseek/apps/crawler/go/workday-monitor => ../workday-monitor
 
 require (
+	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
 )
@@ -23,3 +25,7 @@ require (
 )
 
 replace github.com/colophon-group/jobseek/apps/crawler/contracts => ../../contracts
+
+require github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail v0.0.0
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail => ../jsonld-detail

@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -35,6 +36,10 @@ func (d *CurrentWorkdayDetail) Profile() WorkdayDetailProfile {
 	}
 	p := d.profile
 	p.FacilityTenantAliases = append([]string(nil), p.FacilityTenantAliases...)
+	if p.JSONLDConfig != nil {
+		body, _ := json.Marshal(p.JSONLDConfig)
+		json.Unmarshal(body, &p.JSONLDConfig)
+	}
 	return p
 }
 
@@ -42,7 +47,7 @@ func (a *Authority) currentWorkdayDetail(ctx context.Context, tx pgx.Tx, claim *
 	if !a.valid(claim) || claim.task.Kind != Scrape || claim.task.Worker != Simple || (claim.task.Config["scrape_step"] != "" && claim.task.Config["scrape_step"] != "0") {
 		return nil, ErrUnsupportedProfile
 	}
-	_, boardConfig, err := a.observeGreenhouseMonitor(ctx, tx, claim.boardID)
+	_, boardConfig, err := a.observeDetailOwnershipState(ctx, tx, claim.boardID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +68,7 @@ func (a *Authority) currentWorkdayDetail(ctx context.Context, tx pgx.Tx, claim *
 	if source != claim.task.Config["source_url"] || claim.task.Config["board_id"] != claim.boardID {
 		return nil, ErrAuthorityLost
 	}
-	d.profile, err = InspectWorkdayDetail(claim.boardID, boardConfig, source, claim.task.Worker)
+	d.profile, err = inspectDetail(claim.boardID, boardConfig, source, claim.task.Worker)
 	if err != nil {
 		return nil, err
 	}
