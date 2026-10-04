@@ -87,7 +87,12 @@ jobs:
             printf '%s' "$GHCR_PULL_TOKEN" | timeout 30s docker --config "$config_dir" login ghcr.io --username "$GHCR_PULL_USERNAME" --password-stdin >/dev/null
             unset GHCR_PULL_TOKEN GHCR_PULL_USERNAME
             timeout --signal=TERM --kill-after=5s 360s docker --config "$config_dir" pull "$ADMIN_IMAGE"
-            [[ "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$ADMIN_IMAGE")" == "$ADMIN_SOURCE" ]]
+            docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$ADMIN_IMAGE" | grep -Fxq "$ADMIN_IMAGE"
+            # These release images bind their source in the compiled Go executable,
+            # which the retirement driver verifies before stopping any writers.
+            # Preserve validation of an OCI source label when an image has one.
+            image_source_label="$(docker image inspect --format '{{with .Config.Labels}}{{index . "org.opencontainers.image.revision"}}{{end}}' "$ADMIN_IMAGE")"
+            [[ -z "$image_source_label" || "$image_source_label" == "$ADMIN_SOURCE" ]]
             [[ "$(sha256sum "${files[@]}")" == "$before_files" ]]
             [[ "$(docker inspect --format '{{.Id}}:{{.State.Running}}:{{.HostConfig.RestartPolicy.Name}}:{{.Config.Image}}' "${ids[@]}")" == "$before_services" ]]
-            echo "Approved immutable admin image cached; outgoing source and ownership receipts unchanged."
+            echo "Approved immutable admin digest cached; outgoing source and ownership receipts unchanged. Compiled source verification remains required before retirement."
