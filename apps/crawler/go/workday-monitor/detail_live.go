@@ -92,6 +92,18 @@ func FetchWorkdayDetail(ctx context.Context, rawURL string, aliases []string) (D
 	return fetchWorkdayDetail(ctx, rawURL, aliases, client, sleepContext, rand.Float64)
 }
 
+// FetchDetailWithClient keeps the process-owned verified transport and cookie
+// jar while preserving Workday's no-redirect detail contract. It never closes
+// or replaces the caller's transport and makes no monitor inventory requests.
+func FetchDetailWithClient(ctx context.Context, rawURL string, aliases []string, client *http.Client) (DetailFetchResult, error) {
+	if client == nil {
+		return DetailFetchResult{}, errors.New("Workday detail client is required")
+	}
+	copy := *client
+	copy.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	return fetchWorkdayDetail(ctx, rawURL, aliases, &copy, sleepContext, rand.Float64)
+}
+
 func fetchWorkdayDetail(
 	ctx context.Context, rawURL string, aliases []string, client *http.Client,
 	sleep func(context.Context, time.Duration) error, random func() float64,

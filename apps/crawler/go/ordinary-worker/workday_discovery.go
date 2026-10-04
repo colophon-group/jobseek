@@ -35,3 +35,12 @@ func DiscoverWorkdayInventory(ctx context.Context, http *VerifiedDirectHTTP, con
 	}
 	return workday.InventoryResult{}, &DiscoveryError{Kind: "invalid_inventory", cause: err}
 }
+
+// FetchWorkdayDetail uses the sealed process transport for one separately
+// claimed detail. Persistence and enrichment remain with the owned runner.
+func FetchWorkdayDetail(ctx context.Context, http *VerifiedDirectHTTP, rawURL string, aliases []string) (workday.DetailFetchResult, error) {
+	if http == nil || http.client == nil {
+		return workday.DetailFetchResult{}, &DiscoveryError{Kind: "invalid_configuration"}
+	}
+	return workday.FetchDetailWithClient(ctx, rawURL, aliases, http.client)
+}

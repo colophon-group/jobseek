@@ -39,3 +39,32 @@ func TestWorkdayDiscoveryPublisherReservationIsNotAnEmptySuccess(t *testing.T) {
 		t.Fatalf("result=%+v err=%v", r, err)
 	}
 }
+
+func TestWorkdayDetailUsesSealedNativeClientAndPreservesContent(t *testing.T) {
+	count := 0
+	verified := &VerifiedDirectHTTP{client: &http.Client{Transport: richRoundTrip(func(r *http.Request) (*http.Response, error) {
+		count++
+		if r.Method != "GET" || r.URL.String() != "https://example.wd5.myworkdayjobs.com/wday/cxs/example/External/job/Engineer_R-123" {
+			t.Fatalf("detail request changed: %s %s", r.Method, r.URL)
+		}
+		return &http.Response{StatusCode: 200, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(`{"jobPostingInfo":{"title":"Engineer","jobDescription":"<p>Build services.</p>","location":"Zurich","timeType":"Full time","jobReqId":"R-123"}}`))}, nil
+	})}}
+	result, err := FetchWorkdayDetail(context.Background(), verified, "https://example.wd5.myworkdayjobs.com/en-US/External/job/Engineer_R-123", nil)
+	if err != nil || result.Gone || result.Content.Title == nil || *result.Content.Title != "Engineer" || result.Content.Description == nil || *result.Content.Description != "<p>Build services.</p>" || result.Content.Metadata["jobReqId"] != "R-123" || count != 1 {
+		t.Fatalf("detail=%+v count=%d err=%v", result, count, err)
+	}
+	if _, err := FetchWorkdayDetail(context.Background(), nil, "https://example.wd5.myworkdayjobs.com/External/job/Engineer_R-123", nil); err == nil {
+		t.Fatal("unverified detail client accepted")
+	}
+}
+
+func TestWorkdayDetailReserved404CannotBecomeGone(t *testing.T) {
+	verified := &VerifiedDirectHTTP{client: &http.Client{Transport: richRoundTrip(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 404, Header: http.Header{"Tdm-Reservation": []string{"1"}}, Body: io.NopCloser(strings.NewReader(`not found`))}, nil
+	})}}
+	result, err := FetchWorkdayDetail(context.Background(), verified, "https://example.wd5.myworkdayjobs.com/External/job/Engineer_R-123", nil)
+	var reservation *workday.ReservationError
+	if !errors.As(err, &reservation) || result.Gone {
+		t.Fatalf("reserved detail became gone: %+v %v", result, err)
+	}
+}
