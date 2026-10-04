@@ -38,8 +38,12 @@ Run `ws resume` to diagnose and retry.
 The PR is marked ready by `ws task complete` in the final reflection step,
 which allows the image-upload and auto-merge workflows to proceed.
 
-Advance to the next step explicitly:
+`ws submit` already moves the workflow to the reflection step. Show its
+instructions, finish any KB entries and case studies, then run `ws task complete`:
 
 ```bash
-ws task next --notes "<any issues during submit, or 'none'>"
+ws task
 ```
+
+`ws task next` from reflect also finalizes the workflow; wait until all
+reflection contributions are finished before finalizing.

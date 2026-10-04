@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import copy
 import json
+import re
+import shlex
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
@@ -2402,6 +2404,55 @@ class TestTerminalCleanupRecovery:
 
 
 class TestReadyRecovery:
+    @pytest.mark.parametrize("guidance", ["parallel", "submit-step"])
+    def test_post_submit_guidance_preserves_reflection_before_ready(
+        self, tmp_path, monkeypatch, guidance
+    ):
+        from src.workspace.workflow import (
+            WorkflowState,
+            _all_step_defs,
+            _load_wf_from_disk,
+            _save_wf_to_disk,
+            build_context,
+            render_step,
+        )
+
+        ws_obj, board = _setup_submittable_workspace(tmp_path, monkeypatch)
+        _save_wf_to_disk("test", WorkflowState(current_step="setup"))
+        runner = CliRunner()
+        if guidance == "parallel":
+            instructions = runner.invoke(ws, ["task"])
+            assert instructions.exit_code == 0, instructions.output
+            tail = instructions.output.split("### Advance through final steps", 1)[1]
+        else:
+            step = next(step for step in _all_step_defs() if step.id == "submit")
+            instructions = render_step(
+                step, build_context(ws_obj, [board], _load_wf_from_disk("test"))
+            )
+            tail = instructions.split("## When done", 1)[1]
+        command = re.search(r"```bash\n(ws task[^\n]*)\n```", tail)
+        assert command is not None
+
+        with (
+            patch("src.workspace.commands.lifecycle.is_local_mode", return_value=True),
+            patch("src.workspace.commands.crawl.run_quality_gates", return_value=([], [])),
+            patch("src.workspace.commands.lifecycle._execute_submit_step"),
+            patch("src.workspace.commands.task._finalize_workflow") as finalize,
+        ):
+            submitted = runner.invoke(ws, ["submit", "test"])
+            assert submitted.exit_code == 0, submitted.output
+            assert _load_wf_from_disk("test").current_step == "reflect"
+            result = runner.invoke(ws, shlex.split(command.group(1))[1:])
+
+        assert result.exit_code == 0, result.output
+        finalize.assert_not_called()
+        assert _load_wf_from_disk("test").current_step == "reflect"
+        assert load_workspace("test").ready_state == {}
+        assert "# Step: Final Reflection" in result.output
+        assert "## Contribute case studies" in result.output
+        assert "ws task complete" in result.output
+        assert "Launch these as **background subagents**" not in result.output
+
     def test_completion_marks_pr_ready_and_releases_claim(self, tmp_path, monkeypatch):
         from src.workspace.commands.task import _finalize_workflow
         from src.workspace.workflow import WorkflowState, _load_wf_from_disk, _save_wf_to_disk
