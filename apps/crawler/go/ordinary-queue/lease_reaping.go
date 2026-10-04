@@ -58,22 +58,36 @@ func WithOrdinaryLeaseReaping(ctx context.Context, pool *pgxpool.Pool, client *r
 }
 
 func observeCommittedLeaseReceipts(ctx context.Context, tx pgx.Tx, client *redis.Client, observation *leaseReapObservation) (string, error) {
-	hasMonitor := false
+	candidates := []string{}
 	for _, task := range observation.Expired {
 		parts := strings.SplitN(task, "|", 3)
 		if len(parts) == 3 && parts[0] == "monitor" && canonicalUUID.MatchString(parts[2]) {
-			hasMonitor = true
-			break
+			candidates = append(candidates, task)
 		}
 	}
-	if !hasMonitor {
+	if len(candidates) == 0 {
+		return "", nil
+	}
+	values, err := client.HMGet(ctx, "inflight_tokens:simple", candidates...).Result()
+	if err != nil {
+		return "", ErrObservation
+	}
+	tokens := map[string]string{}
+	for index, value := range values {
+		if token, ok := value.(string); ok {
+			tokens[candidates[index]] = token
+		}
+	}
+	// Tokenless legacy leases cannot carry a native completion receipt. Their
+	// existing retry/dead-letter path needs no native schema or fleet lookup.
+	if len(tokens) == 0 {
 		return "", nil
 	}
 	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock_shared($1)", routingEpochBarrier); err != nil {
 		return "", err
 	}
 	var body, digest string
-	err := tx.QueryRow(ctx, `SELECT p.payload,p.plan_sha256 FROM public.ordinary_worker_ownership_plan p
+	err = tx.QueryRow(ctx, `SELECT p.payload,p.plan_sha256 FROM public.ordinary_worker_ownership_plan p
  JOIN public.lightpanda_b0_routing_epoch_seq e ON e.is_called AND e.last_value=p.routing_epoch
  WHERE p.state='active'`).Scan(&body, &digest)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -92,6 +106,10 @@ func observeCommittedLeaseReceipts(ctx context.Context, tx pgx.Tx, client *redis
 	}
 	a := &Authority{queue: &Client{redis: client}, epoch: plan.Epoch(), ownership: plan}
 	for _, task := range observation.Expired {
+		currentToken, tokenized := tokens[task]
+		if !tokenized {
+			continue
+		}
 		parts := strings.SplitN(task, "|", 3)
 		if len(parts) != 3 || parts[0] != "monitor" {
 			continue
@@ -111,12 +129,8 @@ func observeCommittedLeaseReceipts(ctx context.Context, tx pgx.Tx, client *redis
 		if err != nil {
 			return "", err
 		}
-		currentToken, err := client.HGet(ctx, "inflight_tokens:simple", task).Result()
-		if errors.Is(err, redis.Nil) || (err == nil && currentToken != token) {
+		if currentToken != token {
 			continue
-		}
-		if err != nil {
-			return "", ErrObservation
 		}
 		profile, config, err := a.observeGreenhouseMonitor(ctx, tx, member.BoardID)
 		if err != nil || profile.EffectiveConfigSHA256 != member.EffectiveConfigHash {
