@@ -8,6 +8,8 @@ require (
 	golang.org/x/text v0.42.0
 )
 
+require github.com/colophon-group/jobseek/apps/crawler/go/workday-monitor v0.0.0 // indirect
+
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue v0.0.0
@@ -19,5 +21,7 @@ require (
 )
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue => ../ordinary-queue
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/workday-monitor => ../workday-monitor
 
 replace github.com/colophon-group/jobseek/apps/crawler/contracts => ../../contracts

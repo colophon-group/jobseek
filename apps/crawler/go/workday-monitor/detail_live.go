@@ -92,6 +92,18 @@ func FetchWorkdayDetail(ctx context.Context, rawURL string, aliases []string) (D
 	return fetchWorkdayDetail(ctx, rawURL, aliases, client, sleepContext, rand.Float64)
 }
 
+// FetchDetailWithClient keeps the process-owned verified transport and cookie
+// jar while preserving Workday's no-redirect detail contract. It never closes
+// or replaces the caller's transport and makes no monitor inventory requests.
+func FetchDetailWithClient(ctx context.Context, rawURL string, aliases []string, client *http.Client) (DetailFetchResult, error) {
+	if client == nil {
+		return DetailFetchResult{}, errors.New("Workday detail client is required")
+	}
+	copy := *client
+	copy.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	return fetchWorkdayDetail(ctx, rawURL, aliases, &copy, sleepContext, rand.Float64)
+}
+
 func fetchWorkdayDetail(
 	ctx context.Context, rawURL string, aliases []string, client *http.Client,
 	sleep func(context.Context, time.Duration) error, random func() float64,
@@ -119,6 +131,11 @@ func fetchWorkdayDetail(
 		}
 		result.Responses++
 		result.Status = response.StatusCode
+		if strings.TrimSpace(response.Header.Get("TDM-Reservation")) == "1" {
+			response.Body.Close()
+			result.TDMPolicy = response.Header.Get("TDM-Policy")
+			return result, &ReservationError{URL: apiURL, PolicyURL: result.TDMPolicy}
+		}
 		body, readErr := io.ReadAll(io.LimitReader(response.Body, maxDetailBody+1))
 		response.Body.Close()
 		result.Bytes += int64(len(body))
@@ -127,10 +144,6 @@ func fetchWorkdayDetail(
 		}
 		if len(body) > maxDetailBody {
 			return result, &DetailFetchError{Status: response.StatusCode, Kind: "body_limit", Attempts: attempt, BodyLength: len(body), Cause: errors.New("Workday detail exceeds body limit")}
-		}
-		if strings.TrimSpace(response.Header.Get("TDM-Reservation")) == "1" {
-			result.TDMPolicy = response.Header.Get("TDM-Policy")
-			return result, &ReservationError{URL: apiURL, PolicyURL: result.TDMPolicy}
 		}
 		if response.StatusCode == http.StatusNotFound || response.StatusCode == http.StatusForbidden && workdayS22(body) {
 			result.Gone = true

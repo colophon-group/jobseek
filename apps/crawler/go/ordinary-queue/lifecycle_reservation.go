@@ -43,7 +43,7 @@ func (a *Authority) FinishGreenhouseReservationResource(ctx context.Context, cla
 		return nil, err
 	}
 	if observation != nil {
-		if initialEndpoint != profile.Endpoint || !validGreenhouseResponseResource(observation.Endpoint) {
+		if !initialMonitorResourceMatches(profile, initialEndpoint) || !validGreenhouseResponseResource(observation.Endpoint) {
 			return nil, ErrConfiguration
 		}
 		if policy := observation.PolicyURL; policy != nil && (len(*policy) > 8192 || !utf8.ValidString(*policy) || strings.ContainsRune(*policy, 0)) {

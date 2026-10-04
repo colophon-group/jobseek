@@ -26,6 +26,9 @@ type DirectHTTPConfig struct {
 	// Frozen trusted startup allowlist, never board/probe data. The eventual
 	// runtime must derive it from protected operator/deployment configuration.
 	InternalHosts []string
+	// Workday's API needs HTTP/2 negotiation. This is a compiled runtime
+	// transport choice; board metadata cannot change trust or proxy policy.
+	EnableHTTP2 bool
 }
 
 // VerifiedDirectHTTP seals the process-owned client used by the native claim
@@ -47,7 +50,7 @@ func (c *VerifiedDirectHTTP) CloseIdleConnections() {
 	}
 }
 
-// NewDirectHTTP creates one reusable verified HTTP/1.1 client. Request contexts
+// NewDirectHTTP creates one reusable verified client, defaulting to HTTP/1.1. Request contexts
 // bound the whole task; network operations retain separate 30-second limits.
 // This is transport, not startup/claim/host-circuit or database authority.
 func NewDirectHTTP(config DirectHTTPConfig) (*http.Client, error) {
@@ -74,6 +77,11 @@ func NewDirectHTTP(config DirectHTTPConfig) (*http.Client, error) {
 		TLSHandshakeTimeout: directOperationTimeout, MaxConnsPerHost: 100,
 		MaxIdleConns: 20, MaxIdleConnsPerHost: 20, IdleConnTimeout: 5 * time.Second,
 		DisableCompression: true,
+	}
+	if config.EnableHTTP2 {
+		transport.inner.ForceAttemptHTTP2 = true
+		transport.inner.TLSNextProto = nil
+		transport.inner.TLSClientConfig.NextProtos = []string{"h2", "http/1.1"}
 	}
 	jar, err := cookiejar.New(nil)
 	if err != nil {

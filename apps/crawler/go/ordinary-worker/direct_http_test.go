@@ -435,3 +435,59 @@ func TestDirectHTTPOperationDeadlineResetsAcrossSlowBodyAndCancels(t *testing.T)
 		})
 	}
 }
+
+func TestDirectHTTP2VerifiedReuseAndOriginAccounting(t *testing.T) {
+	var requests, connections atomic.Int64
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		if r.ProtoMajor != 2 || r.Method != "POST" || r.Header.Get("User-Agent") != ordinaryUserAgent {
+			t.Error("native API did not use verified HTTP/2")
+		}
+		body, err := io.ReadAll(r.Body)
+		if err != nil || string(body) != `{"offset":0}` {
+			t.Error("native POST changed")
+		}
+		_, _ = io.WriteString(w, `{"total":0}`)
+	}))
+	server.EnableHTTP2 = true
+	server.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+		if state == http.StateNew {
+			connections.Add(1)
+		}
+	}
+	server.StartTLS()
+	t.Cleanup(server.Close)
+	bundle := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw})
+	verified, err := NewVerifiedDirectHTTP(DirectHTTPConfig{CABundlePEM: bundle, InternalHosts: []string{"127.0.0.1"}, EnableHTTP2: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(verified.CloseIdleConnections)
+	transport := verified.client.Transport.(*directTransport)
+	ctx, observation := ObserveHTTP(context.Background())
+	for range 2 {
+		request, _ := http.NewRequestWithContext(ctx, "POST", server.URL, strings.NewReader(`{"offset":0}`))
+		response, err := verified.client.Do(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, err := io.ReadAll(response.Body)
+		_ = response.Body.Close()
+		if err != nil || string(body) != `{"total":0}` || response.TLS == nil || len(response.TLS.VerifiedChains) == 0 {
+			t.Fatal("HTTP/2 lost verified response")
+		}
+	}
+	value := observation.Snapshot()
+	if requests.Load() != 2 || connections.Load() != 1 || value.Requests != 2 || value.Responses != 2 || value.NoResponse != 0 || len(transport.requests) != 0 || cap(transport.connections) != 100 {
+		t.Fatalf("HTTP/2 changed bounded pool or origin conservation: %+v", value)
+	}
+	// The negotiation switch cannot turn the fixture's loopback exception into
+	// an exception for other private targets, even after a connection is cached.
+	request, _ := http.NewRequestWithContext(ctx, "GET", "https://10.0.0.1/", nil)
+	if _, err := verified.client.Do(request); !errors.Is(err, ErrUnsafeURL) {
+		t.Fatal("HTTP/2 bypassed private-target refusal", err)
+	}
+	if observation.Snapshot().Requests != 2 {
+		t.Fatal("refused HTTP/2 target counted as origin traffic")
+	}
+}

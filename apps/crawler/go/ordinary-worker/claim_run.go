@@ -2,11 +2,13 @@ package worker
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"time"
 
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
+	workday "github.com/colophon-group/jobseek/apps/crawler/go/workday-monitor"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
@@ -185,7 +187,28 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 	defer func() { result.HTTP = observation.Snapshot() }()
 	result.DiscoveryStarted = true
 	started := time.Now()
-	discovery, fetchErr := DiscoverRichMonitor(ctx, http.client, profile)
+	var discovery RichDiscovery
+	var fetchErr error
+	var workdayReservation *workday.ReservationError
+	if profile.Provider == "workday" {
+		var metadata map[string]any
+		if json.Unmarshal([]byte(task.Config["metadata"]), &metadata) != nil {
+			return failure("configuration", queue.ErrConfiguration)
+		}
+		config, err := workday.ParseInventoryConfig(task.Config["board_url"], metadata)
+		if err != nil {
+			return failure("configuration", queue.ErrConfiguration)
+		}
+		inventory, err := DiscoverWorkdayInventory(ctx, http, config)
+		fetchErr = err
+		discovery.Truncated = inventory.Truncated
+		for _, raw := range inventory.URLs {
+			discovery.Jobs = append(discovery.Jobs, RichMonitorJob{URL: raw})
+		}
+		errors.As(err, &workdayReservation)
+	} else {
+		discovery, fetchErr = DiscoverRichMonitor(ctx, http.client, profile)
+	}
 	result.DiscoveryDuration = time.Since(started)
 	result.DiscoveryError = fetchErr != nil
 	result.DiscoveryCancelled = ctx.Err() != nil
@@ -193,6 +216,14 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 	if ctx.Err() != nil {
 		cycle.InvalidateInventory()
 		return result, claimRunError("fetch", ctx.Err())
+	}
+	if reserved := workdayReservation; reserved != nil {
+		policy := reserved.PolicyURL
+		terminal, err := cycle.FinishReservationResource(ctx, reserved.URL, &queue.GreenhouseHeaderReservation{Endpoint: reserved.URL, PolicyURL: &policy})
+		if err != nil {
+			return result, claimRunError("reservation", err)
+		}
+		return finishSuccess(terminal)
 	}
 	if response := discovery.Response; response != nil {
 		// These private fields come only from this sealed-client fetch. Bind the
@@ -224,6 +255,35 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 	inventory, err := NormalizeRichInventory(ctx, task.Config["board_url"], discovery.Jobs, discovery.Truncated)
 	if err != nil {
 		return failure("inventory", err)
+	}
+	if profile.Provider == "workday" {
+		for offset := 0; offset < len(inventory.Jobs); offset += 500 {
+			end := min(offset+500, len(inventory.Jobs))
+			urls := make([]string, 0, end-offset)
+			for _, job := range inventory.Jobs[offset:end] {
+				urls = append(urls, job.URL)
+			}
+			batch, err := cycle.WriteURLOnlyBatch(ctx, urls)
+			if err != nil {
+				return failure("processing", err)
+			}
+			result.Batches.Inserted += batch.Inserted
+			result.Batches.Touched += batch.Touched
+			result.Batches.Relisted += batch.Relisted
+			result.Batches.Foreign += batch.Foreign
+			result.Batches.ForeignRelisted += batch.ForeignRelisted
+			result.Batches.Deduplicated += batch.Deduplicated
+			for _, detail := range batch.Details {
+				if _, err := cycle.EnqueueURLDetail(ctx, detail); err != nil {
+					return failure("enqueue", err)
+				}
+			}
+		}
+		terminal, err := cycle.FinishSuccess(ctx, queue.GreenhouseInventorySummary{Discovered: inventory.Discovered, ProcessingFiltered: inventory.Discovered - len(inventory.Jobs), Truncated: inventory.Truncated})
+		if err != nil {
+			return failure("lifecycle", err)
+		}
+		return finishSuccess(terminal)
 	}
 	processed, err := PersistGreenhouseInventory(ctx, cycle, preparer, inventory)
 	if processed != nil {

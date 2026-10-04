@@ -3,12 +3,14 @@ package workday
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -17,6 +19,81 @@ type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
 	return f(request)
+}
+
+func TestInventoryPosterUsesVerifiedClientAcrossSitesWithoutFollowing303(t *testing.T) {
+	var mu sync.Mutex
+	calls := map[string]int{}
+	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		mu.Lock()
+		calls[r.URL.Path]++
+		n := calls[r.URL.Path]
+		mu.Unlock()
+		if r.Header.Get("User-Agent") != userAgent || r.Header.Get("Accept") != accept {
+			t.Fatal("request policy changed")
+		}
+		if r.URL.Path == "/robots.txt" {
+			if r.Method != "GET" {
+				t.Fatal("robots method changed")
+			}
+			return liveResponse(200, "Sitemap: https://example.wd5.myworkdayjobs.com/External/siteMap\nSitemap: https://example.wd5.myworkdayjobs.com/Brand/siteMap\n", nil), nil
+		}
+		if r.Method != "POST" || r.Header.Get("Content-Type") != "application/json" {
+			t.Fatal("Workday list POST policy changed")
+		}
+		var body inventoryFixtureRequest
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			return nil, err
+		}
+		if body.Limit != 20 || body.Offset != 0 {
+			t.Fatal(body)
+		}
+		if n == 1 {
+			return liveResponse(303, "", http.Header{"Location": []string{"https://other.example/converted-get"}}), nil
+		}
+		return liveResponse(200, string(page(1, "/job/Engineer_R-123")), nil), nil
+	})}
+	p, err := NewInventoryPoster(InventoryConfig{Site: Site{"example", "wd5", "External"}, AllSites: true}, client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.sleep = func(context.Context, time.Duration) error { return nil }
+	r, err := DiscoverInventory(context.Background(), InventoryConfig{Site: Site{"example", "wd5", "External"}, AllSites: true}, p.GetRobots, p.Post)
+	if err != nil || len(r.URLs) != 1 || r.Sites != 2 || p.Requests != 5 || p.Responses != 5 {
+		t.Fatalf("result=%+v requests=%d err=%v", r, p.Requests, err)
+	}
+	for _, bad := range []string{
+		"https://other.wd5.myworkdayjobs.com/wday/cxs/example/External/jobs",
+		"https://example.wd5.myworkdayjobs.com/wday/cxs/other/External/jobs",
+		"https://example.wd5.myworkdayjobs.com/wday/cxs/example/External/jobs?redirect=1",
+		"https://example.wd5.myworkdayjobs.com/wday/cxs/example/%45xternal/jobs",
+	} {
+		if _, err := p.Post(context.Background(), bad, nil); err == nil {
+			t.Fatal("escaped tenant endpoint", bad)
+		}
+	}
+	if client.CheckRedirect != nil {
+		t.Fatal("caller HTTP client was mutated")
+	}
+}
+
+func TestInventoryPosterExplicitSitesAndRobotsPublisherReservation(t *testing.T) {
+	c := InventoryConfig{Site: Site{"example", "wd5", "External"}, AllSites: true, Sites: []string{"External", "Brand"}}
+	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		return liveResponse(200, "", http.Header{"Tdm-Reservation": []string{"1"}, "Tdm-Policy": []string{"https://example.org/policy"}}), nil
+	})}
+	p, err := NewInventoryPoster(c, client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.Post(context.Background(), "https://example.wd5.myworkdayjobs.com/wday/cxs/example/Unselected/jobs", nil); err == nil || p.Requests != 0 {
+		t.Fatal("explicit site selection was escaped")
+	}
+	_, err = p.GetRobots(context.Background(), "https://example.wd5.myworkdayjobs.com/robots.txt")
+	var reservation *ReservationError
+	if !errors.As(err, &reservation) || reservation.PolicyURL != "https://example.org/policy" {
+		t.Fatal("robots policy refusal was hidden", err)
+	}
 }
 
 func liveResponse(status int, body string, headers http.Header) *http.Response {
@@ -101,6 +178,29 @@ func TestLivePosterHonorsReservationWithoutRetry(t *testing.T) {
 	var reserved *ReservationError
 	if !errors.As(err, &reserved) || reserved.PolicyURL != "https://example.org/policy" || poster.Requests != 1 {
 		t.Fatalf("reservation=%v requests=%d", err, poster.Requests)
+	}
+}
+
+type unreadableReservedBody struct{ closed bool }
+
+func (*unreadableReservedBody) Read([]byte) (int, error) {
+	panic("reserved response body must not be read")
+}
+func (b *unreadableReservedBody) Close() error { b.closed = true; return nil }
+
+func TestLivePosterReservationPrecedesEveryStatusAndBodyRead(t *testing.T) {
+	for _, status := range []int{200, 404, 503} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			body := &unreadableReservedBody{}
+			poster := testPoster(t, func(*http.Request) (*http.Response, error) {
+				return &http.Response{StatusCode: status, Body: body, Header: http.Header{"Tdm-Reservation": []string{"1"}}}, nil
+			})
+			_, err := poster.Post(context.Background(), poster.listURL, nil)
+			var reservation *ReservationError
+			if !errors.As(err, &reservation) || poster.Requests != 1 || poster.Bytes != 0 || !body.closed {
+				t.Fatal("reservation became status, retry or body outcome", err)
+			}
+		})
 	}
 }
 

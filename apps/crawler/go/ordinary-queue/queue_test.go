@@ -14,7 +14,7 @@ import (
 )
 
 func TestReviewedLuaCopiesMatchAuthority(t *testing.T) {
-	for name, source := range map[string]string{"claim_work.lua": claimLua, "heartbeat_task.lua": heartbeatLua, "complete_task.lua": completeLua, "reschedule_task.lua": rescheduleLua} {
+	for name, source := range map[string]string{"claim_work.lua": claimLua, "heartbeat_task.lua": heartbeatLua, "complete_task.lua": completeLua, "reschedule_task.lua": rescheduleLua, "enqueue_task.lua": enqueueLua} {
 		body, err := os.ReadFile(filepath.Join("../../src/lua", name))
 		if err != nil || string(body) != source {
 			t.Fatalf("reviewed %s differs", name)

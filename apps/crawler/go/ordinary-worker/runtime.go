@@ -262,7 +262,11 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 	var lookup *executor.Store
 	var locations *executor.Locations
 	var httpClient *VerifiedDirectHTTP
+	var workdayHTTP *VerifiedDirectHTTP
 	cleanup := func() {
+		if workdayHTTP != nil {
+			workdayHTTP.CloseIdleConnections()
+		}
 		if httpClient != nil {
 			httpClient.CloseIdleConnections()
 		}
@@ -312,6 +316,11 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		cleanup()
 		return ErrStartup
 	}
+	workdayHTTP, err = NewVerifiedDirectHTTP(DirectHTTPConfig{CABundlePEM: pinnedCA, InternalHosts: c.internalHosts, EnableHTTP2: true})
+	if err != nil {
+		cleanup()
+		return ErrStartup
+	}
 	circuits, err := queue.NewHostCircuits(client, c.circuits)
 	if err != nil {
 		cleanup()
@@ -347,6 +356,9 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		}
 	}()
 	services := runtimeServices{claim: func(ctx context.Context) (*queue.Claim, error) { return authority.Claim(ctx, queue.Simple) }, heartbeat: authority.Heartbeat, execute: func(ctx context.Context, claim *queue.Claim) (*GreenhouseClaimResult, error) {
+		if claim.Descriptor().Config["crawler_type"] == "workday" {
+			return RunGreenhouseClaim(ctx, authority, claim, workdayHTTP, preparer, circuits)
+		}
 		return RunGreenhouseClaim(ctx, authority, claim, httpClient, preparer, circuits)
 	}}
 	err = runWorkerLoop(process, c, services, m)

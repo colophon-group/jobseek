@@ -4,10 +4,13 @@ go 1.26.0
 
 require (
 	github.com/colophon-group/jobseek/apps/crawler/go/greenhouse-monitor v0.0.0
+	github.com/colophon-group/jobseek/apps/crawler/go/workday-monitor v0.0.0
 	golang.org/x/text v0.42.0
 )
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/greenhouse-monitor => ../greenhouse-monitor
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/workday-monitor => ../workday-monitor
 
 require (
 	github.com/colophon-group/jobseek/apps/crawler/go/job-enrichment v0.0.0

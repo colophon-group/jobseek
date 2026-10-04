@@ -39,6 +39,10 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 	case "rss":
 		allowed["preset"], allowed["feed_url"] = true, true
 		allowed["variant"] = true
+	case "workday":
+		for _, key := range []string{"company", "wd_instance", "site", "all_sites", "sites", "search_text", "split_facet", "facet_union", "tenant", "board", "board_id", "employer", "site_id", "instance", "job_board", "board_slug", "ssl_verify", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+			allowed[key] = true
+		}
 	default:
 		return nil, ErrUnsupportedProfile
 	}
@@ -61,6 +65,9 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 	}
 	if config["crawler_type"] == "rss" {
 		return inspectRSSRich(boardID, config, md)
+	}
+	if config["crawler_type"] == "workday" {
+		return inspectWorkdayMonitor(boardID, config, md)
 	}
 	var token, region string
 	var tenantEndpoint string
