@@ -9,10 +9,12 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from functools import lru_cache
 
 import asyncpg
 
@@ -68,6 +70,43 @@ def configured_legacy_ownership() -> LegacyOwnership | None:
     return LegacyOwnership(*values)
 
 
+@lru_cache(maxsize=1)
+def ownership_projection(payload: str) -> str:
+    """Derive the exact Go routing projection from the immutable SQL payload."""
+    plan = json.loads(payload)
+    if plan["version"] != "jobseek.ordinary.ownership/v1":
+        raise OrdinaryOwnershipError()
+    if "routing_projection" not in plan:
+        return payload
+    if plan["routing_projection"] != "jobseek.ordinary.ownership-projection/v1":
+        raise OrdinaryOwnershipError()
+    members = {m["board_id"]: m["domain"] for m in plan["members"]}
+    if (
+        not 1 <= len(members) <= 20000
+        or len(members) != len(plan["members"])
+        or any(
+            not isinstance(board, str) or not isinstance(domain, str)
+            for board, domain in members.items()
+        )
+    ):
+        raise OrdinaryOwnershipError()
+    projection = json.dumps(
+        {
+            "version": "jobseek.ordinary.ownership-projection/v1",
+            "routing_epoch": plan["routing_epoch"],
+            "source_revision": plan["source_revision"],
+            "plan_sha256": hashlib.sha256(payload.encode("utf-8")).hexdigest(),
+            "members": dict(sorted(members.items())),
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    # Match encoding/json's default HTML and JavaScript line-separator escaping.
+    for character in ("<", ">", "&", "\u2028", "\u2029"):
+        projection = projection.replace(character, "\\u" + format(ord(character), "04x"))
+    return projection
+
+
 async def _attest(
     conn: asyncpg.Connection | asyncpg.pool.PoolConnectionProxy, expected: LegacyOwnership | None
 ) -> None:
@@ -95,7 +134,8 @@ async def _attest(
         or not isinstance(payload, str)
         or not 1 <= len(payload.encode("utf-8")) <= 16777216
         or hashlib.sha256(payload.encode("utf-8")).hexdigest() != expected.plan_sha256
-        or hashlib.sha1(payload.encode("utf-8")).hexdigest() != expected.projection_sha1
+        or hashlib.sha1(ownership_projection(payload).encode("utf-8")).hexdigest()
+        != expected.projection_sha1
     ):
         raise OrdinaryOwnershipError()
 

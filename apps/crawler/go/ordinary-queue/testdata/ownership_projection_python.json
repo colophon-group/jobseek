@@ -1,0 +1,19 @@
+{
+  "provenance": "Actual src.ordinary_ownership.ownership_projection on synthetic public inputs; full profile eligibility is tested independently.",
+  "cases": [
+    {
+      "name": "ordinary",
+      "payload": "{\"version\":\"jobseek.ordinary.ownership/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"members\":[{\"board_id\":\"00000000-0000-4000-8000-000000000001\",\"domain\":\"greenhouse\",\"kind\":\"monitor\",\"worker\":\"simple\",\"profile\":\"greenhouse.token-skip/v1\"}],\"routing_projection\":\"jobseek.ordinary.ownership-projection/v1\"}",
+      "plan_sha256": "0121aeda9240359ea11d2d54383df865ffe883a5c33702dd846c956ae3592a2c",
+      "projection": "{\"version\":\"jobseek.ordinary.ownership-projection/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"plan_sha256\":\"0121aeda9240359ea11d2d54383df865ffe883a5c33702dd846c956ae3592a2c\",\"members\":{\"00000000-0000-4000-8000-000000000001\":\"greenhouse\"}}",
+      "projection_sha1": "c94c38cacadcf519d05bd24d1fb63bfa197ba88a"
+    },
+    {
+      "name": "escaping",
+      "payload": "{\"version\":\"jobseek.ordinary.ownership/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"members\":[{\"board_id\":\"00000000-0000-4000-8000-000000000001\",\"domain\":\"fixture<>&-é-  \",\"kind\":\"monitor\",\"worker\":\"simple\",\"profile\":\"greenhouse.token-skip/v1\"}],\"routing_projection\":\"jobseek.ordinary.ownership-projection/v1\"}",
+      "plan_sha256": "ecb5c2bf705d14becefc563f847ee92408313a8424598a1410fd0a62d143b99d",
+      "projection": "{\"version\":\"jobseek.ordinary.ownership-projection/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"plan_sha256\":\"ecb5c2bf705d14becefc563f847ee92408313a8424598a1410fd0a62d143b99d\",\"members\":{\"00000000-0000-4000-8000-000000000001\":\"fixture\\u003c\\u003e\\u0026-é-\\u2028\\u2029\"}}",
+      "projection_sha1": "305504d1076694ce9b0828c33eefa79b789e74f9"
+    }
+  ]
+}

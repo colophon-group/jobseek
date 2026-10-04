@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -40,7 +41,7 @@ func testOwnershipDocument(t *testing.T) ownershipDocument {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return ownershipDocument{ownershipVersion, 7, strings.Repeat("a", 40), []ownershipMember{{profileBoardID, profile.CompanyID, profile.Domain, Monitor, Simple, greenhouseOwnershipProfile, profile.EffectiveConfigSHA256, config}}}
+	return ownershipDocument{ownershipVersion, 7, strings.Repeat("a", 40), []ownershipMember{{profileBoardID, profile.CompanyID, profile.Domain, Monitor, Simple, greenhouseOwnershipProfile, profile.EffectiveConfigSHA256, config}}, ownershipProjectionVersion}
 }
 
 func TestOwnershipPayloadRequiresCanonicalIdentityAndSupportedMembers(t *testing.T) {
@@ -52,6 +53,7 @@ func TestOwnershipPayloadRequiresCanonicalIdentityAndSupportedMembers(t *testing
 	}
 	for _, change := range []func(*ownershipDocument){
 		func(d *ownershipDocument) { d.Version = "unknown" },
+		func(d *ownershipDocument) { d.ProjectionVersion = "unknown" },
 		func(d *ownershipDocument) { d.Epoch = 0 },
 		func(d *ownershipDocument) { d.SourceRevision = "not-a-revision" },
 		func(d *ownershipDocument) { d.Members = nil },
@@ -365,5 +367,64 @@ func TestRealOwnershipOnlyOneActiveAndNoStaleActivation(t *testing.T) {
 	}
 	if _, err := f.authority.LoadActiveOwnership(ctx, first.digest, first.SourceRevision()); !errors.Is(err, ErrAuthorityLost) {
 		t.Fatal("old epoch loader retained authority")
+	}
+}
+
+func TestOwnershipProjectionRetainsFullPlanBindingWithoutConfigurations(t *testing.T) {
+	doc := testOwnershipDocument(t)
+	body, digest := testOwnershipBody(t, doc)
+	plan, err := decodeOwnership(body, digest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var routing ownershipProjectionDocument
+	if json.Unmarshal([]byte(plan.projection), &routing) != nil || routing.PlanSHA256 != digest || routing.Epoch != doc.Epoch || routing.SourceRevision != doc.SourceRevision || routing.Version != ownershipProjectionVersion || len(routing.Members) != 1 || routing.Members[doc.Members[0].BoardID] != doc.Members[0].Domain {
+		t.Fatal("projection lost immutable plan or membership binding")
+	}
+	if strings.Contains(plan.projection, `"config"`) || strings.Contains(plan.projection, `"metadata"`) || len(plan.projection) >= len(body) {
+		t.Fatal("claim projection still carries full configurations")
+	}
+	doc.Members[0].Config["metadata"] = `{"token":"changed","scraper_type":"skip"}`
+	profile, err := InspectRichMonitor(doc.Members[0].BoardID, doc.Members[0].Config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc.Members[0].EffectiveConfigHash = profile.EffectiveConfigSHA256
+	changedBody, changedDigest := testOwnershipBody(t, doc)
+	changed, err := decodeOwnership(changedBody, changedDigest)
+	if err != nil || changed.projection == plan.projection || changed.ProjectionSHA1() == plan.ProjectionSHA1() {
+		t.Fatal("configuration change did not invalidate routing projection binding")
+	}
+}
+
+func TestOwnershipProjectionMatchesActualPythonCodec(t *testing.T) {
+	body, err := os.ReadFile("testdata/ownership_projection_python.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var capture struct {
+		Cases []struct {
+			Name, Payload, Projection string
+			Digest                    string `json:"plan_sha256"`
+			Hash                      string `json:"projection_sha1"`
+		}
+	}
+	if json.Unmarshal(body, &capture) != nil || len(capture.Cases) != 2 {
+		t.Fatal("Python projection capture unavailable")
+	}
+	for _, c := range capture.Cases {
+		var doc ownershipDocument
+		if json.Unmarshal([]byte(c.Payload), &doc) != nil {
+			t.Fatal("invalid capture")
+		}
+		routing := ownershipProjectionDocument{Version: ownershipProjectionVersion, Epoch: doc.Epoch, SourceRevision: doc.SourceRevision, PlanSHA256: c.Digest, Members: make(map[string]string)}
+		for _, member := range doc.Members {
+			routing.Members[member.BoardID] = member.Domain
+		}
+		projected, err := json.Marshal(routing)
+		hash := sha1.Sum(projected)
+		if err != nil || string(projected) != c.Projection || hex.EncodeToString(hash[:]) != c.Hash {
+			t.Fatal("Go routing bytes differ from actual Python codec", c.Name)
+		}
 	}
 }

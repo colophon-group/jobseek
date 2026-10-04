@@ -22,8 +22,8 @@ for index = 1, boards do
     end
 end
 local offset = 23 + boards
-local operation, body, retirement = ARGV[offset + 1], ARGV[offset + 2], ARGV[offset + 3]
-if #ARGV ~= offset + 3 or not body or #body < 1 or not retirement
+local operation, body, retirement, projection = ARGV[offset + 1], ARGV[offset + 2], ARGV[offset + 3], ARGV[offset + 4]
+if #ARGV ~= offset + 4 or not body or #body < 1 or not retirement or not projection or #projection < 1
     or (operation ~= "publish" and operation ~= "retire"
         and operation ~= "inspect-active" and operation ~= "inspect-retired") then
     return redis.error_reply("first ordinary ownership rejected")
@@ -36,12 +36,33 @@ if (projection_type ~= "none" and projection_type ~= "string")
     return redis.error_reply("first ordinary ownership rejected")
 end
 local exists = projection_type == "string"
-if exists and (redis.call("GET", KEYS[8]) ~= body or redis.call("PTTL", KEYS[8]) ~= -1) then
+if exists and (redis.call("GET", KEYS[8]) ~= projection or redis.call("PTTL", KEYS[8]) ~= -1) then
     return redis.error_reply("first ordinary ownership rejected")
 end
 local ok, plan = pcall(cjson.decode, body)
 if not ok or type(plan) ~= "table" or type(plan.members) ~= "table" then
     return redis.error_reply("first ordinary ownership rejected")
+end
+if plan.routing_projection == nil then
+    if projection ~= body then return redis.error_reply("first ordinary ownership rejected") end
+else
+    local projected, routing = pcall(cjson.decode, projection)
+    if not projected or type(routing) ~= "table" or
+        routing.version ~= "jobseek.ordinary.ownership-projection/v1" or
+        routing.routing_epoch ~= plan.routing_epoch or routing.source_revision ~= plan.source_revision or
+        type(routing.plan_sha256) ~= "string" or #routing.plan_sha256 ~= 64 or
+        string.find(routing.plan_sha256, "[^0-9a-f]") or type(routing.members) ~= "table" or
+        #plan.members == 0 then
+        return redis.error_reply("first ordinary ownership rejected")
+    end
+    local count = 0
+    for _ in pairs(routing.members) do count = count + 1 end
+    if count ~= #plan.members then return redis.error_reply("first ordinary ownership rejected") end
+    for _, member in ipairs(plan.members) do
+        if routing.members[member.board_id] ~= member.domain then
+            return redis.error_reply("first ordinary ownership rejected")
+        end
+    end
 end
 local changes, domains
 if operation == "retire" and retirement ~= "[]" then
@@ -72,6 +93,6 @@ if operation == "inspect-retired" and exists then
 end
 -- All type/value/lease checks precede owned restoration and projection effects.
 if changes ~= nil then apply_first_retirement(changes, domains) end
-if operation == "publish" and not exists then redis.call("SET", KEYS[8], body) end
+if operation == "publish" and not exists then redis.call("SET", KEYS[8], projection) end
 if operation == "retire" and exists then redis.call("DEL", KEYS[8]) end
 return "accepted"

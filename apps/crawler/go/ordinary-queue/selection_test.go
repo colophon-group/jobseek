@@ -2,6 +2,8 @@ package queue
 
 import (
 	"context"
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,7 +24,7 @@ func privateOwnershipProjection(t *testing.T, c *Client, doc ownershipDocument) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := c.redis.Set(context.Background(), ownershipProjectionKey, body, 0).Err(); err != nil {
+	if err := c.redis.Set(context.Background(), ownershipProjectionKey, p.projection, 0).Err(); err != nil {
 		t.Fatal(err)
 	}
 	return p
@@ -203,7 +205,7 @@ func TestInstalledOwnershipRejectsProjectionConfigAndIndexLossBeforeEffects(t *t
 			case "missing":
 				err = c.redis.Del(ctx, ownershipProjectionKey).Err()
 			case "corrupt":
-				err = c.redis.Set(ctx, ownershipProjectionKey, p.body+" ", 0).Err()
+				err = c.redis.Set(ctx, ownershipProjectionKey, p.projection+" ", 0).Err()
 			case "wrongtype":
 				err = c.redis.Del(ctx, ownershipProjectionKey).Err()
 				if err == nil {
@@ -261,7 +263,7 @@ func realOwnedAuthority(t *testing.T) (authorityFixture, *Authority, *OwnershipP
 	f := greenhouseAuthorityFixture(t)
 	p := stageFixturePlan(t, f, strings.Repeat("a", 40))
 	activateFixturePlan(t, f, p)
-	if err := f.client.redis.Set(context.Background(), ownershipProjectionKey, p.body, 0).Err(); err != nil {
+	if err := f.client.redis.Set(context.Background(), ownershipProjectionKey, p.projection, 0).Err(); err != nil {
 		t.Fatal(err)
 	}
 	a, err := OpenOwnedAuthority(context.Background(), f.dsn, f.client, f.epoch, p.digest, p.SourceRevision())
@@ -352,7 +354,7 @@ func TestRealOwnedClaimContinuesAfterOlderRateLimitedDomain(t *testing.T) {
 		}
 	})
 	activateFixturePlan(t, f, p)
-	if err := f.client.redis.Set(ctx, ownershipProjectionKey, p.body, 0).Err(); err != nil {
+	if err := f.client.redis.Set(ctx, ownershipProjectionKey, p.projection, 0).Err(); err != nil {
 		t.Fatal(err)
 	}
 	a, err := OpenOwnedAuthority(ctx, f.dsn, f.client, f.epoch, p.digest, p.SourceRevision())
@@ -605,5 +607,103 @@ func TestRealOwnedDelayedDisableRejectsBeforePop(t *testing.T) {
 	var count int
 	if err := f.observer.QueryRow(ctx, "SELECT count(*) FROM ordinary_worker_write_fence WHERE task_id=$1::uuid", f.task.ID).Scan(&count); err != nil || count != 0 {
 		t.Fatal("disabled claim activated database fence")
+	}
+}
+
+func TestRealOwnershipFleetClaimProjection(t *testing.T) {
+	c := privateRedis(t)
+	ctx := context.Background()
+	doc := testOwnershipDocument(t)
+	doc.Members = nil
+	for i := 1; i <= 4297; i++ {
+		id := fmt.Sprintf("00000000-0000-4000-8000-%012d", i)
+		config := profileConfig()
+		profile, err := InspectRichMonitor(id, config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		doc.Members = append(doc.Members, ownershipMember{id, profile.CompanyID, profile.Domain, Monitor, Simple, profile.Profile, profile.EffectiveConfigSHA256, config})
+	}
+	plan := privateOwnershipProjection(t, c, doc)
+	if len(plan.projection)*3 >= len(plan.body) {
+		t.Fatal("fleet projection did not remove configuration decode cost")
+	}
+	last := doc.Members[len(doc.Members)-1]
+	addQueuedMonitor(t, c, last.BoardID, last.Domain, 1, false)
+	if err := c.redis.HSet(ctx, "board:"+last.BoardID, last.Config).Err(); err != nil {
+		t.Fatal(err)
+	}
+	before := snapshot(t, c)
+	started := time.Now()
+	for i := 0; i < 16; i++ {
+		task, err := c.ClaimLegacyBound(ctx, Simple, plan)
+		if err != nil || task != nil {
+			t.Fatal("fleet legacy claim did not preserve native membership", err)
+		}
+	}
+	t.Logf("4297-board legacy claims: full payload %d bytes, projection %d bytes, mean %.3f ms", len(plan.body), len(plan.projection), float64(time.Since(started).Microseconds())/16000)
+	after := snapshot(t, c)
+	for key, value := range before {
+		if !strings.HasPrefix(key, "ordinary:claim-cursor:") && after[key] != value {
+			t.Fatal("legacy claim changed retained queue/configuration state")
+		}
+	}
+	task, err := nativeQueueClaim(t, c, plan, last.BoardID, last.Config)
+	if err != nil || task == nil || task.ID != last.BoardID {
+		t.Fatal("native could not claim final fleet member", err)
+	}
+}
+
+func TestCompactOwnershipRejectsMalformedBoundProjectionBeforeEffects(t *testing.T) {
+	for _, mode := range []string{"plan", "epoch", "source", "version", "empty", "member", "domain", "array"} {
+		t.Run(mode, func(t *testing.T) {
+			c := privateRedis(t)
+			ctx := context.Background()
+			doc := testOwnershipDocument(t)
+			plan := privateOwnershipProjection(t, c, doc)
+			member := doc.Members[0]
+			addQueuedMonitor(t, c, member.BoardID, member.Domain, 1, false)
+			var projected map[string]any
+			if json.Unmarshal([]byte(plan.projection), &projected) != nil {
+				t.Fatal("invalid fixture")
+			}
+			switch mode {
+			case "plan":
+				projected["plan_sha256"] = strings.Repeat("b", 64)
+			case "epoch":
+				projected["routing_epoch"] = 8
+			case "source":
+				projected["source_revision"] = strings.Repeat("b", 40)
+			case "version":
+				projected["version"] = "unknown"
+			case "empty":
+				projected["members"] = map[string]string{}
+			case "member":
+				projected["members"] = map[string]string{"invalid": "greenhouse"}
+			case "domain":
+				projected["members"] = map[string]any{member.BoardID: 7}
+			case "array":
+				projected["members"] = []string{member.BoardID}
+			}
+			body, err := json.Marshal(projected)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := c.redis.Set(ctx, ownershipProjectionKey, body, 0).Err(); err != nil {
+				t.Fatal(err)
+			}
+			// A private low-level caller supplying this malformed document's matching
+			// byte hash still cannot pop, throttle, mutate a cursor or take a lease.
+			hash := sha1.Sum(body)
+			copy := *plan
+			copy.projectionHash = hex.EncodeToString(hash[:])
+			before := snapshot(t, c)
+			if task, err := c.ClaimLegacyBound(ctx, Simple, &copy); err == nil || task != nil {
+				t.Fatal("malformed routing document accepted")
+			}
+			if !reflect.DeepEqual(before, snapshot(t, c)) {
+				t.Fatal("malformed routing document changed queue state")
+			}
+		})
 	}
 }

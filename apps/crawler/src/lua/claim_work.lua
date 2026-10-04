@@ -63,23 +63,39 @@ else
     end
     local decoded, plan = pcall(cjson.decode, body)
     if not decoded or type(plan) ~= "table" or
-        plan.version ~= "jobseek.ordinary.ownership/v1" or
+        (plan.version ~= "jobseek.ordinary.ownership-projection/v1" and plan.version ~= "jobseek.ordinary.ownership/v1") or
+        (plan.version == "jobseek.ordinary.ownership-projection/v1" and plan.plan_sha256 ~= ARGV[8]) or
         plan.routing_epoch ~= tonumber(ARGV[10]) or
         plan.source_revision ~= ARGV[11] or type(plan.members) ~= "table" or
-        #plan.members < 1 or #plan.members > 20000
+        (plan.version == "jobseek.ordinary.ownership/v1" and (#plan.members < 1 or #plan.members > 20000))
     then return owner_failure() end
-    owner_members = {}
-    for _, member in ipairs(plan.members) do
-        if type(member) ~= "table" or member.kind ~= "monitor" or
-            member.worker ~= "simple" or
-            (member.profile ~= "greenhouse.token-skip/v1" and member.profile ~= "ashby.token-skip/v1" and member.profile ~= "lever.token-skip/v1" and member.profile ~= "recruitee.api-skip/v1" and member.profile ~= "pinpoint.slug-skip/v1" and member.profile ~= "rss.teamtailor-skip/v1" and member.profile ~= "rss.successfactors-skip/v1" and member.profile ~= "personio.xml-skip/v1") or
-            type(member.board_id) ~= "string" or type(member.domain) ~= "string" or
-            owner_members[member.board_id] ~= nil
-        then return owner_failure() end
-        owner_members[member.board_id] = member
+    if plan.version == "jobseek.ordinary.ownership/v1" then
+        owner_members = {}
+        for _, member in ipairs(plan.members) do
+            if type(member) ~= "table" or member.kind ~= "monitor" or
+                member.worker ~= "simple" or
+                (member.profile ~= "greenhouse.token-skip/v1" and member.profile ~= "ashby.token-skip/v1" and member.profile ~= "lever.token-skip/v1" and member.profile ~= "recruitee.api-skip/v1" and member.profile ~= "pinpoint.slug-skip/v1" and member.profile ~= "rss.teamtailor-skip/v1" and member.profile ~= "rss.successfactors-skip/v1" and member.profile ~= "personio.xml-skip/v1") or
+                type(member.board_id) ~= "string" or type(member.domain) ~= "string" or
+                owner_members[member.board_id] ~= nil
+            then return owner_failure() end
+            owner_members[member.board_id] = member
+        end
+    else
+        owner_members = plan.members
+        local count = 0
+        for id, domain in pairs(owner_members) do
+            if type(id) ~= "string" or #id ~= 36 or string.find(id, "[^0-9a-f%-]") or
+                type(domain) ~= "string" or #domain < 1 or #domain > 253 or string.find(domain, "[%c|]")
+            then return owner_failure() end
+            count = count + 1
+        end
+        if count < 1 or count > 20000 then return owner_failure() end
     end
     if owner_role == "native" then
         native_member = owner_members[ARGV[12] or ""]
+        if plan.version == "jobseek.ordinary.ownership-projection/v1" and type(native_member) == "string" then
+            native_member = {board_id = ARGV[12], domain = native_member, worker = "simple"}
+        end
         if claim_token == "" or not native_member or wtype ~= native_member.worker then
             return owner_failure()
         end

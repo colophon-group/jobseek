@@ -135,7 +135,7 @@ func lifecycleFixture(t *testing.T, metadata string) (authorityFixture, *Authori
 	}
 	p := stageFixturePlan(t, f, strings.Repeat("a", 40))
 	activateFixturePlan(t, f, p)
-	if err := f.client.redis.Set(ctx, ownershipProjectionKey, p.body, 0).Err(); err != nil {
+	if err := f.client.redis.Set(ctx, ownershipProjectionKey, p.projection, 0).Err(); err != nil {
 		t.Fatal(err)
 	}
 	a, err := OpenOwnedAuthority(ctx, f.dsn, f.client, f.epoch, p.digest, p.SourceRevision())

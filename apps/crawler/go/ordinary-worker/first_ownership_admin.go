@@ -3,7 +3,6 @@ package worker
 import (
 	"bytes"
 	"context"
-	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -136,8 +135,8 @@ func RunFirstOwnershipAdmin(ctx context.Context, c FirstOwnershipAdminConfig) (*
 		if err := pool.QueryRow(ctx, "SELECT payload FROM public.ordinary_worker_ownership_plan WHERE plan_sha256=$1 AND source_revision=$2 AND routing_epoch=$3", r.PlanSHA256, r.SourceRevision, r.RoutingEpoch).Scan(&payload); err != nil {
 			return ErrStartup
 		}
-		projection := sha1.Sum([]byte(payload))
-		if hex.EncodeToString(projection[:]) != r.ProjectionSHA1 {
+		projection, err := queue.OwnershipProjectionSHA1(payload, r.PlanSHA256)
+		if err != nil || projection != r.ProjectionSHA1 {
 			return ErrStartup
 		}
 		target, err := queue.CaptureFirstOwnershipB0(ctx, pool, client, r.RoutingEpoch, r.Namespace, r.ShardID, r.B0Cohort)

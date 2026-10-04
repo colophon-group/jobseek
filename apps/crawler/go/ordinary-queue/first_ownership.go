@@ -143,7 +143,7 @@ func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client,
 
 func firstOwnershipProjection(ctx context.Context, client *Client, epoch int64, plan *OwnershipPlan, target *ColdB0Target, operation, retirement string) error {
 	keys := append(target.keys(), ownershipProjectionKey, coldPublicationKey, "inflight:simple")
-	args := append(target.auditArguments(epoch), operation, plan.body, retirement)
+	args := append(target.auditArguments(epoch), operation, plan.body, retirement, plan.projection)
 	script := "local function audited_b0()\n" + target.lua + "\nend\n" + firstRetirementLua + firstOwnershipLua
 	result, err := client.redis.Eval(ctx, script, keys, args...).Text()
 	if err != nil {

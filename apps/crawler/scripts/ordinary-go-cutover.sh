@@ -245,12 +245,15 @@ done
 if [[ "$effect" == activate ]]; then
   bounded 10s curl --silent --show-error --fail --max-time 5 http://127.0.0.1:9104/healthz >/dev/null
 fi
-if [[ "$effect" == activate ]]; then write_receipt active; fi
 for service in "${services[@]}"; do
   id="$(bounded 15s "${compose[@]}" ps -q "$service")"
+  [[ "$id" =~ ^[0-9a-f]{64}$ ]] || reject "service exited before restart arming"
   bounded 15s docker update --restart unless-stopped "$id" >/dev/null
   [[ "$(bounded 15s docker inspect -f '{{.State.Running}}:{{.HostConfig.RestartPolicy.Name}}' "$id")" == true:unless-stopped ]] || reject "restart arming failed"
 done
+# Publish serving authority only after the complete stack is restart-armed.
+# A failed startup retains the exact pending identity for supported recovery.
+if [[ "$effect" == activate ]]; then write_receipt active; fi
 if [[ "$effect" == retire ]]; then
   # The retired native container is stopped and restart-disabled. Leaving it
   # behind makes the next release's cold image check see the prior image and

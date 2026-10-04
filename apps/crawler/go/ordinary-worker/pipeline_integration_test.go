@@ -187,7 +187,7 @@ func privateRichPipelineFixture(t *testing.T, provider, metadata string) nativeP
 	if err := pg.QueryRow(ctx, "SELECT payload FROM ordinary_worker_ownership_plan WHERE plan_sha256=$1", plan.SHA256()).Scan(&body); err != nil {
 		t.Fatal(err)
 	}
-	if err := r.Set(ctx, "ordinary:ownership:active", body, 0).Err(); err != nil {
+	if err := r.Set(ctx, "ordinary:ownership:active", plan.ProjectionJSON(), 0).Err(); err != nil {
 		t.Fatal(err)
 	}
 	f.a, err = queue.OpenOwnedAuthority(ctx, dsn, client, epoch, plan.SHA256(), plan.SourceRevision())
