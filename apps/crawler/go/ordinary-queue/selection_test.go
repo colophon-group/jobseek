@@ -306,6 +306,75 @@ func TestRealOwnedClaimWriteAndSettlementPreserveForeignHead(t *testing.T) {
 	}
 }
 
+func TestRealOwnedClaimContinuesAfterOlderRateLimitedDomain(t *testing.T) {
+	f := greenhouseAuthorityFixture(t)
+	ctx := context.Background()
+	second := ordinaryID(t)
+	config, err := f.client.redis.HGetAll(ctx, "board:"+f.task.ID).Result()
+	if err != nil {
+		t.Fatal(err)
+	}
+	config["crawler_type"], config["domain"], config["throttle_key"] = "ashby", "ashby", "ashby"
+	config["board_url"], config["board_slug"] = "https://jobs.ashbyhq.com/"+second, "ashby-"+second
+	if _, err := f.observer.Exec(ctx, `INSERT INTO job_board
+  (id,company_id,board_slug,board_url,crawler_type,metadata,check_interval_minutes,scrape_interval_hours,throttle_key,monitor_needs_browser,scraper_needs_browser,is_enabled,board_status)
+  SELECT $2::uuid,company_id,$3,$4,'ashby',metadata,check_interval_minutes,scrape_interval_hours,'ashby',false,false,true,'active'
+  FROM job_board WHERE id=$1::uuid`, f.task.ID, second, config["board_slug"], config["board_url"]); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if _, err := f.observer.Exec(context.Background(), "DELETE FROM job_board WHERE id=$1::uuid", second); err != nil {
+			t.Error("second-provider fixture cleanup failed")
+		}
+	})
+	if err := f.client.redis.HSet(ctx, "board:"+second, config).Err(); err != nil {
+		t.Fatal(err)
+	}
+	for domain, id := range map[string]string{"greenhouse": f.task.ID, "ashby": second} {
+		score := float64(1)
+		if domain == "ashby" {
+			score = 2
+		}
+		if err := f.client.redis.ZAdd(ctx, "monitors_simple:"+domain, redis.Z{Score: score, Member: id}).Err(); err != nil {
+			t.Fatal(err)
+		}
+		if err := f.client.redis.ZAdd(ctx, "ready:simple:1", redis.Z{Score: score, Member: domain}).Err(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	p, err := f.authority.StageGreenhouseOwnership(ctx, strings.Repeat("a", 40), []string{f.task.ID, second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if _, err := f.observer.Exec(context.Background(), "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE plan_sha256=$1 AND state='active'", p.digest); err != nil {
+			t.Error("two-provider fixture plan retirement failed")
+		}
+	})
+	activateFixturePlan(t, f, p)
+	if err := f.client.redis.Set(ctx, ownershipProjectionKey, p.body, 0).Err(); err != nil {
+		t.Fatal(err)
+	}
+	a, err := OpenOwnedAuthority(ctx, f.dsn, f.client, f.epoch, p.digest, p.SourceRevision())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer a.Close()
+	if err := f.client.redis.Set(ctx, "ratelimit:greenhouse", seconds(time.Now().Add(time.Hour)), time.Hour).Err(); err != nil {
+		t.Fatal(err)
+	}
+	claim, err := a.Claim(ctx, Simple)
+	if err != nil || claim == nil || claim.Descriptor().ID != second {
+		t.Fatalf("older throttled provider hid available Ashby work: claim=%v err=%v", claim, err)
+	}
+	if score, err := f.client.redis.ZScore(ctx, "monitors_simple:greenhouse", f.task.ID).Result(); err != nil || score != 1 {
+		t.Fatal("rate-limited provider's deadline changed")
+	}
+	if f.client.redis.ZCard(ctx, "inflight:simple").Val() != 1 || f.client.redis.HLen(ctx, "inflight_tokens:simple").Val() != 1 {
+		t.Fatal("cross-provider claim lost exact lease conservation")
+	}
+}
+
 func TestRealOwnedNativeLegacyClaimRace(t *testing.T) {
 	f, a, p := realOwnedAuthority(t)
 	ctx := context.Background()

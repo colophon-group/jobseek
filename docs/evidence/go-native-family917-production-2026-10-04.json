@@ -1,6 +1,6 @@
 {
   "schema": "jobseek.native-family917.production/v1",
-  "observed_at_utc": "2026-10-04T04:12:51.601806+00:00",
+  "observed_at_utc": "2026-10-04T04:33:37.077618+00:00",
   "goal_status": "active; full migration unfinished",
   "release": {
     "version": "0.13.917",
@@ -47,10 +47,10 @@
     }
   },
   "natural_processing": {
-    "strict_matching_completed_deadlines": 17,
-    "strict_deadline_mismatches": 0,
+    "strict_matching_completed_deadlines": 532,
+    "strict_deadline_mismatches": 3,
     "completed_by_provider": {
-      "greenhouse": 17,
+      "greenhouse": 537,
       "ashby": 0,
       "lever": 0,
       "recruitee": 0,
@@ -58,29 +58,37 @@
     },
     "metrics": [
       "jobseek_ordinary_go_ready 1",
-      "jobseek_ordinary_go_active_claims 3",
+      "jobseek_ordinary_go_active_claims 5",
       "jobseek_ordinary_go_claim_errors_total 0",
-      "crawler_tasks_total{kind=\"monitor\",status=\"succeeded\"} 17",
-      "crawler_runtime_origin_attempts_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 17",
-      "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"response\"} 17",
+      "crawler_tasks_total{kind=\"monitor\",status=\"failed\"} 1",
+      "crawler_tasks_total{kind=\"monitor\",status=\"succeeded\"} 531",
+      "crawler_tasks_total{kind=\"monitor\",status=\"unacknowledged\"} 5",
+      "crawler_runtime_origin_attempts_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 537",
+      "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"response\"} 537",
       "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"transport_error\"} 0",
-      "crawler_runtime_response_body_bytes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 832208",
-      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"success\"} 17",
+      "crawler_runtime_response_body_bytes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 46122058",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"success\"} 537",
       "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"error\"} 0",
       "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"cancelled\"} 0",
-      "crawler_runtime_output_items_total{stage=\"monitor\",implementation=\"go\"} 468",
-      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"new\"} 0",
+      "crawler_runtime_output_items_total{stage=\"monitor\",implementation=\"go\"} 31369",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"new\"} 3",
       "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"relisted\"} 0",
-      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"gone\"} 0",
-      "jobseek_ordinary_go_posting_touches_total 468"
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"gone\"} 3",
+      "jobseek_ordinary_go_posting_touches_total 31083"
     ],
     "earlier_same_source_epoch155_new_postings_verified": 2,
     "earlier_new_postings_field_proof": "Both active, title/locales present, completed fence, exact stored HTML hash and uploaded scalar description hash; publisher unreserved.",
     "limits": [
-      "Initial epoch157 observations are17 Greenhouse completions; natural completion/fields for expanded providers remain to be observed.",
-      "Earlier epoch155 two committed SQL receipts had stale Redis retry scores; original retirement repaired both without changing canonical deadlines/fences.",
-      "Stored uploaded/hash continuity observed; external object bytes were not fetched.",
-      "No whole-fleet publisher-policy or comparable density/cost acceptance claimed."
+      "532 matching completed deadlines and3 stale Redis retry deadlines observed; required exact repair during original retirement before next ownership expansion.",
+      "Newly admitted providers have due queues but zero completed runs; bounded native selection returns after its oldest throttled domain. Regression reproduced in real PostgreSQL/Redis; candidate fix continues to another provider while preserving Lua priority/ownership guards.",
+      "Earlier epoch155 two committed receipts repaired by supported retirement; two earlier natural new postings retain title/locales/description/R2/hash proof.",
+      "External object bytes, whole-fleet publisher-policy and comparable density/cost acceptance not claimed."
+    ],
+    "strict_deadline_status": "FAIL: three completed receipts retain earlier Redis retry deadlines; SQL receipt/canonical deadlines agree",
+    "mismatch_boards": [
+      "cybrid-greenhouse",
+      "may-mobility-greenhouse",
+      "xometry-greenhouse"
     ]
   },
   "coverage": {

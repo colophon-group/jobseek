@@ -178,7 +178,11 @@ func (a *Authority) claimOwned(ctx context.Context, tx pgx.Tx, worker WorkerType
 		return candidates[i].member.BoardID < candidates[j].member.BoardID
 	})
 	var rejected error
+	blockedDomains := make(map[string]bool)
 	for _, candidate := range candidates {
+		if blockedDomains[candidate.member.Domain] {
+			continue
+		}
 		profile, cached, err := a.observeGreenhouseMonitor(ctx, tx, candidate.member.BoardID)
 		if err != nil {
 			rejected = err
@@ -196,7 +200,14 @@ func (a *Authority) claimOwned(ctx context.Context, tx pgx.Tx, worker WorkerType
 		if _, err := rand.Read(token[:]); err != nil {
 			return nil, ErrObservation
 		}
-		return a.queue.claimTaskBound(ctx, worker, hex.EncodeToString(token[:]), a.ownership.claimBinding("native", candidate.member.BoardID, string(body)))
+		task, err := a.queue.claimTaskBound(ctx, worker, hex.EncodeToString(token[:]), a.ownership.claimBinding("native", candidate.member.BoardID, string(body)))
+		if err != nil || task != nil {
+			return task, err
+		}
+		// A throttle or unavailable ready route for the oldest provider must
+		// not hide another provider in this bounded batch. Lua retains all
+		// global first-time/fairness checks for every attempted claim.
+		blockedDomains[candidate.member.Domain] = true
 	}
 	return nil, rejected
 }

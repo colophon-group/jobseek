@@ -13,7 +13,7 @@ freshness and queue conservation on real jobs, and compare whole-service resourc
 and cost. Add a fixture or abstraction only for a specific changed production
 contract or observed failure. Plans and synthetic evidence are supporting work.
 
-## Native Teamtailor worker candidate — v0.13.918
+## Native RSS worker candidate — v0.13.919
 
 The ordinary Go worker now implements the existing direct Teamtailor RSS preset
 with a `skip` detail assignment, reusing its feed parser and the installed native
@@ -30,6 +30,14 @@ location fields, description upload eligibility, listing/gone effects, a failed
 second page, publisher reservation and canonical/Redis deadline conservation.
 Both ordinary Go modules pass race tests and vet; the original Python ownership
 and cutover contracts pass. This is an implementation candidate, not a deployment.
+
+The same candidate fixes the observed provider starvation: a rejected/no-op
+claim for a throttled domain continues through other domains in the existing
+64-member scan. Each attempt still uses the original atomic claim checks;
+first-time and recurring-detail priority cannot be bypassed. The real two-provider
+regression failed before this correction. The current candidate admission over
+source17 production inputs admits 4,250 profiles, including 137 Teamtailor and 197
+SuccessFactors; deployment and a fresh incoming-release census remain required.
 
 ## Native SuccessFactors worker candidate — v0.13.919
 
@@ -59,9 +67,14 @@ at epoch 157. All 3,916 admitted rich/skip boards now have native ownership:
 2,570 Greenhouse, 934 Ashby, 194 Lever, 114 Recruitee and 104 Pinpoint. The fresh
 canonical/cache census had zero configuration mismatches; three detail profiles
 remain excluded. All eight HTTP readiness endpoints pass, the exact Redis
-projection persists, and every admitted SQL/Redis member matches. The initial
-17 completed runs are Greenhouse, with matching deadlines and zero strict
-mismatches; natural output for the newly admitted providers remains to be observed.
+projection persists, and every admitted SQL/Redis member matches. The latest
+readback has 532 matching completed deadlines and three stale Redis retry
+deadlines for committed receipts (Cybrid, May Mobility, Xometry); SQL receipts
+and canonical deadlines agree. The supported retirement must repair those
+scores before the next ownership expansion. Newly admitted providers still
+have zero completed runs. A real PostgreSQL/Redis regression reproduces native
+selection returning after its oldest throttled domain; the candidate fix tries
+another provider in the same bounded batch while preserving Lua priority guards.
 
 The earlier Greenhouse-only run produced two natural new postings with active
 canonical state, title/locales, completed fences, exact stored HTML hashes and
