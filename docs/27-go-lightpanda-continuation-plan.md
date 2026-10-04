@@ -18,40 +18,53 @@ not complete migration.
 
 ## Latest checkpoint
 
-v0.13.920 is deployed at `95bbabd78681be9046367a8ad6b3beba77a0e001` by
-[deployment 37179937902 attempt 2](https://github.com/colophon-group/jobseek/actions/runs/37179937902).
-The selected release, success marker and live environment agree on the approved
-immutable images. [PR #10262](https://github.com/colophon-group/jobseek/pull/10262)
-adds native Teamtailor/SuccessFactors rich RSS and fixes observed provider
-selection starvation. [PR #10263](https://github.com/colophon-group/jobseek/pull/10263)
-adds native Personio XML/domain/HTML fallback and ordered localized titles/locales.
-Both passed Required CI, the actual Crawler Deploy Gate and installed image parity.
+v0.13.921 is deployed at `5e85ce5e526d29ed96c4325ab9b5a20e26c34cda` by
+[deployment 37186188736](https://github.com/colophon-group/jobseek/actions/runs/37186188736).
+[PR #10264](https://github.com/colophon-group/jobseek/pull/10264) fixes canonical
+deadline recovery for completed native receipts after a lost settlement ACK.
+Required CI, the actual Crawler Deploy Gate and installed image parity passed.
 
-Original B0 is active at epoch 161 with 22 members. Native ordinary ownership is
-active for 4,297 boards across eight profiles: Greenhouse 2,570, Ashby 934, Lever
-194, Recruitee 114, Pinpoint 104, Teamtailor RSS 137, SuccessFactors RSS 197 and
-Personio 47. All 7,885 enabled boards are preserved; four Python workers still
-serve the remaining profiles.
+The 4,297-board activation reached SQL active ownership, but the B0 producer
+lost Redis preflight authority during startup. The host receipt had already
+been published active before restart arming failed. Original supported retirement
+succeeded: the ordinary SQL plan is retired, its Redis projection/host receipt
+and native container are absent, and all nine legacy/B0 writers run at the exact
+selected immutable images with restart policies armed. All seven health endpoints
+passed independent readback. **Ordinary native boards currently serving: zero.**
+B0 remains active at epoch 163 with 22 members; four Python workers serve the
+ordinary fleet. Source921 production lost-ACK expiry proof remains pending.
 
-The initial strict readback passed 127 completed deadline matches. The later
-normal-schedule observation failed: 219 matched, but four completed SQL receipts
-had earlier Redis retry scores after lease expiry. Fix the live Go reaper so a
-committed receipt restores its canonical deadline before expanding ownership.
-Seven profiles have native successes; Recruitee has no observed success in this
-window. Bounded samples verified stored description hashes and upload flags,
-without claiming remote object-byte or fleet-wide output/cost parity.
+Redis slowlog contains 63 ordinary claims among its latest 64 slow commands,
+with a peak of 198 ms. Every claim decodes the full 4,297-member configuration
+payload. This plausibly contributed to producer preflight failure; the exact
+Redis error family is unproven. The next runtime fix uses a smaller routing
+projection bound to the full immutable SQL plan and publishes active host state
+only after full restart arming. A private Redis comparison using the actual
+retired production payload reduced projection bytes from 3,437,948 to 216,221,
+mean claim time from 33.0 to 6.1 ms and a 64-call burst from 2.12 to 0.40 seconds.
+This is a local microbenchmark, not production readiness or whole-service cost
+acceptance. Retained older plans preserve their original projection for recovery.
 
-The source12 activation stopped at expired tokenless legacy work. Its original
-pending identity was preserved while scheduled reconciliation finished. The
-installed maintenance reaper restored 51 simple and six browser entries with
-zero dead letters, missing configs or SQL ownership changes. Original pending
-cancellation restored full readiness; original B0 rollback restored 22 members
-and retired epoch 160. Exact selectors were cleared before the successful
-source95 deployment. No lease/fence clearing or lock bypass was used.
+Earlier source920 served 4,297 boards across eight profiles: Greenhouse 2,570,
+Ashby 934, Lever 194, Recruitee 114, Pinpoint 104, Teamtailor RSS 137,
+SuccessFactors RSS 197 and Personio 47. All eight recorded native successes
+before retirement, but the normal reaper produced stale completed deadlines;
+original retirement restored canonical scores. All 7,885 enabled boards remain
+preserved; 3,588 other boards span 100 crawler types.
+
+Workday inventory discovery is committed separately, including multi-site,
+requisition deduplication, search, deep pagination, facet partition/union and
+independent coverage checks, plus the sealed native HTTP boundary. Real Python
+parity cases and focused race/vet checks pass. Native URL-only persistence,
+detail scheduling and owned detail execution remain to be integrated before
+that code adds production coverage.
+
+See [source921 restoration evidence](evidence/go-native-family921-restoration-2026-10-04.json).
 
 ## Continue delivery
 
-1. Fix committed native receipt recovery in the normal lease reaper and prove
+1. Deliver the measured Redis claim fix and correct host receipt publication,
+   then prove stable 4,297-board serving and committed native receipt recovery with
    canonical deadline conservation beyond lease expiry. Observe real scheduled
    completions across every admitted provider. Verify SQL/Redis deadlines, canonical fields,
    descriptions/uploads, publisher outcomes and whole-service freshness.

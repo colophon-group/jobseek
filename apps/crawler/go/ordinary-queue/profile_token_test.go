@@ -33,7 +33,7 @@ func TestRealOwnedResolvedGreenhouseTokenBindsCanonicalAndCache(t *testing.T) {
 			// Private fixture selection only; production still uses cold host
 			// admission and acknowledged projection publication.
 			activateFixturePlan(t, f, plan)
-			if err := f.client.redis.Set(ctx, ownershipProjectionKey, plan.body, 0).Err(); err != nil {
+			if err := f.client.redis.Set(ctx, ownershipProjectionKey, plan.projection, 0).Err(); err != nil {
 				t.Fatal(err)
 			}
 			owner, err := OpenOwnedAuthority(ctx, f.dsn, f.client, f.epoch, plan.digest, plan.SourceRevision())

@@ -344,7 +344,7 @@ func TestRealFirstOwnershipRefusesChangedAuthorityBeforeEffects(t *testing.T) {
 			case "foreign-projection":
 				err = p.f.client.redis.Set(ctx, ownershipProjectionKey, "foreign", 0).Err()
 			case "expiring-projection":
-				err = p.f.client.redis.Set(ctx, ownershipProjectionKey, p.plan.body, time.Minute).Err()
+				err = p.f.client.redis.Set(ctx, ownershipProjectionKey, p.plan.projection, time.Minute).Err()
 			case "joint-marker":
 				err = p.f.client.redis.Set(ctx, coldPublicationKey, "foreign", 0).Err()
 			case "b0-lease":

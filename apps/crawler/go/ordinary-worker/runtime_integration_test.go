@@ -2,7 +2,6 @@ package worker
 
 import (
 	"context"
-	"crypto/sha1"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -109,8 +108,6 @@ func TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain(t *test
 	}
 }
 
-func sha1Fixture(body string) [20]byte { return sha1.Sum([]byte(body)) }
-
 // Installed-image admission supplies all three bindings. Without them the
 // local source fixture deliberately uses a synthetic revision, never an image
 // admission claim. These switches exist only in test code.
@@ -141,6 +138,10 @@ func newNativeExecutableFixture(t *testing.T, f nativePipelineFixture, dsn strin
 	if err := f.pg.QueryRow(ctx, "SELECT plan_sha256,payload,source_revision,routing_epoch FROM ordinary_worker_ownership_plan WHERE state='active'").Scan(&plan, &projectionBody, &revision, &epoch); err != nil {
 		t.Fatal("private active plan missing")
 	}
+	projection, err := queue.OwnershipProjectionSHA1(projectionBody, plan)
+	if err != nil {
+		t.Fatal("private routing projection invalid")
+	}
 	directory := t.TempDir()
 	binary := os.Getenv("JOBSEEK_ORDINARY_IMAGE_BINARY")
 	dataDirectory := os.Getenv("JOBSEEK_ORDINARY_IMAGE_DATA_DIRECTORY")
@@ -167,7 +168,7 @@ func newNativeExecutableFixture(t *testing.T, f nativePipelineFixture, dsn strin
 	}
 	address := listener.Addr().String()
 	_ = listener.Close()
-	env := []string{"PATH=" + os.Getenv("PATH"), "ORDINARY_GO_WORKER_MODE=enabled", "ORDINARY_OWNERSHIP_SOURCE_REVISION=" + revision, "ORDINARY_OWNERSHIP_PLAN_SHA256=" + plan, "ORDINARY_OWNERSHIP_PROJECTION_SHA1=" + fmt.Sprintf("%x", sha1Fixture(projectionBody)), "ORDINARY_OWNERSHIP_ROUTING_EPOCH=" + fmt.Sprint(epoch), "LOCAL_DATABASE_URL=" + dsn, "REDIS_URL=unix://" + f.r.Options().Addr, "ORDINARY_GO_METRICS_ADDRESS=" + address, "ORDINARY_GO_DATA_DIRECTORY=" + dataDirectory, "DISCOVERY_CONCURRENCY=1", "MONITOR_CONCURRENCY=1", "SHUTDOWN_GRACE_SECONDS=1"}
+	env := []string{"PATH=" + os.Getenv("PATH"), "ORDINARY_GO_WORKER_MODE=enabled", "ORDINARY_OWNERSHIP_SOURCE_REVISION=" + revision, "ORDINARY_OWNERSHIP_PLAN_SHA256=" + plan, "ORDINARY_OWNERSHIP_PROJECTION_SHA1=" + projection, "ORDINARY_OWNERSHIP_ROUTING_EPOCH=" + fmt.Sprint(epoch), "LOCAL_DATABASE_URL=" + dsn, "REDIS_URL=unix://" + f.r.Options().Addr, "ORDINARY_GO_METRICS_ADDRESS=" + address, "ORDINARY_GO_DATA_DIRECTORY=" + dataDirectory, "DISCOVERY_CONCURRENCY=1", "MONITOR_CONCURRENCY=1", "SHUTDOWN_GRACE_SECONDS=1"}
 	return nativeExecutableFixture{binary: binary, address: address, directory: directory, env: env}
 }
 

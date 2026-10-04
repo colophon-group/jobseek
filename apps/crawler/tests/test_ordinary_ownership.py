@@ -26,6 +26,7 @@ from src.ordinary_ownership import (
     LegacyOwnership,
     OrdinaryOwnershipError,
     legacy_ownership_barrier,
+    ownership_projection,
     prepare_legacy_ownership,
 )
 
@@ -38,6 +39,7 @@ def expectation(epoch: int = 7) -> tuple[LegacyOwnership, str]:
             "version": "jobseek.ordinary.ownership/v1",
             "routing_epoch": epoch,
             "source_revision": "a" * 40,
+            "routing_projection": "jobseek.ordinary.ownership-projection/v1",
             "members": [
                 {
                     "board_id": "00000000-0000-4000-8000-000000000001",
@@ -52,7 +54,7 @@ def expectation(epoch: int = 7) -> tuple[LegacyOwnership, str]:
     )
     expected = LegacyOwnership(
         hashlib.sha256(payload.encode()).hexdigest(),
-        hashlib.sha1(payload.encode()).hexdigest(),
+        hashlib.sha1(ownership_projection(payload).encode()).hexdigest(),
         "a" * 40,
         str(epoch),
     )
@@ -295,7 +297,7 @@ async def test_real_legacy_attestation_projection_loss_and_retirement(monkeypatc
             await prepare_legacy_ownership(pool)
         install_settings(monkeypatch, expected)
         assert await prepare_legacy_ownership(pool) == expected
-        await client.set("ordinary:ownership:active", payload)
+        await client.set("ordinary:ownership:active", ownership_projection(payload))
         selected, foreign = await seed_private_queue(client)
         async with legacy_ownership_barrier(pool, expected):
             work = await rq.claim_work(ownership=expected)
@@ -312,7 +314,7 @@ async def test_real_legacy_attestation_projection_loss_and_retirement(monkeypatc
             async with legacy_ownership_barrier(pool, expected):
                 await rq.claim_work(ownership=expected)
         assert before == await queue_snapshot(client)
-        await client.set("ordinary:ownership:active", payload)
+        await client.set("ordinary:ownership:active", ownership_projection(payload))
         await pool.execute(
             "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE plan_sha256=$1",
             expected.plan_sha256,
@@ -327,9 +329,28 @@ async def test_real_legacy_attestation_projection_loss_and_retirement(monkeypatc
 async def test_real_projection_blocks_unaware_legacy_claim(monkeypatch):
     async with private_redis(monkeypatch) as client:
         _, payload = expectation()
-        await client.set("ordinary:ownership:active", payload)
+        await client.set("ordinary:ownership:active", ownership_projection(payload))
         await seed_private_queue(client)
         before = await queue_snapshot(client)
         with pytest.raises(ResponseError, match="ordinary ownership rejected"):
             await rq.claim_work()
         assert before == await queue_snapshot(client)
+
+
+def test_compact_projection_matches_frozen_actual_python_codec():
+    fixture = (
+        Path(__file__).parents[1] / "go/ordinary-queue/testdata/ownership_projection_python.json"
+    )
+    capture = json.loads(fixture.read_text())
+    for case in capture["cases"]:
+        projection = ownership_projection(case["payload"])
+        assert projection == case["projection"]
+        assert hashlib.sha1(projection.encode()).hexdigest() == case["projection_sha1"]
+
+
+def test_retained_legacy_plan_keeps_original_projection():
+    _, payload = expectation()
+    doc = json.loads(payload)
+    del doc["routing_projection"]
+    original = json.dumps(doc, separators=(",", ":"))
+    assert ownership_projection(original) == original

@@ -78,6 +78,8 @@ docker() {
         return 0 ;;
       *' ps -aq '*|*' ps -q '*)
         service=${!#}
+        if [[ "$service" == lightpanda-producer && "$args" == *' ps -q '* &&
+              "$TEST_FAILURE" == arm-exit && -f "$DEPLOY_DIR/arming" ]]; then return 0; fi
         if [[ "$service" == ordinary-go &&
           ( ! -f "$DEPLOY_DIR/started" || -f "$DEPLOY_DIR/native-removed" ) ]]; then
           return 0
@@ -100,6 +102,7 @@ docker() {
     return 0
   elif [[ "$1" == ps ]]; then return 0
   elif [[ "$1" == update ]]; then
+    [[ "$args" != *unless-stopped* ]] || touch "$DEPLOY_DIR/arming"
     if [[ "$args" == *unless-stopped* && "$TEST_FAILURE" == arm ]]; then return 92; fi
     return 0
   elif [[ "$1" == inspect ]]; then
@@ -185,7 +188,7 @@ def test_retired_container_cleanup_failure_retains_identity_for_supported_recove
     assert (deploy / "native-removed").exists()
 
 
-@pytest.mark.parametrize("failure", ["image", "admin", "health", "arm", "signal"])
+@pytest.mark.parametrize("failure", ["image", "admin", "health", "arm", "arm-exit", "signal"])
 def test_failed_cutover_retains_identity_and_disables_restarts(
     host: tuple[Path, Path, dict[str, str]], failure: str
 ) -> None:
@@ -195,6 +198,9 @@ def test_failed_cutover_retains_identity_and_disables_restarts(
     assert result.returncode != 0
     receipt = (deploy / ".ordinary-go-owner-v1").read_text()
     assert f"plan_sha256={PLAN}\n" in receipt
+    assert "state=pending\n" in receipt
+    if failure == "arm-exit":
+        assert "service exited before restart arming" in result.stderr
     events = Path(env["TEST_LOG"]).read_text().splitlines()
     if failure == "image":
         assert "native-effect" not in events
@@ -204,7 +210,7 @@ def test_failed_cutover_retains_identity_and_disables_restarts(
     prior_updates = [event for event in events[:last_stop] if "update --restart no" in event]
     assert len(prior_updates) >= 18
     env["TEST_FAILURE"] = ""
-    result = invoke(host, "recover-pending" if failure != "arm" else "retire")
+    result = invoke(host, "recover-pending")
     assert result.returncode == 0, result.stderr
     assert not (deploy / ".ordinary-go-owner-v1").exists()
 
@@ -250,3 +256,16 @@ def test_compatibility_retirement_refuses_bad_admin_before_stopping(host, source
     assert invoke(host, "retire", source, image).returncode != 0
     assert (deploy / ".ordinary-go-owner-v1").read_bytes() == before
     assert " stop --timeout" not in Path(env["TEST_LOG"]).read_text()
+
+
+def test_same_identity_activation_resumes_after_restart_arming_failure(host):
+    _, deploy, env = host
+    env["TEST_FAILURE"] = "arm"
+    assert invoke(host, "activate", PLAN, PROJECTION).returncode != 0
+    receipt = (deploy / ".ordinary-go-owner-v1").read_text()
+    assert "state=pending\n" in receipt
+    env["TEST_FAILURE"] = ""
+    result = invoke(host, "activate", PLAN, PROJECTION)
+    assert result.returncode == 0, result.stderr
+    assert "state=active\n" in (deploy / ".ordinary-go-owner-v1").read_text()
+    assert f"plan_sha256={PLAN}\n" in (deploy / ".ordinary-go-owner-v1").read_text()

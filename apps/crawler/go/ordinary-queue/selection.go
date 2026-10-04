@@ -46,7 +46,7 @@ func (c *Client) verifyOwnershipProjection(ctx context.Context, plan *OwnershipP
 	if err != nil {
 		return ErrObservation
 	}
-	if body != plan.body {
+	if body != plan.projection {
 		return ErrAuthorityLost
 	}
 	return nil

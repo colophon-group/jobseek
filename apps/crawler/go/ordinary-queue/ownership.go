@@ -17,6 +17,7 @@ import (
 )
 
 const ownershipVersion = "jobseek.ordinary.ownership/v1"
+const ownershipProjectionVersion = "jobseek.ordinary.ownership-projection/v1"
 const greenhouseOwnershipProfile = "greenhouse.token-skip/v1"
 
 //go:embed ownership.sql
@@ -36,10 +37,22 @@ type ownershipMember struct {
 	Config              map[string]string `json:"config"`
 }
 type ownershipDocument struct {
+	Version           string            `json:"version"`
+	Epoch             int64             `json:"routing_epoch"`
+	SourceRevision    string            `json:"source_revision"`
+	Members           []ownershipMember `json:"members"`
+	ProjectionVersion string            `json:"routing_projection,omitempty"`
+}
+
+// The Redis projection contains only routing membership. Full configurations and
+// profile eligibility remain in the SHA256-bound immutable SQL document. Claim
+// scripts must not deserialize every member's configuration on every pop.
+type ownershipProjectionDocument struct {
 	Version        string            `json:"version"`
 	Epoch          int64             `json:"routing_epoch"`
 	SourceRevision string            `json:"source_revision"`
-	Members        []ownershipMember `json:"members"`
+	PlanSHA256     string            `json:"plan_sha256"`
+	Members        map[string]string `json:"members"`
 }
 
 // OwnershipPlan is an immutable durable document, never a queue/write grant.
@@ -50,6 +63,7 @@ type OwnershipPlan struct {
 	body           string
 	digest         string
 	projectionHash string
+	projection     string
 }
 
 func (p *OwnershipPlan) SHA256() string {
@@ -77,13 +91,32 @@ func (p *OwnershipPlan) MemberCount() int {
 	return len(p.document.Members)
 }
 
+// ProjectionJSON is a read-only routing observation, never a publication grant.
+func (p *OwnershipPlan) ProjectionJSON() string {
+	if p == nil {
+		return ""
+	}
+	return p.projection
+}
+
 // ProjectionSHA1 binds Redis's available byte-integrity check to the exact
-// SHA256-attested durable payload. It is not a credential or write capability.
+// routing projection derived from the SHA256-attested durable payload.
+// It is not a credential or write capability.
 func (p *OwnershipPlan) ProjectionSHA1() string {
 	if p == nil {
 		return ""
 	}
 	return p.projectionHash
+}
+
+// OwnershipProjectionSHA1 validates a complete durable document and derives
+// its routing identity without loading, staging or activating an owner.
+func OwnershipProjectionSHA1(body, digest string) (string, error) {
+	plan, err := decodeOwnership(body, digest)
+	if err != nil {
+		return "", err
+	}
+	return plan.ProjectionSHA1(), nil
 }
 
 func decodeOwnership(body, digest string) (*OwnershipPlan, error) {
@@ -97,7 +130,7 @@ func decodeOwnership(body, digest string) (*OwnershipPlan, error) {
 	var doc ownershipDocument
 	decoder := json.NewDecoder(bytes.NewBufferString(body))
 	decoder.DisallowUnknownFields()
-	if decoder.Decode(&doc) != nil || decoder.Decode(new(any)) != io.EOF || doc.Version != ownershipVersion || doc.Epoch < 1 || doc.Epoch > 9999999999999 || !ownershipRevision.MatchString(doc.SourceRevision) || len(doc.Members) < 1 || len(doc.Members) > 20000 {
+	if decoder.Decode(&doc) != nil || decoder.Decode(new(any)) != io.EOF || doc.Version != ownershipVersion || (doc.ProjectionVersion != "" && doc.ProjectionVersion != ownershipProjectionVersion) || doc.Epoch < 1 || doc.Epoch > 9999999999999 || !ownershipRevision.MatchString(doc.SourceRevision) || len(doc.Members) < 1 || len(doc.Members) > 20000 {
 		return nil, ErrAuthorityLost
 	}
 	previous := ""
@@ -118,8 +151,22 @@ func decodeOwnership(body, digest string) (*OwnershipPlan, error) {
 	if err != nil || !bytes.Equal(canonical, []byte(body)) {
 		return nil, ErrAuthorityLost
 	}
-	projectionHash := sha1.Sum([]byte(body))
-	return &OwnershipPlan{document: doc, body: body, digest: digest, projectionHash: hex.EncodeToString(projectionHash[:])}, nil
+	if doc.ProjectionVersion == "" {
+		// Retained pre-compact owners keep their exact original projection for
+		// supported retirement. No runtime path rebuilds either projection.
+		projectionHash := sha1.Sum([]byte(body))
+		return &OwnershipPlan{document: doc, body: body, digest: digest, projection: body, projectionHash: hex.EncodeToString(projectionHash[:])}, nil
+	}
+	projectionDoc := ownershipProjectionDocument{Version: ownershipProjectionVersion, Epoch: doc.Epoch, SourceRevision: doc.SourceRevision, PlanSHA256: digest, Members: make(map[string]string, len(doc.Members))}
+	for _, member := range doc.Members {
+		projectionDoc.Members[member.BoardID] = member.Domain
+	}
+	projection, err := json.Marshal(projectionDoc)
+	if err != nil {
+		return nil, ErrAuthorityLost
+	}
+	projectionHash := sha1.Sum(projection)
+	return &OwnershipPlan{document: doc, body: body, digest: digest, projection: string(projection), projectionHash: hex.EncodeToString(projectionHash[:])}, nil
 }
 
 // StageGreenhouseOwnership captures canonical enabled profiles under the lease,
@@ -138,7 +185,7 @@ func (a *Authority) StageGreenhouseOwnership(ctx context.Context, revision strin
 	}
 	var plan *OwnershipPlan
 	err := a.transaction(ctx, true, func(ctx context.Context, tx pgx.Tx) error {
-		doc := ownershipDocument{Version: ownershipVersion, Epoch: a.epoch, SourceRevision: revision}
+		doc := ownershipDocument{Version: ownershipVersion, Epoch: a.epoch, SourceRevision: revision, ProjectionVersion: ownershipProjectionVersion}
 		for _, id := range ids {
 			profile, cached, err := a.observeGreenhouseMonitor(ctx, tx, id)
 			if err != nil {

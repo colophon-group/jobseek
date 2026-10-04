@@ -1,0 +1,59 @@
+{
+  "source_revision": "5e85ce5e526d29ed96c4325ab9b5a20e26c34cda",
+  "version": "0.13.921",
+  "deployment_run": 37186188736,
+  "ordinary_activation": "Failed during restart arming after B0 producer lost Redis preflight authority; full supported retirement succeeded.",
+  "production_at_0833_utc": {
+    "b0_epoch": 163,
+    "b0_members": 22,
+    "ordinary_native_boards_serving": 0,
+    "ordinary_sql_plan_state": "retired",
+    "ordinary_host_receipt": "absent",
+    "ordinary_projection": "absent",
+    "legacy_and_b0_health_endpoints": 7,
+    "all_writers_running_and_restart_armed": 9
+  },
+  "redis_readiness_evidence": {
+    "claim_slow_commands_in_latest_64": 63,
+    "peak_claim_microseconds": 197843,
+    "producer_oom": false,
+    "diagnostic": "producer authority lost: redis/preflight",
+    "inference": "Full-fleet claim decoding plausibly contributed; exact Redis error family unproven."
+  },
+  "candidate_claim_microbenchmark": {
+    "control_full": {
+      "projection_bytes": 3437948,
+      "claims": 64,
+      "server_mean_microseconds": 33043.375,
+      "server_p95_microseconds": 37438,
+      "server_max_microseconds": 60956,
+      "concurrent_burst_wall_seconds": 2.121440624992829,
+      "script_sha256": "fde9bf0aa85a4a22643347c369f2d59a1f7313bfb5ebcd3bd7e7807a11fabecb"
+    },
+    "candidate_compact": {
+      "projection_bytes": 216221,
+      "claims": 64,
+      "server_mean_microseconds": 6137.828125,
+      "server_p95_microseconds": 6451,
+      "server_max_microseconds": 8551,
+      "concurrent_burst_wall_seconds": 0.3960393329616636,
+      "script_sha256": "9336434cc95eb21b83f78d523028aea450d607fab68130d19ab3ce78d67cfeac"
+    },
+    "scope": "Read-only retired production 4297-member payload; private isolated Redis; identical 64 concurrent empty legacy claims. Microbenchmark only, not whole-service CPU/cost or stable production readiness proof.",
+    "source_revision": "5e85ce5e526d29ed96c4325ab9b5a20e26c34cda",
+    "routing_epoch": 163,
+    "members": 4297
+  },
+  "remaining": {
+    "enabled_boards": 7885,
+    "native_rich_admitted_boards": 4297,
+    "other_enabled_boards": 3588,
+    "other_crawler_types": 100,
+    "workday_boards": 496
+  },
+  "limits": [
+    "No stable source921 ordinary native serving or completed-receipt expiry proof claimed.",
+    "Private Redis microbenchmark is not production readiness, whole-service CPU/RAM or attributable cost acceptance.",
+    "Workday inventory code is committed separately; owned URL-only persistence and detail scheduling/execution remain pending."
+  ]
+}
