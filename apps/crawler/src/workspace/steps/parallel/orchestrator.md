@@ -203,10 +203,11 @@ ws submit {{ slug }} [--summary "..."]
 
 ### Advance through final steps
 
-After submit succeeds, advance to the reflect step:
+`ws submit` already moves the workflow to the reflect step and keeps the PR
+in draft. Show the reflection instructions before recording KB entries:
 
 ```bash
-ws task next --notes "<difficulties, key decisions, or 'none'>"
+ws task
 ```
 
 During reflection, contribute to the knowledge base:
@@ -223,8 +224,11 @@ Then complete the workflow:
 ws task complete
 ```
 
-**Do NOT call `ws task complete` directly after `ws submit`.** The sequence
-is: `ws submit` → `ws task next` (enters reflect) → `ws task complete`.
+Finish KB entries and case studies before `ws task complete`, which publishes
+them and marks the PR ready. The sequence is: `ws submit` → `ws task` →
+reflection/KB contributions → `ws task complete`.
+`ws task next` from reflect also finalizes the workflow; do not run it before
+these contributions are finished.
 
 ## If something goes wrong
 

@@ -157,6 +157,14 @@ def task(ctx, issue: int | None, pick_next: bool):
     ws = load_workspace(slug)
     boards = list_boards(slug)
 
+    if wf.current_step == "reflect":
+        step = next(step for step in _all_step_defs() if step.id == "reflect")
+        instructions = render_step(step, build_context(ws, boards, wf))
+        out.info("task", f"Workspace: {slug} | Final reflection")
+        print()
+        print(instructions)
+        return
+
     from src.workspace.state import ws_dir
     from src.workspace.workflow import render_parallel_prompt
 
