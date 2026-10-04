@@ -29,7 +29,7 @@ func TestRealFirstOwnershipHostContainersCutoverAndRecovery(t *testing.T) {
 	if !strings.HasPrefix(image, "sha256:") || !planPattern.MatchString(strings.TrimPrefix(image, "sha256:")) || os.Getenv("JOBSEEK_ORDINARY_IMAGE_BINARY") == "" {
 		t.Fatal("host fixture requires the already admitted installed image")
 	}
-	for _, mode := range []string{"interrupted-retirement", "readiness-failure"} {
+	for _, mode := range []string{"interrupted-retirement", "readiness-failure", "compatibility-retirement"} {
 		t.Run(mode, func(t *testing.T) {
 			f, e, plan := firstExecutableOwnershipFixture(t)
 			ctx := context.Background()
@@ -57,7 +57,43 @@ func TestRealFirstOwnershipHostContainersCutoverAndRecovery(t *testing.T) {
 				}
 				return out
 			}
-			if got := strings.TrimSpace(string(must("docker", "image", "inspect", "-f", `{{index .Config.Labels "org.opencontainers.image.revision"}}`, image))); got != plan.SourceRevision() {
+			selectedImage := image
+			adminSource := plan.SourceRevision()
+			if mode == "compatibility-retirement" {
+				oldSource := strings.Repeat("b", 40)
+				if oldSource == adminSource {
+					t.Fatal("compatibility fixture requires distinct compiled sources")
+				}
+				var err error
+				plan, err = f.a.StageGreenhouseOwnership(ctx, oldSource, []string{f.board})
+				if err != nil {
+					t.Fatal(err)
+				}
+				// Trusted CI alone builds this private outgoing image. Its
+				// executable has a distinct compiled revision; the newer admin
+				// remains the already admitted installed CI image.
+				oldBinary := filepath.Join(dir, "old-ordinary-worker")
+				build := exec.Command("go", "build", "-buildvcs=false", "-ldflags=-X main.sourceRevision="+oldSource, "-o", oldBinary, "./cmd/live")
+				build.Env = append(os.Environ(), "CGO_ENABLED=0")
+				if out, err := build.CombinedOutput(); err != nil {
+					t.Fatalf("private outgoing binary build: %v %s", err, out)
+				}
+				baseTag := project + "-base:fixture"
+				must("docker", "tag", image, baseTag)
+				file := filepath.Join(dir, "Dockerfile.outgoing")
+				if err := os.WriteFile(file, []byte("FROM "+baseTag+"\nCOPY old-ordinary-worker /usr/local/bin/go-ordinary-worker\nLABEL org.opencontainers.image.revision="+oldSource+"\n"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				oldID := filepath.Join(dir, "outgoing-image.id")
+				must("docker", "build", "--network=none", "--pull=false", "--iidfile", oldID, "-f", file, dir)
+				body, err := os.ReadFile(oldID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				selectedImage = strings.TrimSpace(string(body))
+				t.Cleanup(func() { _, _ = command("docker", "image", "rm", selectedImage, baseTag) })
+			}
+			if got := strings.TrimSpace(string(must("docker", "image", "inspect", "-f", `{{index .Config.Labels "org.opencontainers.image.revision"}}`, selectedImage))); got != plan.SourceRevision() {
 				t.Fatal("host fixture image source differs from the installed native source")
 			}
 			write := func(name, body string) {
@@ -71,9 +107,9 @@ func TestRealFirstOwnershipHostContainersCutoverAndRecovery(t *testing.T) {
 			// suffix and every Docker observation to that exact local image ID.
 			// The fixture changes only host paths/user and these two image checks;
 			// production image schema tests continue to require real GHCR digests.
-			ref := "ghcr.io/ci/jobseek-crawler@" + image
-			browser := "ghcr.io/ci/jobseek-crawler-browser@" + image
-			write(".env", fmt.Sprintf("JOBSEEK_DEPLOY_REVISION=%s\nCRAWLER_IMAGE_REF=%s\nBROWSER_IMAGE_REF=%s\nLIGHTPANDA_B0_SERVICE_HOST=10.0.0.5\nFIXTURE_IMAGE_ID=%s\n", plan.SourceRevision(), ref, browser, image))
+			ref := "ghcr.io/ci/jobseek-crawler@" + selectedImage
+			browser := "ghcr.io/ci/jobseek-crawler-browser@" + selectedImage
+			write(".env", fmt.Sprintf("JOBSEEK_DEPLOY_REVISION=%s\nCRAWLER_IMAGE_REF=%s\nBROWSER_IMAGE_REF=%s\nLIGHTPANDA_B0_SERVICE_HOST=10.0.0.5\nFIXTURE_IMAGE_ID=%s\nFIXTURE_ADMIN_IMAGE_ID=%s\n", plan.SourceRevision(), ref, browser, selectedImage, image))
 			write("health.py", firstOwnershipFixtureHealthScript)
 			ports := map[string]int{"worker-1": 9095, "worker-2": 9096, "worker-3": 9097, "browser-1": 9098, "exporter": 9093, "drain": 9094, "lightpanda-producer": 0, "lightpanda-executor": 0, "lightpanda-claimant": 9101}
 			var compose strings.Builder
@@ -143,6 +179,15 @@ func TestRealFirstOwnershipHostContainersCutoverAndRecovery(t *testing.T) {
 				}
 				wrapper = strings.ReplaceAll(wrapper, old, next)
 			}
+			if mode == "compatibility-retirement" {
+				// Like the existing old-image substitutions above, local CI
+				// content IDs replace registry manifests only for Docker lookup.
+				old := `"$admin_image" >"$admin_override"`
+				if !strings.Contains(wrapper, old) {
+					t.Fatal("admin image fixture substitution drifted")
+				}
+				wrapper = strings.Replace(wrapper, old, `"$FIXTURE_ADMIN_IMAGE_ID" >"$admin_override"`, 1)
+			}
 			write("cutover.sh", wrapper)
 			// Keep the actual Go process idle while host lifecycle changes occur.
 			// Its health is real; an interrupted claim is inserted only after it
@@ -198,7 +243,21 @@ func TestRealFirstOwnershipHostContainersCutoverAndRecovery(t *testing.T) {
 				if err := f.pg.QueryRow(ctx, "SELECT to_jsonb(f)::text FROM ordinary_worker_write_fence f WHERE task_id=$1::uuid", f.board).Scan(&receiptBefore); err != nil {
 					t.Fatal(err)
 				}
-				must("bash", "cutover.sh", "retire")
+				if mode == "compatibility-retirement" {
+					out := must("bash", "cutover.sh", "retire", adminSource, "ghcr.io/ci/jobseek-crawler@"+image)
+					var got queue.FirstOwnershipResult
+					found := false
+					for _, line := range strings.Split(string(out), "\n") {
+						if json.Unmarshal([]byte(line), &got) == nil && got.State == "retired" {
+							found = got.SourceRevision == plan.SourceRevision() && got.AdminSourceRevision == adminSource && got.AdminImageRef == "ghcr.io/ci/jobseek-crawler@"+image
+						}
+					}
+					if !found {
+						t.Fatal("physical retirement lost separate outgoing/admin identities")
+					}
+				} else {
+					must("bash", "cutover.sh", "retire")
+				}
 				var receiptAfter string
 				if err := f.pg.QueryRow(ctx, "SELECT to_jsonb(f)::text FROM ordinary_worker_write_fence f WHERE task_id=$1::uuid", f.board).Scan(&receiptAfter); err != nil || receiptBefore != receiptAfter {
 					t.Fatal("physical recovery changed an interrupted receipt", err)
@@ -210,6 +269,7 @@ func TestRealFirstOwnershipHostContainersCutoverAndRecovery(t *testing.T) {
 			if id := strings.TrimSpace(string(must("docker", "compose", "--profile", "ordinary-go", "ps", "-aq", "ordinary-go"))); id != "" {
 				t.Fatal("successful retirement retained a stopped prior-image native container")
 			}
+			must("docker", "image", "inspect", "-f", "{{.Id}}", selectedImage)
 			must("docker", "image", "inspect", "-f", "{{.Id}}", image)
 			var state string
 			if err := f.pg.QueryRow(ctx, "SELECT state FROM ordinary_worker_ownership_plan WHERE plan_sha256=$1", plan.SHA256()).Scan(&state); err != nil || state != "retired" {

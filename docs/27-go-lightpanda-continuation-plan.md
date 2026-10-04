@@ -1,6 +1,6 @@
 # Go and Lightpanda migration continuation plan
 
-## Delivery objective — revised 2026-10-03
+## Delivery objective — revised 2026-10-04
 
 Deliver the migration in full: production Go workers and self-hosted Lightpanda
 or proven Go HTTP/API routes must replace every enabled crawler profile, then
@@ -12,6 +12,60 @@ production Python consumers removed. Check canonical/database/publisher behavior
 freshness and queue conservation on real jobs, and compare whole-service resources
 and cost. Add a fixture or abstraction only for a specific changed production
 contract or observed failure. Plans and synthetic evidence are supporting work.
+
+## Current production checkpoint — 2026-10-04
+
+The full delivery goal remains active. v0.13.913 is serving its original 2,570
+Greenhouse owners and Lightpanda `cdom` at epoch 153 after complete restoration
+from a refused retirement. All ten writers passed the original readiness and
+restart-arming phase; all eight HTTP endpoints passed. The retained active
+ordinary receipt, B0 receipt, SQL ownership and Redis projection are unchanged.
+No repair SQL changed leases, canonical rows or retained attempts.
+
+[PR #10255](https://github.com/colophon-group/jobseek/pull/10255) merged v0.13.916
+at `6878e116568714a892cab7c1cb0b4bd5d9dd53c2` after Required CI, the actual
+Crawler Deploy Gate and installed-image parity passed. Its immutable images
+built successfully. [Deployment 37163642810](https://github.com/colophon-group/jobseek/actions/runs/37163642810)
+refused before mutation because the outgoing native owner was still active.
+v0.13.916 is not deployed. The last pre-retirement v0.13.913 strict check found
+1,318 matching completed deadlines and 12 mismatches; the concurrency repair
+still needs production verification before expanding ownership.
+
+The outgoing original retirement waited for all SQL leases to expire naturally,
+then refused: its foreign-attempt query incorrectly included 18 retained active
+attempt rows from retired epoch 151 alongside 26 owned attempts at epoch 153.
+SQL ownership and the active Redis projection never retired. Preserve that
+history. Candidate v0.13.917 admits only older monitor attempts whose immutable
+retired plan owned that board; unrelated historical/current/future attempts
+still refuse. The real PostgreSQL/Redis regression fails on the old query and
+passes with the fix, preserving both owners' attempt records.
+
+To retire the affected older binary, the reviewed driver accepts
+`retire <exact-admin-source> <immutable-admin-image>` (also for an exact
+`recover-pending` retry). Stage that reviewed driver separately; keep the
+installed outgoing wrapper and selected release intact. Pre-pull and verify the
+approved admin image while the complete old stack serves. The newer admin image
+is used only for the retirement one-off. Its compiled source must match the
+explicit admin source; the protected request, SQL scope, B0 receipt, Compose
+hash and stopped/restored runtime images remain bound to the outgoing owner.
+The result records outgoing and admin identities separately. Activation cannot
+use compatibility bindings. The complete original cold/readiness/restart-arming
+and retired-container cleanup phases remain mandatory; do not clear historical
+fences, SQL leases or partially restart writers.
+
+Continue by merging the bounded retirement correction through required checks,
+then build the corrected combined release. Retire the outgoing owner with the
+explicit reviewed admin, reverse B0 with its outgoing original driver, deploy the
+complete new release and reactivate B0/native owners from a fresh census. Verify
+strict deadlines and natural posting delivery before widening ownership. The
+last candidate census admitted 3,916 rich providers (2,570 Greenhouse, 934 Ashby,
+194 Lever, 114 Recruitee and 104 Pinpoint); these are candidates, not new serving
+owners. Finish remaining enabled profiles and Python runtime consumers, measure
+whole-lane resources/cost, exercise cold reversal and its observation window,
+then remove Python/Playwright/Chromium runtime assets while preserving useful
+isolated offline Python. See [retirement evidence](evidence/go-native-retirement-history-2026-10-04.json).
+
+## Earlier production observations — 2026-10-03
 
 Production v0.13.913, source `f90d8244c66a0ca07635ab9bb08adea4b0b6c462`,
 was promoted by [deployment 37158271320 attempt 2](https://github.com/colophon-group/jobseek/actions/runs/37158271320).
@@ -75,7 +129,7 @@ unacknowledged tasks, three claim errors and one gone outcome. The strict check
 failed; preserve those observations instead of treating them as transient proof.
 A real PostgreSQL/Redis reproduction shows a specific bottleneck: one blocked
 canonical board consumes the sole authority connection and makes an independent
-board hit its deadline. Candidate v0.13.916 uses at most five connections,
+board hit its deadline. Merged v0.13.916 uses at most five connections,
 matching the default five worker slots, and limits the claim mutex to cursor
 updates. Transactions retain their existing time limits and per-operation
 SQL/Redis/epoch/lease/canonical checks. Five repetitions verify independent-board
@@ -92,8 +146,7 @@ completed. Retained write fences from retired epoch 151 remain historical;
 current admission was bound to epoch 153. Never clear SQL leases or partially
 restart writers to bypass admission.
 
-Continue by completing the bounded concurrency candidate and exact-head checks
-while observing v0.13.913. Build the approved combined release,
+Continue from the current checkpoint above. Build the approved corrected combined release,
 use the original complete retirement/B0/deploy/reactivation contracts, then
 adopt fresh eligible Ashby/Lever/Recruitee/Pinpoint profiles. Finish every
 remaining provider, URL/detail and browser profile plus mandatory Python runtime

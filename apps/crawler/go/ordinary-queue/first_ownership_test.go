@@ -208,6 +208,20 @@ func TestRealFirstOwnershipFreshEpochRetainsRetiredOwnerAndInterruptedReceipt(t 
 	}); !errors.Is(err, ErrAuthorityLost) {
 		t.Fatal("retired old attempt retained authority at the fresh epoch", err)
 	}
+	// Production retained old active attempt records. The next owner must
+	// still retire after it has made an interrupted attempt of its own.
+	current, currentClaim := firstRetirementClaim(t, next)
+	canonical = coldCanonicalSnapshot(t, next.f)
+	if _, err := applyFirstFixture(t, next, true); err != nil {
+		t.Fatal("current interrupted owner refused legitimate retired history", err)
+	}
+	if canonical != coldCanonicalSnapshot(t, next.f) {
+		t.Fatal("retirement rewrote current or historical attempt records")
+	}
+	assertFirstRetirementSchedule(t, next, firstRetirementDue(t, next))
+	if err := current.Heartbeat(ctx, currentClaim); !errors.Is(err, ErrAuthorityLost) {
+		t.Fatal("current retired attempt retained authority", err)
+	}
 }
 
 func TestRealFirstOwnershipFreshEpochRefusesAnotherActiveOwner(t *testing.T) {

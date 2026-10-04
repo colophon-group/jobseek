@@ -237,3 +237,34 @@ func TestRealFirstRetirementPreservesSharedDomainPriorityRepairAndB0(t *testing.
 		t.Fatal("shared domain retirement changed canonical receipts")
 	}
 }
+
+func TestRealFirstRetirementRefusesForeignHistoricalAttempts(t *testing.T) {
+	for _, mode := range []string{"wrong-kind", "nonmember"} {
+		t.Run(mode, func(t *testing.T) {
+			old := firstOwnershipFixture(t)
+			firstRetirementClaim(t, old)
+			if _, err := applyFirstFixture(t, old, true); err != nil {
+				t.Fatal(err)
+			}
+			ctx := context.Background()
+			var err error
+			if mode == "wrong-kind" {
+				_, err = old.f.observer.Exec(ctx, "UPDATE ordinary_worker_write_fence SET task_kind='scrape' WHERE task_id=$1::uuid", old.f.task.ID)
+			} else {
+				_, err = old.f.observer.Exec(ctx, "UPDATE ordinary_worker_write_fence SET task_id=b.id,board_id=b.id FROM job_board b WHERE task_id=$1::uuid AND b.board_slug='browser-use-careers'", old.f.task.ID)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			current := firstOwnershipFixtureHistory(t, true)
+			firstRetirementClaim(t, current)
+			before, canonical := snapshot(t, current.f.client), coldCanonicalSnapshot(t, current.f)
+			if _, err := applyFirstFixture(t, current, true); !errors.Is(err, ErrAuthorityLost) {
+				t.Fatal("foreign historical attempt admitted", err)
+			}
+			if !reflect.DeepEqual(before, snapshot(t, current.f.client)) || canonical != coldCanonicalSnapshot(t, current.f) || firstFixtureState(t, current) != "active" {
+				t.Fatal("foreign historical refusal changed queues, receipts or owner")
+			}
+		})
+	}
+}
