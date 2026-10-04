@@ -13,6 +13,49 @@ freshness and queue conservation on real jobs, and compare whole-service resourc
 and cost. Add a fixture or abstraction only for a specific changed production
 contract or observed failure. Plans and synthetic evidence are supporting work.
 
+## Native RSS worker candidate — v0.13.919
+
+The ordinary Go worker now implements the existing direct Teamtailor RSS preset
+with a `skip` detail assignment, reusing its feed parser and the installed native
+claim, enrichment, persistence and settlement path. Complete 100-item pagination
+is required before inventory writes. A later-page failure preserves existing
+postings; publisher reservation binds the actual response resource. Canonical
+and cached configuration must independently pass native admission before ownership.
+The offline registry contains 141 candidate RSS/skip boards; this count does not
+establish production admission or serving ownership. Other RSS presets and detail
+assignments retain their existing execution until their native implementation lands.
+
+Verification covers real PostgreSQL/Redis claims, rich title/description/salary/
+location fields, description upload eligibility, listing/gone effects, a failed
+second page, publisher reservation and canonical/Redis deadline conservation.
+Both ordinary Go modules pass race tests and vet; the original Python ownership
+and cutover contracts pass. This is an implementation candidate, not a deployment.
+
+The same candidate fixes the observed provider starvation: a rejected/no-op
+claim for a throttled domain continues through other domains in the existing
+64-member scan. Each attempt still uses the original atomic claim checks;
+first-time and recurring-detail priority cannot be bypassed. The real two-provider
+regression failed before this correction. The current candidate admission over
+source17 production inputs admits 4,250 profiles, including 137 Teamtailor and 197
+SuccessFactors; deployment and a fresh incoming-release census remain required.
+
+## Native SuccessFactors worker candidate — v0.13.919
+
+The native ordinary worker now reuses the existing streaming SuccessFactors Go
+parser for direct Google/category RSS feeds with a `skip` detail assignment.
+Explicit feeds retain precedence over the derived `/googlefeed.xml` URL. Only
+absent/default or `feed` variants are admitted; legacy, RMK, XML variants and
+configured filtering/detail overrides retain their existing owners. There are
+218 offline feed/skip candidates, including unsupported overrides; actual
+canonical/cache admission determines the eligible production cohort.
+
+Real PostgreSQL/Redis cycles verify rich title/location/salary/technology fields,
+exact stored description and pending upload, listing/gone effects, generic 404
+failure, publisher reservation and deadline/lease conservation. Malformed XML
+following an emitted item publishes no partial inventory. Both ordinary Go
+modules pass full race tests and vet. The implementation follows the Teamtailor
+candidate and requires required gates and a supported source-bound deployment.
+
 ## Current production checkpoint — 2026-10-04
 
 The full migration goal remains active. v0.13.917 is promoted at
@@ -20,17 +63,31 @@ The full migration goal remains active. v0.13.917 is promoted at
 [deployment 37167862702 attempt 2](https://github.com/colophon-group/jobseek/actions/runs/37167862702).
 The live environment, selected release, success marker, immutable crawler/browser
 images and installed original wrappers agree. Source-bound B0 `cdom` is active
-at epoch 155. The fresh registry census still counts all 7,885 enabled boards;
-no board was disabled for migration. All 2,570 native Greenhouse owners are now serving at epoch 155, with a
-persistent exact Redis projection and all eight HTTP readiness endpoints passing.
-The current readback has 140 matching completed deadlines and zero strict
-mismatches; metrics report 140 successes, 6,608 posting touches and two
-unacknowledged tasks. Ten naturally touched existing postings retain exact stored
-HTML hashes and uploaded/scalar R2 hash continuity. No new inserts were observed
-yet. The twelve earlier mismatch boards have not completed on the new epoch.
-Inspect the two unacknowledged tasks and keep those acceptance limits explicit.
-Four Python worker processes still serve remaining profiles; full retirement is
-unfinished. See the [portable production evidence](evidence/go-native-family917-production-2026-10-04.json).
+at epoch 157. All 3,916 admitted rich/skip boards now have native ownership:
+2,570 Greenhouse, 934 Ashby, 194 Lever, 114 Recruitee and 104 Pinpoint. The fresh
+canonical/cache census had zero configuration mismatches; three detail profiles
+remain excluded. All eight HTTP readiness endpoints pass, the exact Redis
+projection persists, and every admitted SQL/Redis member matches. The latest
+readback has 532 matching completed deadlines and three stale Redis retry
+deadlines for committed receipts (Cybrid, May Mobility, Xometry); SQL receipts
+and canonical deadlines agree. The supported retirement must repair those
+scores before the next ownership expansion. Newly admitted providers still
+have zero completed runs. A real PostgreSQL/Redis regression reproduces native
+selection returning after its oldest throttled domain; the candidate fix tries
+another provider in the same bounded batch while preserving Lua priority guards.
+
+The earlier Greenhouse-only run produced two natural new postings with active
+canonical state, title/locales, completed fences, exact stored HTML hashes and
+uploaded scalar description hashes. Its two committed SQL receipts with stale
+Redis retry scores were repaired by the original supported retirement. The B0
+rollback retired epoch 156, selectors were cleared, and B0 was reactivated at 157.
+The 3,916-board activation retained its exact pending identity on expired legacy work;
+the existing reaper restored 87 simple and 4 browser entries after scheduled
+reconciliation finished. The same activation plan/projection retry passed full
+readiness and restart arming. No fence/lease clearing or lock bypass was used.
+Four Python worker processes still serve remaining profiles; all 7,885 enabled
+boards remain enabled and full retirement is unfinished. See the
+[portable production evidence](evidence/go-native-family917-production-2026-10-04.json).
 
 [PR #10257](https://github.com/colophon-group/jobseek/pull/10257) merged the bounded
 retirement correction after Required CI, the actual Crawler Deploy Gate and
@@ -62,21 +119,16 @@ retiring. Respect scheduled reconciliation's mutation lock and let its bounded
 slice finish. The existing reaper restored 85 simple and 11 browser monitors
 without dead letters, missing configs, SQL ownership writes or B0 changes.
 
-Continue by inspecting the unacknowledged tasks and their natural recovery, and
-observing strict canonical/Redis deadlines and field effects on naturally due
-processing. The fresh source-bound census admits 3,916 candidates: 2,570
-Greenhouse, 934 Ashby, 194 Lever, 114 Recruitee and 104 Pinpoint; three detail
-profiles remain excluded, with zero cached-profile/config mismatches. Only
-Greenhouse owns native production work. Admit the proven additional providers
-through the supported contracts after the observed task issues are resolved.
-Finish every remaining enabled monitor/detail/browser profile and mandatory
-Python runtime consumer. Prove canonical fields, description/R2 and publisher
-behavior, freshness and queue conservation; compare whole-lane resources/cost;
-exercise supported cold reversal and its observation window. Remove production
-Python, Playwright, Chromium and runtime-only legacy assets after those checks,
-while preserving useful isolated offline Python. Keep delivery measured by
-serving native owners, enabled profiles migrated and runtime Python consumers
-removed.
+Continue by observing naturally due processing across the admitted providers and
+checking fields, description/R2/publisher behavior and strict deadlines. Deliver
+the tested Teamtailor RSS/skip worker candidate, then native remaining RSS,
+Workday and generic HTTP/Lightpanda monitor/detail profiles. Replace mandatory
+Python startup, scheduling, maintenance and deployment consumers. Compare
+whole-lane resources/cost; exercise supported cold reversal and its observation
+window. Remove production Python, Playwright, Chromium and runtime-only legacy
+assets after those checks, preserving useful isolated offline Python and every
+enabled board. Measure progress by serving native owners, enabled profiles
+migrated and mandatory runtime Python consumers removed.
 
 ## Earlier production observations — 2026-10-03
 

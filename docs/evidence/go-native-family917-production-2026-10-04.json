@@ -1,6 +1,6 @@
 {
   "schema": "jobseek.native-family917.production/v1",
-  "observed_at_utc": "2026-10-04T03:16:23.163516+00:00",
+  "observed_at_utc": "2026-10-04T04:33:37.077618+00:00",
   "goal_status": "active; full migration unfinished",
   "release": {
     "version": "0.13.917",
@@ -17,16 +17,15 @@
   },
   "ownership": {
     "b0_cohort": "cdom",
-    "routing_epoch": 155,
-    "b0_plan_digest": "dd14ca6b1f28dc78f97e6f073e6df1e5bc886c1d5ee4db8be82bb675104cc3c0",
-    "b0_receipt_sha256": "34c56d116804719f34d1a15e49f5260534d80ac149c0f446c4eb60325ca83acf",
-    "ordinary_plan_sha256": "d90480f96e80e0c1c885f979c339af111d00e13dfdfb0845784199ad546db120",
-    "ordinary_projection_sha1": "6c4f839496389aceab3f8731867c51a43a7717d5",
-    "ordinary_receipt_sha256": "7dad4c77d5e10a48ee333d78a1c79591d2b183472713e18a86984899422cc6e8",
+    "routing_epoch": 157,
+    "b0_plan_digest": "c022d34e0261e142cf35471a61b856a82a0b1f192dbde1f5c9e57a69dda1bb40",
+    "b0_receipt_sha256": "29ecdc3e10908db33db9861374cef07479e681be7be79ffbe3383ff510332305",
+    "ordinary_plan_sha256": "62597f6b6541734082507d8d86087668efbcfbb5a3154e9697f0a3235003be5d",
+    "ordinary_projection_sha1": "1da6c4d802063a2654be601ed7e9404abb2a9c76",
+    "ordinary_receipt_sha256": "c6433ae4bec38646b1f46e1a2d31c9ce598c2b519a2aa1a4e8cd6119793210ee",
     "ordinary_sql_state": "active",
     "ordinary_redis_projection_persistent": true,
-    "serving_greenhouse_members": 2570,
-    "canonical_members_observed": 2570,
+    "canonical_members_observed": 3916,
     "full_stack_readiness_and_restart_arming": "original installed driver success",
     "http_health": {
       "worker-1": 200,
@@ -37,56 +36,60 @@
       "exporter": 200,
       "lightpanda-claimant": 204,
       "ordinary-go": 204
-    }
-  },
-  "natural_processing": {
-    "strict_matching_completed_deadlines": 140,
-    "strict_deadline_mismatches": 0,
-    "metrics": [
-      "jobseek_ordinary_go_ready 1",
-      "jobseek_ordinary_go_active_claims 2",
-      "jobseek_ordinary_go_claim_errors_total 0",
-      "crawler_tasks_total{kind=\"monitor\",status=\"succeeded\"} 140",
-      "crawler_tasks_total{kind=\"monitor\",status=\"unacknowledged\"} 2",
-      "crawler_runtime_origin_attempts_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 142",
-      "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"response\"} 142",
-      "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"transport_error\"} 0",
-      "crawler_runtime_response_body_bytes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 8608762",
-      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"success\"} 142",
-      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"error\"} 0",
-      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"cancelled\"} 0",
-      "crawler_runtime_output_items_total{stage=\"monitor\",implementation=\"go\"} 6614",
-      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"new\"} 0",
-      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"relisted\"} 0",
-      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"gone\"} 6",
-      "jobseek_ordinary_go_posting_touches_total 6608"
-    ],
-    "existing_postings_checked": 10,
-    "stored_html_hash_matches": 10,
-    "uploaded_and_scalar_description_hash_matches": 10,
-    "newly_inserted_postings_observed": 0,
-    "previous_12_mismatch_boards_completed_in_current_epoch": 0,
-    "limits": [
-      "Two unacknowledged tasks reported; inspect their retained receipts and natural recovery before widening.",
-      "Initial current-epoch proof; the twelve prior mismatch boards have not completed naturally on this release yet.",
-      "Stored uploaded/hash continuity observed; external object bytes were not fetched.",
-      "No whole-fleet publisher-policy or comparable density/cost acceptance claimed."
-    ]
-  },
-  "next_provider_candidates": {
-    "observed_at_utc": "2026-10-04T03:12:46.984802+00:00",
-    "eligible": 3916,
-    "by_provider": {
+    },
+    "serving_native_members": 3916,
+    "serving_by_provider": {
       "ashby": 934,
       "greenhouse": 2570,
       "lever": 194,
       "pinpoint": 104,
       "recruitee": 114
+    }
+  },
+  "natural_processing": {
+    "strict_matching_completed_deadlines": 532,
+    "strict_deadline_mismatches": 3,
+    "completed_by_provider": {
+      "greenhouse": 537,
+      "ashby": 0,
+      "lever": 0,
+      "recruitee": 0,
+      "pinpoint": 0
     },
-    "canonical_unsupported": 3,
-    "cached_unsupported": 0,
-    "projection_mismatches": 0,
-    "ownership_granted": false
+    "metrics": [
+      "jobseek_ordinary_go_ready 1",
+      "jobseek_ordinary_go_active_claims 5",
+      "jobseek_ordinary_go_claim_errors_total 0",
+      "crawler_tasks_total{kind=\"monitor\",status=\"failed\"} 1",
+      "crawler_tasks_total{kind=\"monitor\",status=\"succeeded\"} 531",
+      "crawler_tasks_total{kind=\"monitor\",status=\"unacknowledged\"} 5",
+      "crawler_runtime_origin_attempts_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 537",
+      "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"response\"} 537",
+      "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"transport_error\"} 0",
+      "crawler_runtime_response_body_bytes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 46122058",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"success\"} 537",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"error\"} 0",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"cancelled\"} 0",
+      "crawler_runtime_output_items_total{stage=\"monitor\",implementation=\"go\"} 31369",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"new\"} 3",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"relisted\"} 0",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"gone\"} 3",
+      "jobseek_ordinary_go_posting_touches_total 31083"
+    ],
+    "earlier_same_source_epoch155_new_postings_verified": 2,
+    "earlier_new_postings_field_proof": "Both active, title/locales present, completed fence, exact stored HTML hash and uploaded scalar description hash; publisher unreserved.",
+    "limits": [
+      "532 matching completed deadlines and3 stale Redis retry deadlines observed; required exact repair during original retirement before next ownership expansion.",
+      "Newly admitted providers have due queues but zero completed runs; bounded native selection returns after its oldest throttled domain. Regression reproduced in real PostgreSQL/Redis; candidate fix continues to another provider while preserving Lua priority/ownership guards.",
+      "Earlier epoch155 two committed receipts repaired by supported retirement; two earlier natural new postings retain title/locales/description/R2/hash proof.",
+      "External object bytes, whole-fleet publisher-policy and comparable density/cost acceptance not claimed."
+    ],
+    "strict_deadline_status": "FAIL: three completed receipts retain earlier Redis retry deadlines; SQL receipt/canonical deadlines agree",
+    "mismatch_boards": [
+      "cybrid-greenhouse",
+      "may-mobility-greenhouse",
+      "xometry-greenhouse"
+    ]
   },
   "coverage": {
     "enabled_boards": 7885,
@@ -96,22 +99,23 @@
     "python_playwright_chromium_retirement": "unfinished"
   },
   "handoff": {
-    "outgoing_source": "f90d8244c66a0ca07635ab9bb08adea4b0b6c462",
-    "explicit_approved_admin_source": "990165526e328cddd05c271053ffd903d7a7a671",
-    "original_outgoing_wrapper_and_b0_retained": "unchanged through ordinary retirement",
-    "retirement_after_interrupted_projection": "exact supported retirement recovery succeeded",
-    "outgoing_b0_rollback_retired_epoch": 154,
-    "selectors_cleared_before_full_deploy": true,
+    "same_source_revision": "990165526e328cddd05c271053ffd903d7a7a671",
+    "ordinary2570_retirement": "success; both completed deadline mismatches repaired and full readiness restored",
+    "b0_rollback_retired_epoch": 156,
+    "selectors_cleared_before_reactivation": true,
+    "b0_reactivated_epoch": 157,
+    "original_wrappers_unchanged": true,
+    "ordinary3916_activation": "success after retained exact pending identity, natural SQL lease expiry and existing tokenless reaper",
     "expired_legacy_reaper": {
-      "simple_reenqueued": 85,
-      "browser_reenqueued": 11,
+      "simple_reenqueued": 87,
+      "browser_reenqueued": 4,
       "dead_lettered": 0,
       "missing_config": 0,
       "sql_mutations": 0,
       "ordinary_owner_changes": 0,
       "b0_changes": 0
     },
-    "activation_retry_contract": "Retry activate with same exact plan/projection. recover-pending cancels a pending activation; it does not resume it.",
+    "activation_retry_contract": "Same exact plan/projection activate retry succeeded; pending identity was not cancelled.",
     "maintenance_lock": "Scheduled reconciliation finished naturally; no bypass or foreign oneoff termination"
   },
   "image_cache": {
@@ -124,27 +128,29 @@
     "credential_scope": "ephemeral CI packages:read; no standing token or scope expansion"
   },
   "resources": {
-    "snapshot": [
-      "deploy-lightpanda-claimant-1|0.87%|7.531MiB / 96MiB|10",
-      "deploy-browser-1-1|227.48%|1.799GiB / 6GiB|394",
-      "deploy-worker-3-1|52.50%|183.4MiB / 1GiB|31",
-      "deploy-worker-2-1|100.13%|309.7MiB / 1GiB|35",
-      "deploy-worker-1-1|58.70%|220.7MiB / 1GiB|36",
-      "deploy-lightpanda-producer-1|0.02%|5.316MiB / 32MiB|8",
-      "deploy-lightpanda-executor-1|12.66%|39.22MiB / 384MiB|9",
-      "deploy-exporter-1|0.19%|55.89MiB / 256MiB|14",
-      "deploy-ordinary-go-1|0.05%|60.52MiB / 1GiB|10",
-      "deploy-drain-1|0.01%|9.508MiB / 256MiB|14",
-      "deploy-alloy-1|1.57%|148.6MiB / 512MiB|9",
-      "deploy-redis-1|1.10%|1.417GiB / 4GiB|6"
-    ],
-    "comparable_whole_lane_cost_proof": false
+    "comparable_whole_lane_cost_proof": false,
+    "limits": "Earlier epoch155 snapshot is historical; current comparable whole-lane measurement remains required."
   },
   "required_next": [
-    "Inspect the two unacknowledged tasks and continue naturally due strict deadline/field evidence, including prior mismatch boards.",
-    "Admit a fresh proven eligible rich-provider cohort through the supported ownership/B0 contracts.",
+    "Observe natural expanded-provider field effects and strict deadlines.",
+    "Deliver native Teamtailor RSS/skip worker candidate v0.13.918 through required gates and supported deployment; refresh canonical/cache admission.",
     "Complete every remaining enabled monitor/detail/browser profile and mandatory Python runtime consumer.",
-    "Prove fleet fields/policy/freshness/conservation and comparable whole-lane resource/cost; exercise cold reversal and observation window.",
+    "Prove fleet fields/policy/freshness/conservation and comparable whole-lane resources/cost; exercise cold reversal and observation window.",
     "Retire production Python, Playwright, Chromium and runtime-only legacy assets; preserve useful isolated offline Python."
-  ]
+  ],
+  "admitted_provider_census": {
+    "observed_at_utc": "2026-10-04T03:49:47.555262+00:00",
+    "eligible": 3916,
+    "by_provider": {
+      "ashby": 934,
+      "greenhouse": 2570,
+      "lever": 194,
+      "pinpoint": 104,
+      "recruitee": 114
+    },
+    "canonical_unsupported": 3,
+    "cached_unsupported": 0,
+    "projection_mismatches": 0,
+    "ownership_granted": true
+  }
 }

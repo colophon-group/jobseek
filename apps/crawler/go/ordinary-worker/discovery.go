@@ -33,7 +33,9 @@ func (e *DiscoveryError) Error() string {
 
 func (e *DiscoveryError) Unwrap() error { return e.cause }
 
-// GreenhouseResponse observes the final fully read response. Its private
+// GreenhouseResponse observes the final response from a sealed-client fetch.
+// Successful inventories require complete bodies; RSS publisher headers may
+// stop the fetch before reading a body. Its private
 // fields prevent a caller from changing the resource that emitted a signal.
 // This observation is not claim/write authority. RunGreenhouseClaim consumes
 // only its own completed sealed-client response under an installed opaque claim.

@@ -68,8 +68,16 @@ replace github.com/colophon-group/jobseek/apps/crawler/go/lever-monitor => ../le
 
 require github.com/colophon-group/jobseek/apps/crawler/go/recruitee-monitor v0.0.0
 
-require github.com/colophon-group/jobseek/apps/crawler/go/pinpoint-monitor v0.0.0
+require (
+	github.com/colophon-group/jobseek/apps/crawler/go/pinpoint-monitor v0.0.0
+	github.com/colophon-group/jobseek/apps/crawler/go/successfactors-rss-monitor v0.0.0
+	github.com/colophon-group/jobseek/apps/crawler/go/teamtailor-rss-monitor v0.0.0
+)
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/recruitee-monitor => ../recruitee-monitor
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/pinpoint-monitor => ../pinpoint-monitor
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/teamtailor-rss-monitor => ../teamtailor-rss-monitor
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/successfactors-rss-monitor => ../successfactors-rss-monitor
