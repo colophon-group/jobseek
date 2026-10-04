@@ -10,12 +10,13 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// GreenhouseHeaderReservation represents a literal resource-level HTTP header
-// opt-out checked before interpreting the API status or parsing its body.
+// GreenhouseHeaderReservation represents a positive resource-level opt-out
+// from the completed response's header or bounded HTML metadata.
 // It records evidence; policy URLs do not authorize retrieval or other actions.
 type GreenhouseHeaderReservation struct {
 	Endpoint  string
 	PolicyURL *string
+	Source    string
 }
 
 // FinishGreenhouseReservation handles both a pre-existing durable reservation
@@ -26,6 +27,9 @@ type GreenhouseHeaderReservation struct {
 func (a *Authority) FinishGreenhouseReservation(ctx context.Context, claim *Claim, observation *GreenhouseHeaderReservation) (*GreenhouseCycleResult, error) {
 	initial := ""
 	if observation != nil {
+		if observation.Source != "" && observation.Source != "header" && observation.Source != "meta" {
+			return nil, ErrConfiguration
+		}
 		initial = observation.Endpoint
 	}
 	return a.FinishGreenhouseReservationResource(ctx, claim, initial, observation)
@@ -43,7 +47,7 @@ func (a *Authority) FinishGreenhouseReservationResource(ctx context.Context, cla
 		return nil, err
 	}
 	if observation != nil {
-		if !initialMonitorResourceMatches(profile, initialEndpoint) || !validGreenhouseResponseResource(observation.Endpoint) {
+		if (observation.Source != "" && observation.Source != "header" && observation.Source != "meta") || !initialMonitorResourceMatches(profile, initialEndpoint) || !validGreenhouseResponseResource(observation.Endpoint) {
 			return nil, ErrConfiguration
 		}
 		if policy := observation.PolicyURL; policy != nil && (len(*policy) > 8192 || !utf8.ValidString(*policy) || strings.ContainsRune(*policy, 0)) {
@@ -61,7 +65,11 @@ func (a *Authority) FinishGreenhouseReservationResource(ctx context.Context, cla
 			return ErrConfiguration
 		}
 		if observation != nil {
-			evidence, err := json.Marshal(map[string]any{"url": observation.Endpoint, "source": "header", "policy_url": observation.PolicyURL, "observed_at": now.UTC().Format(time.RFC3339Nano)})
+			source := observation.Source
+			if source == "" {
+				source = "header"
+			}
+			evidence, err := json.Marshal(map[string]any{"url": observation.Endpoint, "source": source, "policy_url": observation.PolicyURL, "observed_at": now.UTC().Format(time.RFC3339Nano)})
 			if err != nil {
 				return ErrConfiguration
 			}

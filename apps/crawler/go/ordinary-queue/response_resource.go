@@ -19,6 +19,9 @@ func validGreenhouseResponseResource(resource string) bool {
 }
 
 func initialMonitorResourceMatches(profile GreenhouseMonitorProfile, resource string) bool {
+	if profile.Provider == "smartrecruiters" || profile.Provider == "workable" {
+		return APIMonitorResourceMatches(profile, resource)
+	}
 	if profile.Provider != "workday" {
 		return resource == profile.Endpoint
 	}

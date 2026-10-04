@@ -43,6 +43,7 @@ type GreenhouseResponse struct {
 	endpoint, finalURL string
 	status, bytes      int
 	reserved           bool
+	reservationSource  string
 	policy             *string
 }
 

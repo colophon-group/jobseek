@@ -17,8 +17,20 @@ built immutable images and completed deployment/promotion. Original source925 B0
 rollback restored all six legacy writers, removed receipts/projections and cleared
 all selectors at epoch172. Original source926 B0 activation then succeeded at
 epoch173, with source/image/receipt verification and all seven HTTP health endpoints
-passing. The larger ordinary JSON-LD/Workday cohort is awaiting fresh actual-route
-admission and original cold activation; configuration screening alone is insufficient.
+passing. Fresh canonical/cache and actual posting-route admission selected 4,792
+monitor boards and 1,099 detail boards (668 JSON-LD, 431 Workday), covering 850,181
+scheduled owned postings. This is admission coverage, not a completed-fetch count.
+Original combined activation succeeded after the standard legacy reaper recovered
+21 expired tokenless claims and dead-lettered one at its normal fifth strike;
+no retry-policy override or manual queue/ownership edit was used. All ten exact-image
+writers were independently running with `unless-stopped`, all eight HTTP endpoints
+passed, and both ownership receipts matched the SQL/Redis plan at epoch173.
+Natural processing then recorded nine settled details across both profiles, six
+new content receipts and no SQL/Redis deadline mismatch. Samples retained titles,
+locations and descriptions, including salary currency where present. The original
+full ordinary/B0 reversal precedes the next immutable API release.
+[Portable production evidence](evidence/go-native-combined-owner-2026-10-05.json)
+records source, identity, actual coverage and limits.
 
 v0.13.927 adds SmartRecruiters and Workable details through the existing native
 worker. It reuses their Go parsers, verified direct HTTP, canonical ownership,
@@ -43,6 +55,41 @@ enabled HTTP/browser profiles; then retire remaining mandatory Python consumers
 and runtime assets after complete replacement/reversal proof. The exporter and R2
 drain already execute in Go in production; reuse them. Avoid introducing another
 scheduler, ownership registry or persistence framework.
+
+## Native API monitor continuation — v0.13.928
+
+The existing ordinary worker now handles SmartRecruiters' default publication URLs
+and Workable's URL inventory in process. It calls the existing Go provider modules
+through verified HTTP, preserving pagination, bounded retries, opaque Workable
+page tokens and counted Markdown/public-API fallback. Complete inventories use the
+existing URL-only writer and schedule details separately. A later-page failure
+writes no partial inventory and never enters provider-gone handling. Positive
+header/meta reservations persist their actual resource, source and policy. Both
+providers retain the existing four-miss absence threshold and lifecycle settings.
+The sealed plan binds the full canonical configuration, including separate detail
+options; legacy Workday/monitor plan bytes remain compatible.
+
+SmartRecruiters opt-in requisition/location identity modes remain outside this
+URL-only profile; migrate their existing rich identity writer next. Browser or
+proxy monitor routes and unknown options retain their existing ownership. This
+candidate adds no scheduler, queue, ownership registry or persistence framework.
+
+Continue with one delivery list:
+
+1. Merge and deploy native API details/monitors through the required gates after
+   the complete outgoing reversal; reconcile all enabled canonical configurations
+   and actual posting routes, activate the eligible combined cohort, and verify
+   natural canonical fields, descriptions, deadlines and publisher policy.
+2. Wire existing Go sitemap, Join and Booking modules into the same native worker;
+   migrate remaining rich identity and configured HTTP/browser families using
+   existing Go extraction and the self-hosted Lightpanda service. Keep every
+   enabled board covered while completing replacement authority.
+3. Audit production scheduling, maintenance and deployment commands; replace any
+   remaining mandatory Python consumers with direct Go paths. Keep exporter/R2
+   drain on their existing Go implementations and retain useful offline Python.
+4. Verify the complete production lane, comparable resources and cold reversal;
+   after the rollback window, remove mandatory Python, Playwright/Chromium and
+   unused runtime assets. Full migration remains incomplete until these pass.
 
 ## Delivered source925 and cursor correction — 2026-10-04
 
