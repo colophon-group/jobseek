@@ -5,7 +5,7 @@ including retirement of production Python, Playwright and Chromium after
 replacement coverage and supported reversal are established. Useful isolated
 offline Python tools may remain. Preserve every enabled board.
 
-## Latest continuation — 2026-10-04, 10:58 UTC
+## Latest continuation — 2026-10-04, 11:08 UTC
 
 [PR #10267](https://github.com/colophon-group/jobseek/pull/10267) merged the
 v0.13.923 Workday monitor at source
@@ -13,9 +13,14 @@ v0.13.923 Workday monitor at source
 and installed-image parity passed at reviewed head
 `8c1bade44d083a73049a8f780514bbae62cc28da`.
 [Release build 37196598961](https://github.com/colophon-group/jobseek/actions/runs/37196598961)
-is advancing through the supported deployment workflow. Production remains
-v0.13.922 until incoming immutable images and supported cold reversal permit
-promotion; the merged monitor is not yet an active Workday owner.
+has built both immutable images. The full source922 cold reversal passed:
+original installed drivers retired ordinary ownership, restored 22 B0 details
+and cleared the exact selectors. Independent readback verifies all six legacy
+writers healthy and restart-armed, exact source/images, retained retired SQL
+plan, routing epoch 166, absent ownership receipts/projections and zero current
+active fences. The [portable reversal evidence](evidence/go-native-family922-restoration-2026-10-04.json)
+records this proof. The supported deployment is retrying after that reversal;
+the merged monitor is not yet an active Workday owner.
 
 Later natural v0.13.922 observations cover all eight admitted profiles and 526
 completed deadlines matching SQL and Redis. All five previously observed

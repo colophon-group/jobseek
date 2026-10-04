@@ -1,0 +1,37 @@
+{
+  "schema": "jobseek.native-crawler-restoration-evidence/v1",
+  "observed_at_utc": "2026-10-04T11:07:28.496751+00:00",
+  "source_revision": "b9e853a75d80cd2fa5d97d37ec58822259eedd4b",
+  "version": "0.13.922",
+  "identities": {
+    "JOBSEEK_DEPLOY_REVISION": "b9e853a75d80cd2fa5d97d37ec58822259eedd4b",
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:9fc252aba43eb6dd540e8d25dad37ec2a514f7f0554cdefe6463816d32be2a38",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:c7e4dc03afda522e6caea657bb13d14459c7031475b0f74fb50a714c613eb4b2"
+  },
+  "ordinary_members_before_retirement": 4297,
+  "b0_details_restored": 22,
+  "restored_writer_count": 6,
+  "health": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200
+  },
+  "canonical": {
+    "active_plans": 0,
+    "retained_plan_state": "retired",
+    "routing_epoch": 166,
+    "current_or_newer_active_fences": 0
+  },
+  "queue": {
+    "b0_producer_owner": 0,
+    "ordinary_projection": 0
+  },
+  "receipts_absent": true,
+  "selectors_cleared": true,
+  "live_administrative_containers": 0,
+  "method": "Original installed ordinary retirement, B0 rollback and exact selector clearing; independent read-only HTTP, container/image/restart, environment, SQL and Redis readback.",
+  "limit": "Proves supported cold reversal of source922; incoming923 ownership and full native detail/fleet coverage remain outstanding."
+}
