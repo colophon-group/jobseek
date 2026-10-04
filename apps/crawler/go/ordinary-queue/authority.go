@@ -55,6 +55,13 @@ var canonicalUUID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-
 // WithOrdinaryLeaseRetirement must surround every native lease-ending Redis
 // sweep/settlement, holding the database barrier through its acknowledgement.
 func WithOrdinaryLeaseRetirement(ctx context.Context, pool *pgxpool.Pool, fn func(context.Context) error) error {
+	if fn == nil {
+		return ErrConfiguration
+	}
+	return withOrdinaryLeaseRetirementTx(ctx, pool, func(ctx context.Context, _ pgx.Tx) error { return fn(ctx) })
+}
+
+func withOrdinaryLeaseRetirementTx(ctx context.Context, pool *pgxpool.Pool, fn func(context.Context, pgx.Tx) error) error {
 	if pool == nil || fn == nil {
 		return ErrConfiguration
 	}
@@ -64,7 +71,7 @@ func WithOrdinaryLeaseRetirement(ctx context.Context, pool *pgxpool.Pool, fn fun
 		if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", OrdinaryLeaseBarrier); err != nil {
 			return err
 		}
-		return fn(ctx)
+		return fn(ctx, tx)
 	})
 }
 

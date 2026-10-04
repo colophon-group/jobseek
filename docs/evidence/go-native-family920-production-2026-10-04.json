@@ -1,0 +1,67 @@
+{
+  "schema": "jobseek.go-native-migration-checkpoint/v1",
+  "observed_at_utc": "2026-10-04T06:38:34.581454+00:00",
+  "goal": "Deliver full crawler migration; retire mandatory production Python after native coverage and supported rollback window",
+  "status": "active; native ownership serving; deadline conservation follow-up failed",
+  "source_revision": "95bbabd78681be9046367a8ad6b3beba77a0e001",
+  "deployed_version": "0.13.920",
+  "deployment": {
+    "run_id": 37179937902,
+    "attempt": 2,
+    "conclusion": "success"
+  },
+  "images": {
+    "crawler": "ghcr.io/colophon-group/jobseek-crawler@sha256:11cf06b8b7e45c0d34213e44c517cb92ff66f0f950098b86e7d6deb9abe73a2a",
+    "browser": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:2138664ef64f86c7edb3c385dd5d67bbf3cf1d28bd1dd085fe25b3e8feb501ba"
+  },
+  "routing_epoch": 161,
+  "b0_members": 22,
+  "ordinary_ownership": {
+    "members": 4297,
+    "plan_sha256": "5fad1aa415753f7b7f2139d59cc8beed11d731fbaf2f6a7a22a03f85357bba2a",
+    "projection_sha1": "93116550f655ce5ae9f3ae241923e8f42488d367",
+    "profiles": {
+      "greenhouse": 2570,
+      "ashby": 934,
+      "lever": 194,
+      "recruitee": 114,
+      "pinpoint": 104,
+      "teamtailor_rss": 137,
+      "successfactors_rss": 197,
+      "personio": 47
+    }
+  },
+  "enabled_boards_preserved": 7885,
+  "remaining_python_workers": 4,
+  "deadline_proof": {
+    "initial_matches": 127,
+    "initial_mismatches": 0,
+    "followup_matches": 219,
+    "followup_mismatches": 4,
+    "failure": "Completed current-epoch SQL receipts retain canonical due times, but expired claims were requeued in Redis at retry-now scores.",
+    "next_action": "Fix normal Go lease reaper receipt recovery; prove conservation past normal lease expiry before expanding ownership."
+  },
+  "successful_by_profile": {
+    "ashby.token-skip/v1": 29,
+    "greenhouse.token-skip/v1": 160,
+    "lever.token-skip/v1": 4,
+    "personio.xml-skip/v1": 1,
+    "pinpoint.slug-skip/v1": 3,
+    "recruitee.api-skip/v1": 0,
+    "rss.successfactors-skip/v1": 19,
+    "rss.teamtailor-skip/v1": 8
+  },
+  "limitations": [
+    "Recruitee has no observed native success in this window.",
+    "Bounded stored HTML hash/upload-flag samples do not establish remote object-byte or whole-fleet output parity.",
+    "Instant resource snapshots do not establish comparable whole-lane resource/cost acceptance."
+  ],
+  "remaining_delivery": [
+    "native Workday multi-site/single-site monitor and detail, configured search/facet/site variants",
+    "remaining provider and generic HTTP/Lightpanda monitor/detail/browser profiles",
+    "mandatory production Python service/scheduling/deployment/maintenance consumers",
+    "canonical fields/database effects/publisher policy/description uploads/freshness/conservation across all enabled profiles",
+    "comparable whole-lane resources and attributable cost; supported cold reversal and observation window",
+    "retire Python/Playwright/Chromium runtime assets after replacement authority and rollback window"
+  ]
+}
