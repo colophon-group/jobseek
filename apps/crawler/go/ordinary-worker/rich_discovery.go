@@ -89,6 +89,9 @@ func richPage(ctx context.Context, client *http.Client, endpoint string, leverPa
 
 func DiscoverRichMonitor(ctx context.Context, client *http.Client, profile queue.GreenhouseMonitorProfile) (RichDiscovery, error) {
 	result := RichDiscovery{Jobs: []RichMonitorJob{}}
+	if profile.Profile == "personio.xml-skip/v1" {
+		return discoverPersonioRich(ctx, client, profile)
+	}
 	if profile.Profile == "rss.teamtailor-skip/v1" {
 		return discoverTeamtailorRich(ctx, client, profile)
 	}

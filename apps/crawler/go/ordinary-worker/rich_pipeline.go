@@ -20,7 +20,7 @@ func (p NativeRichPreparer) Prepare(ctx context.Context, job RichMonitorJob) (*q
 	if p.Processor == nil {
 		return nil, errors.New("native rich processor unavailable")
 	}
-	prepared, err := p.Processor.PrepareRichMonitor(ctx, executor.RichMonitorContent{Title: job.Title, Description: job.Description, Locations: job.Locations, Language: job.Language, EmploymentType: job.EmploymentType, JobLocationType: job.JobLocationType})
+	prepared, err := p.Processor.PrepareRichMonitor(ctx, executor.RichMonitorContent{Title: job.Title, Description: job.Description, Locations: job.Locations, Language: job.Language, LocalizedTitles: job.LocalizedTitles, LocalizationLocales: job.LocalizationLocales, EmploymentType: job.EmploymentType, JobLocationType: job.JobLocationType})
 	if err != nil {
 		return nil, err
 	}

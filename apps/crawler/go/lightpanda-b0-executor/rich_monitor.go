@@ -3,19 +3,21 @@ package executor
 import (
 	"context"
 	"errors"
+	"html"
 
 	enrichment "github.com/colophon-group/jobseek/apps/crawler/go/job-enrichment"
 )
 
 // RichMonitorContent supplies rich API monitor inputs to the existing board
-// writer contract. Extras, localizations and detail enrichment require their
-// processing contracts before profiles that emit them can be selected.
+// writer contract, including ordered localized titles and locale keys.
+// Description staging retains the primary scalar description contract.
 type RichMonitorContent struct {
-	Title, Description *string
-	Locations          []string
-	Language           any
-	EmploymentType     any
-	JobLocationType    any
+	Title, Description                   *string
+	Locations                            []string
+	Language                             any
+	LocalizedTitles, LocalizationLocales []string
+	EmploymentType                       any
+	JobLocationType                      any
 }
 
 // PrepareRichMonitor matches board._build_rich_new_records for this contract.
@@ -71,7 +73,24 @@ func (p *Processor) PrepareRichMonitor(ctx context.Context, content RichMonitorC
 	if prepared.Fields.Titles == nil {
 		prepared.Fields.Titles = []string{}
 	}
-	prepared.Fields.Locales = BuildLocales(language, detected)
+	for _, localized := range content.LocalizedTitles {
+		if localized == "" {
+			continue
+		}
+		decoded := html.UnescapeString(localized)
+		seen := false
+		for _, title := range prepared.Fields.Titles {
+			if title == decoded {
+				seen = true
+				break
+			}
+		}
+		if !seen {
+			prepared.Fields.Titles = append(prepared.Fields.Titles, decoded)
+		}
+	}
+	locales := append(append([]string{}, content.LocalizationLocales...), detected...)
+	prepared.Fields.Locales = BuildLocales(language, locales)
 	employment, err := CoerceText(content.EmploymentType)
 	if err != nil {
 		return nil, err

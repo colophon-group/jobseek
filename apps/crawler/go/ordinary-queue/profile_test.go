@@ -2,6 +2,7 @@ package queue
 
 import (
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -104,7 +105,7 @@ func TestGreenhouseProfileRejectsUnsupportedBeforeSelection(t *testing.T) {
 			config := profileConfig()
 			config[change.field] = change.value
 			profile, err := InspectGreenhouseMonitor(profileBoardID, config)
-			if !errors.Is(err, ErrUnsupportedProfile) || profile != (GreenhouseMonitorProfile{}) || strings.Contains(err.Error(), "secret") {
+			if !errors.Is(err, ErrUnsupportedProfile) || !reflect.DeepEqual(profile, GreenhouseMonitorProfile{}) || strings.Contains(err.Error(), "secret") {
 				t.Fatal("unsupported configuration admitted a partial profile or leaked source text")
 			}
 		})

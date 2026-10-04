@@ -18,6 +18,9 @@ func richResponseMatches(profile queue.GreenhouseMonitorProfile, endpoint string
 	if profile.Provider == "lever" {
 		return strings.HasPrefix(endpoint, strings.TrimSuffix(profile.Endpoint, "skip=0")+"skip=")
 	}
+	if profile.Profile == "personio.xml-skip/v1" {
+		return personioResponseMatches(profile, endpoint)
+	}
 	if profile.Profile != "rss.teamtailor-skip/v1" {
 		return false
 	}
@@ -34,9 +37,10 @@ func richResponseMatches(profile queue.GreenhouseMonitorProfile, endpoint string
 // Keep response provenance inside the sealed-client discovery path. The feed
 // parser receives this same client; it cannot create a transport or subprocess.
 type rssRichClient struct {
-	client   *http.Client
-	profile  queue.GreenhouseMonitorProfile
-	response *GreenhouseResponse
+	client    *http.Client
+	profile   queue.GreenhouseMonitorProfile
+	response  *GreenhouseResponse
+	responses []*GreenhouseResponse
 }
 
 func (c *rssRichClient) Do(request *http.Request) (*http.Response, error) {
@@ -54,6 +58,9 @@ func (c *rssRichClient) Do(request *http.Request) (*http.Response, error) {
 	}
 	reservation, policy := greenhouseHeaders(response.Header)
 	c.response = &GreenhouseResponse{endpoint: request.URL.String(), finalURL: response.Request.URL.String(), status: response.StatusCode, reserved: reservation == "1", policy: policy}
+	if c.profile.Provider == "personio" {
+		c.responses = append(c.responses, c.response)
+	}
 	// The parser's header lookup must see the same joined values as httpx;
 	// duplicate reservation flags must not turn into a single literal 1.
 	copy := *response

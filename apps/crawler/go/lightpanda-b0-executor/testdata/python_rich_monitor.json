@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "oracle": "Python src.processing.board._build_rich_new_records and rich description staging; standard Greenhouse token/skip plus rich employment/location-type inputs",
+  "oracle": "Python src.processing.board._build_rich_new_records and rich description staging; standard rich/skip, employment/location-type inputs and localized titles/locales",
   "occupations": {
     "software-engineer": 41,
     "data-engineer": 52
@@ -1102,6 +1102,229 @@
           ],
           [
             "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          [
+            4
+          ],
+          100000,
+          120000,
+          "CHF",
+          "yearly",
+          105000,
+          5.0,
+          null,
+          41,
+          7
+        ],
+        "description": {
+          "html": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+          "locale": "en",
+          "hash": 6763039431974022715
+        },
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          "en"
+        ]
+      }
+    },
+    {
+      "name": "localized_titles_deduplicate_after_decoding",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en",
+        "localizations": {
+          "en": {
+            "title": "Senior Software Engineer"
+          },
+          "de": {
+            "title": "Softwareentwickler &amp; Ingenieur",
+            "description": "<p>Alternative Beschreibung.</p>"
+          },
+          "fr": {
+            "title": "Softwareentwickler & Ingenieur"
+          },
+          "ja": {
+            "title": null
+          }
+        },
+        "localized_titles": [
+          "Senior Software Engineer",
+          "Softwareentwickler &amp; Ingenieur",
+          "Softwareentwickler & Ingenieur"
+        ],
+        "localization_locales": [
+          "en",
+          "de",
+          "fr",
+          "ja"
+        ]
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer",
+            "Softwareentwickler & Ingenieur"
+          ],
+          [
+            "en",
+            "de",
+            "fr",
+            "ja"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          [
+            4
+          ],
+          100000,
+          120000,
+          "CHF",
+          "yearly",
+          105000,
+          5.0,
+          null,
+          41,
+          7
+        ],
+        "description": {
+          "html": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+          "locale": "en",
+          "hash": 6763039431974022715
+        },
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          "en"
+        ]
+      }
+    },
+    {
+      "name": "localized_keys_precede_detected_languages",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "fr",
+        "localizations": {
+          "de": {
+            "title": "Entwickler"
+          },
+          "en": {
+            "title": "Senior Software Engineer"
+          }
+        },
+        "localized_titles": [
+          "Entwickler",
+          "Senior Software Engineer"
+        ],
+        "localization_locales": [
+          "de",
+          "en"
+        ]
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer",
+            "Entwickler"
+          ],
+          [
+            "fr",
+            "de",
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          [
+            4
+          ],
+          100000,
+          120000,
+          "CHF",
+          "yearly",
+          105000,
+          5.0,
+          null,
+          41,
+          7
+        ],
+        "description": {
+          "html": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+          "locale": "fr",
+          "hash": 6763039431974022715
+        },
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          "fr"
+        ]
+      }
+    },
+    {
+      "name": "localized_title_retains_whitespace",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<p>Python and Go. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en",
+        "localizations": {
+          "de": {
+            "title": "  Entwickler  "
+          },
+          "en": {
+            "title": "Senior Software Engineer"
+          }
+        },
+        "localized_titles": [
+          "  Entwickler  ",
+          "Senior Software Engineer"
+        ],
+        "localization_locales": [
+          "de",
+          "en"
+        ]
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer",
+            "  Entwickler  "
+          ],
+          [
+            "en",
+            "de"
           ],
           [
             2

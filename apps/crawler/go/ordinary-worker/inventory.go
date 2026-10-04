@@ -9,13 +9,14 @@ import (
 )
 
 type RichMonitorJob struct {
-	URL                             string
-	Title, Description              *string
-	Locations                       []string
-	Language                        any
-	DatePosted                      any
-	Metadata                        map[string]any
-	EmploymentType, JobLocationType any
+	URL                                  string
+	Title, Description                   *string
+	Locations                            []string
+	Language                             any
+	LocalizedTitles, LocalizationLocales []string
+	DatePosted                           any
+	Metadata                             map[string]any
+	EmploymentType, JobLocationType      any
 }
 
 type GreenhouseInventory struct {
