@@ -181,6 +181,29 @@ func TestLivePosterHonorsReservationWithoutRetry(t *testing.T) {
 	}
 }
 
+type unreadableReservedBody struct{ closed bool }
+
+func (*unreadableReservedBody) Read([]byte) (int, error) {
+	panic("reserved response body must not be read")
+}
+func (b *unreadableReservedBody) Close() error { b.closed = true; return nil }
+
+func TestLivePosterReservationPrecedesEveryStatusAndBodyRead(t *testing.T) {
+	for _, status := range []int{200, 404, 503} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			body := &unreadableReservedBody{}
+			poster := testPoster(t, func(*http.Request) (*http.Response, error) {
+				return &http.Response{StatusCode: status, Body: body, Header: http.Header{"Tdm-Reservation": []string{"1"}}}, nil
+			})
+			_, err := poster.Post(context.Background(), poster.listURL, nil)
+			var reservation *ReservationError
+			if !errors.As(err, &reservation) || poster.Requests != 1 || poster.Bytes != 0 || !body.closed {
+				t.Fatal("reservation became status, retry or body outcome", err)
+			}
+		})
+	}
+}
+
 func TestLivePosterFailsFastOnNonRetryableStatus(t *testing.T) {
 	poster := testPoster(t, func(*http.Request) (*http.Response, error) {
 		return liveResponse(403, "denied", nil), nil

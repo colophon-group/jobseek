@@ -17,3 +17,23 @@ func validGreenhouseResponseResource(resource string) bool {
 	parsed, err := url.Parse(resource)
 	return err == nil && (parsed.Scheme == "http" || parsed.Scheme == "https") && parsed.Hostname() != "" && parsed.User == nil && parsed.Opaque == "" && parsed.String() == resource
 }
+
+func initialMonitorResourceMatches(profile GreenhouseMonitorProfile, resource string) bool {
+	if profile.Provider != "workday" {
+		return resource == profile.Endpoint
+	}
+	u, err := url.Parse(resource)
+	if err != nil || !validGreenhouseResponseResource(resource) || u.Scheme != "https" || u.RawQuery != "" || u.Fragment != "" || u.RawPath != "" {
+		return false
+	}
+	endpoint, err := url.Parse(profile.Endpoint)
+	if err != nil || u.Host != endpoint.Host {
+		return false
+	}
+	if u.Path == "/robots.txt" {
+		return true
+	}
+	p := strings.Split(strings.TrimPrefix(u.Path, "/"), "/")
+	base := strings.Split(strings.TrimPrefix(endpoint.Path, "/"), "/")
+	return len(p) == 5 && len(base) == 5 && p[0] == "wday" && p[1] == "cxs" && p[2] == base[2] && greenhouseToken.MatchString(p[3]) && p[4] == "jobs"
+}

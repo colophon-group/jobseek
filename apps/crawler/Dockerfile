@@ -63,6 +63,7 @@ WORKDIR /workspace/apps/crawler/go/typesense-exporter
 COPY contracts/ /workspace/apps/crawler/contracts/
 COPY go/typesense-exporter/ ./
 COPY go/ordinary-queue/ ../ordinary-queue/
+COPY go/workday-monitor/ ../workday-monitor/
 COPY src/lua/ /workspace/apps/crawler/src/lua/
 RUN go test ./... \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \

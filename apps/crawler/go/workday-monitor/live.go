@@ -254,15 +254,16 @@ func (p *LivePoster) Post(ctx context.Context, rawURL string, body []byte) ([]by
 			lastStatus = response.StatusCode
 			reservation := strings.TrimSpace(response.Header.Get("TDM-Reservation"))
 			reserved, parseErr := strconv.Atoi(reservation)
-			if response.StatusCode == http.StatusOK && parseErr == nil && reserved == 1 {
-				content, _ := io.ReadAll(response.Body)
-				p.count(0, 0, 0, int64(len(content)))
+			if parseErr == nil && reserved == 1 {
 				response.Body.Close()
 				return nil, &ReservationError{URL: rawURL, PolicyURL: response.Header.Get("TDM-Policy")}
 			}
-			content, readErr := io.ReadAll(response.Body)
+			content, readErr := io.ReadAll(io.LimitReader(response.Body, 64<<20+1))
 			response.Body.Close()
 			p.count(0, 0, 0, int64(len(content)))
+			if len(content) > 64<<20 {
+				return nil, &FetchError{URL: rawURL, Attempts: attempt + 1, Kind: "body_limit"}
+			}
 			if readErr != nil {
 				lastStatus = 0
 				lastError = readErr

@@ -222,3 +222,46 @@ func (c *GreenhouseCycle) WriteURLOnlyBatch(ctx context.Context, urls []string) 
 	}
 	return result, nil
 }
+
+// EnqueueURLDetail requires an earlier committed URL from this live cycle and
+// checks its fresh canonical due/content/owner before publishing queue config.
+// A concurrent completed detail makes the stale intent unnecessary.
+func (c *GreenhouseCycle) EnqueueURLDetail(ctx context.Context, detail URLOnlyDetail) (bool, error) {
+	if c == nil || c.authority == nil {
+		return false, ErrConfiguration
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.done || c.failed || !c.identities[detail.URL] || !canonicalUUID.MatchString(detail.ID) || !canonicalUUID.MatchString(detail.BoardID) {
+		return false, ErrConfiguration
+	}
+	added := false
+	_, err := c.authority.Write(ctx, c.claim, false, func(ctx context.Context, tx pgx.Tx) error {
+		var reserved bool
+		if err := tx.QueryRow(ctx, "SELECT tdm_reserved FROM job_board WHERE id=$1::uuid", c.claim.task.ID).Scan(&reserved); err != nil {
+			return err
+		}
+		if reserved {
+			return ErrPublisherReserved
+		}
+		var current URLOnlyDetail
+		err := tx.QueryRow(ctx, `SELECT p.id::text,p.board_id::text,p.source_url,p.description_r2_hash,p.next_scrape_at,b.scraper_needs_browser
+ FROM job_posting p JOIN job_board b ON b.id=p.board_id
+ WHERE p.id=$1::uuid AND p.board_id=$2::uuid AND p.source_url=$3 AND p.is_active AND NOT b.tdm_reserved
+ AND p.next_scrape_at=$4 AND p.description_r2_hash IS NOT DISTINCT FROM $5::bigint
+ FOR SHARE OF p,b`, detail.ID, detail.BoardID, detail.URL, detail.Due, detail.DescriptionHash).Scan(&current.ID, &current.BoardID, &current.URL, &current.DescriptionHash, &current.Due, &current.Browser)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		added, err = c.authority.queue.EnqueueURLDetail(ctx, current)
+		return err
+	})
+	if err != nil {
+		c.failed = true
+		return false, err
+	}
+	return added, nil
+}

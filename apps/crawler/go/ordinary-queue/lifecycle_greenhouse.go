@@ -310,8 +310,26 @@ func lifecycleInteger(value any) (int64, error) {
 }
 
 func (c *GreenhouseCycle) markGone(ctx context.Context, tx pgx.Tx, md map[string]any, discovered int, complete bool) (int, string, error) {
+	threshold, dropThreshold := 1, 0.3
+	if c.claim.task.Config["crawler_type"] == "workday" {
+		var err error
+		threshold, err = workdayDelistThreshold(md["delist_threshold"])
+		if err != nil {
+			return 0, "", err
+		}
+		dropThreshold, err = workdayLifecycleSetting(md["drop_threshold"], 0.3)
+		if err != nil {
+			return 0, "", err
+		}
+	}
 	blastFloor := 0.5
-	if raw := md["blast_radius_floor"]; raw != nil {
+	if c.claim.task.Config["crawler_type"] == "workday" {
+		var err error
+		blastFloor, err = workdayLifecycleSetting(md["blast_radius_floor"], 0.5)
+		if err != nil {
+			return 0, "", err
+		}
+	} else if raw := md["blast_radius_floor"]; raw != nil {
 		value, ok := raw.(json.Number)
 		if !ok {
 			return 0, "", ErrConfiguration
@@ -352,7 +370,7 @@ func (c *GreenhouseCycle) markGone(ctx context.Context, tx pgx.Tx, md map[string
 		if len(values)%2 == 0 {
 			median = (values[len(values)/2-1] + median) / 2
 		}
-		if median > 0 && float64(discovered) < median*0.7 {
+		if median > 0 && float64(discovered) < median*(1-dropThreshold) {
 			skip = "drop"
 		}
 	}
@@ -401,7 +419,7 @@ func (c *GreenhouseCycle) markGone(ctx context.Context, tx pgx.Tx, md map[string
 			}
 			patch["_confirmed_drop_candidate"] = map[string]any{"inventory_fingerprint": inventory, "config_fingerprint": config, "discovered": discovered, "confirmations": confirmations}
 			if confirmations >= 3 && missing <= 5000 {
-				gone, err := c.countReturned(ctx, tx, "missing", c.claim.task.ID, c.startedAt, 1)
+				gone, err := c.countReturned(ctx, tx, "missing", c.claim.task.ID, c.startedAt, threshold)
 				if err != nil {
 					return 0, "", err
 				}
@@ -413,7 +431,7 @@ func (c *GreenhouseCycle) markGone(ctx context.Context, tx pgx.Tx, md map[string
 		}
 		return 0, skip, c.patch(ctx, tx, patch)
 	}
-	gone, err := c.countReturned(ctx, tx, "missing", c.claim.task.ID, c.startedAt, 1)
+	gone, err := c.countReturned(ctx, tx, "missing", c.claim.task.ID, c.startedAt, threshold)
 	if err != nil {
 		return 0, "", err
 	}
