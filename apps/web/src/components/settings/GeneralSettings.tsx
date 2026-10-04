@@ -48,7 +48,7 @@ export function GeneralSettings({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const params = useParams();
-  const { isLoggedIn } = useSession();
+  const { isLoggedIn, isPending } = useSession();
   const currentLocale = (params.lang as string) ?? serverLocale;
   const [mounted, setMounted] = useState(false);
   const [jobLanguages, setJobLanguages] = useState(savedJobLanguages);
@@ -77,7 +77,7 @@ export function GeneralSettings({
     confirmed?: () => void,
     failure: "error" | "locale-error" = "error",
   ) {
-    if (pending.current) return;
+    if (isPending || pending.current) return;
     pending.current = true;
     setSaveState("saving");
     apply();
@@ -181,6 +181,11 @@ export function GeneralSettings({
                 onClick={() => {
                   const previous = theme;
                   const now = new Date().toISOString();
+                  if (isPending) {
+                    setTheme(value);
+                    localPrefs.themeTimestamp.set(now);
+                    return;
+                  }
                   void save(
                     { theme: value, themeUpdatedAt: now },
                     () => setTheme(value),
@@ -472,7 +477,7 @@ export function GeneralSettings({
           </>
         )}
       </p>
-      {!isLoggedIn && (
+      {!isPending && !isLoggedIn && (
         <p className="mt-2 text-xs text-muted">
           <Trans
             id="settings.preferences.local"

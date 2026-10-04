@@ -388,6 +388,12 @@ msgstr "Konto"
 msgid "app.header.avatar.label"
 msgstr "Kontomenü"
 
+#. Account status when the account cannot currently be loaded
+#. js-lingui-explicit-id
+#: src/components/AppHeader.tsx
+msgid "app.header.account.unavailable"
+msgstr "Konto nicht verfügbar"
+
 #. Active subscription status
 #. js-lingui-explicit-id
 #: src/components/settings/BillingSettings.tsx
@@ -4664,6 +4670,12 @@ msgstr "Setze oben die E-Mail-Benachrichtigungen fort, um deine Watchlist-Auswah
 #: src/components/settings/GeneralSettings.tsx
 msgid "common.actions.retry"
 msgstr "Erneut versuchen"
+
+#. Button to try loading the account again after a temporary failure
+#. js-lingui-explicit-id
+#: src/components/AppHeader.tsx
+msgid "app.header.account.retry"
+msgstr "Konto erneut laden"
 
 #. Public marketing page: tracker_proofBody
 #. js-lingui-explicit-id

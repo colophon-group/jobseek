@@ -11,7 +11,7 @@ import "@/test-utils/lingui-mock";
 
 const pushMock = vi.fn();
 const createWatchlistMock = vi.fn();
-const sessionMock = vi.hoisted(() => ({ isLoggedIn: true }));
+const sessionMock = vi.hoisted(() => ({ isLoggedIn: true, isPending: false }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
@@ -31,6 +31,7 @@ vi.mock("@/components/providers/SessionProvider", () => ({
   useSession: () => ({
     user: sessionMock.isLoggedIn ? { username: "alice" } : null,
     isLoggedIn: sessionMock.isLoggedIn,
+    isPending: sessionMock.isPending,
   }),
 }));
 
@@ -45,8 +46,21 @@ describe("SaveSearchButton (issue #3036)", () => {
     pushMock.mockReset();
     createWatchlistMock.mockReset();
     sessionMock.isLoggedIn = true;
+    sessionMock.isPending = false;
     window.sessionStorage.clear();
     window.history.replaceState({}, "", "/en/explore?q=engineer&loc=switzerland");
+  });
+
+  it("does not stage an anonymous search or write an account while identity is unresolved", () => {
+    sessionMock.isLoggedIn = false;
+    sessionMock.isPending = true;
+    render(<SaveSearchButton keywords={["engineer"]} locations={[]} occupations={[]} seniorities={[]} />);
+    const button = screen.getByRole("button", { name: /save this search/i });
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(button);
+    expect(window.sessionStorage.length).toBe(0);
+    expect(createWatchlistMock).not.toHaveBeenCalled();
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
   it("stages the filtered search without forcing an immediate sign-in", async () => {

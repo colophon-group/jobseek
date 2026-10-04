@@ -14,12 +14,20 @@ export type SessionUser = {
   displayUsername?: string | null;
 };
 
+export type AccountStatus = "pending" | "ready" | "unavailable";
+
 type SessionContextValue = {
   user: SessionUser | null;
   plan: PlanId;
   preferences: AppPreferences | null;
   isLoggedIn: boolean;
+  /** Identity is unresolved; consumers must not use anonymous write/import paths. */
   isPending: boolean;
+  accountStatus: AccountStatus;
+  isRefreshing: boolean;
+  canRetry: boolean;
+  retry: () => Promise<void>;
+  invalidate: () => void;
   /**
    * Re-fetch the session payload from the server and update the
    * SessionProvider state in place. Use after a server-side mutation
@@ -41,6 +49,11 @@ const SessionContext = createContext<SessionContextValue>({
   preferences: null,
   isLoggedIn: false,
   isPending: true,
+  accountStatus: "pending",
+  isRefreshing: false,
+  canRetry: false,
+  retry: async () => {},
+  invalidate: () => {},
   refresh: async () => {},
 });
 
@@ -50,6 +63,11 @@ export function SessionProvider({
   preferences = null,
   isPending = false,
   refresh,
+  accountStatus = isPending ? "pending" : "ready",
+  isRefreshing = false,
+  canRetry = false,
+  retry,
+  invalidate,
   children,
 }: {
   user: SessionUser | null;
@@ -57,6 +75,11 @@ export function SessionProvider({
   preferences?: AppPreferences | null;
   isPending?: boolean;
   refresh?: () => Promise<void>;
+  accountStatus?: AccountStatus;
+  isRefreshing?: boolean;
+  canRetry?: boolean;
+  retry?: () => Promise<void>;
+  invalidate?: () => void;
   children: ReactNode;
 }) {
   return (
@@ -67,6 +90,11 @@ export function SessionProvider({
         preferences,
         isLoggedIn: Boolean(user),
         isPending,
+        accountStatus,
+        isRefreshing,
+        canRetry,
+        retry: retry ?? (async () => {}),
+        invalidate: invalidate ?? (() => {}),
         refresh: refresh ?? (async () => {}),
       }}
     >

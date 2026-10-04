@@ -6,7 +6,7 @@ import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Compass, Briefcase, Eye, Settings, LogIn, LogOut } from "lucide-react";
+import { Compass, Briefcase, Eye, Settings, LogIn, LogOut, RotateCw } from "lucide-react";
 import { siteConfig } from "@/content/config";
 import { ThemedImage } from "@/components/ThemedImage";
 import { useLocalePath } from "@/lib/useLocalePath";
@@ -49,7 +49,7 @@ function BottomBarLink({ href, label, children }: { href: string; label: string;
 export function AppHeader() {
   const { t } = useLingui();
   const lp = useLocalePath();
-  const { isLoggedIn, user, isPending } = useSession();
+  const { isLoggedIn, user, isPending, accountStatus, isRefreshing, canRetry, retry, invalidate } = useSession();
 
   const appHref = lp(siteConfig.nav.app.href);
 
@@ -60,6 +60,7 @@ export function AppHeader() {
 
 
   async function handleSignOut() {
+    invalidate();
     await authClient.signOut();
     // Manually clear session cookies — better-auth's nextCookies() plugin
     // uses cookies().set(name, "", {maxAge:0}) which can silently fail in
@@ -70,6 +71,30 @@ export function AppHeader() {
     document.cookie = "__Secure-better-auth.session_data=; Max-Age=0; Path=/; Secure";
     window.location.href = lp("/explore");
   }
+
+  const retryLabel = t({
+    id: "app.header.account.retry",
+    comment: "Button to try loading the account again after a temporary failure",
+    message: "Retry account",
+  });
+  const unavailableLabel = t({
+    id: "app.header.account.unavailable",
+    comment: "Account status when the account cannot currently be loaded",
+    message: "Account unavailable",
+  });
+  const accountRetry = (
+    <button
+      type="button"
+      onClick={() => { void retry(); }}
+      disabled={!canRetry || isRefreshing}
+      aria-label={retryLabel}
+      title={unavailableLabel}
+      className="flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-md p-1.5 text-[9px] leading-[10px] text-foreground hover:bg-border-soft disabled:opacity-50 cursor-pointer disabled:cursor-default md:flex-row md:gap-1.5 md:text-xs md:leading-normal"
+    >
+      <RotateCw size={16} aria-hidden="true" />
+      <span className="line-clamp-2 text-center">{retryLabel}</span>
+    </button>
+  );
 
   const avatarButton = (
     <button
@@ -100,6 +125,14 @@ export function AppHeader() {
         {user?.name && <p className="text-sm font-semibold">{user.name}</p>}
         <p className="text-xs text-muted">{user?.email}</p>
       </div>
+      {accountStatus === "unavailable" && (
+        <div className="px-2 py-1.5">
+          <p role="status" className="text-xs text-muted">{unavailableLabel}</p>
+          <DropdownMenu.Item asChild disabled={!canRetry || isRefreshing}>
+            {accountRetry}
+          </DropdownMenu.Item>
+        </div>
+      )}
       <DropdownMenu.Separator className="my-1 h-px bg-border-soft" />
       <DropdownMenu.Item
         className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-border-soft"
@@ -161,7 +194,9 @@ export function AppHeader() {
 
           {/* Auth area (desktop only) */}
           <div className="hidden items-center md:flex">
-            {isPending ? (
+            {accountStatus === "unavailable" && !user ? (
+              accountRetry
+            ) : isPending ? (
               <div className="h-8 w-8 rounded-full bg-muted/30 animate-pulse" />
             ) : isLoggedIn && user ? (
               <DropdownMenu.Root>
@@ -197,7 +232,9 @@ export function AppHeader() {
           <Settings size={20} />
         </BottomBarLink>
         <span className="flex h-full min-w-0 flex-1">
-          {isPending ? (
+          {accountStatus === "unavailable" && !user ? (
+            <span className="flex h-full min-w-0 flex-1 items-center justify-center">{accountRetry}</span>
+          ) : isPending ? (
             <span className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-1">
               <span className="size-6 rounded-full bg-muted/30 animate-pulse" />
               <span className="h-3 w-10 rounded bg-muted/30 animate-pulse" />

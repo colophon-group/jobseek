@@ -25,9 +25,18 @@ describe("anonymous app navigation Server Action contract (#2640)", () => {
 
   it("keeps the shared app layout cache-safe and resolves the login hint in the browser", () => {
     expect(appLayout).not.toContain('from "next/headers"');
-    expect(appLayout).not.toContain("cookies()");
+    expect(appLayout).not.toMatch(
+      /from\s+["']@\/lib\/(?:actions\/bootstrap|client-cookies|sessionCache)["']/u,
+    );
+    expect(appLayout).not.toMatch(
+      /\b(?:cookies|headers|fetchAppBootstrap|hasLoggedInHint|readCookieValue|getSession(?:UserId)?)\s*\(/u,
+    );
+    expect(bootstrapProvider).toMatch(/^["']use client["'];/u);
+    expect(bootstrapProvider).not.toContain('from "next/headers"');
     expect(bootstrapProvider).toContain("hasLoggedInHint()");
-    expect(bootstrapProvider).toContain("window.setTimeout");
+    // AppBootstrapProvider.test.tsx verifies the mounted absent-hint zero-RPC
+    // behavior, bounded timeout/manual retry, Strict Mode replay, and stale
+    // identity races. Timer spelling does not establish this layout contract.
   });
 
   it("does not import or invoke a Server Action from SalaryDisplayProvider on mount", () => {

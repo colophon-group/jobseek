@@ -388,6 +388,12 @@ msgstr "Compte"
 msgid "app.header.avatar.label"
 msgstr "Menu du compte"
 
+#. Account status when the account cannot currently be loaded
+#. js-lingui-explicit-id
+#: src/components/AppHeader.tsx
+msgid "app.header.account.unavailable"
+msgstr "Compte indisponible"
+
 #. Active subscription status
 #. js-lingui-explicit-id
 #: src/components/settings/BillingSettings.tsx
@@ -4664,6 +4670,12 @@ msgstr "Réactive les notifications par e-mail ci-dessus pour modifier tes choix
 #: src/components/settings/GeneralSettings.tsx
 msgid "common.actions.retry"
 msgstr "Réessayer"
+
+#. Button to try loading the account again after a temporary failure
+#. js-lingui-explicit-id
+#: src/components/AppHeader.tsx
+msgid "app.header.account.retry"
+msgstr "Recharger le compte"
 
 #. Public marketing page: tracker_proofBody
 #. js-lingui-explicit-id
