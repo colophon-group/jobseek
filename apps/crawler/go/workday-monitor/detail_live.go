@@ -55,7 +55,12 @@ func (e *DetailFetchError) Error() string {
 
 func (e *DetailFetchError) Unwrap() error { return e.Cause }
 
-func workdayDetailAPIURL(rawURL string) (string, string, error) {
+// DetailAPIURL resolves the bounded canonical source identity without fetching.
+// A caller must still validate canonical ownership and use its sealed transport.
+func DetailAPIURL(rawURL string) (string, string, error) {
+	if len(rawURL) > 8192 || strings.ContainsRune(rawURL, 0) {
+		return "", "", errors.New("Workday detail source URL exceeds its identity boundary")
+	}
 	parsed, err := url.Parse(rawURL)
 	if err != nil || parsed.Scheme != "https" || parsed.User != nil || parsed.Port() != "" || parsed.RawQuery != "" || parsed.Fragment != "" {
 		return "", "", errors.New("Workday detail URL is not a canonical HTTPS job URL")
@@ -108,7 +113,7 @@ func fetchWorkdayDetail(
 	ctx context.Context, rawURL string, aliases []string, client *http.Client,
 	sleep func(context.Context, time.Duration) error, random func() float64,
 ) (DetailFetchResult, error) {
-	apiURL, tenant, err := workdayDetailAPIURL(rawURL)
+	apiURL, tenant, err := DetailAPIURL(rawURL)
 	if err != nil {
 		return DetailFetchResult{}, err
 	}

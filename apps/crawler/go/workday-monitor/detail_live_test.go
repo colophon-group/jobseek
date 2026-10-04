@@ -22,11 +22,11 @@ func detailResponse(status int, body string) *http.Response {
 
 func TestWorkdayDetailURLGuards(t *testing.T) {
 	good := "https://tenant.wd5.myworkdayjobs.com/en-US/External/job/Engineer/JR001"
-	api, tenant, err := workdayDetailAPIURL(good)
+	api, tenant, err := DetailAPIURL(good)
 	if err != nil || api != "https://tenant.wd5.myworkdayjobs.com/wday/cxs/tenant/External/job/Engineer/JR001" || tenant != "tenant" {
 		t.Fatalf("API URL = %q, tenant = %q, error = %v", api, tenant, err)
 	}
-	escaped, _, err := workdayDetailAPIURL("https://tenant.wd5.myworkdayjobs.com/External/job/Senior%20Engineer/JR001")
+	escaped, _, err := DetailAPIURL("https://tenant.wd5.myworkdayjobs.com/External/job/Senior%20Engineer/JR001")
 	if err != nil || escaped != "https://tenant.wd5.myworkdayjobs.com/wday/cxs/tenant/External/job/Senior%20Engineer/JR001" {
 		t.Fatalf("escaped API URL = %q, error = %v", escaped, err)
 	}
@@ -37,7 +37,7 @@ func TestWorkdayDetailURLGuards(t *testing.T) {
 		"https://tenant.wd5.myworkdayjobs.com/External/job/../admin",
 		"https://tenant.wd5.myworkdayjobs.com/External/job/JR001%2Fadmin",
 	} {
-		if _, _, err := workdayDetailAPIURL(raw); err == nil {
+		if _, _, err := DetailAPIURL(raw); err == nil {
 			t.Errorf("accepted unsafe URL %q", raw)
 		}
 	}
