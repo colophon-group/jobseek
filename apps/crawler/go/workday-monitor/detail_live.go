@@ -131,6 +131,11 @@ func fetchWorkdayDetail(
 		}
 		result.Responses++
 		result.Status = response.StatusCode
+		if strings.TrimSpace(response.Header.Get("TDM-Reservation")) == "1" {
+			response.Body.Close()
+			result.TDMPolicy = response.Header.Get("TDM-Policy")
+			return result, &ReservationError{URL: apiURL, PolicyURL: result.TDMPolicy}
+		}
 		body, readErr := io.ReadAll(io.LimitReader(response.Body, maxDetailBody+1))
 		response.Body.Close()
 		result.Bytes += int64(len(body))
@@ -139,10 +144,6 @@ func fetchWorkdayDetail(
 		}
 		if len(body) > maxDetailBody {
 			return result, &DetailFetchError{Status: response.StatusCode, Kind: "body_limit", Attempts: attempt, BodyLength: len(body), Cause: errors.New("Workday detail exceeds body limit")}
-		}
-		if strings.TrimSpace(response.Header.Get("TDM-Reservation")) == "1" {
-			result.TDMPolicy = response.Header.Get("TDM-Policy")
-			return result, &ReservationError{URL: apiURL, PolicyURL: result.TDMPolicy}
 		}
 		if response.StatusCode == http.StatusNotFound || response.StatusCode == http.StatusForbidden && workdayS22(body) {
 			result.Gone = true

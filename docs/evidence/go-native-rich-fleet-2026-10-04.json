@@ -1,0 +1,98 @@
+{
+  "schema": "jobseek.native-ordinary-production-checkpoint/v1",
+  "observed_at_utc": "2026-10-04T10:09:05.066025+00:00",
+  "version": "0.13.922",
+  "source_revision": "b9e853a75d80cd2fa5d97d37ec58822259eedd4b",
+  "pr": "https://github.com/colophon-group/jobseek/pull/10266",
+  "deployment_run": "https://github.com/colophon-group/jobseek/actions/runs/37191413222",
+  "images": {
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:9fc252aba43eb6dd540e8d25dad37ec2a514f7f0554cdefe6463816d32be2a38",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:c7e4dc03afda522e6caea657bb13d14459c7031475b0f74fb50a714c613eb4b2",
+    "JOBSEEK_DEPLOY_REVISION": "b9e853a75d80cd2fa5d97d37ec58822259eedd4b"
+  },
+  "routing_epoch": 165,
+  "ordinary_plan_sha256": "c21c68703c04cee6d50ea83b32f9593a3d99cafe34674c37c00339b7dbce093a",
+  "ordinary_projection_sha1": "05e13055b49a0026fb097d96ed03286cf4342a7c",
+  "ordinary_members": 4297,
+  "b0_members": 22,
+  "b0_receipt_sha256": "d3f03e6e1644387bc7c55b48ca88e10e11f459e8a361778e473c6aef7cd872f2",
+  "health_status": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200,
+    "lightpanda-claimant": 204,
+    "ordinary-go": 204
+  },
+  "restart_armed_writers": 10,
+  "native_started_at": "2026-10-04T09:58:45.255450+00:00",
+  "completed_by_profile": {
+    "ashby.token-skip/v1": 27,
+    "greenhouse.token-skip/v1": 159,
+    "lever.token-skip/v1": 26,
+    "personio.xml-skip/v1": 0,
+    "pinpoint.slug-skip/v1": 26,
+    "recruitee.api-skip/v1": 20,
+    "rss.successfactors-skip/v1": 14,
+    "rss.teamtailor-skip/v1": 0
+  },
+  "successful_by_profile": {
+    "ashby.token-skip/v1": 27,
+    "greenhouse.token-skip/v1": 157,
+    "lever.token-skip/v1": 25,
+    "personio.xml-skip/v1": 0,
+    "pinpoint.slug-skip/v1": 26,
+    "recruitee.api-skip/v1": 20,
+    "rss.successfactors-skip/v1": 14,
+    "rss.teamtailor-skip/v1": 0
+  },
+  "matching_settled_deadlines": 267,
+  "deadline_mismatches": 0,
+  "ordinary_metrics": [
+    "jobseek_ordinary_go_ready 1",
+    "jobseek_ordinary_go_active_claims 4",
+    "jobseek_ordinary_go_claim_errors_total 0",
+    "crawler_tasks_total{kind=\"monitor\",status=\"failed\"} 1",
+    "crawler_tasks_total{kind=\"monitor\",status=\"gone\"} 2",
+    "crawler_tasks_total{kind=\"monitor\",status=\"succeeded\"} 264",
+    "crawler_tasks_total{kind=\"monitor\",status=\"unacknowledged\"} 5",
+    "crawler_runtime_origin_attempts_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 323",
+    "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"response\"} 323",
+    "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"transport_error\"} 0",
+    "crawler_runtime_response_body_bytes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 82370219",
+    "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"success\"} 270",
+    "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"error\"} 2",
+    "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"cancelled\"} 0",
+    "crawler_runtime_output_items_total{stage=\"monitor\",implementation=\"go\"} 25821",
+    "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"new\"} 1",
+    "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"relisted\"} 0",
+    "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"gone\"} 3",
+    "jobseek_ordinary_go_posting_touches_total 23059"
+  ],
+  "processing_diagnostics": [
+    [
+      "posting_write",
+      "deadline"
+    ]
+  ],
+  "natural_field_sample_count": 22,
+  "resource_snapshot": [
+    "deploy-lightpanda-claimant-1|1.32%|8.141MiB / 96MiB|9",
+    "deploy-browser-1-1|283.86%|2.375GiB / 6GiB|406",
+    "deploy-worker-1-1|93.70%|243.2MiB / 1GiB|35",
+    "deploy-worker-3-1|93.48%|228.5MiB / 1GiB|39",
+    "deploy-worker-2-1|35.82%|238.7MiB / 1GiB|47",
+    "deploy-lightpanda-executor-1|0.00%|36.52MiB / 384MiB|9",
+    "deploy-lightpanda-producer-1|5.07%|9.656MiB / 32MiB|13",
+    "deploy-drain-1|0.08%|7.652MiB / 256MiB|12",
+    "deploy-exporter-1|0.22%|67.23MiB / 256MiB|14",
+    "deploy-ordinary-go-1|100.73%|145.2MiB / 1GiB|10",
+    "deploy-alloy-1|1.19%|140.5MiB / 512MiB|9",
+    "deploy-redis-1|1.42%|1.401GiB / 4GiB|6"
+  ],
+  "measurement_limit": "Resource snapshots are not comparable whole-lane CPU/RAM/density/cost evidence. Some admitted profiles have not run naturally yet. Unacknowledged runs remain under observation; no forced faults or scheduling.",
+  "rollback_proof": "Prior source921 full supported ordinary/B0 retirement and all-six legacy writer restart-arming verified before deploying922. Expanded source922 cold reversal remains due before the next promotion.",
+  "next_delivery": "Workday URL monitor candidate admits495/496 current canonical/cache profiles; detail execution remains legacy. Full migration remains active."
+}

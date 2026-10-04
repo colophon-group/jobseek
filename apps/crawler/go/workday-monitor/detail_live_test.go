@@ -99,3 +99,28 @@ func TestFetchWorkdayDetailReservation(t *testing.T) {
 		t.Fatalf("result=%+v error=%v", result, err)
 	}
 }
+
+func TestWorkdayDetailReservationPrecedesBodyAndGone(t *testing.T) {
+	for _, status := range []int{200, 403, 404, 503} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			body := &unreadableReservedBody{}
+			calls := 0
+			client := &http.Client{Transport: detailRoundTrip(func(*http.Request) (*http.Response, error) {
+				calls++
+				response := detailResponse(status, "")
+				response.Body = body
+				response.Header.Set("TDM-Reservation", " 1 ")
+				response.Header.Set("TDM-Policy", "https://example.test/policy")
+				return response, nil
+			})}
+			result, err := fetchWorkdayDetail(context.Background(), "https://tenant.wd5.myworkdayjobs.com/External/job/JR001", nil, client, func(context.Context, time.Duration) error {
+				t.Fatal("publisher reservation must not retry")
+				return nil
+			}, func() float64 { return 0.5 })
+			var reserved *ReservationError
+			if !errors.As(err, &reserved) || calls != 1 || !body.closed || result.Gone || result.Bytes != 0 || result.Requests != 1 || result.Responses != 1 || result.Status != status || result.TDMPolicy != "https://example.test/policy" {
+				t.Fatalf("calls=%d closed=%v result=%+v error=%v", calls, body.closed, result, err)
+			}
+		})
+	}
+}

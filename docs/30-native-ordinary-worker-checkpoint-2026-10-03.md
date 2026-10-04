@@ -5,7 +5,45 @@ including retirement of production Python, Playwright and Chromium after
 replacement coverage and supported reversal are established. Useful isolated
 offline Python tools may remain. Preserve every enabled board.
 
-## Deployed Greenhouse family — 20:40 UTC
+## Latest deployed checkpoint — 2026-10-04, 10:09 UTC
+
+[PR #10266](https://github.com/colophon-group/jobseek/pull/10266) delivered
+v0.13.922, source `b9e853a75d80cd2fa5d97d37ec58822259eedd4b`.
+The supported deployment and original installed cutover driver activated all
+4,297 admitted native monitors at epoch 165. Independent readback verifies
+the exact immutable images, active SQL/Redis/host identities, eight healthy HTTP
+endpoints and all ten runtime writers running with `unless-stopped` restart
+policies. The ordinary process started at 09:58:45 UTC. A readback after its
+ten-minute lease timeout observes 267 completed deadlines matching canonical
+SQL and Redis, with no settled deadline mismatch or claim error.
+
+The [portable evidence](evidence/go-native-rich-fleet-2026-10-04.json) records
+per-profile completion and resource snapshots. Five runs were reported as
+unacknowledged; recovery remains under observation. One posting write reached
+its deadline. Natural samples preserve title, locale, description and uploaded
+content across six profiles; Personio and Teamtailor have not run naturally
+in this interval. Resource snapshots do not establish comparable fleet costs.
+The source921 supported full cold reversal passed before this promotion;
+the expanded source922 cold reversal remains due before the next promotion.
+
+The next code slice implements Workday URL discovery, owned monitor persistence
+and separate detail scheduling. Fresh current canonical/cache admission accepts
+495 of 496 Workday boards, including configured tenant sites and bounded deep
+pagination/facet unions. Actual PostgreSQL/Redis race tests cover insertion,
+relisting, lost-enqueue repair, four-miss disappearance and publisher opt-outs.
+Workday detail jobs keep their canonical posting owner and existing queue;
+native detail ownership and execution are still required. The remaining board's
+explicit TLS override is real: its handshake fails against the pinned CA bundle.
+Preserve that board while implementing compatible transport. No Workday
+production ownership or full migration completion is claimed by this candidate.
+
+Continue by delivering the Workday monitor slice, moving its detail pipeline
+onto the existing native queue/write authority and enrichment, then migrating
+the remaining HTTP/API and Lightpanda browser profiles. Complete enabled-profile
+coverage, freshness/output and queue checks, comparable whole-lane measurements
+and supported reversal before retiring production Python and browser assets.
+
+## Historical Greenhouse family — 2026-10-03, 20:40 UTC
 
 All 2,570 enabled Greenhouse canonical/cache profiles passed fresh admission and
 are active Go owners on v0.13.910, source
