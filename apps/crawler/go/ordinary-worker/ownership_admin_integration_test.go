@@ -122,3 +122,56 @@ func TestRealNativeExecutableStagesAndInspectsWithoutSelectingOwnership(t *testi
 	})
 	call("--inspect-ownership", inspectEnv, false)
 }
+
+func TestRealNativeExecutableExplicitlyStagesWorkdayDetailsWithoutQueueEffects(t *testing.T) {
+	f, _, _, _ := workdayDetailFixture(t, true)
+	ctx := context.Background()
+	e := newNativeExecutableFixture(t, f, f.dsn)
+	var epoch int64
+	if err := f.pg.QueryRow(ctx, "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE state='active' RETURNING routing_epoch").Scan(&epoch); err != nil {
+		t.Fatal(err)
+	}
+	if err := pgx.BeginFunc(ctx, f.pg, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", queue.OrdinaryLeaseBarrier); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(7544422533504811009)"); err != nil {
+			return err
+		}
+		return tx.QueryRow(ctx, "SELECT nextval('public.lightpanda_b0_routing_epoch_seq')").Scan(&epoch)
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := f.r.Del(ctx, "ordinary:ownership:active").Err(); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(e.directory, "detail-cohort.json")
+	data := `{"version":"jobseek.ordinary.cohort/v1","monitors":["` + f.board + `"],"details":["` + f.board + `"]}`
+	if err := os.WriteFile(path, []byte(data), 0600); err != nil {
+		t.Fatal(err)
+	}
+	source := ordinaryFixtureSourceRevision(t)
+	command := exec.Command(e.binary, "--stage-ownership")
+	command.Env = []string{"PATH=" + os.Getenv("PATH"), "LOCAL_DATABASE_URL=" + f.dsn, "REDIS_URL=unix://" + f.r.Options().Addr, "ORDINARY_GO_WORKER_MODE=stage-ownership", "ORDINARY_OWNERSHIP_SOURCE_REVISION=" + source, "ORDINARY_OWNERSHIP_ROUTING_EPOCH=" + fmt.Sprint(epoch), "ORDINARY_GO_COHORT_FILE=" + path}
+	output, err := command.CombinedOutput()
+	var identity OwnershipStageIdentity
+	if err != nil || json.Unmarshal(output, &identity) != nil || identity.DetailBoards != 1 || identity.Members != 1 || identity.State != "staged" {
+		t.Fatal("installed detail staging lost explicit identity", err)
+	}
+	var state string
+	var count int
+	if err := f.pg.QueryRow(ctx, "SELECT state,jsonb_array_length(payload::jsonb->'details') FROM ordinary_worker_ownership_plan WHERE plan_sha256=$1", identity.PlanSHA256).Scan(&state, &count); err != nil || state != "staged" || count != 1 {
+		t.Fatal("detail staging selected runtime authority", err)
+	}
+	if f.r.Exists(ctx, "ordinary:ownership:active").Val() != 0 || f.r.ZCard(ctx, "inflight:simple").Val() != 1 {
+		t.Fatal("detail staging changed projection/claims")
+	}
+	command = exec.Command(e.binary, "--inspect-ownership")
+	command.Env = []string{"PATH=" + os.Getenv("PATH"), "LOCAL_DATABASE_URL=" + f.dsn, "REDIS_URL=unix://" + f.r.Options().Addr, "ORDINARY_GO_WORKER_MODE=inspect-ownership", "ORDINARY_OWNERSHIP_SOURCE_REVISION=" + source, "ORDINARY_OWNERSHIP_ROUTING_EPOCH=" + fmt.Sprint(epoch), "ORDINARY_OWNERSHIP_PLAN_SHA256=" + identity.PlanSHA256}
+	output, err = command.CombinedOutput()
+	var observed OwnershipStageIdentity
+	if err != nil || json.Unmarshal(output, &observed) != nil || observed != identity {
+		t.Fatal("detail inspection changed immutable identity", err)
+	}
+}

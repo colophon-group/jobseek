@@ -356,6 +356,9 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		}
 	}()
 	services := runtimeServices{claim: func(ctx context.Context) (*queue.Claim, error) { return authority.Claim(ctx, queue.Simple) }, heartbeat: authority.Heartbeat, execute: func(ctx context.Context, claim *queue.Claim) (*GreenhouseClaimResult, error) {
+		if claim.Descriptor().Kind == queue.Scrape {
+			return RunWorkdayDetail(ctx, authority, claim, workdayHTTP, preparer.Processor, circuits)
+		}
 		if claim.Descriptor().Config["crawler_type"] == "workday" {
 			return RunGreenhouseClaim(ctx, authority, claim, workdayHTTP, preparer, circuits)
 		}

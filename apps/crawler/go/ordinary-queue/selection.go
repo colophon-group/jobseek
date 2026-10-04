@@ -91,7 +91,7 @@ func (a *Authority) requireOwnership(ctx context.Context, tx pgx.Tx, claim *Clai
 	if claim == nil {
 		return nil
 	}
-	if claim.task.Kind != Monitor || claim.task.Worker != Simple {
+	if (claim.task.Kind != Monitor && claim.task.Kind != Scrape) || claim.task.Worker != Simple {
 		return ErrAuthorityLost
 	}
 	var member *ownershipMember
@@ -101,7 +101,30 @@ func (a *Authority) requireOwnership(ctx context.Context, tx pgx.Tx, claim *Clai
 			break
 		}
 	}
-	if member == nil || claim.task.Domain != member.Domain {
+	if member == nil {
+		return ErrAuthorityLost
+	}
+	if claim.task.Kind == Scrape {
+		var bound *ownershipDetail
+		for i := range plan.document.Details {
+			if plan.document.Details[i].BoardID == claim.boardID {
+				bound = &plan.document.Details[i]
+				break
+			}
+		}
+		if bound == nil || bound.Domain != claim.task.Domain {
+			return ErrAuthorityLost
+		}
+		detail, err := a.currentWorkdayDetail(ctx, tx, claim)
+		if err != nil {
+			return err
+		}
+		if detail.profile.EffectiveBoardSHA256 != member.EffectiveConfigHash || detail.profile.Profile != bound.Profile {
+			return ErrAuthorityLost
+		}
+		return nil
+	}
+	if claim.task.Domain != member.Domain {
 		return ErrAuthorityLost
 	}
 	profile, _, err := a.observeGreenhouseMonitor(ctx, tx, member.BoardID)
@@ -115,9 +138,11 @@ func (a *Authority) requireOwnership(ctx context.Context, tx pgx.Tx, claim *Clai
 }
 
 type ownershipCandidate struct {
-	member ownershipMember
-	tier   int
-	score  float64
+	member    ownershipMember
+	tier      int
+	score     float64
+	postingID string
+	cached    map[string]string
 }
 
 // Inspect a fixed-size cohort batch rather than repeatedly visiting a foreign
@@ -163,11 +188,16 @@ func (a *Authority) claimOwned(ctx context.Context, tx pgx.Tx, worker WorkerType
 				return nil, err
 			}
 			if score != nil && *score <= now {
-				candidates = append(candidates, ownershipCandidate{probe.member, tier, *score})
+				candidates = append(candidates, ownershipCandidate{member: probe.member, tier: tier, score: *score})
 				break
 			}
 		}
 	}
+	details, err := a.detailCandidates(ctx, tx, members, start, count, now)
+	if err != nil {
+		return nil, err
+	}
+	candidates = append(candidates, details...)
 	sort.Slice(candidates, func(i, j int) bool {
 		if candidates[i].tier != candidates[j].tier {
 			return candidates[i].tier < candidates[j].tier
@@ -180,7 +210,11 @@ func (a *Authority) claimOwned(ctx context.Context, tx pgx.Tx, worker WorkerType
 	var rejected error
 	blockedDomains := make(map[string]bool)
 	for _, candidate := range candidates {
-		if blockedDomains[candidate.member.Domain] {
+		domain := candidate.member.Domain
+		if candidate.postingID != "" {
+			domain = candidate.cached["domain"]
+		}
+		if blockedDomains[domain] {
 			continue
 		}
 		profile, cached, err := a.observeGreenhouseMonitor(ctx, tx, candidate.member.BoardID)
@@ -192,6 +226,10 @@ func (a *Authority) claimOwned(ctx context.Context, tx pgx.Tx, worker WorkerType
 			rejected = ErrAuthorityLost
 			continue
 		}
+		role := "native"
+		if candidate.postingID != "" {
+			role, cached = "native_detail", candidate.cached
+		}
 		body, err := json.Marshal(cached)
 		if err != nil {
 			return nil, ErrConfiguration
@@ -200,14 +238,18 @@ func (a *Authority) claimOwned(ctx context.Context, tx pgx.Tx, worker WorkerType
 		if _, err := rand.Read(token[:]); err != nil {
 			return nil, ErrObservation
 		}
-		task, err := a.queue.claimTaskBound(ctx, worker, hex.EncodeToString(token[:]), a.ownership.claimBinding("native", candidate.member.BoardID, string(body)))
+		binding := a.ownership.claimBinding(role, candidate.member.BoardID, string(body))
+		if candidate.postingID != "" {
+			binding = append(binding, candidate.postingID)
+		}
+		task, err := a.queue.claimTaskBound(ctx, worker, hex.EncodeToString(token[:]), binding)
 		if err != nil || task != nil {
 			return task, err
 		}
 		// A throttle or unavailable ready route for the oldest provider must
 		// not hide another provider in this bounded batch. Lua retains all
 		// global first-time/fairness checks for every attempted claim.
-		blockedDomains[candidate.member.Domain] = true
+		blockedDomains[domain] = true
 	}
 	return nil, rejected
 }

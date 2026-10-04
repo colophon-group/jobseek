@@ -25,6 +25,9 @@ the architecture doc.
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+from unittest.mock import AsyncMock
+
 import httpx
 import pytest
 
@@ -35,6 +38,19 @@ from src.processing.scrape import (
 )
 from src.queries.scrape import _RECORD_SCRAPE_FAILURE, _RECORD_SCRAPE_TRANSIENT
 from src.shared.browser import BrowserNavigationHTTPStatusError
+
+
+@pytest.fixture(autouse=True)
+def _isolated_ordinary_write_authority(monkeypatch):
+    # These unit cases classify scrape failures using statement-recording SQL
+    # stubs. Real canonical ownership is covered by test_ordinary_ownership.
+    monkeypatch.setattr("src.ordinary_ownership.require_legacy_detail_write", AsyncMock())
+
+
+class _WriterTransaction:
+    @asynccontextmanager
+    async def transaction(self):
+        yield
 
 
 class _UnreservedPostingPool:
@@ -174,7 +190,7 @@ async def test_do_one_scrape_passes_permanent_gone_true_on_404(
 
     executed: list[tuple[str, tuple]] = []
 
-    class _StubConn:
+    class _StubConn(_WriterTransaction):
         async def execute(self, sql: str, *args):  # type: ignore[no-untyped-def]
             executed.append((sql, args))
 
@@ -308,7 +324,7 @@ async def test_do_one_scrape_routes_403_to_transient_sql(
 
     executed: list[tuple[str, tuple]] = []
 
-    class _StubConn:
+    class _StubConn(_WriterTransaction):
         async def execute(self, sql: str, *args):  # type: ignore[no-untyped-def]
             executed.append((sql, args))
 
@@ -362,7 +378,7 @@ async def test_do_one_scrape_routes_5xx_to_transient_sql(
 
     executed: list[tuple[str, tuple]] = []
 
-    class _StubConn:
+    class _StubConn(_WriterTransaction):
         async def execute(self, sql: str, *args):  # type: ignore[no-untyped-def]
             executed.append((sql, args))
 
@@ -414,7 +430,7 @@ async def test_do_one_scrape_routes_400_to_budget_sql(
 
     executed: list[tuple[str, tuple]] = []
 
-    class _StubConn:
+    class _StubConn(_WriterTransaction):
         async def execute(self, sql: str, *args):  # type: ignore[no-untyped-def]
             executed.append((sql, args))
 
@@ -468,7 +484,7 @@ async def test_pipeline_skips_scrape_for_tombstoned_posting(
 
     posting_id = "00000000-0000-0000-0000-000000000fff"
 
-    class _StubConn:
+    class _StubConn(_WriterTransaction):
         async def fetchrow(self, query: str, *args):  # type: ignore[no-untyped-def]
             assert "is_active" in query and "next_scrape_at" in query
             return {"is_active": False, "next_scrape_at": None}
@@ -546,7 +562,7 @@ async def test_pipeline_skips_scrape_when_next_scrape_at_null(
 
     posting_id = "00000000-0000-0000-0000-000000000bbb"
 
-    class _StubConn:
+    class _StubConn(_WriterTransaction):
         async def fetchrow(self, query: str, *args):  # type: ignore[no-untyped-def]
             return {"is_active": True, "next_scrape_at": None}
 
@@ -635,7 +651,7 @@ async def test_eightfold_style_empty_jobcontent_takes_transient_path(
 
     executed: list[tuple[str, tuple]] = []
 
-    class _StubConn:
+    class _StubConn(_WriterTransaction):
         async def execute(self, sql: str, *args):  # type: ignore[no-untyped-def]
             executed.append((sql, args))
 
@@ -690,7 +706,7 @@ async def test_pipeline_self_heal_does_not_reschedule_on_db_error(
 
     posting_id = "00000000-0000-0000-0000-000000000ddd"
 
-    class _StubConn:
+    class _StubConn(_WriterTransaction):
         async def fetchrow(self, query: str, *args):  # type: ignore[no-untyped-def]
             raise RuntimeError("simulated DB outage")
 
@@ -818,7 +834,7 @@ async def test_pipeline_self_heal_does_not_delete_redis_hash(
 
     posting_id = "00000000-0000-0000-0000-000000000eee"
 
-    class _StubConn:
+    class _StubConn(_WriterTransaction):
         async def fetchrow(self, query: str, *args):  # type: ignore[no-untyped-def]
             return {"is_active": False, "next_scrape_at": None}
 
@@ -890,7 +906,7 @@ async def test_pipeline_proceeds_for_active_posting_with_due_next_scrape(
     posting_id = "00000000-0000-0000-0000-000000000ccc"
     proceeded = []
 
-    class _StubConn:
+    class _StubConn(_WriterTransaction):
         async def fetchrow(self, query: str, *args):  # type: ignore[no-untyped-def]
             from datetime import UTC, datetime
 
@@ -970,7 +986,7 @@ async def test_do_one_scrape_routes_timeout_to_transient_sql(
 
     executed: list[tuple[str, tuple]] = []
 
-    class _StubConn:
+    class _StubConn(_WriterTransaction):
         async def execute(self, sql: str, *args):  # type: ignore[no-untyped-def]
             executed.append((sql, args))
 

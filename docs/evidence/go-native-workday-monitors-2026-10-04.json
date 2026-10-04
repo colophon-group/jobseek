@@ -1,0 +1,81 @@
+{
+  "observed_at_utc": "2026-10-04T11:57:31.027856+00:00",
+  "source_revision": "95ec59850d327a267ff1f23e54753160ca085114",
+  "version": "0.13.923",
+  "pull_request": 10267,
+  "deployment_run": 37196598961,
+  "deployment_attempt": 2,
+  "routing_epoch": 167,
+  "images": {
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:86b3402434cdd2fad9703a5ded0fb85c250b30247334242ef5dfa586774808bf",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:dd74aeb87f7e40f316a81b7ec2753b874c5ee1e7ecd8b9f79feeb23d6ad23422",
+    "JOBSEEK_DEPLOY_REVISION": "95ec59850d327a267ff1f23e54753160ca085114"
+  },
+  "ordinary_plan_sha256": "d8ff8d804f7792a7af41a8d3af959b684abcb1db8170b99bc50afee815b4c5a9",
+  "projection_sha1": "583d54960c9e1ef0df7779acb9d7e127f4ce800d",
+  "ordinary_receipt_sha256": "268f677a925ce079b79e7f9e01be6b9bbacb4d99f66a8dc445311f56171671ed",
+  "b0_receipt_sha256": "479ebd711032240737ad1a0c392c68547512ff5f2def75d6143ce8e6772c10f3",
+  "native_monitor_boards": 4792,
+  "native_workday_monitor_boards": 495,
+  "profile_members": {
+    "greenhouse": 2570,
+    "ashby": 934,
+    "lever": 194,
+    "personio": 47,
+    "pinpoint": 104,
+    "recruitee": 114,
+    "successfactors_rss": 197,
+    "teamtailor_rss": 137,
+    "workday": 495
+  },
+  "armed_writers": 10,
+  "health": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200,
+    "lightpanda-claimant": 204,
+    "ordinary-go": 204
+  },
+  "completed_by_profile": {
+    "ashby.token-skip/v1": 58,
+    "greenhouse.token-skip/v1": 126,
+    "lever.token-skip/v1": 15,
+    "personio.xml-skip/v1": 0,
+    "pinpoint.slug-skip/v1": 5,
+    "recruitee.api-skip/v1": 9,
+    "rss.successfactors-skip/v1": 26,
+    "rss.teamtailor-skip/v1": 17,
+    "workday.cxs-urls/v1": 3
+  },
+  "successful_by_profile": {
+    "ashby.token-skip/v1": 58,
+    "greenhouse.token-skip/v1": 119,
+    "lever.token-skip/v1": 15,
+    "personio.xml-skip/v1": 0,
+    "pinpoint.slug-skip/v1": 5,
+    "recruitee.api-skip/v1": 9,
+    "rss.successfactors-skip/v1": 23,
+    "rss.teamtailor-skip/v1": 17,
+    "workday.cxs-urls/v1": 2
+  },
+  "settled_deadline_matches": 246,
+  "settled_deadline_mismatches": 0,
+  "recovery": {
+    "expired_tokenless_simple_monitors_reenqueued": 91,
+    "expired_tokenless_browser_monitors_reenqueued": 6,
+    "dead_lettered": 0,
+    "missing_config": 0,
+    "sql_mutations": 0,
+    "owner_mutations": 0,
+    "b0_mutations": 0
+  },
+  "limits": [
+    "Workday URL inventory is native; details remain Python.",
+    "Personio has no natural completion in this observation.",
+    "Unacknowledged outcomes remain visible and are not successful settlements.",
+    "Comparable whole-lane resource and cost measurement is still outstanding."
+  ]
+}

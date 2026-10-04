@@ -42,6 +42,16 @@ type ownershipDocument struct {
 	SourceRevision    string            `json:"source_revision"`
 	Members           []ownershipMember `json:"members"`
 	ProjectionVersion string            `json:"routing_projection,omitempty"`
+	Details           []ownershipDetail `json:"details,omitempty"`
+}
+
+// Detail membership stays in the same immutable board-owned plan. Posting IDs
+// remain canonical SQL observations, never a second routing registry.
+type ownershipDetail struct {
+	BoardID string     `json:"board_id"`
+	Domain  string     `json:"domain"`
+	Profile string     `json:"profile"`
+	Worker  WorkerType `json:"worker"`
 }
 
 // The Redis projection contains only routing membership. Full configurations and
@@ -53,6 +63,7 @@ type ownershipProjectionDocument struct {
 	SourceRevision string            `json:"source_revision"`
 	PlanSHA256     string            `json:"plan_sha256"`
 	Members        map[string]string `json:"members"`
+	Details        map[string]string `json:"details,omitempty"`
 }
 
 // OwnershipPlan is an immutable durable document, never a queue/write grant.
@@ -89,6 +100,13 @@ func (p *OwnershipPlan) MemberCount() int {
 		return 0
 	}
 	return len(p.document.Members)
+}
+
+func (p *OwnershipPlan) DetailBoardCount() int {
+	if p == nil {
+		return 0
+	}
+	return len(p.document.Details)
 }
 
 // ProjectionJSON is a read-only routing observation, never a publication grant.
@@ -134,6 +152,7 @@ func decodeOwnership(body, digest string) (*OwnershipPlan, error) {
 		return nil, ErrAuthorityLost
 	}
 	previous := ""
+	boards := make(map[string]ownershipMember, len(doc.Members))
 	for _, member := range doc.Members {
 		key := string(member.Kind) + "|" + member.BoardID
 		if key <= previous || member.Kind != Monitor || member.Worker != Simple {
@@ -144,6 +163,22 @@ func decodeOwnership(body, digest string) (*OwnershipPlan, error) {
 			return nil, ErrAuthorityLost
 		}
 		previous = key
+		boards[member.BoardID] = member
+	}
+	previous = ""
+	if len(doc.Details) > len(doc.Members) || (len(doc.Details) > 0 && doc.ProjectionVersion != ownershipProjectionVersion) {
+		return nil, ErrAuthorityLost
+	}
+	for _, detail := range doc.Details {
+		member, ok := boards[detail.BoardID]
+		if !ok || detail.BoardID <= previous || detail.Worker != Simple {
+			return nil, ErrAuthorityLost
+		}
+		profile, err := inspectWorkdayDetailOwnership(member.BoardID, member.Config)
+		if err != nil || profile.Domain != detail.Domain || profile.Profile != detail.Profile {
+			return nil, ErrAuthorityLost
+		}
+		previous = detail.BoardID
 	}
 	canonical, err := json.Marshal(doc)
 	// This rejects duplicate keys, unknown fields and alternate numeric/string
@@ -161,6 +196,12 @@ func decodeOwnership(body, digest string) (*OwnershipPlan, error) {
 	for _, member := range doc.Members {
 		projectionDoc.Members[member.BoardID] = member.Domain
 	}
+	if len(doc.Details) > 0 {
+		projectionDoc.Details = make(map[string]string, len(doc.Details))
+		for _, detail := range doc.Details {
+			projectionDoc.Details[detail.BoardID] = detail.Domain
+		}
+	}
 	projection, err := json.Marshal(projectionDoc)
 	if err != nil {
 		return nil, ErrAuthorityLost
@@ -173,6 +214,12 @@ func decodeOwnership(body, digest string) (*OwnershipPlan, error) {
 // epoch and row barriers, persisting only a staged, exact source/epoch document.
 // No caller-selected revision/plan can become active through this API.
 func (a *Authority) StageGreenhouseOwnership(ctx context.Context, revision string, boardIDs []string) (*OwnershipPlan, error) {
+	return a.StageOwnership(ctx, revision, boardIDs, nil)
+}
+
+// StageOwnership explicitly includes eligible detail boards in the same immutable
+// monitor plan. Empty detail membership preserves retained monitor-only bytes.
+func (a *Authority) StageOwnership(ctx context.Context, revision string, boardIDs, detailBoardIDs []string) (*OwnershipPlan, error) {
 	if a == nil || a.pool == nil || a.queue == nil || !ownershipRevision.MatchString(revision) || len(boardIDs) < 1 || len(boardIDs) > 20000 {
 		return nil, ErrConfiguration
 	}
@@ -180,6 +227,17 @@ func (a *Authority) StageGreenhouseOwnership(ctx context.Context, revision strin
 	sort.Strings(ids)
 	for index, id := range ids {
 		if !canonicalUUID.MatchString(id) || (index > 0 && ids[index-1] == id) {
+			return nil, ErrConfiguration
+		}
+	}
+	detailIDs := append([]string(nil), detailBoardIDs...)
+	sort.Strings(detailIDs)
+	if len(detailIDs) > len(ids) {
+		return nil, ErrConfiguration
+	}
+	for i, id := range detailIDs {
+		index := sort.SearchStrings(ids, id)
+		if index == len(ids) || ids[index] != id || (i > 0 && detailIDs[i-1] == id) {
 			return nil, ErrConfiguration
 		}
 	}
@@ -200,6 +258,14 @@ func (a *Authority) StageGreenhouseOwnership(ctx context.Context, revision strin
 				return err
 			}
 			doc.Members = append(doc.Members, ownershipMember{id, profile.CompanyID, profile.Domain, Monitor, Simple, profile.Profile, profile.EffectiveConfigSHA256, stable})
+		}
+		for _, id := range detailIDs {
+			member := doc.Members[sort.SearchStrings(ids, id)]
+			profile, err := inspectWorkdayDetailOwnership(id, member.Config)
+			if err != nil {
+				return err
+			}
+			doc.Details = append(doc.Details, ownershipDetail{id, profile.Domain, profile.Profile, Simple})
 		}
 		body, err := json.Marshal(doc)
 		if err != nil {

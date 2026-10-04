@@ -63,6 +63,16 @@ else
             return redis.error_reply("first ordinary ownership rejected")
         end
     end
+    if (plan.details == nil) ~= (routing.details == nil) then return redis.error_reply("first ordinary ownership rejected") end
+    if plan.details ~= nil then
+        if type(routing.details) ~= "table" then return redis.error_reply("first ordinary ownership rejected") end
+        local count = 0
+        for _ in pairs(routing.details) do count = count + 1 end
+        if count ~= #plan.details then return redis.error_reply("first ordinary ownership rejected") end
+        for _, member in ipairs(plan.details) do
+            if routing.details[member.board_id] ~= member.domain then return redis.error_reply("first ordinary ownership rejected") end
+        end
+    end
 end
 local changes, domains
 if operation == "retire" and retirement ~= "[]" then
@@ -83,6 +93,16 @@ for _, member in ipairs(plan.members) do
     if operation ~= "inspect-active" and changes == nil
         and redis.call("HEXISTS", "inflight_tokens:simple", task) == 1 then
         return redis.error_reply("first ordinary ownership rejected")
+    end
+end
+if operation ~= "inspect-active" and changes == nil and plan.details ~= nil then
+    local owned = {}
+    for _, member in ipairs(plan.details) do owned[member.board_id] = member.domain end
+    for _, task in ipairs(redis.call("ZRANGE", KEYS[10],0,-1)) do
+        local kind, domain, id = string.match(task,"^([^|]+)|([^|]+)|([^|]+)$")
+        if kind == "scrape" and owned[redis.call("HGET","scrape:"..id,"board_id") or ""] then
+            return redis.error_reply("first ordinary ownership rejected")
+        end
     end
 end
 if operation == "inspect-active" and not exists then

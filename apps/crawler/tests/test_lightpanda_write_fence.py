@@ -221,13 +221,21 @@ async def test_authority_guard_requires_a_write_fence() -> None:
     pool.acquire.assert_not_called()
 
 
-async def test_legacy_authoritative_write_keeps_autocommit_shape() -> None:
+async def test_legacy_authoritative_write_holds_ownership_barriers_through_write(
+    monkeypatch,
+) -> None:
     pool, connection = _pool_and_connection()
+    check = AsyncMock()
+    monkeypatch.setattr("src.ordinary_ownership.require_legacy_detail_write", check)
+    posting_id = str(uuid.uuid4())
 
-    async with authoritative_write(pool, None, job_posting_id="legacy-id") as writer:
+    async with authoritative_write(pool, None, job_posting_id=posting_id) as writer:
+        check.assert_awaited_once_with(connection, posting_id)
+        connection.transaction.return_value.__aenter__.assert_awaited_once()
+        connection.transaction.return_value.__aexit__.assert_not_awaited()
         await writer.execute("UPDATE legacy SET value = true")
 
-    connection.transaction.assert_not_called()
+    connection.transaction.return_value.__aexit__.assert_awaited_once()
     connection.execute.assert_awaited_once_with("UPDATE legacy SET value = true")
 
 

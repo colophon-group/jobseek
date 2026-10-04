@@ -41,7 +41,7 @@ func testOwnershipDocument(t *testing.T) ownershipDocument {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return ownershipDocument{ownershipVersion, 7, strings.Repeat("a", 40), []ownershipMember{{profileBoardID, profile.CompanyID, profile.Domain, Monitor, Simple, greenhouseOwnershipProfile, profile.EffectiveConfigSHA256, config}}, ownershipProjectionVersion}
+	return ownershipDocument{ownershipVersion, 7, strings.Repeat("a", 40), []ownershipMember{{profileBoardID, profile.CompanyID, profile.Domain, Monitor, Simple, greenhouseOwnershipProfile, profile.EffectiveConfigSHA256, config}}, ownershipProjectionVersion, nil}
 }
 
 func TestOwnershipPayloadRequiresCanonicalIdentityAndSupportedMembers(t *testing.T) {
@@ -409,7 +409,7 @@ func TestOwnershipProjectionMatchesActualPythonCodec(t *testing.T) {
 			Hash                      string `json:"projection_sha1"`
 		}
 	}
-	if json.Unmarshal(body, &capture) != nil || len(capture.Cases) != 2 {
+	if json.Unmarshal(body, &capture) != nil || len(capture.Cases) != 4 {
 		t.Fatal("Python projection capture unavailable")
 	}
 	for _, c := range capture.Cases {
@@ -420,6 +420,12 @@ func TestOwnershipProjectionMatchesActualPythonCodec(t *testing.T) {
 		routing := ownershipProjectionDocument{Version: ownershipProjectionVersion, Epoch: doc.Epoch, SourceRevision: doc.SourceRevision, PlanSHA256: c.Digest, Members: make(map[string]string)}
 		for _, member := range doc.Members {
 			routing.Members[member.BoardID] = member.Domain
+		}
+		if len(doc.Details) > 0 {
+			routing.Details = make(map[string]string, len(doc.Details))
+			for _, detail := range doc.Details {
+				routing.Details[detail.BoardID] = detail.Domain
+			}
 		}
 		projected, err := json.Marshal(routing)
 		hash := sha1.Sum(projected)

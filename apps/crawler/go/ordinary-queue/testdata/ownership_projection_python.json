@@ -14,6 +14,20 @@
       "plan_sha256": "ecb5c2bf705d14becefc563f847ee92408313a8424598a1410fd0a62d143b99d",
       "projection": "{\"version\":\"jobseek.ordinary.ownership-projection/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"plan_sha256\":\"ecb5c2bf705d14becefc563f847ee92408313a8424598a1410fd0a62d143b99d\",\"members\":{\"00000000-0000-4000-8000-000000000001\":\"fixture\\u003c\\u003e\\u0026-é-\\u2028\\u2029\"}}",
       "projection_sha1": "305504d1076694ce9b0828c33eefa79b789e74f9"
+    },
+    {
+      "name": "workday_detail",
+      "payload": "{\"version\":\"jobseek.ordinary.ownership/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"members\":[{\"board_id\":\"00000000-0000-4000-8000-000000000001\",\"domain\":\"workday\",\"kind\":\"monitor\",\"worker\":\"simple\",\"profile\":\"workday.cxs-urls/v1\"}],\"routing_projection\":\"jobseek.ordinary.ownership-projection/v1\",\"details\":[{\"board_id\":\"00000000-0000-4000-8000-000000000001\",\"domain\":\"fixture.wd1.myworkdayjobs.com\",\"profile\":\"workday.cxs-detail/v1\",\"worker\":\"simple\"}]}",
+      "plan_sha256": "c8082c6eb228b3a568d3842916f230be0f9e20341e3589aab98c895b696746cd",
+      "projection": "{\"version\":\"jobseek.ordinary.ownership-projection/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"plan_sha256\":\"c8082c6eb228b3a568d3842916f230be0f9e20341e3589aab98c895b696746cd\",\"members\":{\"00000000-0000-4000-8000-000000000001\":\"workday\"},\"details\":{\"00000000-0000-4000-8000-000000000001\":\"fixture.wd1.myworkdayjobs.com\"}}",
+      "projection_sha1": "06ad44d03c0935d6efc08ff7709979869a258891"
+    },
+    {
+      "name": "workday_detail_escaping",
+      "payload": "{\"version\":\"jobseek.ordinary.ownership/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"members\":[{\"board_id\":\"00000000-0000-4000-8000-000000000001\",\"domain\":\"workday\",\"kind\":\"monitor\",\"worker\":\"simple\",\"profile\":\"workday.cxs-urls/v1\"}],\"routing_projection\":\"jobseek.ordinary.ownership-projection/v1\",\"details\":[{\"board_id\":\"00000000-0000-4000-8000-000000000001\",\"domain\":\"fixture<>&-é-  \",\"profile\":\"workday.cxs-detail/v1\",\"worker\":\"simple\"}]}",
+      "plan_sha256": "4d990ce34ac75eac89a4a0717af23ae8af42f71dfa06aca7e2f73af9a93697fb",
+      "projection": "{\"version\":\"jobseek.ordinary.ownership-projection/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"plan_sha256\":\"4d990ce34ac75eac89a4a0717af23ae8af42f71dfa06aca7e2f73af9a93697fb\",\"members\":{\"00000000-0000-4000-8000-000000000001\":\"workday\"},\"details\":{\"00000000-0000-4000-8000-000000000001\":\"fixture\\u003c\\u003e\\u0026-é-\\u2028\\u2029\"}}",
+      "projection_sha1": "9cf6a21bc102cecd3e78f24fcf0fe08db2b849cd"
     }
   ]
 }

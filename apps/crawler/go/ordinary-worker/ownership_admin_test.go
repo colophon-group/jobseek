@@ -77,3 +77,41 @@ func TestOwnershipCohortRejectsLinksDevicesUnsafePermissionsAndAmbiguousInputs(t
 		t.Fatal("shared-writable cohort accepted")
 	}
 }
+
+func TestOwnershipSelectionRequiresExplicitUnambiguousDetailSubset(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "selection.json")
+	const id = "00000000-0000-4000-8000-000000000001"
+	const foreign = "00000000-0000-4000-8000-000000000002"
+	const prefix = `{"version":"jobseek.ordinary.cohort/v1","monitors":["` + id + `"],`
+	for _, input := range []string{
+		prefix + `"details":["` + id + `"]}`,
+		prefix + `"details":[]}`,
+		`["` + id + `"]`,
+	} {
+		if err := os.WriteFile(path, []byte(input), 0600); err != nil {
+			t.Fatal(err)
+		}
+		c, err := readOwnershipSelection(path)
+		if err != nil || len(c.Monitors) != 1 {
+			t.Fatal("valid explicit selection declined", err)
+		}
+		if strings.Contains(input, `"details":["`+id+`"]`) && len(c.Details) != 1 {
+			t.Fatal("explicit detail selection lost")
+		}
+	}
+	for _, input := range []string{
+		prefix + `"details":null}`, prefix + `"details":["` + foreign + `"]}`,
+		prefix + `"details":["` + id + `","` + id + `"]}`,
+		prefix + `"details":[],"details":["` + id + `"]}`,
+		prefix + `"details":[],"extra":true}`, prefix + `"details":[]} {}`,
+		`{"version":"other","monitors":["` + id + `"],"details":[]}`,
+		`{"version":"jobseek.ordinary.cohort/v1","monitors":["` + id + `"]}`,
+	} {
+		if err := os.WriteFile(path, []byte(input), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := readOwnershipSelection(path); err != ErrStartup {
+			t.Fatal("ambiguous detail selection accepted")
+		}
+	}
+}

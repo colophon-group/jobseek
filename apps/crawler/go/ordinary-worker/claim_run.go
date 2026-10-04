@@ -54,6 +54,7 @@ func claimRunError(phase string, err error) error {
 }
 
 type GreenhouseClaimResult struct {
+	TaskKind                                             queue.Kind
 	Cycle                                                *queue.GreenhouseCycleResult
 	Batches                                              queue.GreenhouseRichBatchResult
 	HTTP                                                 HTTPSnapshot

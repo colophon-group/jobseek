@@ -1,11 +1,129 @@
 # Native ordinary worker continuation, 2026-10-03
 
+
+## Detail delivery candidate — 2026-10-04 12:37 UTC
+
+The full migration goal remains active. v0.13.924 now implements native Workday
+detail dispatch through the existing ownership plan, original claim Lua, opaque
+attempts, canonical posting/board gates, shared Go enrichment and description
+writer. Posting IDs remain distinct from board IDs. Fresh publisher opt-outs,
+inactive postings, HTTP failure classes, Workday 404/S22 empty results, host
+circuits, cancellation and future canonical deadlines retain their existing
+behavior. Restart recovery acknowledges committed results without another GET
+or SQL write. Metrics distinguish monitor and scrape execution.
+
+Explicit selection uses the existing protected cohort file and installed
+`ordinary-go-cutover.sh stage <absolute-file>` command. A historical JSON array
+still selects monitors only. To select eligible detail boards, use:
+
+```json
+{"version":"jobseek.ordinary.cohort/v1","monitors":["<board UUID>"],"details":["<same eligible Workday board UUID>"]}
+```
+
+`details` must be a unique subset of `monitors`. Staging rechecks canonical and
+cached configurations and returns an immutable plan/projection identity plus
+the detail-board count; it cannot activate an owner. Legacy detail writes resolve
+the actual canonical posting board under the shared authority barriers. Forged
+cached board metadata cannot grant a write to an owned posting.
+
+The original cold retirement now conserves detail deadlines for interrupted
+claims, committed results before ACK, reaped results before ACK and inactive
+postings. It retains SQL content and receipts, revokes old attempts, persists
+Redis before SQL retirement and supports exact retries after SAVE failure.
+Foreign canonical posting boards refuse before projection or queue mutation.
+Retained acknowledged receipts are probed in batches so historical detail work
+does not require a network round trip per posting during reversal.
+
+Production remains the verified v0.13.923 monitor owner at epoch 167. Native
+details are a delivery candidate, not yet deployed. Next actions are:
+
+1. Finish local verification, publish v0.13.924 and require exact-head Required CI,
+   Crawler Deploy Gate and installed-image parity before merge.
+2. Retire the outgoing ordinary/B0 owners with the original source923 drivers,
+   verify full legacy restoration, then promote source924 through the supported
+   immutable-image deployment.
+3. Reconcile fresh canonical/cached monitor and actual posting routes. Stage
+   eligible Workday detail boards explicitly, activate through the original full
+   cold protocol and verify source/image/receipt identity, all writers and health,
+   natural detail fields and canonical/Redis deadlines. Preserve unsupported
+   posting routes on legacy ownership until their replacements are delivered.
+4. Continue remaining enabled detail/browser profiles and runtime maintenance
+   consumers; measure comparable whole-lane resource costs and establish the
+   rollback window before retiring production Python, Playwright and Chromium.
+
+## Production continuation — 2026-10-04 11:57 UTC
+
+The full migration goal remains active. PR #10267 is merged as
+`95ec59850d327a267ff1f23e54753160ca085114` and deployed as v0.13.923
+by supported deployment run `37196598961`, attempt 2. The original cutover
+activated the exact 4,792-board monitor plan at B0 epoch 167, including 495
+Workday boards. All ten writers are independently verified running with
+`unless-stopped` restart policies and exact digest-pinned images; native and
+legacy health endpoints pass.
+
+The initial activation refused surviving tokenless Redis leases after SQL lease
+expiry. The installed, source/image/receipt-bound maintenance reaper restored
+91 simple and six browser monitor tasks with zero dead letters or missing
+configs and no SQL, owner or B0 changes. The original exact-plan retry completed.
+No receipt, wrapper, fence or lock was patched.
+
+Natural serving evidence now records 246 settled canonical/Redis deadline
+matches and zero mismatches. Workday has three completed native monitor attempts,
+two successful. Eight of nine profiles have natural completions; Personio has
+none in this observation. Unacknowledged outcomes remain tracked. See
+[evidence](evidence/go-native-workday-monitors-2026-10-04.json).
+
+Workday detail execution remains Python in production. The v0.13.924 worktree
+has committed canonical detail gates and shared native enrichment/persistence.
+The current continuation implements explicit detail membership in the same
+immutable ownership plan, original Lua claims, and a Python write guard that
+resolves the actual canonical posting board. PostgreSQL tests prove native-owned
+details cannot reach the legacy writer through forged routing metadata; native
+owned claim/persistence/settlement tests also pass. Runtime dispatch and complete
+supported detail retirement must be finished and verified before publication.
+The remaining goal includes other enabled detail/browser profiles, runtime
+maintenance/deployment consumers, resource measurements and Python retirement.
+
 The goal remains full delivery of the Go and Lightpanda crawler migration,
 including retirement of production Python, Playwright and Chromium after
 replacement coverage and supported reversal are established. Useful isolated
 offline Python tools may remain. Preserve every enabled board.
 
-## Latest deployed checkpoint — 2026-10-04, 10:09 UTC
+## Latest continuation — 2026-10-04, 11:08 UTC
+
+[PR #10267](https://github.com/colophon-group/jobseek/pull/10267) merged the
+v0.13.923 Workday monitor at source
+`95ec59850d327a267ff1f23e54753160ca085114`. Required CI, Crawler Deploy Gate
+and installed-image parity passed at reviewed head
+`8c1bade44d083a73049a8f780514bbae62cc28da`.
+[Release build 37196598961](https://github.com/colophon-group/jobseek/actions/runs/37196598961)
+has built both immutable images. The full source922 cold reversal passed:
+original installed drivers retired ordinary ownership, restored 22 B0 details
+and cleared the exact selectors. Independent readback verifies all six legacy
+writers healthy and restart-armed, exact source/images, retained retired SQL
+plan, routing epoch 166, absent ownership receipts/projections and zero current
+active fences. The [portable reversal evidence](evidence/go-native-family922-restoration-2026-10-04.json)
+records this proof. The supported deployment is retrying after that reversal;
+the merged monitor is not yet an active Workday owner.
+
+Later natural v0.13.922 observations cover all eight admitted profiles and 526
+completed deadlines matching SQL and Redis. All five previously observed
+completed but unacknowledged attempts recovered naturally after lease expiry
+at their unchanged canonical deadlines. Additional unacknowledged outcomes
+still occur. Three newly created native postings have title, locale, HTML and
+matching uploaded description hashes; two also have resolved location and
+technology fields. These observations do not establish comparable fleet costs.
+
+The v0.13.924 detail continuation uses the existing opaque attempts, canonical
+read/write fences, shared native enrichment, description writer and terminal
+deadline receipts. Actual PostgreSQL/Redis tests cover posting IDs distinct from
+board IDs, normalized fields, staged upload hashes, exact settlement and fresh
+publisher reservation. Empty detail results preserve content and visibility.
+Exclusive detail selection and runtime dispatch remain required before native
+detail activation. Extend the existing ownership and queue contracts for that
+work; do not introduce a parallel registry or per-posting ownership projection.
+
+## Deployed readback — 2026-10-04, 10:09 UTC
 
 [PR #10266](https://github.com/colophon-group/jobseek/pull/10266) delivered
 v0.13.922, source `b9e853a75d80cd2fa5d97d37ec58822259eedd4b`.
