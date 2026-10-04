@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -156,4 +157,82 @@ func TestRealFirstOwnershipExecutableActivatesAndRetires(t *testing.T) {
 		t.Fatal(err)
 	}
 	call(true)
+}
+
+func TestRealFirstOwnershipExecutableCompatibilityRetirement(t *testing.T) {
+	f, e, installedPlan := firstExecutableOwnershipFixture(t)
+	ctx := context.Background()
+	oldSource := strings.Repeat("b", 40)
+	if oldSource == installedPlan.SourceRevision() {
+		t.Fatal("fixture requires distinct source revisions")
+	}
+	plan, err := f.a.StageGreenhouseOwnership(ctx, oldSource, []string{f.board})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, env := firstRequestFixture(t)
+	r.SourceRevision, r.RoutingEpoch, r.PlanSHA256, r.ProjectionSHA1, r.B0Cohort = oldSource, plan.Epoch(), plan.SHA256(), plan.ProjectionSHA1(), "c1"
+	env["LOCAL_DATABASE_URL"], env["REDIS_URL"] = f.dsn, "unix://"+f.r.Options().Addr
+	env["ORDINARY_OWNERSHIP_SOURCE_REVISION"], env["ORDINARY_OWNERSHIP_PLAN_SHA256"], env["ORDINARY_OWNERSHIP_PROJECTION_SHA1"] = oldSource, plan.SHA256(), plan.ProjectionSHA1()
+	env["ORDINARY_OWNERSHIP_ROUTING_EPOCH"], env["LIGHTPANDA_B0_ROUTING_EPOCH"], env["LIGHTPANDA_B0_PRODUCER_COHORT"] = strconv.FormatInt(plan.Epoch(), 10), strconv.FormatInt(plan.Epoch(), 10), "c1"
+	write := func() {
+		t.Helper()
+		body, _ := json.Marshal(r)
+		if err := os.WriteFile(env["ORDINARY_FIRST_OWNERSHIP_REQUEST_FILE"], append(body, '\n'), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write()
+	get := func(k string) string { return env[k] }
+	c, err := ReadFirstOwnershipAdminConfig(get, oldSource, "activate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RunFirstOwnershipAdmin(ctx, c); err != nil {
+		t.Fatal("outgoing owner fixture activation", err)
+	}
+	old, err := queue.OpenOwnedAuthority(ctx, f.dsn, f.client, plan.Epoch(), plan.SHA256(), oldSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer old.Close()
+	claim, err := old.Claim(ctx, queue.Simple)
+	if err != nil || claim == nil {
+		t.Fatal("outgoing interrupted attempt", err)
+	}
+	var before string
+	if err := f.pg.QueryRow(ctx, "SELECT to_jsonb(f)::text FROM ordinary_worker_write_fence f WHERE task_id=$1::uuid", f.board).Scan(&before); err != nil {
+		t.Fatal(err)
+	}
+	r.Operation = "retire"
+	env["ORDINARY_GO_WORKER_MODE"] = "retire-first-ownership"
+	write()
+	call := func() ([]byte, error) {
+		command := exec.Command(e.binary, "--retire-first-ownership")
+		command.Env = []string{"PATH=" + os.Getenv("PATH")}
+		for k, v := range env {
+			command.Env = append(command.Env, k+"="+v)
+		}
+		return command.CombinedOutput()
+	}
+	if _, err := call(); err == nil {
+		t.Fatal("new executable silently adopted outgoing compiled identity")
+	}
+	adminImage := "ghcr.io/colophon-group/jobseek-crawler@sha256:" + strings.Repeat("1", 64)
+	env["ORDINARY_RETIRE_ADMIN_SOURCE_REVISION"], env["ORDINARY_RETIRE_ADMIN_IMAGE_REF"] = installedPlan.SourceRevision(), adminImage
+	out, err := call()
+	var got queue.FirstOwnershipResult
+	if err != nil || json.Unmarshal(out, &got) != nil || got.State != "retired" || got.SourceRevision != oldSource || got.AdminSourceRevision != installedPlan.SourceRevision() || got.AdminImageRef != adminImage {
+		t.Fatal("compiled compatibility executable lost distinct identities", err)
+	}
+	var after string
+	if err := f.pg.QueryRow(ctx, "SELECT to_jsonb(f)::text FROM ordinary_worker_write_fence f WHERE task_id=$1::uuid", f.board).Scan(&after); err != nil || before != after {
+		t.Fatal("compatibility retirement changed retained attempt", err)
+	}
+	if f.r.Exists(ctx, "ordinary:ownership:active").Val() != 0 || f.r.ZCard(ctx, "inflight:simple").Val() != 0 {
+		t.Fatal("compatibility retirement retained native authority")
+	}
+	if err := old.Heartbeat(ctx, claim); !errors.Is(err, queue.ErrAuthorityLost) {
+		t.Fatal("outgoing native writer retained authority", err)
+	}
 }

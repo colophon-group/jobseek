@@ -34,10 +34,16 @@ publish() {
 
 [[ $# -ge 1 && "$(id -un)" == deploy ]] || reject "run as deploy with stage, activate, retire or recover-pending"
 operation=$1
+admin_source=""
+admin_image=""
+admin_override=""
 case "$operation" in
   stage) [[ $# == 2 && "$2" == /* && -f "$2" && ! -L "$2" ]] || reject "stage requires a protected absolute cohort file" ;;
   activate) [[ $# == 3 && "$2" =~ ^[0-9a-f]{64}$ && "$3" =~ ^[0-9a-f]{40}$ ]] || reject "activate requires exact plan and projection hashes" ;;
-  retire|recover-pending) [[ $# == 1 ]] || reject "retirement takes the retained identity" ;;
+  retire|recover-pending)
+    [[ $# == 1 || ($# == 3 && "$2" =~ ^[0-9a-f]{40}$ && "$3" =~ ^ghcr\.io/[^/]+/jobseek-crawler@sha256:[0-9a-f]{64}$) ]] || reject "retirement takes the retained identity and optional exact admin source/image"
+    if [[ $# == 3 ]]; then admin_source=$2; admin_image=$3; fi
+    ;;
   *) reject "unknown operation" ;;
 esac
 [[ -d "$DEPLOY_DIR" && ! -L "$DEPLOY_DIR" && -f "$DEPLOY_DIR/.env" && ! -L "$DEPLOY_DIR/.env" ]] || reject "deployment is unavailable"
@@ -49,6 +55,7 @@ set -a
 source .env
 set +a
 unset WEBSHARE_PROXY_URLS
+export ORDINARY_RETIRE_ADMIN_SOURCE_REVISION="" ORDINARY_RETIRE_ADMIN_IMAGE_REF=""
 [[ "${JOBSEEK_DEPLOY_REVISION:-}" =~ ^[0-9a-f]{40}$ && "${CRAWLER_IMAGE_REF:-}" =~ ^ghcr\.io/[^/]+/jobseek-crawler@sha256:[0-9a-f]{64}$ ]] || reject "immutable release identity is missing"
 [[ "${BROWSER_IMAGE_REF:-}" =~ ^ghcr\.io/[^/]+/jobseek-crawler-browser@sha256:[0-9a-f]{64}$ && "${LIGHTPANDA_B0_SERVICE_HOST:-}" == 10.0.0.5 ]] || reject "browser image or B0 host identity is invalid"
 for key in ORDINARY_OWNERSHIP_SOURCE_REVISION ORDINARY_OWNERSHIP_ROUTING_EPOCH ORDINARY_OWNERSHIP_PLAN_SHA256 ORDINARY_OWNERSHIP_PROJECTION_SHA1; do
@@ -138,12 +145,26 @@ contain() {
     done <<<"$oneoffs"
     echo "ERROR: ordinary cutover failed; pending identity retained and crawler lane contained" >&2
   fi
+  [[ -z "$admin_override" ]] || rm -f -- "$admin_override"
   exit "$status"
 }
 trap contain EXIT
 trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
+# A reviewed newer admin can retire an older selected runtime. Only the
+# administrative one-off uses the newer immutable image; Compose receipts,
+# stopped/restored writers and the retained SQL owner remain bound to the old
+# selected release. The installed original wrapper is never overwritten.
+if [[ -n "$admin_source" ]]; then
+  [[ "$admin_source" != "$JOBSEEK_DEPLOY_REVISION" && "$admin_image" != "$CRAWLER_IMAGE_REF" ]] || reject "compatibility admin must select a distinct source/image"
+  admin_override="$(mktemp "$DEPLOY_DIR/.ordinary-go-retire-admin.XXXXXX")"
+  printf 'services:\n  ordinary-go:\n    image: %s\n' "$admin_image" >"$admin_override"
+  native=("${compose[@]}" -f "$admin_override" run --rm --no-deps --pull never --entrypoint /usr/local/bin/go-ordinary-worker)
+  identity="$(bounded 30s "${native[@]}" ordinary-go --identity)"
+  [[ "$identity" == *"\"source_revision\":\"$admin_source\""* && "$identity" == *'"profile":"greenhouse.token-skip/v1"'* ]] || reject "compatibility admin executable differs"
+  export ORDINARY_RETIRE_ADMIN_SOURCE_REVISION="$admin_source" ORDINARY_RETIRE_ADMIN_IMAGE_REF="$admin_image"
+fi
 # Arm recovery before any writer stop or restart-policy effect.
 armed=1
 if [[ "$operation" == activate ]]; then write_receipt pending; else write_receipt retiring; fi
@@ -189,6 +210,7 @@ bounded 860s "${native[@]}" -v "$REQUEST:/run/jobseek/ordinary-request.json:ro" 
   -e ORDINARY_FIRST_OWNERSHIP_REQUEST_FILE=/run/jobseek/ordinary-request.json \
   -e ORDINARY_OWNERSHIP_SOURCE_REVISION -e ORDINARY_OWNERSHIP_ROUTING_EPOCH \
   -e ORDINARY_OWNERSHIP_PLAN_SHA256 -e ORDINARY_OWNERSHIP_PROJECTION_SHA1 \
+  -e ORDINARY_RETIRE_ADMIN_SOURCE_REVISION -e ORDINARY_RETIRE_ADMIN_IMAGE_REF \
   -e CRAWLER_IMAGE_REF -e LIGHTPANDA_B0_ROUTING_EPOCH \
   -e LIGHTPANDA_B0_QUEUE_NAMESPACE -e LIGHTPANDA_B0_SHARD_ID -e LIGHTPANDA_B0_PRODUCER_COHORT \
   ordinary-go "--$effect-first-ownership"

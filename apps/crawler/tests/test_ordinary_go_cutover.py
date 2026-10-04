@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import subprocess
 from pathlib import Path
@@ -59,8 +60,10 @@ docker() {
       *' config -q') return 0 ;;
       *' config') printf 'reviewed-compose\n'; return 0 ;;
       *' --identity')
+        local identity=$JOBSEEK_DEPLOY_REVISION
+        [[ "$args" != *ordinary-go-retire-admin* ]] || identity=${TEST_ADMIN_IDENTITY:-wrong}
         printf '{"source_revision":"%s","profile":"greenhouse.token-skip/v1"}\n' \
-          "$JOBSEEK_DEPLOY_REVISION"; return 0 ;;
+          "$identity"; return 0 ;;
       *' --stage-ownership') printf '{"state":"staged"}\n'; return 0 ;;
       *' --activate-first-ownership'|*' --retire-first-ownership')
         [[ -f "$RECEIPT" && -f "$REQUEST" && -f "$DEPLOY_DIR/stopped" ]] || return 93
@@ -216,3 +219,34 @@ def test_csv_publication_refuses_pending_owner_before_any_external_effect(tmp_pa
     )
     assert result.returncode != 0
     assert "retire native ordinary ownership" in result.stderr
+
+
+def test_compatibility_retirement_binds_admin_and_restores_original_runtime(host):
+    _, deploy, env = host
+    assert invoke(host, "activate", PLAN, PROJECTION).returncode == 0
+    env["TEST_ADMIN_IDENTITY"] = "f" * 40
+    admin_image = "ghcr.io/example/jobseek-crawler@sha256:" + "1" * 64
+    result = invoke(host, "retire", env["TEST_ADMIN_IDENTITY"], admin_image)
+    assert result.returncode == 0, result.stderr
+    request = json.loads((deploy / ".ordinary-go-request-v1.json").read_text())
+    assert request["source_revision"] == SOURCE
+    assert request["crawler_image_ref"] == IMAGE
+    events = Path(env["TEST_LOG"]).read_text().splitlines()
+    admin = next(event for event in events if "--retire-first-ownership" in event)
+    assert "ordinary-go-retire-admin" in admin and "--pull never" in admin
+    assert "ORDINARY_RETIRE_ADMIN_SOURCE_REVISION" in admin
+    assert "ORDINARY_RETIRE_ADMIN_IMAGE_REF" in admin
+    assert not list(deploy.glob(".ordinary-go-retire-admin.*"))
+    assert not (deploy / ".ordinary-go-owner-v1").exists()
+    assert (deploy / "native-removed").exists()
+
+
+@pytest.mark.parametrize("source,image", [(SOURCE, IMAGE), ("bad", IMAGE), ("f" * 40, "latest")])
+def test_compatibility_retirement_refuses_bad_admin_before_stopping(host, source, image):
+    _, deploy, env = host
+    assert invoke(host, "activate", PLAN, PROJECTION).returncode == 0
+    Path(env["TEST_LOG"]).write_text("")
+    before = (deploy / ".ordinary-go-owner-v1").read_bytes()
+    assert invoke(host, "retire", source, image).returncode != 0
+    assert (deploy / ".ordinary-go-owner-v1").read_bytes() == before
+    assert " stop --timeout" not in Path(env["TEST_LOG"]).read_text()

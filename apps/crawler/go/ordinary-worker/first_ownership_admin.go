@@ -38,9 +38,10 @@ type FirstOwnershipRequest struct {
 }
 
 type FirstOwnershipAdminConfig struct {
-	database, redis string
-	request         FirstOwnershipRequest
-	digest          string
+	database, redis         string
+	request                 FirstOwnershipRequest
+	digest                  string
+	adminSource, adminImage string
 }
 
 func ReadFirstOwnershipAdminConfig(getenv func(string) string, installed, operation string) (FirstOwnershipAdminConfig, error) {
@@ -58,12 +59,23 @@ func ReadFirstOwnershipAdminConfig(getenv func(string) string, installed, operat
 		return FirstOwnershipAdminConfig{}, ErrStartup
 	}
 	r := c.request
+	ownerSource := installed
+	c.adminSource, c.adminImage = getenv("ORDINARY_RETIRE_ADMIN_SOURCE_REVISION"), getenv("ORDINARY_RETIRE_ADMIN_IMAGE_REF")
+	if c.adminSource != "" || c.adminImage != "" {
+		// Explicit compatibility retirement keeps the running executable's
+		// compiled identity separate from the retained outgoing owner. This
+		// cannot activate another source or grant runtime write authority.
+		if operation != "retire" || c.adminSource != installed || !firstImage.MatchString(c.adminImage) || c.adminImage == r.CrawlerImageRef || !sourcePattern.MatchString(r.SourceRevision) || r.SourceRevision == installed {
+			return FirstOwnershipAdminConfig{}, ErrStartup
+		}
+		ownerSource = r.SourceRevision
+	}
 	canonical, err := json.Marshal(r)
-	if err != nil || !bytes.Equal(bytes.TrimSuffix(body, []byte("\n")), canonical) || r.Version != "jobseek.ordinary.first-owner-request/v1" || r.Operation != operation || r.SourceRevision != installed || r.RoutingEpoch < 1 || r.RoutingEpoch > 9999999999999 || !planPattern.MatchString(r.PlanSHA256) || !sourcePattern.MatchString(r.ProjectionSHA1) || !firstImage.MatchString(r.CrawlerImageRef) || !planPattern.MatchString(r.B0ReceiptSHA256) || !planPattern.MatchString(r.ColdHostSHA256) || r.Namespace != "production-b0" || r.ShardID != "lightpanda-b0" || (r.B0Cohort != "c1" && r.B0Cohort != "c2" && r.B0Cohort != "c3" && r.B0Cohort != "cdom") {
+	if err != nil || !bytes.Equal(bytes.TrimSuffix(body, []byte("\n")), canonical) || r.Version != "jobseek.ordinary.first-owner-request/v1" || r.Operation != operation || r.SourceRevision != ownerSource || r.RoutingEpoch < 1 || r.RoutingEpoch > 9999999999999 || !planPattern.MatchString(r.PlanSHA256) || !sourcePattern.MatchString(r.ProjectionSHA1) || !firstImage.MatchString(r.CrawlerImageRef) || !planPattern.MatchString(r.B0ReceiptSHA256) || !planPattern.MatchString(r.ColdHostSHA256) || r.Namespace != "production-b0" || r.ShardID != "lightpanda-b0" || (r.B0Cohort != "c1" && r.B0Cohort != "c2" && r.B0Cohort != "c3" && r.B0Cohort != "cdom") {
 		return FirstOwnershipAdminConfig{}, ErrStartup
 	}
 	for key, expected := range map[string]string{
-		"ORDINARY_OWNERSHIP_SOURCE_REVISION": installed,
+		"ORDINARY_OWNERSHIP_SOURCE_REVISION": ownerSource,
 		"ORDINARY_OWNERSHIP_PLAN_SHA256":     r.PlanSHA256,
 		"ORDINARY_OWNERSHIP_PROJECTION_SHA1": r.ProjectionSHA1,
 		"ORDINARY_OWNERSHIP_ROUTING_EPOCH":   strconv.FormatInt(r.RoutingEpoch, 10),
@@ -145,6 +157,7 @@ func RunFirstOwnershipAdmin(ctx context.Context, c FirstOwnershipAdminConfig) (*
 	if err != nil {
 		return nil, ErrStartup
 	}
+	result.AdminSourceRevision, result.AdminImageRef = c.adminSource, c.adminImage
 	return result, nil
 }
 

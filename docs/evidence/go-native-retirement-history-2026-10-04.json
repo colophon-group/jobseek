@@ -1,0 +1,91 @@
+{
+  "schema": "jobseek.go-migration.retirement-history-evidence/v1",
+  "observed_at_utc": "2026-10-04T00:57:42Z",
+  "goal_status": "active",
+  "production": {
+    "version": "0.13.913",
+    "source_revision": "f90d8244c66a0ca07635ab9bb08adea4b0b6c462",
+    "routing_epoch": 153,
+    "native_greenhouse_members": 2570,
+    "ordinary_active_receipt_sha256": "c39d92b252fc270ff82130410b5009ea64f2b6468c730977cea5257365810dbe",
+    "b0_active_receipt_sha256": "a8d99d82f77dba9ebb5e101459752bb6b2f2454de57b40525409af81767931ac",
+    "state": "original complete active stack restored after refused retirement",
+    "full_writer_readiness_and_restart_arming": true,
+    "http_readiness_endpoints_passed": 8,
+    "ownership_repair_sql_writes": 0,
+    "original_wrapper_replaced": false
+  },
+  "retirement_refusal": {
+    "original_command_terminal_returncode": 1,
+    "sql_leases_expired_naturally": true,
+    "sql_owner_remained_active": true,
+    "redis_projection_remained_active": true,
+    "retained_active_attempts_older_retired_epoch151": 18,
+    "owned_active_attempts_current_epoch153": 26,
+    "cause": "foreign-attempt preflight includes legitimate retained attempts from older retired owners when current attempts exist",
+    "retiring_receipt_sha256": "b38fcab2729c577a1e3ed854345208ae9ae0296ab55d4348464eb4416d261046"
+  },
+  "previous_strict_check": {
+    "completed_deadlines_matching": 1318,
+    "completed_deadlines_mismatched": 12,
+    "passed": false
+  },
+  "merged_not_deployed": {
+    "version": "0.13.916",
+    "source_revision": "6878e116568714a892cab7c1cb0b4bd5d9dd53c2",
+    "pull_request": 10255,
+    "required_ci": "success",
+    "crawler_deploy_gate_status": "success",
+    "installed_image_parity": "success",
+    "build": "success",
+    "deployment_run": 37163642810,
+    "deployment": "refused before mutation by active native-owner guard"
+  },
+  "candidate_census": {
+    "eligible": 3916,
+    "greenhouse": 2570,
+    "ashby": 934,
+    "lever": 194,
+    "recruitee": 114,
+    "pinpoint": 104,
+    "production_admission_of_additional_providers": false
+  },
+  "candidate_fix": {
+    "version": "0.13.917",
+    "deployed": false,
+    "history_regression": "old query fails; corrected query passes against real private PostgreSQL and Redis",
+    "historical_attempt_records_preserved": true,
+    "foreign_historical_attempts_refused": [
+      "wrong kind",
+      "board absent from retired plan"
+    ],
+    "compatibility_retirement": "explicit distinct compiled admin revision/image and retained outgoing owner revision/image; retirement only",
+    "installed_host_container_proof": "required CI pending"
+  },
+  "remaining": [
+    "Merge and deploy corrected combined release through supported cold handoff.",
+    "Prove strict deadline parity and natural output before increasing native ownership.",
+    "Migrate remaining enabled rich, detail and browser routes and mandatory production Python consumers.",
+    "Verify full-service output, policy, freshness, conservation, resources/cost and cold reversal; retire Python runtime assets after rollback window."
+  ],
+  "restored_readonly_query_preflight": {
+    "observed_at_utc": "2026-10-04T01:01:01.64429Z",
+    "owner_state": "active",
+    "receipt_state": "active",
+    "current_owned_attempts": 29,
+    "old_query_foreign_attempts": 13,
+    "retained_retired_owned_attempts": 13,
+    "corrected_query_foreign_attempts": 0,
+    "database_mutations": 0
+  },
+  "local_validation": {
+    "full_queue_race_suite": "pass",
+    "full_worker_race_suite": "pass",
+    "queue_and_worker_vet": "pass",
+    "host_driver_tests": 12,
+    "host_driver_tests_result": "pass",
+    "ruff_check_and_format": "pass",
+    "distinct_compiled_admin_executable_retirement": "pass",
+    "installed_host_container_proof": "required CI pending"
+  }
+}

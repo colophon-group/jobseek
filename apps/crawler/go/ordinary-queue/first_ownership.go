@@ -29,12 +29,14 @@ func CaptureFirstOwnershipB0(ctx context.Context, pool *pgxpool.Pool, client *Cl
 // start services. The host still owns the original flock, source/image checks,
 // all-writer containment, durable pending receipt and complete stack readiness.
 type FirstOwnershipResult struct {
-	State          string `json:"state"`
-	SourceRevision string `json:"source_revision"`
-	RoutingEpoch   int64  `json:"routing_epoch"`
-	PlanSHA256     string `json:"plan_sha256"`
-	ProjectionSHA1 string `json:"projection_sha1"`
-	Members        int    `json:"members"`
+	State               string `json:"state"`
+	SourceRevision      string `json:"source_revision"`
+	RoutingEpoch        int64  `json:"routing_epoch"`
+	PlanSHA256          string `json:"plan_sha256"`
+	ProjectionSHA1      string `json:"projection_sha1"`
+	Members             int    `json:"members"`
+	AdminSourceRevision string `json:"admin_source_revision,omitempty"`
+	AdminImageRef       string `json:"admin_image_ref,omitempty"`
 }
 
 // ActivateFirstOwnershipInHostScope adopts the first ordinary owner without
@@ -106,9 +108,16 @@ func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client,
 				ids = append(ids, member.BoardID)
 			}
 			var foreign bool
-			if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM public.ordinary_worker_write_fence
- WHERE state='active' AND NOT (task_kind='monitor' AND task_id=board_id
- AND routing_epoch=$1 AND board_id=ANY($2::uuid[])))`, epoch, ids).Scan(&foreign); err != nil {
+			// Interrupted attempts remain retained after retirement. Admit an
+			// older monitor only when its immutable, retired plan owned it;
+			// unrelated old attempts and current/future foreign work still refuse.
+			if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM public.ordinary_worker_write_fence f
+ WHERE f.state='active' AND NOT (f.task_kind='monitor' AND f.task_id=f.board_id AND (
+ (f.routing_epoch=$1 AND f.board_id=ANY($2::uuid[])) OR
+ (f.routing_epoch<$1 AND EXISTS(SELECT 1 FROM public.ordinary_worker_ownership_plan p
+   WHERE p.state='retired' AND p.routing_epoch=f.routing_epoch
+   AND p.payload::jsonb->'members' @> jsonb_build_array(jsonb_build_object(
+     'board_id',f.board_id::text,'kind','monitor','worker','simple')))))))`, epoch, ids).Scan(&foreign); err != nil {
 				return err
 			}
 			if foreign {
@@ -256,5 +265,5 @@ func applyFirstOwnership(ctx context.Context, pool *pgxpool.Pool, client *Client
 	if CheckHostColdSQLScope(ctx, pool, source) != nil {
 		return nil, ErrAuthorityLost
 	}
-	return &FirstOwnershipResult{state, source, epoch, digest, plan.ProjectionSHA1(), plan.MemberCount()}, nil
+	return &FirstOwnershipResult{State: state, SourceRevision: source, RoutingEpoch: epoch, PlanSHA256: digest, ProjectionSHA1: plan.ProjectionSHA1(), Members: plan.MemberCount()}, nil
 }

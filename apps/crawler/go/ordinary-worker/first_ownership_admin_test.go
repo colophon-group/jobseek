@@ -64,3 +64,47 @@ func TestReadFirstOwnershipRequiresProtectedExactRequest(t *testing.T) {
 		}
 	}
 }
+
+func TestReadFirstOwnershipCompatibilityAdminOnlyRetiresExactOutgoingOwner(t *testing.T) {
+	r, env := firstRequestFixture(t)
+	installed := strings.Repeat("1", 40)
+	image := "ghcr.io/colophon-group/jobseek-crawler@sha256:" + strings.Repeat("2", 64)
+	write := func() {
+		t.Helper()
+		body, _ := json.Marshal(r)
+		if err := os.WriteFile(env["ORDINARY_FIRST_OWNERSHIP_REQUEST_FILE"], append(body, '\n'), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	get := func(k string) string { return env[k] }
+	if _, err := ReadFirstOwnershipAdminConfig(get, installed, "activate"); err != ErrStartup {
+		t.Fatal("foreign activation accepted")
+	}
+	env["ORDINARY_RETIRE_ADMIN_SOURCE_REVISION"], env["ORDINARY_RETIRE_ADMIN_IMAGE_REF"] = installed, image
+	if _, err := ReadFirstOwnershipAdminConfig(get, installed, "activate"); err != ErrStartup {
+		t.Fatal("compatibility admin activated old owner")
+	}
+	r.Operation = "retire"
+	write()
+	env["ORDINARY_GO_WORKER_MODE"] = "retire-first-ownership"
+	c, err := ReadFirstOwnershipAdminConfig(get, installed, "retire")
+	if err != nil || c.request.SourceRevision != r.SourceRevision || c.request.CrawlerImageRef != r.CrawlerImageRef || c.adminSource != installed || c.adminImage != image {
+		t.Fatal("explicit outgoing/caller identities lost", err)
+	}
+	for _, key := range []string{"ORDINARY_RETIRE_ADMIN_SOURCE_REVISION", "ORDINARY_RETIRE_ADMIN_IMAGE_REF", "ORDINARY_OWNERSHIP_SOURCE_REVISION", "CRAWLER_IMAGE_REF"} {
+		value := env[key]
+		env[key] = ""
+		if _, err := ReadFirstOwnershipAdminConfig(get, installed, "retire"); err != ErrStartup {
+			t.Fatal("missing compatibility binding accepted", key)
+		}
+		env[key] = value
+	}
+	env["ORDINARY_RETIRE_ADMIN_IMAGE_REF"] = r.CrawlerImageRef
+	if _, err := ReadFirstOwnershipAdminConfig(get, installed, "retire"); err != ErrStartup {
+		t.Fatal("outgoing image disguised as compatibility admin")
+	}
+	env["ORDINARY_RETIRE_ADMIN_IMAGE_REF"] = image
+	if _, err := ReadFirstOwnershipAdminConfig(get, r.SourceRevision, "retire"); err != ErrStartup {
+		t.Fatal("caller revision taken from environment instead of compiled image")
+	}
+}
