@@ -1,0 +1,150 @@
+{
+  "schema": "jobseek.native-family917.production/v1",
+  "observed_at_utc": "2026-10-04T03:16:23.163516+00:00",
+  "goal_status": "active; full migration unfinished",
+  "release": {
+    "version": "0.13.917",
+    "source_revision": "990165526e328cddd05c271053ffd903d7a7a671",
+    "images": {
+      "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:e8f8b1a4e9b935c080878b17cfe20d9a8c78c0edd241248b83cbf2fe00bb6174",
+      "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:aa921fb8dadfde56456236e2be89d59d95297fc8864639a89ffdde51166c06f4",
+      "JOBSEEK_DEPLOY_REVISION": "990165526e328cddd05c271053ffd903d7a7a671"
+    },
+    "deployment_run": 37167862702,
+    "deployment_attempt": 2,
+    "deployment_and_promotion": "success",
+    "implementation_pr": 10257
+  },
+  "ownership": {
+    "b0_cohort": "cdom",
+    "routing_epoch": 155,
+    "b0_plan_digest": "dd14ca6b1f28dc78f97e6f073e6df1e5bc886c1d5ee4db8be82bb675104cc3c0",
+    "b0_receipt_sha256": "34c56d116804719f34d1a15e49f5260534d80ac149c0f446c4eb60325ca83acf",
+    "ordinary_plan_sha256": "d90480f96e80e0c1c885f979c339af111d00e13dfdfb0845784199ad546db120",
+    "ordinary_projection_sha1": "6c4f839496389aceab3f8731867c51a43a7717d5",
+    "ordinary_receipt_sha256": "7dad4c77d5e10a48ee333d78a1c79591d2b183472713e18a86984899422cc6e8",
+    "ordinary_sql_state": "active",
+    "ordinary_redis_projection_persistent": true,
+    "serving_greenhouse_members": 2570,
+    "canonical_members_observed": 2570,
+    "full_stack_readiness_and_restart_arming": "original installed driver success",
+    "http_health": {
+      "worker-1": 200,
+      "worker-2": 200,
+      "worker-3": 200,
+      "browser-1": 200,
+      "drain": 200,
+      "exporter": 200,
+      "lightpanda-claimant": 204,
+      "ordinary-go": 204
+    }
+  },
+  "natural_processing": {
+    "strict_matching_completed_deadlines": 140,
+    "strict_deadline_mismatches": 0,
+    "metrics": [
+      "jobseek_ordinary_go_ready 1",
+      "jobseek_ordinary_go_active_claims 2",
+      "jobseek_ordinary_go_claim_errors_total 0",
+      "crawler_tasks_total{kind=\"monitor\",status=\"succeeded\"} 140",
+      "crawler_tasks_total{kind=\"monitor\",status=\"unacknowledged\"} 2",
+      "crawler_runtime_origin_attempts_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 142",
+      "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"response\"} 142",
+      "crawler_runtime_origin_outcomes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\",outcome=\"transport_error\"} 0",
+      "crawler_runtime_response_body_bytes_total{stage=\"monitor\",execution_class=\"http\",egress=\"direct\"} 8608762",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"success\"} 142",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"error\"} 0",
+      "crawler_runtime_executions_total{stage=\"monitor\",implementation=\"go\",outcome=\"cancelled\"} 0",
+      "crawler_runtime_output_items_total{stage=\"monitor\",implementation=\"go\"} 6614",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"new\"} 0",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"relisted\"} 0",
+      "crawler_monitor_jobs_discovered_total{profile=\"simple\",action=\"gone\"} 6",
+      "jobseek_ordinary_go_posting_touches_total 6608"
+    ],
+    "existing_postings_checked": 10,
+    "stored_html_hash_matches": 10,
+    "uploaded_and_scalar_description_hash_matches": 10,
+    "newly_inserted_postings_observed": 0,
+    "previous_12_mismatch_boards_completed_in_current_epoch": 0,
+    "limits": [
+      "Two unacknowledged tasks reported; inspect their retained receipts and natural recovery before widening.",
+      "Initial current-epoch proof; the twelve prior mismatch boards have not completed naturally on this release yet.",
+      "Stored uploaded/hash continuity observed; external object bytes were not fetched.",
+      "No whole-fleet publisher-policy or comparable density/cost acceptance claimed."
+    ]
+  },
+  "next_provider_candidates": {
+    "observed_at_utc": "2026-10-04T03:12:46.984802+00:00",
+    "eligible": 3916,
+    "by_provider": {
+      "ashby": 934,
+      "greenhouse": 2570,
+      "lever": 194,
+      "pinpoint": 104,
+      "recruitee": 114
+    },
+    "canonical_unsupported": 3,
+    "cached_unsupported": 0,
+    "projection_mismatches": 0,
+    "ownership_granted": false
+  },
+  "coverage": {
+    "enabled_boards": 7885,
+    "enabled_registry_observed_at_utc": "2026-10-04T02:27:38.995395+00:00",
+    "boards_disabled_for_migration": 0,
+    "remaining_python_worker_processes": 4,
+    "python_playwright_chromium_retirement": "unfinished"
+  },
+  "handoff": {
+    "outgoing_source": "f90d8244c66a0ca07635ab9bb08adea4b0b6c462",
+    "explicit_approved_admin_source": "990165526e328cddd05c271053ffd903d7a7a671",
+    "original_outgoing_wrapper_and_b0_retained": "unchanged through ordinary retirement",
+    "retirement_after_interrupted_projection": "exact supported retirement recovery succeeded",
+    "outgoing_b0_rollback_retired_epoch": 154,
+    "selectors_cleared_before_full_deploy": true,
+    "expired_legacy_reaper": {
+      "simple_reenqueued": 85,
+      "browser_reenqueued": 11,
+      "dead_lettered": 0,
+      "missing_config": 0,
+      "sql_mutations": 0,
+      "ordinary_owner_changes": 0,
+      "b0_changes": 0
+    },
+    "activation_retry_contract": "Retry activate with same exact plan/projection. recover-pending cancels a pending activation; it does not resume it.",
+    "maintenance_lock": "Scheduled reconciliation finished naturally; no bypass or foreign oneoff termination"
+  },
+  "image_cache": {
+    "workflow_prs": [
+      10258,
+      10259
+    ],
+    "fixed_live_workflow_run": 37173383749,
+    "fixed_live_workflow_result": "success",
+    "credential_scope": "ephemeral CI packages:read; no standing token or scope expansion"
+  },
+  "resources": {
+    "snapshot": [
+      "deploy-lightpanda-claimant-1|0.87%|7.531MiB / 96MiB|10",
+      "deploy-browser-1-1|227.48%|1.799GiB / 6GiB|394",
+      "deploy-worker-3-1|52.50%|183.4MiB / 1GiB|31",
+      "deploy-worker-2-1|100.13%|309.7MiB / 1GiB|35",
+      "deploy-worker-1-1|58.70%|220.7MiB / 1GiB|36",
+      "deploy-lightpanda-producer-1|0.02%|5.316MiB / 32MiB|8",
+      "deploy-lightpanda-executor-1|12.66%|39.22MiB / 384MiB|9",
+      "deploy-exporter-1|0.19%|55.89MiB / 256MiB|14",
+      "deploy-ordinary-go-1|0.05%|60.52MiB / 1GiB|10",
+      "deploy-drain-1|0.01%|9.508MiB / 256MiB|14",
+      "deploy-alloy-1|1.57%|148.6MiB / 512MiB|9",
+      "deploy-redis-1|1.10%|1.417GiB / 4GiB|6"
+    ],
+    "comparable_whole_lane_cost_proof": false
+  },
+  "required_next": [
+    "Inspect the two unacknowledged tasks and continue naturally due strict deadline/field evidence, including prior mismatch boards.",
+    "Admit a fresh proven eligible rich-provider cohort through the supported ownership/B0 contracts.",
+    "Complete every remaining enabled monitor/detail/browser profile and mandatory Python runtime consumer.",
+    "Prove fleet fields/policy/freshness/conservation and comparable whole-lane resource/cost; exercise cold reversal and observation window.",
+    "Retire production Python, Playwright, Chromium and runtime-only legacy assets; preserve useful isolated offline Python."
+  ]
+}
