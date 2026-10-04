@@ -114,6 +114,7 @@ def ownership_projection(payload: str) -> str:
                     "jsonld.direct-detail/v1",
                     "smartrecruiters.api-detail/v1",
                     "workable.api-detail/v1",
+                    "join.nextdata-detail/v1",
                 )
                 or (d["profile"] == "workday.cxs-detail/v1" and d["board_id"] not in members)
                 or (

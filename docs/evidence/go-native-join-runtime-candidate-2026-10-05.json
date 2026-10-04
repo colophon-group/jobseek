@@ -1,0 +1,44 @@
+{
+  "schema": "jobseek.native-join-runtime-candidate/v1",
+  "version": "0.13.929",
+  "base_source": "340a2ef93ccbd62184589120925d9fbc9213f9a0",
+  "branch": "fix-crawler/native-join-runtime",
+  "profiles": [
+    "join.nextdata-urls/v1",
+    "join.nextdata-detail/v1"
+  ],
+  "implementation": "Existing Join Go parsers, verified transport, ordinary ownership and shared canonical persistence; no subprocess in native execution.",
+  "verified_contracts": [
+    "complete parallel monitor pagination, separate urgent details and four-miss absence",
+    "late-page failure conserves prior inventory",
+    "actual header/meta policy resource survives redirects and later parallel response",
+    "first-page 404/410 preserves spaced disappearance handling",
+    "configured nextdata detail extraction, shared salary enrichment and canonical descriptions",
+    "non-200, malformed and transport failures preserve content",
+    "publisher policy survives inactive posting settlement and null deadline",
+    "actual posting-host queue deadline and lease conservation"
+  ],
+  "focused_real_pg_redis_race_seconds": 11.811,
+  "monitor_only_full_worker_real_race_seconds": 107.153,
+  "final_full_checks": {
+    "ordinary_queue_real_pg_redis_race_seconds": 46.309,
+    "ordinary_worker_real_pg_redis_race_seconds": 82.923,
+    "typesense_exporter_race_seconds": 3.536,
+    "python_ownership_cutover_tests": 33,
+    "python_ownership_cutover_seconds": 9.71,
+    "join_parser_race": "passed",
+    "go_vet_and_module_tidy": "passed for Join, queue, worker and exporter",
+    "ruff": "passed"
+  },
+  "production_api_release": {
+    "source": "340a2ef93ccbd62184589120925d9fbc9213f9a0",
+    "version": "0.13.928",
+    "deployment_run": 37242300794,
+    "routing_epoch": 175,
+    "native_activation": "original activation refused; pending identity and full cold lane retained; standard legacy reaper recovery waits for scheduled maintenance",
+    "admitted_monitors": 4989,
+    "admitted_detail_boards": 1301,
+    "scheduled_owned_postings_at_admission": 947631
+  },
+  "full_migration_complete": false
+}

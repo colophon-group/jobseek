@@ -1,5 +1,49 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Deployed API release and native Join continuation — 2026-10-05
+
+The full migration goal remains active. [PR #10302](https://github.com/colophon-group/jobseek/pull/10302)
+merged the combined native SmartRecruiters/Workable monitor and detail release as
+`340a2ef93ccbd62184589120925d9fbc9213f9a0` (v0.13.928). Its exact reviewed tree was
+retained, and [deployment/promotion](https://github.com/colophon-group/jobseek/actions/runs/37242300794)
+succeeded. Complete outgoing source926 ordinary/B0 reversal restored all six
+legacy writers healthy and restart-armed, cleared selectors/receipts/projections,
+and left no current active fences at epoch174. Incoming source928 baseline image
+and writer identities were independently verified, then original B0 activation
+succeeded at epoch175 with all seven HTTP health endpoints passing.
+
+Fresh canonical/cache and actual scheduled posting-route reconciliation admits
+4,989 monitors and 1,301 detail boards: 668 JSON-LD, 431 Workday, 126 SmartRecruiters
+and 76 Workable. The monitor additions are 123 SmartRecruiters and 74 Workable.
+Coverage is 947,631 scheduled postings at admission; this is not a fetched count.
+Thirty boards retain legacy detail ownership because their queued caches disagree.
+The initial staging command rejected after retaining the staged plan. The installed
+native inspection command independently verified the exact source/epoch, plan,
+projection and counts, without changing a timeout or authority check. Original
+combined cold activation refused after SQL leases expired, retaining its pending
+identity and the full cold lane. Twenty-eight expired tokenless monitor claims
+remain; recovery uses the standard legacy reaper once scheduled reconciliation
+releases the maintenance lock. Native API serving has not yet been proved.
+
+v0.13.929 integrates the existing Go Join pagination and configured nextdata detail
+parser directly into the same native worker. Complete monitor inventories create
+URL stubs and schedule details separately; incomplete pagination writes no partial
+inventory. Existing four-miss absence and spaced 404/410 board disappearance
+handling remain. Parallel responses retain the actual reserved page, source and
+policy, including after redirects. Configured detail fields use shared enrichment,
+canonical persistence, pending descriptions and posting-host deadlines. Failed or
+empty extraction preserves prior content, and positive publisher policy precedes
+inactive-posting settlement. Unsupported field mappings retain legacy ownership. The full real PostgreSQL/Redis
+race suites pass (queue46.309s, worker82.923s), as do the exporter, Join parser,
+Go vet/module checks and all 33 affected Python ownership/cutover tests.
+[Portable Join evidence](evidence/go-native-join-runtime-candidate-2026-10-05.json)
+records both configured monitor and detail contracts.
+
+Continue the existing delivery list below: remaining sitemap/Booking, rich
+identities and configured browser/HTTP routes; direct maintenance/deployment
+consumers; comparable whole-lane resource and reversal proof; then removal of
+mandatory Python orchestration and Playwright/Chromium after the rollback window.
+
 ## Full delivery continuation and native API details — 2026-10-05
 
 The goal is full production migration to Go and self-hosted Lightpanda. Completion

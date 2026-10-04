@@ -84,6 +84,7 @@ replace github.com/colophon-group/jobseek/apps/crawler/go/teamtailor-rss-monitor
 replace github.com/colophon-group/jobseek/apps/crawler/go/successfactors-rss-monitor => ../successfactors-rss-monitor
 
 require (
+	github.com/colophon-group/jobseek/apps/crawler/go/join-monitor v0.0.0
 	github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail v0.0.0
 	github.com/colophon-group/jobseek/apps/crawler/go/personio-monitor v0.0.0
 	github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy v0.0.0
@@ -96,3 +97,5 @@ replace github.com/colophon-group/jobseek/apps/crawler/go/personio-monitor => ..
 replace github.com/colophon-group/jobseek/apps/crawler/go/smartrecruiters-monitor => ../smartrecruiters-monitor
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/workable-monitor => ../workable-monitor
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/join-monitor => ../join-monitor

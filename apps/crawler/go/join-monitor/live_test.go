@@ -193,3 +193,35 @@ func TestTDMMetadataAcceptsAttributeOrder(t *testing.T) {
 		}
 	}
 }
+
+type reservationPageClient struct{ source string }
+
+func (c reservationPageClient) Do(request *http.Request) (*http.Response, error) {
+	body := string(samplePage(`[{"idParam":"job"}]`, "3"))
+	header := http.Header{}
+	status := 200
+	if request.URL.Query().Get("page") == "2" {
+		header.Set("Location", "https://join.com/reserved-page")
+		status = 302
+	} else if request.URL.Path == "/reserved-page" {
+		if c.source == "header" {
+			header.Set("TDM-Reservation", "1")
+			header.Set("TDM-Policy", "page-two-policy")
+			status = 404
+		} else {
+			body = `<meta name="tdm-reservation" content="1"><meta name="tdm-policy" content="page-two-policy">`
+		}
+	}
+	return &http.Response{StatusCode: status, Header: header, Body: io.NopCloser(strings.NewReader(body)), Request: request}, nil
+}
+
+func TestParallelReservationRetainsActualPageAfterLaterSuccess(t *testing.T) {
+	for _, source := range []string{"header", "meta"} {
+		t.Run(source, func(t *testing.T) {
+			result, err := Fetch(context.Background(), reservationPageClient{source}, "https://join.com/companies/acme", "acme")
+			if err == nil || len(result.URLs) != 0 || result.ErrorKind != "tdm" || result.TDMSource != source || result.TDMPolicy != "page-two-policy" || result.ReservationInitialURL != "https://join.com/companies/acme?page=2" || result.ReservationURL != "https://join.com/reserved-page" || result.FinalURL != "https://join.com/companies/acme?page=3" || result.Requests != 4 {
+				t.Fatalf("parallel response changed publisher evidence: %+v %v", result, err)
+			}
+		})
+	}
+}

@@ -17,6 +17,7 @@ type WorkdayDetailProfile struct {
 	FacilityTenantAliases                           []string
 	JSONLDConfig                                    map[string]any
 	APITokenOverride                                string
+	JoinDetailConfig                                map[string]json.RawMessage
 }
 
 // Admission binds the configured tenant/domain without enumerating postings.

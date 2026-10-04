@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 
+	join "github.com/colophon-group/jobseek/apps/crawler/go/join-monitor"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	publisherpolicy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 	smartrecruiters "github.com/colophon-group/jobseek/apps/crawler/go/smartrecruiters-monitor"
@@ -30,6 +31,15 @@ func fetchAPIDetail(ctx context.Context, verified *VerifiedDirectHTTP, profile q
 	var content any
 	var reservation *publisherpolicy.Reservation
 	switch profile.Profile {
+	case "join.nextdata-detail/v1":
+		fetched, failure := join.FetchDetailWithClient(ctx, join.DetailRequest{URL: profile.SourceURL, Config: profile.JoinDetailConfig}, &client)
+		content, err = fetched.Content, failure
+		if fetched.ErrorKind == "tdm" {
+			reservation = &publisherpolicy.Reservation{URL: fetched.ReservationURL, Source: fetched.TDMSource}
+			if fetched.TDMPolicy != "" {
+				reservation.PolicyURL = &fetched.TDMPolicy
+			}
+		}
 	case "smartrecruiters.api-detail/v1":
 		fetched, failure := smartrecruiters.FetchDetailWithClient(ctx, profile.SourceURL, &client)
 		content, err = fetched.Content, failure
