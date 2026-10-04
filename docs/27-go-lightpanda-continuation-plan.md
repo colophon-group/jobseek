@@ -56,14 +56,33 @@ checks cover rich fields, description uploads, provider-specific 404s, publisher
 reservation and full-inventory settlement. Refresh the census against the next
 approved release before staging a combined rich-provider cohort.
 
-The next runtime slice replaces the NW and Umantis forward deployment repair
-commands with Go. It embeds the exact existing SQL/Lua contracts and retains
+[PR #10253](https://github.com/colophon-group/jobseek/pull/10253) is merged at
+`86a4dfdf9d15d2e97df3518edb50f5501ea06859` and replaces the NW and Umantis
+forward deployment repair commands with Go. It embeds the exact existing SQL/Lua contracts and retains
 UUID/dedup behavior, foreign-owner refusal, Umantis two-pass verification and
 idempotent partial-batch recovery. Historical rollback still uses its original
 prior-image Python command. The same slice repairs one observed retirement seam:
 after complete legacy/B0 readiness and restart arming, remove only the exact
 stopped ordinary container before deleting its retiring receipt. Preserve the
-old image for rollback. This requires the installed host CI contract before use.
+old image for rollback. Required CI, the actual Crawler Deploy Gate and installed host CI passed before
+merge; the new original retirement cleanup and old-image retention are verified.
+v0.13.915 is not deployed at this checkpoint.
+
+The 23:31 UTC v0.13.913 check found 465 matching completed deadlines and two
+completed SQL deadlines with earlier Redis retry scores and no live tokens.
+Metrics recorded 460 successes, two failed tasks, six timeouts, three
+unacknowledged tasks, three claim errors and one gone outcome. The strict check
+failed; preserve those observations instead of treating them as transient proof.
+A real PostgreSQL/Redis reproduction shows a specific bottleneck: one blocked
+canonical board consumes the sole authority connection and makes an independent
+board hit its deadline. Candidate v0.13.916 uses at most five connections,
+matching the default five worker slots, and limits the claim mutex to cursor
+updates. Transactions retain their existing time limits and per-operation
+SQL/Redis/epoch/lease/canonical checks. Five repetitions verify independent-board
+progress, refusal of the blocked disabled board and exactly one owned lease from
+five simultaneous callers. Full queue/worker race suites and vet pass. This
+fixes the reproduced bottleneck; production deadline resolution remains a check
+after the approved combined release is deployed.
 
 The v0.13.913 cold handoff initially refused 68 expired tokenless Redis monitor
 leases after the SQL leases expired naturally. The existing installed maintenance
@@ -73,8 +92,8 @@ completed. Retained write fences from retired epoch 151 remain historical;
 current admission was bound to epoch 153. Never clear SQL leases or partially
 restart writers to bypass admission.
 
-Continue by validating v0.13.913 task outcomes and strict deadline parity while
-completing the deployment-repair slice. Build the approved combined release,
+Continue by completing the bounded concurrency candidate and exact-head checks
+while observing v0.13.913. Build the approved combined release,
 use the original complete retirement/B0/deploy/reactivation contracts, then
 adopt fresh eligible Ashby/Lever/Recruitee/Pinpoint profiles. Finish every
 remaining provider, URL/detail and browser profile plus mandatory Python runtime
