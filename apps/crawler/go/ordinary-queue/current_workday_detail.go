@@ -21,6 +21,14 @@ type CurrentWorkdayDetail struct {
 	PublisherReserved bool
 }
 
+// PostingID returns the canonical posting bound to the opaque attempt.
+func (d *CurrentWorkdayDetail) PostingID() string {
+	if d == nil || d.claim == nil {
+		return ""
+	}
+	return d.claim.task.ID
+}
+
 func (d *CurrentWorkdayDetail) Profile() WorkdayDetailProfile {
 	if d == nil {
 		return WorkdayDetailProfile{}

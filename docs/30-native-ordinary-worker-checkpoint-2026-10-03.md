@@ -5,7 +5,36 @@ including retirement of production Python, Playwright and Chromium after
 replacement coverage and supported reversal are established. Useful isolated
 offline Python tools may remain. Preserve every enabled board.
 
-## Latest deployed checkpoint — 2026-10-04, 10:09 UTC
+## Latest continuation — 2026-10-04, 10:58 UTC
+
+[PR #10267](https://github.com/colophon-group/jobseek/pull/10267) merged the
+v0.13.923 Workday monitor at source
+`95ec59850d327a267ff1f23e54753160ca085114`. Required CI, Crawler Deploy Gate
+and installed-image parity passed at reviewed head
+`8c1bade44d083a73049a8f780514bbae62cc28da`.
+[Release build 37196598961](https://github.com/colophon-group/jobseek/actions/runs/37196598961)
+is advancing through the supported deployment workflow. Production remains
+v0.13.922 until incoming immutable images and supported cold reversal permit
+promotion; the merged monitor is not yet an active Workday owner.
+
+Later natural v0.13.922 observations cover all eight admitted profiles and 526
+completed deadlines matching SQL and Redis. All five previously observed
+completed but unacknowledged attempts recovered naturally after lease expiry
+at their unchanged canonical deadlines. Additional unacknowledged outcomes
+still occur. Three newly created native postings have title, locale, HTML and
+matching uploaded description hashes; two also have resolved location and
+technology fields. These observations do not establish comparable fleet costs.
+
+The v0.13.924 detail continuation uses the existing opaque attempts, canonical
+read/write fences, shared native enrichment, description writer and terminal
+deadline receipts. Actual PostgreSQL/Redis tests cover posting IDs distinct from
+board IDs, normalized fields, staged upload hashes, exact settlement and fresh
+publisher reservation. Empty detail results preserve content and visibility.
+Exclusive detail selection and runtime dispatch remain required before native
+detail activation. Extend the existing ownership and queue contracts for that
+work; do not introduce a parallel registry or per-posting ownership projection.
+
+## Deployed readback — 2026-10-04, 10:09 UTC
 
 [PR #10266](https://github.com/colophon-group/jobseek/pull/10266) delivered
 v0.13.922, source `b9e853a75d80cd2fa5d97d37ec58822259eedd4b`.
