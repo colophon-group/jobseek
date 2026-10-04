@@ -155,3 +155,33 @@ func TestRealFirstWorkdayDetailRetirementRejectsForeignCanonicalPostingBoard(t *
 		t.Fatal("exact canonical detail retry refused", err)
 	}
 }
+
+func TestRealFirstRetirementRetainsHistoricalDetailReceiptAfterPostingDeletion(t *testing.T) {
+	old := firstWorkdayDetailFixture(t)
+	authority, claim := firstRetirementClaim(t, old)
+	ctx := context.Background()
+	if _, err := applyFirstFixture(t, old, true); err != nil {
+		t.Fatal("old detail owner did not retire", err)
+	}
+	var before string
+	if err := old.f.observer.QueryRow(ctx, "SELECT to_jsonb(f)::text FROM ordinary_worker_write_fence f WHERE task_kind='scrape' AND task_id=$1::uuid", claim.task.ID).Scan(&before); err != nil {
+		t.Fatal(err)
+	}
+	// Later posting maintenance can delete a posting while its immutable retired
+	// owner and audit receipt remain. That receipt grants no current authority.
+	if _, err := old.f.observer.Exec(ctx, "DELETE FROM job_posting WHERE id=$1::uuid", claim.task.ID); err != nil {
+		t.Fatal(err)
+	}
+	next := firstOwnershipFixtureHistory(t, true)
+	firstRetirementClaim(t, next)
+	if _, err := applyFirstFixture(t, next, true); err != nil {
+		t.Fatal("historical deleted detail blocked next owner reversal", err)
+	}
+	var after string
+	if err := old.f.observer.QueryRow(ctx, "SELECT to_jsonb(f)::text FROM ordinary_worker_write_fence f WHERE task_kind='scrape' AND task_id=$1::uuid", claim.task.ID).Scan(&after); err != nil || after != before {
+		t.Fatal("historical detail receipt was rewritten", err)
+	}
+	if _, err := authority.Write(ctx, claim, true, func(context.Context, pgx.Tx) error { t.Fatal("retired deleted detail wrote"); return nil }); !errors.Is(err, ErrAuthorityLost) {
+		t.Fatal("retired detail regained authority", err)
+	}
+}

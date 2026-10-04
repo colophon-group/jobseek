@@ -123,8 +123,8 @@ func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client,
      WHERE p.state='retired' AND p.routing_epoch=f.routing_epoch
      AND p.payload::jsonb->'members' @> jsonb_build_array(jsonb_build_object(
        'board_id',f.board_id::text,'kind','monitor','worker','simple')))))) OR
- (f.task_kind='scrape' AND EXISTS(SELECT 1 FROM public.job_posting jp WHERE jp.id=f.task_id AND jp.board_id=f.board_id) AND (
-   (f.routing_epoch=$1 AND f.board_id=ANY($3::uuid[])) OR
+ (f.task_kind='scrape' AND (
+   (f.routing_epoch=$1 AND f.board_id=ANY($3::uuid[]) AND EXISTS(SELECT 1 FROM public.job_posting jp WHERE jp.id=f.task_id AND jp.board_id=f.board_id)) OR
    (f.routing_epoch<$1 AND EXISTS(SELECT 1 FROM public.ordinary_worker_ownership_plan p
      WHERE p.state='retired' AND p.routing_epoch=f.routing_epoch
      AND p.payload::jsonb->'details' @> jsonb_build_array(jsonb_build_object(
