@@ -14,6 +14,8 @@
 -- ARGV[5] = retry_score (float — score to write back to the per-domain
 --           ZSET; typically ``now`` for "retry ASAP")
 -- ARGV[6] = "guarded" only while holding the PG ordinary lease barrier
+-- ARGV[7:8] = optional bounded SQL receipt observation and ownership SHA1,
+--             supplied by the Go reaper under that same exclusive barrier
 --
 -- Returns: {reenqueued, dead_lettered, missing_config}
 --   - reenqueued: int — entries successfully re-enqueued
@@ -68,11 +70,91 @@ local expired = redis.call(
     "LIMIT", 0, max_entries
 )
 
+-- A committed native run can lose its settlement acknowledgement. Expiry
+-- must recover that success's canonical deadline, not retry the fetch at now.
+-- Attest every receipt and affected index before revoking any batch token.
+local receipts = {}
+if ARGV[7] ~= nil then
+    local function finite(value)
+        return value ~= nil and value == value and value ~= math.huge and value ~= -math.huge
+    end
+    local function compatible(key, expected)
+        local kind = redis.call("TYPE", key)["ok"]
+        return kind == "none" or kind == expected
+    end
+    local ok, observation = pcall(cjson.decode, ARGV[7])
+    if ARGV[6] ~= "guarded" or not ok or type(observation) ~= "table"
+        or type(observation.expired) ~= "table" or type(observation.receipts) ~= "table"
+        or #observation.expired ~= #expired then
+        return redis.error_reply("ordinary expired batch changed")
+    end
+    local observed = {}
+    for index, member in ipairs(expired) do
+        if observation.expired[index] ~= member then return redis.error_reply("ordinary expired batch changed") end
+        observed[member] = true
+    end
+    local count = 0
+    for member, receipt in pairs(observation.receipts) do
+        local domain, task_id = string.match(member, "^monitor|([^|]+)|([^|]+)$")
+        if wtype ~= "simple" or not observed[member] or domain == nil or type(receipt) ~= "table"
+            or type(receipt.token) ~= "string" or #receipt.token ~= 32
+            or string.find(receipt.token, "[^0-9a-f]") ~= nil
+            or redis.call("HGET", token_key, member) ~= receipt.token
+            or type(receipt.due) ~= "string" or not finite(tonumber(receipt.due)) or tonumber(receipt.due) < 0
+            or type(receipt.config) ~= "table" or type(receipt.learned_host) ~= "string"
+            or #receipt.learned_host > 253 or string.find(receipt.learned_host, "[%c|]") ~= nil then
+            return redis.error_reply("ordinary committed receipt changed")
+        end
+        local board = "board:" .. task_id
+        if redis.call("TYPE", board)["ok"] ~= "hash" then return redis.error_reply("ordinary committed config changed") end
+        local fields = 0
+        for field, value in pairs(receipt.config) do
+            if type(field) ~= "string" or type(value) ~= "string" or redis.call("HGET", board, field) ~= value then
+                return redis.error_reply("ordinary committed config changed")
+            end
+            fields = fields + 1
+        end
+        if fields == 0 or fields ~= redis.call("HLEN", board) then return redis.error_reply("ordinary committed config changed") end
+        for _, prefix in ipairs({"ft_monitors_", "ft_scrapes_", "monitors_", "scrapes_"}) do
+            local key = prefix .. wtype .. ":" .. domain
+            if not compatible(key, "zset") then return redis.error_reply("ordinary committed queue is corrupt") end
+            for _, position in ipairs({0, -1}) do
+                local edge = redis.call("ZRANGE", key, position, position, "WITHSCORES")
+                if #edge >= 2 and not finite(tonumber(edge[2])) then return redis.error_reply("ordinary committed queue is corrupt") end
+            end
+        end
+        for tier = 0, 2 do
+            if not compatible("ready:" .. wtype .. ":" .. tier, "zset") then return redis.error_reply("ordinary committed ready index is corrupt") end
+        end
+        if not compatible(strikes_key, "hash") or not compatible("ratelimit:" .. domain, "string") then
+            return redis.error_reply("ordinary committed recovery index is corrupt")
+        end
+        local rate = redis.call("GET", "ratelimit:" .. domain)
+        local rotation = redis.call("ZSCORE", scrape_rotation_key, domain)
+        local repair = redis.call("HGET", monitor_repair_key, member)
+        if (rate ~= false and not finite(tonumber(rate))) or (rotation ~= false and not finite(tonumber(rotation)))
+            or (repair ~= false and not finite(tonumber(repair))) then
+            return redis.error_reply("ordinary committed recovery deadline is corrupt")
+        end
+        count = count + 1
+    end
+    if count > 0 then
+        if not compatible("ordinary:ownership:active", "string") then return redis.error_reply("ordinary ownership projection changed") end
+        local projection = redis.call("GET", "ordinary:ownership:active")
+        if projection == false or redis.sha1hex(projection) ~= ARGV[8]
+            or redis.call("PTTL", "ordinary:ownership:active") ~= -1 then
+            return redis.error_reply("ordinary ownership projection changed")
+        end
+    end
+    receipts = observation.receipts
+end
+
 local reenqueued = 0
 local dead_lettered = 0
 local missing_config = 0
 
 for _, member in ipairs(expired) do
+    local receipt = receipts[member]
     -- Legacy direct reapers leave tokenized attempts to the guarded Go reaper.
     -- They may still recover ordinary tokenless work in the same batch.
     if ARGV[6] == "guarded" or redis.call("HEXISTS", token_key, member) == 0 then
@@ -108,7 +190,7 @@ for _, member in ipairs(expired) do
                 end
 
                 local strikes = 0
-                if repair_due ~= false then
+                if receipt ~= nil or repair_due ~= false then
                     redis.call("HDEL", strikes_key, member)
                 else
                     -- Increment strike count atomically.
@@ -152,7 +234,14 @@ for _, member in ipairs(expired) do
                     else
                         queue_key = "scrapes_" .. wtype .. ":" .. domain
                     end
-                    if repair_due ~= false then
+                    if receipt ~= nil then
+                        local due = tonumber(receipt.due)
+                        if repair_due ~= false then due = math.min(due, tonumber(repair_due)) end
+                        redis.call("ZREM", "ft_monitors_" .. wtype .. ":" .. domain, task_id)
+                        redis.call("ZADD", queue_key, due, task_id)
+                        redis.call("HDEL", monitor_repair_key, member)
+                        if receipt.learned_host ~= "" then redis.call("HSET", config_key, "egress_host", receipt.learned_host) end
+                    elseif repair_due ~= false then
                         local due = math.min(retry_score, tonumber(repair_due))
                         local queued_due = redis.call("ZSCORE", queue_key, task_id)
                         if queued_due == false or due < tonumber(queued_due) then

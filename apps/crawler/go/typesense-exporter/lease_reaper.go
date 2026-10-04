@@ -73,14 +73,18 @@ type redisLeaseReaper struct {
 	settings leaseReaperSettings
 }
 
-func reapLeasesAt(ctx context.Context, client *redis.Client, wtype string, now float64, settings leaseReaperSettings) (leaseReapResult, error) {
+func reapLeasesAt(ctx context.Context, client *redis.Client, wtype string, now float64, settings leaseReaperSettings, observed ...string) (leaseReapResult, error) {
 	var result leaseReapResult
 	if wtype != "simple" && wtype != "browser" {
 		return result, errors.New("invalid lease worker type")
 	}
 	// No blind transport replay: a lost acknowledgement leaves observation to
 	// the next normal tick. The same Lua handles task-level idempotence.
-	raw, err := client.Eval(ctx, leaseReaperLua, []string{}, wtype, strconv.FormatFloat(now, 'f', -1, 64), settings.BatchSize, settings.MaxStrikes, strconv.FormatFloat(now, 'f', -1, 64), "guarded").Slice()
+	args := []any{wtype, strconv.FormatFloat(now, 'f', -1, 64), settings.BatchSize, settings.MaxStrikes, strconv.FormatFloat(now, 'f', -1, 64), "guarded"}
+	for _, value := range observed {
+		args = append(args, value)
+	}
+	raw, err := client.Eval(ctx, leaseReaperLua, []string{}, args...).Slice()
 	if err != nil {
 		return result, errors.New("lease sweep was not acknowledged")
 	}
@@ -104,12 +108,9 @@ func (r redisLeaseReaper) Sweep(ctx context.Context, wtype string) (leaseReapRes
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	var result leaseReapResult
-	err := ordinaryqueue.WithOrdinaryLeaseRetirement(ctx, r.pool, func(ctx context.Context) error {
-		now, err := r.client.Time(ctx).Result()
-		if err != nil {
-			return errors.New("read lease clock failed")
-		}
-		result, err = reapLeasesAt(ctx, r.client, wtype, float64(now.Unix())+float64(now.Nanosecond())/1e9, r.settings)
+	err := ordinaryqueue.WithOrdinaryLeaseReaping(ctx, r.pool, r.client, wtype, r.settings.BatchSize, func(ctx context.Context, now float64, observed, projection string) error {
+		var err error
+		result, err = reapLeasesAt(ctx, r.client, wtype, now, r.settings, observed, projection)
 		return err
 	})
 	if err != nil {
