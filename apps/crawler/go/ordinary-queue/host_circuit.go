@@ -195,10 +195,15 @@ type GreenhouseHostPreflight struct {
 // after discovery starts. Deferrals commit a future canonical PG deadline and
 // receipt without changing success/failure, listing or provider-gone state.
 func (a *Authority) PreflightGreenhouseHost(ctx context.Context, claim *Claim, circuits *HostCircuits) (*GreenhouseHostPreflight, error) {
-	if a == nil || !a.valid(claim) || a.ownership == nil || claim.task.Kind != Monitor || claim.recovered != nil || circuits == nil || circuits.client != a.queue {
+	if a == nil || !a.valid(claim) || a.ownership == nil || (claim.task.Kind != Monitor && claim.task.Kind != Scrape) || claim.recovered != nil || circuits == nil || circuits.client != a.queue {
 		return nil, ErrConfiguration
 	}
-	profile, err := InspectRichMonitor(claim.task.ID, claim.task.Config)
+	var err error
+	if claim.task.Kind == Monitor {
+		_, err = InspectRichMonitor(claim.task.ID, claim.task.Config)
+	} else {
+		_, err = a.ReadWorkdayDetail(ctx, claim)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -211,10 +216,14 @@ func (a *Authority) PreflightGreenhouseHost(ctx context.Context, claim *Claim, c
 	if run == nil {
 		host := normalizeHost(claim.task.Config["egress_host"])
 		if host == "" {
-			boardURL, _ := url.Parse(claim.task.Config["board_url"])
+			key := "board_url"
+			if claim.task.Kind == Scrape {
+				key = "source_url"
+			}
+			boardURL, _ := url.Parse(claim.task.Config[key])
 			host = normalizeHost(boardURL.Hostname())
 		}
-		if profile.BoardID != claim.task.ID || !validHost(host) {
+		if !validHost(host) {
 			return nil, ErrConfiguration
 		}
 		run = &GreenhouseHostRun{authority: a, claim: claim, circuits: circuits, host: host}
@@ -269,7 +278,11 @@ func (a *Authority) PreflightGreenhouseHost(ctx context.Context, claim *Claim, c
 			return nil, ErrProtocol
 		}
 		result.Receipt, err = a.Write(ctx, claim, true, func(ctx context.Context, tx pgx.Tx) error {
-			_, err := tx.Exec(ctx, `UPDATE public.job_board SET next_check_at=GREATEST(next_check_at,$2::timestamptz,clock_timestamp()+interval '1 second'),lease_owner=NULL,leased_until=NULL,updated_at=now() WHERE id=$1::uuid`, claim.task.ID, *deadline)
+			query := `UPDATE public.job_board SET next_check_at=GREATEST(next_check_at,$2::timestamptz,clock_timestamp()+interval '1 second'),lease_owner=NULL,leased_until=NULL,updated_at=now() WHERE id=$1::uuid`
+			if claim.task.Kind == Scrape {
+				query = `UPDATE public.job_posting SET next_scrape_at=CASE WHEN is_active AND next_scrape_at IS NOT NULL THEN GREATEST(next_scrape_at,$2::timestamptz,clock_timestamp()+interval '1 second') END,leased_until=NULL,updated_at=now() WHERE id=$1::uuid`
+			}
+			_, err := tx.Exec(ctx, query, claim.task.ID, *deadline)
 			return err
 		})
 		if err != nil {

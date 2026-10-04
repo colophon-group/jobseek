@@ -102,6 +102,13 @@ func (p *OwnershipPlan) MemberCount() int {
 	return len(p.document.Members)
 }
 
+func (p *OwnershipPlan) DetailBoardCount() int {
+	if p == nil {
+		return 0
+	}
+	return len(p.document.Details)
+}
+
 // ProjectionJSON is a read-only routing observation, never a publication grant.
 func (p *OwnershipPlan) ProjectionJSON() string {
 	if p == nil {

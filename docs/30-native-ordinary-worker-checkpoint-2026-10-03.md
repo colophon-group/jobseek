@@ -1,6 +1,56 @@
 # Native ordinary worker continuation, 2026-10-03
 
 
+## Detail delivery candidate — 2026-10-04 12:37 UTC
+
+The full migration goal remains active. v0.13.924 now implements native Workday
+detail dispatch through the existing ownership plan, original claim Lua, opaque
+attempts, canonical posting/board gates, shared Go enrichment and description
+writer. Posting IDs remain distinct from board IDs. Fresh publisher opt-outs,
+inactive postings, HTTP failure classes, Workday 404/S22 empty results, host
+circuits, cancellation and future canonical deadlines retain their existing
+behavior. Restart recovery acknowledges committed results without another GET
+or SQL write. Metrics distinguish monitor and scrape execution.
+
+Explicit selection uses the existing protected cohort file and installed
+`ordinary-go-cutover.sh stage <absolute-file>` command. A historical JSON array
+still selects monitors only. To select eligible detail boards, use:
+
+```json
+{"version":"jobseek.ordinary.cohort/v1","monitors":["<board UUID>"],"details":["<same eligible Workday board UUID>"]}
+```
+
+`details` must be a unique subset of `monitors`. Staging rechecks canonical and
+cached configurations and returns an immutable plan/projection identity plus
+the detail-board count; it cannot activate an owner. Legacy detail writes resolve
+the actual canonical posting board under the shared authority barriers. Forged
+cached board metadata cannot grant a write to an owned posting.
+
+The original cold retirement now conserves detail deadlines for interrupted
+claims, committed results before ACK, reaped results before ACK and inactive
+postings. It retains SQL content and receipts, revokes old attempts, persists
+Redis before SQL retirement and supports exact retries after SAVE failure.
+Foreign canonical posting boards refuse before projection or queue mutation.
+Retained acknowledged receipts are probed in batches so historical detail work
+does not require a network round trip per posting during reversal.
+
+Production remains the verified v0.13.923 monitor owner at epoch 167. Native
+details are a delivery candidate, not yet deployed. Next actions are:
+
+1. Finish local verification, publish v0.13.924 and require exact-head Required CI,
+   Crawler Deploy Gate and installed-image parity before merge.
+2. Retire the outgoing ordinary/B0 owners with the original source923 drivers,
+   verify full legacy restoration, then promote source924 through the supported
+   immutable-image deployment.
+3. Reconcile fresh canonical/cached monitor and actual posting routes. Stage
+   eligible Workday detail boards explicitly, activate through the original full
+   cold protocol and verify source/image/receipt identity, all writers and health,
+   natural detail fields and canonical/Redis deadlines. Preserve unsupported
+   posting routes on legacy ownership until their replacements are delivered.
+4. Continue remaining enabled detail/browser profiles and runtime maintenance
+   consumers; measure comparable whole-lane resource costs and establish the
+   rollback window before retiring production Python, Playwright and Chromium.
+
 ## Production continuation — 2026-10-04 11:57 UTC
 
 The full migration goal remains active. PR #10267 is merged as

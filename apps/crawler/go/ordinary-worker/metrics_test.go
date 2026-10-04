@@ -73,3 +73,30 @@ func TestRuntimeHealthProbeRequiresExactInstalledProcessIdentity(t *testing.T) {
 		t.Fatal("draining process accepted as ready")
 	}
 }
+
+func TestRuntimeMetricsAttributeDetailsWithoutChangingMonitorTotals(t *testing.T) {
+	m := newRuntimeMetrics(1, time.Second)
+	m.record(&GreenhouseClaimResult{Settled: true, Cycle: &queue.GreenhouseCycleResult{Status: "succeeded"}, HTTP: HTTPSnapshot{Requests: 2, Responses: 2}}, nil, time.Second)
+	m.record(&GreenhouseClaimResult{TaskKind: queue.Scrape, Settled: true, Cycle: &queue.GreenhouseCycleResult{Status: "succeeded"}, HTTP: HTTPSnapshot{Requests: 3, Responses: 2, NoResponse: 1, EncodedBytes: 123}, DiscoveryStarted: true, DiscoveryDuration: time.Second, Discovered: 1}, nil, 2*time.Second)
+	m.record(&GreenhouseClaimResult{TaskKind: queue.Scrape, Settled: true, Cycle: &queue.GreenhouseCycleResult{Status: "unscheduled"}}, nil, time.Second)
+	w := httptest.NewRecorder()
+	m.ServeHTTP(w, httptest.NewRequest("GET", "/metrics", nil))
+	for _, expected := range []string{
+		`crawler_tasks_total{kind="monitor",status="succeeded"} 1`,
+		`crawler_tasks_total{kind="scrape",status="succeeded"} 1`,
+		`crawler_tasks_total{kind="scrape",status="skipped"} 1`,
+		`crawler_task_duration_seconds_count{kind="monitor"} 1`,
+		`crawler_task_duration_seconds_count{kind="scrape"} 2`,
+		`crawler_monitor_duration_seconds_count{profile="simple"} 1`,
+		`crawler_scrape_duration_seconds_count{profile="simple"} 2`,
+		`crawler_runtime_origin_attempts_total{stage="monitor",execution_class="http",egress="direct"} 2`,
+		`crawler_runtime_origin_attempts_total{stage="scrape",execution_class="http",egress="direct"} 3`,
+		`crawler_runtime_response_body_bytes_total{stage="scrape",execution_class="http",egress="direct"} 123`,
+		`crawler_runtime_executions_total{stage="scrape",implementation="go",outcome="success"} 1`,
+		`crawler_runtime_output_items_total{stage="scrape",implementation="go"} 1`,
+	} {
+		if !strings.Contains(w.Body.String(), expected) {
+			t.Fatal("detail metric attribution lost", expected)
+		}
+	}
+}

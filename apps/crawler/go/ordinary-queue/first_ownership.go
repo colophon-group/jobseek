@@ -107,17 +107,28 @@ func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client,
 			for _, member := range plan.document.Members {
 				ids = append(ids, member.BoardID)
 			}
+			detailIDs := make([]string, 0, len(plan.document.Details))
+			for _, detail := range plan.document.Details {
+				detailIDs = append(detailIDs, detail.BoardID)
+			}
 			var foreign bool
 			// Interrupted attempts remain retained after retirement. Admit an
 			// older monitor only when its immutable, retired plan owned it;
 			// unrelated old attempts and current/future foreign work still refuse.
 			if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM public.ordinary_worker_write_fence f
- WHERE f.state='active' AND NOT (f.task_kind='monitor' AND f.task_id=f.board_id AND (
- (f.routing_epoch=$1 AND f.board_id=ANY($2::uuid[])) OR
- (f.routing_epoch<$1 AND EXISTS(SELECT 1 FROM public.ordinary_worker_ownership_plan p
-   WHERE p.state='retired' AND p.routing_epoch=f.routing_epoch
-   AND p.payload::jsonb->'members' @> jsonb_build_array(jsonb_build_object(
-     'board_id',f.board_id::text,'kind','monitor','worker','simple')))))))`, epoch, ids).Scan(&foreign); err != nil {
+ WHERE f.state='active' AND NOT (
+ (f.task_kind='monitor' AND f.task_id=f.board_id AND (
+   (f.routing_epoch=$1 AND f.board_id=ANY($2::uuid[])) OR
+   (f.routing_epoch<$1 AND EXISTS(SELECT 1 FROM public.ordinary_worker_ownership_plan p
+     WHERE p.state='retired' AND p.routing_epoch=f.routing_epoch
+     AND p.payload::jsonb->'members' @> jsonb_build_array(jsonb_build_object(
+       'board_id',f.board_id::text,'kind','monitor','worker','simple')))))) OR
+ (f.task_kind='scrape' AND EXISTS(SELECT 1 FROM public.job_posting jp WHERE jp.id=f.task_id AND jp.board_id=f.board_id) AND (
+   (f.routing_epoch=$1 AND f.board_id=ANY($3::uuid[])) OR
+   (f.routing_epoch<$1 AND EXISTS(SELECT 1 FROM public.ordinary_worker_ownership_plan p
+     WHERE p.state='retired' AND p.routing_epoch=f.routing_epoch
+     AND p.payload::jsonb->'details' @> jsonb_build_array(jsonb_build_object(
+       'board_id',f.board_id::text,'profile','workday.cxs-detail/v1','worker','simple'))))))))`, epoch, ids, detailIDs).Scan(&foreign); err != nil {
 				return err
 			}
 			if foreign {

@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -35,6 +36,7 @@ type OwnershipStageIdentity struct {
 	PlanSHA256     string `json:"plan_sha256"`
 	ProjectionSHA1 string `json:"projection_sha1"`
 	Members        int    `json:"members"`
+	DetailBoards   int    `json:"detail_boards,omitempty"`
 }
 
 // ReadOwnershipAdminConfig binds a distinct protected administrative mode to the
@@ -89,20 +91,90 @@ func readProtectedOwnershipFile(path string, limit int64) ([]byte, error) {
 	return data, nil
 }
 
+type ownershipCohort struct {
+	Monitors []string
+	Details  []string
+}
+
 func readOwnershipCohort(path string) ([]string, error) {
-	data, err := readProtectedOwnershipFile(path, cohortFileLimit)
-	var ids []string
-	if err != nil || len(data) > cohortFileLimit || json.Unmarshal(data, &ids) != nil || len(ids) < 1 || len(ids) > 20000 {
+	cohort, err := readOwnershipSelection(path)
+	if err != nil || len(cohort.Details) != 0 {
 		return nil, ErrStartup
 	}
-	seen := make(map[string]bool, len(ids))
-	for _, id := range ids {
-		if !cohortID.MatchString(id) || seen[id] {
-			return nil, ErrStartup
-		}
-		seen[id] = true
+	return cohort.Monitors, nil
+}
+
+// The historical array selects monitors only. Details require an explicit
+// versioned selection, and canonical admission still runs inside staging.
+func readOwnershipSelection(path string) (ownershipCohort, error) {
+	var cohort ownershipCohort
+	data, err := readProtectedOwnershipFile(path, cohortFileLimit)
+	if err != nil {
+		return cohort, ErrStartup
 	}
-	return ids, nil
+	data = bytes.TrimSpace(data)
+	if len(data) == 0 {
+		return cohort, ErrStartup
+	}
+	if data[0] == '[' {
+		if json.Unmarshal(data, &cohort.Monitors) != nil {
+			return ownershipCohort{}, ErrStartup
+		}
+	} else {
+		decoder := json.NewDecoder(bytes.NewReader(data))
+		token, err := decoder.Token()
+		if err != nil || token != json.Delim('{') {
+			return ownershipCohort{}, ErrStartup
+		}
+		seen := map[string]bool{}
+		var version string
+		for decoder.More() {
+			token, err := decoder.Token()
+			key, ok := token.(string)
+			if err != nil || !ok || seen[key] {
+				return ownershipCohort{}, ErrStartup
+			}
+			seen[key] = true
+			switch key {
+			case "version":
+				err = decoder.Decode(&version)
+			case "monitors":
+				err = decoder.Decode(&cohort.Monitors)
+			case "details":
+				err = decoder.Decode(&cohort.Details)
+			default:
+				return ownershipCohort{}, ErrStartup
+			}
+			if err != nil {
+				return ownershipCohort{}, ErrStartup
+			}
+		}
+		token, err = decoder.Token()
+		if err != nil || token != json.Delim('}') || version != "jobseek.ordinary.cohort/v1" || len(seen) != 3 || cohort.Details == nil {
+			return ownershipCohort{}, ErrStartup
+		}
+		if _, err := decoder.Token(); err != io.EOF {
+			return ownershipCohort{}, ErrStartup
+		}
+	}
+	if len(cohort.Monitors) < 1 || len(cohort.Monitors) > 20000 || len(cohort.Details) > len(cohort.Monitors) {
+		return ownershipCohort{}, ErrStartup
+	}
+	monitors := make(map[string]bool, len(cohort.Monitors))
+	for _, id := range cohort.Monitors {
+		if !cohortID.MatchString(id) || monitors[id] {
+			return ownershipCohort{}, ErrStartup
+		}
+		monitors[id] = true
+	}
+	details := make(map[string]bool, len(cohort.Details))
+	for _, id := range cohort.Details {
+		if !monitors[id] || details[id] {
+			return ownershipCohort{}, ErrStartup
+		}
+		details[id] = true
+	}
+	return cohort, nil
 }
 
 // RunOwnershipAdmin stages or inspects an exact candidate only. It never claims,
@@ -112,10 +184,10 @@ func RunOwnershipAdmin(ctx context.Context, c OwnershipAdminConfig) (*OwnershipS
 	if c.database == "" || c.redis == "" || !sourcePattern.MatchString(c.source) || c.epoch < 1 || c.epoch > 9999999999999 {
 		return nil, ErrStartup
 	}
-	var ids []string
+	var cohort ownershipCohort
 	var err error
 	if !c.inspect {
-		ids, err = readOwnershipCohort(c.cohortFile)
+		cohort, err = readOwnershipSelection(c.cohortFile)
 		if err != nil {
 			return nil, ErrStartup
 		}
@@ -136,7 +208,7 @@ func RunOwnershipAdmin(ctx context.Context, c OwnershipAdminConfig) (*OwnershipS
 	if c.inspect {
 		plan, err = authority.InspectStagedOwnership(ctx, c.digest, c.source)
 	} else {
-		plan, err = authority.StageGreenhouseOwnership(ctx, c.source, ids)
+		plan, err = authority.StageOwnership(ctx, c.source, cohort.Monitors, cohort.Details)
 		if err == nil {
 			// A second fresh readback declines if a canonical configuration changed
 			// after staging. The retained staged document grants no queue authority.
@@ -146,5 +218,5 @@ func RunOwnershipAdmin(ctx context.Context, c OwnershipAdminConfig) (*OwnershipS
 	if err != nil {
 		return nil, ErrStartup
 	}
-	return &OwnershipStageIdentity{"jobseek.ordinary.stage-identity/v1", "staged", plan.SourceRevision(), plan.Epoch(), plan.SHA256(), plan.ProjectionSHA1(), plan.MemberCount()}, nil
+	return &OwnershipStageIdentity{"jobseek.ordinary.stage-identity/v1", "staged", plan.SourceRevision(), plan.Epoch(), plan.SHA256(), plan.ProjectionSHA1(), plan.MemberCount(), plan.DetailBoardCount()}, nil
 }

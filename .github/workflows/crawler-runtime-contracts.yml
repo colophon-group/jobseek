@@ -222,7 +222,7 @@ jobs:
           set -euo pipefail
           docker run --rm --read-only --entrypoint /usr/local/bin/go-ordinary-worker \
             jobseek-crawler:runtime-v1 --identity \
-            | jq -e --arg revision "$GITHUB_SHA" '.source_revision == $revision and .profile == "greenhouse.token-skip/v1" and .profiles == ["greenhouse.token-skip/v1", "ashby.token-skip/v1", "lever.token-skip/v1", "recruitee.api-skip/v1", "pinpoint.slug-skip/v1", "rss.teamtailor-skip/v1", "rss.successfactors-skip/v1", "personio.xml-skip/v1", "workday.cxs-urls/v1"]'
+            | jq -e --arg revision "$GITHUB_SHA" '.source_revision == $revision and .profile == "greenhouse.token-skip/v1" and .profiles == ["greenhouse.token-skip/v1", "ashby.token-skip/v1", "lever.token-skip/v1", "recruitee.api-skip/v1", "pinpoint.slug-skip/v1", "rss.teamtailor-skip/v1", "rss.successfactors-skip/v1", "personio.xml-skip/v1", "workday.cxs-urls/v1", "workday.cxs-detail/v1"]'
           if docker run --rm --read-only --entrypoint /usr/local/bin/go-ordinary-worker jobseek-crawler:runtime-v1; then
             echo "Native worker accepted an unselected environment" >&2
             exit 1

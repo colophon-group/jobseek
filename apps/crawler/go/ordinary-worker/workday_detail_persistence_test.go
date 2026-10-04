@@ -15,6 +15,10 @@ import (
 // This private fixture exercises the existing unselected attempt authority.
 // It grants no production detail selection; monitor ownership remains separate.
 func workdayDetailPersistenceFixture(t *testing.T) (nativePipelineFixture, *queue.Authority, *queue.Claim, *queue.CurrentWorkdayDetail) {
+	return workdayDetailFixture(t, false)
+}
+
+func workdayDetailFixture(t *testing.T, owned bool) (nativePipelineFixture, *queue.Authority, *queue.Claim, *queue.CurrentWorkdayDetail) {
 	t.Helper()
 	f := privateRichPipelineFixture(t, "workday", `{"all_sites":false,"scraper_type":"workday"}`)
 	ctx := context.Background()
@@ -38,6 +42,26 @@ func workdayDetailPersistenceFixture(t *testing.T) (nativePipelineFixture, *queu
 		t.Fatal(err)
 	}
 	t.Cleanup(a.Close)
+	if owned {
+		plan, err := a.StageOwnership(ctx, ordinaryFixtureSourceRevision(t), []string{f.board}, []string{f.board})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := f.pg.Exec(ctx, "UPDATE ordinary_worker_ownership_plan SET state='active' WHERE plan_sha256=$1", plan.SHA256()); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			_, _ = f.pg.Exec(context.Background(), "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE plan_sha256=$1 AND state='active'", plan.SHA256())
+		})
+		if err := f.r.Set(ctx, "ordinary:ownership:active", plan.ProjectionJSON(), 0).Err(); err != nil {
+			t.Fatal(err)
+		}
+		a, err = queue.OpenOwnedAuthority(ctx, f.dsn, f.client, epoch, plan.SHA256(), plan.SourceRevision())
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(a.Close)
+	}
 	claim, err := a.Claim(ctx, queue.Simple)
 	if err != nil || claim == nil {
 		t.Fatal("canonical detail claim unavailable", err)

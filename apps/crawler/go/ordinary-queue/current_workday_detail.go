@@ -110,7 +110,7 @@ func (a *Authority) WriteWorkdayDetail(ctx context.Context, detail *CurrentWorkd
 	if a == nil || detail == nil || !a.valid(detail.claim) || fn == nil {
 		return nil, ErrConfiguration
 	}
-	return a.Write(ctx, detail.claim, true, func(ctx context.Context, tx pgx.Tx) error {
+	receipt, err := a.Write(ctx, detail.claim, true, func(ctx context.Context, tx pgx.Tx) error {
 		current, err := a.currentWorkdayDetail(ctx, tx, detail.claim)
 		if err != nil {
 			return err
@@ -123,4 +123,69 @@ func (a *Authority) WriteWorkdayDetail(ctx context.Context, detail *CurrentWorkd
 		}
 		return fn(ctx, tx)
 	})
+	if err != nil {
+		return nil, err
+	}
+	receipt.terminalOutcome = "succeeded"
+	return receipt, nil
+}
+
+// FinishWorkdayDetail records a non-content outcome with fresh canonical policy
+// and schedule observations. The same opaque attempt owns its final deadline;
+// a reservation racing a fetch cannot consume a failure budget.
+func (a *Authority) FinishWorkdayDetail(ctx context.Context, detail *CurrentWorkdayDetail, run *GreenhouseHostRun, observation GreenhouseHostObservation, fn func(context.Context, pgx.Tx, *CurrentWorkdayDetail, *HostCircuitOutcome) (string, error)) (*Receipt, error) {
+	if a == nil || detail == nil || !a.valid(detail.claim) || fn == nil {
+		return nil, ErrConfiguration
+	}
+	outcome := ""
+	receipt, err := a.Write(ctx, detail.claim, true, func(ctx context.Context, tx pgx.Tx) error {
+		current, err := a.currentWorkdayDetail(ctx, tx, detail.claim)
+		if err != nil {
+			return err
+		}
+		if current.profile.EffectiveBoardSHA256 != detail.profile.EffectiveBoardSHA256 || current.profile.SourceURL != detail.profile.SourceURL {
+			return ErrAuthorityLost
+		}
+		var circuit *HostCircuitOutcome
+		if run != nil && current.Schedulable && !current.PublisherReserved {
+			if run.authority != a || run.claim != detail.claim || !run.preflightDone || run.deferUntil != nil {
+				return ErrConfiguration
+			}
+			circuit, err = run.failureOutcome(ctx, observation)
+			if err != nil {
+				return err
+			}
+		}
+		outcome, err = fn(ctx, tx, current, circuit)
+		if err != nil {
+			return err
+		}
+		switch outcome {
+		case "failed", "publisher_reserved", "unscheduled", "host_circuit_open", "host_circuit_half_open":
+		default:
+			return ErrConfiguration
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	receipt.terminalOutcome = outcome
+	return receipt, nil
+}
+
+// BeginWorkdayDetail prevents duplicate origin execution on one opaque attempt.
+// Host preflight runs first; preparation and fetch retain the worker's heartbeat.
+func (a *Authority) BeginWorkdayDetail(ctx context.Context, claim *Claim) (*CurrentWorkdayDetail, error) {
+	detail, err := a.ReadWorkdayDetail(ctx, claim)
+	if err != nil {
+		return nil, err
+	}
+	claim.cycleMu.Lock()
+	defer claim.cycleMu.Unlock()
+	if claim.cycleStarted {
+		return nil, ErrConfiguration
+	}
+	claim.cycleStarted = true
+	return detail, nil
 }
