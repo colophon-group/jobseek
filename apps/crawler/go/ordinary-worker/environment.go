@@ -259,7 +259,7 @@ type BuildIdentity struct {
 	SourceRevision string    `json:"source_revision"`
 	CASHA256       string    `json:"ca_sha256"`
 	Profile        string    `json:"profile"`
-	Profiles       [8]string `json:"profiles"`
+	Profiles       [9]string `json:"profiles"`
 }
 
 func Identity(linked string) (BuildIdentity, error) {
@@ -267,5 +267,5 @@ func Identity(linked string) (BuildIdentity, error) {
 	if err != nil {
 		return BuildIdentity{}, err
 	}
-	return BuildIdentity{revision, pinnedCASHA256, "greenhouse.token-skip/v1", [8]string{"greenhouse.token-skip/v1", "ashby.token-skip/v1", "lever.token-skip/v1", "recruitee.api-skip/v1", "pinpoint.slug-skip/v1", "rss.teamtailor-skip/v1", "rss.successfactors-skip/v1", "personio.xml-skip/v1"}}, nil
+	return BuildIdentity{revision, pinnedCASHA256, "greenhouse.token-skip/v1", [9]string{"greenhouse.token-skip/v1", "ashby.token-skip/v1", "lever.token-skip/v1", "recruitee.api-skip/v1", "pinpoint.slug-skip/v1", "rss.teamtailor-skip/v1", "rss.successfactors-skip/v1", "personio.xml-skip/v1", "workday.cxs-urls/v1"}}, nil
 }
