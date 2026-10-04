@@ -1,12 +1,12 @@
 {
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
-    "boards_row_count": 7885,
-    "boards_sha256": "416c5939d22faa9ee928155d20a1c3ee294f26b3c496ed93637eae13e8b492e1",
+    "boards_row_count": 7887,
+    "boards_sha256": "562eac4af23376203ce49661d3ed370c4b8e3bf0dd86ab7b8e0f9c21702dc474",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "eda19844476fac39659b63deef689258721a3c29c19d6771ecf53d9379b13e66",
+  "manifest_sha256": "57a10b6d518831a5b14267dbad6c73c64fb8fbdce2e0489e5d25e8a789942770",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -513,6 +513,30 @@
       "profile_kind": "configured",
       "source_count": 1,
       "source_refs_sha256": "38c0ce2c0957c880138c942511a7bafa6a277925683b53a3fab576e7a0de8f4f",
+      "status": "pending_replay",
+      "surface": "monitor"
+    },
+    {
+      "blocker": "pinned_lightpanda_replay_required",
+      "browser_capable": true,
+      "browser_required": true,
+      "capabilities": [
+        "cdp.navigation",
+        "dom.snapshot",
+        "navigation.wait_fallback",
+        "network.request_observe",
+        "network.response_capture"
+      ],
+      "chain_role": "primary",
+      "compatibility_class": "network_session",
+      "config_shape_sha256": "ccc6c1b476ef233947465544c4b3821ce04e74f5e5dbcf905b3c0321dcc5cb03",
+      "crawler_type": "api_sniffer",
+      "digest_sha256": "fe0f37147042462b44225b9373fb578e678dc3dbf6762d3c855d0a04fcb3ef0b",
+      "fixture": "synthetic.network_session.v1",
+      "id": "profile.monitor.api_sniffer.536077daff329643",
+      "profile_kind": "configured",
+      "source_count": 1,
+      "source_refs_sha256": "08f27939d1ed2dc813902afdceb28a2ab1e9ef8e35626eb33bd35dc6a2106832",
       "status": "pending_replay",
       "surface": "monitor"
     },
@@ -7534,12 +7558,12 @@
       "compatibility_class": "network_session",
       "config_shape_sha256": "71af8679effa34adf4669829bff2a837eecd1ac6f02252dedf7c0ce91a3314de",
       "crawler_type": "api_sniffer",
-      "digest_sha256": "0085b6ffdfc92d212826d1749c6dfd65d1b8e7e6a6d3688f1af0d7d294e3665f",
+      "digest_sha256": "f3bc3a1865df3d82b905408c221404b132a6e1d36a9fbf28ba180575da697021",
       "fixture": "synthetic.network_session.v1",
       "id": "registry.monitor.api_sniffer",
       "profile_kind": "registry",
-      "source_count": 326,
-      "source_refs_sha256": "c8d657efb41a5cf840a8b5d4502f21ae7070ec7d186b43337aa80d21ee2bc067",
+      "source_count": 327,
+      "source_refs_sha256": "c9aabc1770380b724f0cb4522244da6ff4bf9bd4cdc4f13b518d3cab906235cd",
       "status": "inventory",
       "surface": "monitor"
     },
@@ -7823,12 +7847,12 @@
       "compatibility_class": "navigation_dom",
       "config_shape_sha256": "f818152f2ec1e5ec91d4f9a66c7b5d404bc85d3d33591a482069651ae70e5bf7",
       "crawler_type": "embedded",
-      "digest_sha256": "5bf563559329e9a28d017d16706a19e81c492db105bd948b3f9709af5b0da640",
+      "digest_sha256": "6e60c9d3898e8b48552defd784a613d9983a6e0bdd62893ed9dbdb7f0c1b73a0",
       "fixture": "synthetic.navigation_dom.v1",
       "id": "registry.scraper.embedded",
       "profile_kind": "registry",
-      "source_count": 46,
-      "source_refs_sha256": "bfecbc2589dcda720db8c6747418cb9ff189358d4fb9cbe37d208e539a1ccb32",
+      "source_count": 47,
+      "source_refs_sha256": "1d2a22b8dd4eb621b016b28c88426edf695ce4490da447b493c657aeaec2300f",
       "status": "zero_browser_config",
       "surface": "scraper"
     },
@@ -7878,12 +7902,12 @@
     }
   ],
   "summary": {
-    "browser_board_count": 522,
-    "browser_required_step_count": 683,
-    "configured_profile_occurrence_count": 684,
-    "configured_record_count": 313,
+    "browser_board_count": 523,
+    "browser_required_step_count": 684,
+    "configured_profile_occurrence_count": 685,
+    "configured_record_count": 314,
     "registry_record_count": 17,
-    "total_record_count": 330,
+    "total_record_count": 331,
     "zero_browser_config_registry_count": 1
   }
 }
