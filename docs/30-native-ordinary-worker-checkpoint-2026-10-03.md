@@ -1,5 +1,62 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Active Workday detail delivery — 2026-10-04
+
+The full Go and Lightpanda migration goal remains active. Deliver all enabled
+crawler profiles and runtime consumers, then remove production Python,
+Playwright and Chromium after replacement and supported reversal are proven.
+Preserve useful isolated offline Python tools and every enabled board.
+
+[PR #10269](https://github.com/colophon-group/jobseek/pull/10269) delivered
+v0.13.924 at source `a90e8635dc0b0389a3af92d41467a35836a3bc36`.
+Required CI, Crawler Deploy Gate, installed-image parity and the ARM whole-lane
+check passed at reviewed head `233819360a1ddfc018200d7c68f5423ff65bc8d4`.
+The reviewed and merged Git trees match. Supported deployment
+[37223070602](https://github.com/colophon-group/jobseek/actions/runs/37223070602)
+succeeded; main CI and installed-image parity also passed.
+
+The original full cold activation is complete at routing epoch 169. Go owns
+4,792 monitor boards and Workday details for 431 boards. Fresh admission bound
+542,659 scheduled postings to those detail boards and reconciled actual posting
+URLs with queued/inflight routing. All ten writers run the expected immutable
+images with `unless-stopped` restart policies; all eight HTTP health endpoints
+pass. The ownership count does not mean every posting has already been fetched.
+
+The outgoing source923 ordinary/B0 reversal passed before deployment. Incoming
+activation initially refused 43 expired tokenless legacy monitor claims. The
+installed protected maintenance reaper requeued 38 simple and five browser
+claims, with zero dead letters or missing configurations. The original exact-plan
+activation retry then succeeded. No installed wrapper, receipt, lock, fence or
+queue was manually patched.
+
+[Portable delivery evidence](evidence/go-native-workday-details-2026-10-04.json)
+records exact source/image/plan identities, coverage, checks and readiness.
+Ten completed natural detail receipts have matching SQL/Redis deadlines and
+zero mismatches; native metrics report ten successful detail executions and
+no transport, execution or claim errors. Current-epoch monitor completions
+have not yet been observed.
+Twenty-five otherwise eligible Workday detail boards retain legacy ownership
+because actual queued cache routes differed. Configuration exclusions and all
+other unowned profiles remain serviced by the existing runtime.
+
+Continue in this order:
+
+1. Verify natural native detail commits and canonical/Redis deadlines. Repair
+   the 25 excluded queued-cache routes through existing protected maintenance,
+   then re-admit them with fresh canonical and queued-route evidence.
+2. Extend the existing native detail dispatch with the already implemented Go
+   JSON-LD parser/transport and remaining enabled API/browser profiles. Reuse
+   current queue, enrichment, persistence and ownership contracts; deliver each
+   coherent coverage increase through required checks and supported deployment.
+3. Replace remaining production Python maintenance, scheduling and deployment
+   consumers with existing native implementations where available. Preserve
+   full-stack readiness and canonical output/freshness throughout delivery.
+4. Compare whole-lane CPU/RAM, density and attributable cost; exercise supported
+   cold reversal of native detail ownership and establish the rollback window.
+   Remove Python/browser runtime assets when replacement coverage and reversal
+   are established. Full migration is complete only after these exits pass.
+
+
 
 ## Detail delivery candidate — 2026-10-04 12:37 UTC
 
