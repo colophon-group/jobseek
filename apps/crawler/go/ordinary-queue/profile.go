@@ -65,7 +65,7 @@ func profileMetadataFields(raw string, allowed map[string]bool) (map[string]json
 	for decoder.More() {
 		key, err := decoder.Token()
 		name, ok := key.(string)
-		if err != nil || !ok || !allowed[name] || fields[name] != nil {
+		if err != nil || !ok || (allowed != nil && !allowed[name]) || fields[name] != nil {
 			return nil, ErrUnsupportedProfile
 		}
 		var value json.RawMessage

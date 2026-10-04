@@ -100,14 +100,30 @@ def ownership_projection(payload: str) -> str:
     if "details" in plan:
         details = {d["board_id"]: d["domain"] for d in plan["details"]}
         if (
-            not 1 <= len(details) <= len(members)
+            not 1 <= len(details) <= 20000
             or len(details) != len(plan["details"])
             or any(
-                board not in members or not isinstance(domain, str) or not domain
+                not isinstance(board, str) or not isinstance(domain, str) or not domain
                 for board, domain in details.items()
             )
             or any(
-                d["worker"] != "simple" or d["profile"] != "workday.cxs-detail/v1"
+                d["worker"] != "simple"
+                or d["profile"] not in ("workday.cxs-detail/v1", "jsonld.direct-detail/v1")
+                or (d["profile"] == "workday.cxs-detail/v1" and d["board_id"] not in members)
+                or (
+                    d["profile"] == "jsonld.direct-detail/v1"
+                    and (
+                        d["domain"] != "*"
+                        or not isinstance(d.get("company_id"), str)
+                        or re.fullmatch(
+                            r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", d["company_id"]
+                        )
+                        is None
+                        or not isinstance(d.get("effective_config_sha256"), str)
+                        or re.fullmatch(r"[0-9a-f]{64}", d["effective_config_sha256"]) is None
+                        or not isinstance(d.get("config"), dict)
+                    )
+                )
                 for d in plan["details"]
             )
         ):

@@ -86,6 +86,7 @@ func TestOwnershipSelectionRequiresExplicitUnambiguousDetailSubset(t *testing.T)
 	for _, input := range []string{
 		prefix + `"details":["` + id + `"]}`,
 		prefix + `"details":[]}`,
+		prefix + `"details":["` + foreign + `"]}`,
 		`["` + id + `"]`,
 	} {
 		if err := os.WriteFile(path, []byte(input), 0600); err != nil {
@@ -100,7 +101,7 @@ func TestOwnershipSelectionRequiresExplicitUnambiguousDetailSubset(t *testing.T)
 		}
 	}
 	for _, input := range []string{
-		prefix + `"details":null}`, prefix + `"details":["` + foreign + `"]}`,
+		prefix + `"details":null}`, prefix + `"details":["not-a-uuid"]}`,
 		prefix + `"details":["` + id + `","` + id + `"]}`,
 		prefix + `"details":[],"details":["` + id + `"]}`,
 		prefix + `"details":[],"extra":true}`, prefix + `"details":[]} {}`,

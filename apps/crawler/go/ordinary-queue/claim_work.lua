@@ -97,7 +97,7 @@ else
     local detail_count = 0
     for board, domain in pairs(owner_details) do
         if plan.version ~= "jobseek.ordinary.ownership-projection/v1" or
-            not owner_members[board] or type(domain) ~= "string" or #domain < 1 or
+            #board ~= 36 or string.find(board, "[^0-9a-f%-]") or type(domain) ~= "string" or #domain < 1 or
             #domain > 253 or string.find(domain, "[%c|]") then return owner_failure() end
         detail_count = detail_count + 1
     end
@@ -107,10 +107,12 @@ else
         local domain = owner_details[board]
         if wtype ~= "simple" or claim_token == "" or not domain or
             #id ~= 36 or string.find(id, "[^0-9a-f%-]") then return owner_failure() end
-        native_member = {board_id = board, domain = domain, worker = "simple", task_id = id, kind = "scrape"}
         local ok, snapshot = pcall(cjson.decode, ARGV[13] or "")
         if not ok or type(snapshot) ~= "table" or snapshot.board_id ~= board or
-            snapshot.domain ~= domain or redis.call("HEXISTS", b0_guard_key, id) == 1 then return owner_failure() end
+            (domain ~= "*" and snapshot.domain ~= domain) or type(snapshot.domain) ~= "string" or
+            #snapshot.domain < 1 or #snapshot.domain > 253 or string.find(snapshot.domain, "[%c|]") or
+            redis.call("HEXISTS", b0_guard_key, id) == 1 then return owner_failure() end
+        native_member = {board_id = board, domain = snapshot.domain, worker = "simple", task_id = id, kind = "scrape"}
         native_snapshot = snapshot
     elseif owner_role == "native" then
         if (ARGV[14] or "") ~= "" then return owner_failure() end

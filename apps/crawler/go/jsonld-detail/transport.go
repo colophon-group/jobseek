@@ -8,6 +8,7 @@ import (
 	"io"
 	"math/rand/v2"
 	"mime"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
@@ -286,5 +287,17 @@ func fetchDetail(ctx context.Context, client requestDoer, request Request, wait 
 func FetchDetail(ctx context.Context, request Request) (FetchResult, error) {
 	client := newClient()
 	defer client.CloseIdleConnections()
+	return fetchDetail(ctx, client, request, sleep)
+}
+
+// FetchDetailWithClient retains this parser's HTTP, redirect, policy and retry
+// contract while using an enclosing native runtime's sealed verified client.
+// The caller owns trust roots, public-address checks and per-attempt cookies.
+func FetchDetailWithClient(ctx context.Context, request Request, client interface {
+	Do(*http.Request) (*http.Response, error)
+}) (FetchResult, error) {
+	if client == nil {
+		return FetchResult{}, errors.New("JSON-LD HTTP client unavailable")
+	}
 	return fetchDetail(ctx, client, request, sleep)
 }

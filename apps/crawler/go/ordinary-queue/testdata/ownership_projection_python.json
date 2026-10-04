@@ -28,6 +28,13 @@
       "plan_sha256": "4d990ce34ac75eac89a4a0717af23ae8af42f71dfa06aca7e2f73af9a93697fb",
       "projection": "{\"version\":\"jobseek.ordinary.ownership-projection/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"plan_sha256\":\"4d990ce34ac75eac89a4a0717af23ae8af42f71dfa06aca7e2f73af9a93697fb\",\"members\":{\"00000000-0000-4000-8000-000000000001\":\"workday\"},\"details\":{\"00000000-0000-4000-8000-000000000001\":\"fixture\\u003c\\u003e\\u0026-é-\\u2028\\u2029\"}}",
       "projection_sha1": "9cf6a21bc102cecd3e78f24fcf0fe08db2b849cd"
+    },
+    {
+      "name": "independent_jsonld_details",
+      "payload": "{\"version\":\"jobseek.ordinary.ownership/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"members\":[{\"board_id\":\"00000000-0000-4000-8000-000000000001\",\"domain\":\"greenhouse\",\"kind\":\"monitor\",\"worker\":\"simple\",\"profile\":\"greenhouse.token-skip/v1\"}],\"routing_projection\":\"jobseek.ordinary.ownership-projection/v1\",\"details\":[{\"board_id\":\"00000000-0000-4000-8000-000000000098\",\"domain\":\"*\",\"profile\":\"jsonld.direct-detail/v1\",\"worker\":\"simple\",\"company_id\":\"00000000-0000-4000-8000-000000000002\",\"effective_config_sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"config\":{\"crawler_type\":\"dom\",\"metadata\":\"{\\\"scraper_type\\\":\\\"json-ld\\\"}\"}}]}",
+      "plan_sha256": "77ccdf30ebc9bc119ed476cf8553c0e727179f193be9f7510a2c8a811e737512",
+      "projection": "{\"version\":\"jobseek.ordinary.ownership-projection/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"plan_sha256\":\"77ccdf30ebc9bc119ed476cf8553c0e727179f193be9f7510a2c8a811e737512\",\"members\":{\"00000000-0000-4000-8000-000000000001\":\"greenhouse\"},\"details\":{\"00000000-0000-4000-8000-000000000098\":\"*\"}}",
+      "projection_sha1": "712b22d357672be79b9351081cccb9e4d5757d8a"
     }
   ]
 }

@@ -2,7 +2,11 @@ package worker
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	jsonld "github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail"
+	"net/http"
+	"net/http/cookiejar"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -18,6 +22,10 @@ import (
 // detail processor and SQL writer. Heartbeat, cancellation and shutdown remain
 // the enclosing runtime's responsibility; recovery never repeats an origin GET.
 func RunWorkdayDetail(ctx context.Context, authority *queue.Authority, claim *queue.Claim, http *VerifiedDirectHTTP, processor *executor.Processor, circuits *queue.HostCircuits) (*GreenhouseClaimResult, error) {
+	return RunDetail(ctx, authority, claim, http, processor, circuits)
+}
+
+func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Claim, http *VerifiedDirectHTTP, processor *executor.Processor, circuits *queue.HostCircuits) (*GreenhouseClaimResult, error) {
 	result := &GreenhouseClaimResult{TaskKind: queue.Scrape}
 	if authority == nil || claim == nil || !claim.OwnershipBound() || http == nil || http.client == nil || processor == nil || circuits == nil {
 		return result, claimRunError("detail_startup", queue.ErrConfiguration)
@@ -138,44 +146,78 @@ func RunWorkdayDetail(ctx context.Context, authority *queue.Authority, claim *qu
 	started := time.Now()
 	result.DiscoveryStarted = true
 	profile := detail.Profile()
-	fetched, err := FetchWorkdayDetail(ctx, http, profile.SourceURL, profile.FacilityTenantAliases)
+
+	var content map[string]any
+	var reservation *publisherpolicy.Reservation
+	if profile.Profile == "jsonld.direct-detail/v1" {
+		fetched, failure := fetchJSONLDDetail(ctx, http, profile)
+		err = failure
+		hostReachable = fetched.Responses > 0
+		hostFailure = fetched.Status == 401 || fetched.Status == 403 || fetched.Status == 429 || fetched.Status >= 500
+		content = fetched.Content
+		if fetched.ErrorKind == "tdm" {
+			resource := fetched.FinalURL
+			if resource == "" {
+				resource = profile.SourceURL
+			}
+			reservation = &publisherpolicy.Reservation{URL: resource, Source: fetched.TDMSource}
+			if len(fetched.TDMPolicy) > 8192 || !utf8.ValidString(fetched.TDMPolicy) || strings.ContainsRune(fetched.TDMPolicy, 0) {
+				result.Diagnostics = append(result.Diagnostics, "invalid_policy_url")
+			} else if fetched.TDMPolicy != "" {
+				reservation.PolicyURL = &fetched.TDMPolicy
+			}
+		} else if err != nil && fetched.ErrorKind == "status" {
+			err = &executor.NavigationHTTPError{RequestedURL: profile.SourceURL, ResponseURL: fetched.FinalURL, Status: uint32(fetched.Status)}
+		}
+	} else {
+		fetched, failure := FetchWorkdayDetail(ctx, http, profile.SourceURL, profile.FacilityTenantAliases)
+		err = failure
+		hostReachable = fetched.Responses > 0
+		hostFailure = fetched.TransportErrors > 0 || fetched.Status == 401 || fetched.Status == 403 || fetched.Status == 429 || fetched.Status >= 500
+		if err == nil && !fetched.Gone {
+			body, failure := json.Marshal(fetched.Content)
+			if failure == nil {
+				failure = json.Unmarshal(body, &content)
+			}
+			err = failure
+		}
+		if fetched.Gone {
+			err = executor.ErrEmptyResult
+		}
+		var reserved *workday.ReservationError
+		if errors.As(err, &reserved) {
+			reservation = &publisherpolicy.Reservation{URL: reserved.URL, Source: "header"}
+			if len(reserved.PolicyURL) > 8192 || !utf8.ValidString(reserved.PolicyURL) || strings.ContainsRune(reserved.PolicyURL, 0) {
+				result.Diagnostics = append(result.Diagnostics, "invalid_policy_url")
+			} else if reserved.PolicyURL != "" {
+				reservation.PolicyURL = &reserved.PolicyURL
+			}
+		}
+		var failed *workday.DetailFetchError
+		if errors.As(err, &failed) {
+			if failed.Kind == "transport" || failed.Kind == "invalid_payload" {
+				hostFailure = true
+			}
+			if failed.Kind == "http" {
+				err = &executor.NavigationHTTPError{RequestedURL: profile.Endpoint, ResponseURL: profile.Endpoint, Status: uint32(failed.Status)}
+			}
+		}
+	}
 	result.DiscoveryDuration = time.Since(started)
-	// Scrape failure budgets and shared host reachability are independent:
-	// reachable empty/invalid extraction must not block every job on the host.
-	hostReachable = fetched.Responses > 0
-	hostFailure = fetched.TransportErrors > 0 || fetched.Status == 401 || fetched.Status == 403 || fetched.Status == 429 || fetched.Status >= 500
-	var fetchFailure *workday.DetailFetchError
-	if errors.As(err, &fetchFailure) && (fetchFailure.Kind == "transport" || fetchFailure.Kind == "invalid_payload") {
-		hostFailure = true
+	snapshot := observation.Snapshot()
+	hostReachable = hostReachable || snapshot.Responses > 0
+	hostFailure = hostFailure || snapshot.NoResponse > 0 || snapshot.LastStatus == 401 || snapshot.LastStatus == 403 || snapshot.LastStatus == 429 || snapshot.LastStatus >= 500
+	if reservation != nil {
+		result.DiscoveryError = true
+		return finish(nil, reservation)
 	}
 	if err != nil {
 		result.DiscoveryError = true
 		result.DiscoveryCancelled = ctx.Err() != nil
-		var reserved *workday.ReservationError
-		if errors.As(err, &reserved) {
-			var policy *string
-			if len(reserved.PolicyURL) > 8192 || !utf8.ValidString(reserved.PolicyURL) || strings.ContainsRune(reserved.PolicyURL, 0) {
-				// Policy links are optional evidence. Their malformed value
-				// must not discard the resource's explicit mining opt-out.
-				result.Diagnostics = append(result.Diagnostics, "invalid_policy_url")
-			} else if reserved.PolicyURL != "" {
-				policy = &reserved.PolicyURL
-			}
-			return finish(nil, &publisherpolicy.Reservation{URL: reserved.URL, Source: "header", PolicyURL: policy})
-		}
-		var failed *workday.DetailFetchError
-		if errors.As(err, &failed) && failed.Kind == "http" {
-			err = &executor.NavigationHTTPError{RequestedURL: profile.Endpoint, ResponseURL: profile.Endpoint, Status: uint32(failed.Status)}
-		}
 		return finish(err, nil)
 	}
-	// Workday 404/S22 returns an empty JobContent in the existing scraper.
-	// Keep its transient backoff rather than inventing immediate delisting.
-	if fetched.Gone {
-		return finish(executor.ErrEmptyResult, nil)
-	}
 	result.Discovered = 1
-	receipt, err := PersistWorkdayDetail(ctx, authority, detail, processor, fetched.Content)
+	receipt, err := PersistDetailContent(ctx, authority, detail, processor, content)
 	if err != nil {
 		return finish(err, nil)
 	}
@@ -187,4 +229,18 @@ func RunWorkdayDetail(ctx context.Context, authority *queue.Authority, claim *qu
 		}
 	}
 	return settle(receipt, "succeeded")
+}
+
+func fetchJSONLDDetail(ctx context.Context, verified *VerifiedDirectHTTP, profile queue.WorkdayDetailProfile) (jsonld.FetchResult, error) {
+	if verified == nil || verified.client == nil {
+		return jsonld.FetchResult{}, queue.ErrConfiguration
+	}
+	client := *verified.client
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		return jsonld.FetchResult{}, err
+	}
+	client.Jar = jar
+	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	return jsonld.FetchDetailWithClient(ctx, jsonld.Request{URL: profile.SourceURL, Config: profile.JSONLDConfig}, &client)
 }

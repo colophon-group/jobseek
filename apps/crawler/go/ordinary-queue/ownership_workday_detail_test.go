@@ -20,7 +20,7 @@ func workdayOwnershipDocument(t *testing.T) ownershipDocument {
 		t.Fatal(err)
 	}
 	doc.Members = []ownershipMember{{profileBoardID, p.CompanyID, p.Domain, Monitor, Simple, p.Profile, p.EffectiveConfigSHA256, config}}
-	doc.Details = []ownershipDetail{{profileBoardID, "fixture.wd1.myworkdayjobs.com", "workday.cxs-detail/v1", Simple}}
+	doc.Details = []ownershipDetail{{BoardID: profileBoardID, Domain: "fixture.wd1.myworkdayjobs.com", Profile: "workday.cxs-detail/v1", Worker: Simple}}
 	return doc
 }
 

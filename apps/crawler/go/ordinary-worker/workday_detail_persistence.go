@@ -29,6 +29,13 @@ func PersistWorkdayDetail(ctx context.Context, authority *queue.Authority, detai
 	if err := json.Unmarshal(body, &values); err != nil {
 		return nil, claimRunError("detail_preparation", err)
 	}
+	return PersistDetailContent(ctx, authority, detail, processor, values)
+}
+
+func PersistDetailContent(ctx context.Context, authority *queue.Authority, detail *queue.CurrentWorkdayDetail, processor *executor.Processor, values map[string]any) (*queue.Receipt, error) {
+	if authority == nil || detail == nil || processor == nil || !detail.Schedulable || detail.PublisherReserved {
+		return nil, claimRunError("detail_startup", queue.ErrConfiguration)
+	}
 	prepared, err := processor.Prepare(ctx, values, nil, nil)
 	if err != nil {
 		return nil, claimRunError("detail_preparation", err)

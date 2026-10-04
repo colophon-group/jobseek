@@ -94,6 +94,26 @@ func (a *Authority) requireOwnership(ctx context.Context, tx pgx.Tx, claim *Clai
 	if (claim.task.Kind != Monitor && claim.task.Kind != Scrape) || claim.task.Worker != Simple {
 		return ErrAuthorityLost
 	}
+	if claim.task.Kind == Scrape {
+		for _, bound := range plan.document.Details {
+			if bound.BoardID != claim.boardID {
+				continue
+			}
+			context, err := plan.detailContext(bound)
+			if err != nil {
+				return err
+			}
+			detail, err := a.currentWorkdayDetail(ctx, tx, claim)
+			if err != nil {
+				return err
+			}
+			if !detailDomainMatches(bound.Domain, detail.profile) || detail.profile.EffectiveBoardSHA256 != context.EffectiveConfigHash || detail.profile.Profile != bound.Profile {
+				return ErrAuthorityLost
+			}
+			return nil
+		}
+		return ErrAuthorityLost
+	}
 	var member *ownershipMember
 	for i := range plan.document.Members {
 		if plan.document.Members[i].BoardID == claim.boardID {
@@ -103,26 +123,6 @@ func (a *Authority) requireOwnership(ctx context.Context, tx pgx.Tx, claim *Clai
 	}
 	if member == nil {
 		return ErrAuthorityLost
-	}
-	if claim.task.Kind == Scrape {
-		var bound *ownershipDetail
-		for i := range plan.document.Details {
-			if plan.document.Details[i].BoardID == claim.boardID {
-				bound = &plan.document.Details[i]
-				break
-			}
-		}
-		if bound == nil || bound.Domain != claim.task.Domain {
-			return ErrAuthorityLost
-		}
-		detail, err := a.currentWorkdayDetail(ctx, tx, claim)
-		if err != nil {
-			return err
-		}
-		if detail.profile.EffectiveBoardSHA256 != member.EffectiveConfigHash || detail.profile.Profile != bound.Profile {
-			return ErrAuthorityLost
-		}
-		return nil
 	}
 	if claim.task.Domain != member.Domain {
 		return ErrAuthorityLost
@@ -193,7 +193,7 @@ func (a *Authority) claimOwned(ctx context.Context, tx pgx.Tx, worker WorkerType
 			}
 		}
 	}
-	details, err := a.detailCandidates(ctx, tx, members, start, count, now)
+	details, err := a.detailCandidates(ctx, tx, now)
 	if err != nil {
 		return nil, err
 	}
@@ -217,18 +217,20 @@ func (a *Authority) claimOwned(ctx context.Context, tx pgx.Tx, worker WorkerType
 		if blockedDomains[domain] {
 			continue
 		}
-		profile, cached, err := a.observeGreenhouseMonitor(ctx, tx, candidate.member.BoardID)
-		if err != nil {
-			rejected = err
-			continue
-		}
-		if profile.EffectiveConfigSHA256 != candidate.member.EffectiveConfigHash {
-			rejected = ErrAuthorityLost
-			continue
-		}
-		role := "native"
+		role, cached := "native", candidate.cached
 		if candidate.postingID != "" {
-			role, cached = "native_detail", candidate.cached
+			role = "native_detail"
+		} else {
+			profile, observed, err := a.observeGreenhouseMonitor(ctx, tx, candidate.member.BoardID)
+			if err != nil {
+				rejected = err
+				continue
+			}
+			if profile.EffectiveConfigSHA256 != candidate.member.EffectiveConfigHash {
+				rejected = ErrAuthorityLost
+				continue
+			}
+			cached = observed
 		}
 		body, err := json.Marshal(cached)
 		if err != nil {

@@ -31,7 +31,9 @@ from src.ordinary_ownership import (
 )
 
 
-def expectation(epoch: int = 7, *, details: bool = False) -> tuple[LegacyOwnership, str]:
+def expectation(
+    epoch: int = 7, *, details: bool = False, jsonld: bool = False
+) -> tuple[LegacyOwnership, str]:
     # Private legacy boundary fixture. Native canonical eligibility is separately
     # proven by the Go real-board tests; this does not grant a native writer.
     payload = json.dumps(
@@ -60,6 +62,20 @@ def expectation(epoch: int = 7, *, details: bool = False) -> tuple[LegacyOwnersh
                 "domain": "fixture.wd1.myworkdayjobs.com",
                 "profile": "workday.cxs-detail/v1",
                 "worker": "simple",
+            }
+        ]
+        payload = json.dumps(doc, separators=(",", ":"))
+    if jsonld:
+        doc = json.loads(payload)
+        doc["details"] = [
+            {
+                "board_id": "00000000-0000-4000-8000-000000000098",
+                "domain": "*",
+                "profile": "jsonld.direct-detail/v1",
+                "worker": "simple",
+                "company_id": "00000000-0000-4000-8000-000000000002",
+                "effective_config_sha256": "a" * 64,
+                "config": {"crawler_type": "dom", "metadata": '{"scraper_type":"json-ld"}'},
             }
         ]
         payload = json.dumps(doc, separators=(",", ":"))
@@ -224,7 +240,7 @@ async def private_redis(monkeypatch):
 
 
 @asynccontextmanager
-async def private_active_plan(*, details: bool = False):
+async def private_active_plan(*, details: bool = False, jsonld: bool = False):
     dsn = os.environ.get("JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL", "")
     if not dsn:
         if os.environ.get("JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES") == "1":
@@ -249,7 +265,7 @@ async def private_active_plan(*, details: bool = False):
                 "SELECT EXISTS(SELECT 1 FROM ordinary_worker_ownership_plan WHERE state='active')"
             )
             epoch = await conn.fetchval("SELECT nextval('public.lightpanda_b0_routing_epoch_seq')")
-            expected, payload = expectation(epoch, details=details)
+            expected, payload = expectation(epoch, details=details, jsonld=jsonld)
             # Private SQL fixture only; production still has no activation endpoint.
             await conn.execute(
                 "INSERT INTO ordinary_worker_ownership_plan"
@@ -389,14 +405,15 @@ def test_detail_projection_retains_actual_domain_and_rejects_foreign_members():
             ownership_projection(json.dumps(doc, separators=(",", ":")))
 
 
-async def test_real_legacy_detail_write_excludes_actual_canonical_board(monkeypatch):
+@pytest.mark.parametrize("jsonld", [False, True])
+async def test_real_legacy_detail_write_excludes_actual_canonical_board(monkeypatch, jsonld):
     from src.lightpanda.write_fence import authoritative_write
     from src.ordinary_ownership import OrdinaryDetailWriteRejected
 
-    async with private_active_plan(details=True) as (pool, expected, _):
+    async with private_active_plan(details=True, jsonld=jsonld) as (pool, expected, payload):
         install_settings(monkeypatch, expected)
         company, foreign, owned_posting, foreign_posting = (uuid.uuid4() for _ in range(4))
-        owned = uuid.UUID("00000000-0000-4000-8000-000000000001")
+        owned = uuid.UUID(json.loads(payload)["details"][0]["board_id"])
         await pool.execute(
             "INSERT INTO company(id,slug,name) VALUES($1,$2,'Detail fixture')",
             company,
@@ -449,3 +466,36 @@ async def test_real_legacy_detail_write_excludes_actual_canonical_board(monkeypa
             await pool.execute("DELETE FROM job_posting WHERE company_id=$1", company)
             await pool.execute("DELETE FROM job_board WHERE company_id=$1", company)
             await pool.execute("DELETE FROM company WHERE id=$1", company)
+
+
+def test_jsonld_detail_projection_is_independent_of_monitor_membership():
+    _, payload = expectation()
+    doc = json.loads(payload)
+    board = "00000000-0000-4000-8000-000000000098"
+    doc["details"] = [
+        {
+            "board_id": board,
+            "domain": "*",
+            "profile": "jsonld.direct-detail/v1",
+            "worker": "simple",
+            "company_id": "00000000-0000-4000-8000-000000000002",
+            "effective_config_sha256": "a" * 64,
+            "config": {"crawler_type": "dom", "metadata": '{"scraper_type":"json-ld"}'},
+        }
+    ]
+    projection = json.loads(ownership_projection(json.dumps(doc, separators=(",", ":"))))
+    assert board not in projection["members"]
+    assert projection["details"] == {board: "*"}
+    for field, value in (
+        ("domain", "jobs.example.net"),
+        ("worker", "browser"),
+        ("company_id", "invalid"),
+        ("company_id", None),
+        ("effective_config_sha256", "invalid"),
+        ("effective_config_sha256", 42),
+        ("config", None),
+    ):
+        changed = json.loads(json.dumps(doc))
+        changed["details"][0][field] = value
+        with pytest.raises(OrdinaryOwnershipError):
+            ownership_projection(json.dumps(changed, separators=(",", ":")))

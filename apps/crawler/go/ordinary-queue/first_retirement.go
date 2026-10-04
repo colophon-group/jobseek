@@ -110,8 +110,23 @@ func firstRetirementDetails(ctx context.Context, tx pgx.Tx, client *Client, plan
 		bindings[d.BoardID] = d
 		boards = append(boards, d.BoardID)
 	}
+
+	for _, binding := range plan.document.Details {
+		profile, _, err := (&Authority{queue: client}).observeDetailOwnershipState(ctx, tx, binding.BoardID, true)
+		if err != nil {
+			return nil, err
+		}
+		context, err := plan.detailContext(binding)
+		if err != nil {
+			return nil, err
+		}
+		if profile.Profile != binding.Profile || profile.Domain != binding.Domain || profile.EffectiveBoardSHA256 != context.EffectiveConfigHash || profile.CompanyID != context.CompanyID {
+			return nil, ErrAuthorityLost
+		}
+	}
 	type observation struct {
 		id, board, source, state, digest, host string
+		domain                                 string
 		due                                    *time.Time
 	}
 	items := map[string]observation{}
@@ -152,7 +167,11 @@ func firstRetirementDetails(ctx context.Context, tx pgx.Tx, client *Client, plan
 		if !canonicalUUID.MatchString(parts[2]) {
 			return nil, ErrAuthorityLost
 		}
-		if _, ok := items[parts[2]]; ok {
+		if known, ok := items[parts[2]]; ok {
+			domain, err := detailSourceDomain(bindings[known.board], known.source)
+			if err != nil || domain != parts[1] {
+				return nil, ErrAuthorityLost
+			}
 			continue
 		}
 		var item observation
@@ -166,14 +185,21 @@ func firstRetirementDetails(ctx context.Context, tx pgx.Tx, client *Client, plan
 			return nil, err
 		}
 		if binding, owned := bindings[item.board]; owned {
-			if binding.Domain != parts[1] {
+			domain, err := detailSourceDomain(binding, item.source)
+			if err != nil || domain != parts[1] {
 				return nil, ErrAuthorityLost
 			}
 			items[item.id] = item
 		}
 	}
 	ids := make([]string, 0, len(items))
-	for id := range items {
+	for id, item := range items {
+		domain, err := detailSourceDomain(bindings[item.board], item.source)
+		if err != nil {
+			return nil, err
+		}
+		item.domain = domain
+		items[id] = item
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
@@ -186,7 +212,7 @@ func firstRetirementDetails(ctx context.Context, tx pgx.Tx, client *Client, plan
 		pipe := client.redis.Pipeline()
 		probes := make([][3]*redis.Cmd, len(batch))
 		for i, id := range batch {
-			domain := bindings[items[id].board].Domain
+			domain := items[id].domain
 			probes[i] = [3]*redis.Cmd{
 				pipe.Do(ctx, "ZMSCORE", "inflight:simple", "scrape|"+domain+"|"+id),
 				pipe.Do(ctx, "ZMSCORE", "ft_scrapes_simple:"+domain, id),
@@ -198,7 +224,6 @@ func firstRetirementDetails(ctx context.Context, tx pgx.Tx, client *Client, plan
 		}
 		for i, id := range batch {
 			item := items[id]
-			binding := bindings[item.board]
 			leaseCommand, firstCommand, recurringCommand := probes[i][0], probes[i][1], probes[i][2]
 			lease, err := ownershipProbeScore(leaseCommand)
 			if err != nil {
@@ -223,10 +248,10 @@ func firstRetirementDetails(ctx context.Context, tx pgx.Tx, client *Client, plan
 			if err != nil {
 				return nil, ErrObservation
 			}
-			if config["board_id"] != item.board || config["source_url"] != item.source || config["domain"] != binding.Domain {
+			if config["board_id"] != item.board || config["source_url"] != item.source || config["domain"] != item.domain {
 				return nil, ErrAuthorityLost
 			}
-			row := firstRetirementMember{BoardID: item.board, Domain: binding.Domain, Completed: completed, Config: config, Kind: Scrape, TaskID: id}
+			row := firstRetirementMember{BoardID: item.board, Domain: item.domain, Completed: completed, Config: config, Kind: Scrape, TaskID: id}
 			if item.due != nil {
 				due := seconds(*item.due)
 				if !validTime(due) {

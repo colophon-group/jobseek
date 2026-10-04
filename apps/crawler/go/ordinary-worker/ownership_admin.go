@@ -157,7 +157,7 @@ func readOwnershipSelection(path string) (ownershipCohort, error) {
 			return ownershipCohort{}, ErrStartup
 		}
 	}
-	if len(cohort.Monitors) < 1 || len(cohort.Monitors) > 20000 || len(cohort.Details) > len(cohort.Monitors) {
+	if len(cohort.Monitors) < 1 || len(cohort.Monitors) > 20000 || len(cohort.Details) > 20000 {
 		return ownershipCohort{}, ErrStartup
 	}
 	monitors := make(map[string]bool, len(cohort.Monitors))
@@ -169,7 +169,7 @@ func readOwnershipSelection(path string) (ownershipCohort, error) {
 	}
 	details := make(map[string]bool, len(cohort.Details))
 	for _, id := range cohort.Details {
-		if !monitors[id] || details[id] {
+		if !cohortID.MatchString(id) || details[id] {
 			return ownershipCohort{}, ErrStartup
 		}
 		details[id] = true

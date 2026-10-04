@@ -36,6 +36,25 @@ func (a *Authority) observeGreenhouseMonitor(ctx context.Context, tx pgx.Tx, boa
 // Cold retirement may close an otherwise unchanged disabled member. This
 // observation never admits it to a claim or changes its canonical deadline.
 func (a *Authority) observeGreenhouseMonitorState(ctx context.Context, tx pgx.Tx, boardID string, retiring bool) (GreenhouseMonitorProfile, map[string]string, error) {
+	canonical, cached, err := a.observeBoardConfigsState(ctx, tx, boardID, retiring)
+	if err != nil {
+		return GreenhouseMonitorProfile{}, nil, err
+	}
+	profile, err := InspectRichMonitor(boardID, canonical)
+	if err != nil {
+		return GreenhouseMonitorProfile{}, nil, err
+	}
+	projected, err := InspectRichMonitor(boardID, cached)
+	if err != nil {
+		return GreenhouseMonitorProfile{}, nil, err
+	}
+	if projected.EffectiveConfigSHA256 != profile.EffectiveConfigSHA256 {
+		return GreenhouseMonitorProfile{}, nil, ErrAuthorityLost
+	}
+	return projected, cached, nil
+}
+
+func (a *Authority) observeBoardConfigsState(ctx context.Context, tx pgx.Tx, boardID string, retiring bool) (map[string]string, map[string]string, error) {
 	var slug, boardURL, kind, company, metadata, check, scrape, throttle string
 	var monitorBrowser, scraperBrowser bool
 	err := tx.QueryRow(ctx, `SELECT board_slug,board_url,crawler_type,company_id::text,
@@ -46,10 +65,10 @@ func (a *Authority) observeGreenhouseMonitorState(ctx context.Context, tx pgx.Tx
    AND (board_status IN ('active','suspect','quarantined','gone_pending','gone') OR $2)
    FOR SHARE`, boardID, retiring).Scan(&slug, &boardURL, &kind, &company, &metadata, &check, &scrape, &throttle, &monitorBrowser, &scraperBrowser)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return GreenhouseMonitorProfile{}, nil, ErrUnsupportedProfile
+		return nil, nil, ErrUnsupportedProfile
 	}
 	if err != nil {
-		return GreenhouseMonitorProfile{}, nil, err
+		return nil, nil, err
 	}
 	flag := func(value bool) string {
 		if value {
@@ -63,20 +82,28 @@ func (a *Authority) observeGreenhouseMonitorState(ctx context.Context, tx pgx.Tx
 		"scrape_interval_hours": scrape, "throttle_key": throttle, "domain": throttle,
 		"monitor_needs_browser": flag(monitorBrowser), "scraper_needs_browser": flag(scraperBrowser),
 	}
-	profile, err := InspectRichMonitor(boardID, canonical)
-	if err != nil {
-		return GreenhouseMonitorProfile{}, nil, err
-	}
 	cached, err := a.queue.redis.HGetAll(ctx, "board:"+boardID).Result()
 	if err != nil {
-		return GreenhouseMonitorProfile{}, nil, ErrObservation
+		return nil, nil, ErrObservation
 	}
-	projected, err := InspectRichMonitor(boardID, cached)
+	return canonical, cached, nil
+}
+
+func (a *Authority) observeDetailOwnershipState(ctx context.Context, tx pgx.Tx, boardID string, retiring bool) (WorkdayDetailProfile, map[string]string, error) {
+	canonical, cached, err := a.observeBoardConfigsState(ctx, tx, boardID, retiring)
 	if err != nil {
-		return GreenhouseMonitorProfile{}, nil, err
+		return WorkdayDetailProfile{}, nil, err
 	}
-	if projected.EffectiveConfigSHA256 != profile.EffectiveConfigSHA256 {
-		return GreenhouseMonitorProfile{}, nil, ErrAuthorityLost
+	profile, err := inspectDetailOwnership(boardID, canonical)
+	if err != nil {
+		return WorkdayDetailProfile{}, nil, err
+	}
+	projected, err := inspectDetailOwnership(boardID, cached)
+	if err != nil {
+		return WorkdayDetailProfile{}, nil, err
+	}
+	if profile.EffectiveBoardSHA256 != projected.EffectiveBoardSHA256 {
+		return WorkdayDetailProfile{}, nil, ErrAuthorityLost
 	}
 	return projected, cached, nil
 }
