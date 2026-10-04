@@ -54,7 +54,7 @@ func TestRealWorkdayDetailOwnedRunnerFetchesEnrichesAndSettles(t *testing.T) {
 }
 
 func TestRealWorkdayDetailRunnerPreservesFailureAndPublisherPolicy(t *testing.T) {
-	for _, mode := range []string{"404-empty", "s22-empty", "410-gone", "400-budget", "503-transient", "empty-content", "header-reserved", "existing-reserved", "fresh-reserved", "inactive", "host-circuit"} {
+	for _, mode := range []string{"404-empty", "s22-empty", "410-gone", "400-budget", "503-transient", "empty-content", "transport", "invalid-payload", "header-reserved", "existing-reserved", "fresh-reserved", "inactive", "inactive-header-reserved", "host-circuit"} {
 		t.Run(mode, func(t *testing.T) {
 			f, a, claim, _ := workdayDetailFixture(t, true)
 			ctx := context.Background()
@@ -73,12 +73,19 @@ func TestRealWorkdayDetailRunnerPreservesFailureAndPublisherPolicy(t *testing.T)
 					t.Fatal(err)
 				}
 			}
+			if err := f.r.Set(ctx, "host_fail:fixture.wd1.myworkdayjobs.com", "1", time.Hour).Err(); err != nil {
+				t.Fatal(err)
+			}
 			calls := 0
 			client := &VerifiedDirectHTTP{client: &http.Client{Transport: workdayDetailRoundTrip(func(r *http.Request) (*http.Response, error) {
 				calls++
 				status, body := 200, `{"jobPostingInfo":{"title":"Native","jobDescription":"<p>Build software.</p>"}}`
 				header := http.Header{"Content-Type": {"application/json"}}
 				switch mode {
+				case "transport":
+					return nil, errors.New("fixture transport failure")
+				case "invalid-payload":
+					body = `<html>invalid Workday response</html>`
 				case "404-empty":
 					status, body = 404, `{}`
 				case "s22-empty":
@@ -94,6 +101,12 @@ func TestRealWorkdayDetailRunnerPreservesFailureAndPublisherPolicy(t *testing.T)
 				case "header-reserved":
 					status = 410
 					header.Set("TDM-Reservation", "1")
+				case "inactive-header-reserved":
+					status = 410
+					header.Set("TDM-Reservation", "1")
+					if _, err := f.pg.Exec(ctx, "UPDATE job_posting SET is_active=false WHERE id=$1::uuid", f.original); err != nil {
+						t.Fatal(err)
+					}
 				case "fresh-reserved":
 					if _, err := f.pg.Exec(ctx, "UPDATE job_posting SET tdm_reserved=true WHERE id=$1::uuid", f.original); err != nil {
 						t.Fatal(err)
@@ -109,6 +122,20 @@ func TestRealWorkdayDetailRunnerPreservesFailureAndPublisherPolicy(t *testing.T)
 			if err != nil || result == nil || !result.Settled {
 				t.Fatal("policy/failure detail did not settle", err)
 			}
+			streak := f.r.Get(ctx, "host_fail:fixture.wd1.myworkdayjobs.com").Val()
+			expectedStreak := ""
+			switch mode {
+			case "s22-empty", "503-transient", "transport", "invalid-payload":
+				expectedStreak = "2"
+			case "existing-reserved", "inactive", "host-circuit":
+				expectedStreak = "1"
+			}
+			if streak != expectedStreak {
+				t.Fatalf("scrape host reachability changed: got %q, want %q", streak, expectedStreak)
+			}
+			if mode == "invalid-payload" && calls != 3 {
+				t.Fatal("provider-invalid payload did not exhaust its bounded retry")
+			}
 			var active, reserved bool
 			var title string
 			var due *time.Time
@@ -119,7 +146,7 @@ func TestRealWorkdayDetailRunnerPreservesFailureAndPublisherPolicy(t *testing.T)
 			if title != "Original" || descriptions != 0 {
 				t.Fatal("failed/reserved detail rewrote content")
 			}
-			if active != (mode != "410-gone" && mode != "inactive") {
+			if active != (mode != "410-gone" && mode != "inactive" && mode != "inactive-header-reserved") {
 				t.Fatal("detail failure changed visibility incorrectly", mode)
 			}
 			if mode == "header-reserved" || mode == "existing-reserved" || mode == "fresh-reserved" {
@@ -127,12 +154,15 @@ func TestRealWorkdayDetailRunnerPreservesFailureAndPublisherPolicy(t *testing.T)
 					t.Fatal("reservation lost")
 				}
 			}
+			if mode == "inactive-header-reserved" && (!reserved || result.Cycle.Status != "unscheduled") {
+				t.Fatal("inactive race discarded positive opt-out")
+			}
 			if mode == "existing-reserved" || mode == "inactive" || mode == "host-circuit" {
 				if calls != 0 {
 					t.Fatal("inert/reserved/circuit-open detail reached origin")
 				}
 			}
-			if mode == "inactive" || mode == "410-gone" {
+			if mode == "inactive" || mode == "410-gone" || mode == "inactive-header-reserved" {
 				if due != nil {
 					t.Fatal("unscheduled detail retained deadline")
 				}
@@ -237,7 +267,7 @@ func TestRealWorkdayDetailCancellationPreservesAttemptForRecovery(t *testing.T) 
 	}
 }
 
-func TestRealWorkdayDetailInvalidPublisherPolicyRetainsAttemptWithoutContentWrite(t *testing.T) {
+func TestRealWorkdayDetailInvalidPublisherPolicyPreservesOptOutWithoutContentWrite(t *testing.T) {
 	f, a, claim, _ := workdayDetailFixture(t, true)
 	client := &VerifiedDirectHTTP{client: &http.Client{Transport: workdayDetailRoundTrip(func(r *http.Request) (*http.Response, error) {
 		return &http.Response{StatusCode: 410, Header: http.Header{"Tdm-Reservation": {"1"}, "Tdm-Policy": {strings.Repeat("x", 8193)}}, Body: io.NopCloser(strings.NewReader(`{}`)), Request: r}, nil
@@ -247,13 +277,14 @@ func TestRealWorkdayDetailInvalidPublisherPolicyRetainsAttemptWithoutContentWrit
 		t.Fatal(err)
 	}
 	result, err := RunWorkdayDetail(context.Background(), a, claim, client, richPipelinePreparer(t, f).Processor, circuits)
-	if !errors.Is(err, queue.ErrConfiguration) || result.Settled {
-		t.Fatal("invalid publisher policy accepted or acknowledged", err)
+	if err != nil || !result.Settled || result.Cycle.Status != "publisher_reserved" || len(result.Diagnostics) != 1 || result.Diagnostics[0] != "invalid_policy_url" {
+		t.Fatal("invalid policy discarded positive opt-out", err)
 	}
 	var title string
 	var failures int
-	var active bool
-	if err := f.pg.QueryRow(context.Background(), "SELECT titles[1],scrape_failures,is_active FROM job_posting WHERE id=$1::uuid", f.original).Scan(&title, &failures, &active); err != nil || title != "Original" || failures != 0 || !active || f.r.ZCard(context.Background(), "inflight:simple").Val() != 1 {
+	var active, reserved bool
+	var policy *string
+	if err := f.pg.QueryRow(context.Background(), "SELECT titles[1],scrape_failures,is_active,tdm_reserved,tdm_reservation->>'policy_url' FROM job_posting WHERE id=$1::uuid", f.original).Scan(&title, &failures, &active, &reserved, &policy); err != nil || title != "Original" || failures != 0 || !active || !reserved || policy != nil || f.r.ZCard(context.Background(), "inflight:simple").Val() != 0 {
 		t.Fatal("invalid policy changed content/visibility or failure budget", err)
 	}
 }

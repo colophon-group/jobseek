@@ -325,11 +325,18 @@ func (r *GreenhouseHostRun) failureOutcome(ctx context.Context, observation Gree
 	return detachedHostOutcome(r.failure), nil
 }
 
-// RecordGreenhouseHostSuccess runs after the canonical success receipt commits
+// RecordGreenhouseHostSuccess runs after a canonical reachable-outcome receipt commits
 // and before settlement. A protective Redis error does not revoke that receipt.
 // Duplicate calls and ambiguous replies never replay completed host mutations.
 func (a *Authority) RecordGreenhouseHostSuccess(ctx context.Context, run *GreenhouseHostRun, receipt *Receipt, observation GreenhouseHostObservation) error {
-	if a == nil || run == nil || run.authority != a || receipt == nil || receipt.claim != run.claim || (receipt.terminalOutcome != "succeeded" && receipt.terminalOutcome != "publisher_reserved") || run.claim.recovered != nil || run.deferUntil != nil || len(observation.Hosts) > 64 {
+	if a == nil || run == nil || run.authority != a || receipt == nil || receipt.claim != run.claim || run.claim.recovered != nil || run.deferUntil != nil || len(observation.Hosts) > 64 {
+		return ErrConfiguration
+	}
+	reachableOutcome := receipt.terminalOutcome == "succeeded" || receipt.terminalOutcome == "publisher_reserved"
+	if run.claim.task.Kind == Scrape {
+		reachableOutcome = reachableOutcome || receipt.terminalOutcome == "failed" || receipt.terminalOutcome == "unscheduled"
+	}
+	if !reachableOutcome {
 		return ErrConfiguration
 	}
 	hosts := make(map[string]bool)
@@ -366,7 +373,8 @@ func (a *Authority) RecordGreenhouseHostSuccess(ctx context.Context, run *Greenh
 		if err != nil {
 			return err
 		}
-		if due == nil || receipt.nextDue == nil || canonical == nil || !due.Equal(*receipt.nextDue) || !canonical.Equal(*due) {
+		unscheduledDetail := run.claim.task.Kind == Scrape && due == nil && receipt.nextDue == nil && canonical == nil
+		if !unscheduledDetail && (due == nil || receipt.nextDue == nil || canonical == nil || !due.Equal(*receipt.nextDue) || !canonical.Equal(*due)) {
 			return ErrAuthorityLost
 		}
 		run.successDone = true

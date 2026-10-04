@@ -46,6 +46,7 @@ func RunWorkdayDetail(ctx context.Context, authority *queue.Authority, claim *qu
 	}
 	var preflight *queue.GreenhouseHostPreflight
 	var observation *HTTPObservation
+	var hostFailure, hostReachable bool
 	traffic := func() queue.GreenhouseHostObservation {
 		if observation == nil {
 			return queue.GreenhouseHostObservation{}
@@ -61,22 +62,24 @@ func RunWorkdayDetail(ctx context.Context, authority *queue.Authority, claim *qu
 			return result, claimRunError("detail_execution", cause)
 		}
 		var run *queue.GreenhouseHostRun
-		if cause != nil && reservation == nil && preflight != nil {
+		if cause != nil && reservation == nil && hostFailure && preflight != nil {
 			run = preflight.Run
 		}
 		status := ""
 		receipt, err := authority.FinishWorkdayDetail(ctx, detail, run, traffic(), func(ctx context.Context, tx pgx.Tx, current *queue.CurrentWorkdayDetail, circuit *queue.HostCircuitOutcome) (string, error) {
+			// A positive opt-out stays durable even if a concurrent monitor
+			// removed the posting while its HTTP response was arriving.
+			if reservation != nil {
+				if err := executor.RecordReservation(ctx, tx, current.PostingID(), reservation); err != nil {
+					return "", err
+				}
+			}
 			if !current.Schedulable {
 				_, err := tx.Exec(ctx, "UPDATE job_posting SET next_scrape_at=NULL,leased_until=NULL WHERE id=$1::uuid", current.PostingID())
 				status = "unscheduled"
 				return status, err
 			}
 			if current.PublisherReserved || reservation != nil || errors.Is(cause, queue.ErrPublisherReserved) {
-				if reservation != nil {
-					if err := executor.RecordReservation(ctx, tx, current.PostingID(), reservation); err != nil {
-						return "", err
-					}
-				}
 				_, err := tx.Exec(ctx, `UPDATE job_posting p SET next_scrape_at=now()+(b.scrape_interval_hours||' hours')::interval,leased_until=NULL
  FROM job_board b WHERE p.id=$1::uuid AND b.id=p.board_id`, current.PostingID())
 				status = "publisher_reserved"
@@ -98,6 +101,15 @@ func RunWorkdayDetail(ctx context.Context, authority *queue.Authority, claim *qu
 		})
 		if err != nil {
 			return result, claimRunError("detail_terminal", err)
+		}
+		if hostReachable && !hostFailure {
+			if err := authority.RecordGreenhouseHostSuccess(ctx, preflight.Run, receipt, traffic()); err != nil {
+				if errors.Is(err, queue.ErrObservation) || errors.Is(err, queue.ErrProtocol) {
+					result.Diagnostics = append(result.Diagnostics, "host_success_unavailable")
+				} else {
+					return result, claimRunError("detail_host_success", err)
+				}
+			}
 		}
 		return settle(receipt, status)
 	}
@@ -128,6 +140,14 @@ func RunWorkdayDetail(ctx context.Context, authority *queue.Authority, claim *qu
 	profile := detail.Profile()
 	fetched, err := FetchWorkdayDetail(ctx, http, profile.SourceURL, profile.FacilityTenantAliases)
 	result.DiscoveryDuration = time.Since(started)
+	// Scrape failure budgets and shared host reachability are independent:
+	// reachable empty/invalid extraction must not block every job on the host.
+	hostReachable = fetched.Responses > 0
+	hostFailure = fetched.TransportErrors > 0 || fetched.Status == 401 || fetched.Status == 403 || fetched.Status == 429 || fetched.Status >= 500
+	var fetchFailure *workday.DetailFetchError
+	if errors.As(err, &fetchFailure) && (fetchFailure.Kind == "transport" || fetchFailure.Kind == "invalid_payload") {
+		hostFailure = true
+	}
 	if err != nil {
 		result.DiscoveryError = true
 		result.DiscoveryCancelled = ctx.Err() != nil
@@ -135,9 +155,10 @@ func RunWorkdayDetail(ctx context.Context, authority *queue.Authority, claim *qu
 		if errors.As(err, &reserved) {
 			var policy *string
 			if len(reserved.PolicyURL) > 8192 || !utf8.ValidString(reserved.PolicyURL) || strings.ContainsRune(reserved.PolicyURL, 0) {
-				return result, claimRunError("detail_policy", queue.ErrConfiguration)
-			}
-			if reserved.PolicyURL != "" {
+				// Policy links are optional evidence. Their malformed value
+				// must not discard the resource's explicit mining opt-out.
+				result.Diagnostics = append(result.Diagnostics, "invalid_policy_url")
+			} else if reserved.PolicyURL != "" {
 				policy = &reserved.PolicyURL
 			}
 			return finish(nil, &publisherpolicy.Reservation{URL: reserved.URL, Source: "header", PolicyURL: policy})
