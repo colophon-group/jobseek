@@ -72,6 +72,14 @@ from src.processing.board import (
 
 
 @pytest.fixture(autouse=True)
+def _isolated_ordinary_write_authority(monkeypatch):
+    # Batch unit cases use statement-recording SQL doubles. Canonical ordinary
+    # ownership and write rejection are exercised by real PostgreSQL fixtures in
+    # test_ordinary_ownership; keep that separate authority boundary explicit.
+    monkeypatch.setattr("src.ordinary_ownership.require_legacy_detail_write", AsyncMock())
+
+
+@pytest.fixture(autouse=True)
 def _mock_location_resolver(monkeypatch):
     """Auto-mock the location resolver so batch tests don't hit the DB."""
     resolver = LocationResolver()
