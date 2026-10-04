@@ -278,6 +278,45 @@ cascade FKs or pre-bridge app
 releases as an automatic rollback. Schema restoration is a protected backup/restore
 operation with preserved selection data, not the destructive inverse of expansion.
 
+## Temporary bridge-code retention and removal gate (#10228)
+
+The web selections owner temporarily retains `writesLegacyBridge()` and the
+conditional minimal legacy `company` INSERT/conflict handling in
+[`company-references.ts`](../../apps/web/src/lib/services/company-references.ts).
+The deployed reference-mode artifact does not execute that branch. Retention
+supports the expanded-phase coexistence and rollback proofs while final rollout
+qualification remains open; it does not authorize bridge-mode production rollback.
+
+Removal becomes eligible only after independently accepted 24-hour and seven-day
+qualification beginning **2026-10-04T00:30:00Z**, the first complete quarter after
+the [account-repair deployment](https://github.com/colophon-group/jobseek/actions/runs/37164396800)
+at `ed1817aa68573b847d5c006b101591711f68421e` passed promotion and public lifecycle
+acceptance.
+The earliest seven-day calendar boundary is **2026-10-11T00:30:00Z**. Elapsed time
+alone is insufficient: retain authenticated, digest-verified closed-window
+coverage, period-scoped positive telemetry and classified outcomes, current
+reference drift, and the supported immutable reference-mode rollback floor.
+Provider capture remains explicitly conditional. Preserve the original
+**2026-10-03T15:22:34Z** observation start and its five historical gaps; the
+qualifying interval does not reset or certify that earlier period.
+
+After acceptance, remove unused live compatibility code only in a separate
+reviewed PR with green Required CI and Crawler Deploy Gate. Require reference-only
+production-service tests against real PostgreSQL, authenticated browser
+first-use/reload, offline reuse and reference-only reused-slug preservation.
+Complete the protected deployment's novel staged/public lifecycle and scoped
+cleanup gates, with fresh alias identity and reference drift evidence. Retain
+the supported rollback artifact through that deployment; do not remove code or
+change the mode solely because the calendar boundary has passed.
+
+Historical phase fixtures, immutable migrations/journal identities, phase-aware
+backup/restore verifiers and rollback proofs remain retained evidence. Existing
+`legacy_seed` provenance and canonical rows remain intact. Residual company/support
+tables keep the owners and retained-history dispositions in the dependency
+inventory below; their separate retirement requires a complete transitive FK,
+read/write and preservation audit. Passing qualification does not authorize
+dropping them or reactivating a mirror, resolver or notification delivery.
+
 ## Dependency retirement gate
 
 Before retiring any company producer, update the executable lifecycle manifest
