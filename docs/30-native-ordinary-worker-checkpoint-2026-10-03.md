@@ -1,5 +1,44 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Delivered source925 and cursor correction — 2026-10-04
+
+The full migration goal remains active. [PR #10297](https://github.com/colophon-group/jobseek/pull/10297)
+merged v0.13.925 at `a744c09f6e3a6c5dfdf0392f4428642541a850b1`.
+The supported deployment [37232650405](https://github.com/colophon-group/jobseek/actions/runs/37232650405)
+succeeded on attempt 2 after the original source924 full ordinary/B0 reversal.
+All six legacy writers were independently restored healthy and restart-armed,
+ownership receipts/projections absent and selectors cleared at epoch170.
+The first deploy correctly refused an active outgoing B0 receipt; it was retried
+through the original workflow after complete reversal, with no override.
+Source925 B0 activation then succeeded at epoch171 with all seven HTTP health
+endpoints passing. The larger ordinary JSON-LD owner has not been activated.
+
+Production query verification found that `ORDER BY id` resolved to the selected
+`id::text` alias. Even with migration0039 installed, the two sampled larger board
+histories still took 5.7 and 11.0 seconds to sort before returning 64 rows.
+v0.13.926 qualifies `ORDER BY job_posting.id`, preserving UUID keyset ordering and
+using the existing complete `(board_id,id)` index directly. All six read-only
+candidate queries used that index without sorting, taking 0.3–55.2 ms.
+These sequential samples have different cache states and do not prove fleet
+throughput or savings. [Portable query evidence](evidence/go-native-jsonld-cursor-query-2026-10-04.json)
+records exact source, queries, plans and sample limits. A real PostgreSQL
+regression checks the actual runtime query's index traversal rather than relying
+on a small functional fixture to reveal the full-board sort.
+
+Continue by merging/deploying the cursor correction through required checks,
+using original B0 reversal and selector clearing first. Reconcile fresh monitor,
+Workday and JSON-LD configurations and all scheduled posting routes at the new
+source/epoch; stage the combined cohort through the existing immutable plan and
+activate through the original full cold protocol. Verify natural JSON-LD
+fields, publisher-policy results, description/deadline conservation and indexed
+selection before expanding the next provider slice. Deliver SmartRecruiters and
+Workable using their existing Go parsers and the shared native runtime, then
+remaining enabled browser/monitor profiles and mandatory Python maintenance,
+scheduling and deployment consumers. Measure comparable whole-lane resources,
+prove full replacement/reversal and retain the rollback window before removing
+production Python, Playwright, Chromium and legacy runtime assets. Preserve
+every enabled board and useful isolated offline Python tools.
+
 ## Native JSON-LD detail candidate — 2026-10-04
 
 The full migration goal remains active. v0.13.925 extends the existing native
