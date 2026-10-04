@@ -1,0 +1,93 @@
+name: Pre-pull native crawler retirement admin
+run-name: "Pre-pull retirement admin @ ${{ inputs.image_source_revision }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_ref:
+        description: Approved immutable jobseek-crawler image reference
+        required: true
+        type: string
+      image_source_revision:
+        description: Exact approved source compiled into the admin image
+        required: true
+        type: string
+      live_source_revision:
+        description: Exact currently serving outgoing crawler source
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: crawler-native-admin-prepull
+  cancel-in-progress: false
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    environment: Production
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate main dispatch and source-bound inputs
+        env:
+          ADMIN_IMAGE: ${{ inputs.image_ref }}
+          ADMIN_SOURCE: ${{ inputs.image_source_revision }}
+          LIVE_SOURCE: ${{ inputs.live_source_revision }}
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == refs/heads/main ]]
+          [[ "$ADMIN_SOURCE" =~ ^[0-9a-f]{40}$ && "$LIVE_SOURCE" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$ADMIN_IMAGE" =~ ^ghcr\.io/colophon-group/jobseek-crawler@sha256:[0-9a-f]{64}$ ]]
+          git merge-base --is-ancestor "$ADMIN_SOURCE" "$GITHUB_SHA"
+          git merge-base --is-ancestor "$LIVE_SOURCE" "$GITHUB_SHA"
+      - name: Cache approved admin image while outgoing stack serves
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        env:
+          ADMIN_IMAGE: ${{ inputs.image_ref }}
+          ADMIN_SOURCE: ${{ inputs.image_source_revision }}
+          LIVE_SOURCE: ${{ inputs.live_source_revision }}
+          GHCR_PULL_USERNAME: ${{ github.actor }}
+          GHCR_PULL_TOKEN: ${{ github.token }}
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: deploy
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          command_timeout: 8m
+          envs: ADMIN_IMAGE,ADMIN_SOURCE,LIVE_SOURCE,GHCR_PULL_USERNAME,GHCR_PULL_TOKEN
+          script: |
+            set -euo pipefail
+            umask 077
+            [[ "$(id -un)" == deploy ]]
+            [[ "$ADMIN_SOURCE" =~ ^[0-9a-f]{40}$ && "$LIVE_SOURCE" =~ ^[0-9a-f]{40}$ ]]
+            [[ "$ADMIN_IMAGE" =~ ^ghcr\.io/colophon-group/jobseek-crawler@sha256:[0-9a-f]{64}$ ]]
+            cd /home/deploy
+            exec 9>/run/lock/jobseek-crawler-mutation.lock
+            flock -w 30 9
+            for path in .env .crawler-active-release/environment.env .crawler-active-release/success.env; do
+              [[ -f "$path" && ! -L "$path" ]]
+              grep -Fxq "JOBSEEK_DEPLOY_REVISION=$LIVE_SOURCE" "$path"
+            done
+            for path in .ordinary-go-owner-v1 .lightpanda-b0-active-v1; do
+              [[ -f "$path" && ! -L "$path" ]]
+            done
+            files=(.env .crawler-active-release/environment.env .crawler-active-release/success.env .ordinary-go-owner-v1 .lightpanda-b0-active-v1)
+            before_files="$(sha256sum "${files[@]}")"
+            mapfile -t ids < <(docker ps -q --filter label=com.docker.compose.project=deploy)
+            ((${#ids[@]} > 0))
+            before_services="$(docker inspect --format '{{.Id}}:{{.State.Running}}:{{.HostConfig.RestartPolicy.Name}}:{{.Config.Image}}' "${ids[@]}")"
+            config_dir="$(mktemp -d /home/deploy/.native-admin-pull.XXXXXX)"
+            trap 'unset GHCR_PULL_TOKEN; rm -rf -- "$config_dir"' EXIT
+            printf '%s' "$GHCR_PULL_TOKEN" | timeout 30s docker --config "$config_dir" login ghcr.io --username "$GHCR_PULL_USERNAME" --password-stdin >/dev/null
+            unset GHCR_PULL_TOKEN GHCR_PULL_USERNAME
+            timeout --signal=TERM --kill-after=5s 360s docker --config "$config_dir" pull "$ADMIN_IMAGE"
+            [[ "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$ADMIN_IMAGE")" == "$ADMIN_SOURCE" ]]
+            [[ "$(sha256sum "${files[@]}")" == "$before_files" ]]
+            [[ "$(docker inspect --format '{{.Id}}:{{.State.Running}}:{{.HostConfig.RestartPolicy.Name}}:{{.Config.Image}}' "${ids[@]}")" == "$before_services" ]]
+            echo "Approved immutable admin image cached; outgoing source and ownership receipts unchanged."
