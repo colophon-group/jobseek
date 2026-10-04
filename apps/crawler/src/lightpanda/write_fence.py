@@ -188,7 +188,11 @@ async def authoritative_write(
     guard = authority_guard() if authority_guard is not None else unguarded()
     async with guard, pool.acquire() as connection:
         if fence is None:
-            yield connection
+            from src.ordinary_ownership import require_legacy_detail_write
+
+            async with connection.transaction():
+                await require_legacy_detail_write(connection, job_posting_id)
+                yield connection
             return
         async with connection.transaction():
             await _execute(connection, _REQUIRE, fence)

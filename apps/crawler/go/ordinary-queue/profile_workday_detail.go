@@ -17,6 +17,26 @@ type WorkdayDetailProfile struct {
 	FacilityTenantAliases                           []string
 }
 
+// Admission binds the configured tenant/domain without enumerating postings.
+// Every actual pop still resolves and locks its canonical posting separately.
+func inspectWorkdayDetailOwnership(boardID string, config map[string]string) (WorkdayDetailProfile, error) {
+	monitor, err := InspectRichMonitor(boardID, config)
+	if err != nil || monitor.Provider != "workday" {
+		return WorkdayDetailProfile{}, ErrUnsupportedProfile
+	}
+	endpoint, err := url.Parse(monitor.Endpoint)
+	if err != nil {
+		return WorkdayDetailProfile{}, ErrUnsupportedProfile
+	}
+	parts := strings.Split(strings.Trim(endpoint.Path, "/"), "/")
+	if len(parts) != 5 || parts[0] != "wday" || parts[1] != "cxs" || parts[4] != "jobs" {
+		return WorkdayDetailProfile{}, ErrUnsupportedProfile
+	}
+	endpoint.Path = "/" + parts[3] + "/job/native-ownership-admission"
+	endpoint.RawPath = ""
+	return InspectWorkdayDetail(boardID, config, endpoint.String(), Simple)
+}
+
 // InspectWorkdayDetail resolves the existing explicit/inferred Workday scraper.
 // Monitor throttle domains are not detail request domains. Canonical/cache and
 // posting identity must be revalidated under the same barriers before a pop.

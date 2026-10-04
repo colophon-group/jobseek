@@ -31,7 +31,7 @@ from src.ordinary_ownership import (
 )
 
 
-def expectation(epoch: int = 7) -> tuple[LegacyOwnership, str]:
+def expectation(epoch: int = 7, *, details: bool = False) -> tuple[LegacyOwnership, str]:
     # Private legacy boundary fixture. Native canonical eligibility is separately
     # proven by the Go real-board tests; this does not grant a native writer.
     payload = json.dumps(
@@ -52,6 +52,17 @@ def expectation(epoch: int = 7) -> tuple[LegacyOwnership, str]:
         },
         separators=(",", ":"),
     )
+    if details:
+        doc = json.loads(payload)
+        doc["details"] = [
+            {
+                "board_id": doc["members"][0]["board_id"],
+                "domain": "fixture.wd1.myworkdayjobs.com",
+                "profile": "workday.cxs-detail/v1",
+                "worker": "simple",
+            }
+        ]
+        payload = json.dumps(doc, separators=(",", ":"))
     expected = LegacyOwnership(
         hashlib.sha256(payload.encode()).hexdigest(),
         hashlib.sha1(ownership_projection(payload).encode()).hexdigest(),
@@ -213,7 +224,7 @@ async def private_redis(monkeypatch):
 
 
 @asynccontextmanager
-async def private_active_plan():
+async def private_active_plan(*, details: bool = False):
     dsn = os.environ.get("JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL", "")
     if not dsn:
         if os.environ.get("JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES") == "1":
@@ -238,7 +249,7 @@ async def private_active_plan():
                 "SELECT EXISTS(SELECT 1 FROM ordinary_worker_ownership_plan WHERE state='active')"
             )
             epoch = await conn.fetchval("SELECT nextval('public.lightpanda_b0_routing_epoch_seq')")
-            expected, payload = expectation(epoch)
+            expected, payload = expectation(epoch, details=details)
             # Private SQL fixture only; production still has no activation endpoint.
             await conn.execute(
                 "INSERT INTO ordinary_worker_ownership_plan"
@@ -354,3 +365,87 @@ def test_retained_legacy_plan_keeps_original_projection():
     del doc["routing_projection"]
     original = json.dumps(doc, separators=(",", ":"))
     assert ownership_projection(original) == original
+
+
+def test_detail_projection_retains_actual_domain_and_rejects_foreign_members():
+    _, payload = expectation(details=True)
+    projection = json.loads(ownership_projection(payload))
+    board = "00000000-0000-4000-8000-000000000001"
+    assert projection["members"] == {board: "greenhouse"}
+    assert projection["details"] == {board: "fixture.wd1.myworkdayjobs.com"}
+    for change in ("foreign", "duplicate", "profile", "browser", "empty"):
+        doc = json.loads(payload)
+        if change == "foreign":
+            doc["details"][0]["board_id"] = str(uuid.uuid4())
+        elif change == "duplicate":
+            doc["details"].append(doc["details"][0])
+        elif change == "profile":
+            doc["details"][0]["profile"] = "unknown"
+        elif change == "browser":
+            doc["details"][0]["worker"] = "browser"
+        else:
+            doc["details"] = []
+        with pytest.raises(OrdinaryOwnershipError):
+            ownership_projection(json.dumps(doc, separators=(",", ":")))
+
+
+async def test_real_legacy_detail_write_excludes_actual_canonical_board(monkeypatch):
+    from src.lightpanda.write_fence import authoritative_write
+    from src.ordinary_ownership import OrdinaryDetailWriteRejected
+
+    async with private_active_plan(details=True) as (pool, expected, _):
+        install_settings(monkeypatch, expected)
+        company, foreign, owned_posting, foreign_posting = (uuid.uuid4() for _ in range(4))
+        owned = uuid.UUID("00000000-0000-4000-8000-000000000001")
+        await pool.execute(
+            "INSERT INTO company(id,slug,name) VALUES($1,$2,'Detail fixture')",
+            company,
+            str(company),
+        )
+        try:
+            for board in (owned, foreign):
+                await pool.execute(
+                    "INSERT INTO job_board(id,company_id,board_slug,board_url,crawler_type) "
+                    "VALUES($1,$2,$3,$4,'workday')",
+                    board,
+                    company,
+                    str(board),
+                    "https://fixture.invalid/board/" + str(board),
+                )
+            for posting, board in ((owned_posting, owned), (foreign_posting, foreign)):
+                await pool.execute(
+                    "INSERT INTO job_posting(id,company_id,board_id,source_url,titles,locales) "
+                    "VALUES($1,$2,$3,$4,ARRAY['Original'],ARRAY['en'])",
+                    posting,
+                    company,
+                    board,
+                    "https://fixture.invalid/" + str(posting),
+                )
+            # The actual posting differs from its board. Cached routing metadata
+            # is absent from this write gate and cannot authorize a native board.
+            with pytest.raises(OrdinaryDetailWriteRejected):
+                async with authoritative_write(pool, None, job_posting_id=str(owned_posting)):
+                    pytest.fail("native-owned canonical detail reached legacy writer")
+            async with authoritative_write(pool, None, job_posting_id=str(foreign_posting)) as conn:
+                await conn.execute(
+                    "UPDATE job_posting SET titles=ARRAY['Legacy detail'] WHERE id=$1",
+                    foreign_posting,
+                )
+            assert (
+                await pool.fetchval("SELECT titles[1] FROM job_posting WHERE id=$1", owned_posting)
+                == "Original"
+            )
+            assert (
+                await pool.fetchval(
+                    "SELECT titles[1] FROM job_posting WHERE id=$1", foreign_posting
+                )
+                == "Legacy detail"
+            )
+            monkeypatch.setattr(settings, "ordinary_ownership_source_revision", "b" * 40)
+            with pytest.raises(OrdinaryDetailWriteRejected):
+                async with authoritative_write(pool, None, job_posting_id=str(foreign_posting)):
+                    pytest.fail("changed source retained legacy write authority")
+        finally:
+            await pool.execute("DELETE FROM job_posting WHERE company_id=$1", company)
+            await pool.execute("DELETE FROM job_board WHERE company_id=$1", company)
+            await pool.execute("DELETE FROM company WHERE id=$1", company)

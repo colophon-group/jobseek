@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func currentWorkdayDetailFixture(t *testing.T) (authorityFixture, *Claim) {
+func currentWorkdayDetailQueueFixture(t *testing.T) authorityFixture {
 	t.Helper()
 	f := realAuthority(t, Scrape, Simple, ordinaryID(t))
 	ctx := context.Background()
@@ -42,6 +42,11 @@ func currentWorkdayDetailFixture(t *testing.T) (authorityFixture, *Claim) {
 	if _, err := f.client.EnqueueURLDetail(ctx, URLOnlyDetail{ID: f.task.ID, BoardID: f.task.ID, URL: source, DescriptionHash: &hash, Due: time.Now().Add(-time.Minute)}); err != nil {
 		t.Fatal(err)
 	}
+	return f
+}
+
+func currentWorkdayDetailFixture(t *testing.T) (authorityFixture, *Claim) {
+	f := currentWorkdayDetailQueueFixture(t)
 	return f, mustClaim(t, f)
 }
 

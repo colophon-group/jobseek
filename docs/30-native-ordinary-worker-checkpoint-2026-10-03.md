@@ -1,5 +1,39 @@
 # Native ordinary worker continuation, 2026-10-03
 
+
+## Production continuation — 2026-10-04 11:57 UTC
+
+The full migration goal remains active. PR #10267 is merged as
+`95ec59850d327a267ff1f23e54753160ca085114` and deployed as v0.13.923
+by supported deployment run `37196598961`, attempt 2. The original cutover
+activated the exact 4,792-board monitor plan at B0 epoch 167, including 495
+Workday boards. All ten writers are independently verified running with
+`unless-stopped` restart policies and exact digest-pinned images; native and
+legacy health endpoints pass.
+
+The initial activation refused surviving tokenless Redis leases after SQL lease
+expiry. The installed, source/image/receipt-bound maintenance reaper restored
+91 simple and six browser monitor tasks with zero dead letters or missing
+configs and no SQL, owner or B0 changes. The original exact-plan retry completed.
+No receipt, wrapper, fence or lock was patched.
+
+Natural serving evidence now records 246 settled canonical/Redis deadline
+matches and zero mismatches. Workday has three completed native monitor attempts,
+two successful. Eight of nine profiles have natural completions; Personio has
+none in this observation. Unacknowledged outcomes remain tracked. See
+[evidence](evidence/go-native-workday-monitors-2026-10-04.json).
+
+Workday detail execution remains Python in production. The v0.13.924 worktree
+has committed canonical detail gates and shared native enrichment/persistence.
+The current continuation implements explicit detail membership in the same
+immutable ownership plan, original Lua claims, and a Python write guard that
+resolves the actual canonical posting board. PostgreSQL tests prove native-owned
+details cannot reach the legacy writer through forged routing metadata; native
+owned claim/persistence/settlement tests also pass. Runtime dispatch and complete
+supported detail retirement must be finished and verified before publication.
+The remaining goal includes other enabled detail/browser profiles, runtime
+maintenance/deployment consumers, resource measurements and Python retirement.
+
 The goal remains full delivery of the Go and Lightpanda crawler migration,
 including retirement of production Python, Playwright and Chromium after
 replacement coverage and supported reversal are established. Useful isolated

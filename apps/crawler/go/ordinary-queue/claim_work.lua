@@ -40,6 +40,7 @@ local owner_role = ARGV[7] or ""
 local owner_key = "ordinary:ownership:active"
 local owner_type = redis.call("TYPE", owner_key)["ok"]
 local owner_members = nil
+local owner_details = nil
 local native_member = nil
 local native_snapshot = nil
 local owner_cursor_prefix = nil
@@ -49,7 +50,7 @@ end
 if owner_role == "" then
     if owner_type ~= "none" then return owner_failure() end
 else
-    if (owner_role ~= "native" and owner_role ~= "legacy") or
+    if (owner_role ~= "native" and owner_role ~= "native_detail" and owner_role ~= "legacy") or
         owner_type ~= "string" or (wtype ~= "simple" and wtype ~= "browser") or
         #(ARGV[8] or "") ~= 64 or string.find(ARGV[8] or "", "[^0-9a-f]") or
         #(ARGV[9] or "") ~= 40 or string.find(ARGV[9] or "", "[^0-9a-f]") or
@@ -91,7 +92,28 @@ else
         end
         if count < 1 or count > 20000 then return owner_failure() end
     end
-    if owner_role == "native" then
+    owner_details = plan.details or {}
+    if type(owner_details) ~= "table" then return owner_failure() end
+    local detail_count = 0
+    for board, domain in pairs(owner_details) do
+        if plan.version ~= "jobseek.ordinary.ownership-projection/v1" or
+            not owner_members[board] or type(domain) ~= "string" or #domain < 1 or
+            #domain > 253 or string.find(domain, "[%c|]") then return owner_failure() end
+        detail_count = detail_count + 1
+    end
+    if detail_count > 20000 then return owner_failure() end
+    if owner_role == "native_detail" then
+        local board, id = ARGV[12] or "", ARGV[14] or ""
+        local domain = owner_details[board]
+        if wtype ~= "simple" or claim_token == "" or not domain or
+            #id ~= 36 or string.find(id, "[^0-9a-f%-]") then return owner_failure() end
+        native_member = {board_id = board, domain = domain, worker = "simple", task_id = id, kind = "scrape"}
+        local ok, snapshot = pcall(cjson.decode, ARGV[13] or "")
+        if not ok or type(snapshot) ~= "table" or snapshot.board_id ~= board or
+            snapshot.domain ~= domain or redis.call("HEXISTS", b0_guard_key, id) == 1 then return owner_failure() end
+        native_snapshot = snapshot
+    elseif owner_role == "native" then
+        if (ARGV[14] or "") ~= "" then return owner_failure() end
         native_member = owner_members[ARGV[12] or ""]
         if plan.version == "jobseek.ordinary.ownership-projection/v1" and type(native_member) == "string" then
             native_member = {board_id = ARGV[12], domain = native_member, worker = "simple"}
@@ -104,7 +126,7 @@ else
             return owner_failure()
         end
         native_snapshot = snapshot
-    elseif claim_token ~= "" or (ARGV[12] or "") ~= "" or (ARGV[13] or "") ~= "" then
+    elseif claim_token ~= "" or (ARGV[12] or "") ~= "" or (ARGV[13] or "") ~= "" or (ARGV[14] or "") ~= "" then
         return owner_failure()
     end
     owner_cursor_prefix = "ordinary:claim-cursor:" .. ARGV[8] .. ":" .. wtype .. ":"
@@ -268,7 +290,7 @@ if owner_role ~= "" then
     end
     -- Reject changed/missing native configuration before even cursor mutations.
     if native_member then
-        local key = "board:" .. native_member.board_id
+        local key = native_member.kind == "scrape" and ("scrape:" .. native_member.task_id) or ("board:" .. native_member.board_id)
         if redis.call("TYPE", key)["ok"] ~= "hash" then return owner_failure() end
         local fields = 0
         for name, value in pairs(native_snapshot) do
@@ -312,13 +334,14 @@ if owner_role ~= "" then
             local function find_task(prefix, domain, kind, priority)
                 local queue_key = prefix .. wtype .. ":" .. domain
                 if native_member then
-                    if kind ~= "monitor" then return nil end
-                    local score = redis.call("ZSCORE", queue_key, native_member.board_id)
+                    if kind ~= (native_member.kind or "monitor") then return nil end
+                    local id = native_member.task_id or native_member.board_id
+                    local score = redis.call("ZSCORE", queue_key, id)
                     if score and tonumber(score) <= now then
-                        if redis.call("ZSCORE", "inflight:" .. wtype, "monitor|" .. domain .. "|" .. native_member.board_id) then
-                            duplicate_removals[#duplicate_removals+1] = {queue_key, native_member.board_id, domain}
+                        if redis.call("ZSCORE", "inflight:" .. wtype, kind .. "|" .. domain .. "|" .. id) then
+                            duplicate_removals[#duplicate_removals+1] = {queue_key, id, domain}
                         else
-                            return {native_member.board_id, kind, domain, priority, queue_key}
+                            return {id, kind, domain, priority, queue_key}
                         end
                     end
                     return nil
@@ -337,7 +360,8 @@ if owner_role ~= "" then
                         -- the extra ready representation is removed, never the
                         -- live lease/token/config or a foreign logical task.
                         duplicate_removals[#duplicate_removals+1] = {queue_key, id, domain}
-                    elseif not (kind == "monitor" and owner_members[id]) then
+                    elseif not ((kind == "monitor" and owner_members[id]) or
+                        (kind == "scrape" and owner_details[redis.call("HGET", "scrape:" .. id, "board_id") or ""])) then
                         return {id, kind, domain, priority, queue_key}
                     end
                 end
