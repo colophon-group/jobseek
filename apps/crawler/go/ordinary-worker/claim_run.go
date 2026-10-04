@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log"
-	"strings"
 	"time"
 
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
@@ -196,10 +195,10 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		return result, claimRunError("fetch", ctx.Err())
 	}
 	if response := discovery.Response; response != nil {
-		// These private fields come only from this completed sealed-client fetch.
-		// The initial endpoint must still match the exact claim token. Redirect
-		// headers, partial reads and caller-synthesized observations are excluded.
-		if response.endpoint != profile.Endpoint && !(profile.Provider == "lever" && strings.HasPrefix(response.endpoint, strings.TrimSuffix(profile.Endpoint, "skip=0")+"skip=")) {
+		// These private fields come only from this sealed-client fetch. Bind the
+		// initial resource to this claim's endpoint or validated page. RSS may
+		// stop at a publisher header; incomplete inventories never reach writes.
+		if !richResponseMatches(profile, response.endpoint) {
 			cycle.InvalidateInventory()
 			return result, claimRunError("response", queue.ErrConfiguration)
 		}
@@ -210,7 +209,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			}
 			return finishSuccess(terminal)
 		}
-		if response.status == 404 && profile.Provider != "pinpoint" {
+		if response.status == 404 && profile.Provider != "pinpoint" && profile.Provider != "rss" {
 			terminal, err := cycle.FinishProviderGoneResource(ctx, response.endpoint, queue.GreenhouseGoneObservation{Endpoint: response.finalURL, HTTPStatus: response.status})
 			if err != nil {
 				return result, claimRunError("provider_gone", err)

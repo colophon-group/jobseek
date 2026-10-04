@@ -34,6 +34,7 @@ COPY go/ashby-monitor/ go/ashby-monitor/
 COPY go/lever-monitor/ go/lever-monitor/
 COPY go/recruitee-monitor/ go/recruitee-monitor/
 COPY go/pinpoint-monitor/ go/pinpoint-monitor/
+COPY go/teamtailor-rss-monitor/ go/teamtailor-rss-monitor/
 COPY go/ordinary-queue/ go/ordinary-queue/
 COPY go/ordinary-worker/ go/ordinary-worker/
 WORKDIR /workspace/apps/crawler/go/ordinary-worker

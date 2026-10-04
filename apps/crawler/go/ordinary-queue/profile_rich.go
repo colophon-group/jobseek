@@ -34,6 +34,8 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		allowed["company"], allowed["company_slug"] = true, true
 	case "pinpoint":
 		allowed["slug"] = true
+	case "rss":
+		allowed["preset"], allowed["feed_url"] = true, true
 	default:
 		return nil, ErrUnsupportedProfile
 	}
@@ -50,6 +52,9 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 	md, err := richProfileMetadata(config)
 	if err != nil {
 		return GreenhouseMonitorProfile{}, err
+	}
+	if config["crawler_type"] == "rss" {
+		return inspectTeamtailorRich(boardID, config, md)
 	}
 	var token, region string
 	var tenantEndpoint string

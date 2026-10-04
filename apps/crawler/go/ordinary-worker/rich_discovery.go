@@ -89,6 +89,9 @@ func richPage(ctx context.Context, client *http.Client, endpoint string, leverPa
 
 func DiscoverRichMonitor(ctx context.Context, client *http.Client, profile queue.GreenhouseMonitorProfile) (RichDiscovery, error) {
 	result := RichDiscovery{Jobs: []RichMonitorJob{}}
+	if profile.Profile == "rss.teamtailor-skip/v1" {
+		return discoverTeamtailorRich(ctx, client, profile)
+	}
 	if profile.Provider == "greenhouse" {
 		found, err := DiscoverGreenhouse(ctx, client, profile.Token)
 		result.Response = found.Response
