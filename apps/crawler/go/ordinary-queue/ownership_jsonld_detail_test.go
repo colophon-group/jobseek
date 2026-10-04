@@ -49,12 +49,14 @@ func TestRealJSONLDDetailCursorUsesBoundedUUIDIndexTraversal(t *testing.T) {
 }
 
 func firstJSONLDDetailFixture(t *testing.T) firstOwnerFixture {
+	return firstIndependentDetailFixture(t, `{"scraper_type":"json-ld","selector":"a.job","render":true}`, "https://jobs.example.net/job/native-jsonld", "jobs.example.net")
+}
+
+func firstIndependentDetailFixture(t *testing.T, metadata, source, domain string) firstOwnerFixture {
 	t.Helper()
 	p := firstOwnershipFixture(t)
 	f, ctx := p.f, context.Background()
 	board := ordinaryID(t)
-	const source = "https://jobs.example.net/job/native-jsonld"
-	const metadata = `{"scraper_type":"json-ld","selector":"a.job","render":true}`
 	if _, err := f.observer.Exec(ctx, `INSERT INTO job_board(id,company_id,board_slug,board_url,crawler_type,metadata,check_interval_minutes,scrape_interval_hours,throttle_key,monitor_needs_browser,scraper_needs_browser) VALUES($1::uuid,$2::uuid,$3,'https://careers.example.com/jobs','dom',$4::jsonb,60,24,'careers.example.com',true,false)`, board, f.company, "jsonld-"+board, metadata); err != nil {
 		t.Fatal(err)
 	}
@@ -83,13 +85,19 @@ func firstJSONLDDetailFixture(t *testing.T) firstOwnerFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		_, _ = f.observer.Exec(context.Background(), "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE plan_sha256=$1 AND state='active'", plan.SHA256())
+	})
 	p.plan = plan
-	p.f.task = &Task{ID: f.task.ID, Kind: Scrape, Worker: Simple, Domain: "jobs.example.net"}
+	p.f.task = &Task{ID: f.task.ID, Kind: Scrape, Worker: Simple, Domain: domain}
 	return p
 }
 
 func TestRealJSONLDDetailOwnsPostingAndRetainsLegacyMonitor(t *testing.T) {
-	p := firstJSONLDDetailFixture(t)
+	testIndependentDetailOwnsPosting(t, firstJSONLDDetailFixture(t), jsonldDetailProfile, "jobs.example.net")
+}
+
+func testIndependentDetailOwnsPosting(t *testing.T, p firstOwnerFixture, profile, domain string) {
 	a, claim := firstRetirementClaim(t, p)
 	ctx := context.Background()
 	board := claim.boardID
@@ -113,7 +121,7 @@ func TestRealJSONLDDetailOwnsPostingAndRetainsLegacyMonitor(t *testing.T) {
 		t.Fatal("legacy claimed owned detail", err)
 	}
 	detail, err := a.ReadWorkdayDetail(ctx, claim)
-	if err != nil || detail.Profile().Profile != jsonldDetailProfile || detail.Profile().Domain != "jobs.example.net" {
+	if err != nil || detail.Profile().Profile != profile || detail.Profile().Domain != domain {
 		t.Fatal("canonical generic detail missing", err)
 	}
 	receipt, err := a.WriteWorkdayDetail(ctx, detail, func(ctx context.Context, tx pgx.Tx) error {
@@ -126,16 +134,20 @@ func TestRealJSONLDDetailOwnsPostingAndRetainsLegacyMonitor(t *testing.T) {
 	if err := a.Settle(ctx, claim, receipt); err != nil {
 		t.Fatal(err)
 	}
-	score, err := p.f.client.redis.ZScore(ctx, "scrapes_simple:jobs.example.net", claim.task.ID).Result()
+	score, err := p.f.client.redis.ZScore(ctx, "scrapes_simple:"+domain, claim.task.ID).Result()
 	if err != nil || score != seconds(*receipt.NextDue()) {
 		t.Fatal("canonical JSON-LD deadline differs", err)
 	}
 }
 
 func TestRealJSONLDDetailColdRetirementPreservesActualHostAndCanonicalDeadline(t *testing.T) {
+	testIndependentDetailColdRetirement(t, firstJSONLDDetailFixture)
+}
+
+func testIndependentDetailColdRetirement(t *testing.T, fixture func(*testing.T) firstOwnerFixture) {
 	for _, mode := range []string{"active", "committed-before-ack", "claim-before-sql", "inactive"} {
 		t.Run(mode, func(t *testing.T) {
-			p := firstJSONLDDetailFixture(t)
+			p := fixture(t)
 			a, claim := firstRetirementClaim(t, p)
 			ctx := context.Background()
 			switch mode {
@@ -169,7 +181,7 @@ func TestRealJSONLDDetailColdRetirementPreservesActualHostAndCanonicalDeadline(t
 			if firstFixtureState(t, p) != "retired" || p.f.client.redis.Exists(ctx, ownershipProjectionKey).Val() != 0 || p.f.client.redis.ZCard(ctx, "inflight:simple").Val() != 0 {
 				t.Fatal("retirement retained owner/lease")
 			}
-			score, err := p.f.client.redis.ZScore(ctx, "scrapes_simple:jobs.example.net", claim.task.ID).Result()
+			score, err := p.f.client.redis.ZScore(ctx, "scrapes_simple:"+claim.task.Domain, claim.task.ID).Result()
 			if due == nil {
 				if !errors.Is(err, redis.Nil) {
 					t.Fatal("inactive detail requeued", err)

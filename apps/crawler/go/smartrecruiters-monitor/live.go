@@ -156,11 +156,11 @@ func (f *fetcher) once(ctx context.Context, endpoint string, limit int) (Object,
 	f.mu.Unlock()
 	status := response.StatusCode
 	location := response.Header.Get("Location")
-	if status != 200 {
-		return nil, status, location, nil
-	}
 	if trim(strings.Join(response.Header.Values("TDM-Reservation"), ", ")) == "1" {
 		return nil, status, "", &Failure{Kind: "tdm", URL: endpoint, Source: "header", Policy: strings.Join(response.Header.Values("TDM-Policy"), ", ")}
+	}
+	if status != 200 {
+		return nil, status, location, nil
 	}
 	body, readErr := io.ReadAll(io.LimitReader(response.Body, int64(limit)+1))
 	f.mu.Lock()
@@ -220,6 +220,17 @@ func (f *fetcher) get(ctx context.Context, endpoint string, limit int) (Object, 
 }
 func Fetch(ctx context.Context, boardURL string, metadata Object) (FetchResult, error) {
 	return fetchWith(ctx, boardURL, metadata, newClient(), normalPause)
+}
+
+// FetchWithClient retains the existing complete snapshot/pagination contract
+// using the native worker's process-owned verified and observed HTTP client.
+func FetchWithClient(ctx context.Context, boardURL string, metadata Object, client interface {
+	Do(*http.Request) (*http.Response, error)
+}) (FetchResult, error) {
+	if client == nil {
+		return FetchResult{}, errors.New("SmartRecruiters inventory client unavailable")
+	}
+	return fetchWith(ctx, boardURL, metadata, client, normalPause)
 }
 func fetchWith(ctx context.Context, boardURL string, metadata Object, client requestDoer, pause Pause) (FetchResult, error) {
 	f := &fetcher{client: client, pause: pause}

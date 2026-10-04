@@ -141,6 +141,12 @@ func privateRichPipelineFixture(t *testing.T, provider, metadata string) nativeP
 	if provider == "workday" {
 		boardURL = "https://fixture.wd1.myworkdayjobs.com/Careers"
 	}
+	if provider == "smartrecruiters" {
+		boardURL = "https://careers.smartrecruiters.com/fixture"
+	}
+	if provider == "workable" {
+		boardURL = "https://apply.workable.com/fixture"
+	}
 	if _, err := pg.Exec(ctx, `INSERT INTO job_board(id,company_id,board_slug,board_url,crawler_type,metadata,throttle_key,check_interval_minutes,scrape_interval_hours,next_check_at)
  VALUES($1::uuid,$2::uuid,$3,$5,$6,$4::jsonb,$6,60,24,now()-interval '1 minute')`, f.board, f.company, "native-"+f.board, metadata, boardURL, provider); err != nil {
 		t.Fatal(err)

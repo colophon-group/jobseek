@@ -93,6 +93,21 @@ func TestTDMBoundsAndPrecedence(t *testing.T) {
 		})
 	}
 }
+
+func TestMonitorPositiveHeaderBeforeStatusAndBody(t *testing.T) {
+	for _, status := range []int{200, 302, 404, 429, 503} {
+		calls := 0
+		client := doerFunc(func(r *http.Request) (*http.Response, error) {
+			calls++
+			return response(r, status, "invalid JSON", http.Header{"Tdm-Reservation": {"1"}, "Tdm-Policy": {"publisher-policy"}}), nil
+		})
+		result, err := FetchWithClient(context.Background(), "https://careers.smartrecruiters.com/fixture", Object{}, client)
+		var failure *Failure
+		if !errors.As(err, &failure) || failure.Kind != "tdm" || failure.Source != "header" || failure.Policy != "publisher-policy" || calls != 1 || result.Bytes != 0 || len(result.URLs) != 0 {
+			t.Fatalf("header reservation became status failure or consumed body: %+v %v", result, err)
+		}
+	}
+}
 func TestBodyLimitIsNotRetried(t *testing.T) {
 	calls := 0
 	f := &fetcher{token: "Acme", client: doerFunc(func(r *http.Request) (*http.Response, error) {

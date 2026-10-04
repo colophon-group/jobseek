@@ -3,6 +3,7 @@ package smartrecruiters
 import (
 	"context"
 	"errors"
+	"net/http"
 	"net/url"
 	"strings"
 )
@@ -40,6 +41,15 @@ func DetailEndpoint(raw string) (string, string, error) {
 
 func FetchDetail(ctx context.Context, raw string) (DetailResult, error) {
 	return fetchDetailWith(ctx, raw, newClient())
+}
+
+// FetchDetailWithClient reuses the native worker's verified, observed transport.
+// It preserves the existing one-shot detail and non-200 empty-result behavior.
+func FetchDetailWithClient(ctx context.Context, raw string, client *http.Client) (DetailResult, error) {
+	if client == nil {
+		return DetailResult{}, errors.New("SmartRecruiters detail client unavailable")
+	}
+	return fetchDetailWith(ctx, raw, client)
 }
 
 // FetchDetailForBoard can retain the existing response on exact selected boards.

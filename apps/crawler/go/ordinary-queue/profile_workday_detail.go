@@ -16,6 +16,7 @@ type WorkdayDetailProfile struct {
 	Profile, EffectiveBoardSHA256                   string
 	FacilityTenantAliases                           []string
 	JSONLDConfig                                    map[string]any
+	APITokenOverride                                string
 }
 
 // Admission binds the configured tenant/domain without enumerating postings.

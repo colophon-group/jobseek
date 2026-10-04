@@ -46,6 +46,7 @@ type FetchResult struct {
 	FinalURL  string `json:"final_url,omitempty"`
 	ErrorKind string `json:"error_kind,omitempty"`
 	TDMPolicy string `json:"tdm_policy,omitempty"`
+	TDMSource string `json:"-"`
 	Error     string `json:"error,omitempty"`
 }
 
@@ -179,6 +180,7 @@ func fetchBody(ctx context.Context, client requestDoer, result *FetchResult, met
 	}
 	if tdmReserved(response.Header.Get("TDM-Reservation")) {
 		result.ErrorKind = "tdm"
+		result.TDMSource = "header"
 		result.TDMPolicy = response.Header.Get("TDM-Policy")
 		return nil, response.StatusCode, errors.New("tdm-reservation=1")
 	}
@@ -192,6 +194,7 @@ func fetchBody(ctx context.Context, client requestDoer, result *FetchResult, met
 	}
 	if tdmMetaReserved(body) {
 		result.ErrorKind = "tdm"
+		result.TDMSource = "meta"
 		result.TDMPolicy = response.Header.Get("TDM-Policy")
 		return nil, response.StatusCode, errors.New("tdm-reservation=1")
 	}

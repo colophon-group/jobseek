@@ -26,6 +26,14 @@ require (
 
 replace github.com/colophon-group/jobseek/apps/crawler/contracts => ../../contracts
 
-require github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail v0.0.0
+require (
+	github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail v0.0.0
+	github.com/colophon-group/jobseek/apps/crawler/go/smartrecruiters-monitor v0.0.0
+	github.com/colophon-group/jobseek/apps/crawler/go/workable-monitor v0.0.0
+)
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail => ../jsonld-detail
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/smartrecruiters-monitor => ../smartrecruiters-monitor
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/workable-monitor => ../workable-monitor

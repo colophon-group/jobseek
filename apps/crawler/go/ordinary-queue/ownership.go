@@ -176,9 +176,9 @@ func decodeOwnership(body, digest string) (*OwnershipPlan, error) {
 		if !canonicalUUID.MatchString(detail.BoardID) || detail.BoardID <= previous || detail.Worker != Simple {
 			return nil, ErrAuthorityLost
 		}
-		if detail.Profile == jsonldDetailProfile {
+		if independentDetailProfile(detail.Profile) {
 			profile, err := inspectDetailOwnership(detail.BoardID, detail.Config)
-			if err != nil || profile.Profile != jsonldDetailProfile || profile.Domain != detail.Domain || profile.CompanyID != detail.CompanyID || profile.EffectiveBoardSHA256 != detail.EffectiveConfigHash {
+			if err != nil || profile.Profile != detail.Profile || profile.Domain != detail.Domain || profile.CompanyID != detail.CompanyID || profile.EffectiveBoardSHA256 != detail.EffectiveConfigHash {
 				return nil, ErrAuthorityLost
 			}
 		} else {
@@ -278,7 +278,7 @@ func (a *Authority) StageOwnership(ctx context.Context, revision string, boardID
 				return err
 			}
 			detail := ownershipDetail{BoardID: id, Domain: profile.Domain, Profile: profile.Profile, Worker: Simple}
-			if profile.Profile == jsonldDetailProfile {
+			if independentDetailProfile(profile.Profile) {
 				metadata, err := profileMetadataFields(cached["metadata"], nil)
 				if err != nil {
 					return err
@@ -430,7 +430,7 @@ func requireUnselectedAuthority(ctx context.Context, tx pgx.Tx) error {
 }
 
 func (p *OwnershipPlan) detailContext(detail ownershipDetail) (ownershipMember, error) {
-	if detail.Profile == jsonldDetailProfile {
+	if independentDetailProfile(detail.Profile) {
 		return ownershipMember{BoardID: detail.BoardID, CompanyID: detail.CompanyID, Profile: detail.Profile, EffectiveConfigHash: detail.EffectiveConfigHash, Config: detail.Config}, nil
 	}
 	for _, member := range p.document.Members {

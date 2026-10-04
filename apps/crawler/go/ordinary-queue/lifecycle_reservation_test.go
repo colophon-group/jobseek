@@ -52,7 +52,7 @@ func TestRealOwnedLifecycleReservationIsMonotonicAndVisibilityPreserving(t *test
 				}
 			} else {
 				policy := "https://publisher.invalid/policy"
-				observation = &GreenhouseHeaderReservation{"https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true", &policy}
+				observation = &GreenhouseHeaderReservation{Endpoint: "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true", PolicyURL: &policy}
 			}
 			var result *GreenhouseCycleResult
 			if c == nil {

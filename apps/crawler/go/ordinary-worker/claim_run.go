@@ -207,6 +207,8 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			discovery.Jobs = append(discovery.Jobs, RichMonitorJob{URL: raw})
 		}
 		errors.As(err, &workdayReservation)
+	} else if profile.Provider == "smartrecruiters" || profile.Provider == "workable" {
+		discovery, fetchErr = discoverAPIInventory(ctx, http.client, profile, task.Config)
 	} else {
 		discovery, fetchErr = DiscoverRichMonitor(ctx, http.client, profile)
 	}
@@ -235,13 +237,17 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			return result, claimRunError("response", queue.ErrConfiguration)
 		}
 		if response.reserved {
-			terminal, err := cycle.FinishReservationResource(ctx, profile.Endpoint, &queue.GreenhouseHeaderReservation{Endpoint: response.finalURL, PolicyURL: response.PolicyURL()})
+			initial := profile.Endpoint
+			if profile.Provider == "smartrecruiters" || profile.Provider == "workable" {
+				initial = response.endpoint
+			}
+			terminal, err := cycle.FinishReservationResource(ctx, initial, &queue.GreenhouseHeaderReservation{Endpoint: response.finalURL, PolicyURL: response.PolicyURL(), Source: response.reservationSource})
 			if err != nil {
 				return result, claimRunError("reservation", err)
 			}
 			return finishSuccess(terminal)
 		}
-		if response.status == 404 && profile.Provider != "pinpoint" && profile.Provider != "rss" && profile.Provider != "personio" {
+		if response.status == 404 && profile.Provider != "pinpoint" && profile.Provider != "rss" && profile.Provider != "personio" && profile.Provider != "smartrecruiters" && profile.Provider != "workable" {
 			terminal, err := cycle.FinishProviderGoneResource(ctx, response.endpoint, queue.GreenhouseGoneObservation{Endpoint: response.finalURL, HTTPStatus: response.status})
 			if err != nil {
 				return result, claimRunError("provider_gone", err)
@@ -257,7 +263,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 	if err != nil {
 		return failure("inventory", err)
 	}
-	if profile.Provider == "workday" {
+	if profile.Provider == "workday" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" {
 		for offset := 0; offset < len(inventory.Jobs); offset += 500 {
 			end := min(offset+500, len(inventory.Jobs))
 			urls := make([]string, 0, end-offset)

@@ -1,0 +1,33 @@
+{
+  "version": "jobseek.native-api-monitors.candidate-evidence/v1",
+  "crawler_version": "0.13.928",
+  "base_candidate_revision": "cba0b4b0d7bbfbfcbcd910eebea7a9a1c947b2b0",
+  "profiles": [
+    "smartrecruiters.api-urls/v1",
+    "workable.api-urls/v1"
+  ],
+  "behavior": [
+    "Existing in-process provider pagination/retries through verified HTTP and per-attempt cookies.",
+    "Existing URL-only canonical writes with separately scheduled details and four-miss lifecycle.",
+    "No partial writes from later-page failure; API 404 stays generic monitor failure.",
+    "Positive header/meta publisher reservation persists completed resource, source and policy.",
+    "Workable counted Markdown/public-API fallback retains four POST attempts; real TLS test observes seven total requests.",
+    "Full config identity and existing SQL/Redis ownership/settlement; no new protocol version."
+  ],
+  "verification": {
+    "queue_full_real_pg_redis_race_seconds": 45.429,
+    "worker_full_real_pg_redis_race_seconds": 101.678,
+    "smartrecruiters_full_race_seconds": 1.838,
+    "workable_full_race_seconds": 1.301,
+    "typesense_exporter_race_seconds": 3.316,
+    "actual_legacy_ownership_cold_operator_tests": 33,
+    "actual_legacy_ownership_cold_operator_seconds": 6.82,
+    "go_vet_tidy_format": "pass"
+  },
+  "limits": [
+    "Candidate not activated in production.",
+    "SmartRecruiters rich requisition/location identity modes retain legacy ownership.",
+    "Browser/proxy monitor transport and unsupported options retain legacy ownership.",
+    "Local TLS/SQL/Redis proofs do not establish fleet resources or full migration completion."
+  ]
+}

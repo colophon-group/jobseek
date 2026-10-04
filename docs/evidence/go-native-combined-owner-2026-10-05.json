@@ -1,0 +1,58 @@
+{
+  "version": "jobseek.native-combined-owner.evidence/v1",
+  "observed_at_utc": "2026-10-04T22:37:19.759848+00:00",
+  "source_revision": "5621926e5301865d914b696bd488190481cefc4a",
+  "crawler_version": "0.13.926",
+  "images": {
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:41b58f6256cb7f17b9aad926cb1b6905b0ea4f77e38bd62f70c73c8dd15b6915",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:0a07d890ef3dbaa780f6c23e2da1b3305f5e34253bb286de602ed9c3ae3734ee",
+    "JOBSEEK_DEPLOY_REVISION": "5621926e5301865d914b696bd488190481cefc4a"
+  },
+  "routing_epoch": 173,
+  "plan_sha256": "0af4ea17fae6a77b9784e9e7d3cc0a5e6a69d58d735ec42d1c08a98de9a130c3",
+  "projection_sha1": "f132bac39cce93abb778fca288066b26e76141d7",
+  "b0_receipt_sha256": "573f007479d7fede7f340e222bdf6442c45034b43e7f9fc661f65fa8d59e93f7",
+  "admission": {
+    "monitor_boards": 4792,
+    "detail_boards": 1099,
+    "jsonld_boards": 668,
+    "workday_boards": 431,
+    "scheduled_owned_postings": 850181,
+    "actual_posting_routes_examined": 871161,
+    "excluded_detail_boards_due_cache_mismatch": 30
+  },
+  "recovery": {
+    "standard_requeued": 21,
+    "standard_deadlettered": 1,
+    "max_strikes": 5,
+    "policy_override": false,
+    "original_activation_retry": "success"
+  },
+  "verification": {
+    "armed_exact_image_writers": 10,
+    "http_status": {
+      "worker-1": 200,
+      "worker-2": 200,
+      "worker-3": 200,
+      "browser-1": 200,
+      "drain": 200,
+      "exporter": 200,
+      "lightpanda-claimant": 204,
+      "ordinary-go": 204
+    },
+    "settled_monitor_deadline_matches": 31,
+    "settled_monitor_deadline_mismatches": 0,
+    "detail_attempts_by_profile": {
+      "jsonld.direct-detail/v1": 2,
+      "workday.cxs-detail/v1": 7
+    },
+    "settled_detail_deadline_matches": 9,
+    "settled_detail_deadline_mismatches": 0,
+    "new_content_receipts": 6
+  },
+  "limits": [
+    "Source-bound natural samples and startup proof, not fleet fetch completion or comparable resource savings.",
+    "Original full ordinary/B0 reversal precedes the next release.",
+    "Full migration and production Python retirement remain incomplete."
+  ]
+}
