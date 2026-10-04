@@ -15,55 +15,68 @@ contract or observed failure. Plans and synthetic evidence are supporting work.
 
 ## Current production checkpoint — 2026-10-04
 
-The full delivery goal remains active. v0.13.913 is serving its original 2,570
-Greenhouse owners and Lightpanda `cdom` at epoch 153 after complete restoration
-from a refused retirement. All ten writers passed the original readiness and
-restart-arming phase; all eight HTTP endpoints passed. The retained active
-ordinary receipt, B0 receipt, SQL ownership and Redis projection are unchanged.
-No repair SQL changed leases, canonical rows or retained attempts.
+The full migration goal remains active. v0.13.917 is promoted at
+`990165526e328cddd05c271053ffd903d7a7a671` by
+[deployment 37167862702 attempt 2](https://github.com/colophon-group/jobseek/actions/runs/37167862702).
+The live environment, selected release, success marker, immutable crawler/browser
+images and installed original wrappers agree. Source-bound B0 `cdom` is active
+at epoch 155. The fresh registry census still counts all 7,885 enabled boards;
+no board was disabled for migration. All 2,570 native Greenhouse owners are now serving at epoch 155, with a
+persistent exact Redis projection and all eight HTTP readiness endpoints passing.
+The current readback has 140 matching completed deadlines and zero strict
+mismatches; metrics report 140 successes, 6,608 posting touches and two
+unacknowledged tasks. Ten naturally touched existing postings retain exact stored
+HTML hashes and uploaded/scalar R2 hash continuity. No new inserts were observed
+yet. The twelve earlier mismatch boards have not completed on the new epoch.
+Inspect the two unacknowledged tasks and keep those acceptance limits explicit.
+Four Python worker processes still serve remaining profiles; full retirement is
+unfinished. See the [portable production evidence](evidence/go-native-family917-production-2026-10-04.json).
 
-[PR #10255](https://github.com/colophon-group/jobseek/pull/10255) merged v0.13.916
-at `6878e116568714a892cab7c1cb0b4bd5d9dd53c2` after Required CI, the actual
-Crawler Deploy Gate and installed-image parity passed. Its immutable images
-built successfully. [Deployment 37163642810](https://github.com/colophon-group/jobseek/actions/runs/37163642810)
-refused before mutation because the outgoing native owner was still active.
-v0.13.916 is not deployed. The last pre-retirement v0.13.913 strict check found
-1,318 matching completed deadlines and 12 mismatches; the concurrency repair
-still needs production verification before expanding ownership.
+[PR #10257](https://github.com/colophon-group/jobseek/pull/10257) merged the bounded
+retirement correction after Required CI, the actual Crawler Deploy Gate and
+installed host/image parity passed, including different immutable outgoing/admin
+sources. Older retained attempts are accepted only when their immutable retired
+plan owned the monitor. Foreign old/current/future work still refuses; no SQL
+lease or retained fence was cleared to force retirement. The reviewed newer admin
+retired original v0.13.913 with its outgoing wrapper and B0 receipt unchanged.
+After an interrupted projection handoff, exact retirement recovery completed the
+original full readiness/restart-arming and stopped-native-container cleanup.
+Original B0 rollback retired epoch 154, then the exact selectors were cleared
+before the full v0.13.917 deployment.
 
-The outgoing original retirement waited for all SQL leases to expire naturally,
-then refused: its foreign-attempt query incorrectly included 18 retained active
-attempt rows from retired epoch 151 alongside 26 owned attempts at epoch 153.
-SQL ownership and the active Redis projection never retired. Preserve that
-history. Candidate v0.13.917 admits only older monitor attempts whose immutable
-retired plan owned that board; unrelated historical/current/future attempts
-still refuse. The real PostgreSQL/Redis regression fails on the old query and
-passes with the fix, preserving both owners' attempt records.
+[PR #10258](https://github.com/colophon-group/jobseek/pull/10258) supplied an
+authenticated immutable image cache operation with ephemeral CI package access.
+The image downloaded, but its assumed OCI revision label was absent. The actual
+RepoDigest and compiled Go source passed the separate maintenance preflight.
+[PR #10259](https://github.com/colophon-group/jobseek/pull/10259) fixes that observed
+workflow check while retaining compiled-source verification in the retirement
+driver before writer shutdown. Both workflow changes passed required checks.
 
-To retire the affected older binary, the reviewed driver accepts
-`retire <exact-admin-source> <immutable-admin-image>` (also for an exact
-`recover-pending` retry). Stage that reviewed driver separately; keep the
-installed outgoing wrapper and selected release intact. Pre-pull and verify the
-approved admin image while the complete old stack serves. The newer admin image
-is used only for the retirement one-off. Its compiled source must match the
-explicit admin source; the protected request, SQL scope, B0 receipt, Compose
-hash and stopped/restored runtime images remain bound to the outgoing owner.
-The result records outgoing and admin identities separately. Activation cannot
-use compatibility bindings. The complete original cold/readiness/restart-arming
-and retired-container cleanup phases remain mandatory; do not clear historical
-fences, SQL leases or partially restart writers.
+Activation must follow the installed contract. Wait for legacy SQL leases to
+expire naturally. If expired tokenless Redis monitors prevent admission, keep
+the exact pending receipt and cold lane, use the existing source-bound reaper,
+then retry **activate with the same plan/projection hashes**. `recover-pending`
+**cancels** a pending activation and restores the whole legacy stack; it does
+not resume activation. It completes retirement when the retained receipt is
+retiring. Respect scheduled reconciliation's mutation lock and let its bounded
+slice finish. The existing reaper restored 85 simple and 11 browser monitors
+without dead letters, missing configs, SQL ownership writes or B0 changes.
 
-Continue by merging the bounded retirement correction through required checks,
-then build the corrected combined release. Retire the outgoing owner with the
-explicit reviewed admin, reverse B0 with its outgoing original driver, deploy the
-complete new release and reactivate B0/native owners from a fresh census. Verify
-strict deadlines and natural posting delivery before widening ownership. The
-last candidate census admitted 3,916 rich providers (2,570 Greenhouse, 934 Ashby,
-194 Lever, 114 Recruitee and 104 Pinpoint); these are candidates, not new serving
-owners. Finish remaining enabled profiles and Python runtime consumers, measure
-whole-lane resources/cost, exercise cold reversal and its observation window,
-then remove Python/Playwright/Chromium runtime assets while preserving useful
-isolated offline Python. See [retirement evidence](evidence/go-native-retirement-history-2026-10-04.json).
+Continue by inspecting the unacknowledged tasks and their natural recovery, and
+observing strict canonical/Redis deadlines and field effects on naturally due
+processing. The fresh source-bound census admits 3,916 candidates: 2,570
+Greenhouse, 934 Ashby, 194 Lever, 114 Recruitee and 104 Pinpoint; three detail
+profiles remain excluded, with zero cached-profile/config mismatches. Only
+Greenhouse owns native production work. Admit the proven additional providers
+through the supported contracts after the observed task issues are resolved.
+Finish every remaining enabled monitor/detail/browser profile and mandatory
+Python runtime consumer. Prove canonical fields, description/R2 and publisher
+behavior, freshness and queue conservation; compare whole-lane resources/cost;
+exercise supported cold reversal and its observation window. Remove production
+Python, Playwright, Chromium and runtime-only legacy assets after those checks,
+while preserving useful isolated offline Python. Keep delivery measured by
+serving native owners, enabled profiles migrated and runtime Python consumers
+removed.
 
 ## Earlier production observations — 2026-10-03
 
