@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -55,14 +56,112 @@ func (e *ReservationError) Error() string {
 // A Python worker may hand off that site's list phase, but not its scheduler,
 // persistence, or detail scraping. Only the exact list endpoint is allowed.
 type LivePoster struct {
+	mu              sync.Mutex
 	client          *http.Client
 	listURL         string
+	tenant          *Site
+	allowedSites    map[string]bool
 	sleep           func(context.Context, time.Duration) error
 	random          func() float64
 	Requests        int
 	Responses       int
 	TransportErrors int
 	Bytes           int64
+}
+
+// NewInventoryPoster reuses an already verified caller-owned HTTP transport for
+// all configured Workday sites. Redirects remain disabled so a provider 303
+// cannot silently convert the original list POST into a GET.
+func NewInventoryPoster(c InventoryConfig, client *http.Client) (*LivePoster, error) {
+	if err := c.validate(); err != nil {
+		return nil, err
+	}
+	if client == nil {
+		return nil, errors.New("verified HTTP client required")
+	}
+	copyClient := *client
+	copyClient.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	site := c.Site
+	p := &LivePoster{client: &copyClient, tenant: &site, sleep: sleepContext, random: rand.Float64}
+	if len(c.Sites) > 0 || !c.AllSites {
+		p.allowedSites = map[string]bool{}
+		if len(c.Sites) == 0 {
+			p.allowedSites[site.Name] = true
+		} else {
+			for _, name := range c.Sites {
+				p.allowedSites[name] = true
+			}
+		}
+	}
+	return p, nil
+}
+
+func (p *LivePoster) acceptsList(rawURL string) bool {
+	if p.tenant == nil {
+		return rawURL == p.listURL
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil || u.Scheme != "https" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || u.RawPath != "" || u.Host != p.tenant.Company+"."+p.tenant.Instance+".myworkdayjobs.com" {
+		return false
+	}
+	parts := strings.Split(strings.TrimPrefix(u.Path, "/"), "/")
+	return len(parts) == 5 && parts[0] == "wday" && parts[1] == "cxs" && parts[2] == p.tenant.Company && siteToken.MatchString(parts[3]) && parts[4] == "jobs" && (p.allowedSites == nil || p.allowedSites[parts[3]])
+}
+
+func (p *LivePoster) count(requests, responses, transportErrors int, bytes int64) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.Requests += requests
+	p.Responses += responses
+	p.TransportErrors += transportErrors
+	p.Bytes += bytes
+}
+
+// GetRobots preserves fallback for unavailable robots documents while retaining
+// cancellation and publisher reservations as errors to stop inventory writes.
+func (p *LivePoster) GetRobots(ctx context.Context, rawURL string) (string, error) {
+	if p.tenant == nil || rawURL != "https://"+p.tenant.Company+"."+p.tenant.Instance+".myworkdayjobs.com/robots.txt" {
+		return "", errors.New("invalid Workday robots endpoint")
+	}
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+	if err != nil {
+		return "", err
+	}
+	request.Header.Set("User-Agent", userAgent)
+	request.Header.Set("Accept", accept)
+	p.count(1, 0, 0, 0)
+	response, err := p.client.Do(request)
+	if err != nil {
+		p.count(0, 0, 1, 0)
+		if ctx.Err() != nil {
+			return "", ctx.Err()
+		}
+		return "", nil
+	}
+	defer response.Body.Close()
+	p.count(0, 1, 0, 0)
+	reserved, parseErr := strconv.Atoi(strings.TrimSpace(response.Header.Get("TDM-Reservation")))
+	if parseErr == nil && reserved == 1 {
+		return "", &ReservationError{URL: rawURL, PolicyURL: response.Header.Get("TDM-Policy")}
+	}
+	if response.StatusCode != http.StatusOK {
+		return "", nil
+	}
+	body, err := io.ReadAll(io.LimitReader(response.Body, 1<<20+1))
+	p.count(0, 0, 0, int64(len(body)))
+	if err != nil {
+		if ctx.Err() != nil {
+			return "", ctx.Err()
+		}
+		return "", nil
+	}
+	if len(body) > 1<<20 {
+		return "", errors.New("Workday robots document oversized")
+	}
+	return string(body), nil
 }
 
 func NewLivePoster(site Site) (*LivePoster, error) {
@@ -134,7 +233,7 @@ func retryable(status int) bool {
 
 func (p *LivePoster) Post(ctx context.Context, rawURL string, body []byte) ([]byte, error) {
 	parsed, err := url.Parse(rawURL)
-	if err != nil || rawURL != p.listURL || parsed.Scheme != "https" || parsed.User != nil {
+	if err != nil || !p.acceptsList(rawURL) || parsed.Scheme != "https" || parsed.User != nil {
 		return nil, errors.New("Workday request differs from the configured list endpoint")
 	}
 	var lastStatus int
@@ -148,22 +247,22 @@ func (p *LivePoster) Post(ctx context.Context, rawURL string, body []byte) ([]by
 		request.Header.Set("User-Agent", userAgent)
 		request.Header.Set("Accept", accept)
 		request.Header.Set("Content-Type", "application/json")
-		p.Requests++
+		p.count(1, 0, 0, 0)
 		response, err := p.client.Do(request)
 		if err == nil {
-			p.Responses++
+			p.count(0, 1, 0, 0)
 			lastStatus = response.StatusCode
 			reservation := strings.TrimSpace(response.Header.Get("TDM-Reservation"))
 			reserved, parseErr := strconv.Atoi(reservation)
 			if response.StatusCode == http.StatusOK && parseErr == nil && reserved == 1 {
 				content, _ := io.ReadAll(response.Body)
-				p.Bytes += int64(len(content))
+				p.count(0, 0, 0, int64(len(content)))
 				response.Body.Close()
 				return nil, &ReservationError{URL: rawURL, PolicyURL: response.Header.Get("TDM-Policy")}
 			}
 			content, readErr := io.ReadAll(response.Body)
 			response.Body.Close()
-			p.Bytes += int64(len(content))
+			p.count(0, 0, 0, int64(len(content)))
 			if readErr != nil {
 				lastStatus = 0
 				lastError = readErr
@@ -184,7 +283,7 @@ func (p *LivePoster) Post(ctx context.Context, rawURL string, body []byte) ([]by
 				lastKind = ""
 			}
 		} else {
-			p.TransportErrors++
+			p.count(0, 0, 1, 0)
 			lastStatus = 0
 			lastError = err
 			lastKind = "transport"

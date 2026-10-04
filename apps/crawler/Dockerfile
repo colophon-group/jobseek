@@ -39,6 +39,7 @@ COPY go/successfactors-rss-monitor/ go/successfactors-rss-monitor/
 COPY go/personio-monitor/ go/personio-monitor/
 COPY go/ordinary-queue/ go/ordinary-queue/
 COPY go/ordinary-worker/ go/ordinary-worker/
+COPY go/workday-monitor/ go/workday-monitor/
 WORKDIR /workspace/apps/crawler/go/ordinary-worker
 ARG CRAWLER_SOURCE_REVISION
 RUN test "${#CRAWLER_SOURCE_REVISION}" -eq 40 \
