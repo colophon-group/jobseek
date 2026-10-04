@@ -72,7 +72,7 @@ else
     for _, member in ipairs(plan.members) do
         if type(member) ~= "table" or member.kind ~= "monitor" or
             member.worker ~= "simple" or
-            (member.profile ~= "greenhouse.token-skip/v1" and member.profile ~= "ashby.token-skip/v1" and member.profile ~= "lever.token-skip/v1" and member.profile ~= "recruitee.api-skip/v1" and member.profile ~= "pinpoint.slug-skip/v1" and member.profile ~= "rss.teamtailor-skip/v1") or
+            (member.profile ~= "greenhouse.token-skip/v1" and member.profile ~= "ashby.token-skip/v1" and member.profile ~= "lever.token-skip/v1" and member.profile ~= "recruitee.api-skip/v1" and member.profile ~= "pinpoint.slug-skip/v1" and member.profile ~= "rss.teamtailor-skip/v1" and member.profile ~= "rss.successfactors-skip/v1") or
             type(member.board_id) ~= "string" or type(member.domain) ~= "string" or
             owner_members[member.board_id] ~= nil
         then return owner_failure() end

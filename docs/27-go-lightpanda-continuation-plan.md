@@ -31,6 +31,23 @@ second page, publisher reservation and canonical/Redis deadline conservation.
 Both ordinary Go modules pass race tests and vet; the original Python ownership
 and cutover contracts pass. This is an implementation candidate, not a deployment.
 
+## Native SuccessFactors worker candidate — v0.13.919
+
+The native ordinary worker now reuses the existing streaming SuccessFactors Go
+parser for direct Google/category RSS feeds with a `skip` detail assignment.
+Explicit feeds retain precedence over the derived `/googlefeed.xml` URL. Only
+absent/default or `feed` variants are admitted; legacy, RMK, XML variants and
+configured filtering/detail overrides retain their existing owners. There are
+218 offline feed/skip candidates, including unsupported overrides; actual
+canonical/cache admission determines the eligible production cohort.
+
+Real PostgreSQL/Redis cycles verify rich title/location/salary/technology fields,
+exact stored description and pending upload, listing/gone effects, generic 404
+failure, publisher reservation and deadline/lease conservation. Malformed XML
+following an emitted item publishes no partial inventory. Both ordinary Go
+modules pass full race tests and vet. The implementation follows the Teamtailor
+candidate and requires required gates and a supported source-bound deployment.
+
 ## Current production checkpoint — 2026-10-04
 
 The full migration goal remains active. v0.13.917 is promoted at

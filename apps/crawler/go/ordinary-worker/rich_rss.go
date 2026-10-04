@@ -33,13 +33,13 @@ func richResponseMatches(profile queue.GreenhouseMonitorProfile, endpoint string
 
 // Keep response provenance inside the sealed-client discovery path. The feed
 // parser receives this same client; it cannot create a transport or subprocess.
-type teamtailorRichClient struct {
+type rssRichClient struct {
 	client   *http.Client
 	profile  queue.GreenhouseMonitorProfile
 	response *GreenhouseResponse
 }
 
-func (c *teamtailorRichClient) Do(request *http.Request) (*http.Response, error) {
+func (c *rssRichClient) Do(request *http.Request) (*http.Response, error) {
 	if !richResponseMatches(c.profile, request.URL.String()) || c.client == nil {
 		return nil, &DiscoveryError{Kind: "invalid_configuration"}
 	}
@@ -66,7 +66,7 @@ func (c *teamtailorRichClient) Do(request *http.Request) (*http.Response, error)
 }
 
 func discoverTeamtailorRich(ctx context.Context, client *http.Client, profile queue.GreenhouseMonitorProfile) (RichDiscovery, error) {
-	observed := &teamtailorRichClient{client: client, profile: profile}
+	observed := &rssRichClient{client: client, profile: profile}
 	found, err := teamtailor.Fetch(ctx, observed, profile.Endpoint)
 	if ctx.Err() != nil {
 		return RichDiscovery{}, ctx.Err()
