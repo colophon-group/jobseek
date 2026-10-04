@@ -13,6 +13,33 @@ freshness and queue conservation on real jobs, and compare whole-service resourc
 and cost. Add a fixture or abstraction only for a specific changed production
 contract or observed failure. Plans and synthetic evidence are supporting work.
 
+## Native Personio worker candidate — v0.13.920
+
+The next ordinary Go worker candidate reuses the existing Personio XML/domain
+and HTML fallback parser through the sealed process-owned HTTP client. Native
+admission binds the original slug, primary language and ordered backfill languages
+alongside the canonical/cache rich/skip contract. Unknown filtering, delegated
+detail work and unsupported language/domain settings retain their existing owner.
+The offline registry has 47 Personio/skip candidates; production admission and
+serving ownership require a fresh census against the promoted release.
+
+Localized titles are decoded and deduplicated before occupation/seniority lookup.
+Locales retain primary, localization-key and detected-language order. English
+promotion preserves the original localization order and the primary scalar
+stored description/upload contract. An optional backfill miss retains the actual
+successful primary response; policy reservation binds its actual response resource.
+Incomplete XML/fallback failure supplies no successful partial inventory. Available
+empty XML uses the existing repeated-empty confirmation guard.
+
+The queue and worker suites pass race tests and vet with mandatory real PostgreSQL
+and Redis fixtures. New rich fixtures from the actual Python writer verify title
+aliases, locale order, duplicate decoding, whitespace and primary description bytes.
+Real native cycles verify English promotion, alternate domains, optional language
+404, publisher reservation, incomplete XML and existing posting preservation.
+HTML fallback and empty XML have additional native claim/persistence checks.
+Required release checks, supported deployment and production ownership are still
+pending; this candidate follows the RSS/selection release in PR #10262.
+
 ## Native RSS worker candidate — v0.13.919
 
 The ordinary Go worker now implements the existing direct Teamtailor RSS preset

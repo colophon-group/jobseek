@@ -36,6 +36,7 @@ COPY go/recruitee-monitor/ go/recruitee-monitor/
 COPY go/pinpoint-monitor/ go/pinpoint-monitor/
 COPY go/teamtailor-rss-monitor/ go/teamtailor-rss-monitor/
 COPY go/successfactors-rss-monitor/ go/successfactors-rss-monitor/
+COPY go/personio-monitor/ go/personio-monitor/
 COPY go/ordinary-queue/ go/ordinary-queue/
 COPY go/ordinary-worker/ go/ordinary-worker/
 WORKDIR /workspace/apps/crawler/go/ordinary-worker

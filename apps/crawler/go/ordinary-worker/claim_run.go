@@ -209,7 +209,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			}
 			return finishSuccess(terminal)
 		}
-		if response.status == 404 && profile.Provider != "pinpoint" && profile.Provider != "rss" {
+		if response.status == 404 && profile.Provider != "pinpoint" && profile.Provider != "rss" && profile.Provider != "personio" {
 			terminal, err := cycle.FinishProviderGoneResource(ctx, response.endpoint, queue.GreenhouseGoneObservation{Endpoint: response.finalURL, HTTPStatus: response.status})
 			if err != nil {
 				return result, claimRunError("provider_gone", err)

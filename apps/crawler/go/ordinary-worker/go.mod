@@ -81,3 +81,7 @@ replace github.com/colophon-group/jobseek/apps/crawler/go/pinpoint-monitor => ..
 replace github.com/colophon-group/jobseek/apps/crawler/go/teamtailor-rss-monitor => ../teamtailor-rss-monitor
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/successfactors-rss-monitor => ../successfactors-rss-monitor
+
+require github.com/colophon-group/jobseek/apps/crawler/go/personio-monitor v0.0.0
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/personio-monitor => ../personio-monitor

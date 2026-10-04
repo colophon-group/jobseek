@@ -166,7 +166,7 @@ func TestRealAuthorityGreenhouseObservationRejectsRetiredAndStaleState(t *testin
 			}
 			before := snapshot(t, f.client)
 			profile, err := f.authority.ObserveGreenhouseMonitor(ctx, f.task.ID)
-			if !errors.Is(err, want) || profile != (GreenhouseMonitorProfile{}) {
+			if !errors.Is(err, want) || !reflect.DeepEqual(profile, GreenhouseMonitorProfile{}) {
 				t.Fatalf("stale or unsupported canonical profile admitted: %v", err)
 			}
 			if !reflect.DeepEqual(before, snapshot(t, f.client)) {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -75,7 +76,7 @@ func TestGreenhouseProfileActualPythonTokenOracle(t *testing.T) {
 			config["board_url"], config["metadata"] = row.BoardURL, string(meta)
 			profile, err := InspectGreenhouseMonitor(profileBoardID, config)
 			if !row.Accepted {
-				if !errors.Is(err, ErrUnsupportedProfile) || profile != (GreenhouseMonitorProfile{}) {
+				if !errors.Is(err, ErrUnsupportedProfile) || !reflect.DeepEqual(profile, GreenhouseMonitorProfile{}) {
 					t.Fatal("unsupported URL inference admitted a partial profile")
 				}
 				return

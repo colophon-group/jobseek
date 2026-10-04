@@ -1,4 +1,4 @@
-"""Freeze standard Greenhouse rich records from the actual Python writer."""
+"""Freeze rich records, including Personio localizations, from the Python writer."""
 
 from __future__ import annotations
 
@@ -50,6 +50,13 @@ def add(name, changes, rich_overrides=None):
     }
     for key in rich_overrides or {}:
         content[key] = getattr(job, key)
+    if job.localizations:
+        content["localized_titles"] = [
+            v["title"]
+            for v in job.localizations.values()
+            if isinstance(v, dict) and isinstance(v.get("title"), str) and v["title"]
+        ]
+        content["localization_locales"] = list(job.localizations)
     location_inputs.clear()
     records, _ = board._build_rich_new_records(
         [(job.url, job)],
@@ -125,11 +132,42 @@ add(
 )
 add("rich_empty_fields", {}, {"employment_type": " \n ", "job_location_type": None})
 
+add(
+    "localized_titles_deduplicate_after_decoding",
+    {},
+    {
+        "localizations": {
+            "en": {"title": "Senior Software Engineer"},
+            "de": {
+                "title": "Softwareentwickler &amp; Ingenieur",
+                "description": "<p>Alternative Beschreibung.</p>",
+            },
+            "fr": {"title": "Softwareentwickler & Ingenieur"},
+            "ja": {"title": None},
+        }
+    },
+)
+add(
+    "localized_keys_precede_detected_languages",
+    {"language": "fr"},
+    {"localizations": {"de": {"title": "Entwickler"}, "en": {"title": "Senior Software Engineer"}}},
+)
+add(
+    "localized_title_retains_whitespace",
+    {},
+    {
+        "localizations": {
+            "de": {"title": "  Entwickler  "},
+            "en": {"title": "Senior Software Engineer"},
+        }
+    },
+)
+
 output = {
     "schema_version": 1,
     "oracle": (
         "Python src.processing.board._build_rich_new_records and rich description staging; "
-        "standard Greenhouse token/skip plus rich employment/location-type inputs"
+        "standard rich/skip, employment/location-type inputs and localized titles/locales"
     ),
     "occupations": occ,
     "seniorities": sen,

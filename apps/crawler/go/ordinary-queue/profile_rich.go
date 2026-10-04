@@ -34,6 +34,8 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		allowed["company"], allowed["company_slug"] = true, true
 	case "pinpoint":
 		allowed["slug"] = true
+	case "personio":
+		allowed["slug"], allowed["language"], allowed["backfill_languages"] = true, true, true
 	case "rss":
 		allowed["preset"], allowed["feed_url"] = true, true
 		allowed["variant"] = true
@@ -53,6 +55,9 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 	md, err := richProfileMetadata(config)
 	if err != nil {
 		return GreenhouseMonitorProfile{}, err
+	}
+	if config["crawler_type"] == "personio" {
+		return inspectPersonioRich(boardID, config, md)
 	}
 	if config["crawler_type"] == "rss" {
 		return inspectRSSRich(boardID, config, md)
