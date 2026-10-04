@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -10,6 +11,42 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/redis/go-redis/v9"
 )
+
+func TestRealJSONLDDetailCursorUsesBoundedUUIDIndexTraversal(t *testing.T) {
+	p := firstJSONLDDetailFixture(t)
+	ctx := context.Background()
+	tx, err := p.f.observer.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(ctx)
+	// A tiny fixture may prefer a single-column index plus a one-row sort.
+	// Discourage both sorting and sequential scans to prove the actual query
+	// can use the migrated UUID keyset directly. The text alias cannot do so.
+	if _, err := tx.Exec(ctx, "SET LOCAL enable_seqscan=off"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, "SET LOCAL enable_sort=off"); err != nil {
+		t.Fatal(err)
+	}
+	var body []byte
+	if err := tx.QueryRow(ctx, "EXPLAIN (FORMAT JSON) "+detailPostingCursorQuery, p.plan.document.Details[0].BoardID, "00000000-0000-0000-0000-000000000000").Scan(&body); err != nil {
+		t.Fatal(err)
+	}
+	type node struct {
+		Kind  string `json:"Node Type"`
+		Index string `json:"Index Name"`
+		Plans []node
+	}
+	var report []struct{ Plan node }
+	if err := json.Unmarshal(body, &report); err != nil || len(report) != 1 {
+		t.Fatal("invalid PostgreSQL cursor plan", err)
+	}
+	root := report[0].Plan
+	if root.Kind != "Limit" || len(root.Plans) != 1 || root.Plans[0].Kind != "Index Scan" || root.Plans[0].Index != "idx_jp_board_id_cursor" {
+		t.Fatalf("native detail cursor must traverse the UUID index directly, without a full-board sort: %s", body)
+	}
+}
 
 func firstJSONLDDetailFixture(t *testing.T) firstOwnerFixture {
 	t.Helper()

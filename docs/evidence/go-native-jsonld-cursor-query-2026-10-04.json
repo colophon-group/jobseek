@@ -1,0 +1,70 @@
+{
+  "schema": "jobseek.native-detail-cursor-query-verification/v1",
+  "observed_source_revision": "a744c09f6e3a6c5dfdf0392f4428642541a850b1",
+  "observed_version": "0.13.925",
+  "routing_epoch": 171,
+  "b0_receipt_sha256": "8518f0ccd8c4999085e88924cfa57b476790a97e125d6ed636ac7396ded9cf42",
+  "candidate_version": "0.13.926",
+  "reason": "PostgreSQL ORDER BY id binds the selected id::text alias; LIMIT still sorts all matching board history. Qualify ORDER BY job_posting.id to match the UUID keyset and complete (board_id,id) index.",
+  "old_query": "SELECT id::text,source_url FROM job_posting WHERE board_id=$1::uuid AND id>$2::uuid ORDER BY id LIMIT 64",
+  "candidate_query": "SELECT id::text,source_url FROM job_posting WHERE board_id=$1::uuid AND id>$2::uuid ORDER BY job_posting.id LIMIT 64",
+  "observations": [
+    {
+      "board_id": "cdf2051a-b796-48c2-b08e-c45e4f862eb3",
+      "cursor": "00000000-0000-0000-0000-000000000000",
+      "old_execution_ms": 5746.819,
+      "candidate_execution_ms": 19.608,
+      "old_child_node": "Sort",
+      "candidate_child_node": "Index Scan",
+      "candidate_index": "idx_jp_board_id_cursor"
+    },
+    {
+      "board_id": "cdf2051a-b796-48c2-b08e-c45e4f862eb3",
+      "cursor": "80000000-0000-0000-0000-000000000000",
+      "old_execution_ms": 54.675,
+      "candidate_execution_ms": 55.171,
+      "old_child_node": "Sort",
+      "candidate_child_node": "Index Scan",
+      "candidate_index": "idx_jp_board_id_cursor"
+    },
+    {
+      "board_id": "e2f673d8-51ff-4c5e-8f16-d36a962ac124",
+      "cursor": "00000000-0000-0000-0000-000000000000",
+      "old_execution_ms": 11043.206,
+      "candidate_execution_ms": 20.72,
+      "old_child_node": "Sort",
+      "candidate_child_node": "Index Scan",
+      "candidate_index": "idx_jp_board_id_cursor"
+    },
+    {
+      "board_id": "e2f673d8-51ff-4c5e-8f16-d36a962ac124",
+      "cursor": "80000000-0000-0000-0000-000000000000",
+      "old_execution_ms": 68.913,
+      "candidate_execution_ms": 24.3,
+      "old_child_node": "Sort",
+      "candidate_child_node": "Index Scan",
+      "candidate_index": "idx_jp_board_id_cursor"
+    },
+    {
+      "board_id": "2b84599a-440e-44ec-92f0-7576213a03f3",
+      "cursor": "00000000-0000-0000-0000-000000000000",
+      "old_execution_ms": 16.111,
+      "candidate_execution_ms": 3.692,
+      "old_child_node": "Sort",
+      "candidate_child_node": "Index Scan",
+      "candidate_index": "idx_jp_board_id_cursor"
+    },
+    {
+      "board_id": "2b84599a-440e-44ec-92f0-7576213a03f3",
+      "cursor": "80000000-0000-0000-0000-000000000000",
+      "old_execution_ms": 0.705,
+      "candidate_execution_ms": 0.3,
+      "old_child_node": "Sort",
+      "candidate_child_node": "Index Scan",
+      "candidate_index": "idx_jp_board_id_cursor"
+    }
+  ],
+  "scope": "Six read-only EXPLAIN ANALYZE observations on the actual production database with the installed 0039 index. Candidate query preview; production runtime remains source925. Warm/cold cache differs between measurements, so these samples do not establish fleet throughput or attributable cost. Larger JSON-LD owner is not activated before the cursor correction.",
+  "supported_deploy": "https://github.com/colophon-group/jobseek/actions/runs/37232650405",
+  "full_migration_complete": false
+}

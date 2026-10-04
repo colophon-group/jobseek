@@ -9,6 +9,10 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// Qualify the UUID column: the selected id::text otherwise shadows it in
+// ORDER BY and forces PostgreSQL to sort the entire board before LIMIT.
+const detailPostingCursorQuery = "SELECT id::text,source_url FROM job_posting WHERE board_id=$1::uuid AND id>$2::uuid ORDER BY job_posting.id LIMIT 64"
+
 // Due Redis representations remain the pop authority. Each bounded observation
 // resolves the actual SQL posting and full canonical board before original Lua
 // checks priority, fairness, throttle, configuration and exclusive ownership.
@@ -89,7 +93,7 @@ func (a *Authority) detailCandidates(ctx context.Context, tx pgx.Tx, now float64
 			if cursor == "" {
 				cursor = "00000000-0000-0000-0000-000000000000"
 			}
-			rows, err := tx.Query(ctx, "SELECT id::text,source_url FROM job_posting WHERE board_id=$1::uuid AND id>$2::uuid ORDER BY id LIMIT 64", detail.BoardID, cursor)
+			rows, err := tx.Query(ctx, detailPostingCursorQuery, detail.BoardID, cursor)
 			if err != nil {
 				return nil, err
 			}
