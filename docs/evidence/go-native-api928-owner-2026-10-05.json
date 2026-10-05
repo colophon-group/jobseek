@@ -1,0 +1,79 @@
+{
+  "schema": "jobseek.native-api928-owner/v1",
+  "source_revision": "340a2ef93ccbd62184589120925d9fbc9213f9a0",
+  "version": "0.13.928",
+  "deployment_run": 37242300794,
+  "observed_at_utc": "2026-10-05T00:12:48.252814+00:00",
+  "routing_epoch": 175,
+  "plan_sha256": "c6e4123480d6d31e78354b2ce675a99f415862b23868399aaf03e885cc329c15",
+  "projection_sha1": "28475f1d5d4b2324f0a6f3700394264796192319",
+  "b0_receipt_sha256": "06824cf9d6521cbad12aab1df4d0c6d1b029b5cf5dd1006048bbbedeb3ec7f2a",
+  "images": {
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:41b77b3c36cd781347ddc040e5fafdd4a444c0b6c29d9b7694414d62dbd8777b",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:0e51559d2948d2fc4b98cef0610f2bf56d9ff4d54747848b3ac858faa2502b3f",
+    "JOBSEEK_DEPLOY_REVISION": "340a2ef93ccbd62184589120925d9fbc9213f9a0"
+  },
+  "all_ten_writers_running_restart_armed": true,
+  "http_health": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200,
+    "lightpanda-claimant": 204,
+    "ordinary-go": 204
+  },
+  "live_oneoffs": 0,
+  "monitor_members": 4989,
+  "detail_boards": 1301,
+  "scheduled_postings_at_admission": 947631,
+  "queued_cache_mismatch_exclusions": 30,
+  "activation": "Original same-plan retry succeeded after the standard reaper requeued 23 simple and 5 browser expired tokenless monitor claims; no dead letters, retry-policy or authority override.",
+  "monitor_deadline_matches": 385,
+  "monitor_deadline_mismatches": 0,
+  "completed_monitors_by_profile": {
+    "ashby.token-skip/v1": 80,
+    "greenhouse.token-skip/v1": 301,
+    "lever.token-skip/v1": 2,
+    "personio.xml-skip/v1": 1,
+    "pinpoint.slug-skip/v1": 0,
+    "recruitee.api-skip/v1": 0,
+    "rss.successfactors-skip/v1": 7,
+    "rss.teamtailor-skip/v1": 1,
+    "smartrecruiters.api-urls/v1": 2,
+    "workable.api-urls/v1": 2,
+    "workday.cxs-urls/v1": 4
+  },
+  "successful_monitors_by_profile": {
+    "ashby.token-skip/v1": 78,
+    "greenhouse.token-skip/v1": 298,
+    "lever.token-skip/v1": 2,
+    "personio.xml-skip/v1": 1,
+    "pinpoint.slug-skip/v1": 0,
+    "recruitee.api-skip/v1": 0,
+    "rss.successfactors-skip/v1": 7,
+    "rss.teamtailor-skip/v1": 1,
+    "smartrecruiters.api-urls/v1": 2,
+    "workable.api-urls/v1": 2,
+    "workday.cxs-urls/v1": 2
+  },
+  "detail_attempts": 6,
+  "detail_attempts_by_profile": {
+    "jsonld.direct-detail/v1": 1,
+    "workday.cxs-detail/v1": 5
+  },
+  "settled_detail_deadline_matches": 6,
+  "detail_deadline_mismatches": 0,
+  "descriptive_sample_count": 6,
+  "sample_fields": [
+    "canonical/Redis deadline",
+    "description",
+    "locale",
+    "location IDs",
+    "salary currency",
+    "title"
+  ],
+  "scope": "Admission coverage and bounded natural processing samples; API monitor success observed. API detail writes and full-fleet completion were not observed in this sample. No whole-lane resource/cost equivalence claim. Outgoing original reversal is running before the combined Join/sitemap release.",
+  "full_migration_complete": false
+}

@@ -1,0 +1,38 @@
+{
+  "schema": "jobseek.native-join-sitemap-runtime-candidate/v1",
+  "version": "0.13.930",
+  "base_source": "340a2ef93ccbd62184589120925d9fbc9213f9a0",
+  "join_parent_commit": "da11c6dd4ffcde5954cbb08a65cff5e7adb3bc0a",
+  "branch": "fix-crawler/native-join-and-sitemap-runtime",
+  "profiles": [
+    "join.nextdata-urls/v1",
+    "join.nextdata-detail/v1",
+    "sitemap.explicit-urls/v1"
+  ],
+  "implementation": "Existing Join, sitemap and Python-compatible Go regex parsers in the existing native ordinary worker, sealed HTTP, ownership, enrichment, canonical persistence and settlement. No subprocess in native execution.",
+  "verified_contracts": [
+    "complete Join pagination, separate configured nextdata details, salary/descriptions and four-miss absence",
+    "actual publisher-policy resource survives Join redirects/parallel responses and inactive detail settlement",
+    "sitemap normalization, UTM stripping, deduplication and Unicode include/exclude filters",
+    "sitemap bounded root retries on 429/empty responses; malformed/index/404 responses preserve prior inventory",
+    "sitemap header/meta policy precedes status handling and preserves actual resource/source",
+    "nested Join detail and sitemap filter keys bind across canonical PostgreSQL/Redis JSON ordering; changed values change ownership",
+    "URL stubs and urgent separate details, canonical/queue deadlines and lease conservation"
+  ],
+  "validation": {
+    "ordinary_queue_full_real_pg_redis_race_seconds": 46.875,
+    "final_join_sitemap_profile_race_seconds": 1.442,
+    "ordinary_worker_full_real_pg_redis_race_seconds": 98.955,
+    "sitemap_focused_real_pg_redis_race_seconds": 5.691,
+    "sitemap_parser_race_seconds": 1.567,
+    "sitemap_transport_race_seconds": 1.31,
+    "dom_parser_race_seconds": 2.072,
+    "exporter_race_seconds": 3.376,
+    "python_ownership_cutover_tests": 33,
+    "python_ownership_cutover_seconds": 7.15,
+    "go_vet_and_tidy": "passed for all affected native modules"
+  },
+  "eligibility": "Explicit direct same-origin HTTPS sitemap URL sets only. Unsupported discovery/index/rewrites/proxy/browser transport options retain legacy ownership. Join detail admission retains configured extraction fields.",
+  "production_activation": "Not activated; outgoing source928 ordinary/B0 reversal precedes immutable deployment and fresh admission.",
+  "full_migration_complete": false
+}

@@ -64,6 +64,10 @@ type FetchResult struct {
 	TDMPolicy string   `json:"tdm_policy,omitempty"`
 	TDMSource string   `json:"tdm_source,omitempty"`
 	Error     string   `json:"error,omitempty"`
+	// Native writers need the actual reserved page even when another parallel
+	// page completes later. These observations do not change the CLI contract.
+	ReservationInitialURL string `json:"-"`
+	ReservationURL        string `json:"-"`
 }
 
 type requestDoer interface {
@@ -143,6 +147,7 @@ func (r *readIdleBody) Read(p []byte) (int, error) {
 // Count each redirect request and consume only one bounded response at a time.
 // DNS/IP validation remains in the transport for every target.
 func fetchPage(ctx context.Context, client requestDoer, endpoint string, stats *FetchResult) ([]byte, error) {
+	initialURL := endpoint
 	for hop := 0; hop <= 20; hop++ {
 		if !validEndpoint(endpoint) {
 			return nil, errors.New("JOIN requires a public HTTPS endpoint")
@@ -169,6 +174,7 @@ func fetchPage(ctx context.Context, client requestDoer, endpoint string, stats *
 			stats.ErrorKind = "tdm"
 			stats.TDMSource = "header"
 			stats.TDMPolicy = response.Header.Get("TDM-Policy")
+			stats.ReservationInitialURL, stats.ReservationURL = initialURL, stats.FinalURL
 			return nil, errors.New("tdm-reservation=1")
 		}
 		body, readErr := io.ReadAll(io.LimitReader(&readIdleBody{ReadCloser: response.Body, timeout: 30 * time.Second}, maxResponseBytes+1))
@@ -184,6 +190,7 @@ func fetchPage(ctx context.Context, client requestDoer, endpoint string, stats *
 		if reservation == "1" {
 			stats.ErrorKind = "tdm"
 			stats.TDMSource = "meta"
+			stats.ReservationInitialURL, stats.ReservationURL = initialURL, stats.FinalURL
 			stats.TDMPolicy = response.Header.Get("TDM-Policy")
 			if metaPolicy != "" {
 				stats.TDMPolicy = metaPolicy
@@ -270,6 +277,7 @@ func Fetch(ctx context.Context, client requestDoer, boardURL, slug string) (Fetc
 	result.ErrorKind = first.stats.ErrorKind
 	result.TDMPolicy = first.stats.TDMPolicy
 	result.TDMSource = first.stats.TDMSource
+	result.ReservationInitialURL, result.ReservationURL = first.stats.ReservationInitialURL, first.stats.ReservationURL
 	if first.err != nil {
 		return result, first.err
 	}
@@ -316,6 +324,7 @@ func Fetch(ctx context.Context, client requestDoer, boardURL, slug string) (Fetc
 				result.ErrorKind = outcome.stats.ErrorKind
 				result.TDMPolicy = outcome.stats.TDMPolicy
 				result.TDMSource = outcome.stats.TDMSource
+				result.ReservationInitialURL, result.ReservationURL = outcome.stats.ReservationInitialURL, outcome.stats.ReservationURL
 			}
 			if outcome.err != nil && firstError == nil {
 				firstError = outcome.err

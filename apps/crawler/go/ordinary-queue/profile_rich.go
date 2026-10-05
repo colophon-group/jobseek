@@ -47,6 +47,14 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		for _, key := range []string{"canonical_identity", "canonical_job_id_url_template", "language_preference", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
 		}
+	case "join":
+		for _, key := range []string{"slug", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+			allowed[key] = true
+		}
+	case "sitemap":
+		for _, key := range []string{"sitemap_url", "xml_attempts", "url_filter", "proxy", "render", "skip_ssl", "ssl_verify", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+			allowed[key] = true
+		}
 	case "workable":
 		for _, key := range []string{"delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
@@ -76,6 +84,12 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 	}
 	if config["crawler_type"] == "workday" {
 		return inspectWorkdayMonitor(boardID, config, md)
+	}
+	if config["crawler_type"] == "join" {
+		return inspectJoinMonitor(boardID, config, md)
+	}
+	if config["crawler_type"] == "sitemap" {
+		return inspectSitemapMonitor(boardID, config, md)
 	}
 	if config["crawler_type"] == "smartrecruiters" || config["crawler_type"] == "workable" {
 		return inspectAPIMonitor(boardID, config, md)

@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"time"
 
@@ -96,7 +97,7 @@ func (c *GreenhouseCycle) FinishProviderGone(ctx context.Context, observation Gr
 // The worker must supply its own completed verified response, never a URL from
 // an inventory posting, redirect header, probe or caller-synthesized result.
 func (c *GreenhouseCycle) FinishProviderGoneResource(ctx context.Context, initialEndpoint string, observation GreenhouseGoneObservation) (*GreenhouseCycleResult, error) {
-	if c == nil || c.authority == nil || observation.HTTPStatus != 404 {
+	if c == nil || c.authority == nil || (observation.HTTPStatus != 404 && observation.HTTPStatus != 410) {
 		return nil, ErrConfiguration
 	}
 	c.mu.Lock()
@@ -105,7 +106,7 @@ func (c *GreenhouseCycle) FinishProviderGoneResource(ctx context.Context, initia
 		return nil, ErrConfiguration
 	}
 	profile, err := InspectRichMonitor(c.claim.task.ID, c.claim.task.Config)
-	if err != nil || initialEndpoint != profile.Endpoint || !validGreenhouseResponseResource(observation.Endpoint) {
+	if err != nil || initialEndpoint != profile.Endpoint || observation.HTTPStatus == 410 && profile.Provider != "join" || !validGreenhouseResponseResource(observation.Endpoint) {
 		return nil, ErrConfiguration
 	}
 	result := &GreenhouseCycleResult{}
@@ -128,9 +129,9 @@ func (c *GreenhouseCycle) FinishProviderGoneResource(ctx context.Context, initia
 		var status string
 		var count int
 		var due time.Time
-		provider := map[string]string{"greenhouse": "Greenhouse", "ashby": "Ashby", "lever": "Lever", "recruitee": "Recruitee"}[profile.Provider]
+		provider := map[string]string{"greenhouse": "Greenhouse", "ashby": "Ashby", "lever": "Lever", "recruitee": "Recruitee", "join": "JOIN"}[profile.Provider]
 		if err := tx.QueryRow(ctx, lifecycleQuery("gone"), c.claim.task.ID, decision.Status, decision.Count,
-			decision.First, decision.Last, decision.Gone, decision.Due, provider+" API returned HTTP 404", observation.Endpoint, observation.HTTPStatus, decision.Terminal).Scan(&status, &count, &due); err != nil {
+			decision.First, decision.Last, decision.Gone, decision.Due, fmt.Sprintf("%s API returned HTTP %d", provider, observation.HTTPStatus), observation.Endpoint, observation.HTTPStatus, decision.Terminal).Scan(&status, &count, &due); err != nil {
 			return err
 		}
 		result.Status = decision.Status

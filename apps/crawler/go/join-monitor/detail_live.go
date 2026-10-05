@@ -56,3 +56,9 @@ func FetchDetail(ctx context.Context, request DetailRequest) (DetailResult, erro
 	defer client.CloseIdleConnections()
 	return fetchDetail(ctx, client, request)
 }
+
+// FetchDetailWithClient retains the existing parser, bounded redirects and
+// publisher policy while the native worker supplies its verified transport.
+func FetchDetailWithClient(ctx context.Context, request DetailRequest, client requestDoer) (DetailResult, error) {
+	return fetchDetail(ctx, client, request)
+}

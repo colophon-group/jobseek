@@ -9,16 +9,18 @@ import (
 	"time"
 	"unicode/utf8"
 
+	join "github.com/colophon-group/jobseek/apps/crawler/go/join-monitor"
 	smartrecruiters "github.com/colophon-group/jobseek/apps/crawler/go/smartrecruiters-monitor"
 	workable "github.com/colophon-group/jobseek/apps/crawler/go/workable-monitor"
 )
 
 const smartRecruitersDetailProfile = "smartrecruiters.api-detail/v1"
 const workableDetailProfile = "workable.api-detail/v1"
+const joinDetailProfile = "join.nextdata-detail/v1"
 
 func independentDetailProfile(profile string) bool {
 	switch profile {
-	case jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile:
+	case jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, joinDetailProfile:
 		return true
 	}
 	return false
@@ -59,12 +61,15 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 			return fail()
 		}
 	}
-	if scraper != "smartrecruiters" && scraper != "workable" {
+	if scraper != "smartrecruiters" && scraper != "workable" && scraper != "nextdata" {
 		return fail()
 	}
 	allowed := map[string]bool{"proxy": true, "render": true, "ssl_verify": true}
 	if scraper == "workable" {
 		allowed["token"] = true
+	}
+	if scraper == "nextdata" {
+		allowed = map[string]bool{"path": true, "fields": true}
 	}
 	var options map[string]json.RawMessage
 	if raw, ok := metadata["scraper_config"]; ok && string(raw) != "null" {
@@ -85,12 +90,22 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 	if scraper == "smartrecruiters" {
 		_, endpoint, err = smartrecruiters.DetailEndpoint(source)
 		profile = smartRecruitersDetailProfile
-	} else {
+	} else if scraper == "workable" {
 		if raw, ok := options["token"]; ok && string(raw) != "null" && json.Unmarshal(raw, &override) != nil {
 			return fail()
 		}
 		endpoint, _, err = workable.DetailEndpoints(source, override)
 		profile = workableDetailProfile
+	} else {
+		err = join.ValidateDetailURL(source)
+		if err == nil {
+			var fields map[string]string
+			fields, err = join.ValidateDetailConfig(options)
+			if err == nil && len(fields) == 0 {
+				return fail()
+			}
+		}
+		endpoint, profile = source, joinDetailProfile
 	}
 	if err != nil {
 		return fail()
@@ -107,11 +122,15 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 		return fail()
 	}
 	digest := sha256.Sum256(body)
-	return WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: endpoint, Domain: strings.ToLower(u.Hostname()), Profile: profile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), APITokenOverride: override}, nil
+	p := WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: endpoint, Domain: strings.ToLower(u.Hostname()), Profile: profile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), APITokenOverride: override}
+	if profile == joinDetailProfile {
+		p.JoinDetailConfig = options
+	}
+	return p, nil
 }
 
 func inspectAPIDetailOwnership(boardID string, config map[string]string) (WorkdayDetailProfile, error) {
-	for _, source := range []string{"https://jobs.smartrecruiters.com/native/OWNERSHIPADMISSION", "https://apply.workable.com/native/j/OWNERSHIPADMISSION/"} {
+	for _, source := range []string{"https://jobs.smartrecruiters.com/native/OWNERSHIPADMISSION", "https://apply.workable.com/native/j/OWNERSHIPADMISSION/", "https://join.com/companies/native/OWNERSHIPADMISSION"} {
 		if profile, err := InspectAPIDetail(boardID, config, source, Simple); err == nil {
 			profile.Domain = "*"
 			return profile, nil

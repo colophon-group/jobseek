@@ -12,6 +12,9 @@ import (
 )
 
 func richResponseMatches(profile queue.GreenhouseMonitorProfile, endpoint string) bool {
+	if profile.Provider == "join" {
+		return queue.JoinMonitorResourceMatches(profile, endpoint)
+	}
 	if profile.Provider == "smartrecruiters" || profile.Provider == "workable" {
 		return queue.APIMonitorResourceMatches(profile, endpoint)
 	}

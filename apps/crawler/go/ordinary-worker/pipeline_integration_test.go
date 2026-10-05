@@ -144,6 +144,9 @@ func privateRichPipelineFixture(t *testing.T, provider, metadata string) nativeP
 	if provider == "smartrecruiters" {
 		boardURL = "https://careers.smartrecruiters.com/fixture"
 	}
+	if provider == "join" {
+		boardURL = "https://join.com/companies/fixture"
+	}
 	if provider == "workable" {
 		boardURL = "https://apply.workable.com/fixture"
 	}

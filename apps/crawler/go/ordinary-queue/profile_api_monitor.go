@@ -20,24 +20,6 @@ var workableBoardToken = regexp.MustCompile(`apply\.workable\.com/([\pL\pN_-]+)`
 func inspectAPIMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
 	fail := func() (GreenhouseMonitorProfile, error) { return GreenhouseMonitorProfile{}, ErrUnsupportedProfile }
 	provider := config["crawler_type"]
-	var lifecycle map[string]any
-	decoder := json.NewDecoder(strings.NewReader(config["metadata"]))
-	decoder.UseNumber()
-	if decoder.Decode(&lifecycle) != nil {
-		return fail()
-	}
-	if _, err := workdayDelistThreshold(lifecycle["delist_threshold"]); err != nil {
-		return fail()
-	}
-	if _, err := workdayLifecycleSetting(lifecycle["drop_threshold"], 0.3); err != nil {
-		return fail()
-	}
-	if raw, exists := md["blast_radius_floor"]; exists && strings.TrimSpace(string(raw)) != "null" {
-		var floor float64
-		if json.Unmarshal(raw, &floor) != nil || floor < 0 || floor > 1 {
-			return fail()
-		}
-	}
 	var metadata map[string]any
 	if json.Unmarshal([]byte(config["metadata"]), &metadata) != nil {
 		return fail()
@@ -68,6 +50,31 @@ func inspectAPIMonitor(boardID string, config map[string]string, md map[string]j
 		}
 		endpoint = "https://apply.workable.com/api/v3/accounts/" + token + "/jobs"
 	}
+	return inspectURLOnlyMonitor(boardID, config, md, provider, provider+".api-urls/v1", token, endpoint)
+}
+
+// Reuse the existing configuration/transport authority and URL-only lifecycle
+// for inventory parsers whose details are scheduled separately.
+func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[string]json.RawMessage, provider, profile, token, endpoint string) (GreenhouseMonitorProfile, error) {
+	fail := func() (GreenhouseMonitorProfile, error) { return GreenhouseMonitorProfile{}, ErrUnsupportedProfile }
+	var lifecycle map[string]any
+	decoder := json.NewDecoder(strings.NewReader(config["metadata"]))
+	decoder.UseNumber()
+	if decoder.Decode(&lifecycle) != nil {
+		return fail()
+	}
+	if _, err := workdayDelistThreshold(lifecycle["delist_threshold"]); err != nil {
+		return fail()
+	}
+	if _, err := workdayLifecycleSetting(lifecycle["drop_threshold"], 0.3); err != nil {
+		return fail()
+	}
+	if raw, exists := md["blast_radius_floor"]; exists && strings.TrimSpace(string(raw)) != "null" {
+		var floor float64
+		if json.Unmarshal(raw, &floor) != nil || floor < 0 || floor > 1 {
+			return fail()
+		}
+	}
 	if config["scraper_needs_browser"] != "0" && config["scraper_needs_browser"] != "1" {
 		return fail()
 	}
@@ -89,6 +96,11 @@ func inspectAPIMonitor(boardID string, config map[string]string, md map[string]j
 		return fail()
 	}
 	stable, err := stableGreenhouseConfig(config, md)
+	if provider == "sitemap" || provider == "join" {
+		// PostgreSQL jsonb and Redis may order nested filter/detail keys
+		// differently. Reuse the existing semantic configuration binding.
+		stable, err = stableJSONLDConfig(config, md)
+	}
 	if err != nil {
 		return fail()
 	}
@@ -101,7 +113,7 @@ func inspectAPIMonitor(boardID string, config map[string]string, md map[string]j
 	}
 	digest := sha256.Sum256(body)
 	p.EffectiveConfigSHA256, p.SnapshotSHA256 = hex.EncodeToString(digest[:]), configDigest(config)
-	p.Provider, p.Profile, p.Token, p.Endpoint = provider, provider+".api-urls/v1", token, endpoint
+	p.Provider, p.Profile, p.Token, p.Endpoint = provider, profile, token, endpoint
 	return p, nil
 }
 
