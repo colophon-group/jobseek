@@ -18,6 +18,8 @@ const RETENTION = { hobby: 3600_000, pro: 24 * 3600_000, enterprise: 72 * 3600_0
 const MAX_ARTIFACT = 4 * 1024 * 1024;
 const MAX_SNAPSHOT = 16 * 1024 * 1024;
 const MAX_HISTORY = 680;
+const HISTORY_LOOKBACK = 24 * 3600_000;
+const MAX_HISTORY_CANDIDATES = 8;
 const iso = value => new Date(value).toISOString();
 const assert = condition => { if (!condition) throw new Error('invalid_observation_contract'); };
 const exactKeys = (value, keys) => value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).sort().join(',') === [...keys].sort().join(',');
@@ -149,6 +151,7 @@ export function collector({ run, project, scope, retention, now = Date.now, limi
 
 export function validateRun(run, now = Date.now()) {
   assert(run && run.status === 'completed' && run.head_branch === 'main' && run.path === WORKFLOW && ['schedule', 'workflow_dispatch'].includes(run.event) && /^[a-f0-9]{40}$/.test(run.head_sha) && safeNumber(run.id) && run.id > 0 && safeNumber(run.run_attempt) && run.run_attempt > 0 && validTime(run.updated_at) && Date.parse(run.updated_at) <= now + 60_000 && Date.parse(run.updated_at) >= now - 8 * 86400_000);
+  assert(validTime(run.created_at) && Date.parse(run.created_at) <= Date.parse(run.updated_at));
   if (run.event === 'workflow_dispatch') assert(run.actor?.login === OWNER && run.triggering_actor?.login === OWNER);
 }
 export function validateArtifact(artifact, run) {
@@ -187,33 +190,85 @@ export function unzipCheckpoint(zip) {
   assert(data.length === uncompressed);
   return JSON.parse(data.toString('utf8'));
 }
-async function githubApi(endpoint, binary = false) {
-  const result = await capture('gh', ['api', endpoint], { env: { GH_TOKEN: process.env.GH_TOKEN }, maxBytes: binary ? MAX_ARTIFACT : 1024 * 1024 });
+async function githubApi(endpoint, binary = false, { timeout = 30_000 } = {}) {
+  const result = await capture('gh', ['api', endpoint], { env: { GH_TOKEN: process.env.GH_TOKEN }, maxBytes: binary ? MAX_ARTIFACT : 1024 * 1024, timeout });
   assert(result.ok);
   return binary ? result.data : JSON.parse(result.data.toString('utf8'));
 }
-export async function loadHistory({ repository, observationStart, now = Date.now(), api = githubApi }) {
-  let rejected = 0;
+export async function loadHistory({ repository, observationStart, now = Date.now(), api = githubApi, deadline = Date.now() + 120_000 }) {
+  let rejected = 0, validatedSnapshots = 0;
+  const request = (endpoint, binary = false) => {
+    const remaining = deadline - Date.now();
+    assert(remaining > 0);
+    return api(endpoint, binary, { timeout: Math.min(30_000, remaining) });
+  };
   try {
-    const listing = await api(`repos/${repository}/actions/workflows/company-selection-observation.yml/runs?branch=main&status=completed&per_page=30`);
+    const since = now - HISTORY_LOOKBACK;
+    const listing = await request(`repos/${repository}/actions/workflows/company-selection-observation.yml/runs?branch=main&status=completed&created=${encodeURIComponent('>=' + iso(since))}&per_page=30`);
     assert(Array.isArray(listing.workflow_runs) && listing.workflow_runs.length <= 30);
+    const candidates = [], snapshots = [], seenRuns = new Set();
     for (const run of listing.workflow_runs) {
       try {
-        validateRun(run, now); // Reject metadata BEFORE downloading anything.
-        const artifacts = await api(`repos/${repository}/actions/runs/${run.id}/artifacts?per_page=100`);
+        validateRun(run, now); // Reject all metadata BEFORE downloading anything.
+        assert(Date.parse(run.created_at) >= since && !seenRuns.has(run.id));
+        seenRuns.add(run.id);
+        candidates.push(run);
+      } catch { rejected++; }
+    }
+    candidates.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || b.id - a.id);
+    for (const run of candidates.slice(0, MAX_HISTORY_CANDIDATES)) {
+      if (Date.now() >= deadline) break;
+      try {
+        const artifacts = await request(`repos/${repository}/actions/runs/${run.id}/artifacts?per_page=100`);
         assert(Array.isArray(artifacts.artifacts) && artifacts.artifacts.length <= 100);
         const artifact = artifacts.artifacts.find(value => value.name === `company-selection-checkpoints-${run.id}-${run.run_attempt}`);
         if (!artifact) continue;
         validateArtifact(artifact, run);
-        const archive = await api(`repos/${repository}/actions/artifacts/${artifact.id}/zip`, true);
+        const archive = await request(`repos/${repository}/actions/artifacts/${artifact.id}/zip`, true);
         // GitHub artifact digest is the SHA256 of the ZIP archive, not its JSON.
         assert(createHash('sha256').update(archive).digest('hex') === artifact.digest.slice(7));
         const checkpoints = validateSnapshot(unzipCheckpoint(archive), run, observationStart, now);
-        return { checkpoints, status: rejected ? 'validated_after_rejected_candidate' : 'validated', rejected };
+        snapshots.push(checkpoints);
+        validatedSnapshots++;
       } catch { rejected++; }
     }
-    return { checkpoints: [], status: rejected ? 'unavailable_rejected_candidates' : 'not_found', rejected };
-  } catch { return { checkpoints: [], status: 'unavailable', rejected }; }
+    return { checkpoints: reconcileHistory(snapshots, observationStart, now), status: validatedSnapshots ? (rejected ? 'validated_after_rejected_candidate' : 'validated') : (rejected ? 'unavailable_rejected_candidates' : 'not_found'), rejected, validatedSnapshots, budgetExhausted: Date.now() >= deadline };
+  } catch { return { checkpoints: [], status: 'unavailable', rejected, validatedSnapshots, budgetExhausted: Date.now() >= deadline }; }
+}
+
+/** Replay authenticated archives, never sum duplicate copies of a quarter. */
+function reconcileHistory(snapshots, observationStart, now) {
+  const until = Math.floor((now - 300_000) / QUARTER) * QUARTER;
+  const oldest = Math.max(Math.floor(Date.parse(observationStart) / QUARTER) * QUARTER, until - 7 * 86400_000);
+  const byTime = new Map();
+  for (const checkpoint of snapshots.flat()) {
+    const quarter = Date.parse(checkpoint.from);
+    if (quarter < oldest || Date.parse(checkpoint.until) > until) continue;
+    if (!byTime.has(quarter)) byTime.set(quarter, []);
+    byTime.get(quarter).push(checkpoint);
+  }
+  const checkpoints = [];
+  for (const [, values] of [...byTime].sort(([a], [b]) => a - b)) {
+    // The digest breaks ties deterministically; it does not establish recency.
+    values.sort((a, b) => Date.parse(a.collectedAt) - Date.parse(b.collectedAt) || digest(a).localeCompare(digest(b)));
+    let previous, tied;
+    for (const value of values) {
+      if (!tied || Date.parse(tied.collectedAt) !== Date.parse(value.collectedAt)) {
+        previous = replay(previous, tied);
+        tied = value;
+        continue;
+      }
+      const before = parseCounts(tied.counts), after = parseCounts(value.counts);
+      const reasons = new Set([...tied.reasons, ...value.reasons]);
+      // Unequal simultaneous observations imply a regression in at least one
+      // possible ordering. Keep the existing lower-bound regression contract.
+      if (digest(countRows(before)) !== digest(countRows(after))) reasons.add('replay_count_regression');
+      tied = { ...value, counts: countRows(mergeCounts(before, after, true)), queryCoverage: reasons.size ? 'partial' : 'exhausted', reasons: [...reasons].sort() };
+    }
+    checkpoints.push(replay(previous, tied));
+  }
+  assert(checkpoints.length <= MAX_HISTORY);
+  return checkpoints;
 }
 
 export function replay(previous, next) {
@@ -317,7 +372,7 @@ async function main() {
       history = await loadHistory({ repository: process.env.GITHUB_REPOSITORY, observationStart });
     }
     const result = await collect({ observationStart, previous: history.checkpoints, run, project, scope, plan });
-    report = { ...result.report, history: { status: history.status, rejectedCandidates: history.rejected } };
+    report = { ...result.report, history: { status: history.status, rejectedCandidates: history.rejected, validatedSnapshots: history.validatedSnapshots ?? 0, budgetExhausted: history.budgetExhausted ?? false } };
     if (!local) {
       assert(/^[a-f0-9]{40}$/.test(process.env.GITHUB_SHA) && /^\d+$/.test(process.env.GITHUB_RUN_ID) && /^[1-9]\d*$/.test(process.env.GITHUB_RUN_ATTEMPT));
       const body = { schemaVersion: 1, sourceRevision: process.env.GITHUB_SHA, runId: process.env.GITHUB_RUN_ID, runAttempt: Number(process.env.GITHUB_RUN_ATTEMPT), observationStart, generatedAt: iso(Date.now()), cliVersion: CLI_VERSION, checkpoints: result.checkpoints };
