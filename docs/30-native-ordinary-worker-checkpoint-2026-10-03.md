@@ -1,5 +1,29 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Current delivery checkpoint — 2026-10-05 15:17 UTC
+
+Supported source939 retirement and B0 reversal completed. Fresh independent
+readback verifies all six baseline services healthy and restart-armed, native
+receipts/selectors cleared, the ordinary plan retired, epoch188, and no current
+native owner. One interrupted epoch187 receipt remains as revoked history.
+[Recovery evidence](evidence/go-native-rendered-baseline-recovered-2026-10-05.json)
+records the original successful restoration; final premerge verification repeated
+those checks after reconciliation finished naturally.
+
+[PR #10324](https://github.com/colophon-group/jobseek/pull/10324) merged the
+reservation capacity-close repair as `450b9e0316b813518d8f568afcdd35c4f4312feb`
+after exact-head Required CI, Crawler Deploy Gate and installed contracts passed.
+The [original immutable release](https://github.com/colophon-group/jobseek/actions/runs/37331617474)
+is in progress; production deployment and fresh native admission are not yet
+verified. Lightpanda 1.0.0 remains verified in production.
+
+The Oracle coverage batch below is rebased onto that repair and reserves the
+following crawler version 0.13.941. It is not merged or deployed. Next finish
+remaining configuration/provider and mandatory-consumer coverage in the existing
+worker, validate fresh actual posting routes, and prove sustained natural output,
+policy, descriptions and recurring queues before any production Python removal.
+Full migration remains active and incomplete. Earlier sections are historical.
+
 ## Source939 activation and capacity-reset recovery — 2026-10-05
 
 Lightpanda **1.0.0 is deployed**, with exact image/executable identities and
@@ -50,7 +74,7 @@ checks cover seven detail outcomes, rich inventory/detail scheduling and cold
 Oracle/Workday retirement. This is local implementation evidence, not production
 admission or full migration completion. See the
 [coverage evidence](evidence/go-native-oracle-coverage-local-2026-10-05.json).
-Rebase this batch onto the capacity repair, bump its release version, and finish
+This batch is rebased onto the capacity repair with VERSION 0.13.941. Finish
 remaining provider/configuration and mandatory-consumer coverage before cutover.
 
 ## Lightpanda 1.0.0 deployed — 2026-10-05
