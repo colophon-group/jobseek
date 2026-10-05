@@ -10,6 +10,16 @@ must pass on its new head before the immutable compatibility administrator can
 recover the old source through the original wrapper. Correct admission excludes
 all three verified B0 boards; no ordinary production adoption is claimed.
 
+The approved935 compatibility administrator passed source verification, but
+original pending recovery also refused 18 legacy monitor inflight entries. Read-only
+canonical checks proved zero live SQL leases/current native fences and an inert
+staged plan; the unchanged B0 audit passed with zero inflight and no ordinary
+projection existed. v0.13.936 adds a separate staged-only cancellation operation:
+it preserves legacy inflight entries/tokens for the restored workers, removes only
+an exact interrupted projection, and keeps full B0 audit, cold SQL/source/epoch
+barriers and staged history. Activation/active retirement retain their lease checks.
+No current recovery or serving-stack success is claimed.
+
 v0.13.936 extends the same worker, renderer and canonical URL-only inventory
 writer to configured single-page rendered DOM monitors. Browser anchor selection,
 actual redirected document URL, first document base and WHATWG URL serialization
@@ -25,7 +35,7 @@ and retained old Browser monitor attempts permit later supported reversal.
 Separate monitor scan cursors prevent alternating Simple/Browser claims from
 skipping one namespace. Exact Lua copies share Browser settlement and recovery.
 
-Real PostgreSQL/Redis queue and worker race suites passed in 51.422s and 108.848s;
+Real PostgreSQL/Redis queue and worker race suites passed in 51.666s and 108.848s;
 subsequent Browser routing/origin503 tests passed in 3.006s. All 38 required Python
 ownership/cutover tests and exporter reaper race tests passed. After integration
 with amended935, staged cancellation/cutover, rendered queue reversal and

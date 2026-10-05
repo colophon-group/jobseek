@@ -5,10 +5,13 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 func TestRealStagedOverlappingMonitorCancellationPreservesB0(t *testing.T) {
-	for _, mode := range []string{"clean", "changed-b0", "foreign-projection"} {
+	for _, mode := range []string{"clean", "legacy-inflight", "changed-b0", "foreign-projection"} {
 		t.Run(mode, func(t *testing.T) {
 			p := firstOwnershipFixture(t)
 			ctx := context.Background()
@@ -30,6 +33,13 @@ func TestRealStagedOverlappingMonitorCancellationPreservesB0(t *testing.T) {
 				t.Fatal(e)
 			}
 			seedPublicationB0(t, p.f.client, p.target, p.f.epoch)
+			if mode == "legacy-inflight" {
+				for _, worker := range []string{"simple", "browser"} {
+					if e := p.f.client.redis.ZAdd(ctx, "inflight:"+worker, redis.Z{Score: 1, Member: "monitor|jobs.example.test|" + id}).Err(); e != nil {
+						t.Fatal(e)
+					}
+				}
+			}
 			if _, e := applyFirstFixture(t, p, false); !errors.Is(e, ErrAuthorityLost) {
 				t.Fatal("B0 overlap activated", e)
 			}
@@ -42,7 +52,7 @@ func TestRealStagedOverlappingMonitorCancellationPreservesB0(t *testing.T) {
 			before := snapshot(t, p.f.client)
 			canonical := coldCanonicalSnapshot(t, p.f)
 			result, e := applyFirstFixture(t, p, true)
-			if mode == "clean" {
+			if mode == "clean" || mode == "legacy-inflight" {
 				if e != nil || result.State != "staged" {
 					t.Fatal("inert overlap could not cancel", e)
 				}
@@ -52,11 +62,58 @@ func TestRealStagedOverlappingMonitorCancellationPreservesB0(t *testing.T) {
 			if !reflect.DeepEqual(before, snapshot(t, p.f.client)) || canonical != coldCanonicalSnapshot(t, p.f) || firstFixtureState(t, p) != "staged" {
 				t.Fatal("cancellation changed B0, canonical data or staged history")
 			}
-			if mode == "clean" {
+			if mode == "clean" || mode == "legacy-inflight" {
 				if _, e := applyFirstFixture(t, p, false); e == nil {
 					t.Fatal("cancelled overlap gained activation authority")
 				}
 			}
 		})
+	}
+}
+
+func TestRealStagedCancellationPreservesLegacyInflight(t *testing.T) {
+	for _, worker := range []WorkerType{Simple, Browser} {
+		for _, published := range []bool{false, true} {
+			name := string(worker)
+			if published {
+				name += "-published-before-sql"
+			}
+			t.Run(name, func(t *testing.T) {
+				p := firstWorkdayDetailFixture(t)
+				ctx := context.Background()
+				member := p.plan.document.Members[0]
+				monitor := "monitor|" + member.Domain + "|" + member.BoardID
+				scrape := "scrape|" + p.f.task.Domain + "|" + p.f.task.ID
+				inflight, tokens := "inflight:"+string(worker), "inflight_tokens:"+string(worker)
+				if err := p.f.client.redis.ZAdd(ctx, inflight,
+					redis.Z{Score: float64(time.Now().Add(-time.Minute).Unix()), Member: monitor},
+					redis.Z{Score: float64(time.Now().Add(-time.Minute).Unix()), Member: scrape}).Err(); err != nil {
+					t.Fatal(err)
+				}
+				if err := p.f.client.redis.HSet(ctx, tokens, monitor, "retained-legacy-monitor", scrape, "retained-legacy-scrape").Err(); err != nil {
+					t.Fatal(err)
+				}
+				if published {
+					if err := p.f.client.redis.Set(ctx, ownershipProjectionKey, p.plan.projection, 0).Err(); err != nil {
+						t.Fatal(err)
+					}
+				}
+				before, canonical := snapshot(t, p.f.client), coldCanonicalSnapshot(t, p.f)
+				if _, err := applyFirstFixture(t, p, false); !errors.Is(err, ErrAuthorityLost) {
+					t.Fatal("activation accepted legacy inflight", err)
+				}
+				result, err := applyFirstFixture(t, p, true)
+				if err != nil || result.State != "staged" {
+					t.Fatal("inert cancellation refused legacy inflight", err)
+				}
+				delete(before, ownershipProjectionKey)
+				if !reflect.DeepEqual(before, snapshot(t, p.f.client)) || canonical != coldCanonicalSnapshot(t, p.f) || firstFixtureState(t, p) != "staged" {
+					t.Fatal("cancellation changed legacy queues, B0, canonical data or staged history")
+				}
+				if _, err := applyFirstFixture(t, p, false); !errors.Is(err, ErrAuthorityLost) {
+					t.Fatal("cancellation granted activation over legacy inflight", err)
+				}
+			})
+		}
 	}
 }

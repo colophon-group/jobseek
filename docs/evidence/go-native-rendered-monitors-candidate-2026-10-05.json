@@ -8,7 +8,7 @@
   "browser_identity": "HTML5 document selection excluding inert template contents and foreign base elements, first HTML document base, actual final document URL and WHATWG URL serialization preserve browser anchor.href identity.",
   "authority": "Canonical full config and exact Browser ownership/lease; original shared SQL barriers, B0 exclusivity, inventory lifecycle, urgent detail routing and receipt settlement.",
   "local_verification": {
-    "full_queue_race_seconds": 51.422,
+    "full_queue_race_seconds": 51.666,
     "full_worker_race_seconds": 108.848,
     "later_monitor_owned_regression_seconds": 3.006,
     "required_python_ownership_cutover_tests": 38,
@@ -18,7 +18,8 @@
     "combined935_staged_cancellation_cutover_race_seconds": 18.861,
     "combined935_rendered_queue_reversal_race_seconds": 6.781,
     "combined935_rendered_worker_compatibility_race_seconds": 8.316,
-    "template_document_and_real_rendered_inventory_race_seconds": 3.013
+    "template_document_and_real_rendered_inventory_race_seconds": 3.013,
+    "staged_legacy_inflight_and_compatibility_executable_race_seconds": 14.726
   },
   "configuration_preview": {
     "source_revision": "ad31dacbcfe9c132cd75d5e46fbcc3d3b3e3a5d0",
@@ -27,5 +28,6 @@
     "authority": "Historical canonical configuration screening only; excludes no B0 ownership and reconciles no current caches/routes. Fresh source/receipt-bound admission is mandatory."
   },
   "unsupported_configuration": "Pagination, actions, proxy/custom transport, rich rows and provider-specific capture contracts retain their existing owners until their native implementations are delivered.",
-  "production_checkpoint": "Source934 pending full-cohort activation was contained after B0 overlap refusal. PR10309 adds safe inert staged cancellation for original supported recovery; correct admission excludes all verified B0 boards. New runtime must pass required checks and original immutable deployment/cutover."
+  "production_checkpoint": "Source934 remains contained after original pending recovery with approved935 admin also refused 18 expired legacy monitor inflight entries (SQL leases/current native fences=0, ordinary projection absent, original B0 audit accepted/inflight0). PR10314 adds staged-only preservation of legacy inflight; every runtime still requires fresh checks and original immutable source/image compatibility recovery.",
+  "staged_cancellation": "Separate never-active cancellation preserves legacy Simple/Browser inflight entries and tokens, removes only an exact interrupted ownership projection, retains staged SQL history, and still proves full B0 conservation, current source/epoch, cold SQL/host scope and absence of current native attempts. Activation and active retirement retain lease checks."
 }

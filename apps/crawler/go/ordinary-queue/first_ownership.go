@@ -269,6 +269,9 @@ func applyFirstOwnership(ctx context.Context, pool *pgxpool.Pool, client *Client
 		operation = "publish"
 		if retire {
 			operation = "retire"
+			if state == "staged" {
+				operation = "cancel-staged"
+			}
 		}
 	}
 	if err := firstOwnershipProjection(ctx, client, epoch, plan, target, operation, retirement); err != nil {
@@ -290,6 +293,9 @@ func applyFirstOwnership(ctx context.Context, pool *pgxpool.Pool, client *Client
 		inspect := "inspect-active"
 		if retire {
 			inspect = "inspect-retired"
+			if state == "staged" {
+				inspect = "inspect-staged-cancelled"
+			}
 		}
 		if err := firstOwnershipProjection(ctx, client, epoch, plan, target, inspect, "[]"); err != nil {
 			return nil, err
