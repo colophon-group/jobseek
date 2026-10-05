@@ -88,7 +88,7 @@ func WriteGreenhouseInventory(ctx context.Context, sink GreenhouseSink, preparer
 			if content == nil {
 				return result, errors.New("native rich preparation returned no content")
 			}
-			batch = append(batch, queue.GreenhouseRichPosting{URL: job.URL, SourceIdentity: job.SourceIdentity, Content: content})
+			batch = append(batch, queue.GreenhouseRichPosting{URL: job.URL, SourceIdentity: job.SourceIdentity, Content: content, Hybrid: job.Hybrid})
 		}
 		counts, err := sink.WriteRichBatch(ctx, batch)
 		if err != nil {

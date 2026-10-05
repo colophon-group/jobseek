@@ -1,0 +1,16 @@
+{
+  "schema": "jobseek.native-inline-document-local/v1",
+  "state": "actual cursor, section, item-boundary and synthetic identity foundation verified; Inline runtime not yet admitted",
+  "actual_python_cases": 21,
+  "checks": {
+    "api_module_race": "PASS1.354s"
+  },
+  "remaining": [
+    "row/default/title/description filtering and expiry",
+    "source identity/URL sequence and empty-state witnesses",
+    "static alternate fetches, JSON wrappers and held browser execution",
+    "native configuration/ownership, canonical writes, policy, queue and cold-retirement proof"
+  ],
+  "production_claim": false,
+  "full_migration_complete": false
+}

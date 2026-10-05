@@ -1,0 +1,35 @@
+{
+  "schema": "jobseek.native-beisen-local/v1",
+  "observed_at_utc": "2026-10-05T23:27:45.458043+00:00",
+  "state": "all24 captured canonical/cache configurations admitted locally; modern and legacy worker paths pass focused native proofs; grouped Inline+Beisen batch remains in progress",
+  "canonical_and_cached_admitted": 24,
+  "capture_source_revision": "194af110324d6eb9a09fc23619f516d656e608b5",
+  "actual_python_cases": 42,
+  "checks": {
+    "actual_python_requests_inventory_failures": "PASS4.494s; repeated after operational additions PASS7.753s combined",
+    "real_postgres_redis_operational_modes": {
+      "count": 15,
+      "result": "PASS7.753s with actual Python corpus"
+    },
+    "profile_and_cold_retirement": "PASS8.692s with existing embedded retirement and provider-gone checks",
+    "beisen_profile": "PASS1.396s",
+    "api_module_race_with_inline_foundation": "PASS1.354s",
+    "queue_and_worker_vet": "PASS",
+    "full_worker_race": "PASS233.618s; required real PostgreSQL/Redis; bounded page-count overflow fix receives subsequent focused comparison",
+    "full_queue_race": "PASS111.068s; required real PostgreSQL/Redis",
+    "bounded_pagecount_fix": "PASS4.484s;42actual Python comparisons after full worker suite"
+  },
+  "contracts": [
+    "modern bootstrap status and configured portal/tenant identity",
+    "exact POST body, cookies, redirects disabled and bounded retries",
+    "ordered page completeness, duplicate/invalid-row truncation and failed later-page no-prefix writes",
+    "legacy standard tables and inline listings, inferred roots and advertised page/record counts",
+    "partial legacy rows preserve fully scraped title/location/body/hash on touch and relist",
+    "selected description enrichment preserves existing body and urgency/background queue role",
+    "root/first legacy gone and disabled portal use existing spaced disappearance confirmation; API/later-page404 remains failure",
+    "publisher reservations are bound to their actual resource; no native writes on reservation",
+    "changed canonical binding rejects write and settlement"
+  ],
+  "production_claim": false,
+  "full_migration_complete": false
+}

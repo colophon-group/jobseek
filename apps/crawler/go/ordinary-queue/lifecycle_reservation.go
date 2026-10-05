@@ -48,6 +48,9 @@ func (a *Authority) FinishGreenhouseReservationResource(ctx context.Context, cla
 	}
 	if observation != nil {
 		matches := initialMonitorResourceMatches(profile, initialEndpoint)
+		if profile.Provider == "beisen" {
+			matches = BeisenMonitorResourceMatches(profile, claim.task.Config, initialEndpoint)
+		}
 		if profile.Provider == "api_sniffer" {
 			matches = APISnifferMonitorResourceMatches(profile, claim.task.Config, initialEndpoint)
 		}

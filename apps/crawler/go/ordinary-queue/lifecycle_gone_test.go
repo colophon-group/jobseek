@@ -59,7 +59,7 @@ func TestGreenhouseGonePythonPolicyOracle(t *testing.T) {
 func TestRealOwnedLifecycleProviderGoneSpacingAndRecovery(t *testing.T) {
 	f, a := lifecycleFixture(t, `{"_monitor_config_fingerprint":"fixture"}`)
 	ctx := context.Background()
-	observation := GreenhouseGoneObservation{"https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true", 404}
+	observation := GreenhouseGoneObservation{Endpoint: "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true", HTTPStatus: 404}
 	for i := 1; i <= 3; i++ {
 		if i > 1 {
 			dueLifecycle(t, f)
@@ -137,7 +137,7 @@ func TestRealOwnedLifecycleGoneRejectsGenericOrPartialEvidence(t *testing.T) {
 			f, a := lifecycleFixture(t, `{"_monitor_config_fingerprint":"fixture"}`)
 			ctx := context.Background()
 			c := beginLifecycle(t, a)
-			observation := GreenhouseGoneObservation{"https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true", 404}
+			observation := GreenhouseGoneObservation{Endpoint: "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true", HTTPStatus: 404}
 			switch mode {
 			case "status":
 				observation.HTTPStatus = 500

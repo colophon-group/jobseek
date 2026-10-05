@@ -66,6 +66,7 @@ type GreenhouseRichContent struct {
 type GreenhouseRichPosting struct {
 	URL            string
 	SourceIdentity string
+	Hybrid         bool
 	Content        *GreenhouseRichContent
 }
 
@@ -88,6 +89,12 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		return nil, err
 	}
 	var enrich []string
+	if profile.Provider == "beisen" {
+		enrich, err = beisenMonitorEnrichment(claim.task.Config)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if profile.Provider == "oracle_hcm" || profile.Provider == "jobylon" || profile.Provider == "nextdata" {
 		if profile.Provider == "nextdata" {
 			enrich, err = nextdataMonitorEnrichment(claim.task.Config)
@@ -111,7 +118,11 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 	identityByURL := map[string]string{}
 	urls := make([]string, 0, len(batch))
 	byURL := make(map[string]*GreenhouseRichContent, len(batch))
+	hybridByURL := map[string]bool{}
 	for _, posting := range batch {
+		if posting.Hybrid && profile.Provider != "beisen" {
+			return nil, ErrConfiguration
+		}
 		// Inventory filtering/normalization is the caller's earlier stage. No
 		// ambiguous, absent or detail-enrichment records may reach this callback.
 		if posting.URL == "" || strings.ContainsRune(posting.URL, 0) || posting.Content == nil || posting.Content.Enrich || posting.Content.Fields.Titles == nil || len(posting.Content.Fields.Locales) == 0 || byURL[posting.URL] != nil {
@@ -129,6 +140,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		identityByURL[posting.URL] = identity
 		urls = append(urls, posting.URL)
 		byURL[posting.URL] = posting.Content
+		hybridByURL[posting.URL] = posting.Hybrid
 		// These rich inventories have no description field. Preserve the delegated
 		// scraper's retained body rather than letting a detached value replace it.
 		if len(enrich) > 0 && posting.Content.Description != nil && profile.Provider != "nextdata" {
@@ -258,8 +270,10 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 					if !canonicalUUID.MatchString(row.id) {
 						return errors.New("rich monitor classification lost posting identity")
 					}
-					if err := refreshRichMonitorContent(ctx, tx, row.id, content.Fields); err != nil {
-						return err
+					if !hybridByURL[row.url] {
+						if err := refreshRichMonitorContent(ctx, tx, row.id, content.Fields); err != nil {
+							return err
+						}
 					}
 					if len(enrich) > 0 && (row.needsScrape || row.action != "touched" || identityConfig != nil) {
 						detailIDs = append(detailIDs, row.id)
@@ -275,7 +289,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 				default:
 					return errors.New("unknown rich monitor classification")
 				}
-				if content.Description != nil {
+				if content.Description != nil && (!hybridByURL[row.url] || row.action == "new") {
 					delegatedDescription := false
 					for _, field := range enrich {
 						delegatedDescription = delegatedDescription || field == "description"

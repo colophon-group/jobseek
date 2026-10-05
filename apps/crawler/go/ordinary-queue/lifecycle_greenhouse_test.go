@@ -494,7 +494,7 @@ func TestRealOwnedLifecycleCrashAfterCommitRecoversChangedStatus(t *testing.T) {
 			var result *GreenhouseCycleResult
 			var err error
 			if mode == "gone_pending" {
-				result, err = c.FinishProviderGone(ctx, GreenhouseGoneObservation{"https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true", 404})
+				result, err = c.FinishProviderGone(ctx, GreenhouseGoneObservation{Endpoint: "https://boards-api.greenhouse.io/v1/boards/fixture/jobs?content=true", HTTPStatus: 404})
 			} else {
 				result, err = c.FinishFailure(ctx, "bounded provider failure")
 			}

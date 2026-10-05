@@ -148,6 +148,9 @@ func privateRichPipelineFixture(t *testing.T, provider, metadata string, workers
 		_, _ = pg.Exec(ctx, "DELETE FROM company WHERE id=$1::uuid", f.company)
 	})
 	boardURL := "https://example.com/careers"
+	if provider == "beisen" {
+		boardURL = "https://fixture.zhiye.com/"
+	}
 	if provider == "greenhouse" {
 		boardURL = "https://job-boards.greenhouse.io/fixture"
 	}
