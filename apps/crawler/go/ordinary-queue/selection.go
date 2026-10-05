@@ -35,6 +35,20 @@ func OpenOwnedAuthority(ctx context.Context, dsn string, client *Client, epoch i
 	return a, nil
 }
 
+// RequiresRenderedDetails describes the immutable, already attested plan.
+// It never grants authority or reads a mutable service selector.
+func (a *Authority) RequiresRenderedDetails() bool {
+	if a == nil || a.ownership == nil {
+		return false
+	}
+	for _, detail := range a.ownership.document.Details {
+		if detail.Worker == Browser {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *Client) verifyOwnershipProjection(ctx context.Context, plan *OwnershipPlan) error {
 	if plan == nil {
 		return ErrConfiguration
@@ -91,12 +105,12 @@ func (a *Authority) requireOwnership(ctx context.Context, tx pgx.Tx, claim *Clai
 	if claim == nil {
 		return nil
 	}
-	if (claim.task.Kind != Monitor && claim.task.Kind != Scrape) || claim.task.Worker != Simple {
+	if (claim.task.Kind != Monitor && claim.task.Kind != Scrape) || (claim.task.Worker != Simple && claim.task.Worker != Browser) {
 		return ErrAuthorityLost
 	}
 	if claim.task.Kind == Scrape {
 		for _, bound := range plan.document.Details {
-			if bound.BoardID != claim.boardID {
+			if bound.BoardID != claim.boardID || bound.Worker != claim.task.Worker {
 				continue
 			}
 			context, err := plan.detailContext(bound)
@@ -121,7 +135,7 @@ func (a *Authority) requireOwnership(ctx context.Context, tx pgx.Tx, claim *Clai
 			break
 		}
 	}
-	if member == nil {
+	if member == nil || member.Worker != claim.task.Worker {
 		return ErrAuthorityLost
 	}
 	if claim.task.Domain != member.Domain {
@@ -149,7 +163,7 @@ type ownershipCandidate struct {
 // global/domain head. The Lua pop still checks global priority, ready route,
 // throttle, inflight identity and the complete canonical-validated snapshot.
 func (a *Authority) claimOwned(ctx context.Context, tx pgx.Tx, worker WorkerType) (*Task, error) {
-	if worker != Simple {
+	if worker != Simple && worker != Browser {
 		return nil, ErrConfiguration
 	}
 	now, err := a.queue.clock(ctx)
@@ -173,6 +187,9 @@ func (a *Authority) claimOwned(ctx context.Context, tx pgx.Tx, worker WorkerType
 	pipe := a.queue.redis.Pipeline()
 	for i := 0; i < count; i++ {
 		member := members[(start+i)%len(members)]
+		if member.Worker != worker {
+			continue
+		}
 		probes = append(probes, probe{member,
 			pipe.Do(ctx, "ZMSCORE", "ft_monitors_simple:"+member.Domain, member.BoardID),
 			pipe.Do(ctx, "ZMSCORE", "monitors_simple:"+member.Domain, member.BoardID)})
@@ -193,7 +210,7 @@ func (a *Authority) claimOwned(ctx context.Context, tx pgx.Tx, worker WorkerType
 			}
 		}
 	}
-	details, err := a.detailCandidates(ctx, tx, now)
+	details, err := a.detailCandidates(ctx, tx, now, worker)
 	if err != nil {
 		return nil, err
 	}

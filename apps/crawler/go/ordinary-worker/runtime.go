@@ -286,6 +286,10 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		cleanup()
 		return ErrStartup
 	}
+	if authority.RequiresRenderedDetails() && !c.rendered {
+		cleanup()
+		return ErrStartup
+	}
 	// The separately installed SHA1 is what the legacy owner also receives.
 	if err = authority.AttestOwnershipProjection(startup, c.projection); err != nil {
 		cleanup()
@@ -327,6 +331,14 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		return ErrStartup
 	}
 	preparer := NativeRichPreparer{&executor.Processor{Matcher: matcher, Lookups: lookups, Locations: locations}}
+	var renderer renderedDetailClient
+	if c.rendered {
+		renderer, err = installedRenderedDetails()
+		if err != nil {
+			cleanup()
+			return ErrStartup
+		}
+	}
 	if startup.Err() != nil {
 		cleanup()
 		return ErrStartup
@@ -355,9 +367,25 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		case <-process.Done():
 		}
 	}()
-	services := runtimeServices{claim: func(ctx context.Context) (*queue.Claim, error) { return authority.Claim(ctx, queue.Simple) }, heartbeat: authority.Heartbeat, execute: func(ctx context.Context, claim *queue.Claim) (*GreenhouseClaimResult, error) {
+	var claimTurn atomic.Uint64
+	services := runtimeServices{claim: func(ctx context.Context) (*queue.Claim, error) {
+		worker := queue.Simple
+		if renderer != nil && claimTurn.Add(1)%2 == 0 {
+			worker = queue.Browser
+		}
+		claim, err := authority.Claim(ctx, worker)
+		if err != nil || claim != nil || renderer == nil {
+			return claim, err
+		}
+		if worker == queue.Simple {
+			worker = queue.Browser
+		} else {
+			worker = queue.Simple
+		}
+		return authority.Claim(ctx, worker)
+	}, heartbeat: authority.Heartbeat, execute: func(ctx context.Context, claim *queue.Claim) (*GreenhouseClaimResult, error) {
 		if claim.Descriptor().Kind == queue.Scrape {
-			return RunDetail(ctx, authority, claim, workdayHTTP, preparer.Processor, circuits)
+			return RunDetail(ctx, authority, claim, workdayHTTP, preparer.Processor, circuits, renderer)
 		}
 		if provider := claim.Descriptor().Config["crawler_type"]; provider == "workday" || provider == "smartrecruiters" || provider == "workable" || provider == "join" || provider == "sitemap" {
 			return RunGreenhouseClaim(ctx, authority, claim, workdayHTTP, preparer, circuits)

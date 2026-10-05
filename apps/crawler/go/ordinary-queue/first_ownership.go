@@ -128,7 +128,9 @@ func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client,
    (f.routing_epoch<$1 AND EXISTS(SELECT 1 FROM public.ordinary_worker_ownership_plan p
      WHERE p.state='retired' AND p.routing_epoch=f.routing_epoch
      AND EXISTS(SELECT 1 FROM jsonb_array_elements(p.payload::jsonb->'details') d
-       WHERE d->>'board_id'=f.board_id::text AND d->>'profile' IN ('workday.cxs-detail/v1','jsonld.direct-detail/v1','smartrecruiters.api-detail/v1','workable.api-detail/v1') AND d->>'worker'='simple')))))))`, epoch, ids, detailIDs).Scan(&foreign); err != nil {
+       WHERE d->>'board_id'=f.board_id::text AND (
+         (d->>'worker'='simple' AND d->>'profile' IN ('workday.cxs-detail/v1','jsonld.direct-detail/v1','smartrecruiters.api-detail/v1','workable.api-detail/v1','dom.direct-detail/v1','join.api-detail/v1')) OR
+         (d->>'worker'='browser' AND d->>'profile' IN ('dom.rendered-detail/v1','jsonld.rendered-detail/v1'))))))))))`, epoch, ids, detailIDs).Scan(&foreign); err != nil {
 				return err
 			}
 			if foreign {
@@ -177,6 +179,13 @@ func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client,
 					return ErrAuthorityLost
 				}
 			}
+		}
+		if retire && state == "staged" {
+			// The SQL plan never granted runtime authority. Cancellation removes
+			// only its exact projection, if a prior interrupted publication left
+			// one, and keeps its inert staged SQL history. B0 overlap remains an
+			// activation/active-retirement refusal, not a cancellation obstacle.
+			return target.attestBoards(ctx, tx, client)
 		}
 		return target.attest(ctx, tx, client, plan)
 	})

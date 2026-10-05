@@ -32,6 +32,7 @@ var ErrStartup = errors.New("ordinary worker startup rejected")
 var ErrDrainTimeout = errors.New("ordinary worker cancellation drain expired")
 
 type RuntimeConfig struct {
+	rendered                                                                                      bool
 	databaseURL, redisURL, source, plan, projection, metricsAddress, dataDirectory                string
 	epoch                                                                                         int64
 	concurrency                                                                                   int
@@ -76,6 +77,11 @@ func ReadRuntimeConfig(getenv func(string) string, installedRevision string) (Ru
 	if getenv == nil || getenv("ORDINARY_GO_WORKER_MODE") != "enabled" || !sourcePattern.MatchString(installedRevision) {
 		return c, ErrStartup
 	}
+	mode := getenv("ORDINARY_GO_RENDERED_DETAILS")
+	if mode != "" && mode != "enabled" {
+		return RuntimeConfig{}, ErrStartup
+	}
+	c.rendered = mode == "enabled"
 	c.source = getenv("ORDINARY_OWNERSHIP_SOURCE_REVISION")
 	c.plan = getenv("ORDINARY_OWNERSHIP_PLAN_SHA256")
 	c.projection = getenv("ORDINARY_OWNERSHIP_PROJECTION_SHA1")

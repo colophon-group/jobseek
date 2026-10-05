@@ -732,6 +732,39 @@ def test_deploy_persists_and_overlay_pins_exact_b0_production_identity() -> None
     assert ENABLED_OVERRIDE.read_text(encoding="utf-8").count("${LIGHTPANDA_B0_ROUTING_EPOCH") == 3
 
 
+def test_ordinary_rendered_consumer_is_dark_and_credentials_are_scoped() -> None:
+    base = yaml.safe_load(COMPOSE.read_text(encoding="utf-8"))["services"]
+    overlay = yaml.safe_load(ENABLED_OVERRIDE.read_text(encoding="utf-8"))["services"]
+    assert base["ordinary-go"]["profiles"] == ["ordinary-go"]
+    assert "ORDINARY_GO_RENDERED_DETAILS" not in base["ordinary-go"]["environment"]
+    assert "volumes" not in base["ordinary-go"]
+    rendered = overlay["ordinary-go"]
+    assert rendered["environment"] == {"ORDINARY_GO_RENDERED_DETAILS": "enabled"}
+    expected_files = {
+        "ca.pem",
+        "client.pem",
+        "client-key.pem",
+        "ca.sha256",
+        "server-leaf.sha256",
+        "server-spki.sha256",
+    }
+    expected = {
+        f"${{LIGHTPANDA_B0_CREDENTIAL_DIR:?required}}/{name}:/run/lightpanda/{name}:ro"
+        for name in expected_files
+    }
+    assert set(rendered["volumes"]) == expected
+    for name in (
+        "worker-1",
+        "worker-2",
+        "worker-3",
+        "browser-1",
+        "drain",
+        "lightpanda-producer",
+        "lightpanda-executor",
+    ):
+        assert not any("/run/lightpanda/" in mount for mount in overlay[name].get("volumes", []))
+
+
 def test_enabled_overlay_refuses_to_render_without_reserved_routing_epoch() -> None:
     with pytest.raises(AssertionError, match="routing epoch required"):
         _compose_model(enabled=True, routing_epoch=None)

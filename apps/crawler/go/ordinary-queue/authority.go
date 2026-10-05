@@ -81,7 +81,7 @@ type Authority struct {
 	epoch               int64
 	ownership           *OwnershipPlan
 	ownershipCursor     int
-	detailCursor        int
+	detailCursors       map[WorkerType]int
 	detailPostingCursor map[string]string
 	ownershipMu         sync.Mutex
 }

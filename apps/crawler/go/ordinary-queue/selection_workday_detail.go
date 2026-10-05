@@ -16,15 +16,23 @@ const detailPostingCursorQuery = "SELECT id::text,source_url FROM job_posting WH
 // Due Redis representations remain the pop authority. Each bounded observation
 // resolves the actual SQL posting and full canonical board before original Lua
 // checks priority, fairness, throttle, configuration and exclusive ownership.
-func (a *Authority) detailCandidates(ctx context.Context, tx pgx.Tx, now float64) ([]ownershipCandidate, error) {
-	details := a.ownership.document.Details
+func (a *Authority) detailCandidates(ctx context.Context, tx pgx.Tx, now float64, worker WorkerType) ([]ownershipCandidate, error) {
+	details := make([]ownershipDetail, 0, len(a.ownership.document.Details))
+	for _, detail := range a.ownership.document.Details {
+		if detail.Worker == worker {
+			details = append(details, detail)
+		}
+	}
 	if len(details) == 0 {
 		return nil, nil
 	}
 	a.ownershipMu.Lock()
-	start := a.detailCursor
+	if a.detailCursors == nil {
+		a.detailCursors = map[WorkerType]int{}
+	}
+	start := a.detailCursors[worker] % len(details)
 	count := min(8, len(details))
-	a.detailCursor = (start + 1) % len(details)
+	a.detailCursors[worker] = (start + 1) % len(details)
 	a.ownershipMu.Unlock()
 	bindings := make(map[string]ownershipDetail, len(details))
 	for _, detail := range details {
@@ -73,7 +81,7 @@ func (a *Authority) detailCandidates(ctx context.Context, tx pgx.Tx, now float64
 		if source != actual {
 			return nil
 		}
-		admitted, err := inspectDetail(board, boardConfig, actual, Simple)
+		admitted, err := inspectDetail(board, boardConfig, actual, worker)
 		if err != nil || admitted.Profile != binding.Profile || !detailDomainMatches(binding.Domain, admitted) || admitted.Domain != domain {
 			return nil
 		}
@@ -138,7 +146,7 @@ func (a *Authority) detailCandidates(ctx context.Context, tx pgx.Tx, now float64
 					continue
 				}
 				q := queuedPosting{posting: p, domain: domain, config: pipe.HGetAll(ctx, "scrape:"+p.id)}
-				for index, prefix := range []string{"ft_scrapes_simple:", "scrapes_simple:"} {
+				for index, prefix := range []string{"ft_scrapes_" + string(worker) + ":", "scrapes_" + string(worker) + ":"} {
 					q.scores[index] = pipe.ZScore(ctx, prefix+domain, p.id)
 				}
 				queued = append(queued, q)
@@ -181,7 +189,7 @@ func (a *Authority) detailCandidates(ctx context.Context, tx pgx.Tx, now float64
 			continue
 		}
 		visited[detail.Domain] = true
-		for index, prefix := range []string{"ft_scrapes_simple:", "scrapes_simple:"} {
+		for index, prefix := range []string{"ft_scrapes_" + string(worker) + ":", "scrapes_" + string(worker) + ":"} {
 			rows, err := a.queue.redis.ZRangeByScoreWithScores(ctx, prefix+detail.Domain, &redis.ZRangeBy{Min: "-inf", Max: number(now), Count: ownershipCandidateBatch}).Result()
 			if err != nil {
 				return nil, ErrObservation

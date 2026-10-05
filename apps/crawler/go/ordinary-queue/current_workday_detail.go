@@ -44,7 +44,7 @@ func (d *CurrentWorkdayDetail) Profile() WorkdayDetailProfile {
 }
 
 func (a *Authority) currentWorkdayDetail(ctx context.Context, tx pgx.Tx, claim *Claim) (*CurrentWorkdayDetail, error) {
-	if !a.valid(claim) || claim.task.Kind != Scrape || claim.task.Worker != Simple || (claim.task.Config["scrape_step"] != "" && claim.task.Config["scrape_step"] != "0") {
+	if !a.valid(claim) || claim.task.Kind != Scrape || (claim.task.Worker != Simple && claim.task.Worker != Browser) || (claim.task.Config["scrape_step"] != "" && claim.task.Config["scrape_step"] != "0") {
 		return nil, ErrUnsupportedProfile
 	}
 	_, boardConfig, err := a.observeDetailOwnershipState(ctx, tx, claim.boardID, false)

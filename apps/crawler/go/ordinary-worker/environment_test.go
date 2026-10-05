@@ -19,7 +19,7 @@ func TestRuntimeEnvironmentExactIdentityAndFrozenDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c.concurrency != 5 || c.leaseTTL != 600*time.Second || c.heartbeat != 120*time.Second || c.shutdownGrace != 30*time.Second || c.taskTimeout != 600*time.Second || c.delay != 2 || c.maxDomains != 10 || c.metricsAddress != "127.0.0.1:9104" || c.dataDirectory != "/app/data" {
+	if c.rendered || c.concurrency != 5 || c.leaseTTL != 600*time.Second || c.heartbeat != 120*time.Second || c.shutdownGrace != 30*time.Second || c.taskTimeout != 600*time.Second || c.delay != 2 || c.maxDomains != 10 || c.metricsAddress != "127.0.0.1:9104" || c.dataDirectory != "/app/data" {
 		t.Fatal("native defaults departed from installed admission contract")
 	}
 	hash := sha256.Sum256(pinnedCA)
@@ -29,6 +29,21 @@ func TestRuntimeEnvironmentExactIdentityAndFrozenDefaults(t *testing.T) {
 	env["ORDINARY_OWNERSHIP_SOURCE_REVISION"] = strings.Repeat("d", 40)
 	if c.source != strings.Repeat("a", 40) {
 		t.Fatal("startup identity was mutable")
+	}
+}
+
+func TestRuntimeRenderedDetailsRequiresExplicitProtectedMode(t *testing.T) {
+	for _, mode := range []string{"", "enabled", "true", "disabled"} {
+		env := fixtureRuntimeEnvironment()
+		env["ORDINARY_GO_RENDERED_DETAILS"] = mode
+		c, err := ReadRuntimeConfig(func(k string) string { return env[k] }, strings.Repeat("a", 40))
+		if mode == "" || mode == "enabled" {
+			if err != nil || c.rendered != (mode == "enabled") {
+				t.Fatal("protected renderer selection differs", err)
+			}
+		} else if err != ErrStartup {
+			t.Fatal("ambiguous renderer mode accepted")
+		}
 	}
 }
 func TestRuntimeEnvironmentRejectsMissingMalformedAndUnsafeBounds(t *testing.T) {

@@ -91,6 +91,10 @@ func InspectJSONLDDetail(boardID string, config map[string]string, source string
 }
 
 func inspectDetailOwnership(boardID string, config map[string]string) (WorkdayDetailProfile, error) {
+	if profile, err := InspectRenderedDetail(boardID, config, config["board_url"], Browser); err == nil {
+		profile.Domain = "*"
+		return profile, nil
+	}
 	if profile, err := InspectDOMDetail(boardID, config, config["board_url"], Simple); err == nil {
 		profile.Domain = "*"
 		return profile, nil
@@ -109,6 +113,9 @@ func inspectDetailOwnership(boardID string, config map[string]string) (WorkdayDe
 }
 
 func inspectDetail(boardID string, config map[string]string, source string, worker WorkerType) (WorkdayDetailProfile, error) {
+	if profile, err := InspectRenderedDetail(boardID, config, source, worker); err == nil {
+		return profile, nil
+	}
 	if profile, err := InspectDOMDetail(boardID, config, source, worker); err == nil {
 		return profile, nil
 	}

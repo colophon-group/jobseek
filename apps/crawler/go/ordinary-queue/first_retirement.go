@@ -188,12 +188,22 @@ func firstRetirementDetails(ctx context.Context, tx pgx.Tx, client *Client, plan
 	if err != nil {
 		return nil, err
 	}
-	inflight, err := client.redis.ZRange(ctx, "inflight:simple", 0, -1).Result()
-	if err != nil {
-		return nil, ErrObservation
+	type routedLease struct {
+		worker WorkerType
+		key    string
 	}
-	for _, key := range inflight {
-		parts := strings.Split(key, "|")
+	var inflight []routedLease
+	for _, worker := range []WorkerType{Simple, Browser} {
+		keys, err := client.redis.ZRange(ctx, "inflight:"+string(worker), 0, -1).Result()
+		if err != nil {
+			return nil, ErrObservation
+		}
+		for _, key := range keys {
+			inflight = append(inflight, routedLease{worker, key})
+		}
+	}
+	for _, lease := range inflight {
+		parts := strings.Split(lease.key, "|")
 		if len(parts) != 3 {
 			return nil, ErrAuthorityLost
 		}
@@ -204,6 +214,9 @@ func firstRetirementDetails(ctx context.Context, tx pgx.Tx, client *Client, plan
 			return nil, ErrAuthorityLost
 		}
 		if known, ok := items[parts[2]]; ok {
+			if bindings[known.board].Worker != lease.worker {
+				return nil, ErrAuthorityLost
+			}
 			domain, err := detailSourceDomain(bindings[known.board], known.source)
 			if err != nil || domain != parts[1] {
 				return nil, ErrAuthorityLost
@@ -221,6 +234,9 @@ func firstRetirementDetails(ctx context.Context, tx pgx.Tx, client *Client, plan
 			return nil, err
 		}
 		if binding, owned := bindings[item.board]; owned {
+			if binding.Worker != lease.worker {
+				return nil, ErrAuthorityLost
+			}
 			domain, err := detailSourceDomain(binding, item.source)
 			if err != nil || domain != parts[1] {
 				return nil, ErrAuthorityLost
@@ -249,10 +265,11 @@ func firstRetirementDetails(ctx context.Context, tx pgx.Tx, client *Client, plan
 		probes := make([][3]*redis.Cmd, len(batch))
 		for i, id := range batch {
 			domain := items[id].domain
+			worker := string(bindings[items[id].board].Worker)
 			probes[i] = [3]*redis.Cmd{
-				pipe.Do(ctx, "ZMSCORE", "inflight:simple", "scrape|"+domain+"|"+id),
-				pipe.Do(ctx, "ZMSCORE", "ft_scrapes_simple:"+domain, id),
-				pipe.Do(ctx, "ZMSCORE", "scrapes_simple:"+domain, id),
+				pipe.Do(ctx, "ZMSCORE", "inflight:"+worker, "scrape|"+domain+"|"+id),
+				pipe.Do(ctx, "ZMSCORE", "ft_scrapes_"+worker+":"+domain, id),
+				pipe.Do(ctx, "ZMSCORE", "scrapes_"+worker+":"+domain, id),
 			}
 		}
 		if _, err := pipe.Exec(ctx); err != nil {

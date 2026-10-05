@@ -1,0 +1,38 @@
+{
+  "schema": "jobseek.native-rendered-detail-candidate/v1",
+  "candidate_version": "0.13.935",
+  "scope": "Existing ordinary Go worker claims configured DOM and JSON-LD browser details through pinned self-hosted Lightpanda, shared canonical enrichment and original write/queue authority.",
+  "full_migration_complete": false,
+  "production_adoption": false,
+  "profiles": [
+    "dom.rendered-detail/v1",
+    "jsonld.rendered-detail/v1"
+  ],
+  "authority": "Exact canonical configuration, Browser queue lease, SQL epoch/ownership barriers, current posting and original cold projection publication. Verified B0 browser boards remain exclusively B0-owned.",
+  "browser_transport": {
+    "origin": "Existing B0 pinned mutual-TLS protobuf client shared with ordinary worker",
+    "service": "Protected fixed private renderer endpoint; board configuration cannot choose host or credential paths",
+    "slots": 4,
+    "result_bytes_bound": 2097152,
+    "default_wait": "networkidle",
+    "default_fallback": "domcontentloaded",
+    "default_timeout_ms": 30000,
+    "fallback_timeout_ms_bound": 5000,
+    "dom_transport_retries": 1,
+    "dom_challenge_retries": 1,
+    "jsonld_empty_title_retries": 1
+  },
+  "local_evidence": {
+    "combined_queue_race_seconds": 48.996,
+    "combined_worker_race_seconds": 114.674,
+    "browser_owned_regression": "DOM/JSON-LD held documents persist titles, descriptions, employment, salary and location enrichment; pending descriptions retain original upload/export consumers; Browser deadlines match canonical SQL and leases settle.",
+    "failure_policy_regression": "Header/meta reservations precede HTTP disappearance; fresh reservation/inactive state, gone/transient responses, cancellation and changed ownership preserve canonical content and correct terminal authority.",
+    "cold_reversal_regression": "Active, SQL-committed-before-ACK, claim-before-SQL and inactive Browser detail attempts restore their actual host and canonical deadline; verified B0 overlap refuses publication.",
+    "wire_regression": "Pinned mutual-TLS success and one-use reservation, wrong HELLO/backend, unknown protobuf fields, trailing data and cancellation; navigation fallback and retry attribution.",
+    "required_python_ownership_cutover_tests": 37,
+    "projection_credential_contract_tests": 10
+  },
+  "unsupported_configuration": "Actions, custom headers/proxy/TLS/redirect policy, fetch transforms, description fallbacks, linked descriptions and iCIMS iframe recovery retain their existing owner until native support is delivered.",
+  "delivery_requirements": "Integrate the merged fleet-stage batching fix, run combined required CI and installed-image parity, deploy through original immutable workflow after supported complete baseline reversal, perform fresh source/receipt-bound admission excluding B0-owned boards, activate exact ownership and prove natural writes/cold reversal. Resource and full-runtime Python retirement proof remain outstanding.",
+  "staged_cancellation_recovery": "Cancel a never-active staged plan even when its monitor admission overlapped B0. Canonical B0 witness, source/epoch/barriers and atomic audit/exact projection checks remain mandatory; active plans and activation continue to refuse overlap. Canonical records, B0 queues and inert SQL plan history are preserved."
+}

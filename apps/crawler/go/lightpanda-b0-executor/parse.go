@@ -19,14 +19,20 @@ var ErrBotChallenge = errors.New("rendered page is a bot challenge")
 // ParseRendered consumes the held result exactly once without a subprocess or
 // origin request. All mutable database identity checks remain the caller's job.
 func ParseRendered(task b0task.Task, result *runtimev1.BrowserResult) (map[string]any, error) {
+	return ParseRenderedDetail(task.Envelope.SourceURL, task.Envelope.ScraperType, task.Envelope.ParserConfig, result)
+}
+
+// ParseRenderedDetail consumes only the already-held document and parser inputs.
+// It does not accept a B0 envelope or confer any queue/database authority.
+func ParseRenderedDetail(sourceURL, scraperType string, parserConfig json.RawMessage, result *runtimev1.BrowserResult) (map[string]any, error) {
 	if result != nil && result.GetSuccess() != nil && result.GetSuccess().ResourcePolicy == nil {
 		return nil, publisherpolicy.ErrSignals
 	}
-	html, err := RenderedHTML(result, task.Envelope.SourceURL)
+	html, err := RenderedHTML(result, sourceURL)
 	if err != nil {
 		return nil, err
 	}
-	value, err := b0task.ParseCanonicalValue(task.Envelope.ParserConfig)
+	value, err := b0task.ParseCanonicalValue(parserConfig)
 	if err != nil {
 		return nil, ErrProtocol
 	}
@@ -35,7 +41,7 @@ func ParseRendered(task b0task.Task, result *runtimev1.BrowserResult) (map[strin
 		return nil, ErrProtocol
 	}
 	var content map[string]any
-	switch task.Envelope.ScraperType {
+	switch scraperType {
 	case "dom":
 		classification, err := dom.ClassifyRendered(html, config, result.GetSuccess().FinalUrl)
 		if err != nil {
@@ -43,14 +49,14 @@ func ParseRendered(task b0task.Task, result *runtimev1.BrowserResult) (map[strin
 		}
 		switch classification["classification"] {
 		case "gone":
-			return nil, &NavigationHTTPError{RequestedURL: task.Envelope.SourceURL, ResponseURL: result.GetSuccess().FinalUrl, Status: 404}
+			return nil, &NavigationHTTPError{RequestedURL: sourceURL, ResponseURL: result.GetSuccess().FinalUrl, Status: 404}
 		case "challenge":
 			return nil, ErrBotChallenge
 		case "okay":
 		default:
 			return nil, ErrRenderedResult
 		}
-		content, err = dom.Parse(html, config, &task.Envelope.SourceURL)
+		content, err = dom.Parse(html, config, &sourceURL)
 		if err != nil {
 			return nil, err
 		}
@@ -58,10 +64,10 @@ func ParseRendered(task b0task.Task, result *runtimev1.BrowserResult) (map[strin
 		// Match the existing JSON-LD command's decoder at the package boundary.
 		// Preserve the original typed defaults for the later common fill step.
 		var commandConfig map[string]any
-		if json.Unmarshal(task.Envelope.ParserConfig, &commandConfig) != nil {
+		if json.Unmarshal(parserConfig, &commandConfig) != nil {
 			return nil, ErrProtocol
 		}
-		content, err = jsonld.Parse(task.Envelope.SourceURL, []byte(html), commandConfig)
+		content, err = jsonld.Parse(sourceURL, []byte(html), commandConfig)
 		if err != nil {
 			return nil, err
 		}

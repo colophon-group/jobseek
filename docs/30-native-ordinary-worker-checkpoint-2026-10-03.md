@@ -1,5 +1,54 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Broader native rendered details — 2026-10-05
+
+The full migration goal remains active. [PR #10308](https://github.com/colophon-group/jobseek/pull/10308)
+merged v0.13.934 as `ad31dacbcfe9c132cd75d5e46fbcc3d3b3e3a5d0`; reviewed
+and merged trees match. Required CI, installed-image parity and Crawler Deploy
+Gate passed. Before merging, the original source933 B0 rollback and selector
+clear completed, and independent readback proved all six exact-image baseline
+writers healthy/restart-armed at epoch180, no owner receipts/projections,
+no current active write fences and no live administrative containers.
+Its [original immutable deployment](https://github.com/colophon-group/jobseek/actions/runs/37260481257)
+completed and promoted v0.13.934. B0 activated at epoch181 and fresh admission
+staged 5,884 monitors/2,052 detail boards through the original wrapper. Activation
+correctly refused two monitor boards already owned by B0. Its original pending
+recovery also refused that inert overlap, leaving the lane contained with the
+pending identity retained. No ordinary production adoption is claimed.
+
+v0.13.935 therefore also fixes cancellation of a never-active staged plan.
+Cancellation still verifies canonical B0 configuration, current source/epoch,
+exclusive SQL/host scope, the original B0 queue audit and exact projection CAS.
+It leaves canonical data, B0 ownership and inert staged SQL history unchanged.
+Activation and active retirement continue to refuse overlap. The corrected
+production admission must exclude every verified B0 board before staging.
+Recover the retained source934 pending identity through the original wrapper
+and its supported exact-source/image compatibility administrator, prove the
+restored stack, then continue the corrected full-cohort adoption.
+
+v0.13.935 adds configured DOM and JSON-LD Browser detail execution to the existing
+ordinary Go worker. It shares the B0 pinned mutual-TLS protobuf client and pure
+held-document parser, preserving the existing canonical enrichment, posting
+writer, publisher policy and Browser queue settlement. Four renderer slots keep
+the service bound. Request defaults and bounded retries match existing browser
+navigation. Verified B0 boards retain exclusive browser ownership, and startup
+refuses a Browser ownership plan without the protected renderer selector.
+Unsupported actions, custom transports, linked/fallback descriptions and iCIMS
+iframe recovery retain their current owner until the native replacement exists.
+
+Real PostgreSQL/Redis tests cover rendered canonical title/description/salary/
+location fields, pending descriptions, publisher reservations before HTTP status,
+fresh inactive/reserved state, disappearance, transient failures, cancellation,
+changed authority and Browser settlement. Cold reversal covers interrupted and
+committed-before-ACK details, actual source hosts and canonical deadlines;
+overlapping B0 ownership refuses publication. The combined queue race suite
+passed in48.996s and the combined worker race suite passed in114.674s. Shared client/navigation and
+supervisor race tests pass, and37 required Python ownership/cutover tests pass.
+[Portable candidate evidence](evidence/go-native-rendered-details-candidate-2026-10-05.json)
+records this scope. This candidate is not selected in production. Remaining
+enabled profiles, runtime consumers, resource proof and full Python retirement
+remain required before completion.
+
 ## Full-fleet ownership staging correction — 2026-10-05
 
 The full migration goal remains active. [PR #10307](https://github.com/colophon-group/jobseek/pull/10307)
