@@ -1,0 +1,40 @@
+{
+  "schema": "jobseek.native-local-verification/v1",
+  "version": "0.13.945",
+  "profiles": [
+    "breezy.api-urls/v1",
+    "gem.token-skip/v1"
+  ],
+  "configuration_census": {
+    "source_revision": "09996a260785845f3b94a9fafad213d2b622ea3f",
+    "enabled": {
+      "breezy": 13,
+      "gem": 13
+    },
+    "canonical_admitted": 26,
+    "cached_admitted": 26,
+    "production_native_adoption": false
+  },
+  "implementation": [
+    "Existing Go monitor/profile admission, verified direct transport, shared canonical/detail lifecycle, Redis queues and native cold retirement.",
+    "Breezy portal/board/slug precedence, one JSON list, URL/friendly-ID inventory and existing JSONLD details; Gem one public list, full structured fields and shared enrichment.",
+    "Preserve current30-second request, publisher policy before parsing,50000inventory threshold semantics, three-existing-attempt failure settlement and empty-drop guard.",
+    "Actual Python frozen request/output corpus includes falsy URL/employment fields and central location-type map; trailing JSON rejected."
+  ],
+  "checks": {
+    "actual_python_reference_cases": 9,
+    "real_worker_cases": 14,
+    "cold_retirement_cases": 6,
+    "full_enrichment_race": "PASS24.250s",
+    "full_queue_race": "PASS103.132s",
+    "full_worker_race_final": "PASS183.643s",
+    "pure_worker_final": "PASS4.513s",
+    "python_contracts": "18passed,10.33s",
+    "vet_mod_tidy_ruff": "PASS"
+  },
+  "limitations": [
+    "Local configuration and canonical operational verification only; no native Breezy/Gem production ownership or live provider parity claim.",
+    "Fresh required CI/gate and exact source/image admission/cutover required after944 lands.",
+    "Full enabled coverage, production Python consumers, whole-lane resource comparison, rollback window and retirement remain incomplete."
+  ]
+}

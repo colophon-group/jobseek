@@ -49,6 +49,11 @@ func discoverICIMSInventory(ctx context.Context, verified *http.Client, profile 
 // Classic listings never follow redirects. Jibe pages retain the sealed client's
 // reviewed redirect policy and share a per-claim cookie jar with earlier pages.
 func fetchICIMSPage(ctx context.Context, verified *http.Client, r dom.ICIMSRequest) ([]byte, *GreenhouseResponse, error) {
+	return fetchListingPage(ctx, verified, r, 2_000_000)
+}
+
+// Shared static provider fetch; the caller owns its existing decoded HTML limit.
+func fetchListingPage(ctx context.Context, verified *http.Client, r dom.ICIMSRequest, maxHTMLChars int) ([]byte, *GreenhouseResponse, error) {
 	client := *verified
 	if !r.FollowRedirects {
 		client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
@@ -109,7 +114,7 @@ func fetchICIMSPage(ctx context.Context, verified *http.Client, r dom.ICIMSReque
 							} else if text != "" {
 								count := 0
 								for offset := range text {
-									if count == 2_000_000 {
+									if count == maxHTMLChars {
 										text = text[:offset]
 										break
 									}

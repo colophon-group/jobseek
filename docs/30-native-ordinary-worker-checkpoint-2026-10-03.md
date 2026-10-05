@@ -1,10 +1,10 @@
 # Native ordinary worker continuation, 2026-10-03
 
-## Current delivery — 2026-10-05 19:03 UTC
+## Current delivery — 2026-10-05 20:13 UTC
 
 Lightpanda **1.0.0**, released October 2, remains the newest stable release in
 [the official release list](https://github.com/lightpanda-io/browser/releases),
-reverified at 18:43 UTC. Its immutable renderer and restart/reboot acceptance
+reverified on October 5. Its immutable renderer and restart/reboot acceptance
 remain verified.
 
 [API detail PR #10327](https://github.com/colophon-group/jobseek/pull/10327)
@@ -13,7 +13,7 @@ merged as `09996a260785845f3b94a9fafad213d2b622ea3f`; the original immutable
 completed and promoted. Fresh reconciliation checked 1,436,577 scheduled posting
 routes and admitted 6,291 monitor boards and 2,461 detail boards covering 1,412,265
 scheduled postings. Thirty-seven detail boards retain legacy ownership because
-their cache projection differs. Original B0 activation at epoch 191 recorded five
+their per-posting cache routes differ. Original B0 activation at epoch 191 recorded five
 committed renders before recovery; its counters reset during complete restart.
 [Production evidence](evidence/go-native-http-api943-production-2026-10-05.json).
 
@@ -29,6 +29,12 @@ startup rejection. The original wrapper contained all writers, and its supported
 readback verifies six baseline health responses at 200, B0 claimant at 204,
 unchanged B0 epoch/receipt, 22 ready records, zero inflight/dead and absent ordinary
 receipt. Native ordinary production processing remains unverified.
+Before the incoming944release, the original B0 rollback restored all22ready
+records and retired epoch192. Original selector clear succeeded. Independent
+20:13 UTC readback verifies six healthy restart-armed baseline services, no
+active SQL plan or current fence, no native queue owners/receipts/selectors,
+and no live administrative oneoff.
+[Cold baseline evidence](evidence/go-native-http-api943-before-icims944-baseline-2026-10-05.json).
 [Activation and recovery evidence](evidence/go-native-http-api943-activation-recovery-2026-10-05.json).
 
 The 944 candidate fixes the legacy validator's missing Oracle API, embedded
@@ -56,6 +62,44 @@ enabled profiles and mandatory Python consumers through existing paths. Comparab
 whole-lane resources, cold reversal and the rollback window precede final runtime
 retirement. Full migration remains active and incomplete; following entries are
 historical.
+
+
+The pending 945 batch adds **106 direct configurations** through the existing
+native queue, sealed transport and canonical writer: 13 Breezy, 13 Gem,
+20 JazzHR, 36 Gupy and 24 Phenom. Canonical and cached configuration bindings
+match for this candidate cohort. Gem uses the existing shared enrichment path;
+the other inventories schedule their existing detail contracts separately.
+Configuration admission does not establish production ownership or live upstream
+processing.
+
+The actual Python comparison corpus contains 45 request/inventory cases. Real
+PostgreSQL/Redis checks cover 55 worker cases and 15 cold-reversal cases, including
+publisher policy, complete and incomplete inventories, canonical writes, queue
+conservation, interrupted and committed-before-ACK retirement, and changed-binding
+refusal. The earlier 82-board batch's final full queue/worker race suites passed
+106.642s/214.993s. The expanded cohort's final full queue/worker race suites pass
+109.597s/212.601s. Focused Phenom/existing-sitemap worker checks, cold retirement,
+the sitemap module, vet/tidy, Ruff and 93 Python runtime contracts also pass.
+
+Phenom preserves locale filtering, single-language shards, selected-child failure,
+UTM normalization and publisher resource attribution. All 31 enabled boards supply
+a persisted sitemap root; 24 direct configurations are admitted. Seven proxy
+configurations remain with their current owner until native proxy parity is proven.
+The existing task deadline and body budgets apply, and an incomplete bounded union
+cannot authorize disappearance effects.
+
+Local evidence: [Breezy/Gem](evidence/go-native-breezy-gem-local-2026-10-05.json),
+[JazzHR](evidence/go-native-jazzhr-local-2026-10-05.json),
+[Gupy](evidence/go-native-gupy-local-2026-10-05.json). [Phenom](evidence/go-native-phenom-local-2026-10-05.json). Publish the verified
+combined work as one 945 release, including the startup/iCIMS prerequisite if it
+has not yet merged. Rebase only the batch's own commits if 944 merges first.
+
+The 944 PR remains ready at `b94d8a1d6531192085d0c0744e26949bab3be5c2`.
+Native execution and installed-image checks passed. Python typing passed on retry;
+the company-reference job again failed to acquire a GitHub hosted runner. Its
+unchanged-source fourth attempt is pending. Required CI and Crawler Deploy Gate
+must both pass before a fresh exact-head merge. The verified serving baseline
+remains healthy at epoch 192; no native owner or selector is active.
 
 
 ## Direct HTTP API details — 2026-10-05

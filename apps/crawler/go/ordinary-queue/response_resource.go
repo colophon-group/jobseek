@@ -19,6 +19,9 @@ func validGreenhouseResponseResource(resource string) bool {
 }
 
 func initialMonitorResourceMatches(profile GreenhouseMonitorProfile, resource string) bool {
+	if profile.Provider == "phenom" {
+		return PhenomMonitorResourceMatches(profile, resource)
+	}
 	if profile.Provider == "sitemap" {
 		return SitemapMonitorResourceMatches(profile, resource)
 	}

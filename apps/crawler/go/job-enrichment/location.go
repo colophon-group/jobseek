@@ -197,6 +197,21 @@ func locationMap(name, key string) string { return locationConfig.Maps[name][key
 func normalizeLocationType(s string) string {
 	return locationMap("_JOB_LOCATION_TYPE_MAP", lower(locationTrim(s)))
 }
+
+// NormalizeJobLocationType shares the existing canonical enum map with provider
+// parsers, including the Python parenthetical-qualifier form. Empty means unknown.
+func NormalizeJobLocationType(raw string) string {
+	key := lower(locationTrim(raw))
+	if value := locationMap("_JOB_LOCATION_TYPE_MAP", key); value != "" {
+		return value
+	}
+	if strings.HasSuffix(key, ")") {
+		if index := strings.Index(key, " ("); index >= 0 {
+			return locationMap("_JOB_LOCATION_TYPE_MAP", key[:index])
+		}
+	}
+	return ""
+}
 func ptrID(id int64) *int64 {
 	if id == 0 {
 		return nil

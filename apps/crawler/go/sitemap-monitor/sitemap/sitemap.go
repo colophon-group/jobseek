@@ -565,6 +565,10 @@ func stripUTM(rawURL string) string {
 	return parsed.String()
 }
 
+// CanonicalURL applies the sitemap URL normalization shared by native inventory
+// adapters. It does not grant transport, queue or persistence authority.
+func CanonicalURL(rawURL string) string { return stripUTM(strings.TrimSpace(rawURL)) }
+
 func redactedURL(rawURL string) string {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {

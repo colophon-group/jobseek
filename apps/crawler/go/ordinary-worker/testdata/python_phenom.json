@@ -1,0 +1,922 @@
+{
+  "cases": [
+    {
+      "name": "trailing-xml-comment",
+      "resources": {
+        "/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://example.com/job/one?utm_source=test&amp;x=1</loc></url><url><loc>https://example.com/Job?job_id=two</loc></url><url><loc>https://example.com/home</loc></url><url><loc>https://example.com/job/one?x=1</loc></url></urlset><!-- carrier -->",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        }
+      },
+      "metadata": {
+        "sitemap_url": "https://example.com/sitemap.xml"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap.xml"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": [
+          "https://example.com/Job?job_id=two",
+          "https://example.com/job/one?x=1"
+        ],
+        "new_sitemap_url": null
+      }
+    },
+    {
+      "name": "flat-normalization",
+      "resources": {
+        "/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://example.com/job/one?utm_source=test&amp;x=1</loc></url><url><loc>https://example.com/Job?job_id=two</loc></url><url><loc>https://example.com/home</loc></url><url><loc>https://example.com/job/one?x=1</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        }
+      },
+      "metadata": {
+        "sitemap_url": "https://example.com/sitemap.xml"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap.xml"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": [
+          "https://example.com/Job?job_id=two",
+          "https://example.com/job/one?x=1"
+        ],
+        "new_sitemap_url": null
+      }
+    },
+    {
+      "name": "exclude",
+      "resources": {
+        "/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://example.com/job/one?utm_source=test&amp;x=1</loc></url><url><loc>https://example.com/Job?job_id=two</loc></url><url><loc>https://example.com/home</loc></url><url><loc>https://example.com/job/one?x=1</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        }
+      },
+      "metadata": {
+        "sitemap_url": "https://example.com/sitemap.xml",
+        "url_exclude": "one"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap.xml"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": [
+          "https://example.com/Job?job_id=two"
+        ],
+        "new_sitemap_url": null
+      }
+    },
+    {
+      "name": "default-locales",
+      "resources": {
+        "/sitemap.xml": {
+          "body": "<sitemapindex><sitemap><loc>https://example.com/sitemap-aa-en.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-bb-de.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-cc-es-mx.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-content.xml</loc></sitemap></sitemapindex>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-aa-en.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/en</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-bb-de.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/de</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-cc-es-mx.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/es</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-content.xml": {
+          "body": "<urlset><url><loc>https://example.com/home</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        }
+      },
+      "metadata": {
+        "sitemap_url": "https://example.com/sitemap.xml"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-aa-en.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-content.xml"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": [
+          "https://example.com/job/en"
+        ],
+        "new_sitemap_url": null
+      }
+    },
+    {
+      "name": "custom-locales",
+      "resources": {
+        "/sitemap.xml": {
+          "body": "<sitemapindex><sitemap><loc>https://example.com/sitemap-aa-en.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-bb-de.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-cc-es-mx.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-content.xml</loc></sitemap></sitemapindex>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-aa-en.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/en</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-bb-de.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/de</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-cc-es-mx.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/es</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-content.xml": {
+          "body": "<urlset><url><loc>https://example.com/home</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        }
+      },
+      "metadata": {
+        "sitemap_url": "https://example.com/sitemap.xml",
+        "keep_languages": [
+          "EN",
+          "ES-MX"
+        ]
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-aa-en.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-cc-es-mx.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-content.xml"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": [
+          "https://example.com/job/en",
+          "https://example.com/job/es"
+        ],
+        "new_sitemap_url": null
+      }
+    },
+    {
+      "name": "empty-locales-default",
+      "resources": {
+        "/sitemap.xml": {
+          "body": "<sitemapindex><sitemap><loc>https://example.com/sitemap-aa-en.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-bb-de.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-cc-es-mx.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-content.xml</loc></sitemap></sitemapindex>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-aa-en.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/en</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-bb-de.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/de</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-cc-es-mx.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/es</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-content.xml": {
+          "body": "<urlset><url><loc>https://example.com/home</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        }
+      },
+      "metadata": {
+        "sitemap_url": "https://example.com/sitemap.xml",
+        "keep_languages": []
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-aa-en.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-content.xml"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": [
+          "https://example.com/job/en"
+        ],
+        "new_sitemap_url": null
+      }
+    },
+    {
+      "name": "single-language-shards",
+      "resources": {
+        "/sitemap.xml": {
+          "body": "<sitemapindex><sitemap><loc>https://example.com/sitemap-cc-es-mx.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-dd-es-mx.xml</loc></sitemap></sitemapindex>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-cc-es-mx.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/one</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-dd-es-mx.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/two</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        }
+      },
+      "metadata": {
+        "sitemap_url": "https://example.com/sitemap.xml"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-cc-es-mx.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-dd-es-mx.xml"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": [
+          "https://example.com/job/one",
+          "https://example.com/job/two"
+        ],
+        "new_sitemap_url": null
+      }
+    },
+    {
+      "name": "nested",
+      "resources": {
+        "/sitemap.xml": {
+          "body": "<sitemapindex><sitemap><loc>https://example.com/nested.xml</loc></sitemap></sitemapindex>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/nested.xml": {
+          "body": "<sitemapindex><sitemap><loc>https://example.com/sitemap-aa-en.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-bb-de.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-cc-es-mx.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-content.xml</loc></sitemap></sitemapindex>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-aa-en.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/en</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-bb-de.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/de</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-cc-es-mx.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/es</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-content.xml": {
+          "body": "<urlset><url><loc>https://example.com/home</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        }
+      },
+      "metadata": {
+        "sitemap_url": "https://example.com/sitemap.xml"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/nested.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-aa-en.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-content.xml"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": [
+          "https://example.com/job/en"
+        ],
+        "new_sitemap_url": null
+      }
+    },
+    {
+      "name": "root-nonxml",
+      "resources": {
+        "/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://example.com/job/one?utm_source=test&amp;x=1</loc></url><url><loc>https://example.com/Job?job_id=two</loc></url><url><loc>https://example.com/home</loc></url><url><loc>https://example.com/job/one?x=1</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/html"
+          }
+        }
+      },
+      "metadata": {
+        "sitemap_url": "https://example.com/sitemap.xml"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap.xml"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": [],
+        "new_sitemap_url": null
+      }
+    },
+    {
+      "name": "root-invalid",
+      "resources": {
+        "/sitemap.xml": {
+          "body": "<bad",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        }
+      },
+      "metadata": {
+        "sitemap_url": "https://example.com/sitemap.xml"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap.xml"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": [],
+        "new_sitemap_url": null
+      }
+    },
+    {
+      "name": "root-trailing-xml",
+      "resources": {
+        "/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://example.com/job/one?utm_source=test&amp;x=1</loc></url><url><loc>https://example.com/Job?job_id=two</loc></url><url><loc>https://example.com/home</loc></url><url><loc>https://example.com/job/one?x=1</loc></url></urlset><urlset/>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        }
+      },
+      "metadata": {
+        "sitemap_url": "https://example.com/sitemap.xml"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap.xml"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": [],
+        "new_sitemap_url": null
+      }
+    },
+    {
+      "name": "root-missing",
+      "resources": {
+        "/sitemap.xml": {
+          "body": "",
+          "status": 404,
+          "headers": {
+            "Content-Type": "text/xml",
+            "TDM-Reservation": "1"
+          }
+        }
+      },
+      "metadata": {
+        "sitemap_url": "https://example.com/sitemap.xml"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap.xml"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": [],
+        "new_sitemap_url": null
+      }
+    },
+    {
+      "name": "root-header-policy",
+      "resources": {
+        "/sitemap.xml": {
+          "body": "<bad",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml",
+            "TDM-Reservation": "1",
+            "TDM-Policy": "root-policy"
+          }
+        }
+      },
+      "metadata": {
+        "sitemap_url": "https://example.com/sitemap.xml"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap.xml"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "kind": "TDMReservedError"
+      }
+    },
+    {
+      "name": "child-missing",
+      "resources": {
+        "/sitemap.xml": {
+          "body": "<sitemapindex><sitemap><loc>https://example.com/sitemap-aa-en.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-bb-de.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-cc-es-mx.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-content.xml</loc></sitemap></sitemapindex>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-aa-en.xml": {
+          "body": "",
+          "status": 410,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-bb-de.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/de</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-cc-es-mx.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/es</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-content.xml": {
+          "body": "<urlset><url><loc>https://example.com/home</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        }
+      },
+      "metadata": {
+        "sitemap_url": "https://example.com/sitemap.xml"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-aa-en.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-content.xml"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": [],
+        "new_sitemap_url": null
+      }
+    },
+    {
+      "name": "child-invalid",
+      "resources": {
+        "/sitemap.xml": {
+          "body": "<sitemapindex><sitemap><loc>https://example.com/sitemap-aa-en.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-bb-de.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-cc-es-mx.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-content.xml</loc></sitemap></sitemapindex>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-aa-en.xml": {
+          "body": "<bad",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-bb-de.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/de</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-cc-es-mx.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/es</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-content.xml": {
+          "body": "<urlset><url><loc>https://example.com/home</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        }
+      },
+      "metadata": {
+        "sitemap_url": "https://example.com/sitemap.xml"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-aa-en.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-content.xml"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": [],
+        "new_sitemap_url": null
+      }
+    },
+    {
+      "name": "child-fail503",
+      "resources": {
+        "/sitemap.xml": {
+          "body": "<sitemapindex><sitemap><loc>https://example.com/sitemap-aa-en.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-bb-de.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-cc-es-mx.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-content.xml</loc></sitemap></sitemapindex>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-aa-en.xml": {
+          "body": "",
+          "status": 503,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-bb-de.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/de</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-cc-es-mx.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/es</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-content.xml": {
+          "body": "<urlset><url><loc>https://example.com/home</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        }
+      },
+      "metadata": {
+        "sitemap_url": "https://example.com/sitemap.xml"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-aa-en.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-aa-en.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-aa-en.xml"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "kind": "PaginationFetchError"
+      }
+    },
+    {
+      "name": "child-fail403",
+      "resources": {
+        "/sitemap.xml": {
+          "body": "<sitemapindex><sitemap><loc>https://example.com/sitemap-aa-en.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-bb-de.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-cc-es-mx.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-content.xml</loc></sitemap></sitemapindex>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-aa-en.xml": {
+          "body": "",
+          "status": 403,
+          "headers": {
+            "Content-Type": "text/xml",
+            "TDM-Reservation": "1"
+          }
+        },
+        "/sitemap-bb-de.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/de</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-cc-es-mx.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/es</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-content.xml": {
+          "body": "<urlset><url><loc>https://example.com/home</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        }
+      },
+      "metadata": {
+        "sitemap_url": "https://example.com/sitemap.xml"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-aa-en.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-aa-en.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-aa-en.xml"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "kind": "PaginationFetchError"
+      }
+    },
+    {
+      "name": "child-header-policy",
+      "resources": {
+        "/sitemap.xml": {
+          "body": "<sitemapindex><sitemap><loc>https://example.com/sitemap-aa-en.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-bb-de.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-cc-es-mx.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-content.xml</loc></sitemap></sitemapindex>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-aa-en.xml": {
+          "body": "<bad",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml",
+            "TDM-Reservation": "1",
+            "TDM-Policy": "child-policy"
+          }
+        },
+        "/sitemap-bb-de.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/de</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-cc-es-mx.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/es</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-content.xml": {
+          "body": "<urlset><url><loc>https://example.com/home</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        }
+      },
+      "metadata": {
+        "sitemap_url": "https://example.com/sitemap.xml"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-aa-en.xml"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "kind": "TDMReservedError"
+      }
+    },
+    {
+      "name": "child-meta-policy",
+      "resources": {
+        "/sitemap.xml": {
+          "body": "<sitemapindex><sitemap><loc>https://example.com/sitemap-aa-en.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-bb-de.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-cc-es-mx.xml</loc></sitemap><sitemap><loc>https://example.com/sitemap-content.xml</loc></sitemap></sitemapindex>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-aa-en.xml": {
+          "body": "<meta name=\"tdm-reservation\" content=\"1\">",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-bb-de.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/de</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-cc-es-mx.xml": {
+          "body": "<urlset><url><loc>https://example.com/job/es</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        },
+        "/sitemap-content.xml": {
+          "body": "<urlset><url><loc>https://example.com/home</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "Content-Type": "text/xml"
+          }
+        }
+      },
+      "metadata": {
+        "sitemap_url": "https://example.com/sitemap.xml"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/sitemap-aa-en.xml"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "kind": "TDMReservedError"
+      }
+    }
+  ]
+}

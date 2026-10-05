@@ -1,0 +1,123 @@
+{
+  "cases": [
+    {
+      "name": "links",
+      "status": 200,
+      "body": "<div id=\"job_listings_wrapper\"><a href=\"/apply/jobs/details/A1?utm=x#apply\">A</a><a href=\"/apply/jobs/details/A1/\">dup</a><a href=\"/apply/jobs/details/B-2\">B</a><script>var html = '<a href=\"/apply/jobs/details/script\">hidden</a>';</script><a href=\"https://other.applytojob.com/apply/jobs/details/foreign\">foreign</a><a href=\"https://fixture.applytojob.com:443/apply/jobs/details/port\">port</a><a href=\"/apply/jobs/details/%41\">escaped</a><a href=\"/apply/jobs/details/extra/path\">extra</a><a href=\"/APPLY/jobs/details/upper\">upper</a><a href=\"/apply/jobs/details/工程師\">unicode</a><a href=\"/apply/jobs/details/X_Y\">X</a></div>",
+      "headers": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": [
+          "https://fixture.applytojob.com/apply/jobs/details/A1",
+          "https://fixture.applytojob.com/apply/jobs/details/B-2",
+          "https://fixture.applytojob.com/apply/jobs/details/X_Y"
+        ]
+      }
+    },
+    {
+      "name": "empty",
+      "status": 200,
+      "body": "<div id=\"job_listings_wrapper\"></div>",
+      "headers": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": []
+      }
+    },
+    {
+      "name": "missing-marker",
+      "status": 200,
+      "body": "<a href=\"/apply/jobs/details/A1\">A</a>",
+      "headers": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "kind": "ValueError"
+      }
+    },
+    {
+      "name": "challenge",
+      "status": 200,
+      "body": "<div id=\"job_listings_wrapper\"><title>Just a moment...</title><div id=\"cf-chl-widget\">Checking your browser</div>",
+      "headers": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "kind": "BotChallengeError"
+      }
+    },
+    {
+      "name": "gone404",
+      "status": 404,
+      "body": "missing",
+      "headers": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "kind": "BoardGoneError"
+      }
+    },
+    {
+      "name": "gone410",
+      "status": 410,
+      "body": "missing",
+      "headers": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "kind": "BoardGoneError"
+      }
+    },
+    {
+      "name": "reserved",
+      "status": 200,
+      "body": "not a listing",
+      "headers": {
+        "TDM-Reservation": "1",
+        "TDM-Policy": "https://example.com/policy"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "kind": "TDMReservedError"
+      }
+    }
+  ]
+}
