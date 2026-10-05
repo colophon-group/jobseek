@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"sync"
@@ -217,7 +218,7 @@ func (s *supervisor) worker(ctx context.Context, initial heldReservation) error 
 		}
 		if held == nil {
 			var err error
-			held, err = s.renderer.reserve(ctx)
+			held, err = s.reserveAvailable(ctx)
 			if err != nil {
 				return err
 			}
@@ -255,6 +256,25 @@ func (s *supervisor) worker(ctx context.Context, initial heldReservation) error 
 		}
 		if processErr != nil {
 			s.logTask("worker", "failed_rescheduled", current, processErr)
+		}
+	}
+}
+
+// The shared C4 service closes excess connections before the TLS handshake.
+// Wait without claiming queue work when ordinary rendered work holds its slots.
+// Identity, protocol and other transport failures still stop the supervisor.
+func (s *supervisor) reserveAvailable(ctx context.Context) (heldReservation, error) {
+	for {
+		held, err := s.renderer.reserve(ctx)
+		if !errors.Is(err, io.EOF) {
+			return held, err
+		}
+		timer := time.NewTimer(time.Second)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return nil, ctx.Err()
+		case <-timer.C:
 		}
 	}
 }

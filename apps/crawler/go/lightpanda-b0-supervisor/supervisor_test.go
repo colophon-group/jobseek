@@ -3,11 +3,61 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 )
+
+type occupiedRenderer struct {
+	calls atomic.Int32
+	err   error
+	held  heldReservation
+}
+
+func (r *occupiedRenderer) reserve(context.Context) (heldReservation, error) {
+	if r.calls.Add(1) == 1 || r.held == nil {
+		return nil, r.err
+	}
+	return r.held, nil
+}
+
+func TestSharedRendererContentionWaitsBeforeAnyQueueClaim(t *testing.T) {
+	renderer := &occupiedRenderer{err: fmt.Errorf("renderer TLS handshake: %w", io.EOF)}
+	// No queue is installed: reaching claim without a reservation would panic.
+	s := &supervisor{renderer: renderer}
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
+	defer cancel()
+	if err := s.worker(ctx, nil); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("capacity contention killed the worker instead of waiting: %v", err)
+	}
+	if renderer.calls.Load() != 1 {
+		t.Fatal("capacity wait spun or claimed without a renderer reservation")
+	}
+}
+
+func TestSharedRendererReservationResumesAfterSlotRelease(t *testing.T) {
+	held := &fakeHeldReservation{}
+	renderer := &occupiedRenderer{err: fmt.Errorf("renderer TLS handshake: %w", io.EOF), held: held}
+	s := &supervisor{renderer: renderer}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	actual, err := s.reserveAvailable(ctx)
+	if err != nil || actual != held || renderer.calls.Load() != 2 {
+		t.Fatalf("released renderer slot did not resume reservation: %v", err)
+	}
+}
+
+func TestSharedRendererIdentityFailureStillStopsBeforeQueueClaim(t *testing.T) {
+	failure := errors.New("renderer negotiated invalid identity")
+	renderer := &occupiedRenderer{err: failure}
+	s := &supervisor{renderer: renderer}
+	if err := s.worker(context.Background(), nil); !errors.Is(err, failure) || renderer.calls.Load() != 1 {
+		t.Fatalf("invalid renderer identity was retried or reached queue work: %v", err)
+	}
+}
 
 type fakeHeldReservation struct {
 	mu     sync.Mutex
