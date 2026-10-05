@@ -1,6 +1,6 @@
 {
   "schema": "jobseek.native-api-delivery/v1",
-  "observed_at_utc": "2026-10-05T11:53:44.695294+00:00",
+  "observed_at_utc": "2026-10-05T12:10:22.404417+00:00",
   "full_migration_complete": false,
   "goal_status": "active",
   "pr": "https://github.com/colophon-group/jobseek/pull/10320",
@@ -84,11 +84,12 @@
     "routing_epoch": 185,
     "plan_sha256": "e36b888812e50ccbe77fa7cc9fa4de9da5dcd8dd28ef64e2a2d9f62afec3cb19",
     "projection_sha1": "1fe572c9b63f8737e45ca43c87b9309dbb873ee1",
-    "state": "SQL active / exact Redis projection published / wrapper pending after full-stack startup refusal; supported exact-identity activation retry in progress",
+    "state": "retired by original recover-pending after repeated full-stack startup refusal; B0 reversal in progress",
     "activation_verified": false,
     "natural_api_canonical_and_queue_proof": false,
     "startup_failure": "B0 claimant: reserve all C4 renderer slots before queue claim: renderer TLS handshake: EOF",
-    "manual_state_clearing": false
+    "manual_state_clearing": false,
+    "original_recover_pending": "success at 12:08 UTC"
   },
   "resource_comparison": {
     "workflow_run": 37296309001,
@@ -108,13 +109,17 @@
     "version": "0.13.939",
     "changes": [
       "Start ordinary rendered work after healthy B0 admission.",
-      "Wait before B0 queue claims on renderer TLS EOF from occupied C4 capacity; cancellation and other failure refusals preserved."
+      "Wait before B0 queue claims on renderer TLS EOF from occupied C4 capacity; cancellation and other failure refusals preserved.",
+      "Ordinary rendered monitors and details wait for shared C4 capacity within the original held claim context."
     ],
     "validation": {
       "supervisor_race_seconds": 3.282,
       "go_vet": "passed",
       "scoped_deployment_contract": "passed",
-      "ordinary_cutover_tests": 14
+      "ordinary_cutover_tests": 14,
+      "ordinary_rendered_capacity_race_seconds": 3.116,
+      "ordinary_go_vet": "passed",
+      "real_postgresql_redis_rendered_race_seconds": 12.236
     },
     "required_ci": "pending",
     "production_deployed": false

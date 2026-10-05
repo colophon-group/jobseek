@@ -32,15 +32,18 @@ and 2,199 detail boards. All three B0 boards were excluded; 37 boards with cache
 detail route mismatches were rejected. The first activation published the exact
 Redis projection but left SQL staged; the supported exact-identity retry activated
 SQL at epoch185. Full-stack startup then refused because the B0 claimant received
-TLS EOF while reserving all four renderer slots. The original wrapper retained
-its pending identity and contained every writer. The next supported activation
-retry is observing a legacy lease through 11:54:56 UTC. Serving authority and
+TLS EOF while reserving all four renderer slots. A second exact-identity startup
+retry reproduced the refusal. The original wrapper retained its identity and
+contained every writer. Original `recover-pending` succeeded at 12:08 UTC after
+four legacy leases expired naturally. Full B0 reversal and independent baseline
+verification precede the next immutable release. Serving ordinary authority and
 natural API output remain unverified.
 
 A v0.13.939 continuation fixes the shared renderer startup order: the ordinary
 consumer waits for healthy B0 admission before it starts. B0 workers wait before
 queue claims when the four-slot renderer closes excess connections during TLS.
-Shutdown remains cancellable; identity/protocol failures and incomplete initial
+Ordinary monitors and details also wait within their existing claim context,
+with heartbeat and cancellation still in charge. Shutdown remains cancellable; identity/protocol failures and incomplete initial
 C4 admission still refuse. Full supervisor race tests, vet, the scoped deployment
 contract and all 14 ordinary cutover tests passed locally. Production validation
 is pending required CI and the supported release workflow.
