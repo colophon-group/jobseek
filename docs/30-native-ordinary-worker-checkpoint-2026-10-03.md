@@ -1,5 +1,62 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Production fleet adoption verified — 2026-10-05
+
+The goal remains full production migration to Go and self-hosted Lightpanda,
+including every enabled board, canonical behavior, runtime maintenance and
+deployment consumers. Retire mandatory production Python, Playwright and
+Chromium after replacement coverage and the rollback window are established;
+preserve useful isolated offline Python tools. Full migration is not complete.
+
+[PR #10317](https://github.com/colophon-group/jobseek/pull/10317) merged
+v0.13.937 as `a5fd35cfb924800a5ac3fedfedbaca0a457a934c`. Its reviewed tree
+matches the merged tree. Required checks passed, and the
+[original immutable deployment](https://github.com/colophon-group/jobseek/actions/runs/37272609231)
+completed and promoted this source. First, the reviewed v0.13.936 administrator recovered
+the contained source934 through the original installed wrapper. Original B0
+rollback and selector clear then restored its six-writer baseline. No manual
+queue, lease, fence or lock clearing was used.
+
+The selected v0.13.937 six-writer baseline was independently verified before original
+B0 activation. B0 now owns `cdom` at epoch 183. Fresh source/receipt-bound admission
+excluded all three B0 boards, reconciled 1,084,238 scheduled posting routes and
+excluded 37 boards with cached route mismatches. The original ordinary wrapper
+staged and activated 6,025 monitor boards and 2,199 detail boards, including 143
+rendered DOM monitors, 90 rendered DOM detail boards and 57 rendered JSON-LD
+detail boards. The admitted detail boards contain 1,062,208 scheduled postings;
+this is the admitted population, not a count of every enabled posting.
+
+Independent readback at 07:18:16 UTC proved all ten selected services running,
+restart-armed and using exact expected images, one active SQL ownership plan,
+the matching Redis projection, unchanged B0 receipt/epoch and no administrative
+containers. Initial natural work committed monitor rows and both static JSON-LD
+and rendered DOM details. Sampled detail deadlines match completed receipts and
+remain in the future; descriptions reached R2. No processing diagnostic appeared
+in this bounded observation. At 07:28:17 UTC, the strict natural settlement
+check passed for 17 samples across ten monitor/detail profiles: canonical,
+receipt and Redis queue deadlines match, and inflight entries, tokens and retry
+strikes are cleared. One initially pending claim settled naturally before the
+strict check passed. The claim-error counter remained at one across both natural
+observations; this is not a zero-error or full-profile-coverage assertion.
+
+The ordinary plan is
+`cb6338813410a3faaeebda772038d885899194a9e8ee3c8fc8e2850d3c838dc3`,
+and its Redis projection SHA1 is `a79e0a5fee3d1a78dc0d333490ef27a443c1bf6a`.
+The B0 receipt SHA256 is
+`4c559854aea8273afdf063ee63c96293b52e9378af61b036b47803dd34ba4040`.
+[Portable evidence](evidence/go-native-fleet-adoption-2026-10-05.json) records
+the exact source, images, admission and bounded verification.
+
+Continue substantive native coverage batches using the existing workers,
+queues, canonical writers and renderer: configured HTTP API/JSON extraction;
+remaining DOM/RSS/provider options and families; mandatory Python runtime
+maintenance and deployment consumers. Keep this owner selected while observing
+natural queue settlement, freshness and whole-lane resources. Before another
+runtime promotion, use original cold ordinary retirement, original B0 reversal
+and selector clear, then independently verify the complete baseline. Finish
+comparable CPU/RAM/density/cost measurements, supported reversal and the rollback
+window before removing legacy production runtime assets.
+
 ## Expired legacy claims during fleet adoption — 2026-10-05
 
 The delivery goal is the complete Go/Lightpanda migration, preserving every

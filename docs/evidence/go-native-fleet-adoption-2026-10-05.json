@@ -1,0 +1,142 @@
+{
+  "schema": "jobseek.native-fleet-adoption-evidence/v1",
+  "goal": "Complete production Go/Lightpanda migration and retire mandatory production Python/Playwright/Chromium after replacement coverage and rollback window; preserve enabled boards and useful offline tooling.",
+  "full_migration_complete": false,
+  "selected_version": "0.13.937",
+  "source_revision": "a5fd35cfb924800a5ac3fedfedbaca0a457a934c",
+  "reviewed_head": "db36ca3ce3544a855405b8a753d1541cad66a972",
+  "reviewed_merged_trees_equal": true,
+  "pull_request": "https://github.com/colophon-group/jobseek/pull/10317",
+  "original_deployment": "https://github.com/colophon-group/jobseek/actions/runs/37272609231",
+  "original_deployment_status": "success",
+  "identities": {
+    "JOBSEEK_DEPLOY_REVISION": "a5fd35cfb924800a5ac3fedfedbaca0a457a934c",
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:364dc6ea7842ef180223753fa11f0bbbb3f8bba52e6161231ba00aeefa7bdc3e",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:cc38e6edb27f478bdc1924948f7691a25992d3ab083979478cf5d8456108e9e5"
+  },
+  "routing_epoch": 183,
+  "plan_sha256": "cb6338813410a3faaeebda772038d885899194a9e8ee3c8fc8e2850d3c838dc3",
+  "projection_sha1": "a79e0a5fee3d1a78dc0d333490ef27a443c1bf6a",
+  "b0_receipt_sha256": "4c559854aea8273afdf063ee63c96293b52e9378af61b036b47803dd34ba4040",
+  "ordinary_receipt_sha256": "b1baab46e3aecc8b9fc05e9b52655415a7ce7fe39ffa20e9b81a5ed46804ade7",
+  "admission": {
+    "observed_at": "2026-10-05T06:57:58.003753+00:00",
+    "source_revision": "a5fd35cfb924800a5ac3fedfedbaca0a457a934c",
+    "routing_epoch": 183,
+    "actual_posting_routes_reconciled": true,
+    "monitor_boards": 6025,
+    "detail_boards": 2199,
+    "excluded_verified_b0_boards": 3,
+    "cache_rejected_boards": 37,
+    "scheduled_detail_postings": 1084238,
+    "scheduled_owned_postings": 1062208,
+    "monitor_boards_by_profile": {
+      "ashby.token-skip/v1": 934,
+      "dom.direct-urls/v1": 334,
+      "dom.rendered-urls/v1": 143,
+      "greenhouse.token-skip/v1": 2570,
+      "join.nextdata-urls/v1": 276,
+      "lever.token-skip/v1": 194,
+      "personio.xml-skip/v1": 47,
+      "pinpoint.slug-skip/v1": 104,
+      "recruitee.api-skip/v1": 114,
+      "rss.successfactors-skip/v1": 197,
+      "rss.teamtailor-skip/v1": 137,
+      "sitemap.explicit-urls/v1": 283,
+      "smartrecruiters.api-urls/v1": 123,
+      "workable.api-urls/v1": 74,
+      "workday.cxs-urls/v1": 495
+    },
+    "detail_boards_by_profile": {
+      "dom.direct-detail/v1": 486,
+      "dom.rendered-detail/v1": 90,
+      "join.nextdata-detail/v1": 265,
+      "jsonld.direct-detail/v1": 668,
+      "jsonld.rendered-detail/v1": 57,
+      "smartrecruiters.api-detail/v1": 126,
+      "workable.api-detail/v1": 76,
+      "workday.cxs-detail/v1": 431
+    }
+  },
+  "independent_readback": {
+    "observed_at_utc": "2026-10-05T07:18:16.350731+00:00",
+    "running_restart_armed_exact_image_services": 10,
+    "active_sql_plans": 1,
+    "failed934_history": "staged",
+    "live_admin_containers": 0,
+    "http_health": {
+      "worker-1": 200,
+      "worker-2": 200,
+      "worker-3": 200,
+      "browser-1": 200,
+      "drain": 200,
+      "exporter": 200,
+      "lightpanda-claimant": 204,
+      "ordinary-go": 204
+    }
+  },
+  "natural_observation": {
+    "observed_at_utc": "2026-10-05T07:14:39.319063+00:00",
+    "monitor_canonical_samples": 8,
+    "detail_samples": 2,
+    "detail_profiles": [
+      "dom.rendered-detail/v1",
+      "jsonld.direct-detail/v1"
+    ],
+    "sample_deadlines_match_receipts": true,
+    "sample_descriptions_uploaded": true,
+    "processing_diagnostics": [],
+    "scope": "Initial naturally scheduled effects; not proof every admitted profile has run."
+  },
+  "validation": {
+    "queue_race_seconds": 68.006,
+    "worker_race_seconds": 110.166,
+    "real_first_owner_executable_seconds": 14.104,
+    "required_checks": "Passed on exact reviewed head before merge."
+  },
+  "remaining": [
+    "Configured HTTP API/JSON extraction and other enabled monitor/detail/browser options and families.",
+    "Mandatory Python maintenance, startup and deployment consumers.",
+    "Natural full-lane queue settlement, canonical effects and freshness.",
+    "Comparable whole-lane CPU/RAM/density/attributable cost.",
+    "Supported cold reversal and rollback window before production legacy assets retire."
+  ],
+  "natural_settlement": {
+    "observed_at_utc": "2026-10-05T07:28:17.307461+00:00",
+    "samples": 17,
+    "profiles": [
+      "ashby.token-skip/v1",
+      "dom.rendered-detail/v1",
+      "dom.rendered-urls/v1",
+      "greenhouse.token-skip/v1",
+      "join.nextdata-urls/v1",
+      "jsonld.direct-detail/v1",
+      "jsonld.rendered-detail/v1",
+      "lever.token-skip/v1",
+      "rss.successfactors-skip/v1",
+      "rss.teamtailor-skip/v1"
+    ],
+    "canonical_receipt_queue_deadlines_match": true,
+    "claims_tokens_strikes_cleared": true,
+    "scope": "Bounded naturally completed sample, not every admitted profile.",
+    "initial_pending_sample": "Initial check saw one unsettled claim; later token-bound readback observed it settled naturally, then the strict verifier passed."
+  },
+  "later_natural_observation": {
+    "observed_at_utc": "2026-10-05T07:28:07.225705+00:00",
+    "detail_samples": 7,
+    "health": {
+      "worker-1": 200,
+      "worker-2": 200,
+      "worker-3": 200,
+      "browser-1": 200,
+      "drain": 200,
+      "exporter": 200,
+      "lightpanda-claimant": 204,
+      "ordinary-go": 204
+    },
+    "processing_diagnostics": [],
+    "claim_error_counter": 1,
+    "claim_error_counter_scope": "Unchanged from initial snapshot; no zero-error assertion.",
+    "resource_comparison_complete": false
+  }
+}
