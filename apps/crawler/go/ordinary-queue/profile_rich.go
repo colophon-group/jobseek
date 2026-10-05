@@ -58,6 +58,10 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 			allowed[key] = true
 		}
 
+	case "icims":
+		for _, key := range []string{"host", "job_hosts", "dedupe_job_ids_from_hosts", "cross_locale_dedupe", "jibe_url", "jibe_job_hosts", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+			allowed[key] = true
+		}
 	case "sitemap":
 		for _, key := range []string{"sitemap_url", "xml_attempts", "url_filter", "proxy", "render", "skip_ssl", "ssl_verify", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
@@ -108,6 +112,9 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 	}
 	if config["crawler_type"] == "api_sniffer" {
 		return inspectAPISnifferMonitor(boardID, config, md)
+	}
+	if config["crawler_type"] == "icims" {
+		return inspectICIMSMonitor(boardID, config, md)
 	}
 	if config["crawler_type"] == "oracle_hcm" {
 		return inspectOracleMonitor(boardID, config, md)

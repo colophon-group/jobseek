@@ -51,6 +51,9 @@ func (a *Authority) FinishGreenhouseReservationResource(ctx context.Context, cla
 		if profile.Provider == "api_sniffer" {
 			matches = APISnifferMonitorResourceMatches(profile, claim.task.Config, initialEndpoint)
 		}
+		if profile.Provider == "icims" {
+			matches = ICIMSMonitorResourceMatches(profile, claim.task.Config, initialEndpoint)
+		}
 		if profile.Provider == "oracle_hcm" {
 			matches = OracleMonitorResourceMatches(profile, claim.task.Config, initialEndpoint)
 		}

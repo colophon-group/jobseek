@@ -1,5 +1,50 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Current delivery — 2026-10-05 18:08 UTC
+
+Lightpanda **1.0.0**, released October 2, remains the newest stable release in
+[the official release list](https://github.com/lightpanda-io/browser/releases).
+Its immutable renderer and restart/reboot acceptance remain verified.
+
+[API detail PR #10327](https://github.com/colophon-group/jobseek/pull/10327)
+merged as `09996a260785845f3b94a9fafad213d2b622ea3f`. The original immutable
+[943 deployment](https://github.com/colophon-group/jobseek/actions/runs/37351158145)
+completed and promoted. Independent readback at 18:02:37 UTC verifies its exact
+images, six healthy restart-armed baseline services and retired ordinary ownership
+at epoch 190. Original B0 activation then succeeded at epoch 191; readback verifies
+the source-bound receipt and five naturally scheduled committed renders with no
+render/executor failures. [Production evidence](evidence/go-native-http-api943-production-2026-10-05.json).
+Fresh source943 reconciliation checked 1,436,577 scheduled posting routes. It
+admits 6,291 monitor boards and 2,461 detail boards covering 1,412,265 scheduled
+postings, including all 41 HTTP API detail boards. Thirty-seven detail boards
+retain legacy ownership because their cache projection differs; there are no
+actual URL-route rejections. Original-wrapper staging is underway; ordinary
+activation and natural processing have not yet been observed.
+
+The next batch adds iCIMS URL inventories through the existing Go worker and
+URL/detail writer. All **118 enabled configurations** pass canonical and cached
+admission against the fresh production configuration capture. Classic sequential
+pages, aggregate child reconciliation, ID peers, locale multisets and Jibe fallback
+are included. Sixteen frozen fixtures from the actual Python monitor verify
+inventory/truncation and exact request chains. Real PostgreSQL/Redis operational
+and cold-retirement tests pass. The full queue race suite passes in 93.789s and the
+full worker race suite in 178.645s. Eighteen runtime contract tests pass.
+[Local evidence](evidence/go-native-icims-local-2026-10-05.json).
+No production iCIMS ownership is claimed by this local batch yet.
+
+Coverage correction: the historical 353 “new direct” embedded/Next.js count was a
+configuration category, not newly covered boards. The fresh943 screen assigns
+265 boards to existing Join, 88 to direct embedded and one to rendered embedded.
+Actual posting-route admission determines the deployable cohort.
+
+Continue with current-source admission, ordinary activation and natural Simple/
+rendered output, queue/deadline conservation and description publication; publish
+iCIMS after green checks. Remaining enabled profiles and mandatory Python runtime
+consumers, comparable whole-lane resources, supported reversal and the rollback
+window still precede retirement. The full migration goal remains active and
+incomplete. Following entries record their historical state.
+
+
 ## Direct HTTP API details — 2026-10-05
 
 Lightpanda 1.0.0 remains the verified latest stable renderer. The original

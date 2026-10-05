@@ -1,0 +1,464 @@
+[
+  {
+    "name": "classic",
+    "board_url": "https://careers-native.icims.com/jobs/search",
+    "metadata": {},
+    "responses": {
+      "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1": "<html><head><title>Careers</title></head><body class=\"iCIMS_ListingsPage\">Page 1 of 1<a href=\"https://careers-native.icims.com/jobs/1/engineer/job?untrusted=discarded\">Engineer</a><a href=\"https://careers-native.icims.com/jobs/2/engineer/job?untrusted=discarded\">Engineer</a></body></html>"
+    },
+    "requests": [
+      {
+        "url": "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1",
+        "json": false,
+        "follow_redirects": false
+      }
+    ],
+    "expected": {
+      "urls": [
+        "https://careers-native.icims.com/jobs/1/job?in_iframe=1",
+        "https://careers-native.icims.com/jobs/2/job?in_iframe=1"
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "sequential-pages",
+    "board_url": "https://careers-native.icims.com/jobs/search",
+    "metadata": {},
+    "responses": {
+      "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1": "<html><head><title>Careers</title></head><body class=\"iCIMS_ListingsPage\">Page 1 of 2<a href=\"https://careers-native.icims.com/jobs/1/engineer/job?untrusted=discarded\">Engineer</a></body></html>",
+      "https://careers-native.icims.com/jobs/search?pr=1&in_iframe=1&searchRelation=keyword_all&schemaId=&o=": "<html><head><title>Careers</title></head><body class=\"iCIMS_ListingsPage\">Page 2 of 2<a href=\"https://careers-native.icims.com/jobs/2/engineer/job?untrusted=discarded\">Engineer</a></body></html>"
+    },
+    "requests": [
+      {
+        "url": "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1",
+        "json": false,
+        "follow_redirects": false
+      },
+      {
+        "url": "https://careers-native.icims.com/jobs/search?pr=1&in_iframe=1&searchRelation=keyword_all&schemaId=&o=",
+        "json": false,
+        "follow_redirects": false
+      }
+    ],
+    "expected": {
+      "urls": [
+        "https://careers-native.icims.com/jobs/1/job?in_iframe=1",
+        "https://careers-native.icims.com/jobs/2/job?in_iframe=1"
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "duplicates-truncate",
+    "board_url": "https://careers-native.icims.com/jobs/search",
+    "metadata": {},
+    "responses": {
+      "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1": "<html><head><title>Careers</title></head><body class=\"iCIMS_ListingsPage\">Page 1 of 2<a href=\"https://careers-native.icims.com/jobs/1/engineer/job?untrusted=discarded\">Engineer</a></body></html>",
+      "https://careers-native.icims.com/jobs/search?pr=1&in_iframe=1&searchRelation=keyword_all&schemaId=&o=": "<html><head><title>Careers</title></head><body class=\"iCIMS_ListingsPage\">Page 2 of 2<a href=\"https://careers-native.icims.com/jobs/1/engineer/job?untrusted=discarded\">Engineer</a></body></html>"
+    },
+    "requests": [
+      {
+        "url": "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1",
+        "json": false,
+        "follow_redirects": false
+      },
+      {
+        "url": "https://careers-native.icims.com/jobs/search?pr=1&in_iframe=1&searchRelation=keyword_all&schemaId=&o=",
+        "json": false,
+        "follow_redirects": false
+      }
+    ],
+    "expected": {
+      "urls": [
+        "https://careers-native.icims.com/jobs/1/job?in_iframe=1"
+      ],
+      "truncated": true
+    }
+  },
+  {
+    "name": "changed-page-total",
+    "board_url": "https://careers-native.icims.com/jobs/search",
+    "metadata": {},
+    "responses": {
+      "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1": "<html><head><title>Careers</title></head><body class=\"iCIMS_ListingsPage\">Page 1 of 2<a href=\"https://careers-native.icims.com/jobs/1/engineer/job?untrusted=discarded\">Engineer</a></body></html>",
+      "https://careers-native.icims.com/jobs/search?pr=1&in_iframe=1&searchRelation=keyword_all&schemaId=&o=": "<html><head><title>Careers</title></head><body class=\"iCIMS_ListingsPage\">Page 2 of 3<a href=\"https://careers-native.icims.com/jobs/2/engineer/job?untrusted=discarded\">Engineer</a></body></html>"
+    },
+    "requests": [
+      {
+        "url": "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1",
+        "json": false,
+        "follow_redirects": false
+      },
+      {
+        "url": "https://careers-native.icims.com/jobs/search?pr=1&in_iframe=1&searchRelation=keyword_all&schemaId=&o=",
+        "json": false,
+        "follow_redirects": false
+      }
+    ],
+    "expected": {
+      "urls": [
+        "https://careers-native.icims.com/jobs/1/job?in_iframe=1",
+        "https://careers-native.icims.com/jobs/2/job?in_iframe=1"
+      ],
+      "truncated": true
+    }
+  },
+  {
+    "name": "empty-board",
+    "board_url": "https://careers-native.icims.com/jobs/search",
+    "metadata": {},
+    "responses": {
+      "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1": "<html><head><title>Careers</title></head><body class=\"iCIMS_ListingsPage\">Page 1 of 1</body></html>"
+    },
+    "requests": [
+      {
+        "url": "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1",
+        "json": false,
+        "follow_redirects": false
+      }
+    ],
+    "expected": {
+      "urls": [],
+      "truncated": false
+    }
+  },
+  {
+    "name": "wrong-first-page",
+    "board_url": "https://careers-native.icims.com/jobs/search",
+    "metadata": {},
+    "responses": {
+      "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1": "<html><head><title>Careers</title></head><body class=\"iCIMS_ListingsPage\">Page 2 of 2<a href=\"https://careers-native.icims.com/jobs/1/engineer/job?untrusted=discarded\">Engineer</a></body></html>"
+    },
+    "requests": [
+      {
+        "url": "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1",
+        "json": false,
+        "follow_redirects": false
+      }
+    ],
+    "expected": {
+      "error": true
+    }
+  },
+  {
+    "name": "zero-first-page",
+    "board_url": "https://careers-native.icims.com/jobs/search",
+    "metadata": {},
+    "responses": {
+      "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1": "<html><head><title>Careers</title></head><body class=\"iCIMS_ListingsPage\">Page 0 of 1<a href=\"https://careers-native.icims.com/jobs/1/engineer/job?untrusted=discarded\">Engineer</a></body></html>"
+    },
+    "requests": [
+      {
+        "url": "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1",
+        "json": false,
+        "follow_redirects": false
+      }
+    ],
+    "expected": {
+      "error": true
+    }
+  },
+  {
+    "name": "empty-advertised-page",
+    "board_url": "https://careers-native.icims.com/jobs/search",
+    "metadata": {},
+    "responses": {
+      "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1": "<html><head><title>Careers</title></head><body class=\"iCIMS_ListingsPage\">Page 1 of 2<a href=\"https://careers-native.icims.com/jobs/1/engineer/job?untrusted=discarded\">Engineer</a></body></html>",
+      "https://careers-native.icims.com/jobs/search?pr=1&in_iframe=1&searchRelation=keyword_all&schemaId=&o=": "<html><head><title>Careers</title></head><body class=\"iCIMS_ListingsPage\">Page 2 of 2</body></html>"
+    },
+    "requests": [
+      {
+        "url": "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1",
+        "json": false,
+        "follow_redirects": false
+      },
+      {
+        "url": "https://careers-native.icims.com/jobs/search?pr=1&in_iframe=1&searchRelation=keyword_all&schemaId=&o=",
+        "json": false,
+        "follow_redirects": false
+      }
+    ],
+    "expected": {
+      "error": true
+    }
+  },
+  {
+    "name": "aggregate",
+    "board_url": "https://careers-native.icims.com/jobs/search",
+    "metadata": {
+      "job_hosts": [
+        "careers-native.icims.com",
+        "careers-child.icims.com"
+      ]
+    },
+    "responses": {
+      "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1": "<html><head><title>Careers</title></head><body class=\"iCIMS_ListingsPage\">Page 1 of 1<a href=\"https://careers-child.icims.com/jobs/1/engineer/job?untrusted=discarded\">Engineer</a></body></html>",
+      "https://careers-child.icims.com/jobs/search?ss=1&in_iframe=1": "<html><head><title>Careers</title></head><body class=\"iCIMS_ListingsPage\">Page 1 of 1<a href=\"https://careers-child.icims.com/jobs/1/engineer/job?untrusted=discarded\">Engineer</a></body></html>"
+    },
+    "requests": [
+      {
+        "url": "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1",
+        "json": false,
+        "follow_redirects": false
+      },
+      {
+        "url": "https://careers-child.icims.com/jobs/search?ss=1&in_iframe=1",
+        "json": false,
+        "follow_redirects": false
+      }
+    ],
+    "expected": {
+      "urls": [
+        "https://careers-child.icims.com/jobs/1/job?in_iframe=1"
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "aggregate-mismatch",
+    "board_url": "https://careers-native.icims.com/jobs/search",
+    "metadata": {
+      "job_hosts": [
+        "careers-native.icims.com",
+        "careers-child.icims.com"
+      ]
+    },
+    "responses": {
+      "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1": "<html><head><title>Careers</title></head><body class=\"iCIMS_ListingsPage\">Page 1 of 1<a href=\"https://careers-child.icims.com/jobs/1/engineer/job?untrusted=discarded\">Engineer</a></body></html>",
+      "https://careers-child.icims.com/jobs/search?ss=1&in_iframe=1": "<html><head><title>Careers</title></head><body class=\"iCIMS_ListingsPage\">Page 1 of 1<a href=\"https://careers-child.icims.com/jobs/2/engineer/job?untrusted=discarded\">Engineer</a></body></html>"
+    },
+    "requests": [
+      {
+        "url": "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1",
+        "json": false,
+        "follow_redirects": false
+      },
+      {
+        "url": "https://careers-child.icims.com/jobs/search?ss=1&in_iframe=1",
+        "json": false,
+        "follow_redirects": false
+      }
+    ],
+    "expected": {
+      "urls": [
+        "https://careers-child.icims.com/jobs/1/job?in_iframe=1"
+      ],
+      "truncated": true
+    }
+  },
+  {
+    "name": "id-dedupe",
+    "board_url": "https://careers-native.icims.com/jobs/search",
+    "metadata": {
+      "dedupe_job_ids_from_hosts": [
+        "careers-peer.icims.com"
+      ]
+    },
+    "responses": {
+      "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1": "<html><head><title>Careers</title></head><body class=\"iCIMS_ListingsPage\">Page 1 of 1<a href=\"https://careers-native.icims.com/jobs/1/engineer/job?untrusted=discarded\">Engineer</a><a href=\"https://careers-native.icims.com/jobs/2/engineer/job?untrusted=discarded\">Engineer</a></body></html>",
+      "https://careers-peer.icims.com/jobs/search?ss=1&in_iframe=1": "<html><head><title>Careers</title></head><body class=\"iCIMS_ListingsPage\">Page 1 of 1<a href=\"https://careers-peer.icims.com/jobs/2/engineer/job?untrusted=discarded\">Engineer</a></body></html>"
+    },
+    "requests": [
+      {
+        "url": "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1",
+        "json": false,
+        "follow_redirects": false
+      },
+      {
+        "url": "https://careers-peer.icims.com/jobs/search?ss=1&in_iframe=1",
+        "json": false,
+        "follow_redirects": false
+      }
+    ],
+    "expected": {
+      "urls": [
+        "https://careers-native.icims.com/jobs/1/job?in_iframe=1"
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "locale-multiset",
+    "board_url": "https://careers-native.icims.com/jobs/search",
+    "metadata": {
+      "cross_locale_dedupe": {
+        "peer_host": "careers-peer.icims.com"
+      }
+    },
+    "responses": {
+      "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1": "<html><head><title>Careers</title></head><body class=\"iCIMS_ListingsPage\">Page 1 of 1<div class=\"iCIMS_JobCardItem\"><a class=\"iCIMS_Anchor\" href=\"https://careers-native.icims.com/jobs/1/engineer/job?untrusted=discarded\">Open</a><h3>Software Engineer</h3><div class=\"header left\"><span class=\"sr-only\">Location</span><span>Zurich</span></div><dl class=\"iCIMS_JobHeaderTag\"><dt>Job Type</dt><dd>Full Time</dd></dl></div><div class=\"iCIMS_JobCardItem\"><a class=\"iCIMS_Anchor\" href=\"https://careers-native.icims.com/jobs/2/engineer/job?untrusted=discarded\">Open</a><h3>Software Engineer</h3><div class=\"header left\"><span class=\"sr-only\">Location</span><span>Zurich</span></div><dl class=\"iCIMS_JobHeaderTag\"><dt>Job Type</dt><dd>Full Time</dd></dl></div></body></html>",
+      "https://careers-peer.icims.com/jobs/search?ss=1&in_iframe=1": "<html><head><title>Careers</title></head><body class=\"iCIMS_ListingsPage\">Page 1 of 1<div class=\"iCIMS_JobCardItem\"><a class=\"iCIMS_Anchor\" href=\"https://careers-peer.icims.com/jobs/3/engineer/job?untrusted=discarded\">Open</a><h3>Software Engineer</h3><div class=\"header left\"><span class=\"sr-only\">Location</span><span>Zurich</span></div><dl class=\"iCIMS_JobHeaderTag\"><dt>Job Type</dt><dd>Full Time</dd></dl></div></body></html>"
+    },
+    "requests": [
+      {
+        "url": "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1",
+        "json": false,
+        "follow_redirects": false
+      },
+      {
+        "url": "https://careers-peer.icims.com/jobs/search?ss=1&in_iframe=1",
+        "json": false,
+        "follow_redirects": false
+      }
+    ],
+    "expected": {
+      "urls": [
+        "https://careers-native.icims.com/jobs/2/job?in_iframe=1"
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "locale-incomplete-card",
+    "board_url": "https://careers-native.icims.com/jobs/search",
+    "metadata": {
+      "cross_locale_dedupe": {
+        "peer_host": "careers-peer.icims.com"
+      }
+    },
+    "responses": {
+      "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1": "<html><head><title>Careers</title></head><body class=\"iCIMS_ListingsPage\">Page 1 of 1<a href=\"https://careers-native.icims.com/jobs/1/engineer/job?untrusted=discarded\">Engineer</a></body></html>",
+      "https://careers-peer.icims.com/jobs/search?ss=1&in_iframe=1": "<html><head><title>Careers</title></head><body class=\"iCIMS_ListingsPage\">Page 1 of 1<div class=\"iCIMS_JobCardItem\"><a class=\"iCIMS_Anchor\" href=\"https://careers-peer.icims.com/jobs/2/engineer/job?untrusted=discarded\">Open</a><h3>Software Engineer</h3><div class=\"header left\"><span class=\"sr-only\">Location</span><span>Zurich</span></div><dl class=\"iCIMS_JobHeaderTag\"><dt>Job Type</dt><dd>Full Time</dd></dl></div></body></html>"
+    },
+    "requests": [
+      {
+        "url": "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1",
+        "json": false,
+        "follow_redirects": false
+      }
+    ],
+    "expected": {
+      "error": true
+    }
+  },
+  {
+    "name": "non-listing",
+    "board_url": "https://careers-native.icims.com/jobs/search",
+    "metadata": {},
+    "responses": {
+      "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1": "<html><body>Wrong document</body></html>"
+    },
+    "requests": [
+      {
+        "url": "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1",
+        "json": false,
+        "follow_redirects": false
+      }
+    ],
+    "expected": {
+      "error": true
+    }
+  },
+  {
+    "name": "jibe",
+    "board_url": "https://careers-native.icims.com/jobs/search",
+    "metadata": {
+      "jibe_url": "https://careers.example.net/jobs",
+      "jibe_job_hosts": [
+        "careers-native.icims.com",
+        "careers-child.icims.com"
+      ]
+    },
+    "responses": {
+      "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1": "<script type=\"text/javascript\">window.top.location.href = \"https://careers.example.net/jobs\";</script>",
+      "https://careers.example.net/api/jobs?page=1&limit=100": {
+        "totalCount": 3,
+        "jobs": [
+          {
+            "data": {
+              "slug": "1",
+              "apply_url": "https://careers-native.icims.com/jobs/1/login"
+            }
+          },
+          {
+            "data": {
+              "slug": "2",
+              "apply_url": "https://careers-child.icims.com/jobs/2/login"
+            }
+          }
+        ]
+      },
+      "https://careers.example.net/api/jobs?page=2&limit=100": {
+        "totalCount": 3,
+        "jobs": [
+          {
+            "data": {
+              "slug": "3",
+              "apply_url": "https://careers-native.icims.com/jobs/3/login"
+            }
+          }
+        ]
+      }
+    },
+    "requests": [
+      {
+        "url": "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1",
+        "json": false,
+        "follow_redirects": false
+      },
+      {
+        "url": "https://careers.example.net/api/jobs?page=1&limit=100",
+        "json": true,
+        "follow_redirects": true
+      },
+      {
+        "url": "https://careers.example.net/api/jobs?page=2&limit=100",
+        "json": true,
+        "follow_redirects": true
+      }
+    ],
+    "expected": {
+      "urls": [
+        "https://careers-native.icims.com/jobs/1/job?in_iframe=1",
+        "https://careers-native.icims.com/jobs/3/job?in_iframe=1"
+      ],
+      "truncated": false
+    }
+  },
+  {
+    "name": "jibe-repeated-slug",
+    "board_url": "https://careers-native.icims.com/jobs/search",
+    "metadata": {
+      "jibe_url": "https://careers.example.net/jobs",
+      "jibe_job_hosts": [
+        "careers-native.icims.com"
+      ]
+    },
+    "responses": {
+      "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1": "<script type=\"text/javascript\">window.top.location.href = \"https://careers.example.net/jobs\";</script>",
+      "https://careers.example.net/api/jobs?page=1&limit=100": {
+        "totalCount": 2,
+        "jobs": [
+          {
+            "data": {
+              "slug": "1",
+              "apply_url": "https://careers-native.icims.com/jobs/1/login"
+            }
+          },
+          {
+            "data": {
+              "slug": "1",
+              "apply_url": "https://careers-native.icims.com/jobs/1/login"
+            }
+          }
+        ]
+      }
+    },
+    "requests": [
+      {
+        "url": "https://careers-native.icims.com/jobs/search?ss=1&in_iframe=1",
+        "json": false,
+        "follow_redirects": false
+      },
+      {
+        "url": "https://careers.example.net/api/jobs?page=1&limit=100",
+        "json": true,
+        "follow_redirects": true
+      }
+    ],
+    "expected": {
+      "error": true
+    }
+  }
+]
