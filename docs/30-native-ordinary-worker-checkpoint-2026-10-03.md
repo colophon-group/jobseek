@@ -1,6 +1,6 @@
 # Native ordinary worker continuation, 2026-10-03
 
-## Current delivery — 2026-10-05 22:06 UTC
+## Current delivery — 2026-10-05 22:15 UTC
 
 The full migration goal remains active. Routine migration releases now group
 multiple provider types and share verification, checkpointing and deployment.
@@ -17,15 +17,24 @@ reconciliation admitted 6,409 monitor boards and 2,461 detail boards covering
 serving. Original pending recovery succeeded; independent 22:04 UTC readback
 verifies the absent ordinary receipt, unchanged B0 receipt/epoch, nine restart-
 armed services, all seven health endpoints and 22 ready/0 inflight/0 dead.
-Ordinary production processing remains unverified.
+Ordinary production processing remains unverified. Post-recovery comparison
+finds one embedded detail board with changed tenant/listing configuration; it
+does not establish the exact original rejection timing. Before the next release,
+original B0 rollback and selector clear succeeded. Independent22:11UTC proof
+verifies six healthy restart-armed baseline services, epoch 194, no active SQL
+plan/current fence, no native queue owner/projection/receipts/selectors and no
+administrative oneoff. [Production evidence](evidence/go-native-icims944-production-2026-10-05.json).
 
 The five-provider release [PR #10329](https://github.com/colophon-group/jobseek/pull/10329)
 groups Breezy, Gem, JazzHR, Gupy and direct Phenom: 106 enabled configurations.
 Only its four own commits were rebased onto the prerequisite merge. Its new
-head is `c47aee3575e694ac7061b6291e0346061e8c5d11`; fresh required checks are
-green on retry attempt 2, including `Required CI` and the deployment gate.
-The exact head-bound merge and next deployment remain pending. Lightpanda 1.0.0
-remains the verified installed renderer.
+head `c47aee3575e694ac7061b6291e0346061e8c5d11` passed fresh `Required CI`,
+`Crawler Deploy Gate` and installed-image parity. A fresh exact-head/base/state/
+operator/hold audit bound its merge as `5472e167a06ac543bfa4529e286d60df51d90d05`.
+Its original [deployment](https://github.com/colophon-group/jobseek/actions/runs/37380963344)
+is running. Incoming promotion/adoption remain unverified. Lightpanda 1.0.0
+remains installed. Only the next batch's five own implementation commits were
+rebased onto this merged release.
 
 The next release groups **Jobylon + NextData**, targeting 82 enabled
 configurations. Jobylon's 28 canonical/cache monitor and detail configurations
