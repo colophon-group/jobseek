@@ -1,0 +1,173 @@
+{
+  "schema": "jobseek-native-rendered940-production/v1",
+  "status": "B0 active and healthy; original ordinary staged and activation in progress",
+  "source_revision": "450b9e0316b813518d8f568afcdd35c4f4312feb",
+  "routing_epoch": 189,
+  "b0_receipt_sha256": "76e408b3b89a6e8ba5a2aa63c897301b4690c57b5f99ddadbc2b0b9ddc238212",
+  "observations": [
+    {
+      "observed_at_utc": "2026-10-05T15:59:41.120709+00:00",
+      "services": 9,
+      "restart_counts": {
+        "worker-1": 0,
+        "worker-2": 0,
+        "worker-3": 0,
+        "browser-1": 0,
+        "drain": 0,
+        "exporter": 0,
+        "lightpanda-producer": 0,
+        "lightpanda-executor": 0,
+        "lightpanda-claimant": 0
+      },
+      "health": {
+        "worker-1": 200,
+        "worker-2": 200,
+        "worker-3": 200,
+        "browser-1": 200,
+        "drain": 200,
+        "exporter": 200,
+        "lightpanda-claimant": 204
+      },
+      "metrics": [
+        "jobseek_lightpanda_b0_queue_dead 0",
+        "jobseek_lightpanda_b0_render_total{outcome=\"success\"} 1",
+        "jobseek_lightpanda_b0_render_total{outcome=\"failure\"} 0",
+        "jobseek_lightpanda_b0_executor_total{outcome=\"committed\"} 1",
+        "jobseek_lightpanda_b0_executor_total{outcome=\"failure\"} 0"
+      ]
+    },
+    {
+      "observed_at_utc": "2026-10-05T16:08:24.851474+00:00",
+      "services": 9,
+      "restart_counts": {
+        "worker-1": 0,
+        "worker-2": 0,
+        "worker-3": 0,
+        "browser-1": 0,
+        "drain": 0,
+        "exporter": 0,
+        "lightpanda-producer": 0,
+        "lightpanda-executor": 0,
+        "lightpanda-claimant": 0
+      },
+      "health": {
+        "worker-1": 200,
+        "worker-2": 200,
+        "worker-3": 200,
+        "browser-1": 200,
+        "drain": 200,
+        "exporter": 200,
+        "lightpanda-claimant": 204
+      },
+      "metrics": [
+        "jobseek_lightpanda_b0_queue_dead 0",
+        "jobseek_lightpanda_b0_render_total{outcome=\"success\"} 3",
+        "jobseek_lightpanda_b0_render_total{outcome=\"failure\"} 0",
+        "jobseek_lightpanda_b0_executor_total{outcome=\"committed\"} 3",
+        "jobseek_lightpanda_b0_executor_total{outcome=\"failure\"} 0"
+      ]
+    }
+  ],
+  "admission": {
+    "actual_posting_routes_reconciled": true,
+    "authority": "Read-only candidate admission; original exact-source cold staging and activation required. Original promoted-source/receipt-bound staging and activation remain required.",
+    "b0_receipt_sha256": "76e408b3b89a6e8ba5a2aa63c897301b4690c57b5f99ddadbc2b0b9ddc238212",
+    "cache_rejected_boards": 37,
+    "cached_unsupported": 0,
+    "candidate_version": "0.13.940",
+    "changed_projection": 0,
+    "detail_boards": 2199,
+    "detail_boards_by_profile": {
+      "dom.direct-detail/v1": 486,
+      "dom.rendered-detail/v1": 90,
+      "join.nextdata-detail/v1": 265,
+      "jsonld.direct-detail/v1": 668,
+      "jsonld.rendered-detail/v1": 57,
+      "smartrecruiters.api-detail/v1": 126,
+      "workable.api-detail/v1": 76,
+      "workday.cxs-detail/v1": 431
+    },
+    "excluded_verified_b0_boards": 3,
+    "jsonld_candidate_boards": 673,
+    "jsonld_detail_boards": 668,
+    "jsonld_detail_boards_by_monitor": {
+      "api_sniffer": 26,
+      "breezy": 7,
+      "computrabajo": 6,
+      "dom": 179,
+      "gupy": 14,
+      "hrmos": 6,
+      "icims": 108,
+      "intervieweb": 3,
+      "jobs_ch": 11,
+      "jobvite": 7,
+      "jobylon": 24,
+      "join": 6,
+      "lever": 1,
+      "nextdata": 9,
+      "paylocity": 1,
+      "personio": 5,
+      "phenom": 21,
+      "recruitee": 1,
+      "recruiterbox": 4,
+      "rss": 22,
+      "sitemap": 165,
+      "softgarden": 15,
+      "talemetry": 1,
+      "talentbrew": 7,
+      "taleo": 1,
+      "workday": 14,
+      "ycombinator": 4
+    },
+    "monitor_boards": 6159,
+    "monitor_boards_by_profile": {
+      "api_sniffer.http-items/v1": 134,
+      "ashby.token-skip/v1": 934,
+      "dom.direct-urls/v1": 334,
+      "dom.rendered-urls/v1": 143,
+      "greenhouse.token-skip/v1": 2570,
+      "join.nextdata-urls/v1": 276,
+      "lever.token-skip/v1": 194,
+      "personio.xml-skip/v1": 47,
+      "pinpoint.slug-skip/v1": 104,
+      "recruitee.api-skip/v1": 114,
+      "rss.successfactors-skip/v1": 197,
+      "rss.teamtailor-skip/v1": 137,
+      "sitemap.explicit-urls/v1": 283,
+      "smartrecruiters.api-urls/v1": 123,
+      "workable.api-urls/v1": 74,
+      "workday.cxs-urls/v1": 495
+    },
+    "observed_at": "2026-10-05T15:59:06.202891+00:00",
+    "route_rejected_boards": 0,
+    "route_rejection_reasons": {},
+    "routing_epoch": 189,
+    "scheduled_detail_postings": 1106690,
+    "scheduled_jsonld_owned_postings": 320773,
+    "scheduled_owned_postings": 1084619,
+    "scheduled_owned_postings_by_profile": {
+      "dom.direct-detail/v1": 116819,
+      "dom.rendered-detail/v1": 6442,
+      "join.nextdata-detail/v1": 3876,
+      "jsonld.direct-detail/v1": 320773,
+      "jsonld.rendered-detail/v1": 18134,
+      "smartrecruiters.api-detail/v1": 98876,
+      "workable.api-detail/v1": 9096,
+      "workday.cxs-detail/v1": 510603
+    },
+    "schema": "jobseek.native-rendered-detail-admission/v1",
+    "source_revision": "450b9e0316b813518d8f568afcdd35c4f4312feb",
+    "unsupported_actual_route_or_cache_boards": 37,
+    "unsupported_config_boards": 5646,
+    "workday_detail_boards": 431,
+    "workday_monitor_boards": 456
+  },
+  "scope": "Nine-service health/restart proof and natural B0 counter growth; complete ordinary ownership and sustained canonical/detail/publisher/freshness/queue proof still required. Scheduled reconciliation completed naturally under the shared lock.",
+  "ordinary_stage": {
+    "state": "staged",
+    "plan_sha256": "76ae97463dc80347fe7416ea2e0901eaa66d84bab75998419ed1e2f2f8ec3e77",
+    "projection_sha1": "8ec189ab057fd40c4ad832a832aa1e6196a0aa20",
+    "members": 6159,
+    "detail_boards": 2199
+  }
+}

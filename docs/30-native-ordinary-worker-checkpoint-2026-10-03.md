@@ -1,5 +1,35 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Current delivery checkpoint — 2026-10-05 16:08 UTC
+
+Lightpanda 1.0.0 remains the latest stable release and is deployed with restart
+and reboot acceptance. Source940 B0 is active at epoch189. Two independent
+readbacks verify all nine services healthy with exact images, the original
+restart policies and zero restarts. Natural render/commit counters rose from
+one to three without failures. Scheduled reconciliation completed under the
+shared mutation lock; no routine was interrupted or bypassed.
+
+Fresh source940 admission reconciled 1,106,690 scheduled posting routes and
+admitted 6,159 monitors plus 2,199 detail boards (1,084,619 scheduled postings).
+The three verified B0 boards are excluded. Thirty-seven boards with cache
+mismatches retain their existing owner. Original ordinary staging succeeded for plan `76ae97463dc8…` and projection
+`8ec189ab057f…`; the original activation wrapper is in progress. Sustained
+complete-fleet canonical, publisher, description, freshness and queue proof
+remain pending. [Production and admission evidence](evidence/go-native-rendered940-b0-and-admission-2026-10-05.json).
+
+[PR #10325](https://github.com/colophon-group/jobseek/pull/10325) contains the
+Oracle HCM and direct/rendered embedded/Next.js coverage batch below. Local
+reference, real PostgreSQL/Redis and cold-retirement checks passed. CI built the
+new image and exposed a stale 24-profile assertion; the assertion now includes
+all 28 compiled profiles. Fresh required and installed-image checks must pass
+before a bound merge and original immutable deployment. This batch is not deployed.
+
+Continue remaining enabled providers/options and mandatory production consumers
+in the existing worker/parser/writer paths. Prove whole-lane resource comparison,
+supported cold reversal and the rollback window before retiring production
+Python/Playwright/Chromium. Full migration is active and incomplete. Earlier
+sections are historical.
+
 ## Current delivery checkpoint — 2026-10-05 15:42 UTC
 
 The original v0.13.940 release and promotion succeeded. Independent readback
