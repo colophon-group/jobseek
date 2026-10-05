@@ -135,10 +135,22 @@ func renderedListingURLs(source, finalURL, selector string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	// x/net/html stores template contents as children. In the browser they
+	// belong to a separate DocumentFragment and are outside document queries.
+	for _, node := range cascadia.QueryAll(tree, cascadia.MustCompile("template")) {
+		if node.Namespace == "" {
+			for node.FirstChild != nil {
+				node.RemoveChild(node.FirstChild)
+			}
+		}
+	}
 	base := finalURL
 	bases := cascadia.QueryAll(tree, cascadia.MustCompile("base[href]"))
-	if len(bases) > 0 {
-		for _, a := range bases[0].Attr {
+	for _, node := range bases {
+		if node.Namespace != "" {
+			continue
+		}
+		for _, a := range node.Attr {
 			if a.Key == "href" {
 				if u, e := whatwg.ParseRef(finalURL, a.Val); e == nil {
 					base = u.Href(false)
@@ -146,6 +158,7 @@ func renderedListingURLs(source, finalURL, selector string) ([]string, error) {
 				break
 			}
 		}
+		break
 	}
 	if selector == "" {
 		selector = "a[href]"

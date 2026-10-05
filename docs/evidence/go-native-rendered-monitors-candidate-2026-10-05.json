@@ -5,7 +5,7 @@
   "full_migration_complete": false,
   "production_adoption": false,
   "scope": "Configured single-page rendered DOM inventories in the same ordinary Go worker, pinned Lightpanda client and canonical URL-only monitor pipeline.",
-  "browser_identity": "HTML5 CSS anchor selection, first document base, actual final document URL and WHATWG URL serialization preserve browser anchor.href identity.",
+  "browser_identity": "HTML5 document selection excluding inert template contents and foreign base elements, first HTML document base, actual final document URL and WHATWG URL serialization preserve browser anchor.href identity.",
   "authority": "Canonical full config and exact Browser ownership/lease; original shared SQL barriers, B0 exclusivity, inventory lifecycle, urgent detail routing and receipt settlement.",
   "local_verification": {
     "full_queue_race_seconds": 51.422,
@@ -17,7 +17,8 @@
     "policy_failure": "Publisher reservation before gone status, malformed document, origin challenge, gone404/410, critical503, cancellation and correct Simple/Browser urgent detail routing; renderer/parser failures do not increment origin host failures.",
     "combined935_staged_cancellation_cutover_race_seconds": 18.861,
     "combined935_rendered_queue_reversal_race_seconds": 6.781,
-    "combined935_rendered_worker_compatibility_race_seconds": 8.316
+    "combined935_rendered_worker_compatibility_race_seconds": 8.316,
+    "template_document_and_real_rendered_inventory_race_seconds": 3.013
   },
   "configuration_preview": {
     "source_revision": "ad31dacbcfe9c132cd75d5e46fbcc3d3b3e3a5d0",

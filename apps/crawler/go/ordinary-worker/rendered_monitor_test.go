@@ -26,6 +26,20 @@ func TestRenderedListingBrowserURLIdentity(t *testing.T) {
 	}
 }
 
+func TestRenderedListingExcludesTemplateContentsAndForeignBase(t *testing.T) {
+	// HTML template contents are a DocumentFragment, outside the document
+	// tree: https://html.spec.whatwg.org/multipage/scripting.html#the-template-element
+	source := `<template><base href="https://inert.test/"><a href="/jobs/inert">Inert</a><template><a href="/jobs/nested">Nested</a></template></template><svg><base href="https://foreign.test/"></base></svg><base href="../jobs/"><a href="active">Active</a>`
+	got, err := renderedListingURLs(source, "https://example.com/listing/index", "")
+	if err != nil || !reflect.DeepEqual(got, []string{"https://example.com/jobs/active"}) {
+		t.Fatal(got, err)
+	}
+	got, err = renderedListingURLs(source, "https://example.com/listing/index", "template a")
+	if err != nil || len(got) != 0 {
+		t.Fatal("template fragment participated in document selection", got, err)
+	}
+}
+
 func TestRealRenderedMonitorInventoryPolicyFailureAndSettlement(t *testing.T) {
 	for _, mode := range []string{"success", "browser-details", "503", "empty", "gone404", "gone410", "header", "meta", "challenge", "malformed", "cancelled"} {
 		t.Run(mode, func(t *testing.T) {
