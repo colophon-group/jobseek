@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	dom "github.com/colophon-group/jobseek/apps/crawler/go/dom-detail"
 	jsonld "github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail"
 	"net/http"
 	"net/http/cookiejar"
@@ -149,8 +150,8 @@ func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Cla
 
 	var content map[string]any
 	var reservation *publisherpolicy.Reservation
-	if profile.Profile == "jsonld.direct-detail/v1" {
-		fetched, failure := fetchJSONLDDetail(ctx, http, profile)
+	if profile.Profile == "jsonld.direct-detail/v1" || profile.Profile == "dom.direct-detail/v1" {
+		fetched, failure := fetchDirectDetail(ctx, http, profile)
 		err = failure
 		hostReachable = fetched.Responses > 0
 		hostFailure = fetched.Status == 401 || fetched.Status == 403 || fetched.Status == 429 || fetched.Status >= 500
@@ -237,7 +238,7 @@ func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Cla
 	return settle(receipt, "succeeded")
 }
 
-func fetchJSONLDDetail(ctx context.Context, verified *VerifiedDirectHTTP, profile queue.WorkdayDetailProfile) (jsonld.FetchResult, error) {
+func fetchDirectDetail(ctx context.Context, verified *VerifiedDirectHTTP, profile queue.WorkdayDetailProfile) (jsonld.FetchResult, error) {
 	if verified == nil || verified.client == nil {
 		return jsonld.FetchResult{}, queue.ErrConfiguration
 	}
@@ -248,5 +249,8 @@ func fetchJSONLDDetail(ctx context.Context, verified *VerifiedDirectHTTP, profil
 	}
 	client.Jar = jar
 	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	if profile.Profile == "dom.direct-detail/v1" {
+		return dom.FetchDetailWithClient(ctx, profile.SourceURL, profile.DOMConfig, &client)
+	}
 	return jsonld.FetchDetailWithClient(ctx, jsonld.Request{URL: profile.SourceURL, Config: profile.JSONLDConfig}, &client)
 }

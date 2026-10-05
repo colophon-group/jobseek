@@ -10,7 +10,16 @@ import (
 // Gone redirects precede challenge detection. Invalid regex syntax is ignored,
 // as in the Python scraper; a bounded regex execution failure remains an error.
 func ClassifyRendered(html string, config Object, finalURL string) (Object, error) {
-	if len(html) > 1<<20 || len(finalURL) > 8192 || !utf8.ValidString(html) || !utf8.ValidString(finalURL) {
+	return classifyDocument(html, config, finalURL, 1<<20)
+}
+
+// Static documents retain the existing public fetcher's 16 MiB body bound.
+func ClassifyDocument(html string, config Object, finalURL string) (Object, error) {
+	return classifyDocument(html, config, finalURL, 48<<20)
+}
+
+func classifyDocument(html string, config Object, finalURL string, limit int) (Object, error) {
+	if len(html) > limit || len(finalURL) > 8192 || !utf8.ValidString(html) || !utf8.ValidString(finalURL) {
 		return nil, errors.New("invalid rendered document bounds")
 	}
 	if pattern, ok := config["gone_url_pattern"].(string); ok && pattern != "" && finalURL != "" {

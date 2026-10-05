@@ -1,0 +1,30 @@
+{
+  "schema": "jobseek.native-dom-detail-runtime-candidate/v1",
+  "date": "2026-10-05",
+  "candidate_version": "0.13.931",
+  "profile": "dom.direct-detail/v1",
+  "architecture": "Existing public Go document fetch, DOM parse, ordinary detail ownership, shared native processor, canonical SQL writer and Redis settlement; no subprocess or new orchestrator",
+  "verification": {
+    "queue_full_real_postgres_redis_race_seconds": 47.795,
+    "worker_full_real_postgres_redis_race_seconds": 94.318,
+    "dom_parser_and_transport_race_seconds": 2.778,
+    "jsonld_document_race_seconds": 1.472,
+    "exporter_race_seconds": 3.417,
+    "python_ownership_cutover_required_fixture_tests_passed": 35,
+    "go_vet_and_module_checks": "passed",
+    "contracts": [
+      "Canonical title, description, location, salary and employment type",
+      "Exact canonical and Redis deadlines; inflight lease settlement",
+      "Bounded status retries; five-hop public header contract without status retry",
+      "Cookie-state redirect handshakes and same-origin redirects",
+      "Configured UTF-8, Latin-1 and Windows-1252 decoding; static bodies beyond rendered 1MiB bound",
+      "Gone redirects before HTTP status; challenges and empty extraction preserve prior content",
+      "Header/meta publisher reservations before status, including redirected resource/policy and concurrent inactivation",
+      "Full immutable nested config identity and independent monitor/detail ownership",
+      "Unsupported transport and secondary extraction retain original ownership"
+    ]
+  },
+  "production_activated": false,
+  "full_migration_complete": false,
+  "continued_delivery": "Fresh full-fleet admission and original source-bound cutover; remaining HTTP/Lightpanda routes and enabled families; direct runtime maintenance/deployment consumers; comparable resource proof and full supported reversal; retire mandatory production Python/Playwright/Chromium after rollback window"
+}

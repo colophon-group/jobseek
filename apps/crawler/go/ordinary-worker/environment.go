@@ -259,7 +259,7 @@ type BuildIdentity struct {
 	SourceRevision string     `json:"source_revision"`
 	CASHA256       string     `json:"ca_sha256"`
 	Profile        string     `json:"profile"`
-	Profiles       [18]string `json:"profiles"`
+	Profiles       [19]string `json:"profiles"`
 }
 
 func Identity(linked string) (BuildIdentity, error) {
@@ -267,5 +267,5 @@ func Identity(linked string) (BuildIdentity, error) {
 	if err != nil {
 		return BuildIdentity{}, err
 	}
-	return BuildIdentity{revision, pinnedCASHA256, "greenhouse.token-skip/v1", [18]string{"greenhouse.token-skip/v1", "ashby.token-skip/v1", "lever.token-skip/v1", "recruitee.api-skip/v1", "pinpoint.slug-skip/v1", "rss.teamtailor-skip/v1", "rss.successfactors-skip/v1", "personio.xml-skip/v1", "workday.cxs-urls/v1", "workday.cxs-detail/v1", "jsonld.direct-detail/v1", "smartrecruiters.api-detail/v1", "workable.api-detail/v1", "smartrecruiters.api-urls/v1", "workable.api-urls/v1", "join.nextdata-urls/v1", "join.nextdata-detail/v1", "sitemap.explicit-urls/v1"}}, nil
+	return BuildIdentity{revision, pinnedCASHA256, "greenhouse.token-skip/v1", [19]string{"greenhouse.token-skip/v1", "ashby.token-skip/v1", "lever.token-skip/v1", "recruitee.api-skip/v1", "pinpoint.slug-skip/v1", "rss.teamtailor-skip/v1", "rss.successfactors-skip/v1", "personio.xml-skip/v1", "workday.cxs-urls/v1", "workday.cxs-detail/v1", "jsonld.direct-detail/v1", "smartrecruiters.api-detail/v1", "workable.api-detail/v1", "smartrecruiters.api-urls/v1", "workable.api-urls/v1", "join.nextdata-urls/v1", "join.nextdata-detail/v1", "sitemap.explicit-urls/v1", "dom.direct-detail/v1"}}, nil
 }
