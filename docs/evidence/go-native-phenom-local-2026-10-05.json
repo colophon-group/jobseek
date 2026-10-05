@@ -1,0 +1,40 @@
+{
+  "schema": "jobseek.native-local-verification/v1",
+  "version": "0.13.945",
+  "profile": "phenom.sitemap-urls/v1",
+  "configuration_census": {
+    "source_revision": "09996a260785845f3b94a9fafad213d2b622ea3f",
+    "enabled": 31,
+    "canonical_admitted": 24,
+    "cached_admitted": 24,
+    "retained_legacy_proxy": 7,
+    "production_native_adoption": false
+  },
+  "implementation": [
+    "Reuse existing sealed native sitemap transport, publisher-policy handling, URL-only canonical/detail queue writer and supported cold retirement.",
+    "Preserve cached source-origin root, English/custom locale selection, single-language shards, two-level index traversal, UTM canonicalization and tenant-specific exclusion.",
+    "Single lenient root request, three strict child attempts, failures reject full union; guarded incomplete inventory prevents disappearance on the collection threshold. Shared task deadline and body budget remain bounded."
+  ],
+  "checks": {
+    "actual_python_cases": 19,
+    "pure_request_inventory": "PASS5.059s final with trailing XML comment",
+    "real_owned_worker_cases": 14,
+    "cold_retirement_cases": 3,
+    "focused_queue": "PASS3.031s",
+    "focused_worker_with_existing_sitemap": "PASS13.594s",
+    "sitemap_full_race": "PASS1.686s",
+    "sitemap_vet_tidy": "PASS",
+    "full_queue_race": "PASS109.597s",
+    "full_worker_race": "PASS212.601s",
+    "python_runtime_contracts": "93passed12.60s",
+    "generator_ruff": "PASS",
+    "vet_mod_tidy": "PASS queue/worker/sitemap"
+  },
+  "limitations": [
+    "Seven enabled proxy-backed monitor configurations retain legacy ownership until native proxy transport parity is proven. Current direct profile requires the persisted root to avoid claiming unimplemented root-discovery metadata writes.",
+    "Part of the combined945batch; includes the startup/iCIMS944 prerequisite until it merges. Fresh required CI/gate, immutable deployment and source-bound adoption remain required.",
+    "No native production adoption or natural provider processing claim.",
+    "Full migration, mandatory runtime consumers, whole-lane resources, supported reversal/rollback window and final Python retirement remain incomplete."
+  ],
+  "combined_batch_enabled_boards": 106
+}

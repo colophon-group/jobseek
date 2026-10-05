@@ -1,7 +1,7 @@
 {
   "schema": "jobseek.native-cold-baseline/v1",
   "proof": {
-    "observed_at_utc": "2026-10-05T19:49:19.260043+00:00",
+    "observed_at_utc": "2026-10-05T20:13:41.445971+00:00",
     "source_revision": "09996a260785845f3b94a9fafad213d2b622ea3f",
     "identities": {
       "JOBSEEK_DEPLOY_REVISION": "09996a260785845f3b94a9fafad213d2b622ea3f",

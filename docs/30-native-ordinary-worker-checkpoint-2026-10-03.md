@@ -1,10 +1,10 @@
 # Native ordinary worker continuation, 2026-10-03
 
-## Current delivery — 2026-10-05 19:49 UTC
+## Current delivery — 2026-10-05 20:13 UTC
 
 Lightpanda **1.0.0**, released October 2, remains the newest stable release in
 [the official release list](https://github.com/lightpanda-io/browser/releases),
-reverified at 18:43 UTC. Its immutable renderer and restart/reboot acceptance
+reverified on October 5. Its immutable renderer and restart/reboot acceptance
 remain verified.
 
 [API detail PR #10327](https://github.com/colophon-group/jobseek/pull/10327)
@@ -13,7 +13,7 @@ merged as `09996a260785845f3b94a9fafad213d2b622ea3f`; the original immutable
 completed and promoted. Fresh reconciliation checked 1,436,577 scheduled posting
 routes and admitted 6,291 monitor boards and 2,461 detail boards covering 1,412,265
 scheduled postings. Thirty-seven detail boards retain legacy ownership because
-their cache projection differs. Original B0 activation at epoch 191 recorded five
+their per-posting cache routes differ. Original B0 activation at epoch 191 recorded five
 committed renders before recovery; its counters reset during complete restart.
 [Production evidence](evidence/go-native-http-api943-production-2026-10-05.json).
 
@@ -31,7 +31,7 @@ unchanged B0 epoch/receipt, 22 ready records, zero inflight/dead and absent ordi
 receipt. Native ordinary production processing remains unverified.
 Before the incoming944release, the original B0 rollback restored all22ready
 records and retired epoch192. Original selector clear succeeded. Independent
-19:49UTC readback verifies six healthy restart-armed baseline services, no
+20:13 UTC readback verifies six healthy restart-armed baseline services, no
 active SQL plan or current fence, no native queue owners/receipts/selectors,
 and no live administrative oneoff.
 [Cold baseline evidence](evidence/go-native-http-api943-before-icims944-baseline-2026-10-05.json).
@@ -64,36 +64,42 @@ retirement. Full migration remains active and incomplete; following entries are
 historical.
 
 
-The next 945 batch adds Breezy, JazzHR and Gupy URL inventories and Gem rich inventories through
-the existing queue, verified transport, shared enrichment/canonical writer and
-cold retirement. All **82 enabled configurations** (13Breezy,13Gem,20JazzHR,36Gupy) pass
-canonical/cache admission. Nine frozen cases run the actual Python monitors,
-including requests, falsy fields and the shared location-type mapping. Fourteen
-real worker cases and six cold retirement cases pass, covering canonical output,
-publisher policy, empty-inventory guards, malformed/failure behavior, queue/deadline
-conservation, interrupted and committed-before-ACK reload, and changed-token
-refusal. Final full race suites pass: enrichment24.250s, queue103.132s and
-worker183.643s. Eighteen runtime contracts, vet/tidy and Ruff pass.
-[Local evidence](evidence/go-native-breezy-gem-local-2026-10-05.json).
-JazzHR adds seven actual Python inventory/request fixtures,13real worker
-cases and three cold retirement cases. It preserves strict tenant identity,
-canonical URLs, no listing redirects,404/410 disappearance, publisher policy,
-Unicode/truncation bounds and queue/deadline conservation. Final combined queue
-and worker race suites pass104.695s and190.579s, including existing iCIMS and
-startup regressions. [JazzHR evidence](evidence/go-native-jazzhr-local-2026-10-05.json).
-Gupy adds10actual Python fixtures,14real worker cases and three cold reversal
-cases. It preserves its own tenant/page witnesses, precise20digit IDs, incomplete
-inventory semantics, publisher policy and decoded HTML bounds. The final combined
-full race suites pass106.642s(queue) and214.993s(worker);18runtime contracts,
-vet/tidy and Ruff pass. [Gupy evidence](evidence/go-native-gupy-local-2026-10-05.json).
-The batch depends on944; native production ownership remains unverified.
+The pending 945 batch adds **106 direct configurations** through the existing
+native queue, sealed transport and canonical writer: 13 Breezy, 13 Gem,
+20 JazzHR, 36 Gupy and 24 Phenom. Canonical and cached configuration bindings
+match for this candidate cohort. Gem uses the existing shared enrichment path;
+the other inventories schedule their existing detail contracts separately.
+Configuration admission does not establish production ownership or live upstream
+processing.
 
-The updated944PR's native execution and installed-image checks passed. GitHub
-cancelled Python typing, company-reference and final RequiredCI jobs because
-hosted runners were not acquired. The first aggregator-only retry correctly
-failed on those cancelled prerequisites. The failed/cancelled jobs were then
-rerun together against the unchanged exact head. RequiredCI must pass before
-merge; no status is manufactured and no deployment hold is bypassed.
+The actual Python comparison corpus contains 45 request/inventory cases. Real
+PostgreSQL/Redis checks cover 55 worker cases and 15 cold-reversal cases, including
+publisher policy, complete and incomplete inventories, canonical writes, queue
+conservation, interrupted and committed-before-ACK retirement, and changed-binding
+refusal. The earlier 82-board batch's final full queue/worker race suites passed
+106.642s/214.993s. The expanded cohort's final full queue/worker race suites pass
+109.597s/212.601s. Focused Phenom/existing-sitemap worker checks, cold retirement,
+the sitemap module, vet/tidy, Ruff and 93 Python runtime contracts also pass.
+
+Phenom preserves locale filtering, single-language shards, selected-child failure,
+UTM normalization and publisher resource attribution. All 31 enabled boards supply
+a persisted sitemap root; 24 direct configurations are admitted. Seven proxy
+configurations remain with their current owner until native proxy parity is proven.
+The existing task deadline and body budgets apply, and an incomplete bounded union
+cannot authorize disappearance effects.
+
+Local evidence: [Breezy/Gem](evidence/go-native-breezy-gem-local-2026-10-05.json),
+[JazzHR](evidence/go-native-jazzhr-local-2026-10-05.json),
+[Gupy](evidence/go-native-gupy-local-2026-10-05.json). [Phenom](evidence/go-native-phenom-local-2026-10-05.json). Publish the verified
+combined work as one 945 release, including the startup/iCIMS prerequisite if it
+has not yet merged. Rebase only the batch's own commits if 944 merges first.
+
+The 944 PR remains ready at `b94d8a1d6531192085d0c0744e26949bab3be5c2`.
+Native execution and installed-image checks passed. Python typing passed on retry;
+the company-reference job again failed to acquire a GitHub hosted runner. Its
+unchanged-source fourth attempt is pending. Required CI and Crawler Deploy Gate
+must both pass before a fresh exact-head merge. The verified serving baseline
+remains healthy at epoch 192; no native owner or selector is active.
 
 
 ## Direct HTTP API details — 2026-10-05

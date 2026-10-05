@@ -18,10 +18,12 @@ import (
 // The parser retains its retry/body budgets; this adapter keeps every request
 // in the ordinary worker's sealed transport and origin attribution.
 type nativeSitemapSession struct {
-	client   *http.Client
-	endpoint string
-	stats    bounded.Stats
-	response *GreenhouseResponse
+	client               *http.Client
+	endpoint             string
+	stats                bounded.Stats
+	maxRequests          int
+	successfulPolicyOnly bool
+	response             *GreenhouseResponse
 }
 
 func (s *nativeSitemapSession) Stats() bounded.Stats { return s.stats }
@@ -29,7 +31,7 @@ func (s *nativeSitemapSession) Stats() bounded.Stats { return s.stats }
 func (s *nativeSitemapSession) Get(ctx context.Context, resource string, headers http.Header) (bounded.Response, error) {
 	root, rootErr := url.Parse(s.endpoint)
 	child, childErr := url.Parse(resource)
-	if rootErr != nil || childErr != nil || child.Scheme != "https" || child.Host != root.Host || child.User != nil || child.Opaque != "" || child.Fragment != "" || len(resource) > 8192 || s.stats.Requests >= 603 {
+	if rootErr != nil || childErr != nil || child.Scheme != "https" || child.Host != root.Host || child.User != nil || child.Opaque != "" || child.Fragment != "" || len(resource) > 8192 || s.stats.Requests >= s.requestLimit() {
 		return bounded.Response{}, &bounded.Error{Kind: bounded.ErrorRequestLimit}
 	}
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
@@ -52,7 +54,7 @@ func (s *nativeSitemapSession) Get(ctx context.Context, resource string, headers
 		return bounded.Response{}, queue.ErrObservation
 	}
 	reservation, policyURL := greenhouseHeaders(r.Header)
-	s.response = &GreenhouseResponse{endpoint: resource, finalURL: r.Request.URL.String(), status: r.StatusCode, reserved: reservation == "1", policy: policyURL, reservationSource: "header"}
+	s.response = &GreenhouseResponse{endpoint: resource, finalURL: r.Request.URL.String(), status: r.StatusCode, reserved: reservation == "1" && (!s.successfulPolicyOnly || r.StatusCode == 200), policy: policyURL, reservationSource: "header"}
 	response := bounded.Response{StatusCode: r.StatusCode, Header: r.Header.Clone()}
 	if s.response.reserved {
 		return response, &bounded.Error{Kind: bounded.ErrorTDMReservation}
@@ -69,7 +71,7 @@ func (s *nativeSitemapSession) Get(ctx context.Context, resource string, headers
 		s.stats.StatusBodyBytes += int64(len(body))
 	}
 	var reserved *policy.Reservation
-	if errors.As(policy.Check(nil, string(body), s.response.finalURL), &reserved) {
+	if (!s.successfulPolicyOnly || r.StatusCode == 200) && errors.As(policy.Check(nil, string(body), s.response.finalURL), &reserved) {
 		s.response.reserved = true
 		s.response.policy = reserved.PolicyURL
 		s.response.reservationSource = reserved.Source
@@ -135,4 +137,11 @@ func discoverSitemapInventory(ctx context.Context, client *http.Client, profile 
 		result.Jobs = append(result.Jobs, RichMonitorJob{URL: raw})
 	}
 	return result, nil
+}
+
+func (s *nativeSitemapSession) requestLimit() int {
+	if s.maxRequests > 0 {
+		return s.maxRequests
+	}
+	return 603
 }
