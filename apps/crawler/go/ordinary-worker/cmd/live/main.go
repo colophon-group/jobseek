@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"strings"
@@ -63,6 +64,7 @@ func run() error {
 	case "run", "--health":
 		c, err := worker.ReadRuntimeConfig(os.Getenv, revision)
 		if err != nil {
+			log.Print("ordinary worker startup stage: configuration")
 			return err
 		}
 		if command == "--health" {

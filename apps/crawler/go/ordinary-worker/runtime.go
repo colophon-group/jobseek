@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"errors"
+	"log"
 	"net"
 	"net/http"
 	"strconv"
@@ -245,18 +246,25 @@ func waitRuntime(ctx context.Context, d time.Duration) bool {
 	}
 }
 
+// runtimeStartupFailure reports only a fixed code-owned stage. Raw errors can
+// contain database URLs, credentials or board data and must never be logged.
+func runtimeStartupFailure(stage string) error {
+	log.Printf("ordinary worker startup stage: %s", stage)
+	return ErrStartup
+}
+
 // Run loads native process assets and exact owned authority before opening its
 // health/metrics listener. No activation or production scheduling occurs here.
 // Callers must exit on error; uncooperative cancellation skips blocking cleanup.
 func Run(ctx context.Context, c RuntimeConfig) error {
 	if c.source == "" || c.plan == "" || c.epoch < 1 || c.databaseURL == "" || c.redisURL == "" || c.concurrency < 1 {
-		return ErrStartup
+		return runtimeStartupFailure("configuration")
 	}
 	startup, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 	client, err := queue.Open(c.redisURL, queue.Settings{DefaultDelaySeconds: c.delay, LeaseTTL: c.leaseTTL, MaxDomains: c.maxDomains})
 	if err != nil {
-		return ErrStartup
+		return runtimeStartupFailure("redis_client")
 	}
 	var authority *queue.Authority
 	var lookup *executor.Store
@@ -284,51 +292,51 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 	authority, err = queue.OpenOwnedAuthority(startup, c.databaseURL, client, c.epoch, c.plan, c.source)
 	if err != nil {
 		cleanup()
-		return ErrStartup
+		return runtimeStartupFailure("ownership")
 	}
 	if authority.RequiresRenderedDetails() && !c.rendered {
 		cleanup()
-		return ErrStartup
+		return runtimeStartupFailure("rendered_mode")
 	}
 	// The separately installed SHA1 is what the legacy owner also receives.
 	if err = authority.AttestOwnershipProjection(startup, c.projection); err != nil {
 		cleanup()
-		return ErrStartup
+		return runtimeStartupFailure("projection")
 	}
 	lookup, err = executor.OpenOrdinaryLookupStore(startup, c.databaseURL)
 	if err != nil {
 		cleanup()
-		return ErrStartup
+		return runtimeStartupFailure("lookup_store")
 	}
 	matcher, err := enrichment.Load(c.dataDirectory)
 	if err != nil {
 		cleanup()
-		return ErrStartup
+		return runtimeStartupFailure("enrichment_assets")
 	}
 	lookups, err := executor.LoadLookups(startup, lookup)
 	if err != nil {
 		cleanup()
-		return ErrStartup
+		return runtimeStartupFailure("lookups")
 	}
 	locations, err = executor.LoadLocations(startup, lookup)
 	if err != nil {
 		cleanup()
-		return ErrStartup
+		return runtimeStartupFailure("locations")
 	}
 	httpClient, err = NewVerifiedDirectHTTP(DirectHTTPConfig{CABundlePEM: pinnedCA, InternalHosts: c.internalHosts})
 	if err != nil {
 		cleanup()
-		return ErrStartup
+		return runtimeStartupFailure("direct_transport")
 	}
 	workdayHTTP, err = NewVerifiedDirectHTTP(DirectHTTPConfig{CABundlePEM: pinnedCA, InternalHosts: c.internalHosts, EnableHTTP2: true})
 	if err != nil {
 		cleanup()
-		return ErrStartup
+		return runtimeStartupFailure("http2_transport")
 	}
 	circuits, err := queue.NewHostCircuits(client, c.circuits)
 	if err != nil {
 		cleanup()
-		return ErrStartup
+		return runtimeStartupFailure("host_circuits")
 	}
 	preparer := NativeRichPreparer{&executor.Processor{Matcher: matcher, Lookups: lookups, Locations: locations}}
 	var renderer renderedDetailClient
@@ -336,17 +344,17 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		renderer, err = installedRenderedDetails()
 		if err != nil {
 			cleanup()
-			return ErrStartup
+			return runtimeStartupFailure("renderer_assets")
 		}
 	}
 	if startup.Err() != nil {
 		cleanup()
-		return ErrStartup
+		return runtimeStartupFailure("startup_deadline")
 	}
 	listener, err := net.Listen("tcp", c.metricsAddress)
 	if err != nil {
 		cleanup()
-		return ErrStartup
+		return runtimeStartupFailure("metrics_listener")
 	}
 	m := newRuntimeMetrics(c.concurrency, c.stallTimeout)
 	m.source, m.plan, m.epoch = c.source, c.plan, c.epoch

@@ -1,7 +1,7 @@
 {
   "schema": "jobseek.native-production-checkpoint/v1",
   "version": "0.13.943",
-  "observed_at_utc": "2026-10-05T18:02:37.196172+00:00",
+  "observed_at_utc": "2026-10-05T19:03:08.060922+00:00",
   "source_revision": "09996a260785845f3b94a9fafad213d2b622ea3f",
   "deployment_run": 37351158145,
   "deployment_status": "success; promoted",
@@ -16,12 +16,13 @@
     "worker-3": 200,
     "browser-1": 200,
     "drain": 200,
-    "exporter": 200
+    "exporter": 200,
+    "lightpanda-claimant": 204
   },
   "baseline_canonical": {
     "active_plans": 0,
-    "retained_plan_state": "retired",
-    "routing_epoch": 190,
+    "retained_plan_state": "fresh ordinary plan retired through original recover-pending",
+    "routing_epoch": 191,
     "current_or_newer_active_fences": 0,
     "retained_outgoing_active_receipts": 1
   },
@@ -43,13 +44,13 @@
       "jobseek_lightpanda_b0_queue_ready 22",
       "jobseek_lightpanda_b0_queue_inflight 0",
       "jobseek_lightpanda_b0_queue_dead 0",
-      "jobseek_lightpanda_b0_render_total{outcome=\"success\"} 5",
+      "jobseek_lightpanda_b0_render_total{outcome=\"success\"} 0",
       "jobseek_lightpanda_b0_render_total{outcome=\"failure\"} 0",
-      "jobseek_lightpanda_b0_executor_total{outcome=\"committed\"} 5",
+      "jobseek_lightpanda_b0_executor_total{outcome=\"committed\"} 0",
       "jobseek_lightpanda_b0_executor_total{outcome=\"failure\"} 0"
     ]
   },
-  "ordinary_activation": "fresh original-wrapper staging underway; ordinary process not yet active",
+  "ordinary_activation": "Fresh SQL activation accepted; full-stack readiness failed; original recover-pending completed and ordinary receipt absent.",
   "full_migration_complete": false,
   "admission": {
     "actual_posting_routes_reconciled": true,
@@ -153,5 +154,6 @@
     "unsupported_config_boards": 5384,
     "workday_detail_boards": 432,
     "workday_monitor_boards": 456
-  }
+  },
+  "historical_b0_committed_renders_before_recovery": 5
 }

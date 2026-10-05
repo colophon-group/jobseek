@@ -103,8 +103,19 @@ func TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain(t *test
 	// Incorrect installed projection refuses startup before claiming future work.
 	wrong := exec.Command(binary)
 	wrong.Env = append(env, "ORDINARY_OWNERSHIP_PROJECTION_SHA1="+strings.Repeat("d", 40))
-	if output, err := wrong.CombinedOutput(); err == nil || !strings.Contains(string(output), "ordinary worker command rejected") {
+	if output, err := wrong.CombinedOutput(); err == nil || !strings.Contains(string(output), "ordinary worker command rejected") || !strings.Contains(string(output), "ordinary worker startup stage: projection") || strings.Contains(string(output), dsn) {
 		t.Fatal("wrong installed projection accepted startup")
+	}
+	// Asset failures retain a static stage while keeping private paths out of logs.
+	missing := exec.Command(binary)
+	missing.Env = append(env, "ORDINARY_GO_DATA_DIRECTORY="+filepath.Join(t.TempDir(), "private-do-not-log"))
+	if output, err := missing.CombinedOutput(); err == nil || !strings.Contains(string(output), "ordinary worker startup stage: enrichment_assets") || strings.Contains(string(output), "private-do-not-log") || strings.Contains(string(output), dsn) {
+		t.Fatal("missing assets lost rejection stage or leaked private input")
+	}
+	invalid := exec.Command(binary)
+	invalid.Env = append(env, "ORDINARY_OWNERSHIP_PLAN_SHA256=private-do-not-log")
+	if output, err := invalid.CombinedOutput(); err == nil || !strings.Contains(string(output), "ordinary worker startup stage: configuration") || strings.Contains(string(output), "private-do-not-log") || strings.Contains(string(output), dsn) {
+		t.Fatal("invalid configuration lost rejection stage or leaked private input")
 	}
 }
 

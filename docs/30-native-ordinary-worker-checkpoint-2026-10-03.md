@@ -1,48 +1,61 @@
 # Native ordinary worker continuation, 2026-10-03
 
-## Current delivery — 2026-10-05 18:08 UTC
+## Current delivery — 2026-10-05 19:03 UTC
 
 Lightpanda **1.0.0**, released October 2, remains the newest stable release in
-[the official release list](https://github.com/lightpanda-io/browser/releases).
-Its immutable renderer and restart/reboot acceptance remain verified.
+[the official release list](https://github.com/lightpanda-io/browser/releases),
+reverified at 18:43 UTC. Its immutable renderer and restart/reboot acceptance
+remain verified.
 
 [API detail PR #10327](https://github.com/colophon-group/jobseek/pull/10327)
-merged as `09996a260785845f3b94a9fafad213d2b622ea3f`. The original immutable
+merged as `09996a260785845f3b94a9fafad213d2b622ea3f`; the original immutable
 [943 deployment](https://github.com/colophon-group/jobseek/actions/runs/37351158145)
-completed and promoted. Independent readback at 18:02:37 UTC verifies its exact
-images, six healthy restart-armed baseline services and retired ordinary ownership
-at epoch 190. Original B0 activation then succeeded at epoch 191; readback verifies
-the source-bound receipt and five naturally scheduled committed renders with no
-render/executor failures. [Production evidence](evidence/go-native-http-api943-production-2026-10-05.json).
-Fresh source943 reconciliation checked 1,436,577 scheduled posting routes. It
-admits 6,291 monitor boards and 2,461 detail boards covering 1,412,265 scheduled
-postings, including all 41 HTTP API detail boards. Thirty-seven detail boards
-retain legacy ownership because their cache projection differs; there are no
-actual URL-route rejections. Original-wrapper staging is underway; ordinary
-activation and natural processing have not yet been observed.
+completed and promoted. Fresh reconciliation checked 1,436,577 scheduled posting
+routes and admitted 6,291 monitor boards and 2,461 detail boards covering 1,412,265
+scheduled postings. Thirty-seven detail boards retain legacy ownership because
+their cache projection differs. Original B0 activation at epoch 191 recorded five
+committed renders before recovery; its counters reset during complete restart.
+[Production evidence](evidence/go-native-http-api943-production-2026-10-05.json).
 
-The next batch adds iCIMS URL inventories through the existing Go worker and
-URL/detail writer. All **118 enabled configurations** pass canonical and cached
-admission against the fresh production configuration capture. Classic sequential
-pages, aggregate child reconciliation, ID peers, locale multisets and Jibe fallback
-are included. Sixteen frozen fixtures from the actual Python monitor verify
-inventory/truncation and exact request chains. Real PostgreSQL/Redis operational
-and cold-retirement tests pass. The full queue race suite passes in 93.789s and the
-full worker race suite in 178.645s. Eighteen runtime contract tests pass.
-[Local evidence](evidence/go-native-icims-local-2026-10-05.json).
-No production iCIMS ownership is claimed by this local batch yet.
+The first ordinary activation refused before publishing ownership. Its supported
+recovery succeeded after the shared mutation lock released. Later read-only
+comparison found four UKG-derived detail bindings had gained `listing_url`;
+that observation cannot establish the exact original refusal timing. Fresh
+original staging and activation accepted SQL ownership after natural lease expiry,
+but complete-stack readiness failed. All four legacy workers exited with
+`OrdinaryOwnershipError`; the native worker separately exited with a generic
+startup rejection. The original wrapper contained all writers, and its supported
+`recover-pending` restored the complete baseline/B0 stack. Independent 19:03 UTC
+readback verifies six baseline health responses at 200, B0 claimant at 204,
+unchanged B0 epoch/receipt, 22 ready records, zero inflight/dead and absent ordinary
+receipt. Native ordinary production processing remains unverified.
+[Activation and recovery evidence](evidence/go-native-http-api943-activation-recovery-2026-10-05.json).
 
-Coverage correction: the historical 353 “new direct” embedded/Next.js count was a
-configuration category, not newly covered boards. The fresh943 screen assigns
-265 boards to existing Join, 88 to direct embedded and one to rendered embedded.
-Actual posting-route admission determines the deployable cohort.
+The 944 candidate fixes the legacy validator's missing Oracle API, embedded
+direct/rendered and HTTP API detail profiles while retaining worker/domain/company/
+config/hash guards. The actual rejected943 plan now produces the exact Go routing
+projection for all 6,291 monitors and 2,461 details. Go startup reports only a
+fixed stage label, preserving rejection and private error redaction. This makes
+its separate unresolved failure observable on the next immutable release.
 
-Continue with current-source admission, ordinary activation and natural Simple/
-rendered output, queue/deadline conservation and description publication; publish
-iCIMS after green checks. Remaining enabled profiles and mandatory Python runtime
-consumers, comparable whole-lane resources, supported reversal and the rollback
-window still precede retirement. The full migration goal remains active and
-incomplete. Following entries record their historical state.
+[iCIMS PR #10328](https://github.com/colophon-group/jobseek/pull/10328) adds URL
+inventories through existing Go transport, canonical/detail scheduling and cold
+retirement. All 118 enabled canonical/cache configurations are admitted. Sixteen
+actual Python fixtures, 21 operational cases and full queue/worker race suites
+pass. The legacy compatibility fix passes real PostgreSQL/Redis and executable
+startup regressions. Fresh required checks must cover the updated head before
+merge. [Local evidence](evidence/go-native-icims-local-2026-10-05.json).
+Production iCIMS ownership remains unverified.
+
+Use original B0 rollback and selector clear, verify the baseline, then merge and
+deploy944 after current required checks and exact-head authority. Repeat fresh
+source-bound admission and the original full cutover, inspect any static startup
+failure, and prove natural Simple/rendered canonical output, publisher policy,
+description publication, freshness and queue conservation. Continue remaining
+enabled profiles and mandatory Python consumers through existing paths. Comparable
+whole-lane resources, cold reversal and the rollback window precede final runtime
+retirement. Full migration remains active and incomplete; following entries are
+historical.
 
 
 ## Direct HTTP API details — 2026-10-05

@@ -1,0 +1,62 @@
+{
+  "schema": "jobseek.native-activation-recovery/v1",
+  "source_revision": "09996a260785845f3b94a9fafad213d2b622ea3f",
+  "version": "0.13.943",
+  "routing_epoch": 191,
+  "first_attempt": {
+    "plan_sha256": "e2f386f665ed6718475910cbe397f19c3030adeb06d39de9613238872e2979f5",
+    "projection_sha1": "174f3a8690d5f540d4ad30bdf040613357dcb5b1",
+    "result": "Refused before SQL activation/projection publication; first recovery did not begin under held shared mutation lock; original recovery succeeded after lock release.",
+    "later_read_only_comparison": "All6291monitor bindings match;4embedded detail configs gained UKG listing_url metadata, changing immutable config binding. Later capture cannot establish exact original refusal timing."
+  },
+  "fresh_attempt": {
+    "plan_sha256": "b9ebf0ada320dc8193725dee35919f74355cfe545ac51d17a3bc25eec02fd45f",
+    "projection_sha1": "ab6492fb2a896c84c3bc450b377923328ec4da73",
+    "sql_activation": "Accepted after natural legacy lease expiry.",
+    "readiness": "Rejected: service does not resolve to one container; original wrapper contained all writers.",
+    "startup_readback_at_utc": "2026-10-05T18:59:58Z",
+    "legacy_workers": "All4 exited1 with OrdinaryOwnershipError; no OOM.",
+    "native_worker": "Exited1 with generic command rejection; no OOM; startup stage unresolved.",
+    "recovery": "Original exact-source recover-pending succeeded, retired the plan and removed its projection, then restarted the complete baseline/B0 stack."
+  },
+  "independent_readback": {
+    "observed_at": "2026-10-05T19:03:08.060922+00:00",
+    "ordinary_receipt_absent": true,
+    "revision": "09996a260785845f3b94a9fafad213d2b622ea3f",
+    "identities": {
+      "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:24c18c0254419ae115f5eb97dde4b0def890b3d26c3203dcc61bd4d5c4d4778e",
+      "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:f102a26a66976f133cf145b724c9cf90ef75ccceae94042e4ebde0b6050e4d25",
+      "JOBSEEK_DEPLOY_REVISION": "09996a260785845f3b94a9fafad213d2b622ea3f"
+    },
+    "cohort": "cdom",
+    "routing_epoch": "191",
+    "plan_digest": "5a600d99bd68fb473ad669ca929636c540caa9977d4b47975b2d24c5fd6facc1",
+    "receipt_sha256": "a3615e975afde9a0309ac242db773b13670a294be2c97d4034b058e25c98fc84",
+    "health_status": {
+      "worker-1": 200,
+      "worker-2": 200,
+      "worker-3": 200,
+      "browser-1": 200,
+      "drain": 200,
+      "exporter": 200,
+      "lightpanda-claimant": 204
+    },
+    "native_cohort_metrics": [
+      "jobseek_lightpanda_b0_queue_ready 22",
+      "jobseek_lightpanda_b0_queue_inflight 0",
+      "jobseek_lightpanda_b0_queue_dead 0",
+      "jobseek_lightpanda_b0_render_total{outcome=\"success\"} 0",
+      "jobseek_lightpanda_b0_render_total{outcome=\"failure\"} 0",
+      "jobseek_lightpanda_b0_executor_total{outcome=\"committed\"} 0",
+      "jobseek_lightpanda_b0_executor_total{outcome=\"failure\"} 0"
+    ],
+    "scope": "supported wrapper success plus source-bound active receipt and current local HTTP health; naturally scheduled counter snapshot"
+  },
+  "diagnosis": {
+    "legacy_validator": "Missing oracle_hcm.api-detail/v1, embedded.direct-detail/v1, embedded.rendered-detail/v1, api_sniffer.http-detail/v1; rendered embedded must bind browser.",
+    "actual_plan_regression": "Unchanged Python parser rejects retained first-plan payload; corrected parser reproduces exact Go projection174f3a8690d5f540d4ad30bdf040613357dcb5b1 for6291monitor/2461detail boards.",
+    "native_startup": "Independent failure unresolved; static startup-stage diagnostics added in944. No raw error/env/provider data logged."
+  },
+  "production_natural_ordinary_processing_verified": false,
+  "full_migration_complete": false
+}

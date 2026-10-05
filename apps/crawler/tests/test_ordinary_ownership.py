@@ -483,9 +483,14 @@ async def test_real_legacy_detail_write_excludes_actual_canonical_board(monkeypa
         "dom.direct-detail/v1",
         "dom.rendered-detail/v1",
         "jsonld.rendered-detail/v1",
+        "join.nextdata-detail/v1",
+        "oracle_hcm.api-detail/v1",
+        "embedded.direct-detail/v1",
+        "embedded.rendered-detail/v1",
+        "api_sniffer.http-detail/v1",
     ],
 )
-def test_jsonld_detail_projection_is_independent_of_monitor_membership(profile):
+def test_detail_projection_is_independent_of_monitor_membership(profile):
     _, payload = expectation()
     doc = json.loads(payload)
     board = "00000000-0000-4000-8000-000000000098"
