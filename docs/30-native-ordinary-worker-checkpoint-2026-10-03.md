@@ -1,5 +1,29 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Nested sitemap continuation — 2026-10-05
+
+[PR #10306](https://github.com/colophon-group/jobseek/pull/10306) merged the direct
+DOM runtime as `e435e120ea0d14382a34da19812e6fb32fde0155`, with Required CI,
+installed-image parity and Crawler Deploy Gate green. Reviewed and merged trees
+match. Its original immutable deployment is building; source930 baseline and B0
+remain serving, and ordinary ownership remains unselected after staging rejection.
+
+v0.13.933 extends the existing `sitemap.explicit-urls/v1` worker to resolve nested
+indices before publishing an inventory. It retains Python job-child preference,
+cycle suppression, strict transient retries and missing/invalid child handling.
+Exhausted required shards preserve prior postings. Header/meta reservations bind
+the actual child URL and policy before status handling. The compiled traversal
+bounds are eight levels, 200 same-origin children, three child attempts, 50 MiB per
+document and 55 MiB aggregate. Discovery, cross-origin children and unsupported
+transport/configured XML retry overrides still require native replacement.
+
+Full real PostgreSQL/Redis race suites passed (queue 48.264s, worker 115.396s),
+parser/transport race and Go vet/module checks passed, and all 35 required Python
+ownership/cutover tests passed. Real owned tests verify complete canonical union,
+urgent details, failure preservation, empty confirmation, cycles and child policy.
+[Portable index evidence](evidence/go-native-sitemap-index-runtime-candidate-2026-10-05.json)
+records candidate scope. Production adoption and full migration remain unproved.
+
 ## Combined direct DOM monitors and details — 2026-10-05
 
 The full migration goal remains active. v0.13.932 combines direct static DOM

@@ -2,6 +2,24 @@ package queue
 
 import "testing"
 
+func TestSitemapResponseResourceBindsEveryChildToOriginalOrigin(t *testing.T) {
+	p := GreenhouseMonitorProfile{Provider: "sitemap", Endpoint: "https://example.com/jobs.xml"}
+	for _, resource := range []string{"https://example.com/jobs.xml", "https://example.com/nested/jobs.xml?shard=2"} {
+		if !SitemapMonitorResourceMatches(p, resource) || !initialMonitorResourceMatches(p, resource) {
+			t.Fatal("same-origin sitemap child rejected", resource)
+		}
+	}
+	for _, resource := range []string{"http://example.com/jobs.xml", "https://foreign.example/jobs.xml", "https://example.com:443/jobs.xml", "https://user@example.com/jobs.xml", "https://example.com/jobs.xml#fragment", "/jobs.xml", "https://example.com/jobs%zz.xml"} {
+		if SitemapMonitorResourceMatches(p, resource) || initialMonitorResourceMatches(p, resource) {
+			t.Fatal("unbound sitemap child accepted", resource)
+		}
+	}
+	p.Provider = "workday"
+	if SitemapMonitorResourceMatches(p, p.Endpoint) {
+		t.Fatal("foreign provider accepted")
+	}
+}
+
 func TestSitemapMonitorBindsExplicitResourceFiltersAndDetailConfig(t *testing.T) {
 	c := profileConfig()
 	c["crawler_type"], c["domain"], c["throttle_key"] = "sitemap", "sitemap", "sitemap"

@@ -1,0 +1,51 @@
+{
+  "schema": "jobseek.native-sitemap-index-runtime-candidate/v1",
+  "date": "2026-10-05",
+  "candidate_version": "0.13.933",
+  "profile": "sitemap.explicit-urls/v1",
+  "architecture": "Existing Go sitemap parser, sealed ordinary worker transport, ownership and canonical SQL/Redis settlement",
+  "behavior": [
+    "Complete nested index union with job-child preference, duplicate and cycle suppression",
+    "Three child attempts for transient status/transport failures; required exhaustion rejects partial inventory",
+    "Missing and malformed child handling; valid empty URLset retains existing empty confirmation",
+    "Header and meta publisher reservations before status, bound to actual child URL and policy"
+  ],
+  "limits": {
+    "index_depth": 8,
+    "distinct_same_origin_https_children": 200,
+    "child_attempts": 3,
+    "per_document_bytes": 52428800,
+    "aggregate_bytes": 57671680
+  },
+  "verification": {
+    "queue_full_real_postgres_redis_race_seconds": 48.264,
+    "worker_full_real_postgres_redis_race_seconds": 115.396,
+    "sitemap_parser_race_seconds": 1.335,
+    "sitemap_transport_race_seconds": 1.602,
+    "python_required_ownership_cutover_tests_passed": 35,
+    "python_seconds": 7.29,
+    "go_vet_module_checks": "passed",
+    "real_worker_modes": [
+      "complete union",
+      "later exhausted shard",
+      "header reservation",
+      "meta reservation",
+      "valid empty leaf",
+      "missing leaves",
+      "foreign child"
+    ]
+  },
+  "remaining_sitemap_scope": [
+    "Discovery and cached root rediscovery",
+    "Cross-origin children",
+    "Proxy and XML retry overrides"
+  ],
+  "previous_runtime": {
+    "version": "0.13.932",
+    "pull_request": "https://github.com/colophon-group/jobseek/pull/10306",
+    "merged_source": "e435e120ea0d14382a34da19812e6fb32fde0155",
+    "deployment": "original immutable deployment building"
+  },
+  "production_activated": false,
+  "full_migration_complete": false
+}

@@ -21,7 +21,7 @@ func TestRealOwnedSitemapCompleteInventoryFiltersFailureAndPolicy(t *testing.T) 
 			var calls atomic.Int64
 			client := verifiedClaimFixtureClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				calls.Add(1)
-				if r.Method != "GET" || r.Host != "example.com" || r.URL.Path != "/jobs.xml" {
+				if r.Method != "GET" || r.Host != "example.com" || r.URL.Path != "/jobs.xml" && !(mode == "index" && r.URL.Path == "/child.xml") {
 					t.Error("sitemap left exact direct resource")
 				}
 				if mode == "retry429" && calls.Load() < 3 {
@@ -82,6 +82,9 @@ func TestRealOwnedSitemapCompleteInventoryFiltersFailureAndPolicy(t *testing.T) 
 					}
 				} else {
 					want := int64(1)
+					if mode == "index" {
+						want = 2
+					}
 					if mode == "empty" {
 						want = 3
 					}

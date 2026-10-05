@@ -60,7 +60,7 @@ func SitemapMonitorConfig(config map[string]string) (sitemap.Config, string, str
 			return fail()
 		}
 	}
-	c, err := sitemap.NormalizeConfig(sitemap.Config{SitemapURL: root, MaxURLs: 50_000, MaxIndexChildren: 1, RequireURLSet: true})
+	c, err := sitemap.NormalizeConfig(sitemap.Config{SitemapURL: root, MaxURLs: 50_000, MaxIndexChildren: 200, MaxIndexDepth: 8, ChildMaxAttempts: 3})
 	if err != nil {
 		return fail()
 	}
@@ -73,4 +73,15 @@ func inspectSitemapMonitor(boardID string, config map[string]string, md map[stri
 		return GreenhouseMonitorProfile{}, err
 	}
 	return inspectURLOnlyMonitor(boardID, config, md, "sitemap", "sitemap.explicit-urls/v1", "sitemap", c.SitemapURL)
+}
+
+// SitemapMonitorResourceMatches binds a fetched index child to the configured
+// HTTPS origin. It grants no queue or database write authority.
+func SitemapMonitorResourceMatches(profile GreenhouseMonitorProfile, resource string) bool {
+	if profile.Provider != "sitemap" {
+		return false
+	}
+	root, rootErr := url.Parse(profile.Endpoint)
+	child, childErr := url.Parse(resource)
+	return rootErr == nil && childErr == nil && validGreenhouseResponseResource(resource) && child.Scheme == "https" && child.Host == root.Host && child.User == nil && child.Opaque == "" && child.Fragment == "" && child.Port() == ""
 }
