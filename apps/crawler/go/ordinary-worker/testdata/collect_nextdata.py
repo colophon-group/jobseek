@@ -179,6 +179,53 @@ many.update({BASE + f"?page={n}": response(page([row(n)])) for n in range(2, 14)
 add("stream-groups-of-ten", paginate, many)
 
 
+identity_options = {
+    "source_identity": {"provider": "fixture", "tenant": "test", "field": "external"},
+    "url_allowlist": r"https://example\.com/jobs/[0-9]+",
+}
+for name, value in [
+    ("large-integer", 90071992547409931234),
+    ("trimmed-string", "  abc-123  "),
+    ("boolean", True),
+    ("float", 1.5),
+    ("empty", "  "),
+]:
+    add(
+        "identity-" + name,
+        identity_options,
+        {BASE: response(page([{**row(1), "external": value}]))},
+    )
+
+
+employer_options = {
+    "expected_hiring_organization": "Fixture Hospital",
+    "url_allowlist": r"https://example\.com/jobs/[0-9]+",
+}
+
+
+def witness(name):
+    return (
+        '<script type="application/ld+json">'
+        + json.dumps({"@type": "JobPosting", "hiringOrganization": {"name": name}})
+        + "</script>"
+    )
+
+
+for name, detail in [
+    ("matching", response(witness(" Fixture Hospital "))),
+    ("other", response(witness("Other Hospital"))),
+    ("missing", response('<meta name="job-title" content="Engineer">')),
+    ("gone", response("gone", 404)),
+    ("failed", response("unavailable", 503)),
+    ("reserved", response(witness("Fixture Hospital"), headers={"TDM-Reservation": "1"})),
+]:
+    add(
+        "employer-" + name,
+        employer_options,
+        {BASE: response(page([row(1)])), "https://example.com/jobs/1": detail},
+    )
+
+
 async def main():
     output = []
     for name, metadata, pages, base in cases:

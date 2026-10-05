@@ -29,7 +29,7 @@ func TestNextdataStreamMatchesActualPythonChunksRequestsAndFailurePrefixes(t *te
 			}
 		}
 	}
-	if err != nil || json.Unmarshal(data, &corpus) != nil || len(corpus.Cases) != 26 {
+	if err != nil || json.Unmarshal(data, &corpus) != nil || len(corpus.Cases) != 37 {
 		t.Fatal("actual Python NextData stream corpus missing")
 	}
 	for _, c := range corpus.Cases {
@@ -97,7 +97,7 @@ func TestNextdataStreamMatchesActualPythonChunksRequestsAndFailurePrefixes(t *te
 				}
 				out := []map[string]any{}
 				for _, j := range jobs {
-					out = append(out, map[string]any{"url": j.URL, "title": j.Title, "description": j.Description, "locations": j.Locations, "employment_type": j.EmploymentType, "job_location_type": j.JobLocationType, "date_posted": j.DatePosted, "metadata": j.Metadata, "language": j.Language, "extras": nil, "localizations": nil, "base_salary": nil, "source_identity": nil})
+					out = append(out, map[string]any{"url": j.URL, "title": j.Title, "description": j.Description, "locations": j.Locations, "employment_type": j.EmploymentType, "job_location_type": j.JobLocationType, "date_posted": j.DatePosted, "metadata": j.Metadata, "language": j.Language, "extras": nil, "localizations": nil, "base_salary": nil, "source_identity": nullableNextdataIdentity(j.SourceIdentity)})
 				}
 				body, _ := json.Marshal(out)
 				var chunk any
@@ -116,4 +116,11 @@ func TestNextdataStreamMatchesActualPythonChunksRequestsAndFailurePrefixes(t *te
 			}
 		})
 	}
+}
+
+func nullableNextdataIdentity(value string) any {
+	if value == "" {
+		return nil
+	}
+	return value
 }

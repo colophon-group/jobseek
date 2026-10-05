@@ -185,3 +185,33 @@ func TestRealJSONLDDescriptionEnrichmentPreservesMonitorOwnedFields(t *testing.T
 		t.Fatal("detail schedule/lease differs", err)
 	}
 }
+
+func TestRealJSONLDDescriptionAndLocationsEnrichmentPreservesOtherMonitorFields(t *testing.T) {
+	f, a, claim := independentDetailOwnedFixture(t, `{"scraper_type":"json-ld","scraper_config":{"enrich":["description","locations"]}}`, "")
+	ctx := context.Background()
+	if _, err := f.pg.Exec(ctx, "UPDATE job_posting SET titles=ARRAY['Monitor title'],locales=ARRAY['sv'],location_ids=ARRAY[1],location_types=ARRAY['remote'],employment_type='part_time' WHERE id=$1::uuid", f.original); err != nil {
+		t.Fatal(err)
+	}
+	circuits, err := queue.NewHostCircuits(f.client, queue.DefaultHostCircuitSettings())
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := richPipelineHTTP(t, func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, nativeJSONLDHTML) })
+	result, err := RunDetail(ctx, a, claim, client, richPipelinePreparer(t, f).Processor, circuits)
+	if err != nil || result == nil || !result.Settled || result.Cycle.Status != "succeeded" {
+		t.Fatal("description enrichment failed", result, err)
+	}
+	var title, employment, html string
+	var locations []int32
+	var due time.Time
+	var uploaded bool
+	if err := f.pg.QueryRow(ctx, "SELECT p.titles[1],p.employment_type,p.location_ids,d.html,d.r2_uploaded,p.next_scrape_at FROM job_posting p JOIN descriptions d ON d.posting_id=p.id WHERE p.id=$1::uuid", f.original).Scan(&title, &employment, &locations, &html, &uploaded, &due); err != nil {
+		t.Fatal(err)
+	}
+	if title != "Monitor title" || employment != "part_time" || fmt.Sprint(locations) != "[2]" || !strings.Contains(html, "Salary CHF") || uploaded {
+		t.Fatal("detail overwrote monitor fields or failed staging")
+	}
+	if score, err := f.r.ZScore(ctx, "scrapes_simple:example.com", f.original).Result(); err != nil || score != float64(due.UnixMicro())/1e6 || f.r.ZCard(ctx, "inflight:simple").Val() != 0 {
+		t.Fatal("detail schedule/lease differs", err)
+	}
+}

@@ -3,6 +3,7 @@ package apisniffer
 import (
 	"encoding/json"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -25,6 +26,16 @@ type NextdataOptions struct {
 	Pagination                                                    *NextdataPagination
 	IncludeItems, RequireItems                                    map[string][]string
 	Metadata                                                      map[string]any
+	Identity                                                      *NextdataIdentity
+ ExpectedOrganization string
+}
+
+type NextdataIdentity struct{ Provider, Tenant, Field string }
+
+var explicitNextdataIdentity = regexp.MustCompile(`^[a-z][a-z0-9_-]{1,31}:[a-z0-9][a-z0-9._-]{0,63}:[A-Za-z0-9][A-Za-z0-9._~:/-]{0,383}$`)
+
+func (c NextdataIdentity) Valid(value string) bool {
+	return strings.HasPrefix(value, c.Provider+":"+c.Tenant+":") && explicitNextdataIdentity.MatchString(value)
 }
 
 // Configuration remains detached from execution/ownership. Unknown transport
@@ -43,7 +54,7 @@ func NextdataOptionsFromMetadata(boardURL, metadata string) (NextdataOptions, er
 	if !validURL(boardURL) {
 		return o, ErrOptions
 	}
-	for _, key := range []string{"proxy", "render", "actions", "skip_ssl", "browser_expression", "source_identity", "expected_hiring_organization", "base_salary", "board_gone_statuses"} {
+	for _, key := range []string{"proxy", "render", "actions", "skip_ssl", "browser_expression", "base_salary", "board_gone_statuses"} {
 		if detailTruthy(m[key]) {
 			return o, ErrOptions
 		}
@@ -105,6 +116,31 @@ func NextdataOptionsFromMetadata(boardURL, metadata string) (NextdataOptions, er
 		if _, err := dom.CompileURLPattern(o.URLAllowlist); err != nil {
 			return o, ErrOptions
 		}
+	}
+	if raw:=m["expected_hiring_organization"]; raw!=nil {
+  value,ok:=raw.(string)
+  if !ok || strings.TrimSpace(value)=="" || len(value)>256 || strings.ContainsRune(value,0) || o.URLAllowlist=="" { return o,ErrOptions }
+  o.ExpectedOrganization=strings.TrimSpace(value)
+ }
+ if raw := m["source_identity"]; raw != nil {
+		cfg, ok := raw.(map[string]any)
+		if !ok || len(cfg) != 3 || len(o.Fields) == 0 || o.URLAllowlist == "" {
+			return o, ErrOptions
+		}
+		id := &NextdataIdentity{}
+		for key, target := range map[string]*string{"provider": &id.Provider, "tenant": &id.Tenant, "field": &id.Field} {
+			*target, ok = cfg[key].(string)
+			if !ok || *target == "" || len(*target) > 256 || strings.ContainsRune(*target, 0) {
+				return o, ErrOptions
+			}
+		}
+		if !id.Valid(id.Provider + ":" + id.Tenant + ":1") {
+			return o, ErrOptions
+		}
+		if _, err := Search(map[string]any{}, id.Field); err != nil {
+			return o, ErrOptions
+		}
+		o.Identity = id
 	}
 	if o.ExpectedTitle != "" {
 		o.ExpectedTitle = strings.TrimSpace(o.ExpectedTitle)
@@ -296,6 +332,16 @@ func (o NextdataOptions) ResourceMatches(value string) bool {
 	}
 	expected, err := o.PageURL(index)
 	return err == nil && expected == value
+}
+
+func (o NextdataOptions) DetailWitnessMatches(value string) bool {
+	if o.ExpectedOrganization=="" || !validURL(value) || len(value)>8192 { return false }
+	pattern,err:=dom.CompileURLPattern(o.URLAllowlist)
+	if err!=nil { return false }
+	m,err:=pattern.FindStringMatch(value)
+	if err!=nil || m==nil { return false }
+	at,n:=m.ByteRange()
+	return at==0 && n==len(value)
 }
 
 // Python parse_qs preserves first key order and blank values; urlencode

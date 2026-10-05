@@ -26,6 +26,10 @@ func nextdataSlug(value string) string {
 // Its caller proves page completeness and tenant filters before persistence.
 // URL-only callers retain URLs separately; no rich field is inferred or dropped.
 func (d *Document) ProjectNextdataItems(items []any, template string, slugFields []string, fields map[string]any) ([]Job, error) {
+	return d.ProjectNextdataIdentityItems(items, template, slugFields, fields, nil)
+}
+
+func (d *Document) ProjectNextdataIdentityItems(items []any, template string, slugFields []string, fields map[string]any, identity *NextdataIdentity) ([]Job, error) {
 	jobs := []Job{}
 	if d == nil {
 		return nil, ErrInventory
@@ -68,6 +72,27 @@ func (d *Document) ProjectNextdataItems(items []any, template string, slugFields
 			continue
 		}
 		job := Job{URL: source, Metadata: map[string]any{}}
+		if identity != nil {
+			v, err := Search(row, identity.Field)
+			if err != nil {
+				return nil, ErrInventory
+			}
+			switch v := v.(type) {
+			case string:
+				job.SourceIdentity = strings.TrimSpace(v)
+			case json.Number:
+				if strings.ContainsAny(string(v), ".eE") {
+					return nil, ErrInventory
+				}
+				job.SourceIdentity = string(v)
+			default:
+				return nil, ErrInventory
+			}
+			job.SourceIdentity = identity.Provider + ":" + identity.Tenant + ":" + job.SourceIdentity
+			if !identity.Valid(job.SourceIdentity) {
+				return nil, ErrInventory
+			}
+		}
 		for target, spec := range fields {
 			value, err := projection.Field(row, spec)
 			if err != nil {

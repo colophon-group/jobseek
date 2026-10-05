@@ -208,16 +208,37 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 	var streamed *queue.GreenhouseInventorySummary
 	if profile.Provider == "nextdata" {
 		streamed = &queue.GreenhouseInventorySummary{}
-		discovery, fetchErr = discoverNextdataInventory(ctx, http.client, profile, task.Config, func(jobs []RichMonitorJob) error {
+		streamedIdentities := map[string]bool{}
+		var renderedPage func(context.Context, string) nextdataPage
+		if task.Worker == queue.Browser {
+			provider, ok := renderer.(interface {
+				FetchNextdataPage(context.Context, queue.GreenhouseMonitorProfile, map[string]string, string) nextdataPage
+			})
+			if !ok {
+				return failure("configuration", queue.ErrUnsupportedProfile)
+			}
+			renderedPage = func(ctx context.Context, endpoint string) nextdataPage {
+				return provider.FetchNextdataPage(ctx, profile, task.Config, endpoint)
+			}
+		}
+		discovery, fetchErr = discoverNextdataWithPages(ctx, http.client, profile, task.Config, func(jobs []RichMonitorJob) error {
 			inventory, err := NormalizeRichInventory(ctx, task.Config["board_url"], jobs, false)
 			if err != nil {
 				return err
+			}
+			for _, job := range inventory.Jobs {
+				if job.SourceIdentity != "" {
+					if streamedIdentities[job.SourceIdentity] {
+						return errors.New("repeated explicit identity across streamed chunks")
+					}
+					streamedIdentities[job.SourceIdentity] = true
+				}
 			}
 			streamed.Discovered += inventory.Discovered
 			for _, count := range inventory.DropReasons {
 				streamed.ProcessingFiltered += count
 			}
-			if profile.Profile == "nextdata.embedded-urls/v1" {
+			if profile.Profile == "nextdata.embedded-urls/v1" || profile.Profile == "nextdata.rendered-urls/v1" {
 				for start := 0; start < len(inventory.Jobs); start += 500 {
 					urls := []string{}
 					for _, job := range inventory.Jobs[start:min(start+500, len(inventory.Jobs))] {
@@ -255,7 +276,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 				}
 			}
 			return nil
-		})
+		}, renderedPage)
 	} else if profile.Provider == "workday" {
 		var metadata map[string]any
 		if json.Unmarshal([]byte(task.Config["metadata"]), &metadata) != nil {

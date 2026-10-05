@@ -10,14 +10,22 @@ import (
 )
 
 func firstRenderedMonitorFixture(t *testing.T) firstOwnerFixture {
+	return firstRenderedMonitorProviderFixture(t, "dom")
+}
+
+func firstRenderedMonitorProviderFixture(t *testing.T, provider string) firstOwnerFixture {
 	p := firstOwnershipFixture(t)
 	ctx := context.Background()
 	id := p.f.task.ID
+
 	md := `{"render":true,"scraper_type":"json-ld"}`
-	if _, e := p.f.observer.Exec(ctx, "UPDATE job_board SET crawler_type='dom',monitor_needs_browser=true,metadata=$2::jsonb WHERE id=$1::uuid", id, md); e != nil {
+	if provider == "nextdata" {
+		md = `{"render":true,"path":"jobs","url_template":"https://example.com/jobs/{id}","fields":{"title":"title"},"scraper_type":"json-ld"}`
+	}
+	if _, e := p.f.observer.Exec(ctx, "UPDATE job_board SET crawler_type=$3,monitor_needs_browser=true,metadata=$2::jsonb WHERE id=$1::uuid", id, md, provider); e != nil {
 		t.Fatal(e)
 	}
-	if e := p.f.client.redis.HSet(ctx, "board:"+id, "crawler_type", "dom", "monitor_needs_browser", "1", "metadata", md).Err(); e != nil {
+	if e := p.f.client.redis.HSet(ctx, "board:"+id, "crawler_type", provider, "monitor_needs_browser", "1", "metadata", md).Err(); e != nil {
 		t.Fatal(e)
 	}
 	p.f.client.redis.Del(ctx, "monitors_simple:"+p.f.task.Domain, "ft_monitors_simple:"+p.f.task.Domain, "ready:simple:1")
@@ -153,5 +161,69 @@ func TestRealRenderedMonitorCommittedReapingRestoresFuture(t *testing.T) {
 	}
 	if _, e := applyFirstFixture(t, p, true); e != nil {
 		t.Fatal(e)
+	}
+}
+
+func TestRealRenderedNextdataColdRetirementRestoresBrowserDeadline(t *testing.T) {
+	for _, mode := range []string{"active", "claim-before-sql", "disabled"} {
+		t.Run(mode, func(t *testing.T) {
+			p := firstRenderedMonitorProviderFixture(t, "nextdata")
+			a, claim := firstRetirementClaim(t, p)
+			ctx := context.Background()
+			if mode == "claim-before-sql" {
+				if _, e := p.f.observer.Exec(ctx, "DELETE FROM ordinary_worker_write_fence WHERE task_id=$1::uuid", p.f.task.ID); e != nil {
+					t.Fatal(e)
+				}
+			}
+			if mode == "disabled" {
+				if _, e := p.f.observer.Exec(ctx, "UPDATE job_board SET is_enabled=false WHERE id=$1::uuid", p.f.task.ID); e != nil {
+					t.Fatal(e)
+				}
+			}
+			due := firstRetirementDue(t, p)
+			canonical := coldCanonicalSnapshot(t, p.f)
+			if _, e := applyFirstFixture(t, p, true); e != nil {
+				t.Fatal(e)
+			}
+			if canonical != coldCanonicalSnapshot(t, p.f) {
+				t.Fatal("reversal changed canonical receipt")
+			}
+			task := inflight(p.f.task)
+			if p.f.client.redis.ZScore(ctx, "inflight:browser", task).Err() != redis.Nil || p.f.client.redis.HExists(ctx, "inflight_tokens:browser", task).Val() {
+				t.Fatal("native lease retained")
+			}
+			score, e := p.f.client.redis.ZScore(ctx, "monitors_browser:"+p.f.task.Domain, p.f.task.ID).Result()
+			if due == nil {
+				if e != redis.Nil {
+					t.Fatal("disabled board requeued")
+				}
+			} else if e != nil || score != seconds(*due) {
+				t.Fatal("browser canonical deadline lost", e)
+			}
+			ready, e := p.f.client.redis.ZScore(ctx, "ready:browser:1", p.f.task.Domain).Result()
+			if due == nil {
+				if e != redis.Nil {
+					t.Fatal("disabled browser domain remained ready")
+				}
+			} else {
+				rate, rateErr := p.f.client.redis.Get(ctx, "ratelimit:"+p.f.task.Domain).Float64()
+				if rateErr != nil && rateErr != redis.Nil {
+					t.Fatal(rateErr)
+				}
+				if e != nil || ready != max(seconds(*due), rate) {
+					t.Fatal("browser reversal lost ready-domain routing", e)
+				}
+			}
+			if p.f.client.redis.ZScore(ctx, "ready:simple:1", p.f.task.Domain).Err() != redis.Nil {
+				t.Fatal("browser reversal published a simple ready domain")
+			}
+			if !errors.Is(a.Heartbeat(ctx, claim), ErrAuthorityLost) {
+				t.Fatal("retired browser retained authority")
+			}
+			restartPublicationRedisWithoutSave(t, p.f.client)
+			if p.f.client.redis.Exists(ctx, ownershipProjectionKey).Val() != 0 {
+				t.Fatal("projection retained after restart")
+			}
+		})
 	}
 }

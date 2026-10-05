@@ -17,6 +17,7 @@ var ErrInventory = errors.New("configured API inventory failed")
 
 type Job struct {
 	URL             string         `json:"url"`
+	SourceIdentity  string         `json:"source_identity,omitempty"`
 	Title           any            `json:"title"`
 	Description     any            `json:"description"`
 	EmploymentType  any            `json:"employment_type"`

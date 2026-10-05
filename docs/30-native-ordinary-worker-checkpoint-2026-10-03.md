@@ -1,6 +1,6 @@
 # Native ordinary worker continuation, 2026-10-03
 
-## Current delivery — 2026-10-05 21:40 UTC
+## Current delivery — 2026-10-05 22:06 UTC
 
 The full migration goal remains active. Routine migration releases now group
 multiple provider types and share verification, checkpointing and deployment.
@@ -9,14 +9,22 @@ The startup/iCIMS prerequisite [PR #10328](https://github.com/colophon-group/job
 merged at the verified head as `194af110324d6eb9a09fc23619f516d656e608b5` after
 `Required CI` and `Crawler Deploy Gate` passed. Its original immutable
 [deployment](https://github.com/colophon-group/jobseek/actions/runs/37370996768)
-has passed build and company-OG checks and is deploying on retry attempt 2;
-promotion and native adoption are unverified.
+completed and promoted on retry attempt 2. Independent readback verifies its
+exact image digests and six baseline service health responses. Fresh original
+B0 staging/activation reached epoch 193 with seven healthy endpoints. A fresh
+reconciliation admitted 6,409 monitor boards and 2,461 detail boards covering
+1,375,814 scheduled postings. Ordinary administrative activation rejected before
+serving. Original pending recovery succeeded; independent 22:04 UTC readback
+verifies the absent ordinary receipt, unchanged B0 receipt/epoch, nine restart-
+armed services, all seven health endpoints and 22 ready/0 inflight/0 dead.
+Ordinary production processing remains unverified.
 
 The five-provider release [PR #10329](https://github.com/colophon-group/jobseek/pull/10329)
 groups Breezy, Gem, JazzHR, Gupy and direct Phenom: 106 enabled configurations.
 Only its four own commits were rebased onto the prerequisite merge. Its new
 head is `c47aee3575e694ac7061b6291e0346061e8c5d11`; fresh required checks are
-running on retry attempt 2; the deployment gate is green. Lightpanda 1.0.0
+green on retry attempt 2, including `Required CI` and the deployment gate.
+The exact head-bound merge and next deployment remain pending. Lightpanda 1.0.0
 remains the verified installed renderer.
 
 The next release groups **Jobylon + NextData**, targeting 82 enabled
@@ -30,15 +38,18 @@ The NextData document decoder now reuses the existing precise JSON/RSC/React
 Router implementation and preserves the monitor's strict first-script and
 Phenom Canvas behavior. Its rich field/template/slug projection also passes seven actual Python cases.
 Fourteen document-source cases and the complete API module race suite pass.
-The direct streamed runtime now admits 44 of 54 canonical/cache configurations.
-Twenty-six actual Python streamed cases pass, including ordered ten-page groups,
+The runtime now admits 51 of 54 canonical/cache configurations: 47 direct and
+four render-only routes. Thirty-seven actual Python streamed cases pass, including ordered ten-page groups,
 required-page retries, tenant checks and committed failure prefixes. Fourteen
 real PostgreSQL/Redis worker modes pass, as do cold retirement and semantic
 configuration/resource binding. Scraped locale bodies remain authoritative;
-missing locales receive the legacy monitor fallback. The remaining seven browser
-routes and three provider-identity routes stay in the combined batch target.
-No production NextData claim is made, and the old Jobylon full suites do not
-cover these new edits. [NextData local evidence](evidence/go-native-nextdata-local-2026-10-05.json).
+missing locales receive the legacy monitor fallback. All three provider-identity routes preserve canonical IDs and URL aliases; the
+shared hospital tenant uses bounded detail JSONLD employer witnesses. Selected
+description+locations enrichment passes the existing canonical writer. Ten
+real rendered worker modes and rendered cold retirement pass. Full required
+queue/worker race suites for these edits pass in 106.294s/220.211s. The remaining
+three browser configurations stay in the combined 82-board batch target.
+No production NextData claim is made. [NextData local evidence](evidence/go-native-nextdata-local-2026-10-05.json).
 
 Keep this as one combined release rather than opening a Jobylon-only PR.
 Group the 125 Inline configurations and Beisen's extraction variants in the

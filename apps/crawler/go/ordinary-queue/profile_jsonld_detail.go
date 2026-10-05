@@ -67,9 +67,8 @@ func InspectJSONLDDetail(boardID string, config map[string]string, source string
 		return fail()
 	}
 	var enrichmentFields []string
-	// The existing detail processor and SQL writer support a description-only
-	// mask: retained monitor titles, locations and employment stay authoritative.
-	// Other masks and configured fallback chains still require their own proof.
+	// The existing enrichment writer applies only selected description/location
+	// fields; monitor titles and employment remain authoritative.
 	for _, key := range []string{"fallback", "enrich"} {
 		if value, ok := options[key]; ok && value != nil {
 			list, ok := value.([]any)
@@ -77,10 +76,21 @@ func InspectJSONLDDetail(boardID string, config map[string]string, source string
 				return fail()
 			}
 			if len(list) > 0 {
-				if key != "enrich" || len(list) != 1 || list[0] != "description" {
+				if key != "enrich" || len(list) > 2 {
 					return fail()
 				}
-				enrichmentFields = []string{"description"}
+				seen := map[string]bool{}
+				for _, raw := range list {
+					field, ok := raw.(string)
+					if !ok || seen[field] || field != "description" && field != "locations" {
+						return fail()
+					}
+					seen[field] = true
+					enrichmentFields = append(enrichmentFields, field)
+				}
+				if !seen["description"] {
+					return fail()
+				}
 			}
 		}
 	}

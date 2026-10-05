@@ -1,12 +1,12 @@
 {
   "schema": "jobseek.native-nextdata-local/v1",
-  "observed_at_utc": "2026-10-05T21:32:48.678422+00:00",
-  "state": "direct HTTP streaming implemented; remaining browser and provider-identity routes in combined Jobylon + NextData batch",
+  "observed_at_utc": "2026-10-05T22:05:16.716972+00:00",
+  "state": "direct durable-identity/employer routes and four render-only routes verified locally; three remaining browser configurations in full migration scope",
   "target_enabled_configurations": 54,
-  "direct_canonical_and_cached_admitted": 44,
-  "remaining_browser_routes": 7,
-  "remaining_provider_identity_routes": 3,
-  "actual_python_stream_cases": 26,
+  "direct_canonical_and_cached_admitted": 47,
+  "remaining_browser_routes": 3,
+  "remaining_provider_identity_routes": 0,
+  "actual_python_stream_cases": 37,
   "checks": {
     "actual_python_stream_and_shared_chunk_writer": "PASS 4.089s",
     "real_postgres_redis_worker_modes": {
@@ -17,8 +17,23 @@
       "result": "PASS 6.135s",
       "cold_cases": 6
     },
-    "api_module_race": "PASS 1.510s",
-    "worker_vet": "PASS"
+    "api_module_race": "PASS 1.346s",
+    "worker_vet": "PASS",
+    "actual_python_stream_and_identity_employer_cases": "PASS 9.030s",
+    "durable_identity_operational_modes": {
+      "count": 9,
+      "result": "PASS 9.030s with actual stream corpus"
+    },
+    "rendered_operational_modes": {
+      "count": 10,
+      "result": "PASS 6.439s with existing DOM operational modes"
+    },
+    "rendered_cold_retirement": "PASS 4.848s with profile tests",
+    "full_queue_race": "PASS 106.294s",
+    "full_worker_race": "PASS 220.211s",
+    "jsonld_module_race": "PASS 1.423s",
+    "python_runtime_contracts": "58 passed, 6 skipped 9.62s; native PG/Redis suites require real services",
+    "vet_mod_tidy": "PASS queue, worker, API and JSONLD modules"
   },
   "operational_proofs": [
     "rich canonical fields and locations",
@@ -27,8 +42,21 @@
     "later-page failure and publisher policy preserve committed prefix",
     "complete success uses four-miss disappearance threshold",
     "changed canonical binding refuses write and settlement",
-    "SQL and Redis cold reversal and Redis restart conserve schedules"
+    "SQL and Redis cold reversal and Redis restart conserve schedules",
+    "Durable provider identity preserves canonical ID and prior-URL alias; promotion removes the new current URL alias",
+    "Identity collisions refuse atomic batch and cross-stream repeats preserve only earlier committed chunks",
+    "URL moves refresh future detail cache while retaining canonical deadline and priority",
+    "Employer JSONLD witness is exact and detail-page publisher policy is authority-bound",
+    "Browser inventory has separate worker ownership, common held navigation/policy/proof validation and exact SQL/Redis schedule conservation",
+    "Description+locations JSONLD mask preserves monitor title/employment and replaces only selected location fields"
   ],
   "production_claim": false,
-  "full_migration_complete": false
+  "full_migration_complete": false,
+  "canonical_and_cached_admitted": 51,
+  "render_only_admitted": 4,
+  "remaining_routes": [
+    "state-of-florida-courts browser expression",
+    "yum-china-campus browser expression",
+    "revolut-careers stealth rendering"
+  ]
 }

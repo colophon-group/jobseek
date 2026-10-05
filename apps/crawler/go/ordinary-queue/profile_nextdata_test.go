@@ -2,6 +2,38 @@ package queue
 
 import "testing"
 
+func TestRenderedNextdataProfilesBindNavigationAndSeparateBrowserOwner(t *testing.T) {
+	for _, fields := range []string{``, `,"fields":{"title":"title"}`} {
+		c := profileConfig()
+		c["crawler_type"], c["monitor_needs_browser"] = "nextdata", "1"
+		c["metadata"] = `{"render":true,"wait":"domcontentloaded","timeout":120000,"path":"jobs","url_template":"https://example.com/jobs/{id}"` + fields + `}`
+		p, err := InspectRichMonitor(profileBoardID, c)
+		if err != nil || MonitorWorker(p) != Browser || monitorWorkerProfile(c) != Browser {
+			t.Fatal("rendered inventory lost browser binding", err)
+		}
+		want := "nextdata.rendered-urls/v1"
+		if fields != "" {
+			want = "nextdata.rendered-items/v1"
+		}
+		if p.Profile != want {
+			t.Fatal(p.Profile)
+		}
+		o, nav, err := RenderedNextdataMonitorOptions(c)
+		if err != nil || o.BoardURL != c["board_url"] || nav["timeout"] != float64(120000) {
+			t.Fatal("navigation controls lost", err)
+		}
+		c["metadata"] = `{"render":true,"wait":"load","timeout":120000,"path":"jobs","url_template":"https://example.com/jobs/{id}"` + fields + `}`
+		other, err := InspectRichMonitor(profileBoardID, c)
+		if err != nil || other.EffectiveConfigSHA256 == p.EffectiveConfigSHA256 {
+			t.Fatal("navigation change retained binding", err)
+		}
+		c["monitor_needs_browser"] = "0"
+		if _, err := InspectRichMonitor(profileBoardID, c); err == nil {
+			t.Fatal("simple owner adopted rendered inventory")
+		}
+	}
+}
+
 func TestNextdataProfilesBindSemanticConfigurationAndPaginationWitness(t *testing.T) {
 	c := profileConfig()
 	c["crawler_type"] = "nextdata"

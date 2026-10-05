@@ -89,7 +89,17 @@ def ownership_projection(payload: str) -> str:
             for board, domain in members.items()
         )
         or any(
-            m["worker"] != ("browser" if m["profile"] == "dom.rendered-urls/v1" else "simple")
+            m["worker"]
+            != (
+                "browser"
+                if m["profile"]
+                in {
+                    "dom.rendered-urls/v1",
+                    "nextdata.rendered-items/v1",
+                    "nextdata.rendered-urls/v1",
+                }
+                else "simple"
+            )
             for m in plan["members"]
         )
     ):

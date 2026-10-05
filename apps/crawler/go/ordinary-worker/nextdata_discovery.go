@@ -156,6 +156,10 @@ func fetchNextdataPage(ctx context.Context, client *http.Client, o apisniffer.Ne
 // concurrency. Failed later groups cannot delete unseen jobs or erase earlier
 // committed chunks. No callback grants database authority by itself.
 func discoverNextdataInventory(ctx context.Context, verified *http.Client, p queue.GreenhouseMonitorProfile, config map[string]string, yield func([]RichMonitorJob) error) (RichDiscovery, error) {
+	return discoverNextdataWithPages(ctx, verified, p, config, yield, nil)
+}
+
+func discoverNextdataWithPages(ctx context.Context, verified *http.Client, p queue.GreenhouseMonitorProfile, config map[string]string, yield func([]RichMonitorJob) error, rendered func(context.Context, string) nextdataPage) (RichDiscovery, error) {
 	result := RichDiscovery{Jobs: []RichMonitorJob{}}
 	o, err := queue.NextdataMonitorOptions(config)
 	if err != nil || verified == nil || p.Provider != "nextdata" || p.Endpoint != o.BoardURL {
@@ -177,12 +181,18 @@ func discoverNextdataInventory(ctx context.Context, verified *http.Client, p que
 			return nil
 		}
 	}
-	first := fetchNextdataPage(ctx, &client, o, p.Endpoint, o.Pagination != nil, true)
+	first := nextdataPage{}
+	if rendered != nil {
+		first = rendered(ctx, p.Endpoint)
+	} else {
+		first = fetchNextdataPage(ctx, &client, o, p.Endpoint, o.Pagination != nil, true)
+	}
 	result.Response = first.response
 	if first.err != nil {
 		var failure *DiscoveryError
 		mismatch := errors.As(first.err, &failure) && failure.Kind == "tenant_mismatch"
-		if ctx.Err() != nil || first.response != nil && first.response.reserved || o.Strict || o.Pagination != nil || mismatch {
+		invalidProof := errors.Is(first.err, executor.ErrRenderedResult) || errors.Is(first.err, policy.ErrSignals) || errors.Is(first.err, queue.ErrConfiguration) || errors.Is(first.err, context.Canceled) || errors.Is(first.err, executor.ErrBotChallenge)
+		if ctx.Err() != nil || first.response != nil && first.response.reserved || o.Strict || o.Pagination != nil || mismatch || invalidProof {
 			return result, first.err
 		}
 		// Lenient non-paginated legacy fetch/parser failures yield no inventory;
@@ -202,7 +212,7 @@ func discoverNextdataInventory(ctx context.Context, verified *http.Client, p que
 		if err != nil {
 			return nil, err
 		}
-		jobs, err := page.document.ProjectNextdataItems(items, o.Template, o.SlugFields, o.Fields)
+		jobs, err := page.document.ProjectNextdataIdentityItems(items, o.Template, o.SlugFields, o.Fields, o.Identity)
 		if err != nil {
 			return nil, err
 		}
@@ -230,7 +240,17 @@ func discoverNextdataInventory(ctx context.Context, verified *http.Client, p que
 			if err != nil {
 				return nil, err
 			}
-			out = append(out, RichMonitorJob{URL: j.URL, Title: title, Description: description, Locations: j.Locations, DatePosted: j.DatePosted, Metadata: j.Metadata, EmploymentType: j.EmploymentType, JobLocationType: j.JobLocationType})
+			out = append(out, RichMonitorJob{URL: j.URL, SourceIdentity: j.SourceIdentity, Title: title, Description: description, Locations: j.Locations, DatePosted: j.DatePosted, Metadata: j.Metadata, EmploymentType: j.EmploymentType, JobLocationType: j.JobLocationType})
+		}
+		if o.ExpectedOrganization != "" {
+			filtered, response, err := filterNextdataEmployer(ctx, &client, out, o.ExpectedOrganization)
+			if err != nil {
+				if response != nil && response.reserved {
+					result.Response = response
+				}
+				return nil, err
+			}
+			out = filtered
 		}
 		return out, nil
 	}

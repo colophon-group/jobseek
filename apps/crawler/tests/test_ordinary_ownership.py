@@ -407,6 +407,19 @@ def test_detail_projection_retains_actual_domain_and_rejects_foreign_members():
             ownership_projection(json.dumps(doc, separators=(",", ":")))
 
 
+@pytest.mark.parametrize("profile", ["nextdata.rendered-items/v1", "nextdata.rendered-urls/v1"])
+def test_nextdata_rendered_monitor_projection_preserves_browser_exclusion(profile):
+    _, payload = expectation(details=True)
+    doc = json.loads(payload)
+    doc["members"][0]["profile"] = profile
+    doc["members"][0]["worker"] = "browser"
+    projected = json.loads(ownership_projection(json.dumps(doc, separators=(",", ":"))))
+    assert projected["members"] == {doc["members"][0]["board_id"]: "greenhouse"}
+    doc["members"][0]["worker"] = "simple"
+    with pytest.raises(OrdinaryOwnershipError):
+        ownership_projection(json.dumps(doc, separators=(",", ":")))
+
+
 @pytest.mark.parametrize("profile", ["workday", "jsonld", "smartrecruiters", "workable", "dom"])
 async def test_real_legacy_detail_write_excludes_actual_canonical_board(monkeypatch, profile):
     from src.lightpanda.write_fence import authoritative_write
