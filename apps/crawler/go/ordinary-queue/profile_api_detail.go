@@ -23,7 +23,7 @@ const oracleDetailProfile = "oracle_hcm.api-detail/v1"
 
 func independentDetailProfile(profile string) bool {
 	switch profile {
-	case domRenderedDetailProfile, jsonldRenderedDetailProfile, domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, joinDetailProfile, oracleDetailProfile:
+	case domRenderedDetailProfile, jsonldRenderedDetailProfile, embeddedRenderedDetailProfile, domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, joinDetailProfile, oracleDetailProfile, embeddedDetailProfile:
 		return true
 	}
 	return false

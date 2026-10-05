@@ -1,0 +1,75 @@
+{
+  "observed_at_utc": "2026-10-05T15:42:18.194289+00:00",
+  "source_revision": "450b9e0316b813518d8f568afcdd35c4f4312feb",
+  "identities": {
+    "JOBSEEK_DEPLOY_REVISION": "450b9e0316b813518d8f568afcdd35c4f4312feb",
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:d617e2c04b5d2ef4ef89c9df6cb6f9988a1c1ae24eacc826f860c643c34fdfe4",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:786d042712999c85be73cad7ee5523ff667a39c85969eadef5e8d6523f8e97d2"
+  },
+  "active_release": "release-450b9e0316b813518d8f568afcdd35c4f4312feb.Qs733T",
+  "restored_writers": [
+    {
+      "service": "worker-1",
+      "running": true,
+      "restart": "unless-stopped",
+      "image": "ghcr.io/colophon-group/jobseek-crawler@sha256:d617e2c04b5d2ef4ef89c9df6cb6f9988a1c1ae24eacc826f860c643c34fdfe4"
+    },
+    {
+      "service": "worker-2",
+      "running": true,
+      "restart": "unless-stopped",
+      "image": "ghcr.io/colophon-group/jobseek-crawler@sha256:d617e2c04b5d2ef4ef89c9df6cb6f9988a1c1ae24eacc826f860c643c34fdfe4"
+    },
+    {
+      "service": "worker-3",
+      "running": true,
+      "restart": "unless-stopped",
+      "image": "ghcr.io/colophon-group/jobseek-crawler@sha256:d617e2c04b5d2ef4ef89c9df6cb6f9988a1c1ae24eacc826f860c643c34fdfe4"
+    },
+    {
+      "service": "browser-1",
+      "running": true,
+      "restart": "unless-stopped",
+      "image": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:786d042712999c85be73cad7ee5523ff667a39c85969eadef5e8d6523f8e97d2"
+    },
+    {
+      "service": "drain",
+      "running": true,
+      "restart": "unless-stopped",
+      "image": "ghcr.io/colophon-group/jobseek-crawler@sha256:d617e2c04b5d2ef4ef89c9df6cb6f9988a1c1ae24eacc826f860c643c34fdfe4"
+    },
+    {
+      "service": "exporter",
+      "running": true,
+      "restart": "unless-stopped",
+      "image": "ghcr.io/colophon-group/jobseek-crawler@sha256:d617e2c04b5d2ef4ef89c9df6cb6f9988a1c1ae24eacc826f860c643c34fdfe4"
+    }
+  ],
+  "health": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200
+  },
+  "canonical": {
+    "active_plans": 0,
+    "retained_plan_state": "retired",
+    "routing_epoch": 188,
+    "current_or_newer_active_fences": 0,
+    "retained_outgoing_active_receipts": 1
+  },
+  "queue": {
+    "b0_producer_owner": 0,
+    "ordinary_projection": 0
+  },
+  "receipts_absent": true,
+  "selectors_cleared": true,
+  "live_oneoffs": 0,
+  "schema": "jobseek-native-capacity940-production-baseline/v1",
+  "original_deployment_run": "https://github.com/colophon-group/jobseek/actions/runs/37331617474",
+  "capacity_repair_pr": "https://github.com/colophon-group/jobseek/pull/10324",
+  "lightpanda_version": "1.0.0 (previous independently verified immutable renderer remains selected)",
+  "scope": "six-writer baseline after original immutable release; subsequent B0 activation and ordinary ownership are separate, pending proofs"
+}

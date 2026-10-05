@@ -10,9 +10,10 @@ import (
 
 const domRenderedDetailProfile = "dom.rendered-detail/v1"
 const jsonldRenderedDetailProfile = "jsonld.rendered-detail/v1"
+const embeddedRenderedDetailProfile = "embedded.rendered-detail/v1"
 
 func detailWorker(profile string) WorkerType {
-	if profile == domRenderedDetailProfile || profile == jsonldRenderedDetailProfile {
+	if profile == domRenderedDetailProfile || profile == jsonldRenderedDetailProfile || profile == embeddedRenderedDetailProfile {
 		return Browser
 	}
 	return Simple
@@ -36,7 +37,7 @@ func InspectRenderedDetail(boardID string, config map[string]string, source stri
 		return fail()
 	}
 	var scraper string
-	if json.Unmarshal(metadata["scraper_type"], &scraper) != nil || (scraper != "dom" && scraper != "json-ld") {
+	if json.Unmarshal(metadata["scraper_type"], &scraper) != nil || (scraper != "dom" && scraper != "json-ld" && scraper != "embedded" && scraper != "nextdata") {
 		return fail()
 	}
 	if scraper == "json-ld" {
@@ -89,9 +90,12 @@ func InspectRenderedDetail(boardID string, config map[string]string, source stri
 	if scraper == "dom" {
 		profile, err = InspectDOMDetail(boardID, copyConfig, source, Simple)
 		profile.Profile, profile.DOMConfig = domRenderedDetailProfile, options
-	} else {
+	} else if scraper == "json-ld" {
 		profile, err = InspectJSONLDDetail(boardID, copyConfig, source, Simple)
 		profile.Profile, profile.JSONLDConfig = jsonldRenderedDetailProfile, options
+	} else {
+		profile, err = InspectEmbeddedDetail(boardID, copyConfig, source, Simple)
+		profile.Profile, profile.EmbeddedConfig = embeddedRenderedDetailProfile, options
 	}
 	if err != nil {
 		return fail()

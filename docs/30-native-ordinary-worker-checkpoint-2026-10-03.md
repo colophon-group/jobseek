@@ -1,5 +1,33 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Current delivery checkpoint — 2026-10-05 15:42 UTC
+
+The original v0.13.940 release and promotion succeeded. Independent readback
+verified source `450b9e0316b813518d8f568afcdd35c4f4312feb`, both workflow-published
+image digests, six healthy restart-armed baseline services, cleared native
+receipts/selectors, retired ordinary ownership and epoch188.
+[Portable production evidence](evidence/go-native-capacity940-production-baseline-2026-10-05.json).
+Supported B0 selector staging succeeded; original wrapper activation is in
+progress. Fresh B0/ordinary authority and sustained natural processing remain
+separate requirements and are not yet verified.
+
+The v0.13.941 local coverage batch now includes configured direct and Lightpanda
+embedded/Next.js details in addition to Oracle HCM. It reuses the existing JSON
+field extractor, verified document transport, browser navigation, processor and
+canonical/queue writer. The 357 embedded/Next.js configurations comprise 353
+new direct profiles, one new browser profile and three existing Join profiles;
+this count is configuration evidence, not actual posting-route admission.
+Structured extras now enrich native details before missing-field defaults, and
+embedded HTTP failure preserves the original recurring empty-content policy.
+
+A frozen Python extraction corpus, real PostgreSQL/Redis canonical/publisher/
+deadline regressions, direct and browser cold retirement, full affected race
+suites and vet passed. See [local coverage evidence](evidence/go-native-embedded-detail-local-2026-10-05.json).
+The coverage batch is not deployed. Finish fresh installed admission and natural
+proof, remaining providers/configurations and mandatory consumers, then the
+whole production resource/reversal/rollback window before retiring Python.
+Full migration remains active and incomplete. Earlier sections are historical.
+
 ## Current delivery checkpoint — 2026-10-05 15:17 UTC
 
 Supported source939 retirement and B0 reversal completed. Fresh independent

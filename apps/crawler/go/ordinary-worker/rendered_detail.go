@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	apisniffer "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
 	"net"
 	"net/url"
 	"os"
@@ -77,6 +78,11 @@ func (r *NativeRenderedDetails) Fetch(ctx context.Context, profile queue.Workday
 	options, scraper := profile.DOMConfig, "dom"
 	if profile.Profile == "jsonld.rendered-detail/v1" {
 		options, scraper = profile.JSONLDConfig, "json-ld"
+	} else if profile.Profile == "embedded.rendered-detail/v1" {
+		options, scraper = profile.EmbeddedConfig, "embedded"
+		if profile.EmbeddedNextdata {
+			scraper = "nextdata"
+		}
 	} else if profile.Profile != "dom.rendered-detail/v1" {
 		return nil, nil, queue.ErrUnsupportedProfile
 	}
@@ -185,7 +191,39 @@ func waitRenderedReservation(ctx context.Context, reserve func(context.Context) 
 }
 
 func parseHeldRenderedResult(ctx context.Context, source, scraper string, parser json.RawMessage, result *runtimev1.BrowserResult) (map[string]any, *policy.Reservation, error) {
-	content, err := executor.ParseRenderedDetail(source, scraper, parser, result)
+	var content map[string]any
+	var err error
+	if scraper == "embedded" || scraper == "nextdata" {
+		if result != nil && result.GetSuccess() != nil && result.GetSuccess().ResourcePolicy == nil {
+			err = policy.ErrSignals
+		} else {
+			var html string
+			html, err = executor.RenderedHTML(result, source)
+			if err == nil {
+				value, parseErr := b0task.ParseCanonicalValue(parser)
+				options, ok := value.(map[string]any)
+				if parseErr != nil || !ok {
+					err = executor.ErrProtocol
+				} else {
+					for _, key := range []string{"browser_backend", "routing_revision", "wait", "wait_fallback", "timeout", "actions", "request_headers"} {
+						delete(options, key)
+					}
+					options["render"] = false
+					content, err = apisniffer.ProjectEmbeddedDetail(html, options, scraper == "nextdata")
+					if err != nil {
+						err = executor.ErrEmptyResult
+					}
+				}
+			} else {
+				var status *executor.NavigationHTTPError
+				if errors.As(err, &status) {
+					err = executor.ErrEmptyResult
+				}
+			}
+		}
+	} else {
+		content, err = executor.ParseRenderedDetail(source, scraper, parser, result)
+	}
 	// Attribute only a held, validated navigation response. A renderer
 	// connection/protocol failure is not evidence of an origin failure.
 	if success := result.GetSuccess(); success != nil && !errors.Is(err, executor.ErrRenderedResult) && !errors.Is(err, executor.ErrProtocol) && !errors.Is(err, policy.ErrSignals) {

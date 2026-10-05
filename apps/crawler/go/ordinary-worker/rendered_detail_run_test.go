@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -12,11 +13,58 @@ import (
 	"time"
 
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
+	executor "github.com/colophon-group/jobseek/apps/crawler/go/lightpanda-b0-executor"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	policy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 )
 
 type heldRenderedDetail func(context.Context, queue.WorkdayDetailProfile) (map[string]any, *policy.Reservation, error)
+
+func TestHeldEmbeddedPreservesManifestPolicyAndEmptyFailurePrecedence(t *testing.T) {
+	const source = "https://careers.example.net/job/123"
+	parser := json.RawMessage(`{"render":true,"wait":"domcontentloaded","path":"job","fields":{"title":"title","description":"description"}}`)
+	for _, mode := range []string{"success", "bad_manifest", "missing_policy", "reserved", "404_empty"} {
+		t.Run(mode, func(t *testing.T) {
+			held := heldRenderedResult(nativeEmbeddedHTML, source, 200)
+			s := held.GetSuccess()
+			switch mode {
+			case "bad_manifest":
+				s.Html.TotalSha256 = strings.Repeat("0", 64)
+			case "missing_policy":
+				s.ResourcePolicy = nil
+			case "reserved":
+				one := "1"
+				s.ResourcePolicy.TdmReservationHeader = &one
+			case "404_empty":
+				status := uint32(404)
+				s.Status = &status
+			}
+			content, reservation, err := parseHeldRenderedResult(context.Background(), source, "nextdata", parser, held)
+			switch mode {
+			case "success":
+				if err != nil || reservation != nil || content["title"] != "Senior Software Engineer" {
+					t.Fatal("held embedded parser failed", err)
+				}
+			case "bad_manifest":
+				if !errors.Is(err, executor.ErrRenderedResult) || reservation != nil {
+					t.Fatal("corrupt held document admitted", err)
+				}
+			case "missing_policy":
+				if !errors.Is(err, policy.ErrSignals) {
+					t.Fatal("missing held policy admitted", err)
+				}
+			case "reserved":
+				if err != nil || reservation == nil || content != nil {
+					t.Fatal("held publisher signal lost", err)
+				}
+			case "404_empty":
+				if !errors.Is(err, executor.ErrEmptyResult) || reservation != nil {
+					t.Fatal("embedded gone response adopted permanent DOM policy", err)
+				}
+			}
+		})
+	}
+}
 
 func (f heldRenderedDetail) Fetch(ctx context.Context, p queue.WorkdayDetailProfile) (map[string]any, *policy.Reservation, error) {
 	return f(ctx, p)
@@ -34,13 +82,17 @@ func heldRenderedResult(html, final string, status uint32) *runtimev1.BrowserRes
 }
 
 func TestRealRenderedDetailPersistsHeldDocumentThroughBrowserAuthority(t *testing.T) {
-	for _, scraper := range []string{"dom", "json-ld"} {
+	for _, scraper := range []string{"dom", "json-ld", "nextdata"} {
 		t.Run(scraper, func(t *testing.T) {
 			parser := `{"render":true,"defaults":{"language":"en"}}`
 			html := nativeJSONLDHTML
 			if scraper == "dom" {
 				parser = `{"render":true,"steps":[{"tag":"h1","field":"title"},{"tag":"p","attr":"data-field=location","field":"location"},{"tag":"h2","text":"Role","offset":1,"field":"description","html":true}],"defaults":{"employment_type":"FULL_TIME","language":"en"}}`
 				html = nativeDOMHTML
+			}
+			if scraper == "nextdata" {
+				parser = `{"render":true,"wait":"domcontentloaded","path":"job","fields":{"title":"title","description":"description","locations":"locations","employment_type":"employment","responsibilities":"responsibilities"}}`
+				html = nativeEmbeddedHTML
 			}
 			f, a, claim := independentDetailOwnedFixture(t, `{"scraper_type":"`+scraper+`","scraper_config":`+parser+`}`, "", queue.Browser)
 			if !a.RequiresRenderedDetails() {
@@ -49,7 +101,7 @@ func TestRealRenderedDetailPersistsHeldDocumentThroughBrowserAuthority(t *testin
 			calls := 0
 			renderer := heldRenderedDetail(func(ctx context.Context, p queue.WorkdayDetailProfile) (map[string]any, *policy.Reservation, error) {
 				calls++
-				if p.SourceURL != "https://example.com/job/"+f.original || p.Profile != map[string]string{"dom": "dom.rendered-detail/v1", "json-ld": "jsonld.rendered-detail/v1"}[scraper] {
+				if p.SourceURL != "https://example.com/job/"+f.original || p.Profile != map[string]string{"dom": "dom.rendered-detail/v1", "json-ld": "jsonld.rendered-detail/v1", "nextdata": "embedded.rendered-detail/v1"}[scraper] {
 					t.Fatal("rendered canonical context differs")
 				}
 				return parseHeldDetail(ctx, p, heldRenderedResult(html, p.SourceURL, 200))
@@ -89,6 +141,12 @@ func parseHeldDetail(ctx context.Context, p queue.WorkdayDetailProfile, result *
 	scraper, options := "dom", p.DOMConfig
 	if p.Profile == "jsonld.rendered-detail/v1" {
 		scraper, options = "json-ld", p.JSONLDConfig
+	}
+	if p.Profile == "embedded.rendered-detail/v1" {
+		scraper, options = "embedded", p.EmbeddedConfig
+		if p.EmbeddedNextdata {
+			scraper = "nextdata"
+		}
 	}
 	parser, _ := json.Marshal(options)
 	return parseHeldRenderedResult(ctx, p.SourceURL, scraper, parser, result)

@@ -154,12 +154,12 @@ func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Cla
 
 	var content map[string]any
 	var reservation *publisherpolicy.Reservation
-	if profile.Profile == "dom.rendered-detail/v1" || profile.Profile == "jsonld.rendered-detail/v1" {
+	if profile.Profile == "dom.rendered-detail/v1" || profile.Profile == "jsonld.rendered-detail/v1" || profile.Profile == "embedded.rendered-detail/v1" {
 		content, reservation, err = renderer.Fetch(ctx, profile)
 		observed := observation.Snapshot()
 		hostReachable = observed.Responses > 0
 		hostFailure = observed.LastStatus == 401 || observed.LastStatus == 403 || observed.LastStatus == 429 || observed.LastStatus >= 500
-	} else if profile.Profile == "jsonld.direct-detail/v1" || profile.Profile == "dom.direct-detail/v1" {
+	} else if profile.Profile == "jsonld.direct-detail/v1" || profile.Profile == "dom.direct-detail/v1" || profile.Profile == "embedded.direct-detail/v1" {
 		fetched, failure := fetchDirectDetail(ctx, http, profile)
 		err = failure
 		hostReachable = fetched.Responses > 0
@@ -262,6 +262,9 @@ func fetchDirectDetail(ctx context.Context, verified *VerifiedDirectHTTP, profil
 	}
 	client.Jar = jar
 	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	if profile.Profile == "embedded.direct-detail/v1" {
+		return fetchEmbeddedDetail(ctx, &client, profile)
+	}
 	if profile.Profile == "dom.direct-detail/v1" {
 		return dom.FetchDetailWithClient(ctx, profile.SourceURL, profile.DOMConfig, &client)
 	}

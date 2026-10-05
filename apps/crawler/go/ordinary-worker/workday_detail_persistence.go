@@ -38,6 +38,11 @@ func PersistDetailContent(ctx context.Context, authority *queue.Authority, detai
 	}
 	var config map[string]any
 	var existing *executor.EnrichSnapshot
+	defaults, _ := detail.Profile().EmbeddedConfig["defaults"].(map[string]any)
+	values, err := executor.PrepareScrapedValues(values, defaults)
+	if err != nil {
+		return nil, claimRunError("detail_preparation", err)
+	}
 	if fields := detail.Profile().EnrichmentFields; len(fields) > 0 {
 		selected := make([]any, len(fields))
 		for n, field := range fields {

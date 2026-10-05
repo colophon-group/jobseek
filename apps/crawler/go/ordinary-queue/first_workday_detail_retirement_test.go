@@ -17,6 +17,9 @@ func firstWorkdayDetailFixture(t *testing.T) firstOwnerFixture {
 }
 func firstAPIDetailFixture(t *testing.T, requested string) firstOwnerFixture {
 	t.Helper()
+	if requested == "embedded" {
+		return firstIndependentDetailFixture(t, `{"scraper_type":"nextdata","scraper_config":{"path":"job","fields":{"title":"title","description":"description"},"enrich":["description"]}}`, "https://careers.example.net/job/123", "careers.example.net")
+	}
 	p := firstOwnershipFixture(t)
 	f, ctx := p.f, context.Background()
 	provider, boardURL, source, metadata := "workday", "https://fixture.wd1.myworkdayjobs.com/Careers", "https://fixture.wd1.myworkdayjobs.com/Careers/job/JR001", `{"scraper_type":"workday"}`
@@ -67,6 +70,9 @@ func TestRealFirstWorkdayDetailRetirementConservesInterruptedAndCompletedAttempt
 }
 func TestRealFirstOracleDetailRetirementConservesInterruptedAndCompletedAttempts(t *testing.T) {
 	testFirstAPIDetailRetirement(t, "oracle_hcm")
+}
+func TestRealFirstEmbeddedDetailRetirementConservesInterruptedAndCompletedAttempts(t *testing.T) {
+	testFirstAPIDetailRetirement(t, "embedded")
 }
 func testFirstAPIDetailRetirement(t *testing.T, provider string) {
 	for _, mode := range []string{"active", "claim-before-sql", "committed-before-ack", "reaped-before-ack", "inactive", "save-failure"} {
