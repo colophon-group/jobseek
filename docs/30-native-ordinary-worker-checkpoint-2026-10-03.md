@@ -1,6 +1,32 @@
 # Native ordinary worker continuation, 2026-10-03
 
-## Configured HTTP API migration awaiting fresh CI — 2026-10-05
+## Configured API migration and contained cold reversal — 2026-10-05
+
+Source937 is currently contained after the original ordinary retirement and
+`recover-pending` both refused. All ten writers are stopped and restart-disabled;
+there are no live SQL leases or administrative containers. Its original SQL
+plan/projection remain active and its wrapper receipt remains `retiring`.
+Restoring processing through the supported recovery path takes priority over
+promotion. No queue, lease, fence, receipt or configuration was manually cleared.
+
+The bounded configuration audit found all 6,025 monitor bindings unchanged and
+one changed independent DOM detail binding: the legacy Avature monitor for
+`unifi-uk` learned `portal_id="23"` after admission. Its canonical/cache configs
+agree; removing only that newly discovered monitor field reproduces the original
+detail hash. The read-only Lua retirement preflight accepts all 6,027 observed
+restoration rows. PR #10320 now includes a narrow retirement compatibility case
+for that Avature field addition. It requires the original DOM profile, company,
+domain, unchanged remaining hash and current canonical/cache agreement. Runtime
+claims still reject the changed hash. Changed parsers/listings, configured portal
+changes, malformed portal IDs and cache-only changes remain refusals.
+
+The original code reproduces the real queue regression; the corrected six-case
+race test passes. Full queue/worker and installed compatibility verification
+must pass on the amended head before merge. Use its immutable administrator
+through the original installed937 `recover-pending` wrapper; then verify the
+restored nine writers, original B0 reversal/selector clear and full six-writer
+baseline before promoting938. Do not replace the installed wrapper or restart
+individual writers.
 
 The full migration goal remains active. [PR #10320](https://github.com/colophon-group/jobseek/pull/10320) adds
 `api_sniffer.http-items/v1` to the existing ordinary Go worker and rich writer.
@@ -19,16 +45,16 @@ race detector, including declared GET/POST pagination, canonical fields,
 staged description hash/upload state, failure/policy handling and recurring
 queue conservation. Full worker and queue race/vet/tidy checks pass (170.755s and 79.495s),
 along with the installed executable cutover/recovery checks, API module and
-executor checks. Required CI passed on the initial head. A separate image
-parity workflow retained the old 20-profile expectation; its exact assertion
-now includes all 24 executable profiles and requires fresh CI before merge.
+executor checks. Required CI and installed image parity passed on head `e488021d`.
+The exact installed manifest now includes all 24 executable profiles. Fresh CI
+is required again for the Avature retirement compatibility amendment.
 
 A read-only census against the source937 configuration snapshot identifies
 134 eligible API boards with matching canonical/cache bindings out of 326.
 This is a candidate estimate, not fresh production admission. Unsupported
 browser/auto-field/filter/rotation/decryption/enrichment configurations retain
-their current owner while their replacements are implemented. The running
-source937 fleet is unchanged by this candidate. Readback verified all ten exact
+their current owner while their replacements are implemented. Before the cold
+transition, the 09:19 UTC source937 readback verified all ten exact
 images and eight health endpoints, with 24 sampled detail outputs and no
 processing diagnostic in the bounded log observation. A strict queue check
 found 26 of 27 samples settled; one completed JSON-LD detail retains a Redis

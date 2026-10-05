@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "status": "local_candidate_under_verification",
+  "status": "api_candidate_and_contained_reversal_recovery",
   "full_migration_complete": false,
   "production_source_revision": "a5fd35cfb924800a5ac3fedfedbaca0a457a934c",
   "production_version": "0.13.937",
@@ -26,9 +26,9 @@
     "full_worker_and_queue_verification": "passed",
     "full_worker_race_vet_tidy": "passed, 170.755s",
     "full_queue_race_vet_tidy": "passed, 79.495s",
-    "required_ci_previous_head": "passed",
+    "required_ci_previous_head": "passed e488, run37292147340",
     "installed_worker_cutover_recovery": "passed",
-    "runtime_v1_image_parity": "previous expectation listed 20 profiles; updated exact list to 24 and awaiting fresh CI"
+    "runtime_v1_image_parity": "passed e488 exact24-profile manifest, run37292147455; fresh CI required for retirement amendment"
   },
   "retained_contracts": [
     "GET/POST and declared headers, per-discovery cookies",
@@ -40,7 +40,7 @@
     "canonical future deadline, receipt and Redis recurring queue settlement"
   ],
   "remaining": [
-    "required CI and installed-image verification",
+    "fresh required CI and installed-image compatibility verification on amended head",
     "source-bound fresh production admission and supported quiesced deployment",
     "remaining API browser/auto-field/filter/rotation/decryption contracts and other enabled families",
     "runtime maintenance and deployment consumers",
@@ -63,5 +63,15 @@
     "unsettled_state": "completed JSON-LD detail receipt and canonical deadline agree; posting active, no live lease/token; Redis retry strike and earlier queue deadline remain",
     "full_settlement_proven": false,
     "production_mutation": false
+  },
+  "retirement_recovery": {
+    "production_state": "contained by original source937 retire and recover-pending;10writers stopped/restart-disabled, no live SQL leases or oneoffs, original plan/projection active, receipt retiring",
+    "observed_condition": "Independent DOM detail unifi-uk legacy Avature monitor learned portal_id23 after admission; removing only that field reproduces original hash. All6025 monitor bindings unchanged. Read-only Lua preflight accepts6027 rows.",
+    "candidate_fix": "Cold retirement only: admit one valid Avature portal_id addition when original DOM profile/company/domain and all other hash fields remain unchanged and current SQL/cache agree; runtime ownership still refuses changed hash.",
+    "old_code_regression": "reproduced with real Postgres/Redis and original source overlay",
+    "corrected_real_queue_race": "six cases passed,3.692s; full checks rerunning",
+    "compiled_compatibility_verification": "pending",
+    "recovery_path": "Exact merged immutable administrator pre-pull, original installed937 recover-pending, full restored9writer proof; then original B0 reversal/selector clear and independent6writer baseline before promotion",
+    "manual_state_edits": false
   }
 }

@@ -234,7 +234,7 @@ func TestRealFirstOwnershipExecutableActivatesAndRetires(t *testing.T) {
 }
 
 func TestRealFirstOwnershipExecutableCompatibilityRetirement(t *testing.T) {
-	for _, format := range []string{"compact", "legacy-full"} {
+	for _, format := range []string{"compact", "legacy-full", "avature-learned-portal"} {
 		t.Run(format, func(t *testing.T) {
 			f, e, installedPlan := firstExecutableOwnershipFixture(t)
 			ctx := context.Background()
@@ -245,6 +245,26 @@ func TestRealFirstOwnershipExecutableCompatibilityRetirement(t *testing.T) {
 			plan, err := f.a.StageGreenhouseOwnership(ctx, oldSource, []string{f.board})
 			if err != nil {
 				t.Fatal(err)
+			}
+			var avatureBoard string
+			if format == "avature-learned-portal" {
+				avatureBoard = fixtureID(t)
+				metadata := `{"scraper_type":"dom","scraper_config":{"steps":[{"tag":"h1","field":"title"}]},"listing_url":"https://careers.example.com/jobs"}`
+				if _, err := f.pg.Exec(ctx, `INSERT INTO job_board(id,company_id,board_slug,board_url,crawler_type,metadata,check_interval_minutes,scrape_interval_hours,throttle_key,monitor_needs_browser,scraper_needs_browser)
+ VALUES($1::uuid,$2::uuid,$3,'https://careers.example.com/jobs','avature',$4::jsonb,60,24,'careers.example.com',false,false)`, avatureBoard, f.company, "avature-"+avatureBoard, metadata); err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() {
+					_, _ = f.pg.Exec(context.Background(), "DELETE FROM job_board WHERE id=$1::uuid", avatureBoard)
+				})
+				config := map[string]string{"board_slug": "avature-" + avatureBoard, "board_url": "https://careers.example.com/jobs", "crawler_type": "avature", "company_id": f.company, "metadata": metadata, "check_interval_minutes": "60", "scrape_interval_hours": "24", "throttle_key": "careers.example.com", "domain": "careers.example.com", "monitor_needs_browser": "0", "scraper_needs_browser": "0"}
+				if err := f.r.HSet(ctx, "board:"+avatureBoard, config).Err(); err != nil {
+					t.Fatal(err)
+				}
+				plan, err = f.a.StageOwnership(ctx, oldSource, []string{f.board}, []string{avatureBoard})
+				if err != nil {
+					t.Fatal(err)
+				}
 			}
 			r, env := firstRequestFixture(t)
 			r.SourceRevision, r.RoutingEpoch, r.PlanSHA256, r.ProjectionSHA1, r.B0Cohort = oldSource, plan.Epoch(), plan.SHA256(), plan.ProjectionSHA1(), "c1"
@@ -290,6 +310,15 @@ func TestRealFirstOwnershipExecutableCompatibilityRetirement(t *testing.T) {
 			claim, err := old.Claim(ctx, queue.Simple)
 			if err != nil || claim == nil {
 				t.Fatal("outgoing interrupted attempt", err)
+			}
+			if avatureBoard != "" {
+				var metadata string
+				if err := f.pg.QueryRow(ctx, "UPDATE job_board SET metadata=metadata||'{\"portal_id\":\"23\"}'::jsonb WHERE id=$1::uuid RETURNING metadata::text", avatureBoard).Scan(&metadata); err != nil {
+					t.Fatal(err)
+				}
+				if err := f.r.HSet(ctx, "board:"+avatureBoard, "metadata", metadata).Err(); err != nil {
+					t.Fatal(err)
+				}
 			}
 			var before string
 			if err := f.pg.QueryRow(ctx, "SELECT to_jsonb(f)::text FROM ordinary_worker_write_fence f WHERE task_id=$1::uuid", f.board).Scan(&before); err != nil {
