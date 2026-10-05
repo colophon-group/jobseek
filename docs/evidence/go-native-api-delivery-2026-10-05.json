@@ -1,0 +1,127 @@
+{
+  "schema": "jobseek.native-api-delivery/v1",
+  "observed_at_utc": "2026-10-05T12:10:22.404417+00:00",
+  "full_migration_complete": false,
+  "goal_status": "active",
+  "pr": "https://github.com/colophon-group/jobseek/pull/10320",
+  "reviewed_head": "bd0ea615a0daa48e429cc4bfc52e99ba6a9e46d4",
+  "source_revision": "6c0793486d8dd18385c692782606eec1b701a11c",
+  "version": "0.13.938",
+  "crawler_image_ref": "ghcr.io/colophon-group/jobseek-crawler@sha256:53d703e60f64df2b43424705a3dcef27c772410a90e30b7913fa3b7ec8b79b8f",
+  "browser_image_ref": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:61bda138f4134a74a489daea0e29cfed21cb0873dae05fe5ebba3d71c4287a29",
+  "reviewed_and_merged_tree": "c36cfcee54eee9d9e56d59d23d131c2151a35480",
+  "validation": {
+    "required_ci_run": 37296308607,
+    "crawler_deploy_gate": "success",
+    "runtime_contracts_run": 37296309263,
+    "full_queue_race_seconds": 76.277,
+    "full_worker_race_seconds": 134.27,
+    "compiled_outgoing_avature_retirement_compatibility": "passed"
+  },
+  "immutable_deployment": {
+    "run": 37298485109,
+    "attempt": 2,
+    "status": "success",
+    "independent_complete_six_writer_baseline_observed_at": "2026-10-05T11:17:57.763977+00:00"
+  },
+  "outgoing_recovery": {
+    "source_revision": "a5fd35cfb924800a5ac3fedfedbaca0a457a934c",
+    "original_compatible_recover_pending": "success after interrupted Redis publication retry",
+    "independent_complete_six_writer_reversal_observed_at": "2026-10-05T11:11:23.632892+00:00",
+    "retained_detail_canonical_receipt_and_queue_deadline_match": true,
+    "retained_detail_strike_lease_token_absent": true,
+    "retained_outgoing_interrupted_receipts": 12,
+    "routing_epoch_after_reversal": 184,
+    "manual_state_clearing": false
+  },
+  "b0": {
+    "cohort": "cdom",
+    "routing_epoch": 185,
+    "receipt_sha256": "fc9bd058ecc4f0b31b036248b528c872bd0619258e4b8dcd045e485bd8deba60",
+    "activation_status": "success"
+  },
+  "fresh_admission": {
+    "monitor_boards": 6159,
+    "monitor_boards_by_profile": {
+      "api_sniffer.http-items/v1": 134,
+      "ashby.token-skip/v1": 934,
+      "dom.direct-urls/v1": 334,
+      "dom.rendered-urls/v1": 143,
+      "greenhouse.token-skip/v1": 2570,
+      "join.nextdata-urls/v1": 276,
+      "lever.token-skip/v1": 194,
+      "personio.xml-skip/v1": 47,
+      "pinpoint.slug-skip/v1": 104,
+      "recruitee.api-skip/v1": 114,
+      "rss.successfactors-skip/v1": 197,
+      "rss.teamtailor-skip/v1": 137,
+      "sitemap.explicit-urls/v1": 283,
+      "smartrecruiters.api-urls/v1": 123,
+      "workable.api-urls/v1": 74,
+      "workday.cxs-urls/v1": 495
+    },
+    "detail_boards": 2199,
+    "detail_boards_by_profile": {
+      "dom.direct-detail/v1": 486,
+      "dom.rendered-detail/v1": 90,
+      "join.nextdata-detail/v1": 265,
+      "jsonld.direct-detail/v1": 668,
+      "jsonld.rendered-detail/v1": 57,
+      "smartrecruiters.api-detail/v1": 126,
+      "workable.api-detail/v1": 76,
+      "workday.cxs-detail/v1": 431
+    },
+    "scheduled_detail_postings": 1085423,
+    "scheduled_owned_postings": 1063331,
+    "excluded_verified_b0_boards": 3,
+    "cache_rejected_boards": 37,
+    "route_rejected_boards": 0,
+    "changed_projection": 0,
+    "cached_unsupported": 0,
+    "actual_posting_routes_reconciled": true
+  },
+  "ordinary": {
+    "routing_epoch": 185,
+    "plan_sha256": "e36b888812e50ccbe77fa7cc9fa4de9da5dcd8dd28ef64e2a2d9f62afec3cb19",
+    "projection_sha1": "1fe572c9b63f8737e45ca43c87b9309dbb873ee1",
+    "state": "retired by original recover-pending after repeated full-stack startup refusal; B0 reversal in progress",
+    "activation_verified": false,
+    "natural_api_canonical_and_queue_proof": false,
+    "startup_failure": "B0 claimant: reserve all C4 renderer slots before queue claim: renderer TLS handshake: EOF",
+    "manual_state_clearing": false,
+    "original_recover_pending": "success at 12:08 UTC"
+  },
+  "resource_comparison": {
+    "workflow_run": 37296309001,
+    "mode": "synthetic ARM64 B0 candidate/control",
+    "admitted": true,
+    "tested_pr_merge_source": "488eaca0631869ecb6c23c20fc987149825e868d",
+    "tested_tree_matches_reviewed_and_merged": true,
+    "full_production_lane_cost_verified": false
+  },
+  "remaining": [
+    "Finish original ordinary activation and exact fleet readback; natural API canonical output and recurring queue proof.",
+    "Batch remaining configured DOM/API/RSS/sitemap/Nextdata options and provider families; finish enabled long tail and detail coverage.",
+    "Retire remaining mandatory Python worker/startup/rollback/maintenance consumers using existing Go paths.",
+    "Prove complete lane resources/cost, supported reversal and rollback window before removing mandatory Python/Playwright/Chromium/runtime assets."
+  ],
+  "continuation_candidate": {
+    "version": "0.13.939",
+    "changes": [
+      "Start ordinary rendered work after healthy B0 admission.",
+      "Wait before B0 queue claims on renderer TLS EOF from occupied C4 capacity; cancellation and other failure refusals preserved.",
+      "Ordinary rendered monitors and details wait for shared C4 capacity within the original held claim context."
+    ],
+    "validation": {
+      "supervisor_race_seconds": 3.282,
+      "go_vet": "passed",
+      "scoped_deployment_contract": "passed",
+      "ordinary_cutover_tests": 14,
+      "ordinary_rendered_capacity_race_seconds": 3.116,
+      "ordinary_go_vet": "passed",
+      "real_postgresql_redis_rendered_race_seconds": 12.236
+    },
+    "required_ci": "pending",
+    "production_deployed": false
+  }
+}

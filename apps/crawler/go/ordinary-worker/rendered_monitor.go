@@ -67,7 +67,7 @@ func (r *NativeRenderedDetails) FetchMonitor(ctx context.Context, profile queue.
 		if err != nil {
 			return result, err
 		}
-		held, err := r.client.Reserve(ctx)
+		held, err := waitRenderedReservation(ctx, r.client.Reserve)
 		if err != nil {
 			return result, err
 		}

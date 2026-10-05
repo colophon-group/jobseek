@@ -1,5 +1,77 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Full migration delivery — source938 deployed, 2026-10-05
+
+The active goal is full production delivery of Go and self-hosted Lightpanda
+across every enabled board, followed by retiring mandatory production Python,
+Playwright and Chromium after replacement coverage and the rollback window.
+Useful isolated offline Python remains. Full migration is not complete.
+
+[PR #10320](https://github.com/colophon-group/jobseek/pull/10320) merged
+v0.13.938 as `6c0793486d8dd18385c692782606eec1b701a11c`. The reviewed and
+merged trees agree; Required CI, Crawler Deploy Gate and installed runtime
+contracts passed. The [original immutable deployment](https://github.com/colophon-group/jobseek/actions/runs/37298485109)
+completed on its second attempt. Independent readback at 11:17 UTC verified
+all six exact-image writers healthy and restart-armed before B0 activation.
+B0 subsequently activated through its original wrapper at epoch185.
+
+Source937 recovery used the approved938 immutable administrator through the
+original installed `recover-pending` wrapper. One interrupted Redis publication
+required an idempotent retry; the retry restored all nine services and removed
+the ordinary receipt. Independent readback verified the retired SQL plan and
+the previously unsettled JSON-LD detail's exact canonical/receipt/Redis future
+deadline, with its strike, lease and token absent. Original B0 rollback and
+selector clear then restored the full six-writer baseline at epoch184. Twelve
+outgoing interrupted receipts remain as history; their retired plan and older
+epoch revoke authority. No manual queue, lease, fence, receipt or lock clearing
+was used.
+
+Fresh source/receipt-bound admission reconciled 1,085,423 scheduled postings.
+It admitted 6,159 monitor boards, including 134 configured HTTP API boards,
+and 2,199 detail boards. All three B0 boards were excluded; 37 boards with cached
+detail route mismatches were rejected. The first activation published the exact
+Redis projection but left SQL staged; the supported exact-identity retry activated
+SQL at epoch185. Full-stack startup then refused because the B0 claimant received
+TLS EOF while reserving all four renderer slots. A second exact-identity startup
+retry reproduced the refusal. The original wrapper retained its identity and
+contained every writer. Original `recover-pending` succeeded at 12:08 UTC after
+four legacy leases expired naturally. Full B0 reversal and independent baseline
+verification precede the next immutable release. Serving ordinary authority and
+natural API output remain unverified.
+
+A v0.13.939 continuation fixes the shared renderer startup order: the ordinary
+consumer waits for healthy B0 admission before it starts. B0 workers wait before
+queue claims when the four-slot renderer closes excess connections during TLS.
+Ordinary monitors and details also wait within their existing claim context,
+with heartbeat and cancellation still in charge. Shutdown remains cancellable; identity/protocol failures and incomplete initial
+C4 admission still refuse. Full supervisor race tests, vet, the scoped deployment
+contract and all 14 ordinary cutover tests passed locally. Production validation
+is pending required CI and the supported release workflow.
+
+Continue in this order, using the existing worker, queue and writer:
+
+1. Finish original activation, verify all ten exact-image writers and health,
+   then observe natural API canonical fields, description staging, deadlines,
+   receipts and recurring queue conservation.
+2. Batch remaining configured DOM/API/RSS/sitemap/Nextdata options and provider
+   families together to reduce repeated cutovers. The current census's largest
+   gaps are DOM (361), API (192), Oracle HCM (134), inline (125) and iCIMS (118) monitor boards.
+   Implement the long tail and detail coverage; preserve each enabled board's
+   owner until its replacement is verified. Do not add infrastructure merely
+   to produce another checkpoint.
+3. Finish mandatory Python runtime consumers, including legacy worker startup,
+   rollback and deployment/maintenance validation. Forward schema setup and
+   registry sync, exporter and R2 drain already use Go.
+4. Prove the full lane's canonical behavior, comparable CPU/RAM/density/cost
+   and supported cold reversal. After the rollback window, remove mandatory
+   production Python, Playwright/Chromium and unused runtime assets.
+
+The ARM64 synthetic B0 comparison passed on the same reviewed tree. Its scope
+does not establish complete production lane costs. Use focused regressions and
+required checks; broaden testing when failures or unresolved contracts justify
+it. [Current delivery evidence](evidence/go-native-api-delivery-2026-10-05.json)
+records the exact identities and remaining work.
+
 ## Configured API migration and contained cold reversal — 2026-10-05
 
 Source937 is currently contained after the original ordinary retirement and

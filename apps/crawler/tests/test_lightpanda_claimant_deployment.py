@@ -739,6 +739,7 @@ def test_ordinary_rendered_consumer_is_dark_and_credentials_are_scoped() -> None
     assert "ORDINARY_GO_RENDERED_DETAILS" not in base["ordinary-go"]["environment"]
     assert "volumes" not in base["ordinary-go"]
     rendered = overlay["ordinary-go"]
+    assert rendered["depends_on"]["lightpanda-claimant"] == {"condition": "service_healthy"}
     assert rendered["environment"] == {"ORDINARY_GO_RENDERED_DETAILS": "enabled"}
     expected_files = {
         "ca.pem",

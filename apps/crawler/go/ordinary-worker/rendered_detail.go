@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"net"
 	"net/url"
 	"os"
@@ -130,7 +131,7 @@ func (r *NativeRenderedDetails) Fetch(ctx context.Context, profile queue.Workday
 		if err != nil {
 			return nil, nil, err
 		}
-		held, err := r.client.Reserve(ctx)
+		held, err := waitRenderedReservation(ctx, r.client.Reserve)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -163,6 +164,25 @@ func (r *NativeRenderedDetails) Fetch(ctx context.Context, profile queue.Workday
 		return content, nil, err
 	}
 	return nil, nil, executor.ErrBotChallenge
+}
+
+// Both native consumers share C4 capacity. A full renderer closes a new TLS
+// connection; wait within the existing claim context instead of recording an
+// upstream failure. The caller's heartbeat and cancellation remain in charge.
+func waitRenderedReservation(ctx context.Context, reserve func(context.Context) (*lp.Reservation, error)) (*lp.Reservation, error) {
+	for {
+		held, err := reserve(ctx)
+		if !errors.Is(err, io.EOF) {
+			return held, err
+		}
+		timer := time.NewTimer(time.Second)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return nil, ctx.Err()
+		case <-timer.C:
+		}
+	}
 }
 
 func parseHeldRenderedResult(ctx context.Context, source, scraper string, parser json.RawMessage, result *runtimev1.BrowserResult) (map[string]any, *policy.Reservation, error) {

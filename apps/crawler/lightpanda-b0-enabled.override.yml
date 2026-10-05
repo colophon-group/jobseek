@@ -5,6 +5,9 @@ services:
   # Ordinary browser claims reuse the existing private Lightpanda service.
   # This service remains unselected until the exact cold ownership activation.
   ordinary-go:
+    depends_on:
+      lightpanda-claimant:
+        condition: service_healthy
     environment:
       ORDINARY_GO_RENDERED_DETAILS: enabled
     volumes:
