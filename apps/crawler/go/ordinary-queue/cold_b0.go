@@ -301,6 +301,17 @@ func (t *ColdB0Target) attest(ctx context.Context, tx pgx.Tx, c *Client, p *Owne
 		if ordinary[expected.ID] {
 			return ErrAuthorityLost
 		}
+	}
+	return t.attestBoards(ctx, tx, c)
+}
+
+// Cancellation of an inert staged plan changes no board ownership. Its caller
+// still proves this entire canonical B0 witness and the atomic queue audit.
+func (t *ColdB0Target) attestBoards(ctx context.Context, tx pgx.Tx, c *Client) error {
+	if t == nil || c == nil {
+		return ErrConfiguration
+	}
+	for _, expected := range t.document.Boards {
 		actual, err := observeColdB0Board(ctx, tx, c, expected.Slug)
 		if err != nil {
 			return err

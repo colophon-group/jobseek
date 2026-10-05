@@ -10,8 +10,21 @@ clear completed, and independent readback proved all six exact-image baseline
 writers healthy/restart-armed at epoch180, no owner receipts/projections,
 no current active write fences and no live administrative containers.
 Its [original immutable deployment](https://github.com/colophon-group/jobseek/actions/runs/37260481257)
-is building. Fresh source-bound admission, exact ordinary activation and natural
-full-cohort writes remain the immediate production delivery; no adoption is claimed.
+completed and promoted v0.13.934. B0 activated at epoch181 and fresh admission
+staged 5,884 monitors/2,052 detail boards through the original wrapper. Activation
+correctly refused two monitor boards already owned by B0. Its original pending
+recovery also refused that inert overlap, leaving the lane contained with the
+pending identity retained. No ordinary production adoption is claimed.
+
+v0.13.935 therefore also fixes cancellation of a never-active staged plan.
+Cancellation still verifies canonical B0 configuration, current source/epoch,
+exclusive SQL/host scope, the original B0 queue audit and exact projection CAS.
+It leaves canonical data, B0 ownership and inert staged SQL history unchanged.
+Activation and active retirement continue to refuse overlap. The corrected
+production admission must exclude every verified B0 board before staging.
+Recover the retained source934 pending identity through the original wrapper
+and its supported exact-source/image compatibility administrator, prove the
+restored stack, then continue the corrected full-cohort adoption.
 
 v0.13.935 adds configured DOM and JSON-LD Browser detail execution to the existing
 ordinary Go worker. It shares the B0 pinned mutual-TLS protobuf client and pure

@@ -180,6 +180,13 @@ func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client,
 				}
 			}
 		}
+		if retire && state == "staged" {
+			// The SQL plan never granted runtime authority. Cancellation removes
+			// only its exact projection, if a prior interrupted publication left
+			// one, and keeps its inert staged SQL history. B0 overlap remains an
+			// activation/active-retirement refusal, not a cancellation obstacle.
+			return target.attestBoards(ctx, tx, client)
+		}
 		return target.attest(ctx, tx, client, plan)
 	})
 	return plan, state, err
