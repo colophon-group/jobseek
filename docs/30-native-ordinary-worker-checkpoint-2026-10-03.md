@@ -1,5 +1,47 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Combined Join/sitemap delivery and production API proof — 2026-10-05
+
+The goal remains full production migration to Go and self-hosted Lightpanda,
+with mandatory Python orchestration and Playwright/Chromium retired after complete
+replacement and supported reversal. Reuse the current parsers, native worker,
+queue, persistence, exporter and drain. Preserve enabled boards and useful offline Python.
+
+Source928 original activation succeeded after the standard legacy reaper requeued
+23 simple and five browser expired monitor claims at its normal fifth-strike limit;
+no dead letters or authority/retry overrides were used. Independent readback verified
+ten exact-image running writers with restart policies armed and eight healthy HTTP
+endpoints. The cohort owns 4,989 monitors and 1,301 detail boards (947,631 scheduled
+postings at admission); 30 cache-mismatched boards retain legacy detail ownership.
+Natural samples show 385 matching monitor deadlines, successful SmartRecruiters and
+Workable monitor cycles, six settled details across JSON-LD/Workday, canonical fields
+and descriptions, and no deadline mismatches. This sample does not establish API
+detail writes, full-fleet fetch completion or comparable resource savings.
+[Portable API928 production evidence](evidence/go-native-api928-owner-2026-10-05.json)
+records the scope. Original outgoing ordinary/B0 reversal is running.
+
+v0.13.930 combines the tested Join monitor/configured detail implementation with
+native explicit sitemap URL sets in one release. Sitemap uses the existing Go parser
+and sealed HTTP, with the existing retry/body bounds, normalization and UTM stripping.
+URL filters reuse the existing Python-compatible Go regex engine. Complete inventories
+create URL stubs and urgent details; failures and unsupported indices preserve prior
+inventory. Positive publisher policy precedes status handling. Nested filter/detail
+configuration binds semantically across PostgreSQL and Redis key ordering; changed
+values remain bound. Unsupported transport/discovery/rewrite options retain coverage
+through their existing owners.
+
+The full real PostgreSQL/Redis worker race suite passes (98.955s), as do the queue,
+parser/exporter race suites, Go vet/module checks and all 33 affected Python tests.
+[Portable combined candidate evidence](evidence/go-native-join-sitemap-runtime-candidate-2026-10-05.json)
+records the implementation and limits. Fresh production admission and natural
+Join/sitemap writes follow the immutable release; they are not claimed yet.
+
+Continue with the existing delivery list: remaining sitemap discovery/indices,
+Booking and rich identities; generic configured HTTP/Lightpanda monitor/detail
+coverage; remaining mandatory Python runtime maintenance/deploy consumers;
+whole-lane resource and reversal verification; then runtime-only asset removal
+after the rollback window. Full migration remains incomplete until these pass.
+
 ## Deployed API release and native Join continuation — 2026-10-05
 
 The full migration goal remains active. [PR #10302](https://github.com/colophon-group/jobseek/pull/10302)

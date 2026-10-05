@@ -15,6 +15,7 @@ require (
 	github.com/colophon-group/jobseek/apps/crawler/go/smartrecruiters-monitor v0.0.0 // indirect
 	github.com/colophon-group/jobseek/apps/crawler/go/workable-monitor v0.0.0 // indirect
 	github.com/colophon-group/jobseek/apps/crawler/go/workday-monitor v0.0.0 // indirect
+	github.com/dlclark/regexp2/v2 v2.8.0 // indirect
 	golang.org/x/net v0.59.0 // indirect
 )
 
@@ -41,3 +42,11 @@ replace github.com/colophon-group/jobseek/apps/crawler/go/smartrecruiters-monito
 replace github.com/colophon-group/jobseek/apps/crawler/go/workable-monitor => ../workable-monitor
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/join-monitor => ../join-monitor
+
+require github.com/colophon-group/jobseek/apps/crawler/go/dom-detail v0.0.0 // indirect
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/dom-detail => ../dom-detail
+
+require github.com/colophon-group/jobseek/apps/crawler/go/sitemap-monitor v0.0.0 // indirect
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/sitemap-monitor => ../sitemap-monitor

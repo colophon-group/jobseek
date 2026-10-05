@@ -2,6 +2,25 @@ package queue
 
 import "testing"
 
+func TestJoinMonitorNestedDetailsBindAcrossCanonicalJSONOrdering(t *testing.T) {
+	c := joinMonitorConfig()
+	c["metadata"] = `{"scraper_type":"nextdata","scraper_config":{"path":"props.job","fields":{"title":"title","description":"description"}}}`
+	p, err := InspectRichMonitor(profileBoardID, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c["metadata"] = `{"scraper_type":"nextdata","scraper_config":{"fields":{"description":"description","title":"title"},"path":"props.job"}}`
+	q, err := InspectRichMonitor(profileBoardID, c)
+	if err != nil || p.EffectiveConfigSHA256 != q.EffectiveConfigSHA256 {
+		t.Fatal("canonical nested ordering changed profile ownership", err)
+	}
+	c["metadata"] = `{"scraper_type":"nextdata","scraper_config":{"fields":{"description":"body","title":"title"},"path":"props.job"}}`
+	q, err = InspectRichMonitor(profileBoardID, c)
+	if err != nil || p.EffectiveConfigSHA256 == q.EffectiveConfigSHA256 {
+		t.Fatal("changed detail mapping lost its binding", err)
+	}
+}
+
 func joinMonitorConfig() map[string]string {
 	c := profileConfig()
 	c["crawler_type"], c["domain"], c["throttle_key"] = "join", "join", "join"

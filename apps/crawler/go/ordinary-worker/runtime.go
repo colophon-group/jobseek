@@ -359,7 +359,7 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		if claim.Descriptor().Kind == queue.Scrape {
 			return RunDetail(ctx, authority, claim, workdayHTTP, preparer.Processor, circuits)
 		}
-		if provider := claim.Descriptor().Config["crawler_type"]; provider == "workday" || provider == "smartrecruiters" || provider == "workable" || provider == "join" {
+		if provider := claim.Descriptor().Config["crawler_type"]; provider == "workday" || provider == "smartrecruiters" || provider == "workable" || provider == "join" || provider == "sitemap" {
 			return RunGreenhouseClaim(ctx, authority, claim, workdayHTTP, preparer, circuits)
 		}
 		return RunGreenhouseClaim(ctx, authority, claim, httpClient, preparer, circuits)

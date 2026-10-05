@@ -119,6 +119,12 @@ func pythonPattern(pattern string) (string, error) {
 
 type regexCache map[string]*regexp2.Regexp
 
+// CompileURLPattern reuses Python's search semantics for monitor URL filters.
+// It has the same bounded matching timeout as configured DOM patterns.
+func CompileURLPattern(pattern string) (*regexp2.Regexp, error) {
+	return regexCache{}.compile(pattern, false)
+}
+
 func (cache regexCache) compile(pattern string, dotall bool) (*regexp2.Regexp, error) {
 	key := pattern
 	if dotall {

@@ -207,6 +207,8 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			discovery.Jobs = append(discovery.Jobs, RichMonitorJob{URL: raw})
 		}
 		errors.As(err, &workdayReservation)
+	} else if profile.Provider == "sitemap" {
+		discovery, fetchErr = discoverSitemapInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "join" {
 		discovery, fetchErr = discoverJoinInventory(ctx, http.client, profile)
 	} else if profile.Provider == "smartrecruiters" || profile.Provider == "workable" {
@@ -249,7 +251,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			}
 			return finishSuccess(terminal)
 		}
-		if (response.status == 404 || profile.Provider == "join" && response.status == 410) && profile.Provider != "pinpoint" && profile.Provider != "rss" && profile.Provider != "personio" && profile.Provider != "smartrecruiters" && profile.Provider != "workable" {
+		if (response.status == 404 || profile.Provider == "join" && response.status == 410) && profile.Provider != "pinpoint" && profile.Provider != "rss" && profile.Provider != "personio" && profile.Provider != "smartrecruiters" && profile.Provider != "workable" && profile.Provider != "sitemap" {
 			terminal, err := cycle.FinishProviderGoneResource(ctx, response.endpoint, queue.GreenhouseGoneObservation{Endpoint: response.finalURL, HTTPStatus: response.status})
 			if err != nil {
 				return result, claimRunError("provider_gone", err)
@@ -265,7 +267,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 	if err != nil {
 		return failure("inventory", err)
 	}
-	if profile.Provider == "workday" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" {
+	if profile.Provider == "workday" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" {
 		for offset := 0; offset < len(inventory.Jobs); offset += 500 {
 			end := min(offset+500, len(inventory.Jobs))
 			urls := make([]string, 0, end-offset)

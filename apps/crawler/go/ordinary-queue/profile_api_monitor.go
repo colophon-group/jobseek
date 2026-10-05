@@ -96,6 +96,11 @@ func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[stri
 		return fail()
 	}
 	stable, err := stableGreenhouseConfig(config, md)
+	if provider == "sitemap" || provider == "join" {
+		// PostgreSQL jsonb and Redis may order nested filter/detail keys
+		// differently. Reuse the existing semantic configuration binding.
+		stable, err = stableJSONLDConfig(config, md)
+	}
 	if err != nil {
 		return fail()
 	}

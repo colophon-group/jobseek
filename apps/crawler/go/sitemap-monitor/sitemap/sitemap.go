@@ -120,6 +120,25 @@ type sessionGetter interface {
 	Get(context.Context, string, http.Header) (boundedhttp.Response, error)
 }
 
+// Session allows native callers to retain their verified transport and metrics.
+type Session interface {
+	sessionGetter
+	Stats() boundedhttp.Stats
+}
+
+func RunWithSession(ctx context.Context, config Config, session Session) (Result, error) {
+	config, err := NormalizeConfig(config)
+	if err != nil || session == nil {
+		if err != nil {
+			return Result{}, err
+		}
+		return Result{}, newError(ErrorConfig, config.SitemapURL, 0, nil)
+	}
+	u, _ := url.Parse(config.SitemapURL)
+	r := &Runner{config: config, allowedOrigin: canonicalOrigin(u), sleep: sleepContext}
+	return r.run(ctx, session)
+}
+
 type document struct {
 	XMLName  xml.Name
 	URLs     []location `xml:"url"`
@@ -172,6 +191,10 @@ func NormalizeConfig(config Config) (Config, error) {
 func (r *Runner) Run(ctx context.Context) (Result, error) {
 	session := r.client.NewSession()
 	defer session.Close()
+	return r.run(ctx, session)
+}
+
+func (r *Runner) run(ctx context.Context, session Session) (Result, error) {
 	fail := func(err error) (Result, error) {
 		return Result{TransportMetrics: session.Stats()}, err
 	}

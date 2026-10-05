@@ -40,6 +40,7 @@ COPY go/personio-monitor/ go/personio-monitor/
 COPY go/smartrecruiters-monitor/ go/smartrecruiters-monitor/
 COPY go/workable-monitor/ go/workable-monitor/
 COPY go/join-monitor/ go/join-monitor/
+COPY go/sitemap-monitor/ go/sitemap-monitor/
 COPY go/ordinary-queue/ go/ordinary-queue/
 COPY go/ordinary-worker/ go/ordinary-worker/
 COPY go/workday-monitor/ go/workday-monitor/
@@ -70,6 +71,8 @@ COPY go/jsonld-detail/ ../jsonld-detail/
 COPY go/smartrecruiters-monitor/ ../smartrecruiters-monitor/
 COPY go/workable-monitor/ ../workable-monitor/
 COPY go/join-monitor/ ../join-monitor/
+COPY go/dom-detail/ ../dom-detail/
+COPY go/sitemap-monitor/ ../sitemap-monitor/
 COPY go/workday-monitor/ ../workday-monitor/
 COPY src/lua/ /workspace/apps/crawler/src/lua/
 RUN go test ./... \
