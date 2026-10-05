@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"reflect"
@@ -21,6 +22,21 @@ func snapshot(t *testing.T, c *Client) map[string]string {
 	}
 	out := map[string]string{}
 	for _, key := range keys {
+		// Hash reads can advance Redis's internal rehash and reorder DUMP
+		// bytes without changing a field. Compare their logical values so
+		// extra read-only cold observations cannot masquerade as mutations.
+		if c.redis.Type(ctx, key).Val() == "hash" {
+			fields, err := c.redis.HGetAll(ctx, key).Result()
+			if err != nil {
+				t.Fatal("private hash snapshot failed")
+			}
+			body, err := json.Marshal(fields)
+			if err != nil {
+				t.Fatal("private hash snapshot encoding failed")
+			}
+			out[key] = string(body)
+			continue
+		}
 		value, err := c.redis.Dump(ctx, key).Result()
 		if err != nil {
 			t.Fatal("private snapshot failed")

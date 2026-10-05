@@ -11,7 +11,7 @@ local function retirement_type(key, expected)
     return kind == "none" or kind == expected
 end
 
-local function prepare_first_retirement(plan, raw, exists)
+local function prepare_first_retirement(plan, raw, exists, adopting)
     local ok, rows = pcall(cjson.decode, raw)
     if not ok or type(rows) ~= "table" or #rows < #plan.members or #rows == 0 then return nil end
     for _, worker in ipairs({"simple", "browser"}) do
@@ -23,6 +23,11 @@ local function prepare_first_retirement(plan, raw, exists)
         for tier = 0, 2 do
             if not retirement_type("ready:" .. worker .. ":" .. tier, "zset") then return nil end
         end
+    end
+    local now = nil
+    if adopting then
+        local clock = redis.call("TIME")
+        now = tonumber(clock[1]) + tonumber(clock[2]) / 1000000
     end
     local detail_members = {}
     for _, member in ipairs(plan.details or {}) do detail_members[member.board_id] = member end
@@ -42,6 +47,15 @@ local function prepare_first_retirement(plan, raw, exists)
             or (row.learned_host ~= "" and not row.completed) then return nil end
         local worker = member.worker
         if worker ~= "simple" and worker ~= "browser" then return nil end
+        -- Adoption grants no current attempt receipt. A monitor in the wrong
+        -- queue namespace or a completed/current native attempt is a refusal.
+        if adopting then
+            if row.completed or row.learned_host ~= "" then return nil end
+            local other = worker == "simple" and "browser" or "simple"
+            local task = kind .. "|" .. row.domain .. "|" .. id
+            if redis.call("ZSCORE", "inflight:" .. other, task)
+                or redis.call("HEXISTS", "inflight_tokens:" .. other, task) == 1 then return nil end
+        end
         seen[kind.."|"..id] = true
         local due = nil
         if row.due ~= cjson.null then
@@ -81,8 +95,16 @@ local function prepare_first_retirement(plan, raw, exists)
         local lease = redis.call("ZSCORE", "inflight:" .. worker, task)
         local token = redis.call("HGET", "inflight_tokens:" .. worker, task)
         if lease ~= false then
-            if not exists or not retirement_finite(tonumber(lease)) or type(token) ~= "string"
-                or #token ~= 32 or string.find(token, "[^0-9a-f]") ~= nil then return nil end
+            if not retirement_finite(tonumber(lease)) then return nil end
+            if adopting then
+                -- Redis's own clock and the caller's live cold SQL barriers
+                -- must both prove expiry. Preserve canonical deadlines and
+                -- strikes; do not manufacture a successful fetch or extend
+                -- the normal lease budget.
+                if tonumber(lease) > now or (token ~= false and (type(token) ~= "string"
+                    or #token ~= 32 or string.find(token, "[^0-9a-f]") ~= nil)) then return nil end
+            elseif not exists or type(token) ~= "string" or #token ~= 32
+                or string.find(token, "[^0-9a-f]") ~= nil then return nil end
         elseif token ~= false then
             return nil
         end

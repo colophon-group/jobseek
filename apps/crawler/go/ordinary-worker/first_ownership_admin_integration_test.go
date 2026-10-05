@@ -171,12 +171,29 @@ func TestRealFirstOwnershipExecutableActivatesAndRetires(t *testing.T) {
  WHERE id=$1::uuid RETURNING leased_until`, f.board).Scan(&leaseUntil); err != nil {
 		t.Fatal(err)
 	}
+	legacyTask := "monitor|greenhouse|" + f.board
+	if err := f.r.ZAdd(ctx, "inflight:simple", redis.Z{Score: 1, Member: legacyTask}).Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.r.HSet(ctx, "inflight_strikes:simple", legacyTask, "2").Err(); err != nil {
+		t.Fatal(err)
+	}
+	var legacyDue time.Time
+	if err := f.pg.QueryRow(ctx, "SELECT next_check_at FROM job_board WHERE id=$1::uuid", f.board).Scan(&legacyDue); err != nil {
+		t.Fatal(err)
+	}
 	started := time.Now()
 	call(true)
 	var retainedLease time.Time
 	var leaseOwner string
 	if err := f.pg.QueryRow(ctx, "SELECT leased_until,lease_owner FROM job_board WHERE id=$1::uuid", f.board).Scan(&retainedLease, &leaseOwner); err != nil || !retainedLease.Equal(leaseUntil) || leaseOwner != "cold-legacy-fixture" || time.Since(started) < time.Second {
 		t.Fatal("installed cold command did not preserve and await legacy lease expiry", err)
+	}
+	if f.r.ZScore(ctx, "inflight:simple", legacyTask).Err() != redis.Nil || f.r.HGet(ctx, "inflight_strikes:simple", legacyTask).Val() != "2" {
+		t.Fatal("installed adoption retained expired legacy claim or fabricated success")
+	}
+	if score, err := f.r.ZScore(ctx, "monitors_simple:greenhouse", f.board).Result(); err != nil || score != float64(legacyDue.UnixMicro())/1e6 {
+		t.Fatal("installed adoption lost canonical legacy deadline", err)
 	}
 	// The installed command must retire a claimed monitor whose process never
 	// reached ACK. No worker restart or origin fetch is part of this recovery.
