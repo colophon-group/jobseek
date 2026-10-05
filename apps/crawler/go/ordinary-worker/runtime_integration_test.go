@@ -103,8 +103,19 @@ func TestRealNativeExecutableStartupOwnershipAssetsMetricsAndSignalDrain(t *test
 	// Incorrect installed projection refuses startup before claiming future work.
 	wrong := exec.Command(binary)
 	wrong.Env = append(env, "ORDINARY_OWNERSHIP_PROJECTION_SHA1="+strings.Repeat("d", 40))
-	if output, err := wrong.CombinedOutput(); err == nil || !strings.Contains(string(output), "ordinary worker command rejected") {
+	if output, err := wrong.CombinedOutput(); err == nil || !strings.Contains(string(output), "ordinary worker command rejected") || !strings.Contains(string(output), "ordinary worker startup stage: projection") || strings.Contains(string(output), dsn) {
 		t.Fatal("wrong installed projection accepted startup")
+	}
+	// Asset failures retain a static stage while keeping private paths out of logs.
+	missing := exec.Command(binary)
+	missing.Env = append(env, "ORDINARY_GO_DATA_DIRECTORY="+filepath.Join(t.TempDir(), "private-do-not-log"))
+	if output, err := missing.CombinedOutput(); err == nil || !strings.Contains(string(output), "ordinary worker startup stage: enrichment_assets") || strings.Contains(string(output), "private-do-not-log") || strings.Contains(string(output), dsn) {
+		t.Fatal("missing assets lost rejection stage or leaked private input")
+	}
+	invalid := exec.Command(binary)
+	invalid.Env = append(env, "ORDINARY_OWNERSHIP_PLAN_SHA256=private-do-not-log")
+	if output, err := invalid.CombinedOutput(); err == nil || !strings.Contains(string(output), "ordinary worker startup stage: configuration") || strings.Contains(string(output), "private-do-not-log") || strings.Contains(string(output), dsn) {
+		t.Fatal("invalid configuration lost rejection stage or leaked private input")
 	}
 }
 
@@ -159,7 +170,7 @@ func newNativeExecutableFixture(t *testing.T, f nativePipelineFixture, dsn strin
 	}
 	identityOutput, err := exec.Command(binary, "--identity").Output()
 	var identity BuildIdentity
-	if err != nil || json.Unmarshal(identityOutput, &identity) != nil || identity != (BuildIdentity{revision, pinnedCASHA256, "greenhouse.token-skip/v1", [29]string{"greenhouse.token-skip/v1", "ashby.token-skip/v1", "lever.token-skip/v1", "recruitee.api-skip/v1", "pinpoint.slug-skip/v1", "rss.teamtailor-skip/v1", "rss.successfactors-skip/v1", "personio.xml-skip/v1", "workday.cxs-urls/v1", "workday.cxs-detail/v1", "jsonld.direct-detail/v1", "smartrecruiters.api-detail/v1", "workable.api-detail/v1", "smartrecruiters.api-urls/v1", "workable.api-urls/v1", "join.nextdata-urls/v1", "join.nextdata-detail/v1", "sitemap.explicit-urls/v1", "dom.direct-detail/v1", "dom.direct-urls/v1", "dom.rendered-urls/v1", "dom.rendered-detail/v1", "jsonld.rendered-detail/v1", "api_sniffer.http-items/v1", "oracle_hcm.finder-items/v1", "oracle_hcm.api-detail/v1", "embedded.direct-detail/v1", "embedded.rendered-detail/v1", "api_sniffer.http-detail/v1"}}) {
+	if err != nil || json.Unmarshal(identityOutput, &identity) != nil || identity != (BuildIdentity{revision, pinnedCASHA256, "greenhouse.token-skip/v1", [30]string{"greenhouse.token-skip/v1", "ashby.token-skip/v1", "lever.token-skip/v1", "recruitee.api-skip/v1", "pinpoint.slug-skip/v1", "rss.teamtailor-skip/v1", "rss.successfactors-skip/v1", "personio.xml-skip/v1", "workday.cxs-urls/v1", "workday.cxs-detail/v1", "jsonld.direct-detail/v1", "smartrecruiters.api-detail/v1", "workable.api-detail/v1", "smartrecruiters.api-urls/v1", "workable.api-urls/v1", "join.nextdata-urls/v1", "join.nextdata-detail/v1", "sitemap.explicit-urls/v1", "dom.direct-detail/v1", "dom.direct-urls/v1", "dom.rendered-urls/v1", "dom.rendered-detail/v1", "jsonld.rendered-detail/v1", "api_sniffer.http-items/v1", "oracle_hcm.finder-items/v1", "oracle_hcm.api-detail/v1", "embedded.direct-detail/v1", "embedded.rendered-detail/v1", "api_sniffer.http-detail/v1", "icims.listing-urls/v1"}}) {
 		t.Fatal("native executable lost compiled source/CA/profile identities")
 	}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")

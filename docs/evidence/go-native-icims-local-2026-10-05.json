@@ -1,0 +1,39 @@
+{
+  "schema": "jobseek.native-local-verification/v1",
+  "version": "0.13.944",
+  "profile": "icims.listing-urls/v1",
+  "configuration_census": {
+    "source_revision": "09996a260785845f3b94a9fafad213d2b622ea3f",
+    "captured_at_routing_epoch": 191,
+    "enabled": 118,
+    "canonical_configuration_admitted": 118,
+    "cached_configuration_admitted": 118,
+    "production_native_adoption": false
+  },
+  "implementation": [
+    "Existing pure DOM package, verified per-claim HTTP cookies, shared URL-only canonical writer, detail scheduling and cold retirement.",
+    "Classic sequential pagination, advertised-count drift, incomplete/duplicate inventories, aggregate child reconciliation, ID peers and locale multiset deduplication.",
+    "Reviewed Jibe fallback with aggregate total/identity validation; primary classic 404/410 retain disappearance behavior, Jibe/peer disappearance remains failure.",
+    "Unchanged three attempts, 30-second requests, 1000 pages, 50000-job early pagination cutoff, 2000000 character HTML and 2000000 byte JSON bounds; successful publisher policy stops extraction and binds actual request/final resource.",
+    "Legacy owner recognizes all existing native detail profiles during mixed-lane startup; native startup records only fixed stage names and keeps generic ErrStartup rejection."
+  ],
+  "checks": {
+    "python_reference_inventory_and_requests": "16 frozen actual Python monitor cases pass",
+    "pure_dom_module_full_race": "PASS 4.154s",
+    "owned_worker_postgres_redis_matrix": "PASS 21 cases, 13.994s",
+    "body_policy_unicode_bounds": "PASS 2.106s",
+    "owned_cold_retirement": "PASS interrupted, committed-before-ack, changed-peer refusal, canonical deadlines and durable Redis reload",
+    "full_queue_race_final": "PASS 93.789s; private fixture cleanup corrected before final run",
+    "full_worker_race_final": "PASS178.645s before diagnostics; focused changed executable race PASS5.819s",
+    "python_runtime_contracts": "18 passed,91deselected,7.33s after startup compatibility fix",
+    "affected_vet_mod_tidy": "PASS",
+    "frozen_generator_ruff": "PASS",
+    "legacy_ownership": "29 passed with required real PostgreSQL/Redis fixtures;16projection regressions pass; actual9436291monitor/2461detail projection matches exact GoSHA1",
+    "startup_diagnostic": "Real executable race regression PASS5.819s: incorrect projection, missing enrichment assets and malformed configuration retain refusal and static stage without private inputs"
+  },
+  "limitations": [
+    "No native iCIMS process has been activated in production by this local batch.",
+    "Required CI and Crawler Deploy Gate must pass before bound merge/deployment.",
+    "Remaining enabled provider/configuration coverage, production Python consumers, whole-lane resources and final retirement remain incomplete."
+  ]
+}

@@ -114,7 +114,12 @@ def ownership_projection(payload: str) -> str:
                 d["worker"]
                 != (
                     "browser"
-                    if d["profile"] in ("dom.rendered-detail/v1", "jsonld.rendered-detail/v1")
+                    if d["profile"]
+                    in (
+                        "dom.rendered-detail/v1",
+                        "jsonld.rendered-detail/v1",
+                        "embedded.rendered-detail/v1",
+                    )
                     else "simple"
                 )
                 or d["profile"]
@@ -127,6 +132,10 @@ def ownership_projection(payload: str) -> str:
                     "dom.direct-detail/v1",
                     "dom.rendered-detail/v1",
                     "jsonld.rendered-detail/v1",
+                    "oracle_hcm.api-detail/v1",
+                    "embedded.direct-detail/v1",
+                    "embedded.rendered-detail/v1",
+                    "api_sniffer.http-detail/v1",
                 )
                 or (d["profile"] == "workday.cxs-detail/v1" and d["board_id"] not in members)
                 or (

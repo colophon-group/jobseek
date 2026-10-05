@@ -229,6 +229,8 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		discovery, fetchErr = discoverSitemapInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "api_sniffer" {
 		discovery, fetchErr = discoverAPISnifferInventory(ctx, http.client, profile, task.Config)
+	} else if profile.Provider == "icims" {
+		discovery, fetchErr = discoverICIMSInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "oracle_hcm" {
 		discovery, fetchErr = discoverOracleInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "join" {
@@ -262,6 +264,9 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		if profile.Provider == "api_sniffer" {
 			matches = queue.APISnifferMonitorResourceMatches(profile, task.Config, response.endpoint)
 		}
+		if profile.Provider == "icims" {
+			matches = queue.ICIMSMonitorResourceMatches(profile, task.Config, response.endpoint)
+		}
 		if profile.Provider == "oracle_hcm" {
 			matches = queue.OracleMonitorResourceMatches(profile, task.Config, response.endpoint)
 		}
@@ -271,7 +276,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		}
 		if response.reserved {
 			initial := profile.Endpoint
-			if profile.Provider == "api_sniffer" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "oracle_hcm" {
+			if profile.Provider == "api_sniffer" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "oracle_hcm" || profile.Provider == "icims" {
 				initial = response.endpoint
 			}
 			terminal, err := cycle.FinishReservationResource(ctx, initial, &queue.GreenhouseHeaderReservation{Endpoint: response.finalURL, PolicyURL: response.PolicyURL(), Source: response.reservationSource})
@@ -280,7 +285,11 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			}
 			return finishSuccess(terminal)
 		}
-		if (response.status == 404 || (profile.Provider == "join" || profile.Provider == "dom") && response.status == 410) && profile.Provider != "api_sniffer" && profile.Provider != "pinpoint" && profile.Provider != "rss" && profile.Provider != "personio" && profile.Provider != "smartrecruiters" && profile.Provider != "workable" && profile.Provider != "sitemap" && profile.Provider != "oracle_hcm" {
+		providerGone := (response.status == 404 || (profile.Provider == "join" || profile.Provider == "dom") && response.status == 410) && profile.Provider != "api_sniffer" && profile.Provider != "pinpoint" && profile.Provider != "rss" && profile.Provider != "personio" && profile.Provider != "smartrecruiters" && profile.Provider != "workable" && profile.Provider != "sitemap" && profile.Provider != "oracle_hcm"
+		if profile.Provider == "icims" {
+			providerGone = queue.ICIMSMonitorPrimaryGone(task.Config, response.endpoint, response.status)
+		}
+		if providerGone {
 			terminal, err := cycle.FinishProviderGoneResource(ctx, response.endpoint, queue.GreenhouseGoneObservation{Endpoint: response.finalURL, HTTPStatus: response.status})
 			if err != nil {
 				return result, claimRunError("provider_gone", err)
@@ -296,7 +305,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 	if err != nil {
 		return failure("inventory", err)
 	}
-	if profile.Provider == "workday" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "dom" {
+	if profile.Provider == "workday" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "dom" || profile.Provider == "icims" {
 		for offset := 0; offset < len(inventory.Jobs); offset += 500 {
 			end := min(offset+500, len(inventory.Jobs))
 			urls := make([]string, 0, end-offset)
