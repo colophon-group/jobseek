@@ -46,6 +46,9 @@ type FirstOwnershipResult struct {
 // The source-pinned B0 conservation audit runs atomically with projection CAS.
 // Projection SAVE is acknowledged BEFORE SQL activation. An active exact retry
 // only observes; it cannot reconstruct a missing projection or repeat SAVE.
+// The same cold canonical restoration used by retirement recovers owned legacy
+// claims only after both SQL and Redis clocks prove expiry, before publication.
+// No canonical lease/attempt is cleared or reported as a successful fetch.
 func ActivateFirstOwnershipInHostScope(ctx context.Context, pool *pgxpool.Pool, client *Client, epoch int64, digest, source string, target *ColdB0Target) (*FirstOwnershipResult, error) {
 	return applyFirstOwnership(ctx, pool, client, epoch, digest, source, target, false)
 }
@@ -259,7 +262,11 @@ func applyFirstOwnership(ctx context.Context, pool *pgxpool.Pool, client *Client
 	}
 	completed := (!retire && state == "active") || (retire && state == "retired")
 	retirement := "[]"
-	if retire && state == "active" {
+	if (retire && state == "active") || (!retire && state == "staged") {
+		// First adoption uses the same canonical deadline restoration as cold
+		// reversal. Expired legacy claims may outlive their SQL leases when the
+		// original host stops the complete fleet; Lua must attest the whole
+		// cohort before restoring any of them or publishing the new owner.
 		retirement, err = firstRetirementMembers(ctx, pool, client, plan)
 		if err != nil {
 			return nil, err

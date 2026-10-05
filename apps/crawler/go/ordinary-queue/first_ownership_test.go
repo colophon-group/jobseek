@@ -350,7 +350,7 @@ func TestRealFirstOwnershipRefusesChangedAuthorityBeforeEffects(t *testing.T) {
 			case "b0-lease":
 				err = p.f.client.redis.ZAdd(ctx, p.target.keys()[3], redis.Z{Score: 1, Member: "untracked"}).Err()
 			case "owned-inflight":
-				err = p.f.client.redis.ZAdd(ctx, "inflight:simple", redis.Z{Score: 1, Member: inflight(p.f.task)}).Err()
+				err = p.f.client.redis.ZAdd(ctx, "inflight:simple", redis.Z{Score: seconds(time.Now().Add(time.Hour)), Member: inflight(p.f.task)}).Err()
 			case "b0-cohort":
 				err = p.f.client.redis.HSet(ctx, "lightpanda-b0:producer-owner", "cohort", "c2").Err()
 			case "disabled":

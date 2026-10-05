@@ -1,5 +1,34 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Expired legacy claims during fleet adoption — 2026-10-05
+
+The delivery goal is the complete Go/Lightpanda migration, preserving every
+enabled board and canonical behavior, then retiring mandatory production Python,
+Playwright and Chromium after the rollback window. Production recovery remains
+the first step; the source934 lane is still contained at this checkpoint.
+
+v0.13.937 reuses cold reversal's canonical deadline restoration during first
+adoption. After the original complete-fleet stop and live exclusive SQL barriers
+prove no live SQL lease or current native attempt, Redis's clock must also prove
+each owned legacy claim expired. The whole cohort is preflighted before queue
+restoration or exact ownership publication. Simple and Browser monitors/details
+retain canonical deadlines, retry strikes, foreign queues and B0 state; the
+operation changes no canonical lease, content or attempt receipt. Live Redis/SQL
+leases, wrong namespaces, invalid tokens and corrupt queue types still refuse.
+Redis SAVE acknowledgement remains required before SQL activation, and an exact
+retry after a failed SAVE retains staged SQL history until persistence succeeds.
+
+The full real PostgreSQL/Redis queue race suite passed in 68.006 seconds. Real
+first-owner executable tests passed in 14.104 seconds, including natural SQL
+lease expiry, tokenless legacy recovery, staged cancellation and compatibility
+retirement. The full worker race suite passed in 110.166 seconds.
+These are local candidate proofs, not deployed ownership. The separate
+v0.13.936 recovery [PR #10314](https://github.com/colophon-group/jobseek/pull/10314)
+passed required CI and merged as `b7ef62601adbd2b33f38d4b5276f78ada1e52c8f`;
+its reviewed and merged trees match. Its original immutable build and recovery
+of the contained source remain required before promotion. No new recovery
+service, host wrapper or queue-clear operation is introduced.
+
 ## Configured rendered DOM monitor continuation — 2026-10-05
 
 The full migration remains open. Source934's full eligible fleet staged through
