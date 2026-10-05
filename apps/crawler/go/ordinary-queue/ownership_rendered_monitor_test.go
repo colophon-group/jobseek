@@ -68,6 +68,23 @@ func TestRealRenderedMonitorColdRetirementRestoresBrowserDeadline(t *testing.T) 
 			} else if e != nil || score != seconds(*due) {
 				t.Fatal("browser canonical deadline lost", e)
 			}
+			ready, e := p.f.client.redis.ZScore(ctx, "ready:browser:1", p.f.task.Domain).Result()
+			if due == nil {
+				if e != redis.Nil {
+					t.Fatal("disabled browser domain remained ready")
+				}
+			} else {
+				rate, rateErr := p.f.client.redis.Get(ctx, "ratelimit:"+p.f.task.Domain).Float64()
+				if rateErr != nil && rateErr != redis.Nil {
+					t.Fatal(rateErr)
+				}
+				if e != nil || ready != max(seconds(*due), rate) {
+					t.Fatal("browser reversal lost ready-domain routing", e)
+				}
+			}
+			if p.f.client.redis.ZScore(ctx, "ready:simple:1", p.f.task.Domain).Err() != redis.Nil {
+				t.Fatal("browser reversal published a simple ready domain")
+			}
 			if !errors.Is(a.Heartbeat(ctx, claim), ErrAuthorityLost) {
 				t.Fatal("retired browser retained authority")
 			}

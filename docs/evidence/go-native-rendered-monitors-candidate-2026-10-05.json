@@ -13,13 +13,14 @@
     "later_monitor_owned_regression_seconds": 3.006,
     "required_python_ownership_cutover_tests": 38,
     "exporter_reaper_race_seconds": 1.55,
-    "cold_reversal": "Interrupted Browser monitor, Redis-before-SQL claim, disabled board, committed lease expiry and older retired Browser attempt; canonical deadlines and retained receipts survive original cold reversal.",
+    "cold_reversal": "Interrupted Browser monitor, Redis-before-SQL claim, disabled board, committed lease expiry and older retired Browser attempt; canonical deadlines and retained receipts survive original cold reversal. Ready-domain tiers are rebuilt in the restored worker namespace, preserving Browser claimability.",
     "policy_failure": "Publisher reservation before gone status, malformed document, origin challenge, gone404/410, critical503, cancellation and correct Simple/Browser urgent detail routing; renderer/parser failures do not increment origin host failures.",
     "combined935_staged_cancellation_cutover_race_seconds": 18.861,
     "combined935_rendered_queue_reversal_race_seconds": 6.781,
     "combined935_rendered_worker_compatibility_race_seconds": 8.316,
     "template_document_and_real_rendered_inventory_race_seconds": 3.013,
-    "staged_legacy_inflight_and_compatibility_executable_race_seconds": 14.726
+    "staged_legacy_inflight_and_compatibility_executable_race_seconds": 14.726,
+    "browser_ready_routing_and_retirement_race_seconds": 15.447
   },
   "configuration_preview": {
     "source_revision": "ad31dacbcfe9c132cd75d5e46fbcc3d3b3e3a5d0",

@@ -29,7 +29,8 @@ inventory disappearance rules, separate urgent detail routing and canonical
 receipt settlement. Renderer/protocol/parser failures remain distinct from
 actual critical origin responses for shared host circuits.
 
-Cold reversal restores interrupted Browser monitors from canonical deadlines.
+Cold reversal restores interrupted Browser monitors from canonical deadlines
+and rebuilds ready-domain tiers in the same Browser namespace.
 Committed lease expiry restores the successful future deadline and learned host,
 and retained old Browser monitor attempts permit later supported reversal.
 Separate monitor scan cursors prevent alternating Simple/Browser claims from
