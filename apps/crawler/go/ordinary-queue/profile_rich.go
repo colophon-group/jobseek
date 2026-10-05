@@ -11,6 +11,7 @@ import (
 	"strings"
 )
 
+var gemURLToken = regexp.MustCompile(`jobs\.gem\.com/([\pL\pN_-]+)`)
 var ashbyURLToken = regexp.MustCompile(`jobs\.ashbyhq\.com/([\pL\pN_-]+)`)
 var leverURLToken = regexp.MustCompile(`jobs\.(?:eu\.)?lever\.co/([\pL\pN_-]+)`)
 var leverEURegion = regexp.MustCompile(`(?:api|jobs)\.eu\.lever\.co/`)
@@ -25,6 +26,13 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		allowed[key] = value
 	}
 	switch config["crawler_type"] {
+	case "breezy":
+		allowed["slug"], allowed["portal_url"] = true, true
+		for _, key := range []string{"delist_threshold", "drop_threshold", "blast_radius_floor"} {
+			allowed[key] = true
+		}
+	case "gem":
+		allowed["slug"] = true // Retained legacy alias; Python selects token or URL.
 	case "ashby":
 		allowed["org"] = true // Legacy aliases are retained, never selected as tokens.
 		allowed["blast_radius_floor"] = true
@@ -101,6 +109,9 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 	if err != nil {
 		return GreenhouseMonitorProfile{}, err
 	}
+	if config["crawler_type"] == "breezy" {
+		return inspectBreezyMonitor(boardID, config, md)
+	}
 	if config["crawler_type"] == "personio" {
 		return inspectPersonioRich(boardID, config, md)
 	}
@@ -149,6 +160,9 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 		}
 		if token == "" {
 			pattern := ashbyURLToken
+			if config["crawler_type"] == "gem" {
+				pattern = gemURLToken
+			}
 			if config["crawler_type"] == "lever" {
 				pattern = leverURLToken
 			}
@@ -162,6 +176,9 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 		}
 	}
 	if !richProviderToken.MatchString(token) || token == "." || token == ".." {
+		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+	}
+	if config["crawler_type"] == "gem" && (!regexp.MustCompile(`^[\pL\pN_-]+$`).MatchString(token) || map[string]bool{"api": true, "www": true, "app": true, "docs": true, "help": true, "support": true}[token]) {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
 	if config["crawler_type"] == "lever" {
@@ -237,6 +254,8 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 	profile.Token = token
 	profile.Profile = profile.Provider + ".token-skip/v1"
 	switch profile.Provider {
+	case "gem":
+		profile.Endpoint = "https://api.gem.com/job_board/v0/" + url.PathEscape(token) + "/job_posts/"
 	case "ashby":
 		profile.Endpoint = "https://api.ashbyhq.com/posting-api/job-board/" + url.PathEscape(token) + "?includeCompensation=true"
 	case "lever":

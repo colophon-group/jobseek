@@ -1,0 +1,721 @@
+{
+  "cases": [
+    {
+      "name": "breezy-relative",
+      "provider": "breezy",
+      "endpoint": "https://fixture.breezy.hr/json",
+      "payload": [
+        {
+          "url": "/p/101-engineer"
+        },
+        {
+          "friendly_id": "102-manager"
+        },
+        {
+          "url": " /p/101-engineer "
+        },
+        null,
+        {
+          "url": ""
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.breezy.hr/json"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": [
+          "https://fixture.breezy.hr/p/101-engineer",
+          "https://fixture.breezy.hr/p/102-manager"
+        ],
+        "jobs": null
+      }
+    },
+    {
+      "name": "breezy-external",
+      "provider": "breezy",
+      "endpoint": "https://fixture.breezy.hr/json",
+      "payload": [
+        {
+          "url": "https://example.com/jobs/103#apply"
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.breezy.hr/json"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": [
+          "https://example.com/jobs/103#apply"
+        ],
+        "jobs": null
+      }
+    },
+    {
+      "name": "breezy-invalid-envelope",
+      "provider": "breezy",
+      "endpoint": "https://fixture.breezy.hr/json",
+      "payload": {
+        "jobs": []
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.breezy.hr/json"
+        }
+      ],
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "name": "breezy-empty",
+      "provider": "breezy",
+      "endpoint": "https://fixture.breezy.hr/json",
+      "payload": [],
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.breezy.hr/json"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": [],
+        "jobs": null
+      }
+    },
+    {
+      "name": "gem-rich",
+      "provider": "gem",
+      "endpoint": "https://api.gem.com/job_board/v0/fixture/job_posts/",
+      "payload": [
+        {
+          "absolute_url": "https://jobs.gem.com/fixture/101",
+          "title": "Engineer",
+          "content": "<p>Build useful things.</p>",
+          "offices": [
+            {
+              "location": {
+                "name": "Zurich"
+              }
+            },
+            {
+              "name": "Remote"
+            },
+            {
+              "location": {
+                "name": "Zurich"
+              }
+            }
+          ],
+          "employment_type": "full_time",
+          "location_type": "remote",
+          "departments": [
+            {
+              "name": "Engineering"
+            },
+            {
+              "name": "Product"
+            }
+          ],
+          "first_published_at": "2026-10-01T10:00:00Z"
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.gem.com/job_board/v0/fixture/job_posts/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": null,
+        "jobs": [
+          {
+            "url": "https://jobs.gem.com/fixture/101",
+            "title": "Engineer",
+            "description": "<p>Build useful things.</p>",
+            "locations": [
+              "Zurich",
+              "Remote"
+            ],
+            "employment_type": "full_time",
+            "job_location_type": "remote",
+            "date_posted": "2026-10-01T10:00:00Z",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "department": "Engineering, Product"
+            },
+            "source_identity": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "gem-location-fallback",
+      "provider": "gem",
+      "endpoint": "https://api.gem.com/job_board/v0/fixture/job_posts/",
+      "payload": [
+        {
+          "absolute_url": "https://jobs.gem.com/fixture/102",
+          "title": "Manager",
+          "location": {
+            "name": "Basel"
+          },
+          "location_type": "Onsite (5 Days per Week)"
+        },
+        {
+          "absolute_url": "https://jobs.gem.com/fixture/103",
+          "location": "Paris",
+          "location_type": "unknown"
+        },
+        {
+          "title": "Missing URL"
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.gem.com/job_board/v0/fixture/job_posts/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": null,
+        "jobs": [
+          {
+            "url": "https://jobs.gem.com/fixture/102",
+            "title": "Manager",
+            "description": null,
+            "locations": [
+              "Basel"
+            ],
+            "employment_type": null,
+            "job_location_type": "onsite",
+            "date_posted": null,
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": null,
+            "source_identity": null
+          },
+          {
+            "url": "https://jobs.gem.com/fixture/103",
+            "title": null,
+            "description": null,
+            "locations": [
+              "Paris"
+            ],
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": null,
+            "source_identity": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "gem-falsy-fields",
+      "provider": "gem",
+      "endpoint": "https://api.gem.com/job_board/v0/fixture/job_posts/",
+      "payload": [
+        {
+          "absolute_url": null
+        },
+        {
+          "absolute_url": ""
+        },
+        {
+          "absolute_url": false
+        },
+        {
+          "absolute_url": 0
+        },
+        {
+          "absolute_url": 0.0
+        },
+        {
+          "absolute_url": []
+        },
+        {
+          "absolute_url": {}
+        },
+        {
+          "absolute_url": "https://jobs.gem.com/fixture/falsy-0",
+          "employment_type": null
+        },
+        {
+          "absolute_url": "https://jobs.gem.com/fixture/falsy-1",
+          "employment_type": ""
+        },
+        {
+          "absolute_url": "https://jobs.gem.com/fixture/falsy-2",
+          "employment_type": false
+        },
+        {
+          "absolute_url": "https://jobs.gem.com/fixture/falsy-3",
+          "employment_type": 0
+        },
+        {
+          "absolute_url": "https://jobs.gem.com/fixture/falsy-4",
+          "employment_type": 0.0
+        },
+        {
+          "absolute_url": "https://jobs.gem.com/fixture/falsy-5",
+          "employment_type": []
+        },
+        {
+          "absolute_url": "https://jobs.gem.com/fixture/falsy-6",
+          "employment_type": {}
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.gem.com/job_board/v0/fixture/job_posts/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": null,
+        "jobs": [
+          {
+            "url": "https://jobs.gem.com/fixture/falsy-0",
+            "title": null,
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": null,
+            "source_identity": null
+          },
+          {
+            "url": "https://jobs.gem.com/fixture/falsy-1",
+            "title": null,
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": null,
+            "source_identity": null
+          },
+          {
+            "url": "https://jobs.gem.com/fixture/falsy-2",
+            "title": null,
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": null,
+            "source_identity": null
+          },
+          {
+            "url": "https://jobs.gem.com/fixture/falsy-3",
+            "title": null,
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": null,
+            "source_identity": null
+          },
+          {
+            "url": "https://jobs.gem.com/fixture/falsy-4",
+            "title": null,
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": null,
+            "source_identity": null
+          },
+          {
+            "url": "https://jobs.gem.com/fixture/falsy-5",
+            "title": null,
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": null,
+            "source_identity": null
+          },
+          {
+            "url": "https://jobs.gem.com/fixture/falsy-6",
+            "title": null,
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": null,
+            "source_identity": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "gem-non-list",
+      "provider": "gem",
+      "endpoint": "https://api.gem.com/job_board/v0/fixture/job_posts/",
+      "payload": {
+        "error": "Unavailable"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.gem.com/job_board/v0/fixture/job_posts/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": null,
+        "jobs": []
+      }
+    },
+    {
+      "name": "gem-empty",
+      "provider": "gem",
+      "endpoint": "https://api.gem.com/job_board/v0/fixture/job_posts/",
+      "payload": [],
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.gem.com/job_board/v0/fixture/job_posts/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": null,
+        "jobs": []
+      }
+    }
+  ],
+  "location_types": [
+    {
+      "raw": "onsite",
+      "expected": "onsite"
+    },
+    {
+      "raw": "on-site",
+      "expected": "onsite"
+    },
+    {
+      "raw": "on-site working",
+      "expected": "onsite"
+    },
+    {
+      "raw": "onsite working",
+      "expected": "onsite"
+    },
+    {
+      "raw": "on_site",
+      "expected": "onsite"
+    },
+    {
+      "raw": "on site",
+      "expected": "onsite"
+    },
+    {
+      "raw": "office",
+      "expected": "onsite"
+    },
+    {
+      "raw": "in-office",
+      "expected": "onsite"
+    },
+    {
+      "raw": "in_office",
+      "expected": "onsite"
+    },
+    {
+      "raw": "in office",
+      "expected": "onsite"
+    },
+    {
+      "raw": "on-premises",
+      "expected": "onsite"
+    },
+    {
+      "raw": "in-person",
+      "expected": "onsite"
+    },
+    {
+      "raw": "in person",
+      "expected": "onsite"
+    },
+    {
+      "raw": "no",
+      "expected": "onsite"
+    },
+    {
+      "raw": "remote",
+      "expected": "remote"
+    },
+    {
+      "raw": "remote working",
+      "expected": "remote"
+    },
+    {
+      "raw": "telecommute",
+      "expected": "remote"
+    },
+    {
+      "raw": "work from home",
+      "expected": "remote"
+    },
+    {
+      "raw": "wfh",
+      "expected": "remote"
+    },
+    {
+      "raw": "fully remote",
+      "expected": "remote"
+    },
+    {
+      "raw": "100% remote",
+      "expected": "remote"
+    },
+    {
+      "raw": "fulltime",
+      "expected": "remote"
+    },
+    {
+      "raw": "hybrid",
+      "expected": "hybrid"
+    },
+    {
+      "raw": "hybrid working",
+      "expected": "hybrid"
+    },
+    {
+      "raw": "office, remote",
+      "expected": "hybrid"
+    },
+    {
+      "raw": "remote, office",
+      "expected": "hybrid"
+    },
+    {
+      "raw": "office/remote",
+      "expected": "hybrid"
+    },
+    {
+      "raw": "remote/office",
+      "expected": "hybrid"
+    },
+    {
+      "raw": "flexible",
+      "expected": "hybrid"
+    },
+    {
+      "raw": "partially remote",
+      "expected": "hybrid"
+    },
+    {
+      "raw": "partial",
+      "expected": "hybrid"
+    },
+    {
+      "raw": "punctual",
+      "expected": "hybrid"
+    },
+    {
+      "raw": "remotework_none",
+      "expected": "onsite"
+    },
+    {
+      "raw": "remotework_full",
+      "expected": "remote"
+    },
+    {
+      "raw": "remotework_partial",
+      "expected": "hybrid"
+    },
+    {
+      "raw": "vor ort",
+      "expected": "onsite"
+    },
+    {
+      "raw": "büro",
+      "expected": "onsite"
+    },
+    {
+      "raw": "homeoffice",
+      "expected": "remote"
+    },
+    {
+      "raw": "home office",
+      "expected": "remote"
+    },
+    {
+      "raw": "fernarbeit",
+      "expected": "remote"
+    },
+    {
+      "raw": "remote arbeit",
+      "expected": "remote"
+    },
+    {
+      "raw": "teilweise remote",
+      "expected": "hybrid"
+    },
+    {
+      "raw": "flexibel",
+      "expected": "hybrid"
+    },
+    {
+      "raw": "sur site",
+      "expected": "onsite"
+    },
+    {
+      "raw": "sur place",
+      "expected": "onsite"
+    },
+    {
+      "raw": "présentiel",
+      "expected": "onsite"
+    },
+    {
+      "raw": "en présentiel",
+      "expected": "onsite"
+    },
+    {
+      "raw": "bureau",
+      "expected": "onsite"
+    },
+    {
+      "raw": "télétravail",
+      "expected": "remote"
+    },
+    {
+      "raw": "à distance",
+      "expected": "remote"
+    },
+    {
+      "raw": "travail à distance",
+      "expected": "remote"
+    },
+    {
+      "raw": "hybride",
+      "expected": "hybrid"
+    },
+    {
+      "raw": "travail à distance possible",
+      "expected": "hybrid"
+    },
+    {
+      "raw": "télétravail partiel",
+      "expected": "hybrid"
+    },
+    {
+      "raw": "gedeeltelijk afstandswerk",
+      "expected": "hybrid"
+    },
+    {
+      "raw": "afstandswerk mogelijk",
+      "expected": "hybrid"
+    },
+    {
+      "raw": "volledig afstandswerk",
+      "expected": "remote"
+    },
+    {
+      "raw": "geen afstandswerk",
+      "expected": "onsite"
+    },
+    {
+      "raw": "in sede",
+      "expected": "onsite"
+    },
+    {
+      "raw": "in ufficio",
+      "expected": "onsite"
+    },
+    {
+      "raw": "in loco",
+      "expected": "onsite"
+    },
+    {
+      "raw": "da remoto",
+      "expected": "remote"
+    },
+    {
+      "raw": "lavoro da remoto",
+      "expected": "remote"
+    },
+    {
+      "raw": "telelavoro",
+      "expected": "remote"
+    },
+    {
+      "raw": "lavoro a distanza",
+      "expected": "remote"
+    },
+    {
+      "raw": "ibrido",
+      "expected": "hybrid"
+    },
+    {
+      "raw": "Onsite (5 Days per Week)",
+      "expected": "onsite"
+    },
+    {
+      "raw": "unknown",
+      "expected": null
+    },
+    {
+      "raw": "",
+      "expected": null
+    }
+  ]
+}

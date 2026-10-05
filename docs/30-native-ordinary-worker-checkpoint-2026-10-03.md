@@ -58,6 +58,20 @@ retirement. Full migration remains active and incomplete; following entries are
 historical.
 
 
+The next 945 batch adds Breezy URL inventories and Gem rich inventories through
+the existing queue, verified transport, shared enrichment/canonical writer and
+cold retirement. All **26 enabled configurations** (13 per provider) pass
+canonical/cache admission. Nine frozen cases run the actual Python monitors,
+including requests, falsy fields and the shared location-type mapping. Fourteen
+real worker cases and six cold retirement cases pass, covering canonical output,
+publisher policy, empty-inventory guards, malformed/failure behavior, queue/deadline
+conservation, interrupted and committed-before-ACK reload, and changed-token
+refusal. Final full race suites pass: enrichment24.250s, queue103.132s and
+worker183.643s. Eighteen runtime contracts, vet/tidy and Ruff pass.
+[Local evidence](evidence/go-native-breezy-gem-local-2026-10-05.json).
+The batch depends on944; native production ownership remains unverified.
+
+
 ## Direct HTTP API details — 2026-10-05
 
 Lightpanda 1.0.0 remains the verified latest stable renderer. The original
