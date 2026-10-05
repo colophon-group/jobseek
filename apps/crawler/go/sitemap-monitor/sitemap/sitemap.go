@@ -89,6 +89,8 @@ type Config struct {
 	Replacement      string
 	MaxURLs          int
 	MaxIndexChildren int
+	MaxIndexDepth    int
+	ChildMaxAttempts int
 	RootMaxAttempts  int
 	RootBackoff      time.Duration
 	// RequireURLSet rejects an index immediately after the root response. It
@@ -166,6 +168,15 @@ func New(client *boundedhttp.Client, config Config) (*Runner, error) {
 // without allocating an HTTP client or runner. It lets bounded admission
 // snapshot the precise configuration that execution will receive.
 func NormalizeConfig(config Config) (Config, error) {
+	if config.MaxIndexDepth == 0 {
+		config.MaxIndexDepth = 1
+	}
+	if config.ChildMaxAttempts == 0 {
+		config.ChildMaxAttempts = 1
+	}
+	if config.MaxIndexDepth < 1 || config.MaxIndexDepth > 8 || config.ChildMaxAttempts < 1 || config.ChildMaxAttempts > 5 {
+		return Config{}, newError(ErrorConfig, config.SitemapURL, 0, nil)
+	}
 	if config.RootMaxAttempts == 0 {
 		config.RootMaxAttempts = defaultRootMaxAttempts
 	}
@@ -211,38 +222,15 @@ func (r *Runner) run(ctx context.Context, session Session) (Result, error) {
 		if r.config.RequireURLSet {
 			return fail(newError(ErrorUnsupported, r.config.SitemapURL, 0, nil))
 		}
-		children := extractChildren(doc)
-		jobChildren := make([]string, 0, len(children))
-		for _, child := range children {
-			if isJobRelated(child) {
-				jobChildren = append(jobChildren, child)
-			}
+		var usable int
+		rawURLs, usable, err = r.resolveIndex(ctx, session, doc, 1, map[string]bool{r.config.SitemapURL: true})
+		if err != nil {
+			return fail(err)
 		}
-		if len(jobChildren) > 0 {
-			children = jobChildren
-		}
-		children = dedupeFirstSeen(children)
-		if len(children) > r.config.MaxIndexChildren {
+		if usable == 0 {
 			return fail(newError(ErrorUnsupported, r.config.SitemapURL, 0, nil))
 		}
-		usableChildren := 0
-		for _, childURL := range children {
-			child, childMissing, childErr := fetchDocument(ctx, session, childURL, r.origin(), r.config.AllowHTTPForTesting, true)
-			if childErr != nil {
-				return fail(childErr)
-			}
-			if childMissing {
-				continue
-			}
-			if child.XMLName.Local != "urlset" {
-				return fail(newError(ErrorUnsupported, childURL, 0, nil))
-			}
-			usableChildren++
-			rawURLs = append(rawURLs, extractURLs(child)...)
-		}
-		if usableChildren == 0 {
-			return fail(newError(ErrorUnsupported, r.config.SitemapURL, 0, nil))
-		}
+
 	default:
 		return fail(newError(ErrorUnsupported, r.config.SitemapURL, 0, nil))
 	}
@@ -293,6 +281,86 @@ func (r *Runner) run(ctx context.Context, session Session) (Result, error) {
 		Truncated:        truncated,
 		TransportMetrics: session.Stats(),
 	}, nil
+}
+
+// Resolve every selected shard before publishing an inventory. A required
+// transient failure cannot become a successful partial union.
+func (r *Runner) resolveIndex(ctx context.Context, session Session, doc document, depth int, seen map[string]bool) ([]string, int, error) {
+	children := extractChildren(doc)
+	jobs := []string{}
+	for _, child := range children {
+		if isJobRelated(child) {
+			jobs = append(jobs, child)
+		}
+	}
+	if len(jobs) > 0 {
+		children = jobs
+	}
+	out := []string{}
+	usable := 0
+	for _, resource := range dedupeFirstSeen(children) {
+		if seen[resource] {
+			continue
+		}
+		if len(seen)-1 >= r.config.MaxIndexChildren {
+			return nil, 0, newError(ErrorUnsupported, resource, 0, nil)
+		}
+		seen[resource] = true
+		child, missing, err := r.fetchChild(ctx, session, resource)
+		if err != nil {
+			return nil, 0, err
+		}
+		if missing {
+			continue
+		}
+		switch child.XMLName.Local {
+		case "urlset":
+			usable++
+			out = append(out, extractURLs(child)...)
+		case "sitemapindex":
+			if depth >= r.config.MaxIndexDepth {
+				return nil, 0, newError(ErrorUnsupported, resource, 0, nil)
+			}
+			nested, leaves, err := r.resolveIndex(ctx, session, child, depth+1, seen)
+			if err != nil {
+				return nil, 0, err
+			}
+			usable += leaves
+			out = append(out, nested...)
+		default:
+			if r.config.ChildMaxAttempts == 1 {
+				return nil, 0, newError(ErrorUnsupported, resource, 0, nil)
+			}
+		}
+	}
+	return out, usable, nil
+}
+
+func (r *Runner) fetchChild(ctx context.Context, session Session, resource string) (document, bool, error) {
+	for attempt := 1; attempt <= r.config.ChildMaxAttempts; attempt++ {
+		child, missing, err := fetchDocument(ctx, session, resource, r.origin(), r.config.AllowHTTPForTesting, true)
+		if err == nil {
+			return child, missing, nil
+		}
+		if ctx.Err() != nil {
+			return document{}, false, ctx.Err()
+		}
+		if r.config.ChildMaxAttempts > 1 {
+			var classified *Error
+			retry, _, _, _ := retryableRootFailure(err)
+			if errors.As(err, &classified) && (classified.Kind == ErrorXML || classified.Kind == ErrorStatus && classified.Status >= 400 && classified.Status < 500 && !retry) {
+				return document{}, true, nil
+			}
+		}
+		retry, _, _, _ := retryableRootFailure(err)
+		if !retry || attempt == r.config.ChildMaxAttempts {
+			return document{}, false, err
+		}
+		if err := r.sleep(ctx, r.config.RootBackoff*time.Duration(1<<(attempt-1))); err != nil {
+			return document{}, false, err
+		}
+	}
+	panic("unreachable")
 }
 
 func (r *Runner) fetchRoot(ctx context.Context, session sessionGetter) (document, error) {

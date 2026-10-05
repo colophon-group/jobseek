@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 
 	dom "github.com/colophon-group/jobseek/apps/crawler/go/dom-detail"
@@ -26,7 +27,9 @@ type nativeSitemapSession struct {
 func (s *nativeSitemapSession) Stats() bounded.Stats { return s.stats }
 
 func (s *nativeSitemapSession) Get(ctx context.Context, resource string, headers http.Header) (bounded.Response, error) {
-	if resource != s.endpoint || s.stats.Requests >= 3 {
+	root, rootErr := url.Parse(s.endpoint)
+	child, childErr := url.Parse(resource)
+	if rootErr != nil || childErr != nil || child.Scheme != "https" || child.Host != root.Host || child.User != nil || child.Opaque != "" || child.Fragment != "" || len(resource) > 8192 || s.stats.Requests >= 603 {
 		return bounded.Response{}, &bounded.Error{Kind: bounded.ErrorRequestLimit}
 	}
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
