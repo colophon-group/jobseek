@@ -7,15 +7,38 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 )
 
 func TestRealOwnedOraclePersistsRichInventoryAndSettlesFailuresAndReservations(t *testing.T) {
-	for _, mode := range []string{"complete", "later404", "later_reserved"} {
+	for _, mode := range []string{"complete", "complete_enrich", "complete_enrich_touch", "complete_enrich_relist", "complete_enrich_retained", "complete_enrich_tombstone", "later404", "later_reserved"} {
 		t.Run(mode, func(t *testing.T) {
-			f := privateRichPipelineFixture(t, "oracle_hcm", `{"host":"fixture.fa.em2.oraclecloud.com","site":"CX_1","scraper_type":"oracle_hcm","scraper_config":{}}`)
+			metadata := `{"host":"fixture.fa.em2.oraclecloud.com","site":"CX_1","scraper_type":"oracle_hcm","scraper_config":{}}`
+			if strings.HasPrefix(mode, "complete_enrich") {
+				metadata = `{"host":"fixture.fa.em2.oraclecloud.com","site":"CX_1","scraper_type":"oracle_hcm","scraper_config":{"enrich":["description","employment_type"]}}`
+			}
+			f := privateRichPipelineFixture(t, "oracle_hcm", metadata)
 			ctx := context.Background()
+			url := "https://fixture.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/" + f.company
+			existing := strings.HasPrefix(mode, "complete_enrich_")
+			retained := mode == "complete_enrich_relist" || mode == "complete_enrich_retained"
+			if existing {
+				if _, err := f.pg.Exec(ctx, "UPDATE job_posting SET source_url=$2,next_scrape_at=NULL,is_active=$3,scrape_failures=$4,description_r2_hash=$5::bigint WHERE id=$1::uuid", f.original, url, mode != "complete_enrich_relist", map[string]int{"complete_enrich_relist": 3, "complete_enrich_tombstone": 3}[mode], func() any {
+					if retained {
+						return int64(123)
+					}
+					return nil
+				}()); err != nil {
+					t.Fatal(err)
+				}
+				if retained {
+					if _, err := f.pg.Exec(ctx, "INSERT INTO descriptions(posting_id,locale,html,hash,r2_uploaded) VALUES($1::uuid,'en','<p>Delegated description</p>',123,true)", f.original); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
 			claim, err := f.a.Claim(ctx, queue.Simple)
 			if err != nil || claim == nil {
 				t.Fatal("native Oracle claim unavailable", err)
@@ -26,7 +49,7 @@ func TestRealOwnedOraclePersistsRichInventoryAndSettlesFailuresAndReservations(t
 			}
 			rows := []any{map[string]any{"Id": f.company, "Title": "Senior Software Engineer", "PrimaryLocation": "Zurich", "JobSchedule": "Full-time", "PostedDate": "2026-10-05"}}
 			total := 1
-			if mode != "complete" {
+			if !strings.HasPrefix(mode, "complete") {
 				total, rows = 201, []any{}
 				for n := 1; n <= 200; n++ {
 					rows = append(rows, map[string]any{"Id": n, "Title": "Engineer"})
@@ -64,10 +87,10 @@ func TestRealOwnedOraclePersistsRichInventoryAndSettlesFailuresAndReservations(t
 			if err := f.pg.QueryRow(ctx, "SELECT tdm_reserved,gone_confirmation_count,consecutive_failures FROM job_board WHERE id=$1::uuid", f.board).Scan(&reserved, &gone, &failures); err != nil {
 				t.Fatal(err)
 			}
-			if gone != 0 || reserved != (mode == "later_reserved") || failures != map[string]int{"complete": 0, "later404": 1, "later_reserved": 0}[mode] {
+			if gone != 0 || reserved != (mode == "later_reserved") || failures != map[string]int{"complete": 0, "complete_enrich": 0, "later404": 1, "later_reserved": 0}[mode] {
 				t.Fatal("Oracle publisher/failure behavior changed", reserved, gone, failures)
 			}
-			if mode != "complete" {
+			if !strings.HasPrefix(mode, "complete") {
 				var count, active int
 				if err := f.pg.QueryRow(ctx, "SELECT count(*),count(*) FILTER(WHERE is_active) FROM job_posting WHERE board_id=$1::uuid", f.board).Scan(&count, &active); err != nil || count != 1 || active != 1 || result.Batches.Inserted != 0 || calls != 2 {
 					t.Fatal("partial/opted-out Oracle inventory changed postings", err)
@@ -76,12 +99,43 @@ func TestRealOwnedOraclePersistsRichInventoryAndSettlesFailuresAndReservations(t
 			}
 			var title, employment string
 			var locations []int32
-			url := "https://fixture.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/" + f.company
 			if err := f.pg.QueryRow(ctx, "SELECT titles[1],employment_type,location_ids FROM job_posting WHERE source_url=$1", url).Scan(&title, &employment, &locations); err != nil {
 				t.Fatal(err)
 			}
-			if title != "Senior Software Engineer" || employment != "full_time" || fmt.Sprint(locations) != "[2]" || calls != 1 || result.Batches.Inserted != 1 || result.Cycle.Gone != 1 {
+			if title != "Senior Software Engineer" || employment != "full_time" || fmt.Sprint(locations) != "[2]" || calls != 1 || result.Batches.Inserted != map[bool]int{false: 1, true: 0}[existing] || result.Cycle.Gone != map[bool]int{false: 1, true: 0}[existing] {
 				t.Fatal("Oracle canonical fields/lifecycle differ", title, employment, locations, result)
+			}
+			var id string
+			var due *time.Time
+			if err := f.pg.QueryRow(ctx, "SELECT id::text,next_scrape_at FROM job_posting WHERE source_url=$1", url).Scan(&id, &due); err != nil {
+				t.Fatal(err)
+			}
+			if retained {
+				var html string
+				var uploaded bool
+				if err := f.pg.QueryRow(ctx, "SELECT html,r2_uploaded FROM descriptions WHERE posting_id=$1::uuid AND locale='en'", id).Scan(&html, &uploaded); err != nil || html != "<p>Delegated description</p>" || !uploaded {
+					t.Fatal("monitor replaced delegated detail content", err)
+				}
+			}
+			if mode == "complete_enrich_relist" {
+				var scrapeFailures int
+				if err := f.pg.QueryRow(ctx, "SELECT scrape_failures FROM job_posting WHERE id=$1::uuid", id).Scan(&scrapeFailures); err != nil || due == nil || scrapeFailures != 0 {
+					t.Fatal("relist did not restore detail budget", err)
+				}
+				score, err := f.r.ZScore(ctx, "scrapes_simple:fixture.fa.em2.oraclecloud.com", id).Result()
+				if err != nil || score != float64(due.UnixMicro())/1e6 || f.r.HGet(ctx, "scrape:"+id, "description_r2_hash").Val() != "123" {
+					t.Fatal("relist did not retain canonical hash/deadline", err)
+				}
+			} else if mode == "complete_enrich" || mode == "complete_enrich_touch" {
+				if due == nil {
+					t.Fatal("delegated Oracle detail was not scheduled")
+				}
+				score, err := f.r.ZScore(ctx, "ft_scrapes_simple:fixture.fa.em2.oraclecloud.com", id).Result()
+				if err != nil || score != 0 || f.r.HGet(ctx, "scrape:"+id, "board_id").Val() != f.board || f.r.HGet(ctx, "scrape:"+id, "source_url").Val() != url {
+					t.Fatal("Oracle detail SQL/Redis conservation differs", err)
+				}
+			} else if due != nil || f.r.Exists(ctx, "scrape:"+id).Val() != 0 {
+				t.Fatal("healthy, non-enriched or tombstoned rich Oracle acquired urgent detail schedule")
 			}
 		})
 	}

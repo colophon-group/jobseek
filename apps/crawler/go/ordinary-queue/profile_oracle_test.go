@@ -21,10 +21,29 @@ func TestOracleMonitorBindsOptionsAndSeparateScraper(t *testing.T) {
 	if err != nil || q.EffectiveConfigSHA256 == p.EffectiveConfigSHA256 {
 		t.Fatal("changed finder option not bound", err)
 	}
-	for _, m := range []string{`{"host":"arbitrary.example.com","site":"CX_1"}`, `{"proxy":true}`, `{"offset_overlap":200}`, `{"fields":{"title":"Title"}}`, `{"unported":true}`, `{"scraper_config":{"enrich":["description"]}}`, `{}`} {
+	for _, m := range []string{`{"host":"arbitrary.example.com","site":"CX_1"}`, `{"proxy":true}`, `{"offset_overlap":200}`, `{"fields":{"title":"Title"}}`, `{"unported":true}`, `{"scraper_config":{"enrich":["unported"]}}`, `{"scraper_type":"skip","scraper_config":{"enrich":["description"]}}`} {
 		c["metadata"] = m
 		if _, err := InspectRichMonitor(profileBoardID, c); err == nil {
 			t.Fatal("unsupported config admitted", m)
+		}
+	}
+}
+
+func TestOracleMonitorRetainsConfiguredAndAutomaticEnrichmentScheduling(t *testing.T) {
+	for _, test := range []struct {
+		metadata string
+		fields   int
+	}{
+		{`{}`, 1},
+		{`{"scraper_type":"oracle_hcm"}`, 0},
+		{`{"scraper_type":"oracle_hcm","scraper_config":{"enrich":["description"]}}`, 1},
+		{`{"scraper_config":{"enrich":["description","employment_type"]}}`, 2},
+		{`{"scraper_config":{}}`, 0},
+		{`{"scraper_config":null}`, 0},
+	} {
+		fields, err := oracleMonitorEnrichment(map[string]string{"metadata": test.metadata})
+		if err != nil || len(fields) != test.fields {
+			t.Fatal("Oracle detail delegation changed", test, fields, err)
 		}
 	}
 }

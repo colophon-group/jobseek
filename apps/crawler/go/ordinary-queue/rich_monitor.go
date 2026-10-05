@@ -24,6 +24,9 @@ var richMonitorDiffSQL string
 //go:embed rich_monitor_insert.sql
 var richMonitorInsertSQL string
 
+//go:embed rich_monitor_enrich_insert.sql
+var richMonitorEnrichInsertSQL string
+
 //go:embed rich_monitor_description.sql
 var richMonitorDescriptionSQL string
 
@@ -66,6 +69,7 @@ type GreenhouseRichPosting struct {
 
 type GreenhouseRichBatchResult struct {
 	Inserted, Touched, Relisted, Foreign, ForeignRelisted, Deduplicated int
+	Details                                                             []URLOnlyDetail
 }
 
 // WriteGreenhouseRichBatch commits at most one Python-sized 500-posting chunk
@@ -81,6 +85,13 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 	if err != nil {
 		return nil, err
 	}
+	var enrich []string
+	if profile.Provider == "oracle_hcm" {
+		enrich, err = oracleMonitorEnrichment(claim.task.Config)
+		if err != nil {
+			return nil, err
+		}
+	}
 	urls := make([]string, 0, len(batch))
 	byURL := make(map[string]*GreenhouseRichContent, len(batch))
 	for _, posting := range batch {
@@ -91,6 +102,11 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		}
 		urls = append(urls, posting.URL)
 		byURL[posting.URL] = posting.Content
+		// Oracle inventory has no description field. Preserve the delegated
+		// scraper's retained body rather than letting a detached value replace it.
+		if len(enrich) > 0 && posting.Content.Description != nil {
+			return nil, ErrConfiguration
+		}
 	}
 	for attempt := 1; attempt <= 3; attempt++ {
 		result := &GreenhouseRichBatchResult{}
@@ -104,11 +120,14 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 			if reserved {
 				return ErrPublisherReserved
 			}
-			rows, err := tx.Query(ctx, richMonitorDiffSQL, urls, profile.BoardID, true)
+			rows, err := tx.Query(ctx, richMonitorDiffSQL, urls, profile.BoardID, len(enrich) == 0)
 			if err != nil {
 				return err
 			}
-			type classified struct{ action, id, url string }
+			type classified struct {
+				action, id, url string
+				needsScrape     bool
+			}
 			classifiedRows := make([]classified, 0, len(batch))
 			seen := make(map[string]bool, len(batch))
 			for rows.Next() {
@@ -120,12 +139,12 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 					rows.Close()
 					return err
 				}
-				if byURL[url] == nil || seen[url] || needsScrape {
+				if byURL[url] == nil || seen[url] || needsScrape && len(enrich) == 0 {
 					rows.Close()
 					return errors.New("rich monitor classification lost input identity")
 				}
 				seen[url] = true
-				classifiedRows = append(classifiedRows, classified{action, optionalID(id), url})
+				classifiedRows = append(classifiedRows, classified{action, optionalID(id), url, needsScrape})
 			}
 			err = rows.Err()
 			rows.Close()
@@ -135,6 +154,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 			if len(classifiedRows) != len(batch) {
 				return errors.New("rich monitor classification lost input identity")
 			}
+			detailIDs := []string{}
 			for _, row := range classifiedRows {
 				content := byURL[row.url]
 				switch row.action {
@@ -145,7 +165,11 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 					continue
 				case "new":
 					fields := content.Fields
-					err := tx.QueryRow(ctx, richMonitorInsertSQL, profile.CompanyID, profile.BoardID,
+					insert := richMonitorInsertSQL
+					if len(enrich) > 0 {
+						insert = richMonitorEnrichInsertSQL
+					}
+					err := tx.QueryRow(ctx, insert, profile.CompanyID, profile.BoardID,
 						fields.EmploymentType, row.url, fields.Titles, fields.Locales,
 						fields.LocationIDs, fields.LocationTypes,
 						fields.SalaryMin, fields.SalaryMax, fields.SalaryCurrency, fields.SalaryPeriod, fields.SalaryEUR,
@@ -159,12 +183,18 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 						return err
 					}
 					result.Inserted++
+					if len(enrich) > 0 {
+						detailIDs = append(detailIDs, row.id)
+					}
 				case "touched", "relisted", "foreign_relisted":
 					if !canonicalUUID.MatchString(row.id) {
 						return errors.New("rich monitor classification lost posting identity")
 					}
 					if err := refreshRichMonitorContent(ctx, tx, row.id, content.Fields); err != nil {
 						return err
+					}
+					if len(enrich) > 0 && (row.needsScrape || row.action != "touched") {
+						detailIDs = append(detailIDs, row.id)
 					}
 					switch row.action {
 					case "touched":
@@ -181,6 +211,28 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 					if _, err := saveRichMonitorDescription(ctx, tx, row.id, content.Description); err != nil {
 						return err
 					}
+				}
+			}
+			if len(detailIDs) > 0 {
+				rows, err := tx.Query(ctx, `SELECT p.id::text,p.board_id::text,p.source_url,p.description_r2_hash,p.next_scrape_at,b.scraper_needs_browser
+ FROM job_posting p JOIN job_board b ON b.id=p.board_id
+ WHERE p.id=ANY($1::uuid[]) AND p.is_active AND p.next_scrape_at IS NOT NULL AND NOT b.tdm_reserved
+ ORDER BY p.id`, detailIDs)
+				if err != nil {
+					return err
+				}
+				for rows.Next() {
+					var detail URLOnlyDetail
+					if err := rows.Scan(&detail.ID, &detail.BoardID, &detail.URL, &detail.DescriptionHash, &detail.Due, &detail.Browser); err != nil {
+						rows.Close()
+						return err
+					}
+					result.Details = append(result.Details, detail)
+				}
+				err = rows.Err()
+				rows.Close()
+				if err != nil {
+					return err
 				}
 			}
 			return nil

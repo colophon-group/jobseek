@@ -21,30 +21,8 @@ func OracleMonitorOptions(config map[string]string) (oracle.Options, error) {
 }
 
 func inspectOracleMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
-	// Most Oracle boards delegate description refresh to their detail scraper.
-	// The shared rich writer currently owns complete content and cannot adopt
-	// that field-mask/scheduling contract until its enrichment path is ported.
-	var scraper string
-	if raw, ok := md["scraper_type"]; ok && string(raw) != "null" {
-		if json.Unmarshal(raw, &scraper) != nil {
-			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
-		}
-	}
-	if scraper == "" && md["scraper_config"] == nil {
-		// Python auto-selects Oracle description enrichment in this case.
+	if _, err := oracleMonitorEnrichment(config); err != nil {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
-	}
-	if raw, ok := md["scraper_config"]; ok && string(raw) != "null" {
-		options, err := profileMetadataFields(string(raw), nil)
-		if err != nil {
-			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
-		}
-		if raw, ok := options["enrich"]; ok && string(raw) != "null" {
-			var fields []json.RawMessage
-			if json.Unmarshal(raw, &fields) != nil || len(fields) != 0 {
-				return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
-			}
-		}
 	}
 	if raw, ok := md["proxy"]; ok && string(raw) != "false" && string(raw) != "null" {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
@@ -54,6 +32,50 @@ func inspectOracleMonitor(boardID string, config map[string]string, md map[strin
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
 	return inspectURLOnlyMonitor(boardID, config, md, "oracle_hcm", "oracle_hcm.finder-items/v1", o.Site, o.Endpoint())
+}
+
+// Oracle's rich inventory owns title/location/liveness while its configured
+// scraper supplies description and, on two enabled boards, employment type.
+// The detail consumer retains its existing owner until independently admitted.
+func oracleMonitorEnrichment(config map[string]string) ([]string, error) {
+	md, err := profileMetadataFields(config["metadata"], nil)
+	if err != nil {
+		return nil, err
+	}
+	var scraper string
+	if raw, ok := md["scraper_type"]; ok && string(raw) != "null" && json.Unmarshal(raw, &scraper) != nil {
+		return nil, ErrUnsupportedProfile
+	}
+	raw, configured := md["scraper_config"]
+	if !configured {
+		if scraper == "" {
+			return []string{"description"}, nil
+		}
+		return nil, nil
+	}
+	if string(raw) == "null" {
+		return nil, nil
+	}
+	options, err := profileMetadataFields(string(raw), nil)
+	if err != nil {
+		return nil, err
+	}
+	raw, present := options["enrich"]
+	if !present || string(raw) == "null" {
+		return nil, nil
+	}
+	var fields []string
+	if json.Unmarshal(raw, &fields) != nil {
+		return nil, ErrUnsupportedProfile
+	}
+	seen := map[string]bool{}
+	for _, field := range fields {
+		if seen[field] || field != "description" && field != "employment_type" || scraper == "skip" {
+			return nil, ErrUnsupportedProfile
+		}
+		seen[field] = true
+	}
+	return fields, nil
 }
 
 func OracleMonitorResourceMatches(p GreenhouseMonitorProfile, config map[string]string, endpoint string) bool {
