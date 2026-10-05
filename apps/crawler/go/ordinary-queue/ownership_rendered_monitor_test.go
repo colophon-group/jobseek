@@ -117,6 +117,19 @@ func TestRealRenderedMonitorRetiredAttemptAllowsLaterReversal(t *testing.T) {
 	}
 }
 
+func TestRealRenderedNextdataRetiredAttemptAllowsLaterReversal(t *testing.T) {
+	old := firstRenderedMonitorProviderFixture(t, "nextdata")
+	firstRetirementClaim(t, old)
+	if _, err := applyFirstFixture(t, old, true); err != nil {
+		t.Fatal(err)
+	}
+	current := firstOwnershipFixtureHistory(t, true)
+	firstRetirementClaim(t, current)
+	if _, err := applyFirstFixture(t, current, true); err != nil {
+		t.Fatal("old NextData browser receipt blocked later reversal", err)
+	}
+}
+
 func TestRealRenderedMonitorActivationRefusesEitherNamespaceLease(t *testing.T) {
 	for _, worker := range []WorkerType{Simple, Browser} {
 		t.Run(string(worker), func(t *testing.T) {
