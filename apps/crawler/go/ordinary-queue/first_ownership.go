@@ -121,15 +121,16 @@ func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client,
    (f.routing_epoch=$1 AND f.board_id=ANY($2::uuid[])) OR
    (f.routing_epoch<$1 AND EXISTS(SELECT 1 FROM public.ordinary_worker_ownership_plan p
      WHERE p.state='retired' AND p.routing_epoch=f.routing_epoch
-     AND p.payload::jsonb->'members' @> jsonb_build_array(jsonb_build_object(
-       'board_id',f.board_id::text,'kind','monitor','worker','simple')))))) OR
+     AND EXISTS(SELECT 1 FROM jsonb_array_elements(p.payload::jsonb->'members') m
+       WHERE m->>'board_id'=f.board_id::text AND m->>'kind'='monitor'
+       AND (m->>'worker'='simple' OR (m->>'worker'='browser' AND m->>'profile'='dom.rendered-urls/v1'))))))) OR
  (f.task_kind='scrape' AND (
    (f.routing_epoch=$1 AND f.board_id=ANY($3::uuid[]) AND EXISTS(SELECT 1 FROM public.job_posting jp WHERE jp.id=f.task_id AND jp.board_id=f.board_id)) OR
    (f.routing_epoch<$1 AND EXISTS(SELECT 1 FROM public.ordinary_worker_ownership_plan p
      WHERE p.state='retired' AND p.routing_epoch=f.routing_epoch
      AND EXISTS(SELECT 1 FROM jsonb_array_elements(p.payload::jsonb->'details') d
        WHERE d->>'board_id'=f.board_id::text AND (
-         (d->>'worker'='simple' AND d->>'profile' IN ('workday.cxs-detail/v1','jsonld.direct-detail/v1','smartrecruiters.api-detail/v1','workable.api-detail/v1','dom.direct-detail/v1','join.api-detail/v1')) OR
+         (d->>'worker'='simple' AND d->>'profile' IN ('workday.cxs-detail/v1','jsonld.direct-detail/v1','smartrecruiters.api-detail/v1','workable.api-detail/v1','dom.direct-detail/v1','join.nextdata-detail/v1')) OR
          (d->>'worker'='browser' AND d->>'profile' IN ('dom.rendered-detail/v1','jsonld.rendered-detail/v1'))))))))))`, epoch, ids, detailIDs).Scan(&foreign); err != nil {
 				return err
 			}
@@ -268,6 +269,9 @@ func applyFirstOwnership(ctx context.Context, pool *pgxpool.Pool, client *Client
 		operation = "publish"
 		if retire {
 			operation = "retire"
+			if state == "staged" {
+				operation = "cancel-staged"
+			}
 		}
 	}
 	if err := firstOwnershipProjection(ctx, client, epoch, plan, target, operation, retirement); err != nil {
@@ -289,6 +293,9 @@ func applyFirstOwnership(ctx context.Context, pool *pgxpool.Pool, client *Client
 		inspect := "inspect-active"
 		if retire {
 			inspect = "inspect-retired"
+			if state == "staged" {
+				inspect = "inspect-staged-cancelled"
+			}
 		}
 		if err := firstOwnershipProjection(ctx, client, epoch, plan, target, inspect, "[]"); err != nil {
 			return nil, err

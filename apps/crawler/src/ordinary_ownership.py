@@ -88,6 +88,10 @@ def ownership_projection(payload: str) -> str:
             not isinstance(board, str) or not isinstance(domain, str)
             for board, domain in members.items()
         )
+        or any(
+            m["worker"] != ("browser" if m["profile"] == "dom.rendered-urls/v1" else "simple")
+            for m in plan["members"]
+        )
     ):
         raise OrdinaryOwnershipError()
     document = {

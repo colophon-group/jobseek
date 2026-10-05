@@ -91,6 +91,9 @@ func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[stri
 		return fail()
 	}
 	validation["metadata"] = string(body)
+	if profile == domRenderedMonitorProfile {
+		validation["monitor_needs_browser"] = "0"
+	}
 	p, err := InspectGreenhouseMonitor(boardID, validation)
 	if err != nil {
 		return fail()

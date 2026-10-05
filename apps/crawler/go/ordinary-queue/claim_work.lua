@@ -118,7 +118,7 @@ else
         if (ARGV[14] or "") ~= "" then return owner_failure() end
         native_member = owner_members[ARGV[12] or ""]
         if plan.version == "jobseek.ordinary.ownership-projection/v1" and type(native_member) == "string" then
-            native_member = {board_id = ARGV[12], domain = native_member, worker = "simple"}
+            native_member = {board_id = ARGV[12], domain = native_member, worker = wtype}
         end
         if claim_token == "" or not native_member or wtype ~= native_member.worker then
             return owner_failure()

@@ -48,7 +48,20 @@ func privatePipelineFixture(t *testing.T) nativePipelineFixture {
 	return privateRichPipelineFixture(t, "greenhouse", `{"token":"fixture","scraper_type":"skip","_monitor_config_fingerprint":"fixture"}`)
 }
 
-func privateRichPipelineFixture(t *testing.T, provider, metadata string) nativePipelineFixture {
+func privateRichPipelineFixture(t *testing.T, provider, metadata string, workers ...queue.WorkerType) nativePipelineFixture {
+	worker := queue.Simple
+	if len(workers) > 0 {
+		worker = workers[0]
+	}
+	flag := "0"
+	detailBrowser := len(workers) > 1 && workers[1] == queue.Browser
+	detailFlag := "0"
+	if detailBrowser {
+		detailFlag = "1"
+	}
+	if worker == queue.Browser {
+		flag = "1"
+	}
 	t.Helper()
 	ctx := context.Background()
 	dsn := os.Getenv("JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL")
@@ -150,19 +163,19 @@ func privateRichPipelineFixture(t *testing.T, provider, metadata string) nativeP
 	if provider == "workable" {
 		boardURL = "https://apply.workable.com/fixture"
 	}
-	if _, err := pg.Exec(ctx, `INSERT INTO job_board(id,company_id,board_slug,board_url,crawler_type,metadata,throttle_key,check_interval_minutes,scrape_interval_hours,next_check_at)
- VALUES($1::uuid,$2::uuid,$3,$5,$6,$4::jsonb,$6,60,24,now()-interval '1 minute')`, f.board, f.company, "native-"+f.board, metadata, boardURL, provider); err != nil {
+	if _, err := pg.Exec(ctx, `INSERT INTO job_board(id,company_id,board_slug,board_url,crawler_type,metadata,throttle_key,check_interval_minutes,scrape_interval_hours,next_check_at,monitor_needs_browser,scraper_needs_browser)
+ VALUES($1::uuid,$2::uuid,$3,$5,$6,$4::jsonb,$6,60,24,now()-interval '1 minute',$7,$8)`, f.board, f.company, "native-"+f.board, metadata, boardURL, provider, worker == queue.Browser, detailBrowser); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pg.Exec(ctx, `INSERT INTO job_posting(id,company_id,board_id,source_url,titles,locales,last_seen_at,next_scrape_at)
  VALUES($1::uuid,$2::uuid,$3::uuid,$4,ARRAY['Original'],ARRAY['en'],now()-interval '1 day',now())`, f.original, f.company, f.board, "https://example.com/old/"+f.original); err != nil {
 		t.Fatal(err)
 	}
-	projection := map[string]string{"board_slug": "native-" + f.board, "board_url": boardURL, "crawler_type": provider, "company_id": f.company, "domain": provider, "throttle_key": provider, "monitor_needs_browser": "0", "scraper_needs_browser": "0", "check_interval_minutes": "60", "scrape_interval_hours": "24", "metadata": metadata}
+	projection := map[string]string{"board_slug": "native-" + f.board, "board_url": boardURL, "crawler_type": provider, "company_id": f.company, "domain": provider, "throttle_key": provider, "monitor_needs_browser": flag, "scraper_needs_browser": detailFlag, "check_interval_minutes": "60", "scrape_interval_hours": "24", "metadata": metadata}
 	if err := r.HSet(ctx, "board:"+f.board, projection).Err(); err != nil {
 		t.Fatal(err)
 	}
-	for key, member := range map[string]string{"monitors_simple:" + provider: f.board, "ready:simple:1": provider} {
+	for key, member := range map[string]string{"monitors_" + string(worker) + ":" + provider: f.board, "ready:" + string(worker) + ":1": provider} {
 		if err := r.ZAdd(ctx, key, redis.Z{Score: 1, Member: member}).Err(); err != nil {
 			t.Fatal(err)
 		}

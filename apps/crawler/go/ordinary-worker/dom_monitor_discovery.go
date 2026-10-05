@@ -13,6 +13,7 @@ import (
 
 	dom "github.com/colophon-group/jobseek/apps/crawler/go/dom-detail"
 	jsonld "github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail"
+	executor "github.com/colophon-group/jobseek/apps/crawler/go/lightpanda-b0-executor"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	"golang.org/x/text/cases"
 )
@@ -79,11 +80,23 @@ func discoverDOMInventory(ctx context.Context, verified *http.Client, profile qu
 		}
 		count++
 	}
+	return parseDOMInventory(ctx, result, profile, c, source, "", false)
+}
+
+func parseDOMInventory(ctx context.Context, result RichDiscovery, profile queue.GreenhouseMonitorProfile, c dom.ListingConfig, source, finalURL string, rendered bool) (RichDiscovery, error) {
 	classification, err := dom.ClassifyDocument(source, dom.Object{}, profile.Endpoint)
+	if rendered && err == nil && classification["classification"] == "challenge" {
+		return result, executor.ErrBotChallenge
+	}
 	if err != nil || classification["classification"] == "challenge" {
 		return result, &DiscoveryError{Kind: "inventory_failed", cause: errors.New("DOM listing origin challenge")}
 	}
-	hrefs, err := dom.ListingHrefs(source, c.Selector)
+	var hrefs []string
+	if rendered {
+		hrefs, err = renderedListingURLs(source, finalURL, c.Selector)
+	} else {
+		hrefs, err = dom.ListingHrefs(source, c.Selector)
+	}
 	if err != nil {
 		return result, err
 	}
@@ -100,7 +113,10 @@ func discoverDOMInventory(ctx context.Context, verified *http.Client, profile qu
 		if ctx.Err() != nil {
 			return RichDiscovery{}, ctx.Err()
 		}
-		absolute, ok := joinPythonURL(profile.Endpoint, href)
+		absolute, ok := href, true
+		if !rendered {
+			absolute, ok = joinPythonURL(profile.Endpoint, href)
+		}
 		if !ok || !strings.HasPrefix(absolute, "http") {
 			continue
 		}

@@ -390,7 +390,8 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		if provider := claim.Descriptor().Config["crawler_type"]; provider == "workday" || provider == "smartrecruiters" || provider == "workable" || provider == "join" || provider == "sitemap" {
 			return RunGreenhouseClaim(ctx, authority, claim, workdayHTTP, preparer, circuits)
 		}
-		return RunGreenhouseClaim(ctx, authority, claim, httpClient, preparer, circuits)
+		monitorRenderer, _ := renderer.(renderedMonitorClient)
+		return RunGreenhouseClaim(ctx, authority, claim, httpClient, preparer, circuits, monitorRenderer)
 	}}
 	err = runWorkerLoop(process, c, services, m)
 	_ = server.Close()

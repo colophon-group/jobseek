@@ -25,7 +25,15 @@ local offset = 23 + boards
 local operation, body, retirement, projection = ARGV[offset + 1], ARGV[offset + 2], ARGV[offset + 3], ARGV[offset + 4]
 if #ARGV ~= offset + 4 or not body or #body < 1 or not retirement or not projection or #projection < 1
     or (operation ~= "publish" and operation ~= "retire"
-        and operation ~= "inspect-active" and operation ~= "inspect-retired") then
+        and operation ~= "inspect-active" and operation ~= "inspect-retired"
+        and operation ~= "cancel-staged" and operation ~= "inspect-staged-cancelled") then
+    return redis.error_reply("first ordinary ownership rejected")
+end
+-- Only the exclusive SQL caller selects these operations for a never-active
+-- staged plan with no current attempts. Preserve legacy Redis inflight entries
+-- for the restored workers; cancellation grants no queue or SQL write owner.
+local cancel_staged = operation == "cancel-staged" or operation == "inspect-staged-cancelled"
+if cancel_staged and retirement ~= "[]" then
     return redis.error_reply("first ordinary ownership rejected")
 end
 local projection_type = redis.call("TYPE", KEYS[8])["ok"]
@@ -81,21 +89,20 @@ if operation == "retire" and retirement ~= "[]" then
 elseif retirement ~= "[]" then
     return redis.error_reply("first ordinary ownership rejected")
 end
-if not retirement_type("inflight_tokens:simple", "hash") then
-    return redis.error_reply("first ordinary ownership rejected")
-end
-for _, member in ipairs(plan.members) do
-    local task = "monitor|" .. member.domain .. "|" .. member.board_id
-    if operation ~= "inspect-active" and changes == nil
-        and redis.call("ZSCORE", KEYS[10], "monitor|" .. member.domain .. "|" .. member.board_id) then
+for _, worker in ipairs({"simple", "browser"}) do
+    if not retirement_type("inflight:" .. worker, "zset") or not retirement_type("inflight_tokens:" .. worker, "hash") then
         return redis.error_reply("first ordinary ownership rejected")
     end
-    if operation ~= "inspect-active" and changes == nil
-        and redis.call("HEXISTS", "inflight_tokens:simple", task) == 1 then
-        return redis.error_reply("first ordinary ownership rejected")
+    for _, member in ipairs(plan.members) do
+        local task = "monitor|" .. member.domain .. "|" .. member.board_id
+        if not cancel_staged and operation ~= "inspect-active" and changes == nil
+            and (redis.call("ZSCORE", "inflight:" .. worker, task)
+              or redis.call("HEXISTS", "inflight_tokens:" .. worker, task) == 1) then
+            return redis.error_reply("first ordinary ownership rejected")
+        end
     end
 end
-if operation ~= "inspect-active" and changes == nil and plan.details ~= nil then
+if not cancel_staged and operation ~= "inspect-active" and changes == nil and plan.details ~= nil then
     local owned = {}
     for _, member in ipairs(plan.details) do owned[member.board_id] = member.domain end
     for _, worker in ipairs({"simple", "browser"}) do
@@ -113,11 +120,11 @@ end
 if operation == "inspect-active" and not exists then
     return redis.error_reply("first ordinary ownership rejected")
 end
-if operation == "inspect-retired" and exists then
+if (operation == "inspect-retired" or operation == "inspect-staged-cancelled") and exists then
     return redis.error_reply("first ordinary ownership rejected")
 end
 -- All type/value/lease checks precede owned restoration and projection effects.
 if changes ~= nil then apply_first_retirement(changes, domains) end
 if operation == "publish" and not exists then redis.call("SET", KEYS[8], projection) end
-if operation == "retire" and exists then redis.call("DEL", KEYS[8]) end
+if (operation == "retire" or operation == "cancel-staged") and exists then redis.call("DEL", KEYS[8]) end
 return "accepted"

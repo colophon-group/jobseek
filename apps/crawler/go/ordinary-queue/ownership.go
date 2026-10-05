@@ -158,11 +158,11 @@ func decodeOwnership(body, digest string) (*OwnershipPlan, error) {
 	boards := make(map[string]ownershipMember, len(doc.Members))
 	for _, member := range doc.Members {
 		key := string(member.Kind) + "|" + member.BoardID
-		if key <= previous || member.Kind != Monitor || member.Worker != Simple {
+		if key <= previous || member.Kind != Monitor || !validWorker(member.Worker) {
 			return nil, ErrAuthorityLost
 		}
 		profile, err := InspectRichMonitor(member.BoardID, member.Config)
-		if err != nil || profile.Profile != member.Profile || profile.CompanyID != member.CompanyID || profile.Domain != member.Domain || profile.EffectiveConfigSHA256 != member.EffectiveConfigHash {
+		if err != nil || MonitorWorker(profile) != member.Worker || profile.Profile != member.Profile || profile.CompanyID != member.CompanyID || profile.Domain != member.Domain || profile.EffectiveConfigSHA256 != member.EffectiveConfigHash {
 			return nil, ErrAuthorityLost
 		}
 		previous = key
@@ -276,7 +276,7 @@ func (a *Authority) StageOwnership(ctx context.Context, revision string, boardID
 			if err != nil {
 				return err
 			}
-			doc.Members = append(doc.Members, ownershipMember{id, profile.CompanyID, profile.Domain, Monitor, Simple, profile.Profile, profile.EffectiveConfigSHA256, stable})
+			doc.Members = append(doc.Members, ownershipMember{id, profile.CompanyID, profile.Domain, Monitor, MonitorWorker(profile), profile.Profile, profile.EffectiveConfigSHA256, stable})
 		}
 		for _, id := range detailIDs {
 			pair := snapshots[id]

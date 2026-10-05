@@ -30,14 +30,14 @@ func reapCommittedFixture(t *testing.T, p firstOwnerFixture, before ...func(cont
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	var result []any
-	err = WithOrdinaryLeaseReaping(ctx, pool, p.f.client.redis, "simple", 10, func(ctx context.Context, now float64, observed, projection string) error {
+	err = WithOrdinaryLeaseReaping(ctx, pool, p.f.client.redis, string(p.f.task.Worker), 10, func(ctx context.Context, now float64, observed, projection string) error {
 		for _, inject := range before {
 			if err := inject(ctx); err != nil {
 				return err
 			}
 		}
 		var err error
-		result, err = p.f.client.redis.Eval(ctx, reaperSource(t), nil, "simple", number(now), 10, 3, number(now), "guarded", observed, projection).Slice()
+		result, err = p.f.client.redis.Eval(ctx, reaperSource(t), nil, string(p.f.task.Worker), number(now), 10, 3, number(now), "guarded", observed, projection).Slice()
 		return err
 	})
 	return result, err

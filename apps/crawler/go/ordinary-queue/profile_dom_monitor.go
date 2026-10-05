@@ -9,9 +9,20 @@ import (
 )
 
 func DOMMonitorOptions(config map[string]string) (dom.ListingConfig, error) {
+	if monitorWorkerProfile(config) == Browser {
+		listing, _, err := RenderedDOMMonitorOptions(config)
+		return listing, err
+	}
+	return directDOMMonitorOptions(config)
+}
+
+func directDOMMonitorOptions(config map[string]string) (dom.ListingConfig, error) {
 	md, err := richProfileMetadata(config)
 	if err != nil {
 		return dom.ListingConfig{}, err
+	}
+	if md["browser_backend"] != nil || md["routing_revision"] != nil {
+		return dom.ListingConfig{}, ErrUnsupportedProfile
 	}
 	options := dom.Object{}
 	keys := []string{"url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy"}
@@ -42,5 +53,9 @@ func inspectDOMMonitor(boardID string, config map[string]string, md map[string]j
 	if _, err := DOMMonitorOptions(config); err != nil {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
-	return inspectURLOnlyMonitor(boardID, config, md, "dom", "dom.direct-urls/v1", "dom", config["board_url"])
+	profile := "dom.direct-urls/v1"
+	if monitorWorkerProfile(config) == Browser {
+		profile = domRenderedMonitorProfile
+	}
+	return inspectURLOnlyMonitor(boardID, config, md, "dom", profile, "dom", config["board_url"])
 }

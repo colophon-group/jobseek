@@ -16,6 +16,7 @@ import (
 	"time"
 
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
+	"github.com/redis/go-redis/v9"
 )
 
 func firstExecutableOwnershipFixture(t *testing.T) (nativePipelineFixture, nativeExecutableFixture, *queue.OwnershipPlan) {
@@ -59,6 +60,59 @@ func firstExecutableOwnershipFixture(t *testing.T) (nativePipelineFixture, nativ
 		t.Fatal("real B0 initialization", err)
 	}
 	return f, e, plan
+}
+
+func TestRealFirstOwnershipExecutableCancelsStagedLegacyInflight(t *testing.T) {
+	f, e, installedPlan := firstExecutableOwnershipFixture(t)
+	ctx := context.Background()
+	oldSource := strings.Repeat("b", 40)
+	if oldSource == installedPlan.SourceRevision() {
+		t.Fatal("fixture needs distinct compiled and outgoing sources")
+	}
+	plan, err := f.a.StageGreenhouseOwnership(ctx, oldSource, []string{f.board})
+	if err != nil {
+		t.Fatal(err)
+	}
+	member := "monitor|greenhouse|" + f.board
+	for _, worker := range []string{"simple", "browser"} {
+		if err := f.r.ZAdd(ctx, "inflight:"+worker, redis.Z{Score: 1, Member: member}).Err(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	r, env := firstRequestFixture(t)
+	r.Operation, r.SourceRevision, r.RoutingEpoch, r.PlanSHA256, r.ProjectionSHA1, r.B0Cohort = "retire", oldSource, plan.Epoch(), plan.SHA256(), plan.ProjectionSHA1(), "c1"
+	env["LOCAL_DATABASE_URL"], env["REDIS_URL"] = f.dsn, "unix://"+f.r.Options().Addr
+	env["ORDINARY_GO_WORKER_MODE"], env["ORDINARY_OWNERSHIP_SOURCE_REVISION"] = "retire-first-ownership", oldSource
+	env["ORDINARY_OWNERSHIP_PLAN_SHA256"], env["ORDINARY_OWNERSHIP_PROJECTION_SHA1"] = plan.SHA256(), plan.ProjectionSHA1()
+	env["ORDINARY_OWNERSHIP_ROUTING_EPOCH"], env["LIGHTPANDA_B0_ROUTING_EPOCH"], env["LIGHTPANDA_B0_PRODUCER_COHORT"] = strconv.FormatInt(plan.Epoch(), 10), strconv.FormatInt(plan.Epoch(), 10), "c1"
+	env["ORDINARY_RETIRE_ADMIN_SOURCE_REVISION"] = installedPlan.SourceRevision()
+	env["ORDINARY_RETIRE_ADMIN_IMAGE_REF"] = "ghcr.io/colophon-group/jobseek-crawler@sha256:" + strings.Repeat("1", 64)
+	body, _ := json.Marshal(r)
+	if err := os.WriteFile(env["ORDINARY_FIRST_OWNERSHIP_REQUEST_FILE"], append(body, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command(e.binary, "--retire-first-ownership")
+	command.Env = []string{"PATH=" + os.Getenv("PATH")}
+	for k, v := range env {
+		command.Env = append(command.Env, k+"="+v)
+	}
+	out, err := command.CombinedOutput()
+	var got queue.FirstOwnershipResult
+	if err != nil || json.Unmarshal(out, &got) != nil || got.State != "staged" || got.SourceRevision != oldSource || got.AdminSourceRevision != installedPlan.SourceRevision() {
+		t.Fatal("source-bound executable refused inert legacy inflight cancellation", err)
+	}
+	for _, worker := range []string{"simple", "browser"} {
+		if score, err := f.r.ZScore(ctx, "inflight:"+worker, member).Result(); err != nil || score != 1 {
+			t.Fatal("cancellation changed retained legacy inflight")
+		}
+	}
+	if f.r.Exists(ctx, "ordinary:ownership:active").Val() != 0 {
+		t.Fatal("cancellation granted native queue ownership")
+	}
+	var state string
+	if err := f.pg.QueryRow(ctx, "SELECT state FROM ordinary_worker_ownership_plan WHERE plan_sha256=$1", plan.SHA256()).Scan(&state); err != nil || state != "staged" {
+		t.Fatal("cancellation changed inert SQL history", err)
+	}
 }
 
 func TestRealFirstOwnershipExecutableActivatesAndRetires(t *testing.T) {
