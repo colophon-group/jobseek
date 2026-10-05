@@ -23,7 +23,12 @@
     "focused_owned_race_suite": "passed",
     "api_module_race_vet_tidy": "passed",
     "executor_race_vet": "passed",
-    "full_worker_and_queue_verification": "pending"
+    "full_worker_and_queue_verification": "passed",
+    "full_worker_race_vet_tidy": "passed, 170.755s",
+    "full_queue_race_vet_tidy": "passed, 79.495s",
+    "required_ci_previous_head": "passed",
+    "installed_worker_cutover_recovery": "passed",
+    "runtime_v1_image_parity": "previous expectation listed 20 profiles; updated exact list to 24 and awaiting fresh CI"
   },
   "retained_contracts": [
     "GET/POST and declared headers, per-discovery cookies",
@@ -41,5 +46,22 @@
     "runtime maintenance and deployment consumers",
     "whole-lane cost/freshness proof, supported reversal and rollback window",
     "retire mandatory production Python, Playwright, Chromium and obsolete runtime assets"
-  ]
+  ],
+  "pull_request": "https://github.com/colophon-group/jobseek/pull/10320",
+  "production_observation": {
+    "source_revision": "a5fd35cfb924800a5ac3fedfedbaca0a457a934c",
+    "observed_at": "2026-10-05T09:19:10.623726+00:00",
+    "verified_writers": 10,
+    "health_endpoints_passed": 8,
+    "monitor_boards": 6025,
+    "detail_boards": 2199,
+    "bounded_processing_diagnostics": 0,
+    "detail_content_samples": 24,
+    "strict_queue_sample_count": 27,
+    "fully_settled_samples": 26,
+    "unsettled_detail_samples": 1,
+    "unsettled_state": "completed JSON-LD detail receipt and canonical deadline agree; posting active, no live lease/token; Redis retry strike and earlier queue deadline remain",
+    "full_settlement_proven": false,
+    "production_mutation": false
+  }
 }

@@ -1,8 +1,8 @@
 # Native ordinary worker continuation, 2026-10-03
 
-## Configured HTTP API migration in implementation — 2026-10-05
+## Configured HTTP API migration awaiting fresh CI — 2026-10-05
 
-The full migration goal remains active. The current candidate adds
+The full migration goal remains active. [PR #10320](https://github.com/colophon-group/jobseek/pull/10320) adds
 `api_sniffer.http-items/v1` to the existing ordinary Go worker and rich writer.
 It ports declared JSON field extraction, GET/POST requests, headers, operation
 cookies, page/offset/cumulative pagination and bounded size probes. Structured
@@ -17,16 +17,25 @@ unported auto-field case remains excluded), 30 rich writer cases and three
 exact JSON body byte cases. Nine real PostgreSQL/Redis cases pass under the
 race detector, including declared GET/POST pagination, canonical fields,
 staged description hash/upload state, failure/policy handling and recurring
-queue conservation. Full worker/queue and installed-image checks remain
-required before release. The API module race/vet/tidy and executor race/vet
-checks pass.
+queue conservation. Full worker and queue race/vet/tidy checks pass (170.755s and 79.495s),
+along with the installed executable cutover/recovery checks, API module and
+executor checks. Required CI passed on the initial head. A separate image
+parity workflow retained the old 20-profile expectation; its exact assertion
+now includes all 24 executable profiles and requires fresh CI before merge.
 
 A read-only census against the source937 configuration snapshot identifies
 134 eligible API boards with matching canonical/cache bindings out of 326.
 This is a candidate estimate, not fresh production admission. Unsupported
 browser/auto-field/filter/rotation/decryption/enrichment configurations retain
 their current owner while their replacements are implemented. The running
-source937 fleet is unchanged by this candidate.
+source937 fleet is unchanged by this candidate. Readback verified all ten exact
+images and eight health endpoints, with 24 sampled detail outputs and no
+processing diagnostic in the bounded log observation. A strict queue check
+found 26 of 27 samples settled; one completed JSON-LD detail retains a Redis
+retry strike/earlier queue deadline, while its active posting, canonical future
+deadline and receipt agree and no live lease/token exists. Full current
+settlement is not claimed. Preserve this evidence through supported retirement
+and verify restored canonical scheduling; do not clear the queue manually.
 
 [Candidate evidence](evidence/go-native-api-candidate-2026-10-05.json) records
 scope and the remaining delivery steps. Finish runtime and image verification,
