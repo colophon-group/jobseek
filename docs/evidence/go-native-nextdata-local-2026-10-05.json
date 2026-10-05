@@ -1,10 +1,10 @@
 {
   "schema": "jobseek.native-nextdata-local/v1",
-  "observed_at_utc": "2026-10-05T22:10:43.943484+00:00",
-  "state": "direct durable-identity/employer routes and four render-only routes verified locally; three remaining browser configurations in full migration scope",
+  "observed_at_utc": "2026-10-05T22:46:30.533745+00:00",
+  "state": "52/54 canonical/cache configurations verified locally; two browser configurations remain in full migration scope",
   "target_enabled_configurations": 54,
   "direct_canonical_and_cached_admitted": 47,
-  "remaining_browser_routes": 3,
+  "remaining_browser_routes": 2,
   "remaining_provider_identity_routes": 0,
   "actual_python_stream_cases": 37,
   "checks": {
@@ -34,7 +34,28 @@
     "jsonld_module_race": "PASS 1.423s",
     "python_runtime_contracts": "58 passed, 6 skipped 9.62s; native PG/Redis suites require real services",
     "vet_mod_tidy": "PASS queue, worker, API and JSONLD modules",
-    "retained_rendered_receipt_later_reversal": "PASS 5.455s, including prior DOM and new NextData browser attempts"
+    "retained_rendered_receipt_later_reversal": "PASS 5.455s, including prior DOM and new NextData browser attempts",
+    "florida_courts_actual_chromium_and_python_cases": {
+      "count": 12,
+      "result": "PASS; exact configured expression run in real offline Chromium and actual Python discover_stream"
+    },
+    "florida_courts_profiles": "PASS 1.490s with existing NextData profiles",
+    "florida_courts_held_worker_modes": {
+      "count": 3,
+      "result": "PASS 4.741s with existing rendered modes; canonical write, missing document, malformed later row"
+    },
+    "api_module_race_after_florida": "PASS 1.350s",
+    "actual_florida_upstream_document": {
+      "actual_upstream_document_sha256": "86f233374276ecd3aee110d34f2b94631682d475d2ff7e437210b0f6b4283ac8",
+      "configured_expression_sha256": "5f8434dabd533f9d2ef1656dbfa0843849ae1564308dbdb95f1eca3d43022ad6",
+      "items": 2,
+      "complete_browser_value_equal": true,
+      "network_aborted": true,
+      "production_claim": false
+    },
+    "full_worker_race_after_florida_and_admin_diagnostics": "PASS 212.477s; required real PostgreSQL/Redis",
+    "full_queue_race_after_florida_and_retained_browser_reversal": "PASS 107.420s; required real PostgreSQL/Redis",
+    "python_ownership_contracts_after_florida": "25 passed, 6 skipped in 0.44s; real native PG/Redis suites passed"
   },
   "operational_proofs": [
     "rich canonical fields and locations",
@@ -49,15 +70,16 @@
     "URL moves refresh future detail cache while retaining canonical deadline and priority",
     "Employer JSONLD witness is exact and detail-page publisher policy is authority-bound",
     "Browser inventory has separate worker ownership, common held navigation/policy/proof validation and exact SQL/Redis schedule conservation",
-    "Description+locations JSONLD mask preserves monitor title/employment and replaces only selected location fields"
+    "Description+locations JSONLD mask preserves monitor title/employment and replaces only selected location fields",
+    "Exact Florida Courts browser expression uses Go HTML5 extraction from the held document; first selectors, inert DOMParser/noscript, template exclusion, field spread precedence and browser number rounding match offline Chromium. Missing or malformed later rows fail before any write or disappearance effects."
   ],
   "production_claim": false,
   "full_migration_complete": false,
-  "canonical_and_cached_admitted": 51,
+  "canonical_and_cached_admitted": 52,
   "render_only_admitted": 4,
   "remaining_routes": [
-    "state-of-florida-courts browser expression",
-    "yum-china-campus browser expression",
+    "yum-china-campus global JavaScript evaluation",
     "revolut-careers stealth rendering"
-  ]
+  ],
+  "typed_browser_document_admitted": 1
 }

@@ -1,6 +1,6 @@
 # Native ordinary worker continuation, 2026-10-03
 
-## Current delivery — 2026-10-05 22:15 UTC
+## Current delivery — 2026-10-05 22:46 UTC
 
 The full migration goal remains active. Routine migration releases now group
 multiple provider types and share verification, checkpointing and deployment.
@@ -20,7 +20,7 @@ armed services, all seven health endpoints and 22 ready/0 inflight/0 dead.
 Ordinary production processing remains unverified. Post-recovery comparison
 finds one embedded detail board with changed tenant/listing configuration; it
 does not establish the exact original rejection timing. Before the next release,
-original B0 rollback and selector clear succeeded. Independent22:11UTC proof
+original B0 rollback and selector clear succeeded. Independent 22:11 UTC proof
 verifies six healthy restart-armed baseline services, epoch 194, no active SQL
 plan/current fence, no native queue owner/projection/receipts/selectors and no
 administrative oneoff. [Production evidence](evidence/go-native-icims944-production-2026-10-05.json).
@@ -32,9 +32,13 @@ head `c47aee3575e694ac7061b6291e0346061e8c5d11` passed fresh `Required CI`,
 `Crawler Deploy Gate` and installed-image parity. A fresh exact-head/base/state/
 operator/hold audit bound its merge as `5472e167a06ac543bfa4529e286d60df51d90d05`.
 Its original [deployment](https://github.com/colophon-group/jobseek/actions/runs/37380963344)
-is running. Incoming promotion/adoption remain unverified. Lightpanda 1.0.0
-remains installed. Only the next batch's five own implementation commits were
-rebased onto this merged release.
+completed and promoted. Independent 22:32 UTC readback verifies exact source
+and image digests, all six healthy restart-armed baseline writers, cold epoch 194,
+no native receipts/queue owner/active SQL plan/current fence, cleared selectors
+and no administrative oneoff. Native ordinary adoption remains unverified.
+Lightpanda 1.0.0 remains installed and the official stable release list was
+rechecked on October 5. [Production evidence](evidence/go-native-providers945-production-2026-10-05.json).
+Only this batch's own implementation commits were rebased onto the merged release.
 
 The next release groups **Jobylon + NextData**, targeting 82 enabled
 configurations. Jobylon's 28 canonical/cache monitor and detail configurations
@@ -47,8 +51,13 @@ The NextData document decoder now reuses the existing precise JSON/RSC/React
 Router implementation and preserves the monitor's strict first-script and
 Phenom Canvas behavior. Its rich field/template/slug projection also passes seven actual Python cases.
 Fourteen document-source cases and the complete API module race suite pass.
-The runtime now admits 51 of 54 canonical/cache configurations: 47 direct and
-four render-only routes. Thirty-seven actual Python streamed cases pass, including ordered ten-page groups,
+The runtime now admits 52 of 54 canonical/cache configurations: 47 direct,
+four render-only routes and the exact Florida Courts browser expression. Its
+typed Go document transform uses the existing held Lightpanda navigation.
+Twelve actual offline Chromium/Python cases and three real PostgreSQL/Redis
+worker modes pass, including malformed later-row refusal before writes or
+disappearance effects. The captured current upstream document contains two
+items; its complete browser expression value equals the Go result. Thirty-seven actual Python streamed cases pass, including ordered ten-page groups,
 required-page retries, tenant checks and committed failure prefixes. Fourteen
 real PostgreSQL/Redis worker modes pass, as do cold retirement and semantic
 configuration/resource binding. Scraped locale bodies remain authoritative;
@@ -57,12 +66,25 @@ shared hospital tenant uses bounded detail JSONLD employer witnesses. Selected
 description+locations enrichment passes the existing canonical writer. Ten
 real rendered worker modes and rendered cold retirement pass. Full required
 queue/worker race suites for these edits pass in 106.294s/220.211s. The remaining
-three browser configurations stay in the combined 82-board batch target.
+two browser configurations remain in full migration scope: Yum China global
+evaluation and Revolut stealth. Keep their current legacy ownership until their
+replacement is qualified; do not weaken admission to reach a count.
 No production NextData claim is made. [NextData local evidence](evidence/go-native-nextdata-local-2026-10-05.json).
 
-Keep this as one combined release rather than opening a Jobylon-only PR.
-Group the 125 Inline configurations and Beisen's extraction variants in the
-following larger extraction batch. Continue exact-source deployment/readback
+Publish Jobylon + NextData together with the 80 verified configurations.
+Do not delay this grouped delivery for the two remaining browser routes.
+The candidate also adds fixed administrative cutover phase diagnostics, so a
+rejection distinguishes configuration, database/queue, lease wait, cold SQL scope,
+projection, B0 capture and activation/retirement without exposing private errors.
+The full required queue/worker race suites pass in 107.420s/212.477s after
+these additions, covering successful and rejected executable transitions.
+Use those diagnostics on the next immutable release before repeating the
+previous generic administrative failure.
+Group the 125 Inline configurations and 24 Beisen variants in the following
+larger extraction batch. The captured census has 107 Simple and 18 Browser
+Inline configurations; all 24 Beisen configurations use Simple ownership.
+Treat metadata transport requirements as authoritative even when a cached
+worker flag differs, and qualify each variant through the existing paths. Continue exact-source deployment/readback
 and original B0/ordinary activation and recovery when GitHub runners complete
 the current release. Whole-lane comparison, full reversal, rollback window and
 retirement of mandatory production Python/Playwright/Chromium remain required.
