@@ -1,0 +1,82 @@
+{
+  "observed_at_utc": "2026-10-05T14:38:00.081840+00:00",
+  "source_revision": "d6bdab010404b9bac5e33965d13aec2fc49791df",
+  "identities": {
+    "JOBSEEK_DEPLOY_REVISION": "d6bdab010404b9bac5e33965d13aec2fc49791df",
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:cae00c2479333f555b18252947b2590bc889369ce0a3108f9d0ac2b77fd2bd06",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:43f77a8afa788d87beaebf7b257642d072abc46c2244d1f945704deb7a0056ba"
+  },
+  "restored_writers": [
+    {
+      "service": "worker-1",
+      "running": true,
+      "restart": "unless-stopped",
+      "image": "ghcr.io/colophon-group/jobseek-crawler@sha256:cae00c2479333f555b18252947b2590bc889369ce0a3108f9d0ac2b77fd2bd06"
+    },
+    {
+      "service": "worker-2",
+      "running": true,
+      "restart": "unless-stopped",
+      "image": "ghcr.io/colophon-group/jobseek-crawler@sha256:cae00c2479333f555b18252947b2590bc889369ce0a3108f9d0ac2b77fd2bd06"
+    },
+    {
+      "service": "worker-3",
+      "running": true,
+      "restart": "unless-stopped",
+      "image": "ghcr.io/colophon-group/jobseek-crawler@sha256:cae00c2479333f555b18252947b2590bc889369ce0a3108f9d0ac2b77fd2bd06"
+    },
+    {
+      "service": "browser-1",
+      "running": true,
+      "restart": "unless-stopped",
+      "image": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:43f77a8afa788d87beaebf7b257642d072abc46c2244d1f945704deb7a0056ba"
+    },
+    {
+      "service": "drain",
+      "running": true,
+      "restart": "unless-stopped",
+      "image": "ghcr.io/colophon-group/jobseek-crawler@sha256:cae00c2479333f555b18252947b2590bc889369ce0a3108f9d0ac2b77fd2bd06"
+    },
+    {
+      "service": "exporter",
+      "running": true,
+      "restart": "unless-stopped",
+      "image": "ghcr.io/colophon-group/jobseek-crawler@sha256:cae00c2479333f555b18252947b2590bc889369ce0a3108f9d0ac2b77fd2bd06"
+    }
+  ],
+  "health": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200
+  },
+  "canonical": {
+    "active_plans": 0,
+    "retained_plan_state": "retired",
+    "routing_epoch": 188,
+    "current_or_newer_active_fences": 0,
+    "retained_outgoing_active_receipts": 1
+  },
+  "queue": {
+    "b0_producer_owner": 0,
+    "ordinary_projection": 0
+  },
+  "receipts_absent": true,
+  "selectors_cleared": true,
+  "live_oneoffs": 0,
+  "schema": "jobseek.native-ordinary-recovery/v1",
+  "scope": "Independent read-only exact source/image, HTTP health, SQL/Redis authority and absent selector/receipt proof after original ordinary retirement and B0 rollback.",
+  "original_ordinary_retirement_succeeded": true,
+  "original_b0_rollback_succeeded": true,
+  "original_selector_clear_succeeded": true,
+  "outgoing_plan_sha256": "29abcd29ccab7b8b3d5e9e6fada91ad54e8519f284eb667ac2a338b3f508ac4d",
+  "outgoing_epoch": 187,
+  "retained_outgoing_attempt_authority": "Revoked by its retired SQL plan and the current epoch188; retained as history.",
+  "latest_lightpanda_still_deployed": "1.0.0",
+  "manual_queue_lease_receipt_or_lock_clearing": false,
+  "repair_pr": "https://github.com/colophon-group/jobseek/pull/10324",
+  "natural_api_proof_complete": false,
+  "full_migration_complete": false
+}
