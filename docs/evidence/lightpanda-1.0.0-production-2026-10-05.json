@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-10-05T13:30:58.911036+00:00",
+  "latest_stable_release": "1.0.0",
+  "release_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
+  "upstream_published_at": "2026-10-02T10:12:01Z",
+  "upstream_index_digest": "sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e",
+  "merged_pr": "https://github.com/colophon-group/jobseek/pull/10322",
+  "reviewed_head": "b814a10894d88a0dc763e56d9e16638baf80cda0",
+  "merged_source": "87ceae8dadae7177b5b282bc960b358c706144a7",
+  "reviewed_and_merged_tree": "740d235d30453059a15e0920890b9329c6efd7cb",
+  "production_image_ref": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:3f33e71a5b0fabb01e4281b72a30ac7708375e4f386940e73f087f75efaa9eb7",
+  "live_binary_sha256": "69791924bcee43b13b224af4c845622c5fe66fdbc1b8143bfaa39ca8f85244f5",
+  "architecture": "arm64",
+  "running": true,
+  "deployment": {
+    "run": 37315126898,
+    "successful_install_attempt": 2,
+    "resumed_after_acceptance_attempt": 3,
+    "url": "https://github.com/colophon-group/jobseek/actions/runs/37315126898"
+  },
+  "acceptance": {
+    "run": 37316449571,
+    "status": "accepted",
+    "phase": "renderer-restarts",
+    "covers": [
+      "crawler mTLS public render",
+      "egress negative probes",
+      "Docker restart",
+      "host reboot",
+      "protected workloads"
+    ],
+    "url": "https://github.com/colophon-group/jobseek/actions/runs/37316449571"
+  },
+  "validation": {
+    "required_ci": 37310848477,
+    "crawler_deploy_gate": 37310847090,
+    "real_amd64_arm64_integration": 37310848500,
+    "renderer_deployment_smoke": 37310848687,
+    "whole_lane_comparison": 37310848615,
+    "synthetic_arms": 16,
+    "synthetic_admitted": true,
+    "full_production_costs_proved": false
+  },
+  "memory": {
+    "memory_max_bytes": 1073741824,
+    "swap_max_bytes": 0,
+    "private_cgroup_namespace": true,
+    "limits_changed": false
+  },
+  "initial_refusal": {
+    "reason": "Existing running predecessor cgroup memory attestation drifted. Original workflow contained the exact predecessor cold; original supported cold retry passed every unchanged check.",
+    "predecessor_source": "b75ccb9456bf29c9477f9747c0c2cc3908ad79bb",
+    "predecessor_image_ref": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:a4c925d28c466b23a90850637c8344825823b6e6f5139952699a8bee21f3f719"
+  },
+  "crawler_baseline": {
+    "source": "d6bdab010404b9bac5e33965d13aec2fc49791df",
+    "version": "0.13.939",
+    "deployment_run": 37310212612,
+    "independent_observation": "2026-10-05T13:09:47.642715+00:00",
+    "running_healthy_exact_image_writers": 6,
+    "routing_epoch": 186,
+    "failed_native_plan_retired": true,
+    "native_ownership_receipts_cleared": true,
+    "ordinary_native_claimed": false,
+    "natural_api_proof": false
+  },
+  "full_migration_complete": false,
+  "goal_status": "active",
+  "next_action": "Fresh source939 native B0/ordinary admission and activation with the upgraded renderer; prove natural canonical API output and recurring queue conservation, complete remaining batched coverage and mandatory Python consumers, whole-lane production comparison/reversal/window, then retire mandatory production Python/Playwright/Chromium."
+}

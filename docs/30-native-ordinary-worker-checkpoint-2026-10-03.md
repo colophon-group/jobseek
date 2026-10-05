@@ -34,23 +34,36 @@ fresh bound admission and sustained natural canonical/policy/description/queue
 proof. Then finish the existing provider/detail/runtime batch and the full lane's
 cost and reversal proof. Full migration is not complete.
 
-## Lightpanda 1.0.0 upgrade — 2026-10-05
+## Lightpanda 1.0.0 deployed — 2026-10-05
 
-The latest stable upstream release is 1.0.0, published October 2. The renderer
-candidate now pins its official multi-architecture OCI index and verifies both
-Linux executable checksums against the release assets. Existing AMD64/ARM64
-browser, C4, child isolation and egress integration checks gate promotion;
-the existing immutable renderer deployment and acceptance workflows follow.
-The September 30 nightly remains the deployed rollback target until promotion
-is verified. [Release identity](../pilots/go-lightpanda/lightpanda-release.json).
+The latest stable upstream release is 1.0.0, published October 2. [PR #10322](https://github.com/colophon-group/jobseek/pull/10322)
+merged as `87ceae8dadae7177b5b282bc960b358c706144a7`. Required CI, Crawler
+Deploy Gate, real AMD64/ARM64 browser/C4/child/egress checks, renderer deployment
+smoke and all sixteen synthetic whole-lane comparison arms passed. That comparison
+admitted the candidate; it does not prove complete production migration costs.
 
-The shared-capacity fix merged in [PR #10321](https://github.com/colophon-group/jobseek/pull/10321)
-as `d6bdab010404b9bac5e33965d13aec2fc49791df`; its original crawler deployment
-is running. Independent premerge readback verified all six baseline writers
-healthy, receipts and selectors cleared, the failed native plan retired and
-epoch186. Upgrade the renderer before fresh native activation, then continue
-the full migration sequence below. Full migration and natural API proof remain
-incomplete; this release upgrade does not replace the delivery goal.
+The original immutable renderer deployment first refused the old running
+predecessor's cgroup memory attestation and contained that exact predecessor
+cold. Its supported cold retry passed every unchanged check. Restart/reboot
+acceptance subsequently passed; the original deployment resumed the same image.
+Independent readback at 13:30 UTC verified the live binary against the official
+1.0.0 ARM64 checksum, exact source/image, private cgroup namespace, the existing
+1 GiB memory limit and swap disabled. No limits or policy checks were relaxed.
+[Portable production evidence](evidence/lightpanda-1.0.0-production-2026-10-05.json)
+records immutable identities and original deployment/acceptance runs.
+
+The shared-capacity fix from [PR #10321](https://github.com/colophon-group/jobseek/pull/10321)
+is deployed as crawler v0.13.939, source
+`d6bdab010404b9bac5e33965d13aec2fc49791df`. Independent readback at 13:09 UTC
+verified all six baseline writers healthy, receipts and selectors cleared,
+the failed native plan retired and epoch186. Next use fresh source939 native
+B0/ordinary admission and prove natural canonical API output and recurring queue
+settlement with the upgraded renderer. Then finish the batched provider/config
+coverage and mandatory Python consumers, full production comparison/reversal
+and rollback window before retiring production Python, Playwright and Chromium.
+Full migration remains active and incomplete. Oracle HCM inventory/default detail
+extraction is implemented locally with race/vet and pagination/partition tests;
+its runtime/profile wiring and production ownership are still pending.
 
 ## Full migration delivery — source938 deployed, 2026-10-05
 
