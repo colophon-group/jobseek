@@ -1,6 +1,6 @@
 # Native ordinary worker continuation, 2026-10-03
 
-## Current delivery — 2026-10-05 19:17 UTC
+## Current delivery — 2026-10-05 19:49 UTC
 
 Lightpanda **1.0.0**, released October 2, remains the newest stable release in
 [the official release list](https://github.com/lightpanda-io/browser/releases),
@@ -31,7 +31,7 @@ unchanged B0 epoch/receipt, 22 ready records, zero inflight/dead and absent ordi
 receipt. Native ordinary production processing remains unverified.
 Before the incoming944release, the original B0 rollback restored all22ready
 records and retired epoch192. Original selector clear succeeded. Independent
-19:17UTC readback verifies six healthy restart-armed baseline services, no
+19:49UTC readback verifies six healthy restart-armed baseline services, no
 active SQL plan or current fence, no native queue owners/receipts/selectors,
 and no live administrative oneoff.
 [Cold baseline evidence](evidence/go-native-http-api943-before-icims944-baseline-2026-10-05.json).
@@ -64,9 +64,9 @@ retirement. Full migration remains active and incomplete; following entries are
 historical.
 
 
-The next 945 batch adds Breezy and JazzHR URL inventories and Gem rich inventories through
+The next 945 batch adds Breezy, JazzHR and Gupy URL inventories and Gem rich inventories through
 the existing queue, verified transport, shared enrichment/canonical writer and
-cold retirement. All **46 enabled configurations** (13Breezy,13Gem,20JazzHR) pass
+cold retirement. All **82 enabled configurations** (13Breezy,13Gem,20JazzHR,36Gupy) pass
 canonical/cache admission. Nine frozen cases run the actual Python monitors,
 including requests, falsy fields and the shared location-type mapping. Fourteen
 real worker cases and six cold retirement cases pass, covering canonical output,
@@ -81,7 +81,19 @@ canonical URLs, no listing redirects,404/410 disappearance, publisher policy,
 Unicode/truncation bounds and queue/deadline conservation. Final combined queue
 and worker race suites pass104.695s and190.579s, including existing iCIMS and
 startup regressions. [JazzHR evidence](evidence/go-native-jazzhr-local-2026-10-05.json).
+Gupy adds10actual Python fixtures,14real worker cases and three cold reversal
+cases. It preserves its own tenant/page witnesses, precise20digit IDs, incomplete
+inventory semantics, publisher policy and decoded HTML bounds. The final combined
+full race suites pass106.642s(queue) and214.993s(worker);18runtime contracts,
+vet/tidy and Ruff pass. [Gupy evidence](evidence/go-native-gupy-local-2026-10-05.json).
 The batch depends on944; native production ownership remains unverified.
+
+The updated944PR's native execution and installed-image checks passed. GitHub
+cancelled Python typing, company-reference and final RequiredCI jobs because
+hosted runners were not acquired. The first aggregator-only retry correctly
+failed on those cancelled prerequisites. The failed/cancelled jobs were then
+rerun together against the unchanged exact head. RequiredCI must pass before
+merge; no status is manufactured and no deployment hold is bypassed.
 
 
 ## Direct HTTP API details — 2026-10-05

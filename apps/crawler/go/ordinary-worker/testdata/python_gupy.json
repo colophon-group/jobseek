@@ -1,0 +1,169 @@
+{
+  "cases": [
+    {
+      "name": "precise-ids",
+      "body": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"props\": {\"pageProps\": {\"subdomain\": \"fixture\", \"careerPage\": {}, \"jobs\": [{\"id\": 90071992547409931234}, {\"id\": \"123\"}, {\"id\": \"1٢\"}]}}}</script>",
+      "headers": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.gupy.io/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": [
+          "https://fixture.gupy.io/jobs/123",
+          "https://fixture.gupy.io/jobs/1٢",
+          "https://fixture.gupy.io/jobs/90071992547409931234"
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "duplicates",
+      "body": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"props\": {\"pageProps\": {\"subdomain\": \"fixture\", \"careerPage\": {}, \"jobs\": [{\"id\": 123}, {\"id\": \"123\"}]}}}</script>",
+      "headers": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.gupy.io/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": [
+          "https://fixture.gupy.io/jobs/123"
+        ],
+        "truncated": true
+      }
+    },
+    {
+      "name": "invalid-items",
+      "body": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"props\": {\"pageProps\": {\"subdomain\": \"fixture\", \"careerPage\": {}, \"jobs\": [null, 42, {}, {\"id\": false}, {\"id\": 0}, {\"id\": -1}, {\"id\": 1.0}, {\"id\": \"01\"}, {\"id\": \"111111111111111111111\"}, {\"id\": 12}]}}}</script>",
+      "headers": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.gupy.io/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": [
+          "https://fixture.gupy.io/jobs/12"
+        ],
+        "truncated": true
+      }
+    },
+    {
+      "name": "empty",
+      "body": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"props\": {\"pageProps\": {\"subdomain\": \"fixture\", \"careerPage\": {}, \"jobs\": []}}}</script>",
+      "headers": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.gupy.io/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "urls": [],
+        "truncated": false
+      }
+    },
+    {
+      "name": "wrong-tenant",
+      "body": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"props\": {\"pageProps\": {\"subdomain\": \"other\", \"careerPage\": {}, \"jobs\": []}}}</script>",
+      "headers": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.gupy.io/"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "kind": "ValueError"
+      }
+    },
+    {
+      "name": "missing-career-page",
+      "body": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"props\": {\"pageProps\": {\"subdomain\": \"fixture\", \"careerPage\": null, \"jobs\": []}}}</script>",
+      "headers": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.gupy.io/"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "kind": "ValueError"
+      }
+    },
+    {
+      "name": "invalid-jobs",
+      "body": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"props\": {\"pageProps\": {\"subdomain\": \"fixture\", \"careerPage\": {}, \"jobs\": {\"id\": 123}}}}</script>",
+      "headers": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.gupy.io/"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "kind": "ValueError"
+      }
+    },
+    {
+      "name": "missing-nextdata",
+      "body": "<html>Not a career page</html>",
+      "headers": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.gupy.io/"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "kind": "ValueError"
+      }
+    },
+    {
+      "name": "nonlegacy-marker",
+      "body": "<script type=\"application/json\" id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"subdomain\": \"fixture\", \"careerPage\": {}, \"jobs\": []}}}</script>",
+      "headers": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.gupy.io/"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "kind": "ValueError"
+      }
+    },
+    {
+      "name": "reserved",
+      "body": "not NextData",
+      "headers": {
+        "TDM-Reservation": "1",
+        "TDM-Policy": "https://example.com/policy"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.gupy.io/"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "kind": "TDMReservedError"
+      }
+    }
+  ]
+}

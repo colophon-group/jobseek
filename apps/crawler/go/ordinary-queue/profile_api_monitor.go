@@ -82,7 +82,7 @@ func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[stri
 	// JazzHR's strict first-party identity permits the explicit default TLS port.
 	// Normalize only this reused validator input; immutable binding keeps the
 	// original configured URL and the provider endpoint has no explicit port.
-	if provider == "jazzhr" {
+	if provider == "jazzhr" || provider == "gupy" {
 		if u, err := url.Parse(validation["board_url"]); err == nil && u.Port() == "443" {
 			u.Host = u.Hostname()
 			validation["board_url"] = u.String()
@@ -108,7 +108,7 @@ func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[stri
 		return fail()
 	}
 	stable, err := stableGreenhouseConfig(config, md)
-	if provider == "sitemap" || provider == "join" || provider == "dom" || provider == "api_sniffer" || provider == "oracle_hcm" || provider == "icims" || provider == "breezy" || provider == "jazzhr" {
+	if provider == "sitemap" || provider == "join" || provider == "dom" || provider == "api_sniffer" || provider == "oracle_hcm" || provider == "icims" || provider == "breezy" || provider == "jazzhr" || provider == "gupy" {
 		// PostgreSQL jsonb and Redis may order nested filter/detail keys
 		// differently. Reuse the existing semantic configuration binding.
 		stable, err = stableJSONLDConfig(config, md)

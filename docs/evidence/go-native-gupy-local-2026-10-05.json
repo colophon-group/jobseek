@@ -1,0 +1,36 @@
+{
+  "schema": "jobseek.native-local-verification/v1",
+  "version": "0.13.945",
+  "profile": "gupy.nextdata-urls/v1",
+  "combined_batch_enabled_boards": 82,
+  "configuration_census": {
+    "source_revision": "09996a260785845f3b94a9fafad213d2b622ea3f",
+    "enabled": 36,
+    "canonical_admitted": 36,
+    "cached_admitted": 36,
+    "production_native_adoption": false
+  },
+  "implementation": [
+    "Reuse static listing fetch, precise existing native JSON decoder, tenant-bound NextData inventory, canonical URL/detail scheduling and native cold retirement.",
+    "Preserve explicit tenant precedence and fallback, exact legacy NextData marker, own subdomain/careerPage/jobs witnesses,20digit/Unicode-digit IDs without float conversion, incomplete/duplicate inventory flag and5million decoded-character/50000item thresholds.",
+    "Preserve no listing redirects,30second requests,3attempts,publisher policy before extraction,404/410 disappearance,empty-drop guard and accepted partial-inventory writes without disappearance effects."
+  ],
+  "checks": {
+    "actual_python_cases": 10,
+    "pure_request_inventory_precision_caps": "PASS5.479s",
+    "real_owned_worker_cases": 14,
+    "cold_retirement_cases": 3,
+    "focused_queue_with_jazzhr": "PASS6.406s",
+    "focused_worker_with_jazzhr_icims_startup": "PASS44.373s",
+    "full_queue_race_final": "PASS106.642s",
+    "full_worker_race_final": "PASS214.993s",
+    "vet_mod_tidy": "PASS queue and worker",
+    "python_runtime_contracts": "18passed8.22s",
+    "generator_ruff": "PASS"
+  },
+  "limitations": [
+    "No native Gupy production ownership or natural live-provider processing claim.",
+    "Combined94582board batch follows944 through fresh requiredCI/gate, exact-source deployment/admission/cutover.",
+    "Full migration, whole-lane resources, supported reversal/rollback window and final production Python retirement remain incomplete."
+  ]
+}

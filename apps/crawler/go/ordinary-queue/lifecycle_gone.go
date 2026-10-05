@@ -106,7 +106,7 @@ func (c *GreenhouseCycle) FinishProviderGoneResource(ctx context.Context, initia
 		return nil, ErrConfiguration
 	}
 	profile, err := InspectRichMonitor(c.claim.task.ID, c.claim.task.Config)
-	if err != nil || initialEndpoint != profile.Endpoint || observation.HTTPStatus == 410 && profile.Provider != "join" && profile.Provider != "dom" && profile.Provider != "icims" && profile.Provider != "jazzhr" || !validGreenhouseResponseResource(observation.Endpoint) {
+	if err != nil || initialEndpoint != profile.Endpoint || observation.HTTPStatus == 410 && profile.Provider != "join" && profile.Provider != "dom" && profile.Provider != "icims" && profile.Provider != "jazzhr" && profile.Provider != "gupy" || !validGreenhouseResponseResource(observation.Endpoint) {
 		return nil, ErrConfiguration
 	}
 	if profile.Provider == "icims" && !ICIMSMonitorPrimaryGone(c.claim.task.Config, initialEndpoint, observation.HTTPStatus) {
@@ -132,7 +132,7 @@ func (c *GreenhouseCycle) FinishProviderGoneResource(ctx context.Context, initia
 		var status string
 		var count int
 		var due time.Time
-		provider := map[string]string{"greenhouse": "Greenhouse", "ashby": "Ashby", "lever": "Lever", "recruitee": "Recruitee", "join": "JOIN", "icims": "iCIMS", "jazzhr": "JazzHR"}[profile.Provider]
+		provider := map[string]string{"greenhouse": "Greenhouse", "ashby": "Ashby", "lever": "Lever", "recruitee": "Recruitee", "join": "JOIN", "icims": "iCIMS", "jazzhr": "JazzHR", "gupy": "Gupy"}[profile.Provider]
 		if err := tx.QueryRow(ctx, lifecycleQuery("gone"), c.claim.task.ID, decision.Status, decision.Count,
 			decision.First, decision.Last, decision.Gone, decision.Due, fmt.Sprintf("%s API returned HTTP %d", provider, observation.HTTPStatus), observation.Endpoint, observation.HTTPStatus, decision.Terminal).Scan(&status, &count, &due); err != nil {
 			return err
