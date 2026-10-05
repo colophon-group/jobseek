@@ -109,6 +109,10 @@ func inspectDetailOwnership(boardID string, config map[string]string) (WorkdayDe
 	if profile, err := inspectAPIDetailOwnership(boardID, config); err == nil {
 		return profile, nil
 	}
+	if profile, err := InspectEmbeddedDetail(boardID, config, config["board_url"], Simple); err == nil {
+		profile.Domain = "*"
+		return profile, nil
+	}
 	return inspectWorkdayDetailOwnership(boardID, config)
 }
 
@@ -123,6 +127,9 @@ func inspectDetail(boardID string, config map[string]string, source string, work
 		return profile, nil
 	}
 	if profile, err := InspectAPIDetail(boardID, config, source, worker); err == nil {
+		return profile, nil
+	}
+	if profile, err := InspectEmbeddedDetail(boardID, config, source, worker); err == nil {
 		return profile, nil
 	}
 	return InspectWorkdayDetail(boardID, config, source, worker)

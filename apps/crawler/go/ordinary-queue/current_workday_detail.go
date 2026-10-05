@@ -36,6 +36,15 @@ func (d *CurrentWorkdayDetail) Profile() WorkdayDetailProfile {
 	}
 	p := d.profile
 	p.FacilityTenantAliases = append([]string(nil), p.FacilityTenantAliases...)
+	p.EnrichmentFields = append([]string(nil), p.EnrichmentFields...)
+	if p.EmbeddedConfig != nil {
+		body, _ := json.Marshal(p.EmbeddedConfig)
+		json.Unmarshal(body, &p.EmbeddedConfig)
+	}
+	if p.OracleFields != nil {
+		body, _ := json.Marshal(p.OracleFields)
+		json.Unmarshal(body, &p.OracleFields)
+	}
 	if p.JSONLDConfig != nil {
 		body, _ := json.Marshal(p.JSONLDConfig)
 		json.Unmarshal(body, &p.JSONLDConfig)

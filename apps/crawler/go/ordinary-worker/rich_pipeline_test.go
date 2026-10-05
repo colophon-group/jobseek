@@ -34,6 +34,7 @@ type pipelineSink struct {
 	failAt      int
 	cause       error
 	cancel      context.CancelFunc
+	details     []queue.URLOnlyDetail
 }
 
 func (s *pipelineSink) InvalidateInventory() { s.invalidated = true }
@@ -46,7 +47,7 @@ func (s *pipelineSink) WriteRichBatch(_ context.Context, batch []queue.Greenhous
 	if s.cancel != nil {
 		s.cancel()
 	}
-	return &queue.GreenhouseRichBatchResult{Inserted: len(batch)}, nil
+	return &queue.GreenhouseRichBatchResult{Inserted: len(batch), Details: s.details}, nil
 }
 func (s *pipelineSink) FinishSuccess(_ context.Context, summary queue.GreenhouseInventorySummary) (*queue.GreenhouseCycleResult, error) {
 	s.finished = true
@@ -116,6 +117,46 @@ func TestNativeRichPipelineFailureNeverFinalizesPartialSuccess(t *testing.T) {
 			}
 			if wantInserted > 0 && result == nil || result != nil && result.Batches.Inserted != wantInserted {
 				t.Fatal("partial inventory lost committed-prefix observations")
+			}
+		})
+	}
+}
+
+type delegatedDetailSink struct {
+	*pipelineSink
+	calls  int
+	failAt int
+}
+
+func (s *delegatedDetailSink) EnqueueURLDetail(context.Context, queue.URLOnlyDetail) (bool, error) {
+	s.calls++
+	if s.calls == s.failAt {
+		return false, errors.New("detail publication failed")
+	}
+	return true, nil
+}
+func TestDelegatedDetailPublicationFailureRetainsCommittedPrefixWithoutAbsence(t *testing.T) {
+	for _, mode := range []string{"success", "publication_failure", "missing_publisher"} {
+		t.Run(mode, func(t *testing.T) {
+			base := &pipelineSink{details: []queue.URLOnlyDetail{{ID: "first"}, {ID: "second"}}}
+			delegate := &delegatedDetailSink{pipelineSink: base}
+			var sink GreenhouseSink = delegate
+			if mode == "publication_failure" {
+				delegate.failAt = 2
+			}
+			if mode == "missing_publisher" {
+				sink = base
+			}
+			result, err := PersistGreenhouseInventory(context.Background(), sink, &pipelinePreparer{}, pipelineInventory(2))
+			if result == nil || result.Batches.Inserted != 2 || !reflect.DeepEqual(base.chunks, []int{2}) {
+				t.Fatal("detail publication lost committed canonical prefix")
+			}
+			if mode == "success" {
+				if err != nil || !base.finished || base.invalidated || result.Cycle == nil || delegate.calls != 2 {
+					t.Fatal("detail publication failed to finalize complete inventory", err)
+				}
+			} else if err == nil || base.finished || !base.invalidated || result.Cycle != nil {
+				t.Fatal("detail publication failure finalized absence or terminal success")
 			}
 		})
 	}

@@ -2,6 +2,10 @@ module github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue
 
 go 1.26.0
 
+require github.com/colophon-group/jobseek/apps/crawler/go/oracle-hcm v0.0.0
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/oracle-hcm => ../oracle-hcm
+
 require github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor v0.0.0
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor => ../api-sniffer-monitor

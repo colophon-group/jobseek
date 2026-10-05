@@ -229,6 +229,8 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		discovery, fetchErr = discoverSitemapInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "api_sniffer" {
 		discovery, fetchErr = discoverAPISnifferInventory(ctx, http.client, profile, task.Config)
+	} else if profile.Provider == "oracle_hcm" {
+		discovery, fetchErr = discoverOracleInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "join" {
 		discovery, fetchErr = discoverJoinInventory(ctx, http.client, profile)
 	} else if profile.Provider == "smartrecruiters" || profile.Provider == "workable" {
@@ -260,13 +262,16 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		if profile.Provider == "api_sniffer" {
 			matches = queue.APISnifferMonitorResourceMatches(profile, task.Config, response.endpoint)
 		}
+		if profile.Provider == "oracle_hcm" {
+			matches = queue.OracleMonitorResourceMatches(profile, task.Config, response.endpoint)
+		}
 		if !matches {
 			cycle.InvalidateInventory()
 			return result, claimRunError("response", queue.ErrConfiguration)
 		}
 		if response.reserved {
 			initial := profile.Endpoint
-			if profile.Provider == "api_sniffer" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" {
+			if profile.Provider == "api_sniffer" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "oracle_hcm" {
 				initial = response.endpoint
 			}
 			terminal, err := cycle.FinishReservationResource(ctx, initial, &queue.GreenhouseHeaderReservation{Endpoint: response.finalURL, PolicyURL: response.PolicyURL(), Source: response.reservationSource})
@@ -275,7 +280,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			}
 			return finishSuccess(terminal)
 		}
-		if (response.status == 404 || (profile.Provider == "join" || profile.Provider == "dom") && response.status == 410) && profile.Provider != "api_sniffer" && profile.Provider != "pinpoint" && profile.Provider != "rss" && profile.Provider != "personio" && profile.Provider != "smartrecruiters" && profile.Provider != "workable" && profile.Provider != "sitemap" {
+		if (response.status == 404 || (profile.Provider == "join" || profile.Provider == "dom") && response.status == 410) && profile.Provider != "api_sniffer" && profile.Provider != "pinpoint" && profile.Provider != "rss" && profile.Provider != "personio" && profile.Provider != "smartrecruiters" && profile.Provider != "workable" && profile.Provider != "sitemap" && profile.Provider != "oracle_hcm" {
 			terminal, err := cycle.FinishProviderGoneResource(ctx, response.endpoint, queue.GreenhouseGoneObservation{Endpoint: response.finalURL, HTTPStatus: response.status})
 			if err != nil {
 				return result, claimRunError("provider_gone", err)

@@ -1,5 +1,87 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Current delivery checkpoint — 2026-10-05 16:08 UTC
+
+Lightpanda 1.0.0 remains the latest stable release and is deployed with restart
+and reboot acceptance. Source940 B0 is active at epoch189. Two independent
+readbacks verify all nine services healthy with exact images, the original
+restart policies and zero restarts. Natural render/commit counters rose from
+one to three without failures. Scheduled reconciliation completed under the
+shared mutation lock; no routine was interrupted or bypassed.
+
+Fresh source940 admission reconciled 1,106,690 scheduled posting routes and
+admitted 6,159 monitors plus 2,199 detail boards (1,084,619 scheduled postings).
+The three verified B0 boards are excluded. Thirty-seven boards with cache
+mismatches retain their existing owner. Original ordinary staging succeeded for plan `76ae97463dc8…` and projection
+`8ec189ab057f…`; the original activation wrapper is in progress. Sustained
+complete-fleet canonical, publisher, description, freshness and queue proof
+remain pending. [Production and admission evidence](evidence/go-native-rendered940-b0-and-admission-2026-10-05.json).
+
+[PR #10325](https://github.com/colophon-group/jobseek/pull/10325) contains the
+Oracle HCM and direct/rendered embedded/Next.js coverage batch below. Local
+reference, real PostgreSQL/Redis and cold-retirement checks passed. CI built the
+new image and exposed a stale 24-profile assertion; the assertion now includes
+all 28 compiled profiles. Fresh required and installed-image checks must pass
+before a bound merge and original immutable deployment. This batch is not deployed.
+
+Continue remaining enabled providers/options and mandatory production consumers
+in the existing worker/parser/writer paths. Prove whole-lane resource comparison,
+supported cold reversal and the rollback window before retiring production
+Python/Playwright/Chromium. Full migration is active and incomplete. Earlier
+sections are historical.
+
+## Current delivery checkpoint — 2026-10-05 15:42 UTC
+
+The original v0.13.940 release and promotion succeeded. Independent readback
+verified source `450b9e0316b813518d8f568afcdd35c4f4312feb`, both workflow-published
+image digests, six healthy restart-armed baseline services, cleared native
+receipts/selectors, retired ordinary ownership and epoch188.
+[Portable production evidence](evidence/go-native-capacity940-production-baseline-2026-10-05.json).
+Supported B0 selector staging succeeded; original wrapper activation is in
+progress. Fresh B0/ordinary authority and sustained natural processing remain
+separate requirements and are not yet verified.
+
+The v0.13.941 local coverage batch now includes configured direct and Lightpanda
+embedded/Next.js details in addition to Oracle HCM. It reuses the existing JSON
+field extractor, verified document transport, browser navigation, processor and
+canonical/queue writer. The 357 embedded/Next.js configurations comprise 353
+new direct profiles, one new browser profile and three existing Join profiles;
+this count is configuration evidence, not actual posting-route admission.
+Structured extras now enrich native details before missing-field defaults, and
+embedded HTTP failure preserves the original recurring empty-content policy.
+
+A frozen Python extraction corpus, real PostgreSQL/Redis canonical/publisher/
+deadline regressions, direct and browser cold retirement, full affected race
+suites and vet passed. See [local coverage evidence](evidence/go-native-embedded-detail-local-2026-10-05.json).
+The coverage batch is not deployed. Finish fresh installed admission and natural
+proof, remaining providers/configurations and mandatory consumers, then the
+whole production resource/reversal/rollback window before retiring Python.
+Full migration remains active and incomplete. Earlier sections are historical.
+
+## Current delivery checkpoint — 2026-10-05 15:17 UTC
+
+Supported source939 retirement and B0 reversal completed. Fresh independent
+readback verifies all six baseline services healthy and restart-armed, native
+receipts/selectors cleared, the ordinary plan retired, epoch188, and no current
+native owner. One interrupted epoch187 receipt remains as revoked history.
+[Recovery evidence](evidence/go-native-rendered-baseline-recovered-2026-10-05.json)
+records the original successful restoration; final premerge verification repeated
+those checks after reconciliation finished naturally.
+
+[PR #10324](https://github.com/colophon-group/jobseek/pull/10324) merged the
+reservation capacity-close repair as `450b9e0316b813518d8f568afcdd35c4f4312feb`
+after exact-head Required CI, Crawler Deploy Gate and installed contracts passed.
+The [original immutable release](https://github.com/colophon-group/jobseek/actions/runs/37331617474)
+is in progress; production deployment and fresh native admission are not yet
+verified. Lightpanda 1.0.0 remains verified in production.
+
+The Oracle coverage batch below is rebased onto that repair and reserves the
+following crawler version 0.13.941. It is not merged or deployed. Next finish
+remaining configuration/provider and mandatory-consumer coverage in the existing
+worker, validate fresh actual posting routes, and prove sustained natural output,
+policy, descriptions and recurring queues before any production Python removal.
+Full migration remains active and incomplete. Earlier sections are historical.
+
 ## Source939 activation and capacity-reset recovery — 2026-10-05
 
 Lightpanda **1.0.0 is deployed**, with exact image/executable identities and
@@ -34,23 +116,55 @@ fresh bound admission and sustained natural canonical/policy/description/queue
 proof. Then finish the existing provider/detail/runtime batch and the full lane's
 cost and reversal proof. Full migration is not complete.
 
-## Lightpanda 1.0.0 upgrade — 2026-10-05
+## Oracle HCM coverage batch — 2026-10-05
 
-The latest stable upstream release is 1.0.0, published October 2. The renderer
-candidate now pins its official multi-architecture OCI index and verifies both
-Linux executable checksums against the release assets. Existing AMD64/ARM64
-browser, C4, child isolation and egress integration checks gate promotion;
-the existing immutable renderer deployment and acceptance workflows follow.
-The September 30 nightly remains the deployed rollback target until promotion
-is verified. [Release identity](../pilots/go-lightpanda/lightpanda-release.json).
+The local coverage branch now wires bounded Oracle inventory and API detail
+extraction through the existing native worker, canonical writer, enrichment
+processor and Redis detail queues. Description-only enrichment preserves monitor
+fields; configured description/employment enrichment and missing-field backfill
+use the existing processor. Configured Oracle detail fields reuse the established
+API field extractor. The enabled Oracle careers URL allowlist/rewrite preserves
+numeric job identity and refuses provider-boundary violations before publication.
+Unsupported proxy configurations retain the legacy owner.
 
-The shared-capacity fix merged in [PR #10321](https://github.com/colophon-group/jobseek/pull/10321)
-as `d6bdab010404b9bac5e33965d13aec2fc49791df`; its original crawler deployment
-is running. Independent premerge readback verified all six baseline writers
-healthy, receipts and selectors cleared, the failed native plan retired and
-epoch186. Upgrade the renderer before fresh native activation, then continue
-the full migration sequence below. Full migration and natural API proof remain
-incomplete; this release upgrade does not replace the delivery goal.
+Both affected modules pass their full race suites and vet. Real PostgreSQL/Redis
+checks cover seven detail outcomes, rich inventory/detail scheduling and cold
+Oracle/Workday retirement. This is local implementation evidence, not production
+admission or full migration completion. See the
+[coverage evidence](evidence/go-native-oracle-coverage-local-2026-10-05.json).
+This batch is rebased onto the capacity repair with VERSION 0.13.941. Finish
+remaining provider/configuration and mandatory-consumer coverage before cutover.
+
+## Lightpanda 1.0.0 deployed — 2026-10-05
+
+The latest stable upstream release is 1.0.0, published October 2. [PR #10322](https://github.com/colophon-group/jobseek/pull/10322)
+merged as `87ceae8dadae7177b5b282bc960b358c706144a7`. Required CI, Crawler
+Deploy Gate, real AMD64/ARM64 browser/C4/child/egress checks, renderer deployment
+smoke and all sixteen synthetic whole-lane comparison arms passed. That comparison
+admitted the candidate; it does not prove complete production migration costs.
+
+The original immutable renderer deployment first refused the old running
+predecessor's cgroup memory attestation and contained that exact predecessor
+cold. Its supported cold retry passed every unchanged check. Restart/reboot
+acceptance subsequently passed; the original deployment resumed the same image.
+Independent readback at 13:30 UTC verified the live binary against the official
+1.0.0 ARM64 checksum, exact source/image, private cgroup namespace, the existing
+1 GiB memory limit and swap disabled. No limits or policy checks were relaxed.
+[Portable production evidence](evidence/lightpanda-1.0.0-production-2026-10-05.json)
+records immutable identities and original deployment/acceptance runs.
+
+The shared-capacity fix from [PR #10321](https://github.com/colophon-group/jobseek/pull/10321)
+is deployed as crawler v0.13.939, source
+`d6bdab010404b9bac5e33965d13aec2fc49791df`. Independent readback at 13:09 UTC
+verified all six baseline writers healthy, receipts and selectors cleared,
+the failed native plan retired and epoch186. Next use fresh source939 native
+B0/ordinary admission and prove natural canonical API output and recurring queue
+settlement with the upgraded renderer. Then finish the batched provider/config
+coverage and mandatory Python consumers, full production comparison/reversal
+and rollback window before retiring production Python, Playwright and Chromium.
+Full migration remains active and incomplete. Oracle HCM inventory/default detail
+extraction is implemented locally with race/vet and pagination/partition tests;
+its runtime/profile wiring and production ownership are still pending.
 
 ## Full migration delivery — source938 deployed, 2026-10-05
 

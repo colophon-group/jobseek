@@ -1,0 +1,40 @@
+{
+  "schema": "jobseek-native-embedded-detail-local/v1",
+  "date": "2026-10-05",
+  "status": "local implementation; not deployed or production-admitted",
+  "profiles": [
+    "embedded.direct-detail/v1",
+    "embedded.rendered-detail/v1"
+  ],
+  "configuration_census": {
+    "total_embedded_or_nextdata": 357,
+    "new_direct_profile": 353,
+    "new_rendered_profile": 1,
+    "existing_join_profile_empty_configs": 3,
+    "actual_posting_routes_reconciled": false
+  },
+  "extraction": [
+    "script ID, last parseable variable assignment and Python-compatible regex prefix",
+    "React Router double-encoded JSON",
+    "merged RSC flight JSON",
+    "existing JSON field mapping and integer identity preservation",
+    "structured extras before missing-field defaults and shared normalization/enrichment",
+    "configured description mask and missing canonical core backfill"
+  ],
+  "checks": {
+    "frozen_python_scraper_corpus": "13 cases pass",
+    "real_postgres_redis_all_native_detail_and_rendered_regressions": "pass (42.795s)",
+    "real_postgres_redis_oracle_and_embedded_masks_failure_policy": "pass (7.751s)",
+    "real_postgres_redis_embedded_direct_and_browser_cold_retirement": "pass (11.766s)",
+    "full_queue_race": "pass (16.908s)",
+    "full_worker_race": "pass (22.546s)",
+    "full_executor_race": "pass (21.317s)",
+    "full_api_field_extractor_race": "pass (1.351s)",
+    "affected_module_vet": "pass"
+  },
+  "limitations": [
+    "Production admission must reconcile actual canonical posting/cache routes on the installed source",
+    "Remaining monitor/provider configuration coverage and mandatory Python consumers still incomplete",
+    "Whole production resource comparison and rollback window still pending"
+  ]
+}

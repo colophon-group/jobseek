@@ -7,7 +7,10 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 
+	apisniffer "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
 	join "github.com/colophon-group/jobseek/apps/crawler/go/join-monitor"
+	executor "github.com/colophon-group/jobseek/apps/crawler/go/lightpanda-b0-executor"
+	oracle "github.com/colophon-group/jobseek/apps/crawler/go/oracle-hcm"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	publisherpolicy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 	smartrecruiters "github.com/colophon-group/jobseek/apps/crawler/go/smartrecruiters-monitor"
@@ -31,6 +34,21 @@ func fetchAPIDetail(ctx context.Context, verified *VerifiedDirectHTTP, profile q
 	var content any
 	var reservation *publisherpolicy.Reservation
 	switch profile.Profile {
+	case "oracle_hcm.api-detail/v1":
+		body, response, failure := fetchOraclePage(ctx, &client, profile.Endpoint)
+		if ctx.Err() != nil {
+			return nil, nil, ctx.Err()
+		}
+		if response != nil && response.reserved {
+			reservation = &publisherpolicy.Reservation{URL: response.finalURL, Source: "header", PolicyURL: response.policy}
+		} else if failure != nil {
+			err = executor.ErrEmptyResult
+		} else {
+			content, err = projectOracleDetail(body, profile.OracleFields)
+			if err != nil {
+				err = executor.ErrEmptyResult
+			}
+		}
 	case "join.nextdata-detail/v1":
 		fetched, failure := join.FetchDetailWithClient(ctx, join.DetailRequest{URL: profile.SourceURL, Config: profile.JoinDetailConfig}, &client)
 		content, err = fetched.Content, failure
@@ -76,4 +94,32 @@ func fetchAPIDetail(ctx context.Context, verified *VerifiedDirectHTTP, profile q
 		return nil, nil, err
 	}
 	return values, nil, nil
+}
+
+// Configured Oracle fields use the already verified Python-compatible API field
+// extractor. Tenant/site selection remains bound by the Oracle detail profile.
+func projectOracleDetail(body []byte, fields map[string]any) (map[string]any, error) {
+	if len(fields) == 0 {
+		return oracle.ProjectDetail(body)
+	}
+	doc, err := apisniffer.Decode(body)
+	if err != nil {
+		return nil, err
+	}
+	row, err := apisniffer.Search(doc.Value, "items[0]")
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := row.(map[string]any); !ok {
+		return nil, executor.ErrEmptyResult
+	}
+	values := map[string]any{}
+	for target, spec := range fields {
+		value, err := doc.Field(row, spec)
+		if err != nil {
+			return nil, err
+		}
+		values[target] = value
+	}
+	return values, nil
 }

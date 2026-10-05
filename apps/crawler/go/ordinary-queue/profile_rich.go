@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	apisniffer "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
+	oracle "github.com/colophon-group/jobseek/apps/crawler/go/oracle-hcm"
 	"net/url"
 	"regexp"
 	"strings"
@@ -65,6 +66,13 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		for _, key := range []string{"delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
 		}
+	case "oracle_hcm":
+		for _, key := range oracle.ConfigKeys {
+			allowed[key] = true
+		}
+		for _, key := range []string{"proxy", "url_allowlist", "url_transform", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+			allowed[key] = true
+		}
 	case "api_sniffer":
 		for _, key := range apisniffer.ConfigKeys {
 			allowed[key] = true
@@ -100,6 +108,9 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 	}
 	if config["crawler_type"] == "api_sniffer" {
 		return inspectAPISnifferMonitor(boardID, config, md)
+	}
+	if config["crawler_type"] == "oracle_hcm" {
+		return inspectOracleMonitor(boardID, config, md)
 	}
 	if config["crawler_type"] == "join" {
 		return inspectJoinMonitor(boardID, config, md)

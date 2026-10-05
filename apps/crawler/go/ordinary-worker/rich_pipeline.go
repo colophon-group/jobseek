@@ -104,6 +104,19 @@ func PersistGreenhouseInventory(ctx context.Context, sink GreenhouseSink, prepar
 		result.Batches.Foreign += counts.Foreign
 		result.Batches.ForeignRelisted += counts.ForeignRelisted
 		result.Batches.Deduplicated += counts.Deduplicated
+		if len(counts.Details) > 0 {
+			publisher, ok := sink.(interface {
+				EnqueueURLDetail(context.Context, queue.URLOnlyDetail) (bool, error)
+			})
+			if !ok {
+				return result, errors.New("native rich detail publisher unavailable")
+			}
+			for _, detail := range counts.Details {
+				if _, err := publisher.EnqueueURLDetail(ctx, detail); err != nil {
+					return result, claimRunError("detail_enqueue", err)
+				}
+			}
+		}
 	}
 	if err := ctx.Err(); err != nil {
 		return result, err
