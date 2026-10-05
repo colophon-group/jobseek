@@ -26,6 +26,8 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		allowed[key] = value
 	}
 	switch config["crawler_type"] {
+	case "jazzhr":
+		allowed["tenant"] = true
 	case "breezy":
 		allowed["slug"], allowed["portal_url"] = true, true
 		for _, key := range []string{"delist_threshold", "drop_threshold", "blast_radius_floor"} {
@@ -108,6 +110,9 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 	md, err := richProfileMetadata(config)
 	if err != nil {
 		return GreenhouseMonitorProfile{}, err
+	}
+	if config["crawler_type"] == "jazzhr" {
+		return inspectJazzHRMonitor(boardID, config, md)
 	}
 	if config["crawler_type"] == "breezy" {
 		return inspectBreezyMonitor(boardID, config, md)

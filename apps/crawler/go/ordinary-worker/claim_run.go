@@ -231,6 +231,8 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		discovery, fetchErr = discoverAPISnifferInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "breezy" || profile.Provider == "gem" {
 		discovery, fetchErr = discoverBreezyGemInventory(ctx, http.client, profile)
+	} else if profile.Provider == "jazzhr" {
+		discovery, fetchErr = discoverJazzHRInventory(ctx, http.client, profile)
 	} else if profile.Provider == "icims" {
 		discovery, fetchErr = discoverICIMSInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "oracle_hcm" {
@@ -287,7 +289,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			}
 			return finishSuccess(terminal)
 		}
-		providerGone := (response.status == 404 || (profile.Provider == "join" || profile.Provider == "dom") && response.status == 410) && profile.Provider != "api_sniffer" && profile.Provider != "pinpoint" && profile.Provider != "rss" && profile.Provider != "personio" && profile.Provider != "smartrecruiters" && profile.Provider != "workable" && profile.Provider != "sitemap" && profile.Provider != "oracle_hcm" && profile.Provider != "breezy" && profile.Provider != "gem"
+		providerGone := (response.status == 404 || (profile.Provider == "join" || profile.Provider == "dom" || profile.Provider == "jazzhr") && response.status == 410) && profile.Provider != "api_sniffer" && profile.Provider != "pinpoint" && profile.Provider != "rss" && profile.Provider != "personio" && profile.Provider != "smartrecruiters" && profile.Provider != "workable" && profile.Provider != "sitemap" && profile.Provider != "oracle_hcm" && profile.Provider != "breezy" && profile.Provider != "gem"
 		if profile.Provider == "icims" {
 			providerGone = queue.ICIMSMonitorPrimaryGone(task.Config, response.endpoint, response.status)
 		}
@@ -307,7 +309,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 	if err != nil {
 		return failure("inventory", err)
 	}
-	if profile.Provider == "workday" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "dom" || profile.Provider == "icims" || profile.Provider == "breezy" {
+	if profile.Provider == "workday" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "dom" || profile.Provider == "icims" || profile.Provider == "breezy" || profile.Provider == "jazzhr" {
 		for offset := 0; offset < len(inventory.Jobs); offset += 500 {
 			end := min(offset+500, len(inventory.Jobs))
 			urls := make([]string, 0, end-offset)

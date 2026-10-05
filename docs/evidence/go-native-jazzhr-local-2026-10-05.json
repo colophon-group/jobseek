@@ -1,0 +1,40 @@
+{
+  "schema": "jobseek.native-local-verification/v1",
+  "version": "0.13.945",
+  "profile": "jazzhr.listing-urls/v1",
+  "batch_profiles": [
+    "breezy.api-urls/v1",
+    "gem.token-skip/v1",
+    "jazzhr.listing-urls/v1"
+  ],
+  "configuration_census": {
+    "source_revision": "09996a260785845f3b94a9fafad213d2b622ea3f",
+    "enabled": 20,
+    "canonical_admitted": 20,
+    "cached_admitted": 20,
+    "production_native_adoption": false
+  },
+  "implementation": [
+    "Reuse existing static DOM href extraction, listing transport/retry/publisher handling, URL-only canonical writer, detail scheduling and cold retirement.",
+    "Bind strict first-party or explicit tenant identity; reject contradictory/reserved/invalid tenants. Preserve canonical URL inventory,5million decoded characters,50000sorted URL truncation, shared3attempts,30second requests, no listing redirects and404/410 disappearance.",
+    "Successful policy headers/meta stop before listing validation; non200policy remains a retry/failure, matching actual Python.",
+    "Existing iCIMS fetch wrapper retains2million decoded-character cap while shared static listing fetch accepts JazzHR5million cap."
+  ],
+  "checks": {
+    "actual_python_inventory_requests_cases": 7,
+    "real_owned_worker_cases": 13,
+    "cold_retirement_cases": 3,
+    "pure_actual_python_and_unicode_caps": "PASS7.349s",
+    "focused_queue_cold_final": "PASS3.963s",
+    "full_queue_race_final": "PASS104.695s",
+    "full_worker_race_final": "PASS190.579s including all iCIMS and startup regressions",
+    "vet_mod_tidy": "PASS queue and worker",
+    "python_runtime_contracts": "18passed8.62s",
+    "generator_ruff": "PASS"
+  },
+  "limitations": [
+    "No JazzHR native production ownership or natural processing claim.",
+    "Combined46board batch follows944startup fix, then fresh required CI/gate and source-bound admission/deployment.",
+    "Remaining enabled coverage and mandatory production Python consumers, whole-lane comparison, reversal/rollback window and retirement remain incomplete."
+  ]
+}

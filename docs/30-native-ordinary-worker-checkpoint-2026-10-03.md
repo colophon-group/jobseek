@@ -1,6 +1,6 @@
 # Native ordinary worker continuation, 2026-10-03
 
-## Current delivery — 2026-10-05 19:03 UTC
+## Current delivery — 2026-10-05 19:17 UTC
 
 Lightpanda **1.0.0**, released October 2, remains the newest stable release in
 [the official release list](https://github.com/lightpanda-io/browser/releases),
@@ -29,6 +29,12 @@ startup rejection. The original wrapper contained all writers, and its supported
 readback verifies six baseline health responses at 200, B0 claimant at 204,
 unchanged B0 epoch/receipt, 22 ready records, zero inflight/dead and absent ordinary
 receipt. Native ordinary production processing remains unverified.
+Before the incoming944release, the original B0 rollback restored all22ready
+records and retired epoch192. Original selector clear succeeded. Independent
+19:17UTC readback verifies six healthy restart-armed baseline services, no
+active SQL plan or current fence, no native queue owners/receipts/selectors,
+and no live administrative oneoff.
+[Cold baseline evidence](evidence/go-native-http-api943-before-icims944-baseline-2026-10-05.json).
 [Activation and recovery evidence](evidence/go-native-http-api943-activation-recovery-2026-10-05.json).
 
 The 944 candidate fixes the legacy validator's missing Oracle API, embedded
@@ -58,9 +64,9 @@ retirement. Full migration remains active and incomplete; following entries are
 historical.
 
 
-The next 945 batch adds Breezy URL inventories and Gem rich inventories through
+The next 945 batch adds Breezy and JazzHR URL inventories and Gem rich inventories through
 the existing queue, verified transport, shared enrichment/canonical writer and
-cold retirement. All **26 enabled configurations** (13 per provider) pass
+cold retirement. All **46 enabled configurations** (13Breezy,13Gem,20JazzHR) pass
 canonical/cache admission. Nine frozen cases run the actual Python monitors,
 including requests, falsy fields and the shared location-type mapping. Fourteen
 real worker cases and six cold retirement cases pass, covering canonical output,
@@ -69,6 +75,12 @@ conservation, interrupted and committed-before-ACK reload, and changed-token
 refusal. Final full race suites pass: enrichment24.250s, queue103.132s and
 worker183.643s. Eighteen runtime contracts, vet/tidy and Ruff pass.
 [Local evidence](evidence/go-native-breezy-gem-local-2026-10-05.json).
+JazzHR adds seven actual Python inventory/request fixtures,13real worker
+cases and three cold retirement cases. It preserves strict tenant identity,
+canonical URLs, no listing redirects,404/410 disappearance, publisher policy,
+Unicode/truncation bounds and queue/deadline conservation. Final combined queue
+and worker race suites pass104.695s and190.579s, including existing iCIMS and
+startup regressions. [JazzHR evidence](evidence/go-native-jazzhr-local-2026-10-05.json).
 The batch depends on944; native production ownership remains unverified.
 
 
