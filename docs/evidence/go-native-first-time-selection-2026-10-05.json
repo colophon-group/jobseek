@@ -1,0 +1,44 @@
+{
+  "schema": "jobseek.native-first-time-selection/v1",
+  "production_source": "450b9e0316b813518d8f568afcdd35c4f4312feb",
+  "routing_epoch": 189,
+  "observed_at": "2026-10-05T16:39:14Z",
+  "ordinary_monitor_boards": 6159,
+  "ordinary_detail_boards": 2199,
+  "bounded_natural_completions": {
+    "rendered_monitors": 34,
+    "rendered_details": 8,
+    "simple_profiles": 0
+  },
+  "queue_observation": {
+    "simple_first_time_due_domains": 8,
+    "simple_first_time_detail_head_samples_owned": 8,
+    "first_time_details_in_sampled_domains": 15630,
+    "simple_inflight": 0
+  },
+  "cause_scope": "Reproduced candidate-discovery delay when a due first-time wildcard detail board is outside the initial eight-board cohort window. This does not establish every production claim-error cause.",
+  "change": "Bounded discovery from existing first-time ready queues before rotating board traversal; full canonical/config/source validation and original Lua priority, throttle, lease and ownership checks remain in force. Reserve three quarters of the candidate batch for existing traversal.",
+  "verification": {
+    "regression_before_fix": "FAIL: first-time detail stranded outside cohort window; claim=nil, error=nil",
+    "focused_after_fix": "PASS: new regression, existing rotation, forged posting route rejection and global first-time/fairness",
+    "queue_full_race": "PASS: 92.052s, real PostgreSQL and Redis required",
+    "queue_vet": "PASS",
+    "worker_full_race": "PASS: 150.785s, real PostgreSQL and Redis required",
+    "worker_vet": "PASS"
+  },
+  "retirement": {
+    "first_attempt": "Refused after Redis projection removal before SQL retirement; host contained with retained retiring identity.",
+    "supported_exact_retry": "Succeeded through original installed wrapper.",
+    "independent_post_retirement": "Nine exact-image, restart-armed healthy writers, zero restarts; retained SQL plan retired, ordinary receipt/projection absent, current active fences zero.",
+    "full_reversal": "Original B0 rollback and selector clear succeeded; independent readback at 16:52:42 UTC verifies six healthy exact-image restart-armed writers, absent native receipts/projections, retired SQL plan and epoch190."
+  },
+  "limitations": [
+    "Production verification of the selector correction is pending required CI and immutable deployment.",
+    "Full migration, comparable whole-lane resource evidence, remaining profiles and mandatory Python consumers remain incomplete."
+  ],
+  "coverage_batch": {
+    "pr": 10325,
+    "merged_revision": "e8576cb5653173110983fe38a2c79dfe44018f26",
+    "required_checks": "Required CI and Crawler Deploy Gate green at exact head7b401a2fc; fresh head/base/draft/operator/hold checks preceded SHA-bound merge."
+  }
+}

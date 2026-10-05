@@ -45,7 +45,11 @@ func (a *Authority) detailCandidates(ctx context.Context, tx pgx.Tx, now float64
 	}
 	observations := map[string]boardObservation{}
 	visited := map[string]bool{}
+	selectedPostings := map[string]bool{}
 	add := func(id, board, source, domain string, score float64, tier int, cached map[string]string) error {
+		if selectedPostings[id] {
+			return nil
+		}
 		binding, selected := bindings[board]
 		if !selected {
 			return nil
@@ -86,7 +90,51 @@ func (a *Authority) detailCandidates(ctx context.Context, tx pgx.Tx, now float64
 			return nil
 		}
 		candidates = append(candidates, ownershipCandidate{member: member, tier: tier, score: score, postingID: id, cached: cached})
+		selectedPostings[id] = true
 		return nil
+	}
+	// Strict first-time priority can strand an entire lane when its due detail
+	// boards sit outside this pass's cohort window. Observe the existing ready
+	// queues first; they remain the Lua pop authority. Keep part of the batch
+	// available for rotating canonical traversal, including foreign queue heads.
+	domains, err := a.queue.redis.ZRangeByScore(ctx, "ready:"+string(worker)+":0", &redis.ZRangeBy{Min: "-inf", Max: number(now), Count: 8}).Result()
+	if err != nil {
+		return nil, ErrObservation
+	}
+priority:
+	for _, domain := range domains {
+		rows, err := a.queue.redis.ZRangeByScoreWithScores(ctx, "ft_scrapes_"+string(worker)+":"+domain, &redis.ZRangeBy{Min: "-inf", Max: number(now), Count: ownershipCandidateBatch}).Result()
+		if err != nil {
+			return nil, ErrObservation
+		}
+		pipe := a.queue.redis.Pipeline()
+		configs := make([]*redis.MapStringStringCmd, len(rows))
+		for i, row := range rows {
+			id, ok := row.Member.(string)
+			if !ok || !canonicalUUID.MatchString(id) {
+				return nil, ErrProtocol
+			}
+			configs[i] = pipe.HGetAll(ctx, "scrape:"+id)
+		}
+		if _, err := pipe.Exec(ctx); err != nil {
+			return nil, ErrObservation
+		}
+		for i, row := range rows {
+			cached, err := configs[i].Result()
+			if err != nil {
+				return nil, ErrObservation
+			}
+			board := cached["board_id"]
+			if _, owned := bindings[board]; !owned {
+				continue
+			}
+			if err := add(row.Member.(string), board, cached["source_url"], domain, row.Score, 0, cached); err != nil {
+				return nil, err
+			}
+			if len(candidates) >= ownershipCandidateBatch/4 {
+				break priority
+			}
+		}
 	}
 	for i := 0; i < count; i++ {
 		detail := details[(start+i)%len(details)]

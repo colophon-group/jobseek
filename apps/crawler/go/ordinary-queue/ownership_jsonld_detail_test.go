@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -45,6 +46,56 @@ func TestRealJSONLDDetailCursorUsesBoundedUUIDIndexTraversal(t *testing.T) {
 	root := report[0].Plan
 	if root.Kind != "Limit" || len(root.Plans) != 1 || root.Plans[0].Kind != "Index Scan" || root.Plans[0].Index != "idx_jp_board_id_cursor" {
 		t.Fatalf("native detail cursor must traverse the UUID index directly, without a full-board sort: %s", body)
+	}
+}
+
+// A large cohort can put all priority detail work outside the current
+// eight-board window, preventing both detail and recurring monitor claims.
+func TestRealJSONLDFirstTimeCandidateOutsideBoardWindow(t *testing.T) {
+	p := firstJSONLDDetailFixture(t)
+	ctx := context.Background()
+	boards := []string{p.plan.document.Details[0].BoardID}
+	for i := 0; i < 8; i++ {
+		board := fmt.Sprintf("00000000-0000-4000-8000-%012d", 100+i)
+		config := jsonldDetailConfig()
+		config["company_id"], config["board_slug"] = p.f.company, "first-time-window-"+board
+		config["board_url"] += "?board=" + board
+		if _, err := p.f.observer.Exec(ctx, `INSERT INTO job_board(id,company_id,board_slug,board_url,crawler_type,metadata,check_interval_minutes,scrape_interval_hours,throttle_key,monitor_needs_browser,scraper_needs_browser) VALUES($1::uuid,$2::uuid,$3,$4,'dom',$5::jsonb,60,24,'careers.example.com',true,false)`, board, p.f.company, config["board_slug"], config["board_url"], config["metadata"]); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			_, _ = p.f.observer.Exec(context.Background(), "DELETE FROM job_board WHERE id=$1::uuid", board)
+		})
+		if err := p.f.client.redis.HSet(ctx, "board:"+board, config).Err(); err != nil {
+			t.Fatal(err)
+		}
+		boards = append(boards, board)
+	}
+	plan, err := p.f.authority.StageOwnership(ctx, p.plan.SourceRevision(), []string{p.plan.document.Members[0].BoardID}, boards)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = p.f.observer.Exec(context.Background(), "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE plan_sha256=$1 AND state='active'", plan.SHA256())
+	})
+	activateFixturePlan(t, p.f, plan)
+	if err := p.f.client.redis.Set(ctx, ownershipProjectionKey, plan.projection, 0).Err(); err != nil {
+		t.Fatal(err)
+	}
+	a, err := OpenOwnedAuthority(ctx, p.f.dsn, p.f.client, p.f.epoch, plan.digest, plan.SourceRevision())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(a.Close)
+	if plan.document.Details[8].BoardID != boards[0] {
+		t.Fatal("due board must be outside initial scan window")
+	}
+	claim, err := a.Claim(ctx, Simple)
+	if err != nil || claim == nil || claim.task.ID != p.f.task.ID || claim.task.Kind != Scrape {
+		t.Fatal("first-time detail stranded outside cohort window", err)
+	}
+	if p.f.client.redis.ZCard(ctx, "inflight:simple").Val() != 1 {
+		t.Fatal("candidate observation changed another lease")
 	}
 }
 

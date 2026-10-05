@@ -1,5 +1,35 @@
 # Native ordinary worker continuation, 2026-10-03
 
+
+## First-time HTTP selection correction — 2026-10-05
+
+Lightpanda 1.0.0 remains the verified deployed renderer. Source940 ordinary
+ownership at epoch189 produced 34 rendered monitor completions and eight detail
+completions in a bounded observation; no Simple profile completion was observed.
+Read-only Redis observation found 15,630 due first-time details across eight
+Simple domains, ahead of recurring work. The initial eight-board canonical scan
+can miss these priority tasks in a large wildcard cohort. A real PostgreSQL/Redis
+regression reproduces that delay with a due ninth board and no claim/error.
+
+The v0.13.942 correction reads bounded first-time candidates from existing ready
+queues before rotating canonical traversal. It preserves complete canonical
+validation and the original Lua ownership, priority, throttle and lease checks,
+and reserves three quarters of the candidate batch for existing traversal.
+The new regression and existing rotation, forged-route and fairness tests pass.
+[Evidence](evidence/go-native-first-time-selection-2026-10-05.json).
+
+The original source940 retirement initially refused after Redis projection
+removal, retaining its retiring identity and containing all writers. Its supported
+exact retry succeeded. Independent readback verifies all nine B0/baseline writers
+healthy and restart-armed with zero restarts, the SQL plan retired and current
+ordinary fences/receipt/projection absent. Original B0 reversal and selector clearing succeeded. Independent readback at
+16:52 UTC verifies the complete six-writer baseline at epoch190, absent native
+receipts/projections and the retired SQL plan. PR #10325 merged as `e8576cb565…`
+after fresh exact-head required CI/gate and operator/hold checks. Provider
+coverage is not yet verified deployed. Full queue race passed in 92.052s and
+worker race passed in 150.785s, and Go vet passed. Production proof
+of the selector correction and full migration completion remain outstanding.
+
 ## Current delivery checkpoint — 2026-10-05 16:08 UTC
 
 Lightpanda 1.0.0 remains the latest stable release and is deployed with restart
