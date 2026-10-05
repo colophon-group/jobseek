@@ -107,7 +107,12 @@ def ownership_projection(payload: str) -> str:
                 for board, domain in details.items()
             )
             or any(
-                d["worker"] != "simple"
+                d["worker"]
+                != (
+                    "browser"
+                    if d["profile"] in ("dom.rendered-detail/v1", "jsonld.rendered-detail/v1")
+                    else "simple"
+                )
                 or d["profile"]
                 not in (
                     "workday.cxs-detail/v1",
@@ -116,6 +121,8 @@ def ownership_projection(payload: str) -> str:
                     "workable.api-detail/v1",
                     "join.nextdata-detail/v1",
                     "dom.direct-detail/v1",
+                    "dom.rendered-detail/v1",
+                    "jsonld.rendered-detail/v1",
                 )
                 or (d["profile"] == "workday.cxs-detail/v1" and d["board_id"] not in members)
                 or (

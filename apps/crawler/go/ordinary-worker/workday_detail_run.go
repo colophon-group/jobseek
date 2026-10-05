@@ -26,13 +26,17 @@ func RunWorkdayDetail(ctx context.Context, authority *queue.Authority, claim *qu
 	return RunDetail(ctx, authority, claim, http, processor, circuits)
 }
 
-func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Claim, http *VerifiedDirectHTTP, processor *executor.Processor, circuits *queue.HostCircuits) (*GreenhouseClaimResult, error) {
+func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Claim, http *VerifiedDirectHTTP, processor *executor.Processor, circuits *queue.HostCircuits, renderers ...renderedDetailClient) (*GreenhouseClaimResult, error) {
 	result := &GreenhouseClaimResult{TaskKind: queue.Scrape}
 	if authority == nil || claim == nil || !claim.OwnershipBound() || http == nil || http.client == nil || processor == nil || circuits == nil {
 		return result, claimRunError("detail_startup", queue.ErrConfiguration)
 	}
 	task := claim.Descriptor()
-	if task.Kind != queue.Scrape || task.Worker != queue.Simple {
+	var renderer renderedDetailClient
+	if len(renderers) == 1 {
+		renderer = renderers[0]
+	}
+	if len(renderers) > 1 || task.Kind != queue.Scrape || (task.Worker != queue.Simple && task.Worker != queue.Browser) || (task.Worker == queue.Browser && renderer == nil) {
 		return result, claimRunError("detail_startup", queue.ErrUnsupportedProfile)
 	}
 	settle := func(receipt *queue.Receipt, status string) (*GreenhouseClaimResult, error) {
@@ -150,7 +154,12 @@ func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Cla
 
 	var content map[string]any
 	var reservation *publisherpolicy.Reservation
-	if profile.Profile == "jsonld.direct-detail/v1" || profile.Profile == "dom.direct-detail/v1" {
+	if profile.Profile == "dom.rendered-detail/v1" || profile.Profile == "jsonld.rendered-detail/v1" {
+		content, reservation, err = renderer.Fetch(ctx, profile)
+		observed := observation.Snapshot()
+		hostReachable = observed.Responses > 0
+		hostFailure = observed.LastStatus == 401 || observed.LastStatus == 403 || observed.LastStatus == 429 || observed.LastStatus >= 500
+	} else if profile.Profile == "jsonld.direct-detail/v1" || profile.Profile == "dom.direct-detail/v1" {
 		fetched, failure := fetchDirectDetail(ctx, http, profile)
 		err = failure
 		hostReachable = fetched.Responses > 0
@@ -209,6 +218,10 @@ func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Cla
 				err = &executor.NavigationHTTPError{RequestedURL: profile.Endpoint, ResponseURL: profile.Endpoint, Status: uint32(failed.Status)}
 			}
 		}
+	}
+	if reservation != nil && reservation.PolicyURL != nil && (len(*reservation.PolicyURL) > 8192 || !utf8.ValidString(*reservation.PolicyURL) || strings.ContainsRune(*reservation.PolicyURL, 0)) {
+		reservation.PolicyURL = nil
+		result.Diagnostics = append(result.Diagnostics, "invalid_policy_url")
 	}
 	result.DiscoveryDuration = time.Since(started)
 	snapshot := observation.Snapshot()

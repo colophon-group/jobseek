@@ -98,10 +98,15 @@ end
 if operation ~= "inspect-active" and changes == nil and plan.details ~= nil then
     local owned = {}
     for _, member in ipairs(plan.details) do owned[member.board_id] = member.domain end
-    for _, task in ipairs(redis.call("ZRANGE", KEYS[10],0,-1)) do
-        local kind, domain, id = string.match(task,"^([^|]+)|([^|]+)|([^|]+)$")
-        if kind == "scrape" and owned[redis.call("HGET","scrape:"..id,"board_id") or ""] then
+    for _, worker in ipairs({"simple", "browser"}) do
+        if not retirement_type("inflight:" .. worker, "zset") or not retirement_type("inflight_tokens:" .. worker, "hash") then
             return redis.error_reply("first ordinary ownership rejected")
+        end
+        for _, task in ipairs(redis.call("ZRANGE", "inflight:" .. worker,0,-1)) do
+            local kind, domain, id = string.match(task,"^([^|]+)|([^|]+)|([^|]+)$")
+            if kind == "scrape" and owned[redis.call("HGET","scrape:"..id,"board_id") or ""] then
+                return redis.error_reply("first ordinary ownership rejected")
+            end
         end
     end
 end

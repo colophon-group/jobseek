@@ -22,7 +22,7 @@ func firstRetirementClaim(t *testing.T, p firstOwnerFixture) (*Authority, *Claim
 		t.Fatal(err)
 	}
 	t.Cleanup(a.Close)
-	claim, err := a.Claim(context.Background(), Simple)
+	claim, err := a.Claim(context.Background(), p.f.task.Worker)
 	if err != nil || claim == nil || claim.Descriptor().ID != p.f.task.ID {
 		t.Fatal("owned retirement claim unavailable", err)
 	}

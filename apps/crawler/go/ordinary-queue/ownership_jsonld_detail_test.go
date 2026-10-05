@@ -52,12 +52,16 @@ func firstJSONLDDetailFixture(t *testing.T) firstOwnerFixture {
 	return firstIndependentDetailFixture(t, `{"scraper_type":"json-ld","selector":"a.job","render":true}`, "https://jobs.example.net/job/native-jsonld", "jobs.example.net")
 }
 
-func firstIndependentDetailFixture(t *testing.T, metadata, source, domain string) firstOwnerFixture {
+func firstIndependentDetailFixture(t *testing.T, metadata, source, domain string, workers ...WorkerType) firstOwnerFixture {
 	t.Helper()
+	worker := Simple
+	if len(workers) == 1 {
+		worker = workers[0]
+	}
 	p := firstOwnershipFixture(t)
 	f, ctx := p.f, context.Background()
 	board := ordinaryID(t)
-	if _, err := f.observer.Exec(ctx, `INSERT INTO job_board(id,company_id,board_slug,board_url,crawler_type,metadata,check_interval_minutes,scrape_interval_hours,throttle_key,monitor_needs_browser,scraper_needs_browser) VALUES($1::uuid,$2::uuid,$3,'https://careers.example.com/jobs','dom',$4::jsonb,60,24,'careers.example.com',true,false)`, board, f.company, "jsonld-"+board, metadata); err != nil {
+	if _, err := f.observer.Exec(ctx, `INSERT INTO job_board(id,company_id,board_slug,board_url,crawler_type,metadata,check_interval_minutes,scrape_interval_hours,throttle_key,monitor_needs_browser,scraper_needs_browser) VALUES($1::uuid,$2::uuid,$3,'https://careers.example.com/jobs','dom',$4::jsonb,60,24,'careers.example.com',true,$5)`, board, f.company, "jsonld-"+board, metadata, worker == Browser); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _, _ = f.observer.Exec(context.Background(), "DELETE FROM job_board WHERE id=$1::uuid", board) })
@@ -66,6 +70,9 @@ func firstIndependentDetailFixture(t *testing.T, metadata, source, domain string
 	}
 	config := jsonldDetailConfig()
 	config["company_id"], config["board_slug"], config["metadata"] = f.company, "jsonld-"+board, metadata
+	if worker == Browser {
+		config["scraper_needs_browser"] = "1"
+	}
 	if err := f.client.redis.HSet(ctx, "board:"+board, config).Err(); err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +85,7 @@ func firstIndependentDetailFixture(t *testing.T, metadata, source, domain string
 	if err := f.client.redis.ZRem(ctx, "ready:simple:1", "greenhouse").Err(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.client.EnqueueURLDetail(ctx, URLOnlyDetail{ID: f.task.ID, BoardID: board, URL: source, Due: time.Now().Add(-time.Minute)}); err != nil {
+	if _, err := f.client.EnqueueURLDetail(ctx, URLOnlyDetail{ID: f.task.ID, BoardID: board, URL: source, Due: time.Now().Add(-time.Minute), Browser: worker == Browser}); err != nil {
 		t.Fatal(err)
 	}
 	plan, err := f.authority.StageOwnership(ctx, strings.Repeat("a", 40), []string{f.task.ID}, []string{board})
@@ -89,7 +96,7 @@ func firstIndependentDetailFixture(t *testing.T, metadata, source, domain string
 		_, _ = f.observer.Exec(context.Background(), "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE plan_sha256=$1 AND state='active'", plan.SHA256())
 	})
 	p.plan = plan
-	p.f.task = &Task{ID: f.task.ID, Kind: Scrape, Worker: Simple, Domain: domain}
+	p.f.task = &Task{ID: f.task.ID, Kind: Scrape, Worker: worker, Domain: domain}
 	return p
 }
 
@@ -178,10 +185,10 @@ func testIndependentDetailColdRetirement(t *testing.T, fixture func(*testing.T) 
 			if _, err := applyFirstFixture(t, p, true); err != nil {
 				t.Fatal("JSON-LD cold retirement failed", err)
 			}
-			if firstFixtureState(t, p) != "retired" || p.f.client.redis.Exists(ctx, ownershipProjectionKey).Val() != 0 || p.f.client.redis.ZCard(ctx, "inflight:simple").Val() != 0 {
+			if firstFixtureState(t, p) != "retired" || p.f.client.redis.Exists(ctx, ownershipProjectionKey).Val() != 0 || p.f.client.redis.ZCard(ctx, "inflight:"+string(claim.task.Worker)).Val() != 0 {
 				t.Fatal("retirement retained owner/lease")
 			}
-			score, err := p.f.client.redis.ZScore(ctx, "scrapes_simple:"+claim.task.Domain, claim.task.ID).Result()
+			score, err := p.f.client.redis.ZScore(ctx, "scrapes_"+string(claim.task.Worker)+":"+claim.task.Domain, claim.task.ID).Result()
 			if due == nil {
 				if !errors.Is(err, redis.Nil) {
 					t.Fatal("inactive detail requeued", err)
@@ -267,7 +274,7 @@ func TestRealJSONLDDetailSelectionRotatesPastFullCandidateBoard(t *testing.T) {
 		var candidates []ownershipCandidate
 		err := a.transaction(ctx, false, func(ctx context.Context, tx pgx.Tx) error {
 			var e error
-			candidates, e = a.detailCandidates(ctx, tx, seconds(time.Now()))
+			candidates, e = a.detailCandidates(ctx, tx, seconds(time.Now()), Simple)
 			return e
 		})
 		if err != nil {

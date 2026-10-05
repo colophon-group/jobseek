@@ -481,6 +481,8 @@ async def test_real_legacy_detail_write_excludes_actual_canonical_board(monkeypa
         "smartrecruiters.api-detail/v1",
         "workable.api-detail/v1",
         "dom.direct-detail/v1",
+        "dom.rendered-detail/v1",
+        "jsonld.rendered-detail/v1",
     ],
 )
 def test_jsonld_detail_projection_is_independent_of_monitor_membership(profile):
@@ -492,7 +494,7 @@ def test_jsonld_detail_projection_is_independent_of_monitor_membership(profile):
             "board_id": board,
             "domain": "*",
             "profile": profile,
-            "worker": "simple",
+            "worker": "browser" if ".rendered-" in profile else "simple",
             "company_id": "00000000-0000-4000-8000-000000000002",
             "effective_config_sha256": "a" * 64,
             "config": {"crawler_type": "dom", "metadata": '{"scraper_type":"json-ld"}'},
@@ -503,7 +505,7 @@ def test_jsonld_detail_projection_is_independent_of_monitor_membership(profile):
     assert projection["details"] == {board: "*"}
     for field, value in (
         ("domain", "jobs.example.net"),
-        ("worker", "browser"),
+        ("worker", "simple" if ".rendered-" in profile else "browser"),
         ("company_id", "invalid"),
         ("company_id", None),
         ("effective_config_sha256", "invalid"),

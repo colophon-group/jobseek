@@ -62,7 +62,9 @@ func (o *HTTPObservation) noteResponse(host string, status int) {
 	}
 	o.mu.Lock()
 	defer o.mu.Unlock()
-	o.snapshot.LastHost, o.snapshot.LastStatus, o.snapshot.LastTransportError = strings.TrimRight(strings.ToLower(host), "."), status, ""
+	host = strings.TrimRight(strings.ToLower(host), ".")
+	o.hosts[host] = true
+	o.snapshot.LastHost, o.snapshot.LastStatus, o.snapshot.LastTransportError = host, status, ""
 	o.snapshot.Responses++
 }
 func (o *HTTPObservation) noteFailure(host string, err error) {

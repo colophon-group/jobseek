@@ -16,8 +16,12 @@ func jsonldOwnedFixture(t *testing.T) (nativePipelineFixture, *queue.Authority, 
 	return independentDetailOwnedFixture(t, `{"scraper_type":"json-ld","selector":"a.job","render":true,"scraper_config":{"defaults":{"language":"en"}}}`, "")
 }
 
-func independentDetailOwnedFixture(t *testing.T, metadata, source string) (nativePipelineFixture, *queue.Authority, *queue.Claim) {
+func independentDetailOwnedFixture(t *testing.T, metadata, source string, workers ...queue.WorkerType) (nativePipelineFixture, *queue.Authority, *queue.Claim) {
 	t.Helper()
+	worker := queue.Simple
+	if len(workers) == 1 {
+		worker = workers[0]
+	}
 	f := privatePipelineFixture(t)
 	ctx := context.Background()
 	var epoch int64
@@ -28,11 +32,14 @@ func independentDetailOwnedFixture(t *testing.T, metadata, source string) (nativ
 		t.Fatal(err)
 	}
 	board := fixtureID(t)
-	if _, err := f.pg.Exec(ctx, `INSERT INTO job_board(id,company_id,board_slug,board_url,crawler_type,metadata,check_interval_minutes,scrape_interval_hours,throttle_key,monitor_needs_browser,scraper_needs_browser) VALUES($1::uuid,$2::uuid,$3,'https://careers.example.net/jobs','dom',$4::jsonb,60,24,'careers.example.net',true,false)`, board, f.company, "jsonld-"+board, metadata); err != nil {
+	if _, err := f.pg.Exec(ctx, `INSERT INTO job_board(id,company_id,board_slug,board_url,crawler_type,metadata,check_interval_minutes,scrape_interval_hours,throttle_key,monitor_needs_browser,scraper_needs_browser) VALUES($1::uuid,$2::uuid,$3,'https://careers.example.net/jobs','dom',$4::jsonb,60,24,'careers.example.net',true,$5)`, board, f.company, "jsonld-"+board, metadata, worker == queue.Browser); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _, _ = f.pg.Exec(context.Background(), "DELETE FROM job_board WHERE id=$1::uuid", board) })
 	config := map[string]string{"board_slug": "jsonld-" + board, "company_id": f.company, "board_url": "https://careers.example.net/jobs", "crawler_type": "dom", "metadata": metadata, "domain": "careers.example.net", "throttle_key": "careers.example.net", "monitor_needs_browser": "1", "scraper_needs_browser": "0", "check_interval_minutes": "60", "scrape_interval_hours": "24"}
+	if worker == queue.Browser {
+		config["scraper_needs_browser"] = "1"
+	}
 	if err := f.r.HSet(ctx, "board:"+board, config).Err(); err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +49,7 @@ func independentDetailOwnedFixture(t *testing.T, metadata, source string) (nativ
 	if _, err := f.pg.Exec(ctx, "UPDATE job_posting SET board_id=$2::uuid,source_url=$3,next_scrape_at=now()-interval '1 minute' WHERE id=$1::uuid", f.original, board, source); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := f.client.EnqueueURLDetail(ctx, queue.URLOnlyDetail{ID: f.original, BoardID: board, URL: source, Due: time.Now().Add(-time.Minute)}); err != nil {
+	if _, err := f.client.EnqueueURLDetail(ctx, queue.URLOnlyDetail{ID: f.original, BoardID: board, URL: source, Due: time.Now().Add(-time.Minute), Browser: worker == queue.Browser}); err != nil {
 		t.Fatal(err)
 	}
 	a, err := queue.OpenAuthority(ctx, f.dsn, f.client, epoch)
@@ -68,7 +75,7 @@ func independentDetailOwnedFixture(t *testing.T, metadata, source string) (nativ
 		t.Fatal(err)
 	}
 	t.Cleanup(owned.Close)
-	claim, err := owned.Claim(ctx, queue.Simple)
+	claim, err := owned.Claim(ctx, worker)
 	if err != nil || claim == nil || claim.Descriptor().ID != f.original || claim.Descriptor().Kind != queue.Scrape {
 		t.Fatal("native JSON-LD claim missing", err)
 	}

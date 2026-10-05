@@ -291,6 +291,12 @@ func (t *ColdB0Target) attest(ctx context.Context, tx pgx.Tx, c *Client, p *Owne
 	for _, m := range p.document.Members {
 		ordinary[m.BoardID] = true
 	}
+	// B0 retains exclusive browser detail ownership of its verified cohort.
+	for _, detail := range p.document.Details {
+		if detail.Worker == Browser {
+			ordinary[detail.BoardID] = true
+		}
+	}
 	for _, expected := range t.document.Boards {
 		if ordinary[expected.ID] {
 			return ErrAuthorityLost
