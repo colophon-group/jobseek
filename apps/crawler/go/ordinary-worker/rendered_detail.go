@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"io"
 	"net"
 	"net/url"
 	"os"
@@ -172,7 +171,7 @@ func (r *NativeRenderedDetails) Fetch(ctx context.Context, profile queue.Workday
 func waitRenderedReservation(ctx context.Context, reserve func(context.Context) (*lp.Reservation, error)) (*lp.Reservation, error) {
 	for {
 		held, err := reserve(ctx)
-		if !errors.Is(err, io.EOF) {
+		if !errors.Is(err, lp.ErrReservationUnavailable) {
 			return held, err
 		}
 		timer := time.NewTimer(time.Second)

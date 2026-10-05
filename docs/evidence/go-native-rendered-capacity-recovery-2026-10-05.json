@@ -1,0 +1,53 @@
+{
+  "schema": "jobseek.native-ordinary-continuation/v1",
+  "observed_at_utc": "2026-10-05T14:16:38Z",
+  "source_revision": "d6bdab010404b9bac5e33965d13aec2fc49791df",
+  "crawler_version": "0.13.939",
+  "lightpanda": {
+    "version": "1.0.0",
+    "release_pr": "https://github.com/colophon-group/jobseek/pull/10322",
+    "renderer_image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:3f33e71a5b0fabb01e4281b72a30ac7708375e4f386940e73f087f75efaa9eb7",
+    "production_release_verified": true,
+    "restart_and_reboot_accepted": true
+  },
+  "fresh_admission": {
+    "monitor_boards": 6159,
+    "detail_boards": 2199,
+    "scheduled_postings_examined": 1088087,
+    "owned_scheduled_postings": 1066011,
+    "excluded_detail_boards_with_cached_route_mismatches": 37,
+    "excluded_verified_b0_boards": 3,
+    "changed_projection": 0,
+    "cached_unsupported": 0
+  },
+  "activation": {
+    "routing_epoch": 187,
+    "plan_sha256": "29abcd29ccab7b8b3d5e9e6fada91ad54e8519f284eb667ac2a338b3f508ac4d",
+    "projection_sha1": "5968ccae4b1287e31a115a39fc3e87561b3eb2aa",
+    "b0_receipt_sha256": "9587d23a2981f5b035d7c710b8a2af9bc2550786cf35fe37a6c4acf526e0ce79",
+    "sql_active_plans": 1,
+    "writers_running_and_restart_armed": 10,
+    "original_wrapper_exact_identity_retry": true
+  },
+  "natural_validation": {
+    "complete": false,
+    "claimant_restart_count": 12,
+    "ordinary_go_restart_count": 0,
+    "fatal_error": "renderer TLS handshake: connection reset by peer",
+    "subsequent_startup_errors": "reserve all C4 renderer slots before queue claim: renderer TLS handshake: EOF",
+    "interpretation": "C4 peer close can surface as a TCP reset; source939 retries only EOF."
+  },
+  "recovery": {
+    "supported_ordinary_retirement_started_at_utc": "2026-10-05T14:22:13Z",
+    "verified_baseline_restored": false,
+    "no_manual_queue_or_lease_or_receipt_clearing": true
+  },
+  "full_migration_complete": false,
+  "remaining": [
+    "Verify supported full cold retirement and baseline recovery.",
+    "Release reservation-handshake peer-close fix through exact-head required CI and Crawler Deploy Gate.",
+    "Reactivate with fresh source/epoch/receipt-bound admission and verify sustained natural canonical fields, publisher policy, descriptions and recurring queue conservation.",
+    "Complete remaining provider/options/detail coverage and mandatory Python runtime consumers.",
+    "Measure comparable whole production resource/cost/density and supported cold reversal; retire mandatory Python, Playwright and Chromium after the rollback window."
+  ]
+}

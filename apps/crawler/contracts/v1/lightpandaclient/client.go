@@ -15,6 +15,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"syscall"
 	"time"
 
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/framing"
@@ -30,6 +31,11 @@ const (
 	inputFrameLimit  = uint64(128*1024 + 3)
 	resultFrameLimit = uint64(2 * 1024 * 1024)
 )
+
+// ErrReservationUnavailable identifies a peer close during the reservation handshake.
+// The C4 service closes excess connections before TLS; callers may wait within
+// their existing context. Dial, identity, hello and execution errors stay distinct.
+var ErrReservationUnavailable = errors.New("renderer reservation unavailable")
 
 var canonicalHello = []byte(`{"protocol":"jobseek.lightpanda.service/v1","runtime_contract":"crawler.runtime/v1","mode":"b0","capacity":4,"memory_max_bytes":1073741824,"memory_swap_max_bytes":0}`)
 
@@ -93,6 +99,9 @@ func (r *Client) Reserve(ctx context.Context) (*Reservation, error) {
 	defer cancel()
 	if err := connection.HandshakeContext(handshake); err != nil {
 		_ = raw.Close()
+		if errors.Is(err, io.EOF) || errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE) {
+			return nil, fmt.Errorf("renderer TLS handshake: %w", errors.Join(ErrReservationUnavailable, err))
+		}
 		return nil, fmt.Errorf("renderer TLS handshake: %w", err)
 	}
 	state := connection.ConnectionState()
