@@ -1,0 +1,134 @@
+{
+  "joins": [
+    {
+      "base": "https://careers.example.com/listing/index?lang=en",
+      "href": "../jobs/工程師",
+      "want": "https://careers.example.com/jobs/工程師"
+    },
+    {
+      "base": "https://careers.example.com/listing/index?lang=en",
+      "href": "/jobs/a%2Fb",
+      "want": "https://careers.example.com/jobs/a%2Fb"
+    },
+    {
+      "base": "https://careers.example.com/listing/index?lang=en",
+      "href": "/jobs/%zz",
+      "want": "https://careers.example.com/jobs/%zz"
+    },
+    {
+      "base": "https://careers.example.com/listing/index?lang=en",
+      "href": "//other.example/jobs/x",
+      "want": "https://other.example/jobs/x"
+    },
+    {
+      "base": "https://careers.example.com/listing/index?lang=en",
+      "href": "https://other.example/a/../jobs/x",
+      "want": "https://other.example/a/../jobs/x"
+    },
+    {
+      "base": "https://careers.example.com/listing/index?lang=en",
+      "href": "?",
+      "want": "https://careers.example.com/listing/index?lang=en"
+    },
+    {
+      "base": "https://careers.example.com/listing/index?lang=en",
+      "href": "?lang=de",
+      "want": "https://careers.example.com/listing/index?lang=de"
+    },
+    {
+      "base": "https://careers.example.com/listing/index?lang=en",
+      "href": "#jobs",
+      "want": "https://careers.example.com/listing/index?lang=en#jobs"
+    },
+    {
+      "base": "https://careers.example.com/listing/index?lang=en",
+      "href": ";param",
+      "want": "https://careers.example.com/listing/;param"
+    },
+    {
+      "base": "https://careers.example.com/listing/index?lang=en",
+      "href": "./",
+      "want": "https://careers.example.com/listing/"
+    },
+    {
+      "base": "https://careers.example.com/listing/index?lang=en",
+      "href": "../../../../jobs/x",
+      "want": "https://careers.example.com/jobs/x"
+    },
+    {
+      "base": "https://careers.example.com/listing/index?lang=en",
+      "href": "a//b/../jobs/x",
+      "want": "https://careers.example.com/listing/a/jobs/x"
+    },
+    {
+      "base": "https://careers.example.com/listing/index?lang=en",
+      "href": "mailto:jobs@example.com",
+      "want": "mailto:jobs@example.com"
+    },
+    {
+      "base": "https://careers.example.com/listing/index?lang=en",
+      "href": "",
+      "want": "https://careers.example.com/listing/index?lang=en"
+    },
+    {
+      "base": "https://careers.example.com/listing/index?lang=en",
+      "href": "/jobs/x?foo=1&amp;bar=2",
+      "want": "https://careers.example.com/jobs/x?foo=1&amp;bar=2"
+    }
+  ],
+  "listings": [
+    {
+      "html": "<a href=\"/login\">Login</a><a href=\"/jobs/one\">Job</a><a href=\"../positions/工程師\">Job</a><a href=\"#jobs\">Self</a>",
+      "base": "https://careers.example.com/listing/index?lang=en",
+      "config": {},
+      "urls": [
+        "https://careers.example.com/jobs/one",
+        "https://careers.example.com/positions/工程師"
+      ]
+    },
+    {
+      "html": "<a class=\"job\" href=\"/one\">Role</a><a href=\"/jobs/two\">Other</a>",
+      "base": "https://careers.example.com/listing/index?lang=en",
+      "config": {
+        "link_selector": "a.job"
+      },
+      "urls": [
+        "https://careers.example.com/one"
+      ]
+    },
+    {
+      "html": "<a href=\"/jobs/工程師\">Role</a><a href=\"/jobs/intern\">Intern</a><a href=\"/jobs/工程師\">Duplicate</a>",
+      "base": "https://careers.example.com/listing/index?lang=en",
+      "config": {
+        "url_filter": {
+          "include": "/jobs/\\w+$",
+          "exclude": "intern"
+        }
+      },
+      "urls": [
+        "https://careers.example.com/jobs/工程師"
+      ]
+    },
+    {
+      "html": "<a href=\"/jobs/a%2Fb\">Escaped</a><a href=\"/jobs/%zz\">Literal</a><a href=\"//other.example/jobs/工程師\">Cross</a>",
+      "base": "https://careers.example.com/listing/index?lang=en",
+      "config": {
+        "url_filter": "/jobs/"
+      },
+      "urls": [
+        "https://careers.example.com/jobs/%zz",
+        "https://careers.example.com/jobs/a%2Fb",
+        "https://other.example/jobs/工程師"
+      ]
+    },
+    {
+      "html": "<a href=\"/jobs/a\" href=\"/jobs/b\">Duplicate attr</a><script>const x='<a href=\"/jobs/script\">x</a>';</script>",
+      "base": "https://careers.example.com/listing/index?lang=en",
+      "config": {},
+      "urls": [
+        "https://careers.example.com/jobs/a",
+        "https://careers.example.com/jobs/b"
+      ]
+    }
+  ]
+}

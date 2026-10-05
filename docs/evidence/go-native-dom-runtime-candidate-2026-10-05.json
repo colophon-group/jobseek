@@ -1,0 +1,30 @@
+{
+  "schema": "jobseek.native-dom-runtime-candidate/v1",
+  "date": "2026-10-05",
+  "candidate_version": "0.13.932",
+  "profiles": [
+    "dom.direct-urls/v1",
+    "dom.direct-detail/v1"
+  ],
+  "architecture": "Existing Go public document transport, DOM parser, ordinary ownership, shared processor and canonical SQL/Redis settlement",
+  "verification": {
+    "queue_full_real_postgres_redis_race_seconds": 46.691,
+    "worker_full_real_postgres_redis_race_seconds": 105.931,
+    "dom_parser_transport_race_seconds": 2.931,
+    "python_required_ownership_cutover_tests_passed": 35,
+    "go_vet_module_checks": "passed",
+    "frozen_python_url_joins": 15,
+    "frozen_python_listing_cases": 5,
+    "real_monitor_contracts": [
+      "Inventory stubs and separate urgent details",
+      "Canonical absence counters and exact deadlines/lease settlement",
+      "Status/empty retries and shared attempt budget",
+      "404/410 board disappearance without generic failure strikes",
+      "Header/meta reservations before status and actual redirect resource/policy",
+      "Unimplemented transport, pagination, enrichment and browser routes retain current owner"
+    ]
+  },
+  "production_activated": false,
+  "full_migration_complete": false,
+  "continued_delivery": "Fresh source-bound admission and supported cutover; rendered DOM and remaining enabled families; native mandatory maintenance/deployment consumers; comparable whole-lane resource and full reversal proof; retire mandatory Python, Playwright and Chromium after rollback window"
+}

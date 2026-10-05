@@ -51,6 +51,11 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		for _, key := range []string{"slug", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
 		}
+	case "dom":
+		for _, key := range []string{"url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+			allowed[key] = true
+		}
+
 	case "sitemap":
 		for _, key := range []string{"sitemap_url", "xml_attempts", "url_filter", "proxy", "render", "skip_ssl", "ssl_verify", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
@@ -88,6 +93,10 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 	if config["crawler_type"] == "join" {
 		return inspectJoinMonitor(boardID, config, md)
 	}
+	if config["crawler_type"] == "dom" {
+		return inspectDOMMonitor(boardID, config, md)
+	}
+
 	if config["crawler_type"] == "sitemap" {
 		return inspectSitemapMonitor(boardID, config, md)
 	}

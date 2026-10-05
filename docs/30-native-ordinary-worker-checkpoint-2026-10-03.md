@@ -1,12 +1,45 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Combined direct DOM monitors and details — 2026-10-05
+
+The full migration goal remains active. v0.13.932 combines direct static DOM
+monitor inventory with v0.13.931 DOM detail execution in the existing Go worker.
+Both use the existing sealed public document transport, parser, ownership plan,
+canonical writers and Redis settlement. Static monitors preserve Python URL
+joining, raw Unicode identities, CSS selectors and include/exclude filters;
+complete inventories create stubs and urgent details, with existing four-miss
+absence and spaced 404/410 disappearance handling. Publisher reservations retain
+the actual redirected resource and policy before HTTP failure handling. Rendered,
+paginated, proxy and unsupported configured routes retain their current owners.
+
+Full real PostgreSQL/Redis race suites passed (queue46.691s, worker105.931s),
+DOM parser/transport race passed (2.931s), Go vet/module checks passed, and all35
+required Python ownership/cutover tests passed. Frozen Python fixtures cover15
+URL joins and5 listing/filter cases; real owned monitor tests cover canonical
+inventory, retry exhaustion, disappearance, publisher opt-outs and settlement.
+[Portable combined DOM evidence](evidence/go-native-dom-runtime-candidate-2026-10-05.json)
+records the scope. Production DOM adoption and full migration are not claimed.
+
+Source930 immutable deployment/promotion succeeded. Independent baseline readback
+verified all six exact-image writers healthy and restart-armed at epoch176.
+Original B0 activation succeeded at epoch177. Fresh full-fleet admission screened
+7,885 enabled boards and reconciled949,287 actual scheduled detail routes, admitting
+5,549 monitors and1,566 detail boards (929,334 scheduled owned postings). This
+includes276 Join monitors,284 sitemap monitors and265 Join detail boards;30 cache-
+mismatched detail boards retain legacy ownership. Original ordinary staging
+rejected before retaining a plan. No ownership was activated or manually changed;
+existing writers continue serving. The same source/epoch/config identity was
+rechecked before a supported retry. Natural source930 ordinary writes remain
+unproved. Continue delivery and diagnose the staging rejection without bypassing
+original authority, timeout or deployment protocols.
+
 ## Native direct DOM delivery and merged Join/sitemap release — 2026-10-05
 
 [PR #10305](https://github.com/colophon-group/jobseek/pull/10305) merged v0.13.930
 as `9d62e57778387a3807bfc0d6125058e248941a70`. Required CI, installed image parity
 and Crawler Deploy Gate passed; the merged and reviewed trees match exactly.
 [Immutable deployment](https://github.com/colophon-group/jobseek/actions/runs/37249185517)
-is building. Fresh full-fleet configuration/posting admission and original activation
+completed deployment/promotion. Fresh admission and original ordinary activation
 remain required before claiming production Join/sitemap writes.
 
 v0.13.931 adds `dom.direct-detail/v1` to the existing native worker. It calls the
