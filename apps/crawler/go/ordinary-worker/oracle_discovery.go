@@ -30,27 +30,9 @@ func discoverOracleInventory(ctx context.Context, client *http.Client, profile q
 		if !o.ResourceMatches(endpoint) {
 			return nil, queue.ErrConfiguration
 		}
-		for attempt := 0; attempt < 3; attempt++ {
-			requestCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-			body, response, failure := richPage(requestCtx, &operation, endpoint, false)
-			cancel()
-			result.Response = response
-			if ctx.Err() != nil {
-				return nil, ctx.Err()
-			}
-			if response == nil || response.reserved || failure == nil {
-				return body, failure
-			}
-			status := response.status
-			transient := status == 302 || status == 403 || status == 429 || status == 500 || status == 502 || status == 503 || status == 504
-			if !transient || attempt == 2 {
-				return nil, failure
-			}
-			if err := pauseRich(ctx, time.Duration(float64(3*time.Second)*float64(int64(1)<<attempt)*(0.8+0.4*rand.Float64()))); err != nil {
-				return nil, err
-			}
-		}
-		return nil, oracle.ErrInventory
+		body, response, err := fetchOraclePage(ctx, &operation, endpoint)
+		result.Response = response
+		return body, err
 	}
 	found, err := oracle.Discover(ctx, o, fetch)
 	if err != nil {
@@ -65,4 +47,29 @@ func discoverOracleInventory(ctx context.Context, client *http.Client, profile q
 		result.Jobs = append(result.Jobs, RichMonitorJob{URL: job.URL, Title: title, Locations: job.Locations, DatePosted: job.DatePosted, EmploymentType: job.EmploymentType})
 	}
 	return result, nil
+}
+
+// Oracle monitor and detail use the same bounded public-API retry policy.
+func fetchOraclePage(ctx context.Context, client *http.Client, endpoint string) ([]byte, *GreenhouseResponse, error) {
+	for attempt := 0; attempt < 3; attempt++ {
+		requestCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		body, response, failure := richPage(requestCtx, client, endpoint, false)
+		cancel()
+
+		if ctx.Err() != nil {
+			return nil, response, ctx.Err()
+		}
+		if response == nil || response.reserved || failure == nil {
+			return body, response, failure
+		}
+		status := response.status
+		transient := status == 302 || status == 403 || status == 429 || status == 500 || status == 502 || status == 503 || status == 504
+		if !transient || attempt == 2 {
+			return nil, response, failure
+		}
+		if err := pauseRich(ctx, time.Duration(float64(3*time.Second)*float64(int64(1)<<attempt)*(0.8+0.4*rand.Float64()))); err != nil {
+			return nil, response, err
+		}
+	}
+	return nil, nil, oracle.ErrInventory
 }

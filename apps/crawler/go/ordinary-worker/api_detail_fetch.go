@@ -8,6 +8,8 @@ import (
 	"net/http/cookiejar"
 
 	join "github.com/colophon-group/jobseek/apps/crawler/go/join-monitor"
+	executor "github.com/colophon-group/jobseek/apps/crawler/go/lightpanda-b0-executor"
+	oracle "github.com/colophon-group/jobseek/apps/crawler/go/oracle-hcm"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	publisherpolicy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 	smartrecruiters "github.com/colophon-group/jobseek/apps/crawler/go/smartrecruiters-monitor"
@@ -31,6 +33,21 @@ func fetchAPIDetail(ctx context.Context, verified *VerifiedDirectHTTP, profile q
 	var content any
 	var reservation *publisherpolicy.Reservation
 	switch profile.Profile {
+	case "oracle_hcm.api-detail/v1":
+		body, response, failure := fetchOraclePage(ctx, &client, profile.Endpoint)
+		if ctx.Err() != nil {
+			return nil, nil, ctx.Err()
+		}
+		if response != nil && response.reserved {
+			reservation = &publisherpolicy.Reservation{URL: response.finalURL, Source: "header", PolicyURL: response.policy}
+		} else if failure != nil {
+			err = executor.ErrEmptyResult
+		} else {
+			content, err = oracle.ProjectDetail(body)
+			if err != nil {
+				err = executor.ErrEmptyResult
+			}
+		}
 	case "join.nextdata-detail/v1":
 		fetched, failure := join.FetchDetailWithClient(ctx, join.DetailRequest{URL: profile.SourceURL, Config: profile.JoinDetailConfig}, &client)
 		content, err = fetched.Content, failure

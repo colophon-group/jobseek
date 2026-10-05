@@ -36,12 +36,26 @@ func PersistDetailContent(ctx context.Context, authority *queue.Authority, detai
 	if authority == nil || detail == nil || processor == nil || !detail.Schedulable || detail.PublisherReserved {
 		return nil, claimRunError("detail_startup", queue.ErrConfiguration)
 	}
-	prepared, err := processor.Prepare(ctx, values, nil, nil)
+	var config map[string]any
+	var existing *executor.EnrichSnapshot
+	if fields := detail.Profile().EnrichmentFields; len(fields) > 0 {
+		selected := make([]any, len(fields))
+		for n, field := range fields {
+			selected[n] = field
+		}
+		config = map[string]any{"enrich": selected}
+		existing = &executor.EnrichSnapshot{Titles: detail.Titles, LocationIDs: detail.LocationIDs, EmploymentType: detail.EmploymentType}
+	}
+	prepared, err := processor.Prepare(ctx, values, config, existing)
 	if err != nil {
 		return nil, claimRunError("detail_preparation", err)
 	}
 	receipt, err := authority.WriteWorkdayDetail(ctx, detail, func(ctx context.Context, tx pgx.Tx) error {
-		_, err := executor.SaveContent(ctx, tx, detail.PostingID(), prepared.Fields, prepared.Description)
+		save := executor.SaveContent
+		if prepared.Enrich {
+			save = executor.SaveEnrichment
+		}
+		_, err := save(ctx, tx, detail.PostingID(), prepared.Fields, prepared.Description)
 		return err
 	})
 	if err != nil {

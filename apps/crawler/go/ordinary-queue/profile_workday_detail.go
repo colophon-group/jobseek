@@ -15,6 +15,7 @@ type WorkdayDetailProfile struct {
 	BoardID, CompanyID, SourceURL, Endpoint, Domain string
 	Profile, EffectiveBoardSHA256                   string
 	FacilityTenantAliases                           []string
+	EnrichmentFields                                []string
 	JSONLDConfig                                    map[string]any
 	DOMConfig                                       map[string]any
 	APITokenOverride                                string

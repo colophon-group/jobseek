@@ -13,21 +13,29 @@ import (
 )
 
 func firstWorkdayDetailFixture(t *testing.T) firstOwnerFixture {
+	return firstAPIDetailFixture(t, "workday")
+}
+func firstAPIDetailFixture(t *testing.T, requested string) firstOwnerFixture {
 	t.Helper()
 	p := firstOwnershipFixture(t)
 	f, ctx := p.f, context.Background()
-	const source = "https://fixture.wd1.myworkdayjobs.com/Careers/job/JR001"
-	if _, err := f.observer.Exec(ctx, `UPDATE job_board SET board_url='https://fixture.wd1.myworkdayjobs.com/Careers',
- crawler_type='workday',throttle_key='workday',metadata='{"scraper_type":"workday"}'::jsonb WHERE id=$1::uuid`, f.task.ID); err != nil {
+	provider, boardURL, source, metadata := "workday", "https://fixture.wd1.myworkdayjobs.com/Careers", "https://fixture.wd1.myworkdayjobs.com/Careers/job/JR001", `{"scraper_type":"workday"}`
+	if requested == "oracle_hcm" {
+		provider = "oracle_hcm"
+		boardURL = "https://fixture.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs"
+		source = "https://fixture.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/123"
+		metadata = `{"scraper_type":"oracle_hcm","scraper_config":{"enrich":["description"]}}`
+	}
+	if _, err := f.observer.Exec(ctx, `UPDATE job_board SET board_url=$2,crawler_type=$3,throttle_key=$3,metadata=$4::jsonb WHERE id=$1::uuid`, f.task.ID, boardURL, provider, metadata); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.observer.Exec(ctx, "UPDATE job_posting SET source_url=$2,next_scrape_at=now()-interval '1 minute' WHERE id=$1::uuid", f.task.ID, source); err != nil {
 		t.Fatal(err)
 	}
 	config := workdayDetailConfig()
-	config["board_url"] = "https://fixture.wd1.myworkdayjobs.com/Careers"
+	config["board_url"], config["crawler_type"], config["metadata"] = boardURL, provider, metadata
 	config["company_id"], config["board_slug"] = f.company, "ordinary-"+f.company
-	config["domain"], config["throttle_key"] = "workday", "workday"
+	config["domain"], config["throttle_key"] = provider, provider
 	if err := f.client.redis.HSet(ctx, "board:"+f.task.ID, config).Err(); err != nil {
 		t.Fatal(err)
 	}
@@ -45,14 +53,25 @@ func firstWorkdayDetailFixture(t *testing.T) firstOwnerFixture {
 		t.Fatal(err)
 	}
 	p.plan = plan
-	p.f.task = &Task{Worker: Simple, Kind: Scrape, ID: f.task.ID, Domain: "fixture.wd1.myworkdayjobs.com"}
+	p.f.task = &Task{Worker: Simple, Kind: Scrape, ID: f.task.ID, Domain: func() string {
+		if provider == "oracle_hcm" {
+			return "fixture.fa.em2.oraclecloud.com"
+		}
+		return "fixture.wd1.myworkdayjobs.com"
+	}()}
 	return p
 }
 
 func TestRealFirstWorkdayDetailRetirementConservesInterruptedAndCompletedAttempts(t *testing.T) {
+	testFirstAPIDetailRetirement(t, "workday")
+}
+func TestRealFirstOracleDetailRetirementConservesInterruptedAndCompletedAttempts(t *testing.T) {
+	testFirstAPIDetailRetirement(t, "oracle_hcm")
+}
+func testFirstAPIDetailRetirement(t *testing.T, provider string) {
 	for _, mode := range []string{"active", "claim-before-sql", "committed-before-ack", "reaped-before-ack", "inactive", "save-failure"} {
 		t.Run(mode, func(t *testing.T) {
-			p := firstWorkdayDetailFixture(t)
+			p := firstAPIDetailFixture(t, provider)
 			a, claim := firstRetirementClaim(t, p)
 			ctx := context.Background()
 			switch mode {

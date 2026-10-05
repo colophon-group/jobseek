@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	join "github.com/colophon-group/jobseek/apps/crawler/go/join-monitor"
+	oracle "github.com/colophon-group/jobseek/apps/crawler/go/oracle-hcm"
 	smartrecruiters "github.com/colophon-group/jobseek/apps/crawler/go/smartrecruiters-monitor"
 	workable "github.com/colophon-group/jobseek/apps/crawler/go/workable-monitor"
 )
@@ -17,10 +18,11 @@ import (
 const smartRecruitersDetailProfile = "smartrecruiters.api-detail/v1"
 const workableDetailProfile = "workable.api-detail/v1"
 const joinDetailProfile = "join.nextdata-detail/v1"
+const oracleDetailProfile = "oracle_hcm.api-detail/v1"
 
 func independentDetailProfile(profile string) bool {
 	switch profile {
-	case domRenderedDetailProfile, jsonldRenderedDetailProfile, domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, joinDetailProfile:
+	case domRenderedDetailProfile, jsonldRenderedDetailProfile, domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, joinDetailProfile, oracleDetailProfile:
 		return true
 	}
 	return false
@@ -56,17 +58,24 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 		return fail()
 	}
 	scraper := config["crawler_type"]
+	var explicitScraper string
 	if raw, ok := metadata["scraper_type"]; ok && string(raw) != "null" {
-		if json.Unmarshal(raw, &scraper) != nil {
+		if json.Unmarshal(raw, &explicitScraper) != nil {
 			return fail()
 		}
 	}
-	if scraper != "smartrecruiters" && scraper != "workable" && scraper != "nextdata" {
+	if explicitScraper != "" {
+		scraper = explicitScraper
+	}
+	if scraper != "smartrecruiters" && scraper != "workable" && scraper != "nextdata" && scraper != "oracle_hcm" {
 		return fail()
 	}
 	allowed := map[string]bool{"proxy": true, "render": true, "ssl_verify": true}
 	if scraper == "workable" {
 		allowed["token"] = true
+	}
+	if scraper == "oracle_hcm" {
+		allowed = map[string]bool{"host": true, "site": true, "enrich": true, "proxy": true, "fields": true, "api_url": true, "json_path": true}
 	}
 	if scraper == "nextdata" {
 		allowed = map[string]bool{"path": true, "fields": true}
@@ -87,6 +96,7 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 		return fail()
 	}
 	var endpoint, profile, override string
+	var enrichmentFields []string
 	if scraper == "smartrecruiters" {
 		_, endpoint, err = smartrecruiters.DetailEndpoint(source)
 		profile = smartRecruitersDetailProfile
@@ -96,6 +106,32 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 		}
 		endpoint, _, err = workable.DetailEndpoints(source, override)
 		profile = workableDetailProfile
+	} else if scraper == "oracle_hcm" {
+		var overrides map[string]any
+		body, _ := json.Marshal(options)
+		if json.Unmarshal(body, &overrides) != nil {
+			return fail()
+		}
+		if raw, ok := options["fields"]; ok && string(raw) != "null" {
+			var fields map[string]json.RawMessage
+			if json.Unmarshal(raw, &fields) != nil || len(fields) > 0 {
+				return fail()
+			}
+		}
+		endpoint, err = oracle.DetailEndpoint(source, overrides)
+		if err != nil {
+			return fail()
+		}
+		profile = oracleDetailProfile
+		enrichmentFields, err = oracleMonitorEnrichment(config)
+		if err != nil {
+			return fail()
+		}
+		// Legacy detail auto-resolution inherits its Oracle default for null
+		// configs; monitor scheduling intentionally distinguishes null/absent.
+		if explicitScraper == "" && string(metadata["scraper_config"]) == "null" {
+			enrichmentFields = []string{"description"}
+		}
 	} else {
 		err = join.ValidateDetailURL(source)
 		if err == nil {
@@ -122,7 +158,7 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 		return fail()
 	}
 	digest := sha256.Sum256(body)
-	p := WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: endpoint, Domain: strings.ToLower(u.Hostname()), Profile: profile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), APITokenOverride: override}
+	p := WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: endpoint, Domain: strings.ToLower(u.Hostname()), Profile: profile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), APITokenOverride: override, EnrichmentFields: enrichmentFields}
 	if profile == joinDetailProfile {
 		p.JoinDetailConfig = options
 	}
@@ -130,6 +166,19 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 }
 
 func inspectAPIDetailOwnership(boardID string, config map[string]string) (WorkdayDetailProfile, error) {
+	metadata, err := profileMetadataFields(config["metadata"], nil)
+	if err == nil {
+		var options map[string]any
+		if raw, ok := metadata["scraper_config"]; ok {
+			_ = json.Unmarshal(raw, &options)
+		}
+		if o, err := oracle.OptionsFromMetadata(config["board_url"], options); err == nil {
+			if p, err := InspectAPIDetail(boardID, config, o.JobURL("OWNERSHIPADMISSION"), Simple); err == nil && p.Profile == oracleDetailProfile {
+				p.Domain = "*"
+				return p, nil
+			}
+		}
+	}
 	for _, source := range []string{"https://jobs.smartrecruiters.com/native/OWNERSHIPADMISSION", "https://apply.workable.com/native/j/OWNERSHIPADMISSION/", "https://join.com/companies/native/OWNERSHIPADMISSION"} {
 		if profile, err := InspectAPIDetail(boardID, config, source, Simple); err == nil {
 			profile.Domain = "*"
