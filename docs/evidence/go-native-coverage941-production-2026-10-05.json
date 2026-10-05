@@ -1,0 +1,39 @@
+{
+  "schema": "jobseek-native-coverage941-production/v1",
+  "observed_at_utc": "2026-10-05T17:21:59.116966+00:00",
+  "source_revision": "e8576cb5653173110983fe38a2c79dfe44018f26",
+  "original_deploy_run": 37344280150,
+  "identities": {
+    "JOBSEEK_DEPLOY_REVISION": "e8576cb5653173110983fe38a2c79dfe44018f26",
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:fc710d3dd5ef2cec38235d894562f3ebafd1f734a864055d943ea3a724e1bd29",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:42505aaa3879da9e4dc7942f726b12cbdfcffe77c4e9026bd6b793e6c0bf1d8f"
+  },
+  "health": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200
+  },
+  "restored_writer_count": 6,
+  "canonical": {
+    "active_plans": 0,
+    "retained_plan_state": "retired",
+    "routing_epoch": 190,
+    "current_or_newer_active_fences": 0,
+    "retained_outgoing_active_receipts": 1
+  },
+  "queue": {
+    "b0_producer_owner": 0,
+    "ordinary_projection": 0
+  },
+  "receipts_absent": true,
+  "selectors_cleared": true,
+  "live_oneoffs": 0,
+  "limitations": [
+    "Configuration coverage is deployed; fresh ordinary route admission and natural canonical processing are separate and pending.",
+    "Selector942 merged at 9591fcb38e8c18095c01974f92181da78e0dfd9b; original deployment37347216841 in progress.",
+    "Full migration remains active and incomplete."
+  ]
+}

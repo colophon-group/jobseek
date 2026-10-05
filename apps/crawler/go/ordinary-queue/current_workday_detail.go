@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -37,6 +38,12 @@ func (d *CurrentWorkdayDetail) Profile() WorkdayDetailProfile {
 	p := d.profile
 	p.FacilityTenantAliases = append([]string(nil), p.FacilityTenantAliases...)
 	p.EnrichmentFields = append([]string(nil), p.EnrichmentFields...)
+	if p.HTTPAPIConfig != nil {
+		body, _ := json.Marshal(p.HTTPAPIConfig)
+		decoder := json.NewDecoder(bytes.NewReader(body))
+		decoder.UseNumber()
+		decoder.Decode(&p.HTTPAPIConfig)
+	}
 	if p.EmbeddedConfig != nil {
 		body, _ := json.Marshal(p.EmbeddedConfig)
 		json.Unmarshal(body, &p.EmbeddedConfig)

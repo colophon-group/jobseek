@@ -18,6 +18,7 @@ type WorkdayDetailProfile struct {
 	EnrichmentFields                                []string
 	OracleFields                                    map[string]any
 	EmbeddedConfig                                  map[string]any
+	HTTPAPIConfig                                   map[string]any
 	EmbeddedNextdata                                bool
 	JSONLDConfig                                    map[string]any
 	DOMConfig                                       map[string]any
