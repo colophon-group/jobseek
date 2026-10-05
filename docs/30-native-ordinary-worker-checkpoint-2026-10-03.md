@@ -26,8 +26,10 @@ worker race suites pass in 120.683s and 230.456s; 93 runtime-contract tests pass
 [Jobylon evidence](evidence/go-native-jobylon-local-2026-10-05.json).
 The NextData document decoder now reuses the existing precise JSON/RSC/React
 Router implementation and preserves the monitor's strict first-script and
-Phenom Canvas behavior. Inventory, pagination and ownership integration remain
-in progress; no NextData admission or production claim is made.
+Phenom Canvas behavior. Its rich field/template/slug projection also passes seven actual Python cases.
+Fourteen document-source cases and the complete API module race suite pass.
+Pagination and worker ownership integration remain in progress; no NextData
+admission or production claim is made.
 
 Keep this as one combined release rather than opening a Jobylon-only PR.
 Group the 125 Inline configurations and Beisen's extraction variants in the
