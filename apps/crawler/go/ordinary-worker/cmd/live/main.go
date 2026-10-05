@@ -58,6 +58,7 @@ func run() error {
 		}
 		c, err := worker.ReadFirstOwnershipAdminConfig(os.Getenv, revision, op)
 		if err != nil {
+			log.Print("ordinary worker first ownership stage: configuration")
 			return err
 		}
 		return encode(worker.RunFirstOwnershipAdmin(ctx, c))

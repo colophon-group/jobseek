@@ -120,7 +120,7 @@ func TestRealFirstOwnershipExecutableActivatesAndRetires(t *testing.T) {
 	ctx := context.Background()
 	r := FirstOwnershipRequest{Version: "jobseek.ordinary.first-owner-request/v1", Operation: "activate", SourceRevision: plan.SourceRevision(), RoutingEpoch: plan.Epoch(), PlanSHA256: plan.SHA256(), ProjectionSHA1: plan.ProjectionSHA1(), CrawlerImageRef: "ghcr.io/colophon-group/jobseek-crawler@sha256:" + strings.Repeat("d", 64), B0ReceiptSHA256: strings.Repeat("e", 64), B0Cohort: "c1", Namespace: "production-b0", ShardID: "lightpanda-b0", ColdHostSHA256: strings.Repeat("f", 64)}
 	path := filepath.Join(e.directory, "first-owner.json")
-	call := func(accepted bool) {
+	call := func(accepted bool, expectedPhase ...string) {
 		t.Helper()
 		body, _ := json.Marshal(r)
 		if err := os.WriteFile(path, append(body, '\n'), 0o600); err != nil {
@@ -130,8 +130,11 @@ func TestRealFirstOwnershipExecutableActivatesAndRetires(t *testing.T) {
 		command.Env = []string{"PATH=" + os.Getenv("PATH"), "LOCAL_DATABASE_URL=" + f.dsn, "REDIS_URL=unix://" + f.r.Options().Addr, "ORDINARY_GO_WORKER_MODE=" + r.Operation + "-first-ownership", "ORDINARY_FIRST_OWNERSHIP_REQUEST_FILE=" + path, "ORDINARY_OWNERSHIP_SOURCE_REVISION=" + r.SourceRevision, "ORDINARY_OWNERSHIP_PLAN_SHA256=" + r.PlanSHA256, "ORDINARY_OWNERSHIP_PROJECTION_SHA1=" + r.ProjectionSHA1, "ORDINARY_OWNERSHIP_ROUTING_EPOCH=" + strconv.FormatInt(r.RoutingEpoch, 10), "CRAWLER_IMAGE_REF=" + r.CrawlerImageRef, "LIGHTPANDA_B0_ROUTING_EPOCH=" + strconv.FormatInt(r.RoutingEpoch, 10), "LIGHTPANDA_B0_QUEUE_NAMESPACE=" + r.Namespace, "LIGHTPANDA_B0_SHARD_ID=" + r.ShardID, "LIGHTPANDA_B0_PRODUCER_COHORT=" + r.B0Cohort}
 		output, err := command.CombinedOutput()
 		if !accepted {
-			if err == nil || strings.Contains(string(output), f.dsn) {
+			if err == nil || strings.Contains(string(output), f.dsn) || strings.Contains(string(output), f.board) || strings.Contains(string(output), r.PlanSHA256) {
 				t.Fatal("invalid cold request accepted or exposed")
+			}
+			if len(expectedPhase) > 0 && !strings.Contains(string(output), "ordinary worker first ownership stage: "+expectedPhase[0]) {
+				t.Fatal("cold rejection lost its fixed diagnostic phase")
 			}
 			return
 		}
@@ -146,7 +149,7 @@ func TestRealFirstOwnershipExecutableActivatesAndRetires(t *testing.T) {
 	}
 	// A wrong startup projection is refused BEFORE first publication.
 	r.ProjectionSHA1 = strings.Repeat("f", 40)
-	call(false)
+	call(false, "projection")
 	if f.r.Exists(ctx, "ordinary:ownership:active").Val() != 0 {
 		t.Fatal("wrong startup identity published")
 	}
@@ -154,7 +157,7 @@ func TestRealFirstOwnershipExecutableActivatesAndRetires(t *testing.T) {
 	if err := f.r.Do(ctx, "ACL", "SETUSER", "default", "-save").Err(); err != nil {
 		t.Fatal(err)
 	}
-	call(false)
+	call(false, "activate")
 	var state string
 	if err := f.pg.QueryRow(ctx, "SELECT state FROM ordinary_worker_ownership_plan WHERE plan_sha256=$1", plan.SHA256()).Scan(&state); err != nil || state != "staged" {
 		t.Fatal("unacknowledged SAVE activated SQL")

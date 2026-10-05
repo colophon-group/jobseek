@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io"
+	"log"
 	"regexp"
 	"strconv"
 	"time"
@@ -97,7 +98,13 @@ func ReadFirstOwnershipAdminConfig(getenv func(string) string, installed, operat
 	return c, nil
 }
 
-func RunFirstOwnershipAdmin(ctx context.Context, c FirstOwnershipAdminConfig) (*queue.FirstOwnershipResult, error) {
+func RunFirstOwnershipAdmin(ctx context.Context, c FirstOwnershipAdminConfig) (result *queue.FirstOwnershipResult, err error) {
+	phase := "configuration"
+	defer func() {
+		if err != nil {
+			log.Print("ordinary worker first ownership stage: ", phase)
+		}
+	}()
 	if c.database == "" || c.redis == "" || !planPattern.MatchString(c.digest) {
 		return nil, ErrStartup
 	}
@@ -105,6 +112,7 @@ func RunFirstOwnershipAdmin(ctx context.Context, c FirstOwnershipAdminConfig) (*
 	// stops. The protected host remains cold while they expire naturally.
 	ctx, cancel := context.WithTimeout(ctx, 14*time.Minute)
 	defer cancel()
+	phase = "database"
 	config, err := pgxpool.ParseConfig(c.database)
 	if err != nil {
 		return nil, ErrStartup
@@ -118,19 +126,22 @@ func RunFirstOwnershipAdmin(ctx context.Context, c FirstOwnershipAdminConfig) (*
 		return nil, ErrStartup
 	}
 	defer pool.Close()
+	phase = "queue"
 	client, err := queue.Open(c.redis, queue.Settings{LeaseTTL: 600 * time.Second, MaxDomains: 10})
 	if err != nil {
 		return nil, ErrStartup
 	}
 	defer client.Close()
+	phase = "legacy-leases"
 	if err := waitFirstOwnershipLegacyLeases(ctx, pool); err != nil {
 		return nil, ErrStartup
 	}
 	r := c.request
-	var result *queue.FirstOwnershipResult
+	phase = "host-cold-scope"
 	err = queue.WithHostColdSQL(ctx, pool, queue.HostColdSQLBinding{SourceRevision: r.SourceRevision, RequestSHA256: c.digest, ContainmentIntentSHA256: r.ColdHostSHA256}, func(ctx context.Context, _ *queue.HostColdSQL) error {
 		// Validate the legacy/native startup projection identity before any
 		// Redis or SQL ownership effect; the queue API validates the full plan.
+		phase = "projection"
 		var payload string
 		if err := pool.QueryRow(ctx, "SELECT payload FROM public.ordinary_worker_ownership_plan WHERE plan_sha256=$1 AND source_revision=$2 AND routing_epoch=$3", r.PlanSHA256, r.SourceRevision, r.RoutingEpoch).Scan(&payload); err != nil {
 			return ErrStartup
@@ -139,16 +150,23 @@ func RunFirstOwnershipAdmin(ctx context.Context, c FirstOwnershipAdminConfig) (*
 		if err != nil || projection != r.ProjectionSHA1 {
 			return ErrStartup
 		}
+		phase = "b0-target"
 		target, err := queue.CaptureFirstOwnershipB0(ctx, pool, client, r.RoutingEpoch, r.Namespace, r.ShardID, r.B0Cohort)
 		if err != nil {
 			return err
 		}
 		if r.Operation == "activate" {
+			phase = "activate"
 			result, err = queue.ActivateFirstOwnershipInHostScope(ctx, pool, client, r.RoutingEpoch, r.PlanSHA256, r.SourceRevision, target)
 		} else {
+			phase = "retire"
 			result, err = queue.RetireFirstOwnershipInHostScope(ctx, pool, client, r.RoutingEpoch, r.PlanSHA256, r.SourceRevision, target)
 		}
-		if err != nil || result.ProjectionSHA1 != r.ProjectionSHA1 {
+		if err != nil {
+			return ErrStartup
+		}
+		phase = "result-projection"
+		if result == nil || result.ProjectionSHA1 != r.ProjectionSHA1 {
 			return ErrStartup
 		}
 		return nil

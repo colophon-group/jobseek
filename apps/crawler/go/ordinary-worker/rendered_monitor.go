@@ -189,7 +189,11 @@ func parseHeldNextdataPage(ctx context.Context, profile queue.GreenhouseMonitorP
 			return result
 		}
 	}
-	result.document, result.err = apisniffer.ParseEmbeddedMonitorDocument(source, o.Source)
+	if o.BrowserDocumentTransform == "florida-courts" {
+		result.document, result.err = apisniffer.ParseFloridaCourtsBrowserDocument(source)
+	} else {
+		result.document, result.err = apisniffer.ParseEmbeddedMonitorDocument(source, o.Source)
+	}
 	if result.err == nil {
 		result.items, result.err = result.document.NextdataPageItems(o)
 	}

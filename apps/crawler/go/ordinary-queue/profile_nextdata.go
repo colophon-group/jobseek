@@ -55,6 +55,17 @@ func RenderedNextdataMonitorOptions(config map[string]string) (apisniffer.Nextda
 		return fail()
 	}
 	options := map[string]any{}
+	var source string
+	if raw, present := md["source"]; present && json.Unmarshal(raw, &source) != nil {
+		return fail()
+	}
+	florida := source == "browser"
+	if florida {
+		var expression string
+		if json.Unmarshal(md["browser_expression"], &expression) != nil || expression != apisniffer.FloridaCourtsBrowserExpression {
+			return fail()
+		}
+	}
 	for _, key := range []string{"render", "browser_backend", "routing_revision", "wait", "wait_fallback", "timeout", "actions", "request_headers", "proxy", "skip_ssl", "channel", "stealth", "headless", "persistent_context", "user_agent", "resource_policy", "transport_attempts", "encoding"} {
 		if raw, ok := md[key]; ok {
 			var v any
@@ -63,6 +74,9 @@ func RenderedNextdataMonitorOptions(config map[string]string) (apisniffer.Nextda
 			}
 			options[key] = v
 		}
+	}
+	if florida {
+		options["render"] = true // source=browser forces rendering in Python.
 	}
 	if validateRenderedNavigation(options) != nil {
 		return fail()
@@ -75,6 +89,10 @@ func RenderedNextdataMonitorOptions(config map[string]string) (apisniffer.Nextda
 		delete(cloneMD, key)
 	}
 	cloneMD["render"] = json.RawMessage(`false`)
+	if florida {
+		cloneMD["source"] = json.RawMessage(`"nextdata"`)
+		delete(cloneMD, "browser_expression")
+	}
 	body, err := json.Marshal(cloneMD)
 	if err != nil {
 		return fail()
@@ -84,6 +102,13 @@ func RenderedNextdataMonitorOptions(config map[string]string) (apisniffer.Nextda
 	// routes require their independently tested page navigation contract.
 	if err != nil || o.Pagination != nil || o.ExpectedOrganization != "" {
 		return fail()
+	}
+	if florida {
+		if o.ExpectedTitle != "" {
+			return fail()
+		}
+		o.BrowserDocumentTransform = "florida-courts"
+		o.Strict = true // Browser-expression failures never become an empty inventory.
 	}
 	return o, options, nil
 }

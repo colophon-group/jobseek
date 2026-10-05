@@ -1,6 +1,43 @@
 package queue
 
-import "testing"
+import (
+	"encoding/json"
+	apisniffer "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
+	"testing"
+)
+
+func TestNextdataKnownBrowserDocumentTransformBindsExactExpression(t *testing.T) {
+	c := profileConfig()
+	c["crawler_type"], c["monitor_needs_browser"] = "nextdata", "1"
+	md := map[string]any{"source": "browser", "browser_expression": apisniffer.FloridaCourtsBrowserExpression, "path": "items", "url_template": "{url}", "fields": map[string]string{"title": "title"}}
+	encode := func() { b, _ := json.Marshal(md); c["metadata"] = string(b) }
+	encode()
+	p, err := InspectRichMonitor(profileBoardID, c)
+	if err != nil || p.Profile != "nextdata.rendered-items/v1" || MonitorWorker(p) != Browser {
+		t.Fatal(err)
+	}
+	o, nav, err := RenderedNextdataMonitorOptions(c)
+	if err != nil || o.BrowserDocumentTransform != "florida-courts" || !o.Strict || nav["render"] != true {
+		t.Fatal("browser transform lost failure/render contract", err)
+	}
+	md["browser_expression"] = apisniffer.FloridaCourtsBrowserExpression + "; other()"
+	encode()
+	if _, err := InspectRichMonitor(profileBoardID, c); err == nil {
+		t.Fatal("changed expression gained authority")
+	}
+	md["browser_expression"] = apisniffer.FloridaCourtsBrowserExpression
+	md["stealth"] = true
+	encode()
+	if _, err := InspectRichMonitor(profileBoardID, c); err == nil {
+		t.Fatal("unproved stealth gained authority")
+	}
+	delete(md, "stealth")
+	encode()
+	c["monitor_needs_browser"] = "0"
+	if _, err := InspectRichMonitor(profileBoardID, c); err == nil {
+		t.Fatal("simple worker adopted browser expression")
+	}
+}
 
 func TestRenderedNextdataProfilesBindNavigationAndSeparateBrowserOwner(t *testing.T) {
 	for _, fields := range []string{``, `,"fields":{"title":"title"}`} {

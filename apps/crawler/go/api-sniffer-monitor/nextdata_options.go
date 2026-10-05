@@ -27,7 +27,8 @@ type NextdataOptions struct {
 	IncludeItems, RequireItems                                    map[string][]string
 	Metadata                                                      map[string]any
 	Identity                                                      *NextdataIdentity
- ExpectedOrganization string
+	BrowserDocumentTransform                                      string
+	ExpectedOrganization                                          string
 }
 
 type NextdataIdentity struct{ Provider, Tenant, Field string }
@@ -117,12 +118,14 @@ func NextdataOptionsFromMetadata(boardURL, metadata string) (NextdataOptions, er
 			return o, ErrOptions
 		}
 	}
-	if raw:=m["expected_hiring_organization"]; raw!=nil {
-  value,ok:=raw.(string)
-  if !ok || strings.TrimSpace(value)=="" || len(value)>256 || strings.ContainsRune(value,0) || o.URLAllowlist=="" { return o,ErrOptions }
-  o.ExpectedOrganization=strings.TrimSpace(value)
- }
- if raw := m["source_identity"]; raw != nil {
+	if raw := m["expected_hiring_organization"]; raw != nil {
+		value, ok := raw.(string)
+		if !ok || strings.TrimSpace(value) == "" || len(value) > 256 || strings.ContainsRune(value, 0) || o.URLAllowlist == "" {
+			return o, ErrOptions
+		}
+		o.ExpectedOrganization = strings.TrimSpace(value)
+	}
+	if raw := m["source_identity"]; raw != nil {
 		cfg, ok := raw.(map[string]any)
 		if !ok || len(cfg) != 3 || len(o.Fields) == 0 || o.URLAllowlist == "" {
 			return o, ErrOptions
@@ -335,13 +338,19 @@ func (o NextdataOptions) ResourceMatches(value string) bool {
 }
 
 func (o NextdataOptions) DetailWitnessMatches(value string) bool {
-	if o.ExpectedOrganization=="" || !validURL(value) || len(value)>8192 { return false }
-	pattern,err:=dom.CompileURLPattern(o.URLAllowlist)
-	if err!=nil { return false }
-	m,err:=pattern.FindStringMatch(value)
-	if err!=nil || m==nil { return false }
-	at,n:=m.ByteRange()
-	return at==0 && n==len(value)
+	if o.ExpectedOrganization == "" || !validURL(value) || len(value) > 8192 {
+		return false
+	}
+	pattern, err := dom.CompileURLPattern(o.URLAllowlist)
+	if err != nil {
+		return false
+	}
+	m, err := pattern.FindStringMatch(value)
+	if err != nil || m == nil {
+		return false
+	}
+	at, n := m.ByteRange()
+	return at == 0 && n == len(value)
 }
 
 // Python parse_qs preserves first key order and blank values; urlencode
