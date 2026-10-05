@@ -20,7 +20,7 @@ import (
 func TestLightpandaPoolRuntimeV1IntegrationC4(t *testing.T) {
 	expectedSHA256, supported := lightpandaPinnedSHA256[runtime.GOARCH]
 	if runtime.GOOS != "linux" || !supported {
-		t.Skip("pinned Lightpanda nightly 2026-09-30 integration binary requires Linux amd64 or arm64")
+		t.Skip("pinned Lightpanda 1.0.0 integration binary requires Linux amd64 or arm64")
 	}
 	binary := os.Getenv("LIGHTPANDA_INTEGRATION_BIN")
 	if binary == "" {

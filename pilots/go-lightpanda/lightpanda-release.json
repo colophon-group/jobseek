@@ -1,35 +1,36 @@
 {
   "schema_version": 2,
   "repository": "https://github.com/lightpanda-io/browser",
-  "tag": "nightly",
-  "verified_at": "2026-09-30",
-  "release_url": "https://github.com/lightpanda-io/browser/releases/tag/nightly",
-  "note": "Builds copy only the binary from the official multi-architecture OCI image by immutable index digest and verify its architecture-specific SHA-256. No nightly tag or expiring GitHub asset URL is resolved during builds. OCI deletion fails closed; retain promoted Jobseek image digests for reversal. Tag creation time/commit does not identify the binary build.",
+  "tag": "1.0.0",
+  "verified_at": "2026-10-05",
+  "release_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
+  "published_at": "2026-10-02T10:12:01Z",
+  "note": "Builds copy only the binary from the official multi-architecture OCI image by immutable index digest and verify its architecture-specific SHA-256. OCI index, platform manifests, binary layers and extracted executables were independently hashed and matched to official 1.0.0 release assets. No mutable tag or GitHub asset URL is resolved during builds. OCI deletion fails closed; retain promoted Jobseek image digests for reversal.",
   "image": {
     "repository": "lightpanda/browser",
-    "index_digest": "sha256:2d29d32d5ae76771096e2e9ecf46d30947ea58f9966cd2235cf4526657a029d2",
-    "binary_path": "/usr/bin/lightpanda"
+    "index_digest": "sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e",
+    "binary_path": "/bin/lightpanda"
   },
   "assets": {
     "amd64": {
-      "id": 599880505,
+      "id": 605343099,
       "name": "lightpanda-x86_64-linux",
-      "updated_at": "2026-09-30T02:55:29Z",
-      "sha256": "16ee4443e34d09c522d8c416c6096bcd5a3dffd56706b7a8e2d7d0b1172ecc62",
-      "size": 181265952,
-      "image_manifest_digest": "sha256:78780bd46bab3a2454c02500571fd97cbadb41b6abf2d1d297fcce15ff94d617",
-      "image_created_at": "2026-09-30T02:56:26.754003668Z",
-      "image_binary_layer_digest": "sha256:eda1ce61118c95a9bc7d1fcf9f3bce3564b825944b671482477914b3b1498344"
+      "updated_at": "2026-10-02T10:18:29Z",
+      "size": 188268424,
+      "sha256": "aa5a4b8ed53d1e38b3c73f5b2647d0a84a82e6744557f45f9a9c85858aa031c3",
+      "image_manifest_digest": "sha256:16b668ba75fdf3f9b215a0550f2840a0e76b905c645d99a23751dcd40a65688a",
+      "image_created_at": "2026-10-02T10:19:33.379638564Z",
+      "image_binary_layer_digest": "sha256:0ae7740af098a4a44f61e4e946930ed83b8614505e53be780b6dcce21e20815b"
     },
     "arm64": {
-      "id": 599876163,
+      "id": 605340458,
       "name": "lightpanda-aarch64-linux",
-      "updated_at": "2026-09-30T02:52:51Z",
-      "sha256": "112d39b5020a80e2de6b828485880eb7b8271e42c5598b825a760a8688fe0b21",
-      "size": 185715144,
-      "image_manifest_digest": "sha256:5d508702e1ec049ac04505b9ee11036eeaa66edc52ef866d5e9a11744d271c58",
-      "image_created_at": "2026-09-30T02:56:27.952230964Z",
-      "image_binary_layer_digest": "sha256:7610af2eaa1071852c777cbc5be040e4a437c51923aeceea060b9e3482c55389"
+      "updated_at": "2026-10-02T10:16:57Z",
+      "size": 192757248,
+      "sha256": "69791924bcee43b13b224af4c845622c5fe66fdbc1b8143bfaa39ca8f85244f5",
+      "image_manifest_digest": "sha256:dddeeccaea193724896a8c7b18a6630c66de18821518179a33060b0aa189090c",
+      "image_created_at": "2026-10-02T10:19:34.539929242Z",
+      "image_binary_layer_digest": "sha256:5fa719927ae0018466625aa98eb063f878a4e0f5ab799c9ba70beae2673413c2"
     }
   }
 }
