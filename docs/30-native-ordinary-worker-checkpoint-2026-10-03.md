@@ -1,6 +1,6 @@
 # Native ordinary worker continuation, 2026-10-03
 
-## Current delivery — 2026-10-05 20:49 UTC
+## Current delivery — 2026-10-05 21:40 UTC
 
 The full migration goal remains active. Routine migration releases now group
 multiple provider types and share verification, checkpointing and deployment.
@@ -9,13 +9,15 @@ The startup/iCIMS prerequisite [PR #10328](https://github.com/colophon-group/job
 merged at the verified head as `194af110324d6eb9a09fc23619f516d656e608b5` after
 `Required CI` and `Crawler Deploy Gate` passed. Its original immutable
 [deployment](https://github.com/colophon-group/jobseek/actions/runs/37370996768)
-is queued; promotion and native adoption are unverified.
+has passed build and company-OG checks and is deploying on retry attempt 2;
+promotion and native adoption are unverified.
 
 The five-provider release [PR #10329](https://github.com/colophon-group/jobseek/pull/10329)
 groups Breezy, Gem, JazzHR, Gupy and direct Phenom: 106 enabled configurations.
 Only its four own commits were rebased onto the prerequisite merge. Its new
 head is `c47aee3575e694ac7061b6291e0346061e8c5d11`; fresh required checks are
-pending. Lightpanda 1.0.0 remains the verified installed renderer.
+running on retry attempt 2; the deployment gate is green. Lightpanda 1.0.0
+remains the verified installed renderer.
 
 The next release groups **Jobylon + NextData**, targeting 82 enabled
 configurations. Jobylon's 28 canonical/cache monitor and detail configurations
@@ -28,8 +30,15 @@ The NextData document decoder now reuses the existing precise JSON/RSC/React
 Router implementation and preserves the monitor's strict first-script and
 Phenom Canvas behavior. Its rich field/template/slug projection also passes seven actual Python cases.
 Fourteen document-source cases and the complete API module race suite pass.
-Pagination and worker ownership integration remain in progress; no NextData
-admission or production claim is made.
+The direct streamed runtime now admits 44 of 54 canonical/cache configurations.
+Twenty-six actual Python streamed cases pass, including ordered ten-page groups,
+required-page retries, tenant checks and committed failure prefixes. Fourteen
+real PostgreSQL/Redis worker modes pass, as do cold retirement and semantic
+configuration/resource binding. Scraped locale bodies remain authoritative;
+missing locales receive the legacy monitor fallback. The remaining seven browser
+routes and three provider-identity routes stay in the combined batch target.
+No production NextData claim is made, and the old Jobylon full suites do not
+cover these new edits. [NextData local evidence](evidence/go-native-nextdata-local-2026-10-05.json).
 
 Keep this as one combined release rather than opening a Jobylon-only PR.
 Group the 125 Inline configurations and Beisen's extraction variants in the

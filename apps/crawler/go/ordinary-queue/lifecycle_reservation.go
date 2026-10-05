@@ -57,6 +57,9 @@ func (a *Authority) FinishGreenhouseReservationResource(ctx context.Context, cla
 		if profile.Provider == "oracle_hcm" {
 			matches = OracleMonitorResourceMatches(profile, claim.task.Config, initialEndpoint)
 		}
+		if profile.Provider == "nextdata" {
+			matches = NextdataMonitorResourceMatches(profile, claim.task.Config, initialEndpoint)
+		}
 		if (observation.Source != "" && observation.Source != "header" && observation.Source != "meta") || !matches || !validGreenhouseResponseResource(observation.Endpoint) {
 			return nil, ErrConfiguration
 		}

@@ -86,7 +86,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		return nil, err
 	}
 	var enrich []string
-	if profile.Provider == "oracle_hcm" || profile.Provider == "jobylon" {
+	if profile.Provider == "oracle_hcm" || profile.Provider == "jobylon" || profile.Provider == "nextdata" {
 		enrich, err = oracleMonitorEnrichment(claim.task.Config)
 		if err != nil {
 			return nil, err
@@ -104,7 +104,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		byURL[posting.URL] = posting.Content
 		// These rich inventories have no description field. Preserve the delegated
 		// scraper's retained body rather than letting a detached value replace it.
-		if len(enrich) > 0 && posting.Content.Description != nil {
+		if len(enrich) > 0 && posting.Content.Description != nil && profile.Provider != "nextdata" {
 			return nil, ErrConfiguration
 		}
 	}
@@ -208,7 +208,18 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 					return errors.New("unknown rich monitor classification")
 				}
 				if content.Description != nil {
-					if _, err := saveRichMonitorDescription(ctx, tx, row.id, content.Description); err != nil {
+					delegatedDescription := false
+					for _, field := range enrich {
+						delegatedDescription = delegatedDescription || field == "description"
+					}
+					if profile.Provider == "nextdata" && delegatedDescription && row.action != "new" {
+						// Same locale-only availability fallback as the legacy rich
+						// monitor: a scraped locale remains byte-authoritative.
+						d := content.Description
+						if _, err := tx.Exec(ctx, `INSERT INTO descriptions(posting_id,locale,html,hash,r2_uploaded) VALUES($1,$2,$3,$4,false) ON CONFLICT(posting_id,locale) DO NOTHING`, row.id, d.Locale, d.HTML, d.Hash); err != nil {
+							return err
+						}
+					} else if _, err := saveRichMonitorDescription(ctx, tx, row.id, content.Description); err != nil {
 						return err
 					}
 				}

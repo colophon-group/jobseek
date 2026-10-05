@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-func TestRealFirstJobylonMonitorColdRetirement(t *testing.T) {
-	for _, provider := range []string{"jobylon"} {
+func TestRealFirstEmbeddedMonitorColdRetirement(t *testing.T) {
+	for _, provider := range []string{"jobylon", "nextdata"} {
 		for _, mode := range []string{"interrupted", "committed-before-ack", "changed-token"} {
 			t.Run(provider+"/"+mode, func(t *testing.T) {
 				ctx := context.Background()
@@ -20,6 +20,9 @@ func TestRealFirstJobylonMonitorColdRetirement(t *testing.T) {
 				f := p.f
 				metadata := `{"company_id":"123","scraper_type":"json-ld"}`
 				boardURL := "https://example.com/careers"
+				if provider == "nextdata" {
+					metadata = `{"path":"jobs","url_template":"https://example.com/jobs/{id}","fields":{"title":"title"},"scraper_type":"json-ld"}`
+				}
 				if _, err := f.observer.Exec(ctx, "UPDATE job_board SET board_url=$2,crawler_type=$4,throttle_key=$4,metadata=$3::jsonb WHERE id=$1::uuid", f.task.ID, boardURL, metadata, provider); err != nil {
 					t.Fatal(err)
 				}
@@ -63,6 +66,9 @@ func TestRealFirstJobylonMonitorColdRetirement(t *testing.T) {
 				}
 				if mode == "changed-token" {
 					changed := strings.ReplaceAll(metadata, "123", "456")
+					if provider == "nextdata" {
+						changed = strings.ReplaceAll(metadata, "jobs/{id}", "changed/{id}")
+					}
 					if _, err := f.observer.Exec(ctx, "UPDATE job_board SET metadata=$2::jsonb WHERE id=$1::uuid", f.task.ID, changed); err != nil {
 						t.Fatal(err)
 					}

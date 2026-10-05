@@ -265,7 +265,7 @@ type BuildIdentity struct {
 	SourceRevision string     `json:"source_revision"`
 	CASHA256       string     `json:"ca_sha256"`
 	Profile        string     `json:"profile"`
-	Profiles       [36]string `json:"profiles"`
+	Profiles       [38]string `json:"profiles"`
 }
 
 func Identity(linked string) (BuildIdentity, error) {
@@ -273,5 +273,5 @@ func Identity(linked string) (BuildIdentity, error) {
 	if err != nil {
 		return BuildIdentity{}, err
 	}
-	return BuildIdentity{revision, pinnedCASHA256, "greenhouse.token-skip/v1", [36]string{"greenhouse.token-skip/v1", "ashby.token-skip/v1", "lever.token-skip/v1", "recruitee.api-skip/v1", "pinpoint.slug-skip/v1", "rss.teamtailor-skip/v1", "rss.successfactors-skip/v1", "personio.xml-skip/v1", "workday.cxs-urls/v1", "workday.cxs-detail/v1", "jsonld.direct-detail/v1", "smartrecruiters.api-detail/v1", "workable.api-detail/v1", "smartrecruiters.api-urls/v1", "workable.api-urls/v1", "join.nextdata-urls/v1", "join.nextdata-detail/v1", "sitemap.explicit-urls/v1", "dom.direct-detail/v1", "dom.direct-urls/v1", "dom.rendered-urls/v1", "dom.rendered-detail/v1", "jsonld.rendered-detail/v1", "api_sniffer.http-items/v1", "oracle_hcm.finder-items/v1", "oracle_hcm.api-detail/v1", "embedded.direct-detail/v1", "embedded.rendered-detail/v1", "api_sniffer.http-detail/v1", "icims.listing-urls/v1", "breezy.api-urls/v1", "gem.token-skip/v1", "jazzhr.listing-urls/v1", "gupy.nextdata-urls/v1", "phenom.sitemap-urls/v1", "jobylon.embed-items/v1"}}, nil
+	return BuildIdentity{revision, pinnedCASHA256, "greenhouse.token-skip/v1", [38]string{"greenhouse.token-skip/v1", "ashby.token-skip/v1", "lever.token-skip/v1", "recruitee.api-skip/v1", "pinpoint.slug-skip/v1", "rss.teamtailor-skip/v1", "rss.successfactors-skip/v1", "personio.xml-skip/v1", "workday.cxs-urls/v1", "workday.cxs-detail/v1", "jsonld.direct-detail/v1", "smartrecruiters.api-detail/v1", "workable.api-detail/v1", "smartrecruiters.api-urls/v1", "workable.api-urls/v1", "join.nextdata-urls/v1", "join.nextdata-detail/v1", "sitemap.explicit-urls/v1", "dom.direct-detail/v1", "dom.direct-urls/v1", "dom.rendered-urls/v1", "dom.rendered-detail/v1", "jsonld.rendered-detail/v1", "api_sniffer.http-items/v1", "oracle_hcm.finder-items/v1", "oracle_hcm.api-detail/v1", "embedded.direct-detail/v1", "embedded.rendered-detail/v1", "api_sniffer.http-detail/v1", "icims.listing-urls/v1", "breezy.api-urls/v1", "gem.token-skip/v1", "jazzhr.listing-urls/v1", "gupy.nextdata-urls/v1", "phenom.sitemap-urls/v1", "jobylon.embed-items/v1", "nextdata.embedded-items/v1", "nextdata.embedded-urls/v1"}}, nil
 }
