@@ -1,6 +1,6 @@
 # Native ordinary worker continuation, 2026-10-03
 
-## Current delivery — 2026-10-05 22:46 UTC
+## Current delivery — 2026-10-05 22:47 UTC
 
 The full migration goal remains active. Routine migration releases now group
 multiple provider types and share verification, checkpointing and deployment.
@@ -40,7 +40,10 @@ Lightpanda 1.0.0 remains installed and the official stable release list was
 rechecked on October 5. [Production evidence](evidence/go-native-providers945-production-2026-10-05.json).
 Only this batch's own implementation commits were rebased onto the merged release.
 
-The next release groups **Jobylon + NextData**, targeting 82 enabled
+[PR #10330](https://github.com/colophon-group/jobseek/pull/10330) groups
+**Jobylon + NextData**; 80 of its 82 target configurations are verified locally.
+Required CI and Crawler Deploy Gate must pass at the current head before merge.
+The full target remains 82 enabled
 configurations. Jobylon's 28 canonical/cache monitor and detail configurations
 pass local admission; four description masks use the existing JSONLD enrichment
 writer. Nineteen actual Python fixtures, 14 real worker modes, description-mask
