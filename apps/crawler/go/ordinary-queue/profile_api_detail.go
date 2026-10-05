@@ -9,6 +9,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	apisniffer "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
 	join "github.com/colophon-group/jobseek/apps/crawler/go/join-monitor"
 	oracle "github.com/colophon-group/jobseek/apps/crawler/go/oracle-hcm"
 	smartrecruiters "github.com/colophon-group/jobseek/apps/crawler/go/smartrecruiters-monitor"
@@ -97,6 +98,7 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 	}
 	var endpoint, profile, override string
 	var enrichmentFields []string
+	var oracleFields map[string]any
 	if scraper == "smartrecruiters" {
 		_, endpoint, err = smartrecruiters.DetailEndpoint(source)
 		profile = smartRecruitersDetailProfile
@@ -113,9 +115,18 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 			return fail()
 		}
 		if raw, ok := options["fields"]; ok && string(raw) != "null" {
-			var fields map[string]json.RawMessage
-			if json.Unmarshal(raw, &fields) != nil || len(fields) > 0 {
+			if json.Unmarshal(raw, &oracleFields) != nil {
 				return fail()
+			}
+			for target, spec := range oracleFields {
+				switch target {
+				case "title", "locations", "date_posted", "description", "valid_through", "employment_type", "job_location_type", "language":
+				default:
+					return fail()
+				}
+				if apisniffer.ValidateField(spec) != nil {
+					return fail()
+				}
 			}
 		}
 		endpoint, err = oracle.DetailEndpoint(source, overrides)
@@ -158,7 +169,7 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 		return fail()
 	}
 	digest := sha256.Sum256(body)
-	p := WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: endpoint, Domain: strings.ToLower(u.Hostname()), Profile: profile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), APITokenOverride: override, EnrichmentFields: enrichmentFields}
+	p := WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: endpoint, Domain: strings.ToLower(u.Hostname()), Profile: profile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), APITokenOverride: override, EnrichmentFields: enrichmentFields, OracleFields: oracleFields}
 	if profile == joinDetailProfile {
 		p.JoinDetailConfig = options
 	}
@@ -172,7 +183,7 @@ func inspectAPIDetailOwnership(boardID string, config map[string]string) (Workda
 		if raw, ok := metadata["scraper_config"]; ok {
 			_ = json.Unmarshal(raw, &options)
 		}
-		if o, err := oracle.OptionsFromMetadata(config["board_url"], options); err == nil {
+		if o, err := oracle.OptionsFromMetadata(config["board_url"], map[string]any{"host": options["host"], "site": options["site"]}); err == nil {
 			if p, err := InspectAPIDetail(boardID, config, o.JobURL("OWNERSHIPADMISSION"), Simple); err == nil && p.Profile == oracleDetailProfile {
 				p.Domain = "*"
 				return p, nil

@@ -94,3 +94,24 @@ func TestOracleRetryCancellationRetainsClaimContext(t *testing.T) {
 		t.Fatal("retry escaped cancellation", got, err, calls)
 	}
 }
+
+func TestOracleAllowlistRewriteRunsBeforeCanonicalInventory(t *testing.T) {
+	for _, id := range []string{"1234567890123456789", "foreign-id"} {
+		t.Run(id, func(t *testing.T) {
+			p, c := oracleFixture()
+			c["metadata"] = `{"url_allowlist":"^https://fixture\\.fa\\.em2\\.oraclecloud\\.com/hcmUI/CandidateExperience/en/sites/CX_1/job/[0-9]+$","url_transform":{"find":"^https://fixture\\.fa\\.em2\\.oraclecloud\\.com/hcmUI/CandidateExperience/en/sites/CX_1/job/([0-9]+)$","replace":"https://careers.example.net/en/job/\\1"}}`
+			client := &http.Client{Transport: workdayDetailRoundTrip(func(r *http.Request) (*http.Response, error) {
+				body := `{"items":[{"TotalJobsCount":1,"requisitionList":[{"Id":"` + id + `","Title":"Engineer"}]}]}`
+				return &http.Response{StatusCode: 200, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(body)), Request: r}, nil
+			})}
+			got, err := discoverOracleInventory(context.Background(), client, p, c)
+			if id == "foreign-id" {
+				if err == nil || len(got.Jobs) != 0 {
+					t.Fatal("boundary violation published a complete inventory", got, err)
+				}
+			} else if err != nil || len(got.Jobs) != 1 || got.Jobs[0].URL != "https://careers.example.net/en/job/"+id {
+				t.Fatal("canonical public identity rewrite lost", got, err)
+			}
+		})
+	}
+}

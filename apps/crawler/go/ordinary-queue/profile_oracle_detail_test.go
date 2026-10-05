@@ -26,7 +26,7 @@ func TestOracleDetailBindsDefaultEnrichmentAndTrustedTenant(t *testing.T) {
 	if err != nil || p.Domain != "careers.example.net" || !strings.HasPrefix(p.Endpoint, "https://fixture.fa.em2.oraclecloud.com/") {
 		t.Fatal("trusted vanity route rejected", err)
 	}
-	for _, metadata := range []string{`{"scraper_type":"oracle_hcm","scraper_config":{"host":"arbitrary.example.com","site":"CX_1"}}`, `{"scraper_type":"oracle_hcm","scraper_config":{"proxy":true}}`, `{"scraper_type":"oracle_hcm","scraper_config":{"enrich":["unknown"]}}`, `{"scraper_type":"oracle_hcm","scraper_config":{"fields":{"description":"other"}}}`} {
+	for _, metadata := range []string{`{"scraper_type":"oracle_hcm","scraper_config":{"host":"arbitrary.example.com","site":"CX_1"}}`, `{"scraper_type":"oracle_hcm","scraper_config":{"proxy":true}}`, `{"scraper_type":"oracle_hcm","scraper_config":{"enrich":["unknown"]}}`, `{"scraper_type":"oracle_hcm","scraper_config":{"fields":{"unported":"other"}}}`} {
 		c["metadata"] = metadata
 		if _, err := InspectAPIDetail(profileBoardID, c, source, Simple); err == nil {
 			t.Fatal("unported/unsafe Oracle option admitted", metadata)

@@ -20,6 +20,10 @@ func discoverOracleInventory(ctx context.Context, client *http.Client, profile q
 	if err != nil || client == nil || !queue.OracleMonitorResourceMatches(profile, config, o.Endpoint()) {
 		return result, queue.ErrConfiguration
 	}
+	rules, err := queue.OracleMonitorURLRules(config)
+	if err != nil {
+		return result, err
+	}
 	operation := *client
 	operation.Jar, err = cookiejar.New(nil)
 	if err != nil {
@@ -44,7 +48,11 @@ func discoverOracleInventory(ctx context.Context, client *http.Client, profile q
 		if err != nil {
 			return RichDiscovery{Response: result.Response}, err
 		}
-		result.Jobs = append(result.Jobs, RichMonitorJob{URL: job.URL, Title: title, Locations: job.Locations, DatePosted: job.DatePosted, EmploymentType: job.EmploymentType})
+		source, err := rules.Apply(job.URL)
+		if err != nil {
+			return RichDiscovery{Response: result.Response}, &DiscoveryError{Kind: "provider_boundary"}
+		}
+		result.Jobs = append(result.Jobs, RichMonitorJob{URL: source, Title: title, Locations: job.Locations, DatePosted: job.DatePosted, EmploymentType: job.EmploymentType})
 	}
 	return result, nil
 }

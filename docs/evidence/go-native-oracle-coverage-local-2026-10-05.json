@@ -1,0 +1,29 @@
+{
+  "schema": "jobseek-native-oracle-local-coverage/v1",
+  "date": "2026-10-05",
+  "status": "local implementation; not deployed or admitted",
+  "monitor": "oracle_hcm.finder-items/v1",
+  "detail": "oracle_hcm.api-detail/v1",
+  "coverage": [
+    "bounded complete inventory with failed-page refusal",
+    "canonical rich updates and description scheduling through existing queues",
+    "default and configured API detail fields",
+    "selected enrichment with missing-field backfill",
+    "enabled Oracle careers URL allowlist and public URL rewrite",
+    "cold Oracle and Workday retirement conservation"
+  ],
+  "checks": {
+    "ordinary_queue_full_race": "pass (13.860s)",
+    "ordinary_worker_full_race": "pass (21.202s)",
+    "affected_module_vet": "pass",
+    "real_sql_redis_oracle_detail_seven_outcomes": "pass (4.568s)",
+    "real_sql_redis_rich_inventory_and_publication_failure": "pass (4.390s, prior scheduling commit)",
+    "real_sql_redis_oracle_and_workday_cold_retirement": "pass (16.739s, prior detail commit)"
+  },
+  "limitations": [
+    "proxy-backed Oracle monitor/detail configuration not admitted",
+    "production ownership and actual posting route admission pending",
+    "whole production resource comparison and rollback window pending",
+    "full migration incomplete"
+  ]
+}

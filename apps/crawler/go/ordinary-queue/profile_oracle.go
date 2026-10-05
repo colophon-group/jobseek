@@ -21,6 +21,9 @@ func OracleMonitorOptions(config map[string]string) (oracle.Options, error) {
 }
 
 func inspectOracleMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
+	if _, err := OracleMonitorURLRules(config); err != nil {
+		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+	}
 	if _, err := oracleMonitorEnrichment(config); err != nil {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}

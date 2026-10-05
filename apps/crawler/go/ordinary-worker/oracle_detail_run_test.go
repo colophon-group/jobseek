@@ -12,13 +12,16 @@ import (
 )
 
 func TestRealOracleDetailPreservesSelectedEnrichmentAndCanonicalSettlement(t *testing.T) {
-	for _, mode := range []string{"description", "description_and_employment", "empty_backfill", "empty_payload", "404", "header_reserved"} {
+	for _, mode := range []string{"description", "description_and_employment", "configured_fields", "empty_backfill", "empty_payload", "404", "header_reserved"} {
 		t.Run(mode, func(t *testing.T) {
 			fields := `["description"]`
 			if mode == "description_and_employment" {
 				fields = `["description","employment_type"]`
 			}
 			metadata := `{"scraper_type":"oracle_hcm","selector":"a.job","render":true,"scraper_config":{"host":"fixture.fa.em2.oraclecloud.com","site":"CX_1","enrich":` + fields + `}}`
+			if mode == "configured_fields" {
+				metadata = `{"scraper_type":"oracle_hcm","scraper_config":{"host":"fixture.fa.em2.oraclecloud.com","site":"CX_1","enrich":["description"],"fields":{"title":"Title","locations":"PrimaryLocation","date_posted":"ExternalPostedStartDate","description":["ExternalDescriptionStr","ExternalQualificationsStr","ExternalResponsibilitiesStr"],"valid_through":"ExternalPostedEndDate","employment_type":"JobSchedule","job_location_type":{"map":{"ORA_HYBRID":"hybrid","ORA_REMOTE":"remote","ORA_ON_SITE":"onsite"},"path":"WorkplaceTypeCode"}}}}`
+			}
 			source := "https://fixture.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/123"
 			f, a, claim := independentDetailOwnedFixture(t, metadata, source)
 			ctx := context.Background()
@@ -50,7 +53,7 @@ func TestRealOracleDetailPreservesSelectedEnrichmentAndCanonicalSettlement(t *te
 					fmt.Fprint(w, `{"items":[{}]}`)
 					return
 				}
-				fmt.Fprint(w, `{"items":[{"Title":"Senior Software Engineer","PrimaryLocation":"Zurich","JobSchedule":"Full-time","ExternalDescriptionStr":"<p>Python. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>"}]}`)
+				fmt.Fprint(w, `{"items":[{"Title":"Senior Software Engineer","PrimaryLocation":"Zurich","JobSchedule":"Full-time","WorkplaceTypeCode":"ORA_REMOTE","ExternalQualificationsStr":"<p>Qualifications</p>","ExternalResponsibilitiesStr":"<p>Responsibilities</p>","ExternalDescriptionStr":"<p>Python. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>"}]}`)
 			})
 			circuits, err := queue.NewHostCircuits(f.client, queue.DefaultHostCircuitSettings())
 			if err != nil {
@@ -99,6 +102,9 @@ func TestRealOracleDetailPreservesSelectedEnrichmentAndCanonicalSettlement(t *te
 				var locations []int32
 				if err := f.pg.QueryRow(ctx, "SELECT d.html,d.r2_uploaded,p.location_ids FROM job_posting p JOIN descriptions d ON d.posting_id=p.id WHERE p.id=$1::uuid", f.original).Scan(&html, &uploaded, &locations); err != nil || !strings.Contains(html, "Salary CHF") || uploaded || fmt.Sprint(locations) != "[2]" {
 					t.Fatal("Oracle body staging/backfill differs", err)
+				}
+				if mode == "configured_fields" && (!strings.Contains(html, "Qualifications") || !strings.Contains(html, "Responsibilities")) {
+					t.Fatal("configured Oracle description omitted provider sections")
 				}
 			} else if f.r.Exists(ctx, "scrape:"+f.original).Val() != 1 {
 				t.Fatal("Oracle failed detail lost recurring intent")

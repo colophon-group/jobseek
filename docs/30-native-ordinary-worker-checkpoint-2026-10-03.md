@@ -34,6 +34,25 @@ fresh bound admission and sustained natural canonical/policy/description/queue
 proof. Then finish the existing provider/detail/runtime batch and the full lane's
 cost and reversal proof. Full migration is not complete.
 
+## Oracle HCM coverage batch — 2026-10-05
+
+The local coverage branch now wires bounded Oracle inventory and API detail
+extraction through the existing native worker, canonical writer, enrichment
+processor and Redis detail queues. Description-only enrichment preserves monitor
+fields; configured description/employment enrichment and missing-field backfill
+use the existing processor. Configured Oracle detail fields reuse the established
+API field extractor. The enabled Oracle careers URL allowlist/rewrite preserves
+numeric job identity and refuses provider-boundary violations before publication.
+Unsupported proxy configurations retain the legacy owner.
+
+Both affected modules pass their full race suites and vet. Real PostgreSQL/Redis
+checks cover seven detail outcomes, rich inventory/detail scheduling and cold
+Oracle/Workday retirement. This is local implementation evidence, not production
+admission or full migration completion. See the
+[coverage evidence](evidence/go-native-oracle-coverage-local-2026-10-05.json).
+Rebase this batch onto the capacity repair, bump its release version, and finish
+remaining provider/configuration and mandatory-consumer coverage before cutover.
+
 ## Lightpanda 1.0.0 deployed — 2026-10-05
 
 The latest stable upstream release is 1.0.0, published October 2. [PR #10322](https://github.com/colophon-group/jobseek/pull/10322)

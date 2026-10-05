@@ -16,6 +16,7 @@ type WorkdayDetailProfile struct {
 	Profile, EffectiveBoardSHA256                   string
 	FacilityTenantAliases                           []string
 	EnrichmentFields                                []string
+	OracleFields                                    map[string]any
 	JSONLDConfig                                    map[string]any
 	DOMConfig                                       map[string]any
 	APITokenOverride                                string
