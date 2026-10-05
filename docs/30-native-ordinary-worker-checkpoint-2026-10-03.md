@@ -1,5 +1,23 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Lightpanda 1.0.0 upgrade — 2026-10-05
+
+The latest stable upstream release is 1.0.0, published October 2. The renderer
+candidate now pins its official multi-architecture OCI index and verifies both
+Linux executable checksums against the release assets. Existing AMD64/ARM64
+browser, C4, child isolation and egress integration checks gate promotion;
+the existing immutable renderer deployment and acceptance workflows follow.
+The September 30 nightly remains the deployed rollback target until promotion
+is verified. [Release identity](../pilots/go-lightpanda/lightpanda-release.json).
+
+The shared-capacity fix merged in [PR #10321](https://github.com/colophon-group/jobseek/pull/10321)
+as `d6bdab010404b9bac5e33965d13aec2fc49791df`; its original crawler deployment
+is running. Independent premerge readback verified all six baseline writers
+healthy, receipts and selectors cleared, the failed native plan retired and
+epoch186. Upgrade the renderer before fresh native activation, then continue
+the full migration sequence below. Full migration and natural API proof remain
+incomplete; this release upgrade does not replace the delivery goal.
+
 ## Full migration delivery — source938 deployed, 2026-10-05
 
 The active goal is full production delivery of Go and self-hosted Lightpanda

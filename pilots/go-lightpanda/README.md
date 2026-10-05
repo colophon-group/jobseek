@@ -1,7 +1,7 @@
 # Go + Lightpanda lifecycle pilot
 
 This is a deliberately small, nonproduction experiment for driving Lightpanda
-nightly 2026-09-30 through CDP with `chromedp` 0.14.2. One invocation accepts one absolute
+1.0.0 through CDP with `chromedp` 0.14.2. One invocation accepts one absolute
 HTTP(S) URL and one synchronous JavaScript expression. It returns bounded JSON
 containing the top-level document's final response status, final URL,
 `<html>` outerHTML, and the expression value.
@@ -144,7 +144,7 @@ globally reachable exceptions inside `192.0.0.0/24`, `2001::/23`, and
 reviewed baseline revision, never an allow exemption. The exact baseline is in
 `egress_policy.go`.
 
-Pinned Lightpanda nightly 2026-09-30 applies the filter when its HTTP/WebSocket stack opens
+Pinned Lightpanda 1.0.0 applies the filter when its HTTP/WebSocket stack opens
 the resolved socket, below page JavaScript and CDP navigation. That covers
 direct navigation, redirects, subresources, in-page fetch/XHR, and WebSocket
 connection attempts. This is a browser-level destination policy, not an OS
@@ -167,16 +167,16 @@ builds retain the separate-process-group behavior.
 ## Build and run
 
 The image supports Linux amd64 and arm64. The Dockerfile copies the official
-Lightpanda nightly 2026-09-30 binary from `lightpanda/browser` using its immutable
+Lightpanda 1.0.0 (latest stable release, verified 2026-10-05) binary from `lightpanda/browser` using its immutable
 multi-architecture OCI index digest, then checks the per-architecture SHA-256.
 The [release snapshot](lightpanda-release.json) records the index, platform
 manifests, binary layers and matching release asset metadata. Daily removal of
 GitHub nightly assets no longer prevents a rebuild. The upstream entrypoint,
 user and libraries are not imported into the Jobseek runtime.
 
-- Index: `sha256:2d29d32d5ae76771096e2e9ecf46d30947ea58f9966cd2235cf4526657a029d2`
-- amd64 binary: `16ee4443e34d09c522d8c416c6096bcd5a3dffd56706b7a8e2d7d0b1172ecc62`
-- arm64 binary: `112d39b5020a80e2de6b828485880eb7b8271e42c5598b825a760a8688fe0b21`
+- Index: `sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e`
+- amd64 binary: `aa5a4b8ed53d1e38b3c73f5b2647d0a84a82e6744557f45f9a9c85858aa031c3`
+- arm64 binary: `69791924bcee43b13b224af4c845622c5fe66fdbc1b8143bfaa39ca8f85244f5`
 
 The runtime stage uses the digest-pinned multi-architecture Debian Trixie
 2026-08-24 slim image. The Go builder is patch/digest pinned; packages resolved
@@ -275,7 +275,7 @@ go test ./...
 ```
 
 The real-binary integration test is opt-in on Linux amd64 and arm64 and
-verifies the architecture-specific nightly-2026-09-30 checksum before use. It serves
+verifies the architecture-specific 1.0.0 checksum before use. It serves
 the navigated page from a local `httptest` origin, so test execution requires
 no destination network. Positive semantic fixtures use an `_test.go`-only
 exact `127.0.0.2/32` exemption; that escape hatch is absent from the default
