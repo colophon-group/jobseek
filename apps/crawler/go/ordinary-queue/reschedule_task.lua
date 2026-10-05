@@ -40,7 +40,7 @@ if supplied_token ~= "" and (#supplied_token ~= 32 or
 end
 local learned_host = ARGV[7] or ""
 if learned_host ~= "" then
-    if wtype ~= "simple" or task_type ~= "monitor" or supplied_token == "" or
+    if (wtype ~= "simple" and wtype ~= "browser") or task_type ~= "monitor" or supplied_token == "" or
         #learned_host > 253 or string.find(learned_host, "[%c|]") ~= nil then
         return redis.error_reply("ordinary receipt host is invalid")
     end

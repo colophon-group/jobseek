@@ -57,56 +57,8 @@ func InspectRenderedDetail(boardID string, config map[string]string, source stri
 		}
 		options[key] = value
 	}
-	if options["render"] != true {
+	if err := validateRenderedNavigation(options); err != nil {
 		return fail()
-	}
-	if backend, present := options["browser_backend"]; present && backend != "lightpanda" {
-		return fail()
-	}
-	for _, key := range []string{"actions", "request_headers", "enrich", "fallback"} {
-		value := options[key]
-		if value == nil {
-			continue
-		}
-		if list, ok := value.([]any); ok && len(list) == 0 {
-			continue
-		}
-		if object, ok := value.(map[string]any); ok && len(object) == 0 && key == "request_headers" {
-			continue
-		}
-		return fail()
-	}
-	for _, key := range []string{"proxy", "skip_ssl", "same_origin_redirects"} {
-		if value := options[key]; value != nil && value != false {
-			return fail()
-		}
-	}
-	for _, key := range []string{"channel", "stealth", "headless", "persistent_context", "user_agent", "resource_policy", "block_resource_types", "transport_attempts", "retry_statuses", "fetch_url_transform", "document_fallback", "linked_description", "encoding", "description_selector"} {
-		if _, present := options[key]; present {
-			return fail()
-		}
-	}
-	if raw, present := options["timeout"]; present {
-		n, ok := raw.(float64)
-		if !ok || n < 1 || n > 120000 || n != float64(int64(n)) {
-			return fail()
-		}
-	}
-	validWait := func(raw any) bool {
-		text, ok := raw.(string)
-		return ok && (text == "commit" || text == "domcontentloaded" || text == "load" || text == "networkidle")
-	}
-	if raw, present := options["wait"]; present && !validWait(raw) {
-		return fail()
-	}
-	if raw, present := options["wait_fallback"]; present && raw != nil && !validWait(raw) {
-		return fail()
-	}
-	if raw, present := options["routing_revision"]; present {
-		text, ok := raw.(string)
-		if !ok || !regexp.MustCompile(`^[0-9A-Za-z][0-9A-Za-z._+-]{0,63}$`).MatchString(text) {
-			return fail()
-		}
 	}
 	// Reuse the configured static parser admission after removing only the
 	// already-validated navigation controls. This clone is never published.
@@ -158,4 +110,59 @@ func InspectRenderedDetail(boardID string, config map[string]string, source stri
 	digest := sha256.Sum256(body)
 	profile.EffectiveBoardSHA256 = hex.EncodeToString(digest[:])
 	return profile, nil
+}
+
+func validateRenderedNavigation(options map[string]any) error {
+	if options["render"] != true {
+		return ErrUnsupportedProfile
+	}
+	if backend, present := options["browser_backend"]; present && backend != "lightpanda" {
+		return ErrUnsupportedProfile
+	}
+	for _, key := range []string{"actions", "request_headers", "enrich", "fallback"} {
+		value := options[key]
+		if value == nil {
+			continue
+		}
+		if list, ok := value.([]any); ok && len(list) == 0 {
+			continue
+		}
+		if object, ok := value.(map[string]any); ok && len(object) == 0 && key == "request_headers" {
+			continue
+		}
+		return ErrUnsupportedProfile
+	}
+	for _, key := range []string{"proxy", "skip_ssl", "same_origin_redirects"} {
+		if value := options[key]; value != nil && value != false {
+			return ErrUnsupportedProfile
+		}
+	}
+	for _, key := range []string{"channel", "stealth", "headless", "persistent_context", "user_agent", "resource_policy", "block_resource_types", "transport_attempts", "retry_statuses", "fetch_url_transform", "document_fallback", "linked_description", "encoding", "description_selector"} {
+		if _, present := options[key]; present {
+			return ErrUnsupportedProfile
+		}
+	}
+	if raw, present := options["timeout"]; present {
+		n, ok := raw.(float64)
+		if !ok || n < 1 || n > 120000 || n != float64(int64(n)) {
+			return ErrUnsupportedProfile
+		}
+	}
+	validWait := func(raw any) bool {
+		text, ok := raw.(string)
+		return ok && (text == "commit" || text == "domcontentloaded" || text == "load" || text == "networkidle")
+	}
+	if raw, present := options["wait"]; present && !validWait(raw) {
+		return ErrUnsupportedProfile
+	}
+	if raw, present := options["wait_fallback"]; present && raw != nil && !validWait(raw) {
+		return ErrUnsupportedProfile
+	}
+	if raw, present := options["routing_revision"]; present {
+		text, ok := raw.(string)
+		if !ok || !regexp.MustCompile(`^[0-9A-Za-z][0-9A-Za-z._+-]{0,63}$`).MatchString(text) {
+			return ErrUnsupportedProfile
+		}
+	}
+	return nil
 }

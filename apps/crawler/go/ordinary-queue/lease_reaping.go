@@ -43,8 +43,8 @@ func WithOrdinaryLeaseReaping(ctx context.Context, pool *pgxpool.Pool, client *r
 		}
 		observation := leaseReapObservation{Expired: expired, Receipts: map[string]committedReapReceipt{}}
 		projection := ""
-		if worker == "simple" {
-			projection, err = observeCommittedLeaseReceipts(ctx, tx, client, &observation)
+		if worker == "simple" || worker == "browser" {
+			projection, err = observeCommittedLeaseReceipts(ctx, tx, client, &observation, worker)
 			if err != nil {
 				return err
 			}
@@ -57,7 +57,7 @@ func WithOrdinaryLeaseReaping(ctx context.Context, pool *pgxpool.Pool, client *r
 	})
 }
 
-func observeCommittedLeaseReceipts(ctx context.Context, tx pgx.Tx, client *redis.Client, observation *leaseReapObservation) (string, error) {
+func observeCommittedLeaseReceipts(ctx context.Context, tx pgx.Tx, client *redis.Client, observation *leaseReapObservation, worker string) (string, error) {
 	candidates := []string{}
 	for _, task := range observation.Expired {
 		parts := strings.SplitN(task, "|", 3)
@@ -68,7 +68,7 @@ func observeCommittedLeaseReceipts(ctx context.Context, tx pgx.Tx, client *redis
 	if len(candidates) == 0 {
 		return "", nil
 	}
-	values, err := client.HMGet(ctx, "inflight_tokens:simple", candidates...).Result()
+	values, err := client.HMGet(ctx, "inflight_tokens:"+worker, candidates...).Result()
 	if err != nil {
 		return "", ErrObservation
 	}
@@ -115,7 +115,7 @@ func observeCommittedLeaseReceipts(ctx context.Context, tx pgx.Tx, client *redis
 			continue
 		}
 		member, owned := members[parts[2]]
-		if !owned || parts[1] != member.Domain {
+		if !owned || string(member.Worker) != worker || parts[1] != member.Domain {
 			continue
 		}
 		var token, configSHA, learned string

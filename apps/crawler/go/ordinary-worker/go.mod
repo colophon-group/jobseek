@@ -23,7 +23,7 @@ require (
 )
 
 require (
-	github.com/andybalholm/cascadia v1.3.3 // indirect
+	github.com/bits-and-blooms/bitset v1.20.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/dlclark/regexp2/v2 v2.8.0 // indirect
@@ -99,9 +99,11 @@ replace github.com/colophon-group/jobseek/apps/crawler/go/workable-monitor => ..
 replace github.com/colophon-group/jobseek/apps/crawler/go/join-monitor => ../join-monitor
 
 require (
+	github.com/andybalholm/cascadia v1.3.3
 	github.com/colophon-group/jobseek/apps/crawler/contracts v0.0.0
 	github.com/colophon-group/jobseek/apps/crawler/go/dom-detail v0.0.0
 	github.com/colophon-group/jobseek/apps/crawler/go/sitemap-monitor v0.0.0
+	github.com/nlnwa/whatwg-url v0.6.2
 )
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/sitemap-monitor => ../sitemap-monitor

@@ -516,3 +516,19 @@ def test_jsonld_detail_projection_is_independent_of_monitor_membership(profile):
         changed["details"][0][field] = value
         with pytest.raises(OrdinaryOwnershipError):
             ownership_projection(json.dumps(changed, separators=(",", ":")))
+
+
+def test_rendered_monitor_projection_preserves_exact_worker_boundary():
+    _, payload = expectation()
+    doc = json.loads(payload)
+    member = doc["members"][0]
+    member["profile"], member["worker"] = "dom.rendered-urls/v1", "browser"
+    projection = json.loads(ownership_projection(json.dumps(doc, separators=(",", ":"))))
+    assert projection["members"] == {member["board_id"]: member["domain"]}
+    member["worker"] = "simple"
+    with pytest.raises(OrdinaryOwnershipError):
+        ownership_projection(json.dumps(doc, separators=(",", ":")))
+    member["profile"] = "dom.direct-urls/v1"
+    member["worker"] = "browser"
+    with pytest.raises(OrdinaryOwnershipError):
+        ownership_projection(json.dumps(doc, separators=(",", ":")))

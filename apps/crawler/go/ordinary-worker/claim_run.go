@@ -71,18 +71,25 @@ type GreenhouseClaimResult struct {
 // must supply task cancellation/heartbeat/drain, protected assets and identities.
 // A result with an error is not a settled completion; a committed receipt may
 // remain available for durable recovery without repeating network work.
-func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *queue.Claim, http *VerifiedDirectHTTP, preparer RichPreparer, circuits *queue.HostCircuits) (*GreenhouseClaimResult, error) {
+func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *queue.Claim, http *VerifiedDirectHTTP, preparer RichPreparer, circuits *queue.HostCircuits, renderers ...renderedMonitorClient) (*GreenhouseClaimResult, error) {
 	result := &GreenhouseClaimResult{}
 	if authority == nil || claim == nil || !claim.OwnershipBound() || http == nil || http.client == nil || preparer == nil || circuits == nil {
 		return result, claimRunError("startup", queue.ErrConfiguration)
 	}
 	task := claim.Descriptor()
-	if task.Kind != queue.Monitor || task.Worker != queue.Simple {
+	if task.Kind != queue.Monitor || (task.Worker != queue.Simple && task.Worker != queue.Browser) {
 		return result, claimRunError("startup", queue.ErrUnsupportedProfile)
 	}
 	profile, err := queue.InspectRichMonitor(task.ID, task.Config)
-	if err != nil {
-		return result, claimRunError("startup", err)
+	if err != nil || queue.MonitorWorker(profile) != task.Worker {
+		return result, claimRunError("startup", queue.ErrUnsupportedProfile)
+	}
+	var renderer renderedMonitorClient
+	if len(renderers) > 0 {
+		renderer = renderers[0]
+	}
+	if task.Worker == queue.Browser && renderer == nil {
+		return result, claimRunError("startup", queue.ErrConfiguration)
 	}
 	settle := func(cycle *queue.GreenhouseCycleResult) (*GreenhouseClaimResult, error) {
 		result.Cycle = cycle
@@ -175,7 +182,14 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 				message = discoveryError.Error()
 			}
 		}
-		terminal, err := cycle.FinishFailureWithHostCircuit(ctx, message, preflight.Run, traffic())
+		var terminal *queue.GreenhouseCycleResult
+		var err error
+		observed := observation.Snapshot()
+		if task.Worker == queue.Browser && (observed.Responses == 0 || (observed.LastStatus != 401 && observed.LastStatus != 403 && observed.LastStatus != 429 && observed.LastStatus < 500)) {
+			terminal, err = cycle.FinishFailure(ctx, message)
+		} else {
+			terminal, err = cycle.FinishFailureWithHostCircuit(ctx, message, preflight.Run, traffic())
+		}
 		if err != nil {
 			return result, claimRunError("failure", err)
 		}
@@ -207,6 +221,8 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			discovery.Jobs = append(discovery.Jobs, RichMonitorJob{URL: raw})
 		}
 		errors.As(err, &workdayReservation)
+	} else if task.Worker == queue.Browser {
+		discovery, fetchErr = renderer.FetchMonitor(ctx, profile, task.Config)
 	} else if profile.Provider == "dom" {
 		discovery, fetchErr = discoverDOMInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "sitemap" {

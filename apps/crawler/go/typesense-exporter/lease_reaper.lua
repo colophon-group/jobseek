@@ -96,7 +96,7 @@ if ARGV[7] ~= nil then
     local count = 0
     for member, receipt in pairs(observation.receipts) do
         local domain, task_id = string.match(member, "^monitor|([^|]+)|([^|]+)$")
-        if wtype ~= "simple" or not observed[member] or domain == nil or type(receipt) ~= "table"
+        if (wtype ~= "simple" and wtype ~= "browser") or not observed[member] or domain == nil or type(receipt) ~= "table"
             or type(receipt.token) ~= "string" or #receipt.token ~= 32
             or string.find(receipt.token, "[^0-9a-f]") ~= nil
             or redis.call("HGET", token_key, member) ~= receipt.token

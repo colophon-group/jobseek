@@ -81,18 +81,17 @@ if operation == "retire" and retirement ~= "[]" then
 elseif retirement ~= "[]" then
     return redis.error_reply("first ordinary ownership rejected")
 end
-if not retirement_type("inflight_tokens:simple", "hash") then
-    return redis.error_reply("first ordinary ownership rejected")
-end
-for _, member in ipairs(plan.members) do
-    local task = "monitor|" .. member.domain .. "|" .. member.board_id
-    if operation ~= "inspect-active" and changes == nil
-        and redis.call("ZSCORE", KEYS[10], "monitor|" .. member.domain .. "|" .. member.board_id) then
+for _, worker in ipairs({"simple", "browser"}) do
+    if not retirement_type("inflight:" .. worker, "zset") or not retirement_type("inflight_tokens:" .. worker, "hash") then
         return redis.error_reply("first ordinary ownership rejected")
     end
-    if operation ~= "inspect-active" and changes == nil
-        and redis.call("HEXISTS", "inflight_tokens:simple", task) == 1 then
-        return redis.error_reply("first ordinary ownership rejected")
+    for _, member in ipairs(plan.members) do
+        local task = "monitor|" .. member.domain .. "|" .. member.board_id
+        if operation ~= "inspect-active" and changes == nil
+            and (redis.call("ZSCORE", "inflight:" .. worker, task)
+              or redis.call("HEXISTS", "inflight_tokens:" .. worker, task) == 1) then
+            return redis.error_reply("first ordinary ownership rejected")
+        end
     end
 end
 if operation ~= "inspect-active" and changes == nil and plan.details ~= nil then

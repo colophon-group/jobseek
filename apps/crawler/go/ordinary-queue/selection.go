@@ -41,6 +41,11 @@ func (a *Authority) RequiresRenderedDetails() bool {
 	if a == nil || a.ownership == nil {
 		return false
 	}
+	for _, member := range a.ownership.document.Members {
+		if member.Worker == Browser {
+			return true
+		}
+	}
 	for _, detail := range a.ownership.document.Details {
 		if detail.Worker == Browser {
 			return true
@@ -176,8 +181,11 @@ func (a *Authority) claimOwned(ctx context.Context, tx pgx.Tx, worker WorkerType
 	// a process mutex across every other claim's SQL transaction. Redis still
 	// atomically validates and pops the exact member/lease/snapshot below.
 	a.ownershipMu.Lock()
-	start := a.ownershipCursor
-	a.ownershipCursor = (start + count) % len(members)
+	if a.ownershipCursors == nil {
+		a.ownershipCursors = map[WorkerType]int{}
+	}
+	start := a.ownershipCursors[worker]
+	a.ownershipCursors[worker] = (start + count) % len(members)
 	a.ownershipMu.Unlock()
 	type probe struct {
 		member           ownershipMember
@@ -191,8 +199,8 @@ func (a *Authority) claimOwned(ctx context.Context, tx pgx.Tx, worker WorkerType
 			continue
 		}
 		probes = append(probes, probe{member,
-			pipe.Do(ctx, "ZMSCORE", "ft_monitors_simple:"+member.Domain, member.BoardID),
-			pipe.Do(ctx, "ZMSCORE", "monitors_simple:"+member.Domain, member.BoardID)})
+			pipe.Do(ctx, "ZMSCORE", "ft_monitors_"+string(member.Worker)+":"+member.Domain, member.BoardID),
+			pipe.Do(ctx, "ZMSCORE", "monitors_"+string(member.Worker)+":"+member.Domain, member.BoardID)})
 	}
 	if _, err := pipe.Exec(ctx); err != nil && !errors.Is(err, redis.Nil) {
 		return nil, ErrObservation

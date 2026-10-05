@@ -80,7 +80,7 @@ type Authority struct {
 	pool                *pgxpool.Pool
 	epoch               int64
 	ownership           *OwnershipPlan
-	ownershipCursor     int
+	ownershipCursors    map[WorkerType]int
 	detailCursors       map[WorkerType]int
 	detailPostingCursor map[string]string
 	ownershipMu         sync.Mutex

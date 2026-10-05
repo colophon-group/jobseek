@@ -1,5 +1,44 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Configured rendered DOM monitor continuation — 2026-10-05
+
+The full migration remains open. Source934's full eligible fleet staged through
+its original wrapper, but activation refused two B0 monitor overlaps. Its pending
+identity and contained lane remain retained. [PR #10309](https://github.com/colophon-group/jobseek/pull/10309)
+now includes safe cancellation of the never-active staged plan. Required checks
+must pass on its new head before the immutable compatibility administrator can
+recover the old source through the original wrapper. Correct admission excludes
+all three verified B0 boards; no ordinary production adoption is claimed.
+
+v0.13.936 extends the same worker, renderer and canonical URL-only inventory
+writer to configured single-page rendered DOM monitors. Browser anchor selection,
+actual redirected document URL, first document base and WHATWG URL serialization
+preserve posting URL identity. It retains the full original configuration binding,
+Browser lease/queue namespace, publisher reservation before status, normal
+inventory disappearance rules, separate urgent detail routing and canonical
+receipt settlement. Renderer/protocol/parser failures remain distinct from
+actual critical origin responses for shared host circuits.
+
+Cold reversal restores interrupted Browser monitors from canonical deadlines.
+Committed lease expiry restores the successful future deadline and learned host,
+and retained old Browser monitor attempts permit later supported reversal.
+Separate monitor scan cursors prevent alternating Simple/Browser claims from
+skipping one namespace. Exact Lua copies share Browser settlement and recovery.
+
+Real PostgreSQL/Redis queue and worker race suites passed in 51.422s and 108.848s;
+subsequent Browser routing/origin503 tests passed in 3.006s. All 38 required Python
+ownership/cutover tests and exporter reaper race tests passed. After integration
+with amended935, staged cancellation/cutover, rendered queue reversal and
+rendered worker compatibility race checks passed in 18.861s, 6.781s and 8.316s. Canonical-only
+screening of the source934 census admits 144 rendered monitor configurations;
+this is coverage planning, not production authority. Pagination/actions/proxy,
+rich rows and provider captures still need native implementation. [Candidate
+evidence](evidence/go-native-rendered-monitors-candidate-2026-10-05.json) records
+these limits. Production recovery comes first, then fresh exact-source admission,
+complete deployment/cutover, natural canonical effects and supported reversal.
+Remaining enabled families, maintenance/deployment consumers, resource proof and
+production Python/Playwright/Chromium retirement remain required for completion.
+
 ## Broader native rendered details — 2026-10-05
 
 The full migration goal remains active. [PR #10308](https://github.com/colophon-group/jobseek/pull/10308)

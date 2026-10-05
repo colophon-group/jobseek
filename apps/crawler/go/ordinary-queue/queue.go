@@ -252,7 +252,7 @@ func (c *Client) rescheduleHost(ctx context.Context, task *Task, nextDue float64
 	defer cancel()
 	host := ""
 	if learned != nil {
-		if task.Kind != Monitor || task.Worker != Simple || !task.Fenced() || !validHost(*learned) || normalizeHost(*learned) != *learned {
+		if task.Kind != Monitor || !validWorker(task.Worker) || !task.Fenced() || !validHost(*learned) || normalizeHost(*learned) != *learned {
 			return false, ErrConfiguration
 		}
 		host = *learned
