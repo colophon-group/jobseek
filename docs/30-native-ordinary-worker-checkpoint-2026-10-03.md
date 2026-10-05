@@ -29,8 +29,13 @@ includes276 Join monitors,284 sitemap monitors and265 Join detail boards;30 cach
 mismatched detail boards retain legacy ownership. Original ordinary staging
 rejected before retaining a plan. No ownership was activated or manually changed;
 existing writers continue serving. The same source/epoch/config identity was
-rechecked before a supported retry. Natural source930 ordinary writes remain
-unproved. Continue delivery and diagnose the staging rejection without bypassing
+rechecked before a supported retry. An isolated local PostgreSQL/Redis reproduction
+stages and inspects the complete5,549/1,566 configuration plan. Installed-image
+diagnostics independently verify source-bound environment, protected cohort,
+read-only database schema/epoch and Redis availability, yet staging still rejects.
+v0.13.932 adds bounded administrative phase/category logging without exposing
+credentials, board configuration or SQL messages; focused executable contracts
+pass (5.570s). Natural source930 ordinary writes remain unproved. Continue delivery and diagnose the staging rejection without bypassing
 original authority, timeout or deployment protocols.
 
 ## Native direct DOM delivery and merged Join/sitemap release — 2026-10-05
