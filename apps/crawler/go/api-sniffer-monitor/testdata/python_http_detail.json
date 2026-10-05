@@ -1,0 +1,715 @@
+[
+  {
+    "name": "escaped-fallback",
+    "source": "https://careers.example.net/jobs/A%2FB/?ignored=9",
+    "config": {
+      "api_url": "https://api.example.net/jobs/{id}",
+      "json_path": "job",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations",
+        "metadata.uid": "id",
+        "job_location_type": {
+          "path": "remote",
+          "map": {
+            "True": "remote"
+          }
+        },
+        "skills": "skills",
+        "valid_through": "expiry",
+        "base_salary": "salary",
+        "department": "department",
+        "metadata.sibling": {
+          "lookup_from": "job",
+          "key_from": "title"
+        }
+      }
+    },
+    "payload": {
+      "job": {
+        "title": "Software Engineer",
+        "description": "<p>Build things.</p>",
+        "locations": "Zurich",
+        "id": 1234567890123456789,
+        "remote": true,
+        "skills": [
+          "Python",
+          " ",
+          "",
+          null,
+          false,
+          0
+        ],
+        "expiry": "2026-12-01",
+        "salary": {
+          "currency": "CHF",
+          "value": 100000
+        },
+        "department": "Engineering",
+        "salary_text": "CHF 100000 - 120000 per year"
+      }
+    },
+    "auth_payload": {
+      "result": {
+        "token": "Bearer fixture",
+        "flag": true,
+        "number": 1234567890123456789
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.example.net/jobs/A%2FB",
+        "headers": {},
+        "body": ""
+      }
+    ],
+    "expected": {
+      "title": "Software Engineer",
+      "description": "<p>Build things.</p>",
+      "locations": [
+        "Zurich"
+      ],
+      "job_location_type": "remote",
+      "extras": {
+        "skills": [
+          "Python",
+          "False",
+          "0"
+        ],
+        "valid_through": "2026-12-01"
+      },
+      "metadata": {
+        "uid": "1234567890123456789",
+        "department": "Engineering"
+      }
+    }
+  },
+  {
+    "name": "query-capture",
+    "source": "https://careers.example.net/jobs?jobId=123",
+    "config": {
+      "api_url": "https://api.example.net/jobs/{id}",
+      "json_path": "job",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations",
+        "metadata.uid": "id",
+        "job_location_type": {
+          "path": "remote",
+          "map": {
+            "True": "remote"
+          }
+        },
+        "skills": "skills",
+        "valid_through": "expiry",
+        "base_salary": "salary",
+        "department": "department",
+        "metadata.sibling": {
+          "lookup_from": "job",
+          "key_from": "title"
+        }
+      },
+      "url_pattern": "[?&]jobId=(?P<id>[^&]+)"
+    },
+    "payload": {
+      "job": {
+        "title": "Software Engineer",
+        "description": "<p>Build things.</p>",
+        "locations": "Zurich",
+        "id": 1234567890123456789,
+        "remote": true,
+        "skills": [
+          "Python",
+          " ",
+          "",
+          null,
+          false,
+          0
+        ],
+        "expiry": "2026-12-01",
+        "salary": {
+          "currency": "CHF",
+          "value": 100000
+        },
+        "department": "Engineering",
+        "salary_text": "CHF 100000 - 120000 per year"
+      }
+    },
+    "auth_payload": {
+      "result": {
+        "token": "Bearer fixture",
+        "flag": true,
+        "number": 1234567890123456789
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.example.net/jobs/123",
+        "headers": {},
+        "body": ""
+      }
+    ],
+    "expected": {
+      "title": "Software Engineer",
+      "description": "<p>Build things.</p>",
+      "locations": [
+        "Zurich"
+      ],
+      "job_location_type": "remote",
+      "extras": {
+        "skills": [
+          "Python",
+          "False",
+          "0"
+        ],
+        "valid_through": "2026-12-01"
+      },
+      "metadata": {
+        "uid": "1234567890123456789",
+        "department": "Engineering"
+      }
+    }
+  },
+  {
+    "name": "fragment-capture",
+    "source": "https://careers.example.net/#/jobs/456",
+    "config": {
+      "api_url": "https://api.example.net/jobs/{id}",
+      "json_path": "job",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations",
+        "metadata.uid": "id",
+        "job_location_type": {
+          "path": "remote",
+          "map": {
+            "True": "remote"
+          }
+        },
+        "skills": "skills",
+        "valid_through": "expiry",
+        "base_salary": "salary",
+        "department": "department",
+        "metadata.sibling": {
+          "lookup_from": "job",
+          "key_from": "title"
+        }
+      },
+      "url_pattern": "#/jobs/(?P<id>[0-9]+)"
+    },
+    "payload": {
+      "job": {
+        "title": "Software Engineer",
+        "description": "<p>Build things.</p>",
+        "locations": "Zurich",
+        "id": 1234567890123456789,
+        "remote": true,
+        "skills": [
+          "Python",
+          " ",
+          "",
+          null,
+          false,
+          0
+        ],
+        "expiry": "2026-12-01",
+        "salary": {
+          "currency": "CHF",
+          "value": 100000
+        },
+        "department": "Engineering",
+        "salary_text": "CHF 100000 - 120000 per year"
+      }
+    },
+    "auth_payload": {
+      "result": {
+        "token": "Bearer fixture",
+        "flag": true,
+        "number": 1234567890123456789
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.example.net/jobs/456",
+        "headers": {},
+        "body": ""
+      }
+    ],
+    "expected": {
+      "title": "Software Engineer",
+      "description": "<p>Build things.</p>",
+      "locations": [
+        "Zurich"
+      ],
+      "job_location_type": "remote",
+      "extras": {
+        "skills": [
+          "Python",
+          "False",
+          "0"
+        ],
+        "valid_through": "2026-12-01"
+      },
+      "metadata": {
+        "uid": "1234567890123456789",
+        "department": "Engineering"
+      }
+    }
+  },
+  {
+    "name": "tenant-capture",
+    "source": "https://fixture.bamboohr.com/careers/789",
+    "config": {
+      "api_url": "https://{tenant}.bamboohr.com/api/jobs/{id}",
+      "json_path": "job",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations",
+        "metadata.uid": "id",
+        "job_location_type": {
+          "path": "remote",
+          "map": {
+            "True": "remote"
+          }
+        },
+        "skills": "skills",
+        "valid_through": "expiry",
+        "base_salary": "salary",
+        "department": "department",
+        "metadata.sibling": {
+          "lookup_from": "job",
+          "key_from": "title"
+        }
+      },
+      "url_pattern": "^https://(?P<tenant>[a-z0-9-]+)\\.bamboohr\\.com/careers/(?P<id>\\d+)(?:/|$)"
+    },
+    "payload": {
+      "job": {
+        "title": "Software Engineer",
+        "description": "<p>Build things.</p>",
+        "locations": "Zurich",
+        "id": 1234567890123456789,
+        "remote": true,
+        "skills": [
+          "Python",
+          " ",
+          "",
+          null,
+          false,
+          0
+        ],
+        "expiry": "2026-12-01",
+        "salary": {
+          "currency": "CHF",
+          "value": 100000
+        },
+        "department": "Engineering",
+        "salary_text": "CHF 100000 - 120000 per year"
+      }
+    },
+    "auth_payload": {
+      "result": {
+        "token": "Bearer fixture",
+        "flag": true,
+        "number": 1234567890123456789
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://fixture.bamboohr.com/api/jobs/789",
+        "headers": {},
+        "body": ""
+      }
+    ],
+    "expected": {
+      "title": "Software Engineer",
+      "description": "<p>Build things.</p>",
+      "locations": [
+        "Zurich"
+      ],
+      "job_location_type": "remote",
+      "extras": {
+        "skills": [
+          "Python",
+          "False",
+          "0"
+        ],
+        "valid_through": "2026-12-01"
+      },
+      "metadata": {
+        "uid": "1234567890123456789",
+        "department": "Engineering"
+      }
+    }
+  },
+  {
+    "name": "post-binding",
+    "source": "https://careers.example.net/42",
+    "config": {
+      "api_url": "https://api.example.net/jobs/{id}",
+      "json_path": "job",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations",
+        "metadata.uid": "id",
+        "job_location_type": {
+          "path": "remote",
+          "map": {
+            "True": "remote"
+          }
+        },
+        "skills": "skills",
+        "valid_through": "expiry",
+        "base_salary": "salary",
+        "department": "department",
+        "metadata.sibling": {
+          "lookup_from": "job",
+          "key_from": "title"
+        }
+      },
+      "method": "POST",
+      "post_body": "{\"id\":\"{id}\"}",
+      "request_headers": {
+        "Host": "ignored",
+        "X-Board": "fixture"
+      }
+    },
+    "payload": {
+      "job": {
+        "title": "Software Engineer",
+        "description": "<p>Build things.</p>",
+        "locations": "Zurich",
+        "id": 1234567890123456789,
+        "remote": true,
+        "skills": [
+          "Python",
+          " ",
+          "",
+          null,
+          false,
+          0
+        ],
+        "expiry": "2026-12-01",
+        "salary": {
+          "currency": "CHF",
+          "value": 100000
+        },
+        "department": "Engineering",
+        "salary_text": "CHF 100000 - 120000 per year"
+      }
+    },
+    "auth_payload": {
+      "result": {
+        "token": "Bearer fixture",
+        "flag": true,
+        "number": 1234567890123456789
+      }
+    },
+    "requests": [
+      {
+        "method": "POST",
+        "url": "https://api.example.net/jobs/42",
+        "headers": {
+          "X-Board": "fixture"
+        },
+        "body": "{\"id\":\"42\"}"
+      }
+    ],
+    "expected": {
+      "title": "Software Engineer",
+      "description": "<p>Build things.</p>",
+      "locations": [
+        "Zurich"
+      ],
+      "job_location_type": "remote",
+      "extras": {
+        "skills": [
+          "Python",
+          "False",
+          "0"
+        ],
+        "valid_through": "2026-12-01"
+      },
+      "metadata": {
+        "uid": "1234567890123456789",
+        "department": "Engineering"
+      }
+    }
+  },
+  {
+    "name": "auth-scalars",
+    "source": "https://careers.example.net/42",
+    "config": {
+      "api_url": "https://api.example.net/jobs/{id}",
+      "json_path": "job",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations",
+        "metadata.uid": "id",
+        "job_location_type": {
+          "path": "remote",
+          "map": {
+            "True": "remote"
+          }
+        },
+        "skills": "skills",
+        "valid_through": "expiry",
+        "base_salary": "salary",
+        "department": "department",
+        "metadata.sibling": {
+          "lookup_from": "job",
+          "key_from": "title"
+        }
+      },
+      "auth_request": {
+        "api_url": "https://auth.example.net/session",
+        "json_path": "result",
+        "header_fields": {
+          "Authorization": "token",
+          "X-Boolean": "flag",
+          "X-Number": "number"
+        }
+      }
+    },
+    "payload": {
+      "job": {
+        "title": "Software Engineer",
+        "description": "<p>Build things.</p>",
+        "locations": "Zurich",
+        "id": 1234567890123456789,
+        "remote": true,
+        "skills": [
+          "Python",
+          " ",
+          "",
+          null,
+          false,
+          0
+        ],
+        "expiry": "2026-12-01",
+        "salary": {
+          "currency": "CHF",
+          "value": 100000
+        },
+        "department": "Engineering",
+        "salary_text": "CHF 100000 - 120000 per year"
+      }
+    },
+    "auth_payload": {
+      "result": {
+        "token": "Bearer fixture",
+        "flag": true,
+        "number": 1234567890123456789
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://auth.example.net/session",
+        "headers": {},
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.net/jobs/42",
+        "headers": {
+          "Authorization": "Bearer fixture",
+          "X-Boolean": "True",
+          "X-Number": "1234567890123456789"
+        },
+        "body": ""
+      }
+    ],
+    "expected": {
+      "title": "Software Engineer",
+      "description": "<p>Build things.</p>",
+      "locations": [
+        "Zurich"
+      ],
+      "job_location_type": "remote",
+      "extras": {
+        "skills": [
+          "Python",
+          "False",
+          "0"
+        ],
+        "valid_through": "2026-12-01"
+      },
+      "metadata": {
+        "uid": "1234567890123456789",
+        "department": "Engineering"
+      }
+    }
+  },
+  {
+    "name": "salary-string",
+    "source": "https://careers.example.net/42",
+    "config": {
+      "api_url": "https://api.example.net/jobs/{id}",
+      "json_path": "job",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations",
+        "metadata.uid": "id",
+        "job_location_type": {
+          "path": "remote",
+          "map": {
+            "True": "remote"
+          }
+        },
+        "skills": "skills",
+        "valid_through": "expiry",
+        "base_salary": "salary_text",
+        "department": "department",
+        "metadata.sibling": {
+          "lookup_from": "job",
+          "key_from": "title"
+        }
+      }
+    },
+    "payload": {
+      "job": {
+        "title": "Software Engineer",
+        "description": "<p>Build things.</p>",
+        "locations": "Zurich",
+        "id": 1234567890123456789,
+        "remote": true,
+        "skills": [
+          "Python",
+          " ",
+          "",
+          null,
+          false,
+          0
+        ],
+        "expiry": "2026-12-01",
+        "salary": {
+          "currency": "CHF",
+          "value": 100000
+        },
+        "department": "Engineering",
+        "salary_text": "CHF 100000 - 120000 per year"
+      }
+    },
+    "auth_payload": {
+      "result": {
+        "token": "Bearer fixture",
+        "flag": true,
+        "number": 1234567890123456789
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.example.net/jobs/42",
+        "headers": {},
+        "body": ""
+      }
+    ],
+    "expected": {
+      "title": "Software Engineer",
+      "description": "<p>Build things.</p>",
+      "locations": [
+        "Zurich"
+      ],
+      "job_location_type": "remote",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 100000,
+        "max": 120000,
+        "unit": "year"
+      },
+      "extras": {
+        "skills": [
+          "Python",
+          "False",
+          "0"
+        ],
+        "valid_through": "2026-12-01"
+      },
+      "metadata": {
+        "uid": "1234567890123456789",
+        "department": "Engineering"
+      }
+    }
+  },
+  {
+    "name": "missing-object",
+    "source": "https://careers.example.net/42",
+    "config": {
+      "api_url": "https://api.example.net/jobs/{id}",
+      "json_path": "missing",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations",
+        "metadata.uid": "id",
+        "job_location_type": {
+          "path": "remote",
+          "map": {
+            "True": "remote"
+          }
+        },
+        "skills": "skills",
+        "valid_through": "expiry",
+        "base_salary": "salary",
+        "department": "department",
+        "metadata.sibling": {
+          "lookup_from": "job",
+          "key_from": "title"
+        }
+      }
+    },
+    "payload": {
+      "job": {
+        "title": "Software Engineer",
+        "description": "<p>Build things.</p>",
+        "locations": "Zurich",
+        "id": 1234567890123456789,
+        "remote": true,
+        "skills": [
+          "Python",
+          " ",
+          "",
+          null,
+          false,
+          0
+        ],
+        "expiry": "2026-12-01",
+        "salary": {
+          "currency": "CHF",
+          "value": 100000
+        },
+        "department": "Engineering",
+        "salary_text": "CHF 100000 - 120000 per year"
+      }
+    },
+    "auth_payload": {
+      "result": {
+        "token": "Bearer fixture",
+        "flag": true,
+        "number": 1234567890123456789
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.example.net/jobs/42",
+        "headers": {},
+        "body": ""
+      }
+    ],
+    "expected": {}
+  }
+]

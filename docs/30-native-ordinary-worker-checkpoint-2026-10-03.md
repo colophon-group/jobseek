@@ -1,5 +1,46 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Direct HTTP API details — 2026-10-05
+
+Lightpanda 1.0.0 remains the verified latest stable renderer. The original
+v0.13.941 deployment completed. Independent readback at 17:21:59 UTC verifies
+source `e8576cb5653173110983fe38a2c79dfe44018f26`, the workflow-published slim and
+browser images, six healthy restart-armed baseline writers, cleared native
+selectors/receipts, retired ordinary ownership and epoch 190. An earlier readback
+refused while an administrative oneoff was running; the successful repeat found
+none. [Production evidence](evidence/go-native-coverage941-production-2026-10-05.json).
+
+The selector correction in [PR #10326](https://github.com/colophon-group/jobseek/pull/10326)
+merged as `9591fcb38e8c18095c01974f92181da78e0dfd9b` after fresh exact-head, base,
+operator, deployment-hold and required check verification. Its original immutable
+deployment is [run 37347216841](https://github.com/colophon-group/jobseek/actions/runs/37347216841).
+Do not activate a large ordinary cohort on 941 before 942 is verified promoted.
+
+The v0.13.943 batch adds configured `api_sniffer.http-detail/v1` to the existing
+worker, HTTP transport, field extractor, selected enrichment and canonical writer.
+The captured production configuration census has 41 direct HTTP API detail boards
+and all 41 pass configuration admission. This count is not actual posting-route
+or live provider verification. Named Python regex groups and escaped fallback IDs
+bind GET/POST endpoints and raw bodies; optional authentication responses supply
+validated scalar headers. Requests retain the shared 30-second bound, three
+existing retries, per-claim cookies and redirects. Successful publisher opt-out
+headers stop before JSON extraction, including the authentication response.
+
+Frozen Python output and request fixtures verify URL/query/fragment binding,
+19-digit identifiers, header scalars, selected JSON and structured extras. Real
+PostgreSQL/Redis tests verify full and selected canonical writes, description
+staging, recurring deadline equality, publisher policy, empty/gone/nonretryable/
+retryable/malformed failures, wildcard ownership and supported cold retirement.
+[Local evidence](evidence/go-native-http-api-detail-local-2026-10-05.json).
+
+Continue by verifying 942's exact promotion, then complete fresh source-bound
+B0/ordinary admission and natural Simple/rendered canonical processing. Publish
+and merge 943 after green required checks; then finish remaining enabled providers,
+configuration options and production Python maintenance/deployment consumers.
+Whole-lane resource comparison, supported reversal and the rollback window remain
+requirements before Python/Playwright/Chromium retirement. Full migration is
+active and incomplete; earlier sections are historical.
+
 
 ## First-time HTTP selection correction — 2026-10-05
 
@@ -23,14 +64,14 @@ removal, retaining its retiring identity and containing all writers. Its support
 exact retry succeeded. Independent readback verifies all nine B0/baseline writers
 healthy and restart-armed with zero restarts, the SQL plan retired and current
 ordinary fences/receipt/projection absent. Original B0 reversal and selector clearing succeeded. Independent readback at
-16:52 UTC verifies the complete six-writer baseline at epoch190, absent native
+16:52 UTC verifies the complete six-writer baseline at epoch 190, absent native
 receipts/projections and the retired SQL plan. PR #10325 merged as `e8576cb565…`
 after fresh exact-head required CI/gate and operator/hold checks. Provider
-coverage is not yet verified deployed. Full queue race passed in 92.052s and
+coverage was not yet verified deployed at that checkpoint. Full queue race passed in 92.052s and
 worker race passed in 150.785s, and Go vet passed. Production proof
 of the selector correction and full migration completion remain outstanding.
 
-## Current delivery checkpoint — 2026-10-05 16:08 UTC
+## Historical delivery checkpoint — 2026-10-05 16:08 UTC
 
 Lightpanda 1.0.0 remains the latest stable release and is deployed with restart
 and reboot acceptance. Source940 B0 is active at epoch189. Two independent
@@ -60,7 +101,7 @@ supported cold reversal and the rollback window before retiring production
 Python/Playwright/Chromium. Full migration is active and incomplete. Earlier
 sections are historical.
 
-## Current delivery checkpoint — 2026-10-05 15:42 UTC
+## Historical delivery checkpoint — 2026-10-05 15:42 UTC
 
 The original v0.13.940 release and promotion succeeded. Independent readback
 verified source `450b9e0316b813518d8f568afcdd35c4f4312feb`, both workflow-published
@@ -88,7 +129,7 @@ proof, remaining providers/configurations and mandatory consumers, then the
 whole production resource/reversal/rollback window before retiring Python.
 Full migration remains active and incomplete. Earlier sections are historical.
 
-## Current delivery checkpoint — 2026-10-05 15:17 UTC
+## Historical delivery checkpoint — 2026-10-05 15:17 UTC
 
 Supported source939 retirement and B0 reversal completed. Fresh independent
 readback verifies all six baseline services healthy and restart-armed, native

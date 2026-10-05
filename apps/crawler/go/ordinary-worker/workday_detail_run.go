@@ -179,7 +179,7 @@ func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Cla
 		} else if err != nil && fetched.ErrorKind == "status" {
 			err = &executor.NavigationHTTPError{RequestedURL: profile.SourceURL, ResponseURL: fetched.FinalURL, Status: uint32(fetched.Status)}
 		}
-	} else if profile.Profile == "smartrecruiters.api-detail/v1" || profile.Profile == "workable.api-detail/v1" || profile.Profile == "join.nextdata-detail/v1" || profile.Profile == "oracle_hcm.api-detail/v1" {
+	} else if profile.Profile == "smartrecruiters.api-detail/v1" || profile.Profile == "workable.api-detail/v1" || profile.Profile == "join.nextdata-detail/v1" || profile.Profile == "oracle_hcm.api-detail/v1" || profile.Profile == "api_sniffer.http-detail/v1" {
 		content, reservation, err = fetchAPIDetail(ctx, http, profile)
 		if reservation != nil && reservation.PolicyURL != nil && (len(*reservation.PolicyURL) > 8192 || !utf8.ValidString(*reservation.PolicyURL) || strings.ContainsRune(*reservation.PolicyURL, 0)) {
 			reservation.PolicyURL = nil

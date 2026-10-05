@@ -1,0 +1,43 @@
+{
+  "schema": "jobseek-native-http-api-detail-local/v1",
+  "date": "2026-10-05",
+  "status": "local implementation; not deployed or production-admitted",
+  "profile": "api_sniffer.http-detail/v1",
+  "configuration_census": {
+    "source_revision": "450b9e0316b813518d8f568afcdd35c4f4312feb",
+    "sha256": "c659929fedd3e9cb3c98066880df194a6da78c6e1087a0b378b789afdfe557b9",
+    "direct_configurations": 41,
+    "configuration_admitted": 41,
+    "get": 39,
+    "post": 2,
+    "auth_request": 2,
+    "selected_enrichment": 34,
+    "actual_posting_routes_reconciled": false
+  },
+  "contracts": [
+    "Named Python regex groups search raw canonical URLs, including query and fragment; escaped fallback ID and raw URL/body substitution.",
+    "Configured fields share Python-compatible JSON extraction with empty sibling-lookup root.",
+    "Per-claim cookies, verified redirects, 30-second operation bound, three existing full-jitter retries; 404/410 empty and nonretryable statuses propagate failure.",
+    "Authentication response scalar headers are validated without logging values; successful authentication/detail publisher opt-out headers stop before extraction.",
+    "Selected enrichment, core backfill, structured extras, salary-string JobContent normalization and existing canonical description staging.",
+    "Actual canonical source/config fence and wildcard board ownership use the original queue and cold retirement."
+  ],
+  "checks": {
+    "frozen_python_http_request_and_content_corpus": "8 cases pass through full worker JobContent boundary",
+    "full_api_field_extractor_race": "pass (1.534s)",
+    "real_postgres_redis_canonical_http_auth_retry_policy_matrix": "pass; included in full worker race",
+    "real_postgres_redis_independent_ownership_and_cold_retirement": "pass",
+    "full_queue_race": "pass (97.874s)",
+    "queue_final_validation_and_detached_config_changes": "focused race pass (3.698s)",
+    "full_worker_race_final": "pass (165.312s)",
+    "affected_module_vet_and_mod_tidy": "pass",
+    "python_runtime_contracts": "16 passed (1.54s)",
+    "frozen_generator_ruff": "pass",
+    "diff_and_gofmt": "pass"
+  },
+  "limitations": [
+    "Actual source-bound posting/cache admission and live API canonical output remain separate production requirements.",
+    "Required CI and Crawler Deploy Gate must pass on the published head before bound merge.",
+    "Remaining enabled profiles/options, production Python consumers, resource comparison, supported reversal and rollback window remain incomplete."
+  ]
+}
