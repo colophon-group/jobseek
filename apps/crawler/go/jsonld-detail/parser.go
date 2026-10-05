@@ -448,7 +448,7 @@ func fromPosting(p any, ignoreRegion bool) map[string]any {
 	return result
 }
 
-func Parse(rawURL string, body []byte, config map[string]any) (map[string]any, error) {
+func documentBlocks(body []byte) ([]any, map[string]string, string) {
 	z := html.NewTokenizer(bytes.NewReader(body))
 	meta := map[string]string{}
 	blocks := []any{}
@@ -507,6 +507,11 @@ func Parse(rawURL string, body []byte, config map[string]any) (map[string]any, e
 			}
 		}
 	}
+	return blocks, meta, pageTitle
+}
+
+func Parse(rawURL string, body []byte, config map[string]any) (map[string]any, error) {
+	blocks, meta, pageTitle := documentBlocks(body)
 	result := emptyContent()
 	ignoreLoc := isTrue(config["ignore_locations"])
 	for _, block := range blocks {
@@ -606,6 +611,27 @@ func missing(v any) bool {
 		return len(x) == 0
 	case []string:
 		return len(x) == 0
+	}
+	return false
+}
+
+// ContainsJobPosting requires a structured JobPosting and, when configured,
+// its normalized hiringOrganization.name. Meta tags and arbitrary text do not
+// establish the tenant witness. Each block preserves the parser's first-posting
+// selection and existing narrow malformed-JSON repairs.
+func ContainsJobPosting(body []byte, expectedOrganization string) bool {
+	blocks, _, _ := documentBlocks(body)
+	for _, block := range blocks {
+		p := posting(block)
+		if p == nil {
+			continue
+		}
+		if expectedOrganization == "" {
+			return true
+		}
+		if text(clean(get(get(p, "hiringOrganization"), "name"))) == expectedOrganization {
+			return true
+		}
 	}
 	return false
 }

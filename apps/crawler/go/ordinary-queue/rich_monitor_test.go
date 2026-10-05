@@ -29,7 +29,7 @@ func richPosting(t *testing.T, url, title, html string) GreenhouseRichPosting {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return GreenhouseRichPosting{url, &GreenhouseRichContent{
+	return GreenhouseRichPosting{URL: url, Content: &GreenhouseRichContent{
 		Fields: GreenhouseRichFields{Titles: []string{title}, Locales: []string{"en"}}, Description: description,
 	}}
 }

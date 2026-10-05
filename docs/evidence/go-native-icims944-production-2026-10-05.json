@@ -1,0 +1,77 @@
+{
+  "schema": "jobseek.native-icims-production/v1",
+  "source_revision": "194af110324d6eb9a09fc23619f516d656e608b5",
+  "version": "0.13.944",
+  "deployment": {
+    "run": 37370996768,
+    "attempt": 2,
+    "status": "success",
+    "identities": {
+      "JOBSEEK_DEPLOY_REVISION": "194af110324d6eb9a09fc23619f516d656e608b5",
+      "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:c92feb1a88bae1fc3c9abca780c106f8ba146ff61598c967ec87e5642fc22a74",
+      "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:f1810660c810d846ef795a98c098259fd1a811cd49f14775c47060d4717a398b"
+    }
+  },
+  "b0_activation": {
+    "routing_epoch": 193,
+    "health_responses": 7,
+    "success": true
+  },
+  "fresh_admission": {
+    "monitor_boards": 6409,
+    "detail_boards": 2461,
+    "scheduled_detail_routes_observed": 1399536,
+    "scheduled_owned_postings": 1375814,
+    "canonical_cache_binding_mismatches": 0,
+    "actual_route_cache_rejected_boards": 37
+  },
+  "ordinary_activation": {
+    "result": "administrative command rejected before serving",
+    "native_production_processing_verified": false,
+    "supported_recovery": "success",
+    "recovered_health_responses": 7,
+    "recovered_restart_armed_services": 9,
+    "b0_incarnation_preserved": true,
+    "post_recovery_plan_comparison": {
+      "differing_board": "ollies-bargain-outlet-careers",
+      "detail_profile": "embedded.direct-detail/v1",
+      "changed_configuration_fields": [
+        "metadata.board_id",
+        "metadata.host",
+        "metadata.listing_url",
+        "metadata.tenant"
+      ],
+      "scope": "post-recovery comparison; generic administrative rejection does not prove its exact original cause"
+    }
+  },
+  "before_next_release": {
+    "observed_at_utc": "2026-10-05T22:11:17.601713+00:00",
+    "supported_b0_rollback": "success",
+    "supported_selector_clear": "success",
+    "canonical": {
+      "active_plans": 0,
+      "retained_plan_state": "staged",
+      "routing_epoch": 194,
+      "current_or_newer_active_fences": 0,
+      "retained_outgoing_active_receipts": 1
+    },
+    "queue": {
+      "b0_producer_owner": 0,
+      "ordinary_projection": 0
+    },
+    "health": {
+      "worker-1": 200,
+      "worker-2": 200,
+      "worker-3": 200,
+      "browser-1": 200,
+      "drain": 200,
+      "exporter": 200
+    },
+    "baseline_restart_armed_services": 6,
+    "receipts_absent": true,
+    "selectors_cleared": true,
+    "live_oneoffs": 0
+  },
+  "lightpanda_version": "1.0.0",
+  "full_migration_complete": false
+}

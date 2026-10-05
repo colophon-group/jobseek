@@ -1,0 +1,2173 @@
+{
+  "cases": [
+    {
+      "name": "rich",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        }
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 90071992547409931234, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "chunks": [
+          [
+            {
+              "url": "https://example.com/jobs/90071992547409931234",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "url-only-dedup",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {}
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}, {\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}, null]}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "chunks": [
+          [
+            "https://example.com/jobs/1"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "missing-lenient",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        }
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "No embedded data",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "chunks": []
+      }
+    },
+    {
+      "name": "missing-strict",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "strict_path": true
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "No embedded data",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "chunks": []
+      }
+    },
+    {
+      "name": "wrong-path-lenient",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "missing",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        }
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "chunks": []
+      }
+    },
+    {
+      "name": "title",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "expected_page_title": "Fixture & Careers"
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<title>Fixture &amp; Careers</title><script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "chunks": [
+          [
+            {
+              "url": "https://example.com/jobs/1",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "wrong-title",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "expected_page_title": "Fixture Careers"
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<title>Wrong tenant</title><script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "chunks": []
+      }
+    },
+    {
+      "name": "non200-lenient",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        }
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "maintenance",
+          "status": 503,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "chunks": []
+      }
+    },
+    {
+      "name": "non200-policy",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        }
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "maintenance",
+          "status": 403,
+          "headers": {
+            "TDM-Reservation": "1"
+          }
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "chunks": []
+      }
+    },
+    {
+      "name": "header-policy",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        }
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "malformed",
+          "status": 200,
+          "headers": {
+            "TDM-Reservation": "1",
+            "TDM-Policy": "https://example.com/policy"
+          }
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "chunks": []
+      }
+    },
+    {
+      "name": "meta-policy",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        }
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<meta name=\"tdm-reservation\" content=\"1\">",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "chunks": []
+      }
+    },
+    {
+      "name": "pages",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "pagination": {
+          "path": "pagination",
+          "page_count": "pages"
+        }
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}], \"pagination\": {\"pages\": 3}}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/careers?page=2": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 2, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/careers?page=3": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 3, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?page=2"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?page=3"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "chunks": [
+          [
+            {
+              "url": "https://example.com/jobs/1",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            }
+          ],
+          [
+            {
+              "url": "https://example.com/jobs/2",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            },
+            {
+              "url": "https://example.com/jobs/3",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "failed-later-prefix",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "pagination": {
+          "path": "pagination",
+          "page_count": "pages"
+        }
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}], \"pagination\": {\"pages\": 2}}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/careers?page=2": {
+          "body": "missing payload",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?page=2"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?page=2"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?page=2"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "chunks": [
+          [
+            {
+              "url": "https://example.com/jobs/1",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "reserved-later-prefix",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "pagination": {
+          "path": "pagination",
+          "page_count": "pages"
+        }
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}], \"pagination\": {\"pages\": 2}}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/careers?page=2": {
+          "body": "missing payload",
+          "status": 200,
+          "headers": {
+            "TDM-Reservation": "1"
+          }
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?page=2"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "chunks": [
+          [
+            {
+              "url": "https://example.com/jobs/1",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "retry-required-page",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "pagination": {
+          "path": "pagination",
+          "page_count": "pages"
+        }
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}], \"pagination\": {\"pages\": 2}}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/careers?page=2": [
+          {
+            "body": "missing payload",
+            "status": 200,
+            "headers": {}
+          },
+          {
+            "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 2, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+            "status": 200,
+            "headers": {}
+          }
+        ]
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?page=2"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?page=2"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "chunks": [
+          [
+            {
+              "url": "https://example.com/jobs/1",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            }
+          ],
+          [
+            {
+              "url": "https://example.com/jobs/2",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "empty-authoritative",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "pagination": {
+          "path": "pagination",
+          "total_records": "total",
+          "page_size": 2
+        }
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [], \"pagination\": {\"total\": 0}}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "chunks": [
+          []
+        ]
+      }
+    },
+    {
+      "name": "empty-unproven",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "pagination": {
+          "path": "pagination",
+          "page_count": "pages"
+        }
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [], \"pagination\": {\"pages\": 2}}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "chunks": []
+      }
+    },
+    {
+      "name": "duplicate-total",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "pagination": {
+          "path": "pagination",
+          "total_records": "total",
+          "page_size": 1
+        }
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}], \"pagination\": {\"total\": 2}}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/careers?page=2": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?page=2"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "chunks": [
+          [
+            {
+              "url": "https://example.com/jobs/1",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            }
+          ],
+          [
+            {
+              "url": "https://example.com/jobs/1",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "offset",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "source": "phenom_canvas",
+        "pagination": {
+          "mode": "offset",
+          "path": "pagination",
+          "total_records": "total",
+          "page_size": 1,
+          "offset_param": "from"
+        }
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "phApp.ddo = {\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}], \"pagination\": {\"total\": 2}};",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/careers?from=1": {
+          "body": "phApp.ddo = {\"jobs\": [{\"id\": 2, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]};",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?from=1"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "chunks": [
+          [
+            {
+              "url": "https://example.com/jobs/1",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            }
+          ],
+          [
+            {
+              "url": "https://example.com/jobs/2",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "query-order-zero-start",
+      "board_url": "https://example.com/careers?z=first&lang=en&z=second&empty=",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "pagination": {
+          "path": "pagination",
+          "page_count": "pages",
+          "start": 0
+        }
+      },
+      "pages": {
+        "https://example.com/careers?z=first&lang=en&z=second&empty=": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}], \"pagination\": {\"pages\": 2}}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/careers?z=first&z=second&lang=en&empty=&page=1": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 2, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?z=first&lang=en&z=second&empty="
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?z=first&z=second&lang=en&empty=&page=1"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "chunks": [
+          [
+            {
+              "url": "https://example.com/jobs/1",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            }
+          ],
+          [
+            {
+              "url": "https://example.com/jobs/2",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "path-template",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "pagination": {
+          "path": "pagination",
+          "page_count": "pages",
+          "url_template": "https://example.com/careers/page/{page}"
+        }
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}], \"pagination\": {\"pages\": 2}}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/careers/page/2": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 2, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers/page/2"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "chunks": [
+          [
+            {
+              "url": "https://example.com/jobs/1",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            }
+          ],
+          [
+            {
+              "url": "https://example.com/jobs/2",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "item-inclusion",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "include_item_values": {
+          "company": [
+            "Fixture"
+          ]
+        }
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\", \"company\": \"Fixture\"}, {\"id\": 2, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\", \"company\": \"Other\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "chunks": [
+          [
+            {
+              "url": "https://example.com/jobs/1",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "item-requirement",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "require_item_values": {
+          "tenant": [
+            "Fixture"
+          ]
+        }
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\", \"tenant\": [\"Fixture\"]}]}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "chunks": [
+          [
+            {
+              "url": "https://example.com/jobs/1",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "wrong-item-requirement",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "require_item_values": {
+          "tenant": [
+            "Fixture"
+          ]
+        }
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\", \"tenant\": [\"Other\"]}]}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "chunks": []
+      }
+    },
+    {
+      "name": "wrong-url-witness",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "url_allowlist": "https://example\\.com/other/[0-9]+"
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "chunks": []
+      }
+    },
+    {
+      "name": "stream-groups-of-ten",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "pagination": {
+          "path": "pagination",
+          "page_count": "pages"
+        }
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}], \"pagination\": {\"pages\": 13}}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/careers?page=2": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 2, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/careers?page=3": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 3, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/careers?page=4": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 4, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/careers?page=5": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 5, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/careers?page=6": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 6, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/careers?page=7": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 7, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/careers?page=8": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 8, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/careers?page=9": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 9, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/careers?page=10": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 10, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/careers?page=11": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 11, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/careers?page=12": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 12, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/careers?page=13": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 13, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?page=10"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?page=11"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?page=12"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?page=13"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?page=2"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?page=3"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?page=4"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?page=5"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?page=6"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?page=7"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?page=8"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/careers?page=9"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "chunks": [
+          [
+            {
+              "url": "https://example.com/jobs/1",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            }
+          ],
+          [
+            {
+              "url": "https://example.com/jobs/2",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            },
+            {
+              "url": "https://example.com/jobs/3",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            },
+            {
+              "url": "https://example.com/jobs/4",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            },
+            {
+              "url": "https://example.com/jobs/5",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            },
+            {
+              "url": "https://example.com/jobs/6",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            },
+            {
+              "url": "https://example.com/jobs/7",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            },
+            {
+              "url": "https://example.com/jobs/8",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            },
+            {
+              "url": "https://example.com/jobs/9",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            },
+            {
+              "url": "https://example.com/jobs/10",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            },
+            {
+              "url": "https://example.com/jobs/11",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            }
+          ],
+          [
+            {
+              "url": "https://example.com/jobs/12",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            },
+            {
+              "url": "https://example.com/jobs/13",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "identity-large-integer",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "source_identity": {
+          "provider": "fixture",
+          "tenant": "test",
+          "field": "external"
+        },
+        "url_allowlist": "https://example\\.com/jobs/[0-9]+"
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\", \"external\": 90071992547409931234}]}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "chunks": [
+          [
+            {
+              "url": "https://example.com/jobs/1",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": "fixture:test:90071992547409931234"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "identity-trimmed-string",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "source_identity": {
+          "provider": "fixture",
+          "tenant": "test",
+          "field": "external"
+        },
+        "url_allowlist": "https://example\\.com/jobs/[0-9]+"
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\", \"external\": \"  abc-123  \"}]}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "chunks": [
+          [
+            {
+              "url": "https://example.com/jobs/1",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": "fixture:test:abc-123"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "identity-boolean",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "source_identity": {
+          "provider": "fixture",
+          "tenant": "test",
+          "field": "external"
+        },
+        "url_allowlist": "https://example\\.com/jobs/[0-9]+"
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\", \"external\": true}]}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "chunks": []
+      }
+    },
+    {
+      "name": "identity-float",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "source_identity": {
+          "provider": "fixture",
+          "tenant": "test",
+          "field": "external"
+        },
+        "url_allowlist": "https://example\\.com/jobs/[0-9]+"
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\", \"external\": 1.5}]}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "chunks": []
+      }
+    },
+    {
+      "name": "identity-empty",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "source_identity": {
+          "provider": "fixture",
+          "tenant": "test",
+          "field": "external"
+        },
+        "url_allowlist": "https://example\\.com/jobs/[0-9]+"
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\", \"external\": \"  \"}]}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "chunks": []
+      }
+    },
+    {
+      "name": "employer-matching",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "expected_hiring_organization": "Fixture Hospital",
+        "url_allowlist": "https://example\\.com/jobs/[0-9]+"
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/jobs/1": {
+          "body": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"hiringOrganization\": {\"name\": \" Fixture Hospital \"}}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/jobs/1"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "chunks": [
+          [
+            {
+              "url": "https://example.com/jobs/1",
+              "title": "Engineer",
+              "description": "<p>Build.</p>",
+              "locations": [
+                "Zurich"
+              ],
+              "employment_type": null,
+              "job_location_type": null,
+              "date_posted": null,
+              "base_salary": null,
+              "language": null,
+              "localizations": null,
+              "extras": null,
+              "metadata": null,
+              "source_identity": null
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "name": "employer-other",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "expected_hiring_organization": "Fixture Hospital",
+        "url_allowlist": "https://example\\.com/jobs/[0-9]+"
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/jobs/1": {
+          "body": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"hiringOrganization\": {\"name\": \"Other Hospital\"}}</script>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/jobs/1"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "chunks": [
+          []
+        ]
+      }
+    },
+    {
+      "name": "employer-missing",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "expected_hiring_organization": "Fixture Hospital",
+        "url_allowlist": "https://example\\.com/jobs/[0-9]+"
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/jobs/1": {
+          "body": "<meta name=\"job-title\" content=\"Engineer\">",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/jobs/1"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "chunks": [
+          []
+        ]
+      }
+    },
+    {
+      "name": "employer-gone",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "expected_hiring_organization": "Fixture Hospital",
+        "url_allowlist": "https://example\\.com/jobs/[0-9]+"
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/jobs/1": {
+          "body": "gone",
+          "status": 404,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/jobs/1"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "chunks": [
+          []
+        ]
+      }
+    },
+    {
+      "name": "employer-failed",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "expected_hiring_organization": "Fixture Hospital",
+        "url_allowlist": "https://example\\.com/jobs/[0-9]+"
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/jobs/1": {
+          "body": "unavailable",
+          "status": 503,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/jobs/1"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/jobs/1"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/jobs/1"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "chunks": []
+      }
+    },
+    {
+      "name": "employer-reserved",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "path": "jobs",
+        "url_template": "https://example.com/jobs/{id}",
+        "fields": {
+          "title": "title",
+          "description": "body",
+          "locations": "city"
+        },
+        "expected_hiring_organization": "Fixture Hospital",
+        "url_allowlist": "https://example\\.com/jobs/[0-9]+"
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 1, \"title\": \"Engineer\", \"body\": \"<p>Build.</p>\", \"city\": \"Zurich\"}]}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/jobs/1": {
+          "body": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"hiringOrganization\": {\"name\": \"Fixture Hospital\"}}</script>",
+          "status": 200,
+          "headers": {
+            "TDM-Reservation": "1"
+          }
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://example.com/careers"
+        },
+        {
+          "method": "GET",
+          "url": "https://example.com/jobs/1"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "chunks": []
+      }
+    }
+  ]
+}

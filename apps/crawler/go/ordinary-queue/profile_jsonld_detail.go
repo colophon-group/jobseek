@@ -66,12 +66,31 @@ func InspectJSONLDDetail(boardID string, config map[string]string, source string
 	if jsonld.ValidateConfig(options) != nil {
 		return fail()
 	}
-	// These require the separate configured fallback/enrichment execution
-	// contract. Never adopt a board whose primary result would strand that step.
+	var enrichmentFields []string
+	// The existing enrichment writer applies only selected description/location
+	// fields; monitor titles and employment remain authoritative.
 	for _, key := range []string{"fallback", "enrich"} {
 		if value, ok := options[key]; ok && value != nil {
-			if list, ok := value.([]any); !ok || len(list) != 0 {
+			list, ok := value.([]any)
+			if !ok {
 				return fail()
+			}
+			if len(list) > 0 {
+				if key != "enrich" || len(list) > 2 {
+					return fail()
+				}
+				seen := map[string]bool{}
+				for _, raw := range list {
+					field, ok := raw.(string)
+					if !ok || seen[field] || field != "description" && field != "locations" {
+						return fail()
+					}
+					seen[field] = true
+					enrichmentFields = append(enrichmentFields, field)
+				}
+				if !seen["description"] {
+					return fail()
+				}
 			}
 		}
 	}
@@ -87,7 +106,7 @@ func InspectJSONLDDetail(boardID string, config map[string]string, source string
 		return fail()
 	}
 	digest := sha256.Sum256(body)
-	return WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: source, Domain: strings.ToLower(endpoint.Hostname()), Profile: jsonldDetailProfile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), JSONLDConfig: options}, nil
+	return WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: source, Domain: strings.ToLower(endpoint.Hostname()), Profile: jsonldDetailProfile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), JSONLDConfig: options, EnrichmentFields: enrichmentFields}, nil
 }
 
 func inspectDetailOwnership(boardID string, config map[string]string) (WorkdayDetailProfile, error) {

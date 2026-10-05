@@ -205,7 +205,79 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 	var discovery RichDiscovery
 	var fetchErr error
 	var workdayReservation *workday.ReservationError
-	if profile.Provider == "workday" {
+	var streamed *queue.GreenhouseInventorySummary
+	if profile.Provider == "nextdata" {
+		streamed = &queue.GreenhouseInventorySummary{}
+		streamedIdentities := map[string]bool{}
+		var renderedPage func(context.Context, string) nextdataPage
+		if task.Worker == queue.Browser {
+			provider, ok := renderer.(interface {
+				FetchNextdataPage(context.Context, queue.GreenhouseMonitorProfile, map[string]string, string) nextdataPage
+			})
+			if !ok {
+				return failure("configuration", queue.ErrUnsupportedProfile)
+			}
+			renderedPage = func(ctx context.Context, endpoint string) nextdataPage {
+				return provider.FetchNextdataPage(ctx, profile, task.Config, endpoint)
+			}
+		}
+		discovery, fetchErr = discoverNextdataWithPages(ctx, http.client, profile, task.Config, func(jobs []RichMonitorJob) error {
+			inventory, err := NormalizeRichInventory(ctx, task.Config["board_url"], jobs, false)
+			if err != nil {
+				return err
+			}
+			for _, job := range inventory.Jobs {
+				if job.SourceIdentity != "" {
+					if streamedIdentities[job.SourceIdentity] {
+						return errors.New("repeated explicit identity across streamed chunks")
+					}
+					streamedIdentities[job.SourceIdentity] = true
+				}
+			}
+			streamed.Discovered += inventory.Discovered
+			for _, count := range inventory.DropReasons {
+				streamed.ProcessingFiltered += count
+			}
+			if profile.Profile == "nextdata.embedded-urls/v1" || profile.Profile == "nextdata.rendered-urls/v1" {
+				for start := 0; start < len(inventory.Jobs); start += 500 {
+					urls := []string{}
+					for _, job := range inventory.Jobs[start:min(start+500, len(inventory.Jobs))] {
+						urls = append(urls, job.URL)
+					}
+					batch, err := cycle.WriteURLOnlyBatch(ctx, urls)
+					if err != nil {
+						return err
+					}
+					result.Batches.Inserted += batch.Inserted
+					result.Batches.Touched += batch.Touched
+					result.Batches.Relisted += batch.Relisted
+					result.Batches.Foreign += batch.Foreign
+					result.Batches.ForeignRelisted += batch.ForeignRelisted
+					result.Batches.Deduplicated += batch.Deduplicated
+					for _, detail := range batch.Details {
+						if _, err := cycle.EnqueueURLDetail(ctx, detail); err != nil {
+							return err
+						}
+					}
+				}
+			} else {
+				processed, err := WriteGreenhouseInventory(ctx, cycle, preparer, inventory)
+				if processed != nil {
+					batch := processed.Batches
+					result.Batches.Inserted += batch.Inserted
+					result.Batches.Touched += batch.Touched
+					result.Batches.Relisted += batch.Relisted
+					result.Batches.Foreign += batch.Foreign
+					result.Batches.ForeignRelisted += batch.ForeignRelisted
+					result.Batches.Deduplicated += batch.Deduplicated
+				}
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		}, renderedPage)
+	} else if profile.Provider == "workday" {
 		var metadata map[string]any
 		if json.Unmarshal([]byte(task.Config["metadata"]), &metadata) != nil {
 			return failure("configuration", queue.ErrConfiguration)
@@ -233,6 +305,8 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		discovery, fetchErr = discoverAPISnifferInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "breezy" || profile.Provider == "gem" {
 		discovery, fetchErr = discoverBreezyGemInventory(ctx, http.client, profile)
+	} else if profile.Provider == "jobylon" {
+		discovery, fetchErr = discoverJobylonInventory(ctx, http.client, profile)
 	} else if profile.Provider == "gupy" {
 		discovery, fetchErr = discoverGupyInventory(ctx, http.client, profile)
 	} else if profile.Provider == "jazzhr" {
@@ -281,13 +355,16 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		if profile.Provider == "oracle_hcm" {
 			matches = queue.OracleMonitorResourceMatches(profile, task.Config, response.endpoint)
 		}
+		if profile.Provider == "nextdata" {
+			matches = queue.NextdataMonitorResourceMatches(profile, task.Config, response.endpoint)
+		}
 		if !matches {
 			cycle.InvalidateInventory()
 			return result, claimRunError("response", queue.ErrConfiguration)
 		}
 		if response.reserved {
 			initial := profile.Endpoint
-			if profile.Provider == "api_sniffer" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "oracle_hcm" || profile.Provider == "icims" || profile.Provider == "phenom" {
+			if profile.Provider == "api_sniffer" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "oracle_hcm" || profile.Provider == "icims" || profile.Provider == "phenom" || profile.Provider == "nextdata" {
 				initial = response.endpoint
 			}
 			terminal, err := cycle.FinishReservationResource(ctx, initial, &queue.GreenhouseHeaderReservation{Endpoint: response.finalURL, PolicyURL: response.PolicyURL(), Source: response.reservationSource})
@@ -300,6 +377,9 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		if profile.Provider == "icims" {
 			providerGone = queue.ICIMSMonitorPrimaryGone(task.Config, response.endpoint, response.status)
 		}
+		if profile.Provider == "nextdata" {
+			providerGone = false
+		}
 		if providerGone {
 			terminal, err := cycle.FinishProviderGoneResource(ctx, response.endpoint, queue.GreenhouseGoneObservation{Endpoint: response.finalURL, HTTPStatus: response.status})
 			if err != nil {
@@ -311,6 +391,14 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 	}
 	if fetchErr != nil {
 		return failure("fetch", fetchErr)
+	}
+	if streamed != nil {
+		streamed.Truncated = discovery.Truncated
+		terminal, err := cycle.FinishSuccess(ctx, *streamed)
+		if err != nil {
+			return failure("lifecycle", err)
+		}
+		return finishSuccess(terminal)
 	}
 	inventory, err := NormalizeRichInventory(ctx, task.Config["board_url"], discovery.Jobs, discovery.Truncated)
 	if err != nil {

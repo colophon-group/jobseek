@@ -10,6 +10,7 @@ import (
 
 type RichMonitorJob struct {
 	URL                                  string
+	SourceIdentity                       string
 	Title, Description                   *string
 	Locations                            []string
 	Language                             any
@@ -57,6 +58,7 @@ func NormalizeRichInventory(ctx context.Context, boardURL string, jobs []RichMon
 	}
 	result := GreenhouseInventory{Discovered: len(raw), DropReasons: map[string]int{}, Truncated: truncated}
 	accepted := make(map[string]RichMonitorJob, len(raw))
+	explicit := map[string]bool{}
 	for _, source := range order {
 		if err := ctx.Err(); err != nil {
 			return GreenhouseInventory{}, err
@@ -67,6 +69,15 @@ func NormalizeRichInventory(ctx context.Context, boardURL string, jobs []RichMon
 			continue
 		}
 		job := raw[source]
+		if job.SourceIdentity != "" {
+			if explicit[job.SourceIdentity] {
+				return GreenhouseInventory{}, errors.New("repeated explicit source identity")
+			}
+			explicit[job.SourceIdentity] = true
+			if prior, ok := accepted[url]; ok && prior.SourceIdentity != job.SourceIdentity {
+				return GreenhouseInventory{}, errors.New("outbound URL belongs to multiple explicit identities")
+			}
+		}
 		job.URL = url
 		accepted[url] = job
 	}

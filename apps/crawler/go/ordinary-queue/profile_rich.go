@@ -26,6 +26,15 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		allowed[key] = value
 	}
 	switch config["crawler_type"] {
+	case "nextdata":
+		for _, key := range []string{"delist_threshold", "drop_threshold", "blast_radius_floor"} {
+			allowed[key] = true
+		}
+		for _, key := range []string{"path", "fields", "source", "pagination", "sitemap_url", "url_template", "rescrape_policy", "strict_path", "request_headers", "expected_page_title", "url_allowlist", "source_identity", "include_item_values", "url_transform", "browser_expression", "slug_fields", "total", "render", "timeout", "enrich", "require_item_values", "expected_hiring_organization", "wait", "stealth", "base_salary", "board_gone_statuses", "proxy", "skip_ssl", "ssl_verify", "actions"} {
+			allowed[key] = true
+		}
+	case "jobylon":
+		allowed["company_id"], allowed["company_group_id"] = true, true
 	case "phenom":
 		for _, key := range []string{"sitemap_url", "keep_languages", "url_exclude", "proxy", "render", "skip_ssl", "ssl_verify", "path", "source", "pagination", "slug_fields", "url_template", "rescrape_policy", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
@@ -114,6 +123,12 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 	md, err := richProfileMetadata(config)
 	if err != nil {
 		return GreenhouseMonitorProfile{}, err
+	}
+	if config["crawler_type"] == "nextdata" {
+		return inspectNextdataMonitor(boardID, config, md)
+	}
+	if config["crawler_type"] == "jobylon" {
+		return inspectJobylonMonitor(boardID, config, md)
 	}
 	if config["crawler_type"] == "phenom" {
 		return inspectPhenomMonitor(boardID, config, md)

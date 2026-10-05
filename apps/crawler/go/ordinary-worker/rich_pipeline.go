@@ -43,11 +43,10 @@ type GreenhouseProcessingResult struct {
 	Batches queue.GreenhouseRichBatchResult
 }
 
-// PersistGreenhouseInventory prepares an entire 500-row chunk before its owned
-// atomic write. Only a successfully prepared/written whole inventory may reach
-// terminal absence handling. Earlier committed chunks survive a later failure;
-// the caller must use failure/reservation handling or leave recovery authority.
-func PersistGreenhouseInventory(ctx context.Context, sink GreenhouseSink, preparer RichPreparer, inventory GreenhouseInventory) (*GreenhouseProcessingResult, error) {
+// WriteGreenhouseInventory prepares each 500-row chunk before its owned atomic
+// write. It leaves terminal absence handling to the caller after the complete
+// stream succeeds. Earlier committed chunks survive a later failure.
+func WriteGreenhouseInventory(ctx context.Context, sink GreenhouseSink, preparer RichPreparer, inventory GreenhouseInventory) (*GreenhouseProcessingResult, error) {
 	if sink == nil {
 		return nil, errors.New("native inventory sink unavailable")
 	}
@@ -89,7 +88,7 @@ func PersistGreenhouseInventory(ctx context.Context, sink GreenhouseSink, prepar
 			if content == nil {
 				return result, errors.New("native rich preparation returned no content")
 			}
-			batch = append(batch, queue.GreenhouseRichPosting{URL: job.URL, Content: content})
+			batch = append(batch, queue.GreenhouseRichPosting{URL: job.URL, SourceIdentity: job.SourceIdentity, Content: content})
 		}
 		counts, err := sink.WriteRichBatch(ctx, batch)
 		if err != nil {
@@ -121,14 +120,31 @@ func PersistGreenhouseInventory(ctx context.Context, sink GreenhouseSink, prepar
 	if err := ctx.Err(); err != nil {
 		return result, err
 	}
+	completed = true
+	return result, nil
+}
+
+// Streamed providers use the same chunk writer, then prove complete inventory
+// before a single terminal disappearance/schedule update. Existing providers
+// retain their non-streaming wrapper and failure invalidation.
+func PersistGreenhouseInventory(ctx context.Context, sink GreenhouseSink, preparer RichPreparer, inventory GreenhouseInventory) (*GreenhouseProcessingResult, error) {
+	result, err := WriteGreenhouseInventory(ctx, sink, preparer, inventory)
+	if err != nil {
+		return result, err
+	}
+	filtered := 0
+	for _, count := range inventory.DropReasons {
+		filtered += count
+	}
 	cycle, err := sink.FinishSuccess(ctx, queue.GreenhouseInventorySummary{Discovered: inventory.Discovered, ProcessingFiltered: filtered, Truncated: inventory.Truncated})
 	if err != nil {
+		sink.InvalidateInventory()
 		return result, claimRunError("finalization", err)
 	}
 	if cycle == nil {
+		sink.InvalidateInventory()
 		return result, errors.New("native inventory returned no terminal result")
 	}
-	completed = true
 	result.Cycle = cycle
 	return result, nil
 }

@@ -1,0 +1,130 @@
+{
+  "cases": [
+    {
+      "name": "nextdata",
+      "html": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 90071992547409931234, \"title\": \"Engineer ] {x}\"}]}</script>",
+      "source": "nextdata",
+      "expected": {
+        "jobs": [
+          {
+            "id": 90071992547409931234,
+            "title": "Engineer ] {x}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "first-script",
+      "html": "<script id=\"__NEXT_DATA__\">{}</script><script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 90071992547409931234, \"title\": \"Engineer ] {x}\"}]}</script>",
+      "source": "nextdata",
+      "expected": {}
+    },
+    {
+      "name": "wrong-attribute-order",
+      "html": "<script type=\"application/json\" id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 90071992547409931234, \"title\": \"Engineer ] {x}\"}]}</script>",
+      "source": "nextdata",
+      "expected": null
+    },
+    {
+      "name": "single-quotes",
+      "html": "<script id='__NEXT_DATA__'>{\"jobs\": [{\"id\": 90071992547409931234, \"title\": \"Engineer ] {x}\"}]}</script>",
+      "source": "nextdata",
+      "expected": null
+    },
+    {
+      "name": "trailing-comma",
+      "html": "<script id=\"__NEXT_DATA__\">{\"jobs\":[],}</script>",
+      "source": "nextdata",
+      "expected": null
+    },
+    {
+      "name": "unknown-source-default",
+      "html": "<script id=\"__NEXT_DATA__\">{\"jobs\": [{\"id\": 90071992547409931234, \"title\": \"Engineer ] {x}\"}]}</script>",
+      "source": "unknown",
+      "expected": {
+        "jobs": [
+          {
+            "id": 90071992547409931234,
+            "title": "Engineer ] {x}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "reactrouter",
+      "html": "window.__staticRouterHydrationData = JSON.parse(\"{\\\"jobs\\\": [{\\\"id\\\": 90071992547409931234, \\\"title\\\": \\\"Engineer ] {x}\\\"}]}\");",
+      "source": "reactrouter",
+      "expected": {
+        "jobs": [
+          {
+            "id": 90071992547409931234,
+            "title": "Engineer ] {x}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "rsc",
+      "html": "self.__next_f.push([1,\"7:[\\\"$\\\", \\\"$L1\\\", null, {\\\"jobs\\\": [{\\\"id\\\": 90071992547409931234, \\\"title\\\": \\\"Engineer ] {x}\\\"}]}]\\n\"])",
+      "source": "rsc",
+      "expected": {
+        "jobs": [
+          {
+            "id": 90071992547409931234,
+            "title": "Engineer ] {x}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "rsc-overwrite",
+      "html": "self.__next_f.push([1,\"1:{\\\"jobs\\\":[]}\\n2:{\\\"jobs\\\": [{\\\"id\\\": 90071992547409931234, \\\"title\\\": \\\"Engineer ] {x}\\\"}]}\\n\"])",
+      "source": "rsc",
+      "expected": {
+        "jobs": [
+          {
+            "id": 90071992547409931234,
+            "title": "Engineer ] {x}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "canvas",
+      "html": "phApp.ddo = {\"jobs\": [{\"id\": 90071992547409931234, \"title\": \"Engineer ] {x}\"}]}; runOtherScript();",
+      "source": "phenom_canvas",
+      "expected": {
+        "jobs": [
+          {
+            "id": 90071992547409931234,
+            "title": "Engineer ] {x}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "canvas-first",
+      "html": "phApp.ddo = {}; phApp.ddo = {\"jobs\": [{\"id\": 90071992547409931234, \"title\": \"Engineer ] {x}\"}]};",
+      "source": "phenom_canvas",
+      "expected": {}
+    },
+    {
+      "name": "canvas-trailing-comma",
+      "html": "phApp.ddo = {\"jobs\":[],};",
+      "source": "phenom_canvas",
+      "expected": null
+    },
+    {
+      "name": "canvas-nonobject",
+      "html": "phApp.ddo = [];",
+      "source": "phenom_canvas",
+      "expected": null
+    },
+    {
+      "name": "missing",
+      "html": "No embedded data",
+      "source": "nextdata",
+      "expected": null
+    }
+  ]
+}

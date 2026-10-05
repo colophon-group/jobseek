@@ -311,7 +311,7 @@ func lifecycleInteger(value any) (int64, error) {
 
 func (c *GreenhouseCycle) markGone(ctx context.Context, tx pgx.Tx, md map[string]any, discovered int, complete bool) (int, string, error) {
 	threshold, dropThreshold := 1, 0.3
-	if kind := c.claim.task.Config["crawler_type"]; kind == "workday" || kind == "smartrecruiters" || kind == "workable" || kind == "join" || kind == "sitemap" || kind == "dom" || kind == "icims" || kind == "breezy" || kind == "jazzhr" || kind == "gupy" || kind == "phenom" {
+	if kind := c.claim.task.Config["crawler_type"]; kind == "workday" || kind == "smartrecruiters" || kind == "workable" || kind == "join" || kind == "sitemap" || kind == "dom" || kind == "icims" || kind == "breezy" || kind == "jazzhr" || kind == "gupy" || kind == "phenom" || kind == "nextdata" {
 		var err error
 		threshold, err = workdayDelistThreshold(md["delist_threshold"])
 		if err != nil {
@@ -323,7 +323,7 @@ func (c *GreenhouseCycle) markGone(ctx context.Context, tx pgx.Tx, md map[string
 		}
 	}
 	blastFloor := 0.5
-	if kind := c.claim.task.Config["crawler_type"]; kind == "workday" || kind == "smartrecruiters" || kind == "workable" || kind == "join" || kind == "sitemap" || kind == "dom" || kind == "icims" || kind == "breezy" || kind == "jazzhr" || kind == "gupy" || kind == "phenom" {
+	if kind := c.claim.task.Config["crawler_type"]; kind == "workday" || kind == "smartrecruiters" || kind == "workable" || kind == "join" || kind == "sitemap" || kind == "dom" || kind == "icims" || kind == "breezy" || kind == "jazzhr" || kind == "gupy" || kind == "phenom" || kind == "nextdata" {
 		var err error
 		blastFloor, err = workdayLifecycleSetting(md["blast_radius_floor"], 0.5)
 		if err != nil {

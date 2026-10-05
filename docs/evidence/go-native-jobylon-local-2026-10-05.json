@@ -1,0 +1,54 @@
+{
+  "schema": "jobseek.native-local-verification/v1",
+  "version": "0.13.946",
+  "profile": "jobylon.embed-items/v1",
+  "configuration_census": {
+    "source_revision": "09996a260785845f3b94a9fafad213d2b622ea3f",
+    "enabled": 28,
+    "canonical_monitor_admitted": 28,
+    "cached_monitor_admitted": 28,
+    "canonical_detail_admitted": 28,
+    "cached_detail_admitted": 28,
+    "description_masks": 4,
+    "production_native_adoption": false
+  },
+  "implementation": [
+    "Reuse the existing sealed public document transport, rich inventory normalization, native preparation, canonical writer, delegated detail scheduling and cold retirement.",
+    "Preserve company-group precedence, precise IDs, first duplicate content, narrow JavaScript literal translation without evaluation, ordered language keys, localized dates, remote labels and the 50000 unique-job cap.",
+    "Reuse the existing JSONLD detail description-only mask and enrichment writer; monitor titles, locations and employment remain authoritative. Other masks/fallback chains remain unadmitted."
+  ],
+  "checks": {
+    "actual_python_jobylon_cases": 19,
+    "focused_worker_race": "PASS 6.674s",
+    "owned_worker_operational_modes": 14,
+    "description_mask_operational_cases": 1,
+    "focused_operational_race": "PASS 5.599s",
+    "cold_retirement_cases": 3,
+    "focused_queue_race": "PASS 3.948s",
+    "full_queue_race": "PASS 120.683s",
+    "full_worker_race": "PASS 230.456s",
+    "api_sniffer_module_race": "PASS 1.411s, including 14 actual Python NextData document-source cases",
+    "vet_mod_tidy": "PASS queue, worker, API module",
+    "python_runtime_contracts": "93 passed 9.48s",
+    "generator_ruff": "PASS"
+  },
+  "batch_delivery": {
+    "state": "local verified milestone; no single-provider release PR",
+    "next_release_types": [
+      "jobylon",
+      "nextdata"
+    ],
+    "target_enabled_configurations": 82,
+    "nextdata_status": "strict embedded document decoder implemented; source fixtures frozen; remaining inventory/pagination/ownership integration pending",
+    "follow_on_extraction_types": [
+      "inline",
+      "beisen"
+    ],
+    "policy": "Group multiple provider types per routine migration release; share batch verification and deployment checkpoints."
+  },
+  "limitations": [
+    "No Jobylon or NextData native production adoption claim.",
+    "The 82-board batch target is an implementation target, not admission evidence for NextData.",
+    "Full migration, whole-lane resources, supported reversal/rollback window and production Python retirement remain incomplete."
+  ]
+}

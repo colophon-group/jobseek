@@ -100,7 +100,7 @@ func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[stri
 		return fail()
 	}
 	validation["metadata"] = string(body)
-	if profile == domRenderedMonitorProfile {
+	if profile == domRenderedMonitorProfile || profile == "nextdata.rendered-items/v1" || profile == "nextdata.rendered-urls/v1" {
 		validation["monitor_needs_browser"] = "0"
 	}
 	p, err := InspectGreenhouseMonitor(boardID, validation)
@@ -108,7 +108,7 @@ func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[stri
 		return fail()
 	}
 	stable, err := stableGreenhouseConfig(config, md)
-	if provider == "sitemap" || provider == "join" || provider == "dom" || provider == "api_sniffer" || provider == "oracle_hcm" || provider == "icims" || provider == "breezy" || provider == "jazzhr" || provider == "gupy" || provider == "phenom" {
+	if provider == "sitemap" || provider == "join" || provider == "dom" || provider == "api_sniffer" || provider == "oracle_hcm" || provider == "icims" || provider == "breezy" || provider == "jazzhr" || provider == "gupy" || provider == "phenom" || provider == "jobylon" || provider == "nextdata" {
 		// PostgreSQL jsonb and Redis may order nested filter/detail keys
 		// differently. Reuse the existing semantic configuration binding.
 		stable, err = stableJSONLDConfig(config, md)

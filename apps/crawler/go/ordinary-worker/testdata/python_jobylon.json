@@ -1,0 +1,705 @@
+{
+  "cases": [
+    {
+      "name": "rich-fields",
+      "body": "<script>JBL.embed_v2['jobs'] = [{id:90071992547409931234,url:'/jobs/123-engineer/',title:'Senior Engineer',company_id:'123',company:'Fixture',function:'Engineering',experience:'Senior',employment_type:'Full-time',workspace:'Remote (Stockholm)',to_date:'None',published_date:'21 april 2026',locations:[' Zurich ','',42,' Stockholm '],departments:[' Platform ',null],klass:{'job-lang-sv-first':true,'job-lang-en':true},},];</script>",
+      "metadata": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://cdn.jobylon.com/jobs/companies/123/embed/v2/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://emp.jobylon.com/jobs/123-engineer/",
+            "title": "Senior Engineer",
+            "description": null,
+            "locations": [
+              "Zurich",
+              "Stockholm"
+            ],
+            "employment_type": null,
+            "job_location_type": "TELECOMMUTE",
+            "date_posted": "2026-04-21",
+            "base_salary": null,
+            "language": "sv",
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "id": "90071992547409931234",
+              "company_id": "123",
+              "company": "Fixture",
+              "function": "Engineering",
+              "experience": "Senior",
+              "employment_type_label": "Full-time",
+              "workspace": "Remote (Stockholm)",
+              "published_date_raw": "21 april 2026",
+              "departments": [
+                "Platform"
+              ]
+            },
+            "source_identity": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "group-precedence",
+      "body": "<script>JBL.embed_v2['jobs'] = [];</script>",
+      "metadata": {
+        "company_id": "123",
+        "company_group_id": "456"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://cdn.jobylon.com/jobs/company-groups/456/embed/v2/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [],
+        "truncated": false
+      }
+    },
+    {
+      "name": "duplicate-first",
+      "body": "<script>JBL.embed_v2['jobs'] = [{id:1,url:'jobs/one/',title:'First'},{id:2,url:'jobs/one/',title:'Last'}];</script>",
+      "metadata": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://cdn.jobylon.com/jobs/companies/123/embed/v2/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://emp.jobylon.com/jobs/one/",
+            "title": "First",
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "id": "1"
+            },
+            "source_identity": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "string-brackets",
+      "body": "<script>JBL.embed_v2['jobs'] = [{id:1,url:'/jobs/one/',title:'[text] ; {foo: x}',klass:{'job-lang-en':true}}];</script>",
+      "metadata": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://cdn.jobylon.com/jobs/companies/123/embed/v2/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://emp.jobylon.com/jobs/one/",
+            "title": "[text] ; {foo: x}",
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "base_salary": null,
+            "language": "en",
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "id": "1"
+            },
+            "source_identity": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "string-escapes",
+      "body": "<script>JBL.embed_v2['jobs'] = [{id:1,url:'/jobs/one/',title:'Line\\nUnicode \\u00e4 quote \"x\"'},{id:2,url:'/jobs/two/',title:'Unsupported \\x41 and apostrophe \\' retained'}];</script>",
+      "metadata": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://cdn.jobylon.com/jobs/companies/123/embed/v2/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://emp.jobylon.com/jobs/one/",
+            "title": "Line\nUnicode ä quote \"x\"",
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "id": "1"
+            },
+            "source_identity": null
+          },
+          {
+            "url": "https://emp.jobylon.com/jobs/two/",
+            "title": "Unsupported \\x41 and apostrophe \\' retained",
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "id": "2"
+            },
+            "source_identity": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "double-quotes",
+      "body": "<script>JBL.embed_v2['jobs'] = [{\"id\":1,\"url\":\"/jobs/one/\",\"title\":\"A \\\"quoted\\\" title\", \"klass\":{\"job-lang-da\":true}}];</script>",
+      "metadata": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://cdn.jobylon.com/jobs/companies/123/embed/v2/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://emp.jobylon.com/jobs/one/",
+            "title": "A \"quoted\" title",
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "base_salary": null,
+            "language": "da",
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "id": "1"
+            },
+            "source_identity": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "comma-string-quirk",
+      "body": "<script>JBL.embed_v2['jobs'] = [{id:1,url:'/jobs/one/',title:'Text, ]'}];</script>",
+      "metadata": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://cdn.jobylon.com/jobs/companies/123/embed/v2/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://emp.jobylon.com/jobs/one/",
+            "title": "Text ]",
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "id": "1"
+            },
+            "source_identity": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "falsy-and-nonstrings",
+      "body": "<script>JBL.embed_v2['jobs'] = [{\"id\":0,\"url\":\"/jobs/no/\"},{\"id\":1,\"url\":false},{\"id\":2,\"url\":123,\"title\":42,\"locations\":[null,42],\"locations_text\":\" Zurich \"},{\"id\":true,\"url\":\"/jobs/bool/\",\"title\":\"\"}];</script>",
+      "metadata": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://cdn.jobylon.com/jobs/companies/123/embed/v2/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://emp.jobylon.com/123",
+            "title": null,
+            "description": null,
+            "locations": [
+              "Zurich"
+            ],
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "id": "2"
+            },
+            "source_identity": null
+          },
+          {
+            "url": "https://emp.jobylon.com/jobs/bool/",
+            "title": "",
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "id": "True"
+            },
+            "source_identity": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "absolute-and-fallback",
+      "body": "<script>JBL.embed_v2['jobs'] = [{id:1,url:'https://other.example/jobs/one/',locations_text:' Helsinki ',workspace:'Hybrid',language:'Finnish',published_date:'21. huhtikuuta 2026'}];</script>",
+      "metadata": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://cdn.jobylon.com/jobs/companies/123/embed/v2/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://other.example/jobs/one/",
+            "title": null,
+            "description": null,
+            "locations": [
+              "Helsinki"
+            ],
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": "2026-04-21",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "id": "1",
+              "workspace": "Hybrid",
+              "published_date_raw": "21. huhtikuuta 2026"
+            },
+            "source_identity": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "language-order",
+      "body": "<script>JBL.embed_v2['jobs'] = [{id:1,url:'/jobs/one/',klass:{'job-lang-ZZ':true,'job-lang-no-other':true,'job-lang-en':true},workspace:'Arbete distans'}];</script>",
+      "metadata": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://cdn.jobylon.com/jobs/companies/123/embed/v2/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://emp.jobylon.com/jobs/one/",
+            "title": null,
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": "TELECOMMUTE",
+            "date_posted": null,
+            "base_salary": null,
+            "language": "no",
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "id": "1",
+              "workspace": "Arbete distans"
+            },
+            "source_identity": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "months",
+      "body": "<script>JBL.embed_v2['jobs'] = [{\"id\": 1, \"url\": \"/jobs/1/\", \"published_date\": \"April 21, 2026\"}, {\"id\": 2, \"url\": \"/jobs/2/\", \"published_date\": \"21. marts 2026\"}, {\"id\": 3, \"url\": \"/jobs/3/\", \"published_date\": \"21 desember 2026\"}, {\"id\": 4, \"url\": \"/jobs/4/\", \"published_date\": \"21 hein\\u00e4kuuta 2026\"}, {\"id\": 5, \"url\": \"/jobs/5/\", \"published_date\": \"29 February 2024\"}, {\"id\": 6, \"url\": \"/jobs/6/\", \"published_date\": \"29 February 2025\"}, {\"id\": 7, \"url\": \"/jobs/7/\", \"published_date\": \"\\u0661\\u0662 april \\u0662\\u0660\\u0662\\u0666\"}, {\"id\": 8, \"url\": \"/jobs/8/\", \"published_date\": \"12\\u00a0april\\u00a02026\"}, {\"id\": 9, \"url\": \"/jobs/9/\", \"published_date\": \"31 april 2026\"}, {\"id\": 10, \"url\": \"/jobs/10/\", \"published_date\": \"not a date\"}];</script>",
+      "metadata": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://cdn.jobylon.com/jobs/companies/123/embed/v2/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://emp.jobylon.com/jobs/1/",
+            "title": null,
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": "2026-04-21",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "id": "1",
+              "published_date_raw": "April 21, 2026"
+            },
+            "source_identity": null
+          },
+          {
+            "url": "https://emp.jobylon.com/jobs/2/",
+            "title": null,
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": "2026-03-21",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "id": "2",
+              "published_date_raw": "21. marts 2026"
+            },
+            "source_identity": null
+          },
+          {
+            "url": "https://emp.jobylon.com/jobs/3/",
+            "title": null,
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": "2026-12-21",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "id": "3",
+              "published_date_raw": "21 desember 2026"
+            },
+            "source_identity": null
+          },
+          {
+            "url": "https://emp.jobylon.com/jobs/4/",
+            "title": null,
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": "2026-07-21",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "id": "4",
+              "published_date_raw": "21 heinäkuuta 2026"
+            },
+            "source_identity": null
+          },
+          {
+            "url": "https://emp.jobylon.com/jobs/5/",
+            "title": null,
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": "2024-02-29",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "id": "5",
+              "published_date_raw": "29 February 2024"
+            },
+            "source_identity": null
+          },
+          {
+            "url": "https://emp.jobylon.com/jobs/6/",
+            "title": null,
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "id": "6",
+              "published_date_raw": "29 February 2025"
+            },
+            "source_identity": null
+          },
+          {
+            "url": "https://emp.jobylon.com/jobs/7/",
+            "title": null,
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": "2026-04-12",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "id": "7",
+              "published_date_raw": "١٢ april ٢٠٢٦"
+            },
+            "source_identity": null
+          },
+          {
+            "url": "https://emp.jobylon.com/jobs/8/",
+            "title": null,
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": "2026-04-12",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "id": "8",
+              "published_date_raw": "12 april 2026"
+            },
+            "source_identity": null
+          },
+          {
+            "url": "https://emp.jobylon.com/jobs/9/",
+            "title": null,
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "id": "9",
+              "published_date_raw": "31 april 2026"
+            },
+            "source_identity": null
+          },
+          {
+            "url": "https://emp.jobylon.com/jobs/10/",
+            "title": null,
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "id": "10",
+              "published_date_raw": "not a date"
+            },
+            "source_identity": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "missing-marker",
+      "body": "<html>Career page</html>",
+      "metadata": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://cdn.jobylon.com/jobs/companies/123/embed/v2/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [],
+        "truncated": false
+      }
+    },
+    {
+      "name": "double-quoted-marker",
+      "body": "JBL.embed_v2[\"jobs\"] = []",
+      "metadata": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://cdn.jobylon.com/jobs/companies/123/embed/v2/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [],
+        "truncated": false
+      }
+    },
+    {
+      "name": "unterminated",
+      "body": "JBL.embed_v2['jobs'] = [{id:1",
+      "metadata": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://cdn.jobylon.com/jobs/companies/123/embed/v2/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [],
+        "truncated": false
+      }
+    },
+    {
+      "name": "invalid-literal",
+      "body": "<script>JBL.embed_v2['jobs'] = [{id:1,url:undefined}];</script>",
+      "metadata": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://cdn.jobylon.com/jobs/companies/123/embed/v2/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [],
+        "truncated": false
+      }
+    },
+    {
+      "name": "empty",
+      "body": "<script>JBL.embed_v2['jobs'] = [];</script>",
+      "metadata": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://cdn.jobylon.com/jobs/companies/123/embed/v2/"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [],
+        "truncated": false
+      }
+    },
+    {
+      "name": "nondict-item",
+      "body": "<script>JBL.embed_v2['jobs'] = [null];</script>",
+      "metadata": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://cdn.jobylon.com/jobs/companies/123/embed/v2/"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "kind": "AttributeError"
+      }
+    },
+    {
+      "name": "bad-date",
+      "body": "<script>JBL.embed_v2['jobs'] = [{\"id\":1,\"url\":\"/jobs/one/\",\"published_date\":42}];</script>",
+      "metadata": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://cdn.jobylon.com/jobs/companies/123/embed/v2/"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "kind": "AttributeError"
+      }
+    },
+    {
+      "name": "bad-duplicate-date",
+      "body": "<script>JBL.embed_v2['jobs'] = [{\"id\":1,\"url\":\"/jobs/one/\"},{\"id\":2,\"url\":\"/jobs/one/\",\"published_date\":42}];</script>",
+      "metadata": {},
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://cdn.jobylon.com/jobs/companies/123/embed/v2/"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "kind": "AttributeError"
+      }
+    }
+  ]
+}

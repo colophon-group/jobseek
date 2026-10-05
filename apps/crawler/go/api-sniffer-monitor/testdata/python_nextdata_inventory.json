@@ -1,0 +1,290 @@
+{
+  "cases": [
+    {
+      "name": "rich",
+      "items": [
+        {
+          "id": 90071992547409931234,
+          "title": "Senior Engineer",
+          "body": "<p>Build.</p>",
+          "city": [
+            "Zurich",
+            "Paris"
+          ],
+          "remote": true
+        }
+      ],
+      "template": "https://example.com/jobs/{id}",
+      "slug_fields": [],
+      "fields": {
+        "title": "title",
+        "description": "body",
+        "locations": "city",
+        "job_location_type": {
+          "path": "remote",
+          "map": {
+            "True": "remote"
+          }
+        },
+        "metadata.id": "id"
+      },
+      "expected": [
+        {
+          "url": "https://example.com/jobs/90071992547409931234",
+          "title": "Senior Engineer",
+          "description": "<p>Build.</p>",
+          "locations": [
+            "Zurich",
+            "Paris"
+          ],
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "90071992547409931234"
+          },
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "slugs",
+      "items": [
+        {
+          "id": 1,
+          "title": "Développeur & C++",
+          "city": "Zürich"
+        }
+      ],
+      "template": "https://example.com/jobs/{id}-{slug}",
+      "slug_fields": [
+        "title",
+        "city"
+      ],
+      "fields": {
+        "title": "title",
+        "locations": "city"
+      },
+      "expected": [
+        {
+          "url": "https://example.com/jobs/1-developpeur-and-cplusplus-zurich",
+          "title": "Développeur & C++",
+          "description": null,
+          "locations": [
+            "Zürich"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "scalar-templates",
+      "items": [
+        {
+          "id": true,
+          "title": 42
+        },
+        {
+          "id": 1.5,
+          "title": false
+        }
+      ],
+      "template": "https://example.com/jobs/{id}",
+      "slug_fields": [],
+      "fields": {
+        "title": "title"
+      },
+      "expected": [
+        {
+          "url": "https://example.com/jobs/True",
+          "title": "42",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        },
+        {
+          "url": "https://example.com/jobs/1.5",
+          "title": "False",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "missing-template",
+      "items": [
+        {
+          "title": "No ID"
+        },
+        null,
+        42
+      ],
+      "template": "https://example.com/jobs/{id}",
+      "slug_fields": [],
+      "fields": {
+        "title": "title"
+      },
+      "expected": []
+    },
+    {
+      "name": "metadata-unknown-target",
+      "items": [
+        {
+          "id": 1,
+          "language": "sv",
+          "department": "Engineering"
+        }
+      ],
+      "template": "https://example.com/jobs/{id}",
+      "slug_fields": [],
+      "fields": {
+        "language": "language",
+        "department": "department"
+      },
+      "expected": [
+        {
+          "url": "https://example.com/jobs/1",
+          "title": null,
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "language": "sv",
+            "department": "Engineering"
+          },
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "duplicates-preserved",
+      "items": [
+        {
+          "id": 1,
+          "title": "First"
+        },
+        {
+          "id": 1,
+          "title": "Last"
+        }
+      ],
+      "template": "https://example.com/jobs/{id}",
+      "slug_fields": [],
+      "fields": {
+        "title": "title"
+      },
+      "expected": [
+        {
+          "url": "https://example.com/jobs/1",
+          "title": "First",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        },
+        {
+          "url": "https://example.com/jobs/1",
+          "title": "Last",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "field-concat",
+      "items": [
+        {
+          "id": 1,
+          "city": "Zurich",
+          "country": "Switzerland",
+          "body": "&lt;p&gt;Build&lt;/p&gt;"
+        }
+      ],
+      "template": "https://example.com/jobs/{id}",
+      "slug_fields": [],
+      "fields": {
+        "locations": {
+          "concat": [
+            "city",
+            "country"
+          ],
+          "separator": ", "
+        },
+        "description": {
+          "path": "body",
+          "html_unescape": true
+        }
+      },
+      "expected": [
+        {
+          "url": "https://example.com/jobs/1",
+          "title": null,
+          "description": "<p>Build</p>",
+          "locations": [
+            "Zurich, Switzerland"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    }
+  ]
+}

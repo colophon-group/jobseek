@@ -41,6 +41,10 @@ func inspectOracleMonitor(boardID string, config map[string]string, md map[strin
 // scraper supplies description and, on two enabled boards, employment type.
 // The detail consumer retains its existing owner until independently admitted.
 func oracleMonitorEnrichment(config map[string]string) ([]string, error) {
+	return monitorEnrichmentFields(config, map[string]bool{"description": true, "employment_type": true})
+}
+
+func monitorEnrichmentFields(config map[string]string, allowed map[string]bool) ([]string, error) {
 	md, err := profileMetadataFields(config["metadata"], nil)
 	if err != nil {
 		return nil, err
@@ -73,7 +77,7 @@ func oracleMonitorEnrichment(config map[string]string) ([]string, error) {
 	}
 	seen := map[string]bool{}
 	for _, field := range fields {
-		if seen[field] || field != "description" && field != "employment_type" || scraper == "skip" {
+		if seen[field] || !allowed[field] || scraper == "skip" {
 			return nil, ErrUnsupportedProfile
 		}
 		seen[field] = true
