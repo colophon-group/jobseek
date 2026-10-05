@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "status": "local_candidate_under_verification",
+  "full_migration_complete": false,
+  "production_source_revision": "a5fd35cfb924800a5ac3fedfedbaca0a457a934c",
+  "production_version": "0.13.937",
+  "candidate_profile": "api_sniffer.http-items/v1",
+  "execution": "existing Go ordinary worker, verified process HTTP client, canonical rich writer and queue settlement",
+  "snapshot_census": {
+    "enabled_api_boards": 326,
+    "candidate_eligible": 134,
+    "canonical_cache_bound": 134,
+    "browser_configs_retaining_current_owner": 70,
+    "production_admission": false
+  },
+  "verification": {
+    "python_field_oracle_cases": 46,
+    "python_discovery_oracle_cases": 20,
+    "admitted_discovery_oracle_cases": 19,
+    "python_rich_writer_oracle_cases": 30,
+    "python_json_byte_oracle_cases": 3,
+    "owned_postgres_redis_cases": 9,
+    "focused_owned_race_suite": "passed",
+    "api_module_race_vet_tidy": "passed",
+    "executor_race_vet": "passed",
+    "full_worker_and_queue_verification": "pending"
+  },
+  "retained_contracts": [
+    "GET/POST and declared headers, per-discovery cookies",
+    "page/offset/cumulative pagination and bounded size probes",
+    "raw Unicode posting URL identity and duplicates",
+    "whole-inventory failure, total-gap/cap disappearance protection",
+    "publisher reservation from later pages and probes",
+    "structured description extras before language/derived fields/hashing",
+    "canonical future deadline, receipt and Redis recurring queue settlement"
+  ],
+  "remaining": [
+    "required CI and installed-image verification",
+    "source-bound fresh production admission and supported quiesced deployment",
+    "remaining API browser/auto-field/filter/rotation/decryption contracts and other enabled families",
+    "runtime maintenance and deployment consumers",
+    "whole-lane cost/freshness proof, supported reversal and rollback window",
+    "retire mandatory production Python, Playwright, Chromium and obsolete runtime assets"
+  ]
+}

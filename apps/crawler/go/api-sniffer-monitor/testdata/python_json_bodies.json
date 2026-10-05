@@ -1,0 +1,17 @@
+[
+  {
+    "raw": "{\"z\":\"Café 東京 🙂 <>&\",\"a\":1.0,\"keep\":false}",
+    "compact": "{\"z\":\"Caf\\u00e9 \\u6771\\u4eac \\ud83d\\ude42 <>&\",\"a\":1.0,\"keep\":false}",
+    "spaced": "{\"z\": \"Caf\\u00e9 \\u6771\\u4eac \\ud83d\\ude42 <>&\", \"a\": 1.0, \"keep\": false}"
+  },
+  {
+    "raw": "{\"nested\":{\"page\":0,\"a\":[1e-7,1e16,-0.0]},\"a\":\"line\\n\\t\\u007f\"}",
+    "compact": "{\"nested\":{\"page\":0,\"a\":[1e-07,1e+16,-0.0]},\"a\":\"line\\n\\t\\u007f\"}",
+    "spaced": "{\"nested\": {\"page\": 0, \"a\": [1e-07, 1e+16, -0.0]}, \"a\": \"line\\n\\t\\u007f\"}"
+  },
+  {
+    "raw": "{\"dup\":1,\"dup\":2,\"end\":null}",
+    "compact": "{\"dup\":2,\"end\":null}",
+    "spaced": "{\"dup\": 2, \"end\": null}"
+  }
+]

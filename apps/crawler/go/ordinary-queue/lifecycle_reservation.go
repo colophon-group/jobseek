@@ -47,7 +47,11 @@ func (a *Authority) FinishGreenhouseReservationResource(ctx context.Context, cla
 		return nil, err
 	}
 	if observation != nil {
-		if (observation.Source != "" && observation.Source != "header" && observation.Source != "meta") || !initialMonitorResourceMatches(profile, initialEndpoint) || !validGreenhouseResponseResource(observation.Endpoint) {
+		matches := initialMonitorResourceMatches(profile, initialEndpoint)
+		if profile.Provider == "api_sniffer" {
+			matches = APISnifferMonitorResourceMatches(profile, claim.task.Config, initialEndpoint)
+		}
+		if (observation.Source != "" && observation.Source != "header" && observation.Source != "meta") || !matches || !validGreenhouseResponseResource(observation.Endpoint) {
 			return nil, ErrConfiguration
 		}
 		if policy := observation.PolicyURL; policy != nil && (len(*policy) > 8192 || !utf8.ValidString(*policy) || strings.ContainsRune(*policy, 0)) {

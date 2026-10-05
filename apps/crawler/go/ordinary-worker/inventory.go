@@ -16,6 +16,7 @@ type RichMonitorJob struct {
 	LocalizedTitles, LocalizationLocales []string
 	DatePosted                           any
 	Metadata                             map[string]any
+	Extras                               map[string]any
 	EmploymentType, JobLocationType      any
 }
 

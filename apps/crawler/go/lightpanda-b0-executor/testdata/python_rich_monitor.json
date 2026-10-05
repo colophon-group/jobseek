@@ -1358,6 +1358,300 @@
           "en"
         ]
       }
+    },
+    {
+      "name": "extras_order_and_salary_before_hash",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<p>Build useful systems.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en",
+        "extras": {
+          "skills": [
+            "Go",
+            "Python"
+          ],
+          "qualifications": [
+            "5+ years of experience",
+            "n/a",
+            null
+          ],
+          "responsibilities": [
+            "Salary CHF 100000-120000 yearly."
+          ]
+        }
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          [
+            4
+          ],
+          100000,
+          120000,
+          "CHF",
+          "yearly",
+          105000,
+          5.0,
+          null,
+          41,
+          7
+        ],
+        "description": {
+          "html": "<p>Build useful systems.</p>\n<h3>Responsibilities</h3>\n<ul><li>Salary CHF 100000-120000 yearly.</li></ul>\n<h3>Qualifications</h3>\n<ul><li>5+ years of experience</li></ul>\n<h3>Skills</h3>\n<ul><li>Go</li><li>Python</li></ul>",
+          "locale": "en",
+          "hash": 156371257100984588
+        },
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          "en"
+        ]
+      }
+    },
+    {
+      "name": "extras_without_description",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "language": null,
+        "extras": {
+          "skills": [
+            "Go",
+            "",
+            "not available",
+            true,
+            17
+          ]
+        }
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          41,
+          7
+        ],
+        "description": {
+          "html": "<h3>Skills</h3>\n<ul><li>Go</li><li>True</li><li>17</li></ul>",
+          "locale": "en",
+          "hash": -3550755639569769967
+        },
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          "en"
+        ]
+      }
+    },
+    {
+      "name": "extras_duplicate_section_uses_first_long_snippet",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<p>Build distributed systems and reliable tools.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en",
+        "extras": {
+          "responsibilities": [
+            "Go",
+            "Build distributed systems",
+            "Other task"
+          ],
+          "skills": "<b>Build distributed systems</b>"
+        }
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          41,
+          7
+        ],
+        "description": {
+          "html": "<p>Build distributed systems and reliable tools.</p>",
+          "locale": "en",
+          "hash": -3997969926720106831
+        },
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          "en"
+        ]
+      }
+    },
+    {
+      "name": "extras_short_items_do_not_trigger_duplicate_check",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": "<p>Go and SQL.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en",
+        "extras": {
+          "skills": [
+            "Go",
+            "SQL"
+          ]
+        }
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          41,
+          7
+        ],
+        "description": {
+          "html": "<p>Go and SQL.</p>\n<h3>Skills</h3>\n<ul><li>Go</li><li>SQL</li></ul>",
+          "locale": "en",
+          "hash": 1801951222417491387
+        },
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          "en"
+        ]
+      }
+    },
+    {
+      "name": "extras_sentinels_do_not_make_description",
+      "content": {
+        "title": "Senior Software Engineer",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "language": "en",
+        "extras": {
+          "skills": [
+            "<b>Unavailable</b>",
+            "None",
+            "-",
+            " ",
+            null
+          ]
+        }
+      },
+      "expected": {
+        "fields": [
+          null,
+          [
+            "Senior Software Engineer"
+          ],
+          [
+            "en"
+          ],
+          [
+            2
+          ],
+          [
+            "hybrid"
+          ],
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          41,
+          7
+        ],
+        "description": null,
+        "location_inputs": [
+          [
+            "Zurich"
+          ],
+          null,
+          "en"
+        ]
+      }
     }
   ]
 }

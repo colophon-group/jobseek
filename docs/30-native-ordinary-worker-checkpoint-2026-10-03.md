@@ -1,5 +1,42 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Configured HTTP API migration in implementation — 2026-10-05
+
+The full migration goal remains active. The current candidate adds
+`api_sniffer.http-items/v1` to the existing ordinary Go worker and rich writer.
+It ports declared JSON field extraction, GET/POST requests, headers, operation
+cookies, page/offset/cumulative pagination and bounded size probes. Structured
+responsibilities, qualifications and skills enter the existing enrichment
+pipeline before language detection, derived fields and description staging.
+Later transient/malformed pages provide no successful inventory. Publisher
+reservations bind the actual later page or probe, and total gaps/item caps
+suppress disappearance. URL identity preserves Python's raw Unicode behavior.
+
+Local frozen Python oracles cover 46 field cases, 20 discovery cases (one
+unported auto-field case remains excluded), 30 rich writer cases and three
+exact JSON body byte cases. Nine real PostgreSQL/Redis cases pass under the
+race detector, including declared GET/POST pagination, canonical fields,
+staged description hash/upload state, failure/policy handling and recurring
+queue conservation. Full worker/queue and installed-image checks remain
+required before release. The API module race/vet/tidy and executor race/vet
+checks pass.
+
+A read-only census against the source937 configuration snapshot identifies
+134 eligible API boards with matching canonical/cache bindings out of 326.
+This is a candidate estimate, not fresh production admission. Unsupported
+browser/auto-field/filter/rotation/decryption/enrichment configurations retain
+their current owner while their replacements are implemented. The running
+source937 fleet is unchanged by this candidate.
+
+[Candidate evidence](evidence/go-native-api-candidate-2026-10-05.json) records
+scope and the remaining delivery steps. Finish runtime and image verification,
+required CI and exact-head review, then use original cold ordinary retirement,
+B0 reversal and selector clear before immutable promotion. Recreate fresh
+source-bound admission, activate through the original wrapper and verify
+natural work/queue settlement. Continue remaining enabled profiles and Python
+runtime consumers, whole-lane measurements, supported reversal and the rollback
+window before retiring legacy production assets.
+
 ## Production fleet adoption verified — 2026-10-05
 
 The goal remains full production migration to Go and self-hosted Lightpanda,

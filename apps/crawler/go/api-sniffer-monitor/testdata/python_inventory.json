@@ -1,0 +1,2989 @@
+[
+  {
+    "name": "single-rich",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "jobs",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations[].name",
+        "employment_type": {
+          "path": "remote",
+          "map": {
+            "True": "full-time"
+          }
+        },
+        "qualifications": "qualifications",
+        "metadata.id": "id"
+      }
+    },
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Engineer 1",
+        "description": "<p>Role 1</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "1"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Engineer 2",
+        "description": "<p>Role 2</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "2"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 1,
+              "title": "Engineer 1",
+              "url": "/jobs/1",
+              "description": [
+                "<p>Role 1</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 2,
+              "title": "Engineer 2",
+              "url": "/jobs/2",
+              "description": [
+                "<p>Role 2</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "empty",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "jobs",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations[].name",
+        "employment_type": {
+          "path": "remote",
+          "map": {
+            "True": "full-time"
+          }
+        },
+        "qualifications": "qualifications",
+        "metadata.id": "id"
+      }
+    },
+    "expected": [],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "jobs": []
+        }
+      }
+    ]
+  },
+  {
+    "name": "root-lookup",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "jobs",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "metadata.team": {
+          "lookup_from": "lookup",
+          "key_from": "department"
+        }
+      }
+    },
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Engineer 1",
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "team": "Engineering"
+        },
+        "extras": {}
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 1,
+              "title": "Engineer 1",
+              "url": "/jobs/1",
+              "description": [
+                "<p>Role 1</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ],
+              "department": 12
+            }
+          ],
+          "lookup": {
+            "12": "Engineering"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "multi-description",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "jobs",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "description": [
+          "description",
+          "=Tail"
+        ]
+      }
+    },
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Engineer 1",
+        "description": "<p>Role 1</p> <p>Details</p>\n\nTail",
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 1,
+              "title": "Engineer 1",
+              "url": "/jobs/1",
+              "description": [
+                "<p>Role 1</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "nested-url",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "jobs",
+      "url_field": "links.url",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations[].name",
+        "employment_type": {
+          "path": "remote",
+          "map": {
+            "True": "full-time"
+          }
+        },
+        "qualifications": "qualifications",
+        "metadata.id": "id"
+      }
+    },
+    "expected": [
+      {
+        "url": "https://careers.example.test/other/1",
+        "title": "Engineer 1",
+        "description": "<p>Role 1</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "1"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 1,
+              "title": "Engineer 1",
+              "url": "/jobs/1",
+              "description": [
+                "<p>Role 1</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ],
+              "links": {
+                "url": "/other/1"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "template-alias",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "jobs",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations[].name",
+        "employment_type": {
+          "path": "remote",
+          "map": {
+            "True": "full-time"
+          }
+        },
+        "qualifications": "qualifications",
+        "metadata.id": "id"
+      },
+      "url_template": "https://careers.example.test/job/{external}",
+      "url_template_fields": {
+        "external": "id"
+      }
+    },
+    "expected": [
+      {
+        "url": "https://careers.example.test/job/1",
+        "title": "Engineer 1",
+        "description": "<p>Role 1</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "1"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 1,
+              "title": "Engineer 1",
+              "url": "/jobs/1",
+              "description": [
+                "<p>Role 1</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "url-only",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "jobs",
+      "url_field": "url",
+      "fields": {},
+      "url_template": "/jobs/{id}"
+    },
+    "expected": [
+      {
+        "url": "/jobs/1",
+        "title": "Engineer 1",
+        "description": "<p>Role 1</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": null,
+        "job_location_type": "True",
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      },
+      {
+        "url": "/jobs/2",
+        "title": "Engineer 2",
+        "description": "<p>Role 2</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": null,
+        "job_location_type": "True",
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 1,
+              "title": "Engineer 1",
+              "url": "/jobs/1",
+              "description": [
+                "<p>Role 1</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 2,
+              "title": "Engineer 2",
+              "url": "/jobs/2",
+              "description": [
+                "<p>Role 2</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "duplicate",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "jobs",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations[].name",
+        "employment_type": {
+          "path": "remote",
+          "map": {
+            "True": "full-time"
+          }
+        },
+        "qualifications": "qualifications",
+        "metadata.id": "id"
+      }
+    },
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Engineer 1",
+        "description": "<p>Role 1</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "1"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Updated",
+        "description": "<p>Role 1</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "1"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 1,
+              "title": "Engineer 1",
+              "url": "/jobs/1",
+              "description": [
+                "<p>Role 1</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 1,
+              "title": "Updated",
+              "url": "/jobs/1",
+              "description": [
+                "<p>Role 1</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "cap-keeps-all",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "jobs",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations[].name",
+        "employment_type": {
+          "path": "remote",
+          "map": {
+            "True": "full-time"
+          }
+        },
+        "qualifications": "qualifications",
+        "metadata.id": "id"
+      },
+      "max_items": 1
+    },
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Engineer 1",
+        "description": "<p>Role 1</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "1"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Engineer 2",
+        "description": "<p>Role 2</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "2"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      }
+    ],
+    "truncated": true,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 1,
+              "title": "Engineer 1",
+              "url": "/jobs/1",
+              "description": [
+                "<p>Role 1</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 2,
+              "title": "Engineer 2",
+              "url": "/jobs/2",
+              "description": [
+                "<p>Role 2</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "advertised-gap",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "jobs",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations[].name",
+        "employment_type": {
+          "path": "remote",
+          "map": {
+            "True": "full-time"
+          }
+        },
+        "qualifications": "qualifications",
+        "metadata.id": "id"
+      },
+      "total_path": "total"
+    },
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Engineer 1",
+        "description": "<p>Role 1</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "1"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Engineer 2",
+        "description": "<p>Role 2</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "2"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      }
+    ],
+    "truncated": true,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 1,
+              "title": "Engineer 1",
+              "url": "/jobs/1",
+              "description": [
+                "<p>Role 1</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 2,
+              "title": "Engineer 2",
+              "url": "/jobs/2",
+              "description": [
+                "<p>Role 2</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          ],
+          "total": 5
+        }
+      }
+    ]
+  },
+  {
+    "name": "one-total-drift",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "jobs",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations[].name",
+        "employment_type": {
+          "path": "remote",
+          "map": {
+            "True": "full-time"
+          }
+        },
+        "qualifications": "qualifications",
+        "metadata.id": "id"
+      },
+      "total_path": "total"
+    },
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Engineer 1",
+        "description": "<p>Role 1</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "1"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Engineer 2",
+        "description": "<p>Role 2</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "2"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 1,
+              "title": "Engineer 1",
+              "url": "/jobs/1",
+              "description": [
+                "<p>Role 1</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 2,
+              "title": "Engineer 2",
+              "url": "/jobs/2",
+              "description": [
+                "<p>Role 2</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          ],
+          "total": 3
+        }
+      }
+    ]
+  },
+  {
+    "name": "page-pagination",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "jobs",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations[].name",
+        "employment_type": {
+          "path": "remote",
+          "map": {
+            "True": "full-time"
+          }
+        },
+        "qualifications": "qualifications",
+        "metadata.id": "id"
+      },
+      "pagination": {
+        "param_name": "page",
+        "start_value": 0,
+        "increment": 1,
+        "max_pages": 4
+      }
+    },
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Engineer 1",
+        "description": "<p>Role 1</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "1"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Engineer 2",
+        "description": "<p>Role 2</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "2"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/3",
+        "title": "Engineer 3",
+        "description": "<p>Role 3</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "3"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/4",
+        "title": "Engineer 4",
+        "description": "<p>Role 4</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "4"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 1,
+              "title": "Engineer 1",
+              "url": "/jobs/1",
+              "description": [
+                "<p>Role 1</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 2,
+              "title": "Engineer 2",
+              "url": "/jobs/2",
+              "description": [
+                "<p>Role 2</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          ],
+          "total": 4
+        }
+      },
+      {
+        "page": 1,
+        "size": null,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 3,
+              "title": "Engineer 3",
+              "url": "/jobs/3",
+              "description": [
+                "<p>Role 3</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 4,
+              "title": "Engineer 4",
+              "url": "/jobs/4",
+              "description": [
+                "<p>Role 4</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "later-transient-fails-whole",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "jobs",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations[].name",
+        "employment_type": {
+          "path": "remote",
+          "map": {
+            "True": "full-time"
+          }
+        },
+        "qualifications": "qualifications",
+        "metadata.id": "id"
+      },
+      "pagination": {
+        "param_name": "page",
+        "start_value": 0,
+        "increment": 1,
+        "max_pages": 4
+      }
+    },
+    "error": true,
+    "error_class": "PaginationFetchError",
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 1,
+              "title": "Engineer 1",
+              "url": "/jobs/1",
+              "description": [
+                "<p>Role 1</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 2,
+              "title": "Engineer 2",
+              "url": "/jobs/2",
+              "description": [
+                "<p>Role 2</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          ],
+          "total": 4
+        }
+      },
+      {
+        "page": 1,
+        "size": null,
+        "status": 503,
+        "data": {}
+      }
+    ]
+  },
+  {
+    "name": "two-empty-pages",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "jobs",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations[].name",
+        "employment_type": {
+          "path": "remote",
+          "map": {
+            "True": "full-time"
+          }
+        },
+        "qualifications": "qualifications",
+        "metadata.id": "id"
+      },
+      "pagination": {
+        "param_name": "page",
+        "start_value": 0,
+        "increment": 1,
+        "max_pages": 4
+      }
+    },
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Engineer 1",
+        "description": "<p>Role 1</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "1"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Engineer 2",
+        "description": "<p>Role 2</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "2"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 1,
+              "title": "Engineer 1",
+              "url": "/jobs/1",
+              "description": [
+                "<p>Role 1</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 2,
+              "title": "Engineer 2",
+              "url": "/jobs/2",
+              "description": [
+                "<p>Role 2</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "page": 1,
+        "size": null,
+        "status": 200,
+        "data": {
+          "jobs": []
+        }
+      },
+      {
+        "page": 2,
+        "size": null,
+        "status": 200,
+        "data": {
+          "jobs": []
+        }
+      }
+    ]
+  },
+  {
+    "name": "offset-pagination",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "jobs",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations[].name",
+        "employment_type": {
+          "path": "remote",
+          "map": {
+            "True": "full-time"
+          }
+        },
+        "qualifications": "qualifications",
+        "metadata.id": "id"
+      },
+      "pagination": {
+        "param_name": "offset",
+        "start_value": 0,
+        "increment": 2,
+        "max_pages": 4,
+        "style": "offset"
+      }
+    },
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Engineer 1",
+        "description": "<p>Role 1</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "1"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Engineer 2",
+        "description": "<p>Role 2</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "2"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/3",
+        "title": "Engineer 3",
+        "description": "<p>Role 3</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "3"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/4",
+        "title": "Engineer 4",
+        "description": "<p>Role 4</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "4"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?offset=2",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 1,
+              "title": "Engineer 1",
+              "url": "/jobs/1",
+              "description": [
+                "<p>Role 1</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 2,
+              "title": "Engineer 2",
+              "url": "/jobs/2",
+              "description": [
+                "<p>Role 2</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          ],
+          "total": 4
+        }
+      },
+      {
+        "page": 2,
+        "size": null,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 3,
+              "title": "Engineer 3",
+              "url": "/jobs/3",
+              "description": [
+                "<p>Role 3</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 4,
+              "title": "Engineer 4",
+              "url": "/jobs/4",
+              "description": [
+                "<p>Role 4</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "post-pagination",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "jobs",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations[].name",
+        "employment_type": {
+          "path": "remote",
+          "map": {
+            "True": "full-time"
+          }
+        },
+        "qualifications": "qualifications",
+        "metadata.id": "id"
+      },
+      "method": "POST",
+      "post_data": {
+        "page": 0
+      },
+      "request_headers": {
+        "X-Test": "fixture"
+      },
+      "pagination": {
+        "param_name": "page",
+        "start_value": 0,
+        "increment": 1,
+        "max_pages": 4,
+        "location": "body"
+      }
+    },
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Engineer 1",
+        "description": "<p>Role 1</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "1"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Engineer 2",
+        "description": "<p>Role 2</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "2"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/3",
+        "title": "Engineer 3",
+        "description": "<p>Role 3</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "3"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/4",
+        "title": "Engineer 4",
+        "description": "<p>Role 4</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "4"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "POST",
+        "url": "https://api.example.test/jobs",
+        "body": "{\"page\":0}",
+        "headers": {
+          "x-test": "fixture",
+          "content-type": "application/json"
+        }
+      },
+      {
+        "method": "POST",
+        "url": "https://api.example.test/jobs",
+        "body": "{\"page\": 1}",
+        "headers": {
+          "x-test": "fixture",
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 1,
+              "title": "Engineer 1",
+              "url": "/jobs/1",
+              "description": [
+                "<p>Role 1</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 2,
+              "title": "Engineer 2",
+              "url": "/jobs/2",
+              "description": [
+                "<p>Role 2</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          ],
+          "total": 4
+        }
+      },
+      {
+        "page": 1,
+        "size": null,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 3,
+              "title": "Engineer 3",
+              "url": "/jobs/3",
+              "description": [
+                "<p>Role 3</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 4,
+              "title": "Engineer 4",
+              "url": "/jobs/4",
+              "description": [
+                "<p>Role 4</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "size-probe",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "jobs",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations[].name",
+        "employment_type": {
+          "path": "remote",
+          "map": {
+            "True": "full-time"
+          }
+        },
+        "qualifications": "qualifications",
+        "metadata.id": "id"
+      },
+      "params": {
+        "limit": 2
+      },
+      "pagination": {
+        "param_name": "offset",
+        "start_value": 0,
+        "increment": 2,
+        "max_pages": 4,
+        "style": "offset"
+      }
+    },
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Engineer 1",
+        "description": "<p>Role 1</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "1"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Engineer 2",
+        "description": "<p>Role 2</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "2"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/3",
+        "title": "Engineer 3",
+        "description": "<p>Role 3</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "3"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/4",
+        "title": "Engineer 4",
+        "description": "<p>Role 4</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "4"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/5",
+        "title": "Engineer 5",
+        "description": "<p>Role 5</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "5"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/6",
+        "title": "Engineer 6",
+        "description": "<p>Role 6</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "6"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?limit=2",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?limit=100&offset=0",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": 2,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 1,
+              "title": "Engineer 1",
+              "url": "/jobs/1",
+              "description": [
+                "<p>Role 1</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 2,
+              "title": "Engineer 2",
+              "url": "/jobs/2",
+              "description": [
+                "<p>Role 2</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          ],
+          "total": 6
+        }
+      },
+      {
+        "page": 0,
+        "size": 100,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 1,
+              "title": "Engineer 1",
+              "url": "/jobs/1",
+              "description": [
+                "<p>Role 1</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 2,
+              "title": "Engineer 2",
+              "url": "/jobs/2",
+              "description": [
+                "<p>Role 2</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 3,
+              "title": "Engineer 3",
+              "url": "/jobs/3",
+              "description": [
+                "<p>Role 3</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 4,
+              "title": "Engineer 4",
+              "url": "/jobs/4",
+              "description": [
+                "<p>Role 4</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 5,
+              "title": "Engineer 5",
+              "url": "/jobs/5",
+              "description": [
+                "<p>Role 5</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 6,
+              "title": "Engineer 6",
+              "url": "/jobs/6",
+              "description": [
+                "<p>Role 6</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          ],
+          "total": 6
+        }
+      }
+    ]
+  },
+  {
+    "name": "failed-size-probe",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "jobs",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations[].name",
+        "employment_type": {
+          "path": "remote",
+          "map": {
+            "True": "full-time"
+          }
+        },
+        "qualifications": "qualifications",
+        "metadata.id": "id"
+      },
+      "params": {
+        "limit": 2
+      },
+      "pagination": {
+        "param_name": "offset",
+        "start_value": 0,
+        "increment": 2,
+        "max_pages": 4,
+        "style": "offset"
+      }
+    },
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Engineer 1",
+        "description": "<p>Role 1</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "1"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Engineer 2",
+        "description": "<p>Role 2</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "2"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/3",
+        "title": "Engineer 3",
+        "description": "<p>Role 3</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "3"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/4",
+        "title": "Engineer 4",
+        "description": "<p>Role 4</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "4"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?limit=2",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?limit=100&offset=0",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?limit=2&offset=2",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": 2,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 1,
+              "title": "Engineer 1",
+              "url": "/jobs/1",
+              "description": [
+                "<p>Role 1</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 2,
+              "title": "Engineer 2",
+              "url": "/jobs/2",
+              "description": [
+                "<p>Role 2</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          ],
+          "total": 4
+        }
+      },
+      {
+        "page": 0,
+        "size": 100,
+        "status": 503,
+        "data": {}
+      },
+      {
+        "page": 2,
+        "size": 2,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 3,
+              "title": "Engineer 3",
+              "url": "/jobs/3",
+              "description": [
+                "<p>Role 3</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 4,
+              "title": "Engineer 4",
+              "url": "/jobs/4",
+              "description": [
+                "<p>Role 4</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "cumulative-limit",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "jobs",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations[].name",
+        "employment_type": {
+          "path": "remote",
+          "map": {
+            "True": "full-time"
+          }
+        },
+        "qualifications": "qualifications",
+        "metadata.id": "id"
+      },
+      "params": {
+        "limit": 2
+      },
+      "pagination": {
+        "param_name": "limit",
+        "start_value": 0,
+        "increment": 1,
+        "max_pages": 4,
+        "style": "cumulative_limit"
+      }
+    },
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Engineer 1",
+        "description": "<p>Role 1</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "1"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Engineer 2",
+        "description": "<p>Role 2</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "2"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/3",
+        "title": "Engineer 3",
+        "description": "<p>Role 3</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "3"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/4",
+        "title": "Engineer 4",
+        "description": "<p>Role 4</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "4"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?limit=2",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?limit=4",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": 2,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 1,
+              "title": "Engineer 1",
+              "url": "/jobs/1",
+              "description": [
+                "<p>Role 1</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 2,
+              "title": "Engineer 2",
+              "url": "/jobs/2",
+              "description": [
+                "<p>Role 2</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          ],
+          "total": 4
+        }
+      },
+      {
+        "page": 0,
+        "size": 4,
+        "status": 200,
+        "data": {
+          "jobs": [
+            {
+              "id": 1,
+              "title": "Engineer 1",
+              "url": "/jobs/1",
+              "description": [
+                "<p>Role 1</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 2,
+              "title": "Engineer 2",
+              "url": "/jobs/2",
+              "description": [
+                "<p>Role 2</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 3,
+              "title": "Engineer 3",
+              "url": "/jobs/3",
+              "description": [
+                "<p>Role 3</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            {
+              "id": 4,
+              "title": "Engineer 4",
+              "url": "/jobs/4",
+              "description": [
+                "<p>Role 4</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          ],
+          "total": 4
+        }
+      }
+    ]
+  },
+  {
+    "name": "json-values",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "jobs",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "description": "description",
+        "locations": "locations[].name",
+        "employment_type": {
+          "path": "remote",
+          "map": {
+            "True": "full-time"
+          }
+        },
+        "qualifications": "qualifications",
+        "metadata.id": "id"
+      },
+      "json_path_values": true
+    },
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Engineer 1",
+        "description": "<p>Role 1</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "1"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Engineer 2",
+        "description": "<p>Role 2</p>\n\n<p>Details</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {
+          "id": "2"
+        },
+        "extras": {
+          "qualifications": [
+            "Python",
+            "Go"
+          ]
+        }
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "jobs": {
+            "1": {
+              "id": 1,
+              "title": "Engineer 1",
+              "url": "/jobs/1",
+              "description": [
+                "<p>Role 1</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            },
+            "2": {
+              "id": 2,
+              "title": "Engineer 2",
+              "url": "/jobs/2",
+              "description": [
+                "<p>Role 2</p>",
+                "<p>Details</p>"
+              ],
+              "locations": [
+                {
+                  "name": "Zurich"
+                }
+              ],
+              "remote": true,
+              "qualifications": [
+                "Python",
+                "Go"
+              ]
+            }
+          }
+        }
+      }
+    ]
+  }
+]

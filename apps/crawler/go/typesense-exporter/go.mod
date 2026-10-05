@@ -47,6 +47,12 @@ require github.com/colophon-group/jobseek/apps/crawler/go/dom-detail v0.0.0 // i
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/dom-detail => ../dom-detail
 
-require github.com/colophon-group/jobseek/apps/crawler/go/sitemap-monitor v0.0.0 // indirect
+require (
+	github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor v0.0.0 // indirect
+	github.com/colophon-group/jobseek/apps/crawler/go/sitemap-monitor v0.0.0 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
+)
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/sitemap-monitor => ../sitemap-monitor
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor => ../api-sniffer-monitor

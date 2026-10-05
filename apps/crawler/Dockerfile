@@ -41,6 +41,7 @@ COPY go/smartrecruiters-monitor/ go/smartrecruiters-monitor/
 COPY go/workable-monitor/ go/workable-monitor/
 COPY go/join-monitor/ go/join-monitor/
 COPY go/sitemap-monitor/ go/sitemap-monitor/
+COPY go/api-sniffer-monitor/ go/api-sniffer-monitor/
 COPY go/ordinary-queue/ go/ordinary-queue/
 COPY go/ordinary-worker/ go/ordinary-worker/
 COPY go/workday-monitor/ go/workday-monitor/
@@ -66,6 +67,7 @@ FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be
 WORKDIR /workspace/apps/crawler/go/typesense-exporter
 COPY contracts/ /workspace/apps/crawler/contracts/
 COPY go/typesense-exporter/ ./
+COPY go/api-sniffer-monitor/ ../api-sniffer-monitor/
 COPY go/ordinary-queue/ ../ordinary-queue/
 COPY go/jsonld-detail/ ../jsonld-detail/
 COPY go/smartrecruiters-monitor/ ../smartrecruiters-monitor/
