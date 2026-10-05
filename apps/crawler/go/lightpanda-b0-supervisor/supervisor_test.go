@@ -5,10 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
+	"os"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
+
+	b0client "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/lightpandaclient"
 )
 
 type occupiedRenderer struct {
@@ -25,7 +30,7 @@ func (r *occupiedRenderer) reserve(context.Context) (heldReservation, error) {
 }
 
 func TestSharedRendererContentionWaitsBeforeAnyQueueClaim(t *testing.T) {
-	renderer := &occupiedRenderer{err: fmt.Errorf("renderer TLS handshake: %w", io.EOF)}
+	renderer := &occupiedRenderer{err: fmt.Errorf("renderer TLS handshake: %w", errors.Join(b0client.ErrReservationUnavailable, &net.OpError{Op: "read", Net: "tcp", Err: &os.SyscallError{Syscall: "read", Err: syscall.ECONNRESET}}))}
 	// No queue is installed: reaching claim without a reservation would panic.
 	s := &supervisor{renderer: renderer}
 	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
@@ -40,7 +45,7 @@ func TestSharedRendererContentionWaitsBeforeAnyQueueClaim(t *testing.T) {
 
 func TestSharedRendererReservationResumesAfterSlotRelease(t *testing.T) {
 	held := &fakeHeldReservation{}
-	renderer := &occupiedRenderer{err: fmt.Errorf("renderer TLS handshake: %w", io.EOF), held: held}
+	renderer := &occupiedRenderer{err: fmt.Errorf("renderer TLS handshake: %w", errors.Join(b0client.ErrReservationUnavailable, io.EOF)), held: held}
 	s := &supervisor{renderer: renderer}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -143,7 +148,7 @@ func (s *failingRendererSource) reserve(context.Context) (heldReservation, error
 	defer s.mu.Unlock()
 	s.calls++
 	if s.calls == 2 {
-		return nil, errors.New("slot unavailable")
+		return nil, fmt.Errorf("renderer TLS handshake: %w", errors.Join(b0client.ErrReservationUnavailable, syscall.ECONNRESET))
 	}
 	reservation := &fakeHeldReservation{}
 	s.reservations = append(s.reservations, reservation)
@@ -435,5 +440,14 @@ func TestQueuedHeartbeatDoesNotRunAfterTerminalCompletion(t *testing.T) {
 	queue.mu.Unlock()
 	if calls != 0 {
 		t.Fatalf("heartbeat ran after terminal completion: %d calls", calls)
+	}
+}
+
+func TestUnclassifiedResetDoesNotEnterReservationWait(t *testing.T) {
+	failure := fmt.Errorf("other transport phase: %w", syscall.ECONNRESET)
+	renderer := &occupiedRenderer{err: failure}
+	s := &supervisor{renderer: renderer}
+	if err := s.worker(context.Background(), nil); !errors.Is(err, failure) || renderer.calls.Load() != 1 {
+		t.Fatalf("unclassified reset reached wait or queue: %v", err)
 	}
 }

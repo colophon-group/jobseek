@@ -1,5 +1,39 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Source939 activation and capacity-reset recovery — 2026-10-05
+
+Lightpanda **1.0.0 is deployed**, with exact image/executable identities and
+restart/reboot acceptance verified. [PR #10322](https://github.com/colophon-group/jobseek/pull/10322)
+and [production evidence](evidence/lightpanda-1.0.0-production-2026-10-05.json)
+record that completed upgrade. The earlier sections below are historical.
+
+Fresh source939 admission reconciled 1,088,087 scheduled postings and admitted
+6,159 monitors and 2,199 details. The original wrapper's exact-identity retry
+activated one SQL ownership plan and its matching Redis projection at epoch187.
+Independent readbacks at 14:12 and 14:14 UTC verified all ten exact-image writers
+running with restart policies armed.
+
+Natural validation then exposed an actual runtime failure: the B0 claimant had
+12 restarts by 14:16 UTC, starting with a renderer TLS connection reset. Subsequent
+strict C4 startup attempts encounter EOF while ordinary work holds renderer
+slots. Ordinary Go has zero restarts, but full native natural processing is
+**not verified**. Supported full ordinary retirement began at 14:22 UTC; baseline
+restoration is still pending. No queue, lease, fence, receipt or lock was manually
+cleared. [Bounded recovery evidence](evidence/go-native-rendered-capacity-recovery-2026-10-05.json).
+
+The v0.13.940 repair classifies peer closes only during reservation TLS handshake:
+EOF, TCP reset and broken pipe can all result from the service closing an excess
+connection before TLS. Both consumers use that classification to wait within
+existing cancellation/heartbeat bounds. Initial all-four-slot admission remains
+strict; dial, certificate, identity, hello and execution failures retain their
+failure behavior. Real TCP peer-close, cancellation-before-claim, resumed
+reservation and strict startup regressions gate this release.
+
+Continue with supported full recovery, required CI and immutable release,
+fresh bound admission and sustained natural canonical/policy/description/queue
+proof. Then finish the existing provider/detail/runtime batch and the full lane's
+cost and reversal proof. Full migration is not complete.
+
 ## Lightpanda 1.0.0 upgrade — 2026-10-05
 
 The latest stable upstream release is 1.0.0, published October 2. The renderer

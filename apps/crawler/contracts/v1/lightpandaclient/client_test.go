@@ -8,12 +8,16 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/pem"
+	"errors"
+	"io"
 	"math/big"
 	"net"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 
@@ -99,6 +103,26 @@ func fixture(t *testing.T, mode string) (*Client, <-chan struct{}) {
 		}
 		defer conn.Close()
 		conn.SetDeadline(time.Now().Add(5 * time.Second))
+		if mode == "busy_eof" || mode == "busy_reset" || mode == "busy_early_reset" {
+			raw := conn.(*tls.Conn).NetConn().(*net.TCPConn)
+			if mode == "busy_early_reset" {
+				_ = raw.SetLinger(0)
+			} else {
+				// Drain the ClientHello record so a graceful TCP close yields EOF.
+				header := make([]byte, 5)
+				if _, e := io.ReadFull(raw, header); e != nil {
+					return
+				}
+				if _, e := io.CopyN(io.Discard, raw, int64(binary.BigEndian.Uint16(header[3:]))); e != nil {
+					return
+				}
+			}
+			if mode == "busy_reset" {
+				_ = raw.SetLinger(0)
+			}
+			_ = raw.Close()
+			return
+		}
 		hello := canonicalHello
 		if mode == "hello" {
 			hello = []byte("wrong")
@@ -153,7 +177,7 @@ func TestPinnedMutualTLSConversationAndFailureBoundaries(t *testing.T) {
 			defer cancel()
 			held, err := c.Reserve(ctx)
 			if mode == "hello" {
-				if err == nil {
+				if err == nil || errors.Is(err, ErrReservationUnavailable) {
 					held.Close()
 					t.Fatal("invalid service hello accepted")
 				}
@@ -183,6 +207,53 @@ func TestPinnedMutualTLSConversationAndFailureBoundaries(t *testing.T) {
 			case <-done:
 			case <-time.After(time.Second):
 				t.Fatal("conversation did not terminate")
+			}
+		})
+	}
+}
+
+func TestReservationPeerClosePreservesCauseAndCanResume(t *testing.T) {
+	for _, mode := range []string{"busy_eof", "busy_reset", "busy_early_reset"} {
+		t.Run(mode, func(t *testing.T) {
+			client, done := fixture(t, mode)
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			held, err := client.Reserve(ctx)
+			cause := error(io.EOF)
+			if mode == "busy_reset" {
+				cause = syscall.ECONNRESET
+			}
+			if held != nil || !errors.Is(err, ErrReservationUnavailable) || !(errors.Is(err, cause) || mode == "busy_early_reset" && (errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE))) {
+				t.Fatalf("pre-reservation close lost its bounded retry classification or cause: %v", err)
+			}
+			select {
+			case <-done:
+			case <-ctx.Done():
+				t.Fatal("peer close leaked a connection")
+			}
+		})
+	}
+}
+
+func TestReservationConnectionAndIdentityFailuresAreNotCapacity(t *testing.T) {
+	for _, mode := range []string{"connect", "identity"} {
+		t.Run(mode, func(t *testing.T) {
+			client, _ := fixture(t, "success")
+			if mode == "identity" {
+				client.leafPin = "wrong"
+			} else {
+				listener, err := net.Listen("tcp", "127.0.0.1:0")
+				if err != nil {
+					t.Fatal(err)
+				}
+				client.address = listener.Addr().String()
+				_ = listener.Close()
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			held, err := client.Reserve(ctx)
+			if held != nil || err == nil || errors.Is(err, ErrReservationUnavailable) {
+				t.Fatalf("non-capacity failure was retriable: %v", err)
 			}
 		})
 	}

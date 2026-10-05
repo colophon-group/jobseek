@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"sync"
 	"time"
 
+	b0client "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/lightpandaclient"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -266,7 +266,7 @@ func (s *supervisor) worker(ctx context.Context, initial heldReservation) error 
 func (s *supervisor) reserveAvailable(ctx context.Context) (heldReservation, error) {
 	for {
 		held, err := s.renderer.reserve(ctx)
-		if !errors.Is(err, io.EOF) {
+		if !errors.Is(err, b0client.ErrReservationUnavailable) {
 			return held, err
 		}
 		timer := time.NewTimer(time.Second)
