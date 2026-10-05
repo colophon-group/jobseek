@@ -18,6 +18,7 @@ type RichMonitorContent struct {
 	LocalizedTitles, LocalizationLocales []string
 	EmploymentType                       any
 	JobLocationType                      any
+	Extras                               map[string]any
 }
 
 // PrepareRichMonitor matches board._build_rich_new_records for this contract.
@@ -38,6 +39,10 @@ func (p *Processor) PrepareRichMonitor(ctx context.Context, content RichMonitorC
 		if err != nil {
 			return nil, err
 		}
+	}
+	description, err = enrichRichDescription(description, content.Extras)
+	if err != nil {
+		return nil, err
 	}
 	var language *string
 	if !pythonTruth(content.Language) && description != nil && *description != "" {

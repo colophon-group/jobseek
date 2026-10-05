@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"errors"
 	"net"
 	"net/url"
 	"regexp"
@@ -13,6 +14,82 @@ import (
 )
 
 type pythonURL struct{ scheme, host, path, params, query, fragment string }
+
+// Preserve urllib identity bytes: net/url resolution percent-escapes Unicode
+// paths and rejects invalid percent escapes accepted by the existing crawler.
+func pythonJoinURL(base, reference string) (string, error) {
+	if base == "" {
+		return reference, nil
+	}
+	if reference == "" {
+		return base, nil
+	}
+	b, ok := parsePythonURL(base)
+	if !ok {
+		return "", errors.New("invalid base URL")
+	}
+	p, ok := parsePythonURL(reference)
+	if !ok {
+		return "", errors.New("invalid reference URL")
+	}
+	if p.scheme == "" {
+		p.scheme = b.scheme
+	}
+	if p.scheme != b.scheme || p.scheme != "http" && p.scheme != "https" {
+		return reference, nil
+	}
+	if p.host != "" {
+		return p.String(), nil
+	}
+	p.host = b.host
+	if p.path == "" && p.params == "" {
+		p.path, p.params = b.path, b.params
+		if p.query == "" {
+			p.query = b.query
+		}
+		return p.String(), nil
+	}
+	segments := strings.Split(p.path, "/")
+	if !strings.HasPrefix(p.path, "/") {
+		parts := strings.Split(b.path, "/")
+		if parts[len(parts)-1] != "" {
+			parts = parts[:len(parts)-1]
+		}
+		segments = append(parts, segments...)
+		filtered := []string{segments[0]}
+		if len(segments) > 2 {
+			for _, segment := range segments[1 : len(segments)-1] {
+				if segment != "" {
+					filtered = append(filtered, segment)
+				}
+			}
+		}
+		if len(segments) > 1 {
+			filtered = append(filtered, segments[len(segments)-1])
+		}
+		segments = filtered
+	}
+	resolved := []string{}
+	for _, segment := range segments {
+		switch segment {
+		case "..":
+			if len(resolved) > 0 {
+				resolved = resolved[:len(resolved)-1]
+			}
+		case ".":
+		default:
+			resolved = append(resolved, segment)
+		}
+	}
+	if last := segments[len(segments)-1]; last == "." || last == ".." {
+		resolved = append(resolved, "")
+	}
+	p.path = strings.Join(resolved, "/")
+	if p.path == "" {
+		p.path = "/"
+	}
+	return p.String(), nil
+}
 
 var urlScheme = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9+.-]*$`)
 var ipvFuture = regexp.MustCompile(`^v[0-9A-Fa-f]+\..+$`)

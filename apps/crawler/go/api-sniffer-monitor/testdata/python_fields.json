@@ -1,0 +1,746 @@
+[
+  {
+    "name": "scalar-0",
+    "root": {
+      "x": null
+    },
+    "item": {
+      "x": null
+    },
+    "spec": "x",
+    "expected": null
+  },
+  {
+    "name": "scalar-1",
+    "root": {
+      "x": true
+    },
+    "item": {
+      "x": true
+    },
+    "spec": "x",
+    "expected": "True"
+  },
+  {
+    "name": "scalar-2",
+    "root": {
+      "x": false
+    },
+    "item": {
+      "x": false
+    },
+    "spec": "x",
+    "expected": "False"
+  },
+  {
+    "name": "scalar-3",
+    "root": {
+      "x": 0
+    },
+    "item": {
+      "x": 0
+    },
+    "spec": "x",
+    "expected": "0"
+  },
+  {
+    "name": "scalar-4",
+    "root": {
+      "x": -2
+    },
+    "item": {
+      "x": -2
+    },
+    "spec": "x",
+    "expected": "-2"
+  },
+  {
+    "name": "scalar-5",
+    "root": {
+      "x": 1.0
+    },
+    "item": {
+      "x": 1.0
+    },
+    "spec": "x",
+    "expected": "1.0"
+  },
+  {
+    "name": "scalar-6",
+    "root": {
+      "x": 1.25
+    },
+    "item": {
+      "x": 1.25
+    },
+    "spec": "x",
+    "expected": "1.25"
+  },
+  {
+    "name": "scalar-7",
+    "root": {
+      "x": 1000000.0
+    },
+    "item": {
+      "x": 1000000.0
+    },
+    "spec": "x",
+    "expected": "1000000.0"
+  },
+  {
+    "name": "scalar-8",
+    "root": {
+      "x": 1e-05
+    },
+    "item": {
+      "x": 1e-05
+    },
+    "spec": "x",
+    "expected": "1e-05"
+  },
+  {
+    "name": "scalar-9",
+    "root": {
+      "x": ""
+    },
+    "item": {
+      "x": ""
+    },
+    "spec": "x",
+    "expected": ""
+  },
+  {
+    "name": "scalar-10",
+    "root": {
+      "x": " Zürich "
+    },
+    "item": {
+      "x": " Zürich "
+    },
+    "spec": "x",
+    "expected": " Zürich "
+  },
+  {
+    "name": "scalar-11",
+    "root": {
+      "x": [
+        "a",
+        null,
+        3,
+        true
+      ]
+    },
+    "item": {
+      "x": [
+        "a",
+        null,
+        3,
+        true
+      ]
+    },
+    "spec": "x",
+    "expected": [
+      "a",
+      "3",
+      "True"
+    ]
+  },
+  {
+    "name": "scalar-12",
+    "root": {
+      "x": {
+        "z": 1,
+        "a": "O'Reilly"
+      }
+    },
+    "item": {
+      "x": {
+        "z": 1,
+        "a": "O'Reilly"
+      }
+    },
+    "spec": "x",
+    "expected": "{'z': 1, 'a': \"O'Reilly\"}"
+  },
+  {
+    "name": "projection",
+    "root": {
+      "locations": [
+        {
+          "name": "Zurich"
+        },
+        {
+          "name": null
+        },
+        {
+          "name": "Bern"
+        }
+      ]
+    },
+    "item": {
+      "locations": [
+        {
+          "name": "Zurich"
+        },
+        {
+          "name": null
+        },
+        {
+          "name": "Bern"
+        }
+      ]
+    },
+    "spec": "locations[].name",
+    "expected": [
+      "Zurich",
+      "Bern"
+    ]
+  },
+  {
+    "name": "filter",
+    "root": {
+      "rows": [
+        {
+          "value": 2,
+          "label": "low"
+        },
+        {
+          "value": 10,
+          "label": "high"
+        }
+      ]
+    },
+    "item": {
+      "rows": [
+        {
+          "value": 2,
+          "label": "low"
+        },
+        {
+          "value": 10,
+          "label": "high"
+        }
+      ]
+    },
+    "spec": "rows[?value > `5`].label",
+    "expected": [
+      "high"
+    ]
+  },
+  {
+    "name": "functions",
+    "root": {
+      "rows": [
+        {
+          "label": "A"
+        },
+        {
+          "label": "B"
+        }
+      ]
+    },
+    "item": {
+      "rows": [
+        {
+          "label": "A"
+        },
+        {
+          "label": "B"
+        }
+      ]
+    },
+    "spec": "join(', ', rows[].label)",
+    "expected": "A, B"
+  },
+  {
+    "name": "not-null",
+    "root": {
+      "name": null,
+      "other": "fallback"
+    },
+    "item": {
+      "name": null,
+      "other": "fallback"
+    },
+    "spec": "not_null(name, other)",
+    "expected": "fallback"
+  },
+  {
+    "name": "to-string",
+    "root": {
+      "value": 1.0
+    },
+    "item": {
+      "value": 1.0
+    },
+    "spec": "to_string(value)",
+    "expected": "1.0"
+  },
+  {
+    "name": "literal",
+    "root": {},
+    "item": {},
+    "spec": "=<h2>Requirements</h2>",
+    "expected": "<h2>Requirements</h2>"
+  },
+  {
+    "name": "missing",
+    "root": {},
+    "item": {},
+    "spec": "missing.nested",
+    "expected": null
+  },
+  {
+    "name": "heading-missing",
+    "root": {
+      "description": "Body"
+    },
+    "item": {
+      "description": "Body"
+    },
+    "spec": [
+      "=<h2>Missing</h2>",
+      "missing",
+      "description"
+    ],
+    "expected": "Body"
+  },
+  {
+    "name": "heading-present",
+    "root": {
+      "description": "Body"
+    },
+    "item": {
+      "description": "Body"
+    },
+    "spec": [
+      "=<h2>About</h2>",
+      "description",
+      "=Tail"
+    ],
+    "expected": "<h2>About</h2>\nBody\nTail"
+  },
+  {
+    "name": "constants-only",
+    "root": {},
+    "item": {},
+    "spec": [
+      "=Hello",
+      "=world"
+    ],
+    "expected": "Hello\nworld"
+  },
+  {
+    "name": "no-orphan-tail",
+    "root": {},
+    "item": {},
+    "spec": [
+      "missing",
+      "=Tail"
+    ],
+    "expected": null
+  },
+  {
+    "name": "empty-list",
+    "root": {
+      "x": [
+        null,
+        "",
+        "  "
+      ]
+    },
+    "item": {
+      "x": [
+        null,
+        "",
+        "  "
+      ]
+    },
+    "spec": [
+      "=Heading",
+      "x"
+    ],
+    "expected": null
+  },
+  {
+    "name": "plain-lines",
+    "root": {
+      "x": "Intro\n\n- One\n- Two\nEnd\n"
+    },
+    "item": {
+      "x": "Intro\n\n- One\n- Two\nEnd\n"
+    },
+    "spec": [
+      "x"
+    ],
+    "expected": "Intro<br>\n<br>\n<ul>\n<li>One</li>\n<li>Two</li>\n</ul>\nEnd"
+  },
+  {
+    "name": "html-unchanged",
+    "root": {
+      "x": "<p>Intro</p>\n- One"
+    },
+    "item": {
+      "x": "<p>Intro</p>\n- One"
+    },
+    "spec": [
+      "x"
+    ],
+    "expected": "<p>Intro</p>\n- One"
+  },
+  {
+    "name": "separator",
+    "root": {
+      "city": "Zurich",
+      "country": "Switzerland"
+    },
+    "item": {
+      "city": "Zurich",
+      "country": "Switzerland"
+    },
+    "spec": {
+      "concat": [
+        "city",
+        "country"
+      ],
+      "separator": ", "
+    },
+    "expected": "Zurich, Switzerland"
+  },
+  {
+    "name": "each",
+    "root": {
+      "rows": [
+        {
+          "title": "First",
+          "body": null
+        },
+        {
+          "title": "Second",
+          "body": "Body"
+        },
+        "Tail"
+      ]
+    },
+    "item": {
+      "rows": [
+        {
+          "title": "First",
+          "body": null
+        },
+        {
+          "title": "Second",
+          "body": "Body"
+        },
+        "Tail"
+      ]
+    },
+    "spec": [
+      {
+        "each": "rows",
+        "wrap": "<h3>{title}</h3>{body}"
+      }
+    ],
+    "expected": "<h3>First</h3>\n<h3>Second</h3>Body\nTail"
+  },
+  {
+    "name": "bool-map",
+    "root": {
+      "remote": true
+    },
+    "item": {
+      "remote": true
+    },
+    "spec": {
+      "path": "remote",
+      "map": {
+        "True": "remote",
+        "False": "onsite"
+      }
+    },
+    "expected": "remote"
+  },
+  {
+    "name": "array-map",
+    "root": {
+      "values": [
+        true,
+        null,
+        1,
+        "missing"
+      ]
+    },
+    "item": {
+      "values": [
+        true,
+        null,
+        1,
+        "missing"
+      ]
+    },
+    "spec": {
+      "path": "values",
+      "map": {
+        "True": "remote",
+        "None": null,
+        "1": 2
+      }
+    },
+    "expected": [
+      "remote",
+      "None",
+      "2"
+    ]
+  },
+  {
+    "name": "scalar-map-null",
+    "root": {
+      "value": 1
+    },
+    "item": {
+      "value": 1
+    },
+    "spec": {
+      "path": "value",
+      "map": {
+        "1": null
+      }
+    },
+    "expected": null
+  },
+  {
+    "name": "html-unescape",
+    "root": {
+      "x": [
+        "&lt;p&gt;Body&lt;/p&gt;",
+        "A&amp;B"
+      ]
+    },
+    "item": {
+      "x": [
+        "&lt;p&gt;Body&lt;/p&gt;",
+        "A&amp;B"
+      ]
+    },
+    "spec": {
+      "path": "x",
+      "html_unescape": true
+    },
+    "expected": [
+      "<p>Body</p>",
+      "A&B"
+    ]
+  },
+  {
+    "name": "unescape-precedes-timestamp",
+    "root": {
+      "x": "&amp;"
+    },
+    "item": {
+      "x": "&amp;"
+    },
+    "spec": {
+      "path": "x",
+      "html_unescape": true,
+      "timestamp_unit": "seconds"
+    },
+    "expected": "&"
+  },
+  {
+    "name": "timestamp-34",
+    "root": {
+      "x": 0
+    },
+    "item": {
+      "x": 0
+    },
+    "spec": {
+      "path": "x",
+      "timestamp_unit": "seconds"
+    },
+    "expected": "1970-01-01T00:00:00+00:00"
+  },
+  {
+    "name": "timestamp-35",
+    "root": {
+      "x": -0.25
+    },
+    "item": {
+      "x": -0.25
+    },
+    "spec": {
+      "path": "x",
+      "timestamp_unit": "seconds"
+    },
+    "expected": "1969-12-31T23:59:59.750000+00:00"
+  },
+  {
+    "name": "timestamp-36",
+    "root": {
+      "x": 1700000000.125
+    },
+    "item": {
+      "x": 1700000000.125
+    },
+    "spec": {
+      "path": "x",
+      "timestamp_unit": "seconds"
+    },
+    "expected": "2023-11-14T22:13:20.125000+00:00"
+  },
+  {
+    "name": "timestamp-37",
+    "root": {
+      "x": 1700000000125
+    },
+    "item": {
+      "x": 1700000000125
+    },
+    "spec": {
+      "path": "x",
+      "timestamp_unit": "milliseconds"
+    },
+    "expected": "2023-11-14T22:13:20.125000+00:00"
+  },
+  {
+    "name": "timestamp-38",
+    "root": {
+      "x": [
+        0,
+        1000
+      ]
+    },
+    "item": {
+      "x": [
+        0,
+        1000
+      ]
+    },
+    "spec": {
+      "path": "x",
+      "timestamp_unit": "milliseconds"
+    },
+    "expected": [
+      "1970-01-01T00:00:00+00:00",
+      "1970-01-01T00:00:01+00:00"
+    ]
+  },
+  {
+    "name": "timestamp-invalid",
+    "root": {
+      "x": "invalid"
+    },
+    "item": {
+      "x": "invalid"
+    },
+    "spec": {
+      "path": "x",
+      "timestamp_unit": "seconds"
+    },
+    "error": true
+  },
+  {
+    "name": "pattern-order",
+    "root": {
+      "attrs": {
+        "other": "skip",
+        "department_2": [
+          "B",
+          null
+        ],
+        "department_1": "A"
+      }
+    },
+    "item": {
+      "attrs": {
+        "other": "skip",
+        "department_2": [
+          "B",
+          null
+        ],
+        "department_1": "A"
+      }
+    },
+    "spec": {
+      "path": "attrs",
+      "key_pattern": "^department_"
+    },
+    "expected": [
+      "A",
+      "B"
+    ]
+  },
+  {
+    "name": "pattern-scalar",
+    "root": {
+      "attrs": {
+        "department_1": "A"
+      }
+    },
+    "item": {
+      "attrs": {
+        "department_1": "A"
+      }
+    },
+    "spec": {
+      "path": "attrs",
+      "key_pattern": "^department_"
+    },
+    "expected": "A"
+  },
+  {
+    "name": "pattern-non-object",
+    "root": {
+      "attrs": [
+        "invalid"
+      ]
+    },
+    "item": {
+      "attrs": [
+        "invalid"
+      ]
+    },
+    "spec": {
+      "path": "attrs",
+      "key_pattern": "^department_"
+    },
+    "error": true
+  },
+  {
+    "name": "lookup",
+    "root": {
+      "lookups": {
+        "departments": {
+          "12": "Engineering"
+        }
+      }
+    },
+    "item": {
+      "department": 12
+    },
+    "spec": {
+      "lookup_from": "lookups.departments",
+      "key_from": "department"
+    },
+    "expected": "Engineering"
+  },
+  {
+    "name": "lookup-missing",
+    "root": {},
+    "item": {
+      "department": 12
+    },
+    "spec": {
+      "lookup_from": "lookups.departments",
+      "key_from": "department"
+    },
+    "expected": null
+  },
+  {
+    "name": "invalid-spec",
+    "root": {},
+    "item": {},
+    "spec": 42,
+    "error": true
+  }
+]

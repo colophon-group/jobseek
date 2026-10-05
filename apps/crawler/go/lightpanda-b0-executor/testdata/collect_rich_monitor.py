@@ -5,9 +5,11 @@ from __future__ import annotations
 import copy
 import json
 import os
+import sys
 from pathlib import Path
 
 os.environ["JOB_ENRICHMENT_ENGINE"] = "python"
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from src.core.monitors.greenhouse import _parse_job
 from src.processing import board
@@ -161,6 +163,43 @@ add(
             "en": {"title": "Senior Software Engineer"},
         }
     },
+)
+
+add(
+    "extras_order_and_salary_before_hash",
+    {"content": "<p>Build useful systems.</p>"},
+    {
+        "extras": {
+            "skills": ["Go", "Python"],
+            "qualifications": ["5+ years of experience", "n/a", None],
+            "responsibilities": ["Salary CHF 100000-120000 yearly."],
+        },
+    },
+)
+add(
+    "extras_without_description",
+    {"content": None, "language": None},
+    {"extras": {"skills": ["Go", "", "not available", True, 17]}},
+)
+add(
+    "extras_duplicate_section_uses_first_long_snippet",
+    {"content": "<p>Build distributed systems and reliable tools.</p>"},
+    {
+        "extras": {
+            "responsibilities": ["Go", "Build distributed systems", "Other task"],
+            "skills": "<b>Build distributed systems</b>",
+        }
+    },
+)
+add(
+    "extras_short_items_do_not_trigger_duplicate_check",
+    {"content": "<p>Go and SQL.</p>"},
+    {"extras": {"skills": ["Go", "SQL"]}},
+)
+add(
+    "extras_sentinels_do_not_make_description",
+    {"content": None},
+    {"extras": {"skills": ["<b>Unavailable</b>", "None", "-", " ", None]}},
 )
 
 output = {

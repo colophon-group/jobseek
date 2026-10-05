@@ -26,10 +26,11 @@ func TestRichMonitorPreparationMatchesPythonBoardWriter(t *testing.T) {
 				Title, Description  *string
 				Locations           []string
 				Language            any
-				LocalizedTitles     []string `json:"localized_titles"`
-				LocalizationLocales []string `json:"localization_locales"`
-				EmploymentType      any      `json:"employment_type"`
-				JobLocationType     any      `json:"job_location_type"`
+				LocalizedTitles     []string       `json:"localized_titles"`
+				LocalizationLocales []string       `json:"localization_locales"`
+				EmploymentType      any            `json:"employment_type"`
+				JobLocationType     any            `json:"job_location_type"`
+				Extras              map[string]any `json:"extras"`
 			}
 			Expected struct {
 				Fields         json.RawMessage
@@ -52,7 +53,7 @@ func TestRichMonitorPreparationMatchesPythonBoardWriter(t *testing.T) {
 		t.Run(c.Name, func(t *testing.T) {
 			locations := &preparationLocations{}
 			processor := Processor{Matcher: matcher, Lookups: lookups, Locations: locations}
-			prepared, err := processor.PrepareRichMonitor(context.Background(), RichMonitorContent{Title: c.Content.Title, Description: c.Content.Description, Locations: c.Content.Locations, Language: c.Content.Language, LocalizedTitles: c.Content.LocalizedTitles, LocalizationLocales: c.Content.LocalizationLocales, EmploymentType: c.Content.EmploymentType, JobLocationType: c.Content.JobLocationType})
+			prepared, err := processor.PrepareRichMonitor(context.Background(), RichMonitorContent{Title: c.Content.Title, Description: c.Content.Description, Locations: c.Content.Locations, Language: c.Content.Language, LocalizedTitles: c.Content.LocalizedTitles, LocalizationLocales: c.Content.LocalizationLocales, EmploymentType: c.Content.EmploymentType, JobLocationType: c.Content.JobLocationType, Extras: c.Content.Extras})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -1,5 +1,134 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Configured API migration and contained cold reversal — 2026-10-05
+
+Source937 is currently contained after the original ordinary retirement and
+`recover-pending` both refused. All ten writers are stopped and restart-disabled;
+there are no live SQL leases or administrative containers. Its original SQL
+plan/projection remain active and its wrapper receipt remains `retiring`.
+Restoring processing through the supported recovery path takes priority over
+promotion. No queue, lease, fence, receipt or configuration was manually cleared.
+
+The bounded configuration audit found all 6,025 monitor bindings unchanged and
+one changed independent DOM detail binding: the legacy Avature monitor for
+`unifi-uk` learned `portal_id="23"` after admission. Its canonical/cache configs
+agree; removing only that newly discovered monitor field reproduces the original
+detail hash. The read-only Lua retirement preflight accepts all 6,027 observed
+restoration rows. PR #10320 now includes a narrow retirement compatibility case
+for that Avature field addition. It requires the original DOM profile, company,
+domain, unchanged remaining hash and current canonical/cache agreement. Runtime
+claims still reject the changed hash. Changed parsers/listings, configured portal
+changes, malformed portal IDs and cache-only changes remain refusals.
+
+The original code reproduces the real queue regression; the corrected six-case
+race test passes. Full queue/worker and installed compatibility verification
+must pass on the amended head before merge. Use its immutable administrator
+through the original installed937 `recover-pending` wrapper; then verify the
+restored nine writers, original B0 reversal/selector clear and full six-writer
+baseline before promoting938. Do not replace the installed wrapper or restart
+individual writers.
+
+The full migration goal remains active. [PR #10320](https://github.com/colophon-group/jobseek/pull/10320) adds
+`api_sniffer.http-items/v1` to the existing ordinary Go worker and rich writer.
+It ports declared JSON field extraction, GET/POST requests, headers, operation
+cookies, page/offset/cumulative pagination and bounded size probes. Structured
+responsibilities, qualifications and skills enter the existing enrichment
+pipeline before language detection, derived fields and description staging.
+Later transient/malformed pages provide no successful inventory. Publisher
+reservations bind the actual later page or probe, and total gaps/item caps
+suppress disappearance. URL identity preserves Python's raw Unicode behavior.
+
+Local frozen Python oracles cover 46 field cases, 20 discovery cases (one
+unported auto-field case remains excluded), 30 rich writer cases and three
+exact JSON body byte cases. Nine real PostgreSQL/Redis cases pass under the
+race detector, including declared GET/POST pagination, canonical fields,
+staged description hash/upload state, failure/policy handling and recurring
+queue conservation. Full worker and queue race/vet/tidy checks pass (170.755s and 79.495s),
+along with the installed executable cutover/recovery checks, API module and
+executor checks. Required CI and installed image parity passed on head `e488021d`.
+The exact installed manifest now includes all 24 executable profiles. Fresh CI
+is required again for the Avature retirement compatibility amendment.
+
+A read-only census against the source937 configuration snapshot identifies
+134 eligible API boards with matching canonical/cache bindings out of 326.
+This is a candidate estimate, not fresh production admission. Unsupported
+browser/auto-field/filter/rotation/decryption/enrichment configurations retain
+their current owner while their replacements are implemented. Before the cold
+transition, the 09:19 UTC source937 readback verified all ten exact
+images and eight health endpoints, with 24 sampled detail outputs and no
+processing diagnostic in the bounded log observation. A strict queue check
+found 26 of 27 samples settled; one completed JSON-LD detail retains a Redis
+retry strike/earlier queue deadline, while its active posting, canonical future
+deadline and receipt agree and no live lease/token exists. Full current
+settlement is not claimed. Preserve this evidence through supported retirement
+and verify restored canonical scheduling; do not clear the queue manually.
+
+[Candidate evidence](evidence/go-native-api-candidate-2026-10-05.json) records
+scope and the remaining delivery steps. Finish runtime and image verification,
+required CI and exact-head review, then use original cold ordinary retirement,
+B0 reversal and selector clear before immutable promotion. Recreate fresh
+source-bound admission, activate through the original wrapper and verify
+natural work/queue settlement. Continue remaining enabled profiles and Python
+runtime consumers, whole-lane measurements, supported reversal and the rollback
+window before retiring legacy production assets.
+
+## Production fleet adoption verified — 2026-10-05
+
+The goal remains full production migration to Go and self-hosted Lightpanda,
+including every enabled board, canonical behavior, runtime maintenance and
+deployment consumers. Retire mandatory production Python, Playwright and
+Chromium after replacement coverage and the rollback window are established;
+preserve useful isolated offline Python tools. Full migration is not complete.
+
+[PR #10317](https://github.com/colophon-group/jobseek/pull/10317) merged
+v0.13.937 as `a5fd35cfb924800a5ac3fedfedbaca0a457a934c`. Its reviewed tree
+matches the merged tree. Required checks passed, and the
+[original immutable deployment](https://github.com/colophon-group/jobseek/actions/runs/37272609231)
+completed and promoted this source. First, the reviewed v0.13.936 administrator recovered
+the contained source934 through the original installed wrapper. Original B0
+rollback and selector clear then restored its six-writer baseline. No manual
+queue, lease, fence or lock clearing was used.
+
+The selected v0.13.937 six-writer baseline was independently verified before original
+B0 activation. B0 now owns `cdom` at epoch 183. Fresh source/receipt-bound admission
+excluded all three B0 boards, reconciled 1,084,238 scheduled posting routes and
+excluded 37 boards with cached route mismatches. The original ordinary wrapper
+staged and activated 6,025 monitor boards and 2,199 detail boards, including 143
+rendered DOM monitors, 90 rendered DOM detail boards and 57 rendered JSON-LD
+detail boards. The admitted detail boards contain 1,062,208 scheduled postings;
+this is the admitted population, not a count of every enabled posting.
+
+Independent readback at 07:18:16 UTC proved all ten selected services running,
+restart-armed and using exact expected images, one active SQL ownership plan,
+the matching Redis projection, unchanged B0 receipt/epoch and no administrative
+containers. Initial natural work committed monitor rows and both static JSON-LD
+and rendered DOM details. Sampled detail deadlines match completed receipts and
+remain in the future; descriptions reached R2. No processing diagnostic appeared
+in this bounded observation. At 07:28:17 UTC, the strict natural settlement
+check passed for 17 samples across ten monitor/detail profiles: canonical,
+receipt and Redis queue deadlines match, and inflight entries, tokens and retry
+strikes are cleared. One initially pending claim settled naturally before the
+strict check passed. The claim-error counter remained at one across both natural
+observations; this is not a zero-error or full-profile-coverage assertion.
+
+The ordinary plan is
+`cb6338813410a3faaeebda772038d885899194a9e8ee3c8fc8e2850d3c838dc3`,
+and its Redis projection SHA1 is `a79e0a5fee3d1a78dc0d333490ef27a443c1bf6a`.
+The B0 receipt SHA256 is
+`4c559854aea8273afdf063ee63c96293b52e9378af61b036b47803dd34ba4040`.
+[Portable evidence](evidence/go-native-fleet-adoption-2026-10-05.json) records
+the exact source, images, admission and bounded verification.
+
+Continue substantive native coverage batches using the existing workers,
+queues, canonical writers and renderer: configured HTTP API/JSON extraction;
+remaining DOM/RSS/provider options and families; mandatory Python runtime
+maintenance and deployment consumers. Keep this owner selected while observing
+natural queue settlement, freshness and whole-lane resources. Before another
+runtime promotion, use original cold ordinary retirement, original B0 reversal
+and selector clear, then independently verify the complete baseline. Finish
+comparable CPU/RAM/density/cost measurements, supported reversal and the rollback
+window before removing legacy production runtime assets.
+
 ## Expired legacy claims during fleet adoption — 2026-10-05
 
 The delivery goal is the complete Go/Lightpanda migration, preserving every

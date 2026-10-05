@@ -2,6 +2,10 @@ module github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue
 
 go 1.26.0
 
+require github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor v0.0.0
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor => ../api-sniffer-monitor
+
 require github.com/redis/go-redis/v9 v9.14.0
 
 require github.com/colophon-group/jobseek/apps/crawler/go/workday-monitor v0.0.0
@@ -14,6 +18,7 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/text v0.42.0 // indirect

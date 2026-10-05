@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	apisniffer "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
 	"net/url"
 	"regexp"
 	"strings"
@@ -64,6 +65,13 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		for _, key := range []string{"delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
 		}
+	case "api_sniffer":
+		for _, key := range apisniffer.ConfigKeys {
+			allowed[key] = true
+		}
+		for _, key := range []string{"delist_threshold", "drop_threshold", "blast_radius_floor"} {
+			allowed[key] = true
+		}
 	default:
 		return nil, ErrUnsupportedProfile
 	}
@@ -89,6 +97,9 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 	}
 	if config["crawler_type"] == "workday" {
 		return inspectWorkdayMonitor(boardID, config, md)
+	}
+	if config["crawler_type"] == "api_sniffer" {
+		return inspectAPISnifferMonitor(boardID, config, md)
 	}
 	if config["crawler_type"] == "join" {
 		return inspectJoinMonitor(boardID, config, md)

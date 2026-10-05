@@ -2,6 +2,10 @@ module github.com/colophon-group/jobseek/apps/crawler/go/ordinary-worker
 
 go 1.26.0
 
+require github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor v0.0.0
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor => ../api-sniffer-monitor
+
 require (
 	github.com/colophon-group/jobseek/apps/crawler/go/greenhouse-monitor v0.0.0
 	github.com/colophon-group/jobseek/apps/crawler/go/workday-monitor v0.0.0
@@ -32,6 +36,7 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect

@@ -227,6 +227,8 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		discovery, fetchErr = discoverDOMInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "sitemap" {
 		discovery, fetchErr = discoverSitemapInventory(ctx, http.client, profile, task.Config)
+	} else if profile.Provider == "api_sniffer" {
+		discovery, fetchErr = discoverAPISnifferInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "join" {
 		discovery, fetchErr = discoverJoinInventory(ctx, http.client, profile)
 	} else if profile.Provider == "smartrecruiters" || profile.Provider == "workable" {
@@ -254,13 +256,17 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		// These private fields come only from this sealed-client fetch. Bind the
 		// initial resource to this claim's endpoint or validated page. RSS may
 		// stop at a publisher header; incomplete inventories never reach writes.
-		if !richResponseMatches(profile, response.endpoint) {
+		matches := richResponseMatches(profile, response.endpoint)
+		if profile.Provider == "api_sniffer" {
+			matches = queue.APISnifferMonitorResourceMatches(profile, task.Config, response.endpoint)
+		}
+		if !matches {
 			cycle.InvalidateInventory()
 			return result, claimRunError("response", queue.ErrConfiguration)
 		}
 		if response.reserved {
 			initial := profile.Endpoint
-			if profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" {
+			if profile.Provider == "api_sniffer" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" {
 				initial = response.endpoint
 			}
 			terminal, err := cycle.FinishReservationResource(ctx, initial, &queue.GreenhouseHeaderReservation{Endpoint: response.finalURL, PolicyURL: response.PolicyURL(), Source: response.reservationSource})
@@ -269,7 +275,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			}
 			return finishSuccess(terminal)
 		}
-		if (response.status == 404 || (profile.Provider == "join" || profile.Provider == "dom") && response.status == 410) && profile.Provider != "pinpoint" && profile.Provider != "rss" && profile.Provider != "personio" && profile.Provider != "smartrecruiters" && profile.Provider != "workable" && profile.Provider != "sitemap" {
+		if (response.status == 404 || (profile.Provider == "join" || profile.Provider == "dom") && response.status == 410) && profile.Provider != "api_sniffer" && profile.Provider != "pinpoint" && profile.Provider != "rss" && profile.Provider != "personio" && profile.Provider != "smartrecruiters" && profile.Provider != "workable" && profile.Provider != "sitemap" {
 			terminal, err := cycle.FinishProviderGoneResource(ctx, response.endpoint, queue.GreenhouseGoneObservation{Endpoint: response.finalURL, HTTPStatus: response.status})
 			if err != nil {
 				return result, claimRunError("provider_gone", err)

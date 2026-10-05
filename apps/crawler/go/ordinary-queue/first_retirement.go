@@ -156,7 +156,7 @@ func firstRetirementDetails(ctx context.Context, tx pgx.Tx, client *Client, plan
 		if err != nil {
 			return nil, err
 		}
-		if profile.Profile != binding.Profile || profile.Domain != binding.Domain || profile.EffectiveBoardSHA256 != context.EffectiveConfigHash || profile.CompanyID != context.CompanyID {
+		if profile.Profile != binding.Profile || profile.Domain != binding.Domain || profile.CompanyID != context.CompanyID || !firstRetirementDetailHashMatches(binding, context.EffectiveConfigHash, profile, pair.canonical) {
 			return nil, ErrAuthorityLost
 		}
 	}
