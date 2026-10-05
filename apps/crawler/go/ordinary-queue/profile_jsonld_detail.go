@@ -91,6 +91,10 @@ func InspectJSONLDDetail(boardID string, config map[string]string, source string
 }
 
 func inspectDetailOwnership(boardID string, config map[string]string) (WorkdayDetailProfile, error) {
+	if profile, err := InspectDOMDetail(boardID, config, config["board_url"], Simple); err == nil {
+		profile.Domain = "*"
+		return profile, nil
+	}
 	if profile, err := InspectJSONLDDetail(boardID, config, config["board_url"], Simple); err == nil {
 		// JSON-LD owns the canonical board's details across public source hosts.
 		// The wildcard never supplies a request domain: each claim resolves it
@@ -105,6 +109,9 @@ func inspectDetailOwnership(boardID string, config map[string]string) (WorkdayDe
 }
 
 func inspectDetail(boardID string, config map[string]string, source string, worker WorkerType) (WorkdayDetailProfile, error) {
+	if profile, err := InspectDOMDetail(boardID, config, source, worker); err == nil {
+		return profile, nil
+	}
 	if profile, err := InspectJSONLDDetail(boardID, config, source, worker); err == nil {
 		return profile, nil
 	}

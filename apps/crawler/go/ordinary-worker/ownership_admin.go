@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -37,6 +38,14 @@ type OwnershipStageIdentity struct {
 	ProjectionSHA1 string `json:"projection_sha1"`
 	Members        int    `json:"members"`
 	DetailBoards   int    `json:"detail_boards,omitempty"`
+}
+
+// Preserve the rejection contract while reporting only a fixed phase/category.
+// Database messages, environment values and board configurations stay private.
+func ownershipAdminFailure(phase string, cause error) error {
+	diagnostic := claimRunError("ownership_"+phase, cause).(*ClaimRunError)
+	log.Printf("ordinary ownership administration %s: %s", phase, diagnostic.Kind)
+	return ErrStartup
 }
 
 // ReadOwnershipAdminConfig binds a distinct protected administrative mode to the
@@ -189,34 +198,37 @@ func RunOwnershipAdmin(ctx context.Context, c OwnershipAdminConfig) (*OwnershipS
 	if !c.inspect {
 		cohort, err = readOwnershipSelection(c.cohortFile)
 		if err != nil {
-			return nil, ErrStartup
+			return nil, ownershipAdminFailure("cohort", err)
 		}
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	client, err := queue.Open(c.redis, queue.Settings{LeaseTTL: 600 * time.Second, MaxDomains: 10})
 	if err != nil {
-		return nil, ErrStartup
+		return nil, ownershipAdminFailure("queue", err)
 	}
 	defer client.Close()
 	authority, err := queue.OpenAuthority(ctx, c.database, client, c.epoch)
 	if err != nil {
-		return nil, ErrStartup
+		return nil, ownershipAdminFailure("authority", err)
 	}
 	defer authority.Close()
 	var plan *queue.OwnershipPlan
+	phase := "stage"
 	if c.inspect {
+		phase = "inspect"
 		plan, err = authority.InspectStagedOwnership(ctx, c.digest, c.source)
 	} else {
 		plan, err = authority.StageOwnership(ctx, c.source, cohort.Monitors, cohort.Details)
 		if err == nil {
 			// A second fresh readback declines if a canonical configuration changed
 			// after staging. The retained staged document grants no queue authority.
+			phase = "readback"
 			plan, err = authority.InspectStagedOwnership(ctx, plan.SHA256(), c.source)
 		}
 	}
 	if err != nil {
-		return nil, ErrStartup
+		return nil, ownershipAdminFailure(phase, err)
 	}
 	return &OwnershipStageIdentity{"jobseek.ordinary.stage-identity/v1", "staged", plan.SourceRevision(), plan.Epoch(), plan.SHA256(), plan.ProjectionSHA1(), plan.MemberCount(), plan.DetailBoardCount()}, nil
 }

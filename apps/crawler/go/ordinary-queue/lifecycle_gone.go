@@ -106,7 +106,7 @@ func (c *GreenhouseCycle) FinishProviderGoneResource(ctx context.Context, initia
 		return nil, ErrConfiguration
 	}
 	profile, err := InspectRichMonitor(c.claim.task.ID, c.claim.task.Config)
-	if err != nil || initialEndpoint != profile.Endpoint || observation.HTTPStatus == 410 && profile.Provider != "join" || !validGreenhouseResponseResource(observation.Endpoint) {
+	if err != nil || initialEndpoint != profile.Endpoint || observation.HTTPStatus == 410 && profile.Provider != "join" && profile.Provider != "dom" || !validGreenhouseResponseResource(observation.Endpoint) {
 		return nil, ErrConfiguration
 	}
 	result := &GreenhouseCycleResult{}

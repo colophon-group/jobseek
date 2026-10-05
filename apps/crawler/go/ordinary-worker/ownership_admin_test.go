@@ -1,13 +1,40 @@
 package worker
 
 import (
+	"bytes"
+	"errors"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
+	"github.com/jackc/pgx/v5/pgconn"
+
 	"golang.org/x/sys/unix"
 )
+
+func TestOwnershipAdminFailureReportsBoundedPhaseWithoutPrivateCause(t *testing.T) {
+	var output bytes.Buffer
+	previous := log.Writer()
+	log.SetOutput(&output)
+	t.Cleanup(func() { log.SetOutput(previous) })
+	for _, test := range []struct {
+		cause error
+		kind  string
+	}{
+		{errors.New("postgres://private:secret@example.invalid/fixture"), "failed"},
+		{&pgconn.PgError{Code: "57014", Message: "secret SQL and provider data"}, "query_cancelled"},
+		{queue.ErrAuthorityLost, "authority_lost"},
+		{queue.ErrUnsupportedProfile, "configuration"},
+	} {
+		output.Reset()
+		if err := ownershipAdminFailure("stage", test.cause); err != ErrStartup || !strings.Contains(output.String(), "administration stage: "+test.kind) || strings.Contains(output.String(), "secret") || strings.Contains(output.String(), "postgres://") {
+			t.Fatal("administrative failure lost rejection or exposed private cause")
+		}
+	}
+}
 
 func TestOwnershipAdminSeparatesProtectedModesAndExactIdentities(t *testing.T) {
 	base := map[string]string{"ORDINARY_GO_WORKER_MODE": "stage-ownership", "ORDINARY_OWNERSHIP_SOURCE_REVISION": strings.Repeat("a", 40), "ORDINARY_OWNERSHIP_ROUTING_EPOCH": "145", "LOCAL_DATABASE_URL": "postgresql://private:do-not-log@localhost/fixture", "REDIS_URL": "unix:///private/redis.sock", "ORDINARY_GO_COHORT_FILE": "/private/cohort.json"}

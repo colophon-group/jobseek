@@ -16,6 +16,7 @@ type WorkdayDetailProfile struct {
 	Profile, EffectiveBoardSHA256                   string
 	FacilityTenantAliases                           []string
 	JSONLDConfig                                    map[string]any
+	DOMConfig                                       map[string]any
 	APITokenOverride                                string
 	JoinDetailConfig                                map[string]json.RawMessage
 }

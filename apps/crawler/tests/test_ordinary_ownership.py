@@ -71,7 +71,9 @@ def expectation(
             {
                 "board_id": "00000000-0000-4000-8000-000000000098",
                 "domain": "*",
-                "profile": f"{api}.api-detail/v1" if api else "jsonld.direct-detail/v1",
+                "profile": ("dom.direct-detail/v1" if api == "dom" else f"{api}.api-detail/v1")
+                if api
+                else "jsonld.direct-detail/v1",
                 "worker": "simple",
                 "company_id": "00000000-0000-4000-8000-000000000002",
                 "effective_config_sha256": "a" * 64,
@@ -405,7 +407,7 @@ def test_detail_projection_retains_actual_domain_and_rejects_foreign_members():
             ownership_projection(json.dumps(doc, separators=(",", ":")))
 
 
-@pytest.mark.parametrize("profile", ["workday", "jsonld", "smartrecruiters", "workable"])
+@pytest.mark.parametrize("profile", ["workday", "jsonld", "smartrecruiters", "workable", "dom"])
 async def test_real_legacy_detail_write_excludes_actual_canonical_board(monkeypatch, profile):
     from src.lightpanda.write_fence import authoritative_write
     from src.ordinary_ownership import OrdinaryDetailWriteRejected
@@ -413,7 +415,7 @@ async def test_real_legacy_detail_write_excludes_actual_canonical_board(monkeypa
     async with private_active_plan(
         details=True,
         jsonld=profile == "jsonld",
-        api=profile if profile in {"smartrecruiters", "workable"} else "",
+        api=profile if profile in {"smartrecruiters", "workable", "dom"} else "",
     ) as (pool, expected, payload):
         install_settings(monkeypatch, expected)
         company, foreign, owned_posting, foreign_posting = (uuid.uuid4() for _ in range(4))
@@ -474,7 +476,12 @@ async def test_real_legacy_detail_write_excludes_actual_canonical_board(monkeypa
 
 @pytest.mark.parametrize(
     "profile",
-    ["jsonld.direct-detail/v1", "smartrecruiters.api-detail/v1", "workable.api-detail/v1"],
+    [
+        "jsonld.direct-detail/v1",
+        "smartrecruiters.api-detail/v1",
+        "workable.api-detail/v1",
+        "dom.direct-detail/v1",
+    ],
 )
 def test_jsonld_detail_projection_is_independent_of_monitor_membership(profile):
     _, payload = expectation()

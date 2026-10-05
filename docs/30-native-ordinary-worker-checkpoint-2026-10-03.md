@@ -1,5 +1,71 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Combined direct DOM monitors and details — 2026-10-05
+
+The full migration goal remains active. v0.13.932 combines direct static DOM
+monitor inventory with v0.13.931 DOM detail execution in the existing Go worker.
+Both use the existing sealed public document transport, parser, ownership plan,
+canonical writers and Redis settlement. Static monitors preserve Python URL
+joining, raw Unicode identities, CSS selectors and include/exclude filters;
+complete inventories create stubs and urgent details, with existing four-miss
+absence and spaced 404/410 disappearance handling. Publisher reservations retain
+the actual redirected resource and policy before HTTP failure handling. Rendered,
+paginated, proxy and unsupported configured routes retain their current owners.
+
+Full real PostgreSQL/Redis race suites passed (queue46.691s, worker105.931s),
+DOM parser/transport race passed (2.931s), Go vet/module checks passed, and all35
+required Python ownership/cutover tests passed. Frozen Python fixtures cover15
+URL joins and5 listing/filter cases; real owned monitor tests cover canonical
+inventory, retry exhaustion, disappearance, publisher opt-outs and settlement.
+[Portable combined DOM evidence](evidence/go-native-dom-runtime-candidate-2026-10-05.json)
+records the scope. Production DOM adoption and full migration are not claimed.
+
+Source930 immutable deployment/promotion succeeded. Independent baseline readback
+verified all six exact-image writers healthy and restart-armed at epoch176.
+Original B0 activation succeeded at epoch177. Fresh full-fleet admission screened
+7,885 enabled boards and reconciled949,287 actual scheduled detail routes, admitting
+5,549 monitors and1,566 detail boards (929,334 scheduled owned postings). This
+includes276 Join monitors,284 sitemap monitors and265 Join detail boards;30 cache-
+mismatched detail boards retain legacy ownership. Original ordinary staging
+rejected before retaining a plan. No ownership was activated or manually changed;
+existing writers continue serving. The same source/epoch/config identity was
+rechecked before a supported retry. An isolated local PostgreSQL/Redis reproduction
+stages and inspects the complete5,549/1,566 configuration plan. Installed-image
+diagnostics independently verify source-bound environment, protected cohort,
+read-only database schema/epoch and Redis availability, yet staging still rejects.
+v0.13.932 adds bounded administrative phase/category logging without exposing
+credentials, board configuration or SQL messages; focused executable contracts
+pass (5.570s). Natural source930 ordinary writes remain unproved. Continue delivery and diagnose the staging rejection without bypassing
+original authority, timeout or deployment protocols.
+
+## Native direct DOM delivery and merged Join/sitemap release — 2026-10-05
+
+[PR #10305](https://github.com/colophon-group/jobseek/pull/10305) merged v0.13.930
+as `9d62e57778387a3807bfc0d6125058e248941a70`. Required CI, installed image parity
+and Crawler Deploy Gate passed; the merged and reviewed trees match exactly.
+[Immutable deployment](https://github.com/colophon-group/jobseek/actions/runs/37249185517)
+completed deployment/promotion. Fresh admission and original ordinary activation
+remain required before claiming production Join/sitemap writes.
+
+v0.13.931 adds `dom.direct-detail/v1` to the existing native worker. It calls the
+existing Go public document fetcher and DOM parser directly, then uses independent
+posting-host ownership, shared enrichment, canonical SQL persistence and Redis
+settlement. Cookie handshakes, redirects, configured retries/public headers,
+gone-URL classification, supported text encodings, large static documents and
+actual-resource publisher reservations retain their contracts. Linked documents,
+fetch rewrites, secondary extraction, proxy and rendered routes keep existing
+coverage until their native contracts are implemented.
+
+The full real PostgreSQL/Redis race suites passed (queue47.795s, worker94.318s),
+parser/document/exporter race and Go vet/module checks passed, and all35 Python
+ownership/cutover tests passed. Focused regressions additionally prove canonical
+fields/deadlines, permanent gone and transient/empty failures, zero repeat fetch
+on settlement, and positive reservations received after concurrent inactivation.
+[Portable DOM candidate evidence](evidence/go-native-dom-detail-runtime-candidate-2026-10-05.json)
+records the implemented scope. No production DOM adoption or full migration
+completion is claimed. Continue the remaining delivery list below without adding
+another orchestration layer.
+
 ## Combined Join/sitemap delivery and production API proof — 2026-10-05
 
 The goal remains full production migration to Go and self-hosted Lightpanda,
@@ -18,7 +84,9 @@ Workable monitor cycles, six settled details across JSON-LD/Workday, canonical f
 and descriptions, and no deadline mismatches. This sample does not establish API
 detail writes, full-fleet fetch completion or comparable resource savings.
 [Portable API928 production evidence](evidence/go-native-api928-owner-2026-10-05.json)
-records the scope. Original outgoing ordinary/B0 reversal is running.
+records the scope. Original outgoing ordinary/B0 reversal completed. Independent readback at
+00:37 UTC verified all six baseline writers healthy and restart-armed, receipts
+and projections absent, selectors cleared and no current active fences at epoch176.
 
 v0.13.930 combines the tested Join monitor/configured detail implementation with
 native explicit sitemap URL sets in one release. Sitemap uses the existing Go parser

@@ -1,0 +1,46 @@
+package queue
+
+import (
+	"encoding/json"
+	"net/url"
+	"strings"
+
+	dom "github.com/colophon-group/jobseek/apps/crawler/go/dom-detail"
+)
+
+func DOMMonitorOptions(config map[string]string) (dom.ListingConfig, error) {
+	md, err := richProfileMetadata(config)
+	if err != nil {
+		return dom.ListingConfig{}, err
+	}
+	options := dom.Object{}
+	keys := []string{"url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy"}
+	for _, key := range keys {
+		if raw, ok := md[key]; ok {
+			if (key == "url_filter" || key == "request_headers") && strings.HasPrefix(strings.TrimSpace(string(raw)), "{") {
+				if _, err := profileMetadataFields(string(raw), nil); err != nil {
+					return dom.ListingConfig{}, ErrUnsupportedProfile
+				}
+			}
+			var value any
+			d := json.NewDecoder(strings.NewReader(string(raw)))
+			d.UseNumber()
+			if err := d.Decode(&value); err != nil {
+				return dom.ListingConfig{}, ErrUnsupportedProfile
+			}
+			options[key] = value
+		}
+	}
+	return dom.ListingOptions(options, config["board_url"])
+}
+
+func inspectDOMMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
+	u, err := url.Parse(config["board_url"])
+	if err != nil || len(config["board_url"]) > 8192 || u.Scheme != "https" || u.User != nil || u.Opaque != "" || u.Fragment != "" || !validHost(u.Hostname()) || u.Port() != "" {
+		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+	}
+	if _, err := DOMMonitorOptions(config); err != nil {
+		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+	}
+	return inspectURLOnlyMonitor(boardID, config, md, "dom", "dom.direct-urls/v1", "dom", config["board_url"])
+}

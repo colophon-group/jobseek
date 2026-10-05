@@ -1,0 +1,212 @@
+package dom
+
+import (
+	"errors"
+	stdhtml "html"
+	"io"
+	"strings"
+
+	"github.com/andybalholm/cascadia"
+	jsonld "github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail"
+	"golang.org/x/net/html"
+)
+
+type ListingConfig struct {
+	Document                             jsonld.DocumentOptions
+	Selector, Include, Exclude, Encoding string
+	Attempts                             int
+}
+
+// ListingOptions covers the existing static single-page href inventory.
+// Pagination, rendered/proxy routes and content-bearing row contracts remain
+// with their current owner until their full inventory semantics are supported.
+func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
+	c := ListingConfig{Attempts: 3}
+	allowed := map[string]bool{}
+	for _, key := range []string{"url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy"} {
+		allowed[key] = true
+	}
+	for key := range config {
+		if !allowed[key] {
+			return c, errors.New("unsupported static DOM listing option")
+		}
+	}
+	for _, key := range []string{"render", "proxy", "skip_ssl", "actions", "pagination"} {
+		if truth(config[key]) {
+			return c, errors.New("unsupported static DOM listing route")
+		}
+	}
+	if value, ok := config["ssl_verify"]; ok && value != nil && value != true {
+		return c, errors.New("DOM listing requires verified TLS")
+	}
+	if value := config["transport_attempts"]; value != nil {
+		if _, ok := value.(bool); ok {
+			return c, errors.New("invalid DOM listing attempt budget")
+		}
+		var err error
+		c.Attempts, err = number(value, 3)
+		if err != nil || c.Attempts < 1 || c.Attempts > 5 {
+			return c, errors.New("invalid DOM listing attempt budget")
+		}
+	}
+	if value := config["link_selector"]; value != nil {
+		s, ok := value.(string)
+		if !ok || strings.TrimSpace(s) == "" || len([]rune(s)) > 256 || strings.ContainsRune(s, 0) {
+			return c, errors.New("invalid DOM listing selector")
+		}
+		c.Selector = strings.TrimSpace(s)
+		if _, err := cascadia.Parse(c.Selector); err != nil {
+			return c, err
+		}
+	}
+	if value := config["url_filter"]; value != nil && truth(value) {
+		if s, ok := value.(string); ok {
+			c.Include = s
+		} else {
+			m, err := object(value)
+			if err != nil {
+				return c, err
+			}
+			for key, value := range m {
+				if key != "include" && key != "exclude" {
+					return c, errors.New("invalid DOM listing filter")
+				}
+				if value == nil {
+					continue
+				}
+				s, ok := value.(string)
+				if !ok {
+					return c, errors.New("invalid DOM listing pattern")
+				}
+				if key == "include" {
+					c.Include = s
+				} else {
+					c.Exclude = s
+				}
+			}
+		}
+	}
+	for _, pattern := range []string{c.Include, c.Exclude} {
+		if _, err := CompileURLPattern(pattern); err != nil {
+			return c, err
+		}
+	}
+	if value := config["encoding"]; value != nil {
+		s, ok := value.(string)
+		if !ok || !directEncoding(s) {
+			return c, errors.New("unsupported DOM listing encoding")
+		}
+		c.Encoding = strings.ToLower(strings.ReplaceAll(s, "_", "-"))
+		if c.Encoding == "cp1252" {
+			c.Encoding = "windows-1252"
+		}
+	}
+	var err error
+	c.Document, err = directDocumentOptions(config, endpoint)
+	// The listing outer loop owns one shared attempt budget across statuses,
+	// empty documents and transport failures, including public-header requests.
+	c.Document.RetryLimits = nil
+	return c, err
+}
+
+func ListingHrefs(source, selector string) ([]string, error) {
+	result := []string{}
+	if selector != "" {
+		s, err := cascadia.Parse(selector)
+		if err != nil {
+			return nil, err
+		}
+		tree, err := html.ParseWithOptions(strings.NewReader(source), html.ParseOptionEnableScripting(false))
+		if err != nil {
+			return nil, err
+		}
+		for _, node := range cascadia.QueryAll(tree, s) {
+			for _, attr := range node.Attr {
+				if attr.Key == "href" && attr.Val != "" {
+					result = append(result, attr.Val)
+					break
+				}
+			}
+		}
+		return result, nil
+	}
+	z := html.NewTokenizer(strings.NewReader(source))
+	for {
+		kind := z.Next()
+		if kind == html.ErrorToken {
+			if err := z.Err(); err != io.EOF {
+				return nil, err
+			}
+			return result, nil
+		}
+		if kind != html.StartTagToken && kind != html.SelfClosingTagToken {
+			continue
+		}
+		token := z.Token()
+		if token.Data != "a" {
+			continue
+		}
+		// HTMLParser preserves duplicate href attributes; the HTML5 tokenizer
+		// intentionally keeps only the first. Read this start tag's raw attrs so
+		// migration cannot silently omit the second discovered posting.
+		result = append(result, rawListingHrefs(string(z.Raw()))...)
+	}
+}
+
+func rawListingHrefs(tag string) []string {
+	out := []string{}
+	space := func(c byte) bool { return c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\f' }
+	i := 1
+	for i < len(tag) && !space(tag[i]) && tag[i] != '>' && tag[i] != '/' {
+		i++
+	}
+	for i < len(tag) {
+		for i < len(tag) && space(tag[i]) {
+			i++
+		}
+		if i >= len(tag) || tag[i] == '>' || tag[i] == '/' && i+1 < len(tag) && tag[i+1] == '>' {
+			break
+		}
+		start := i
+		for i < len(tag) && !space(tag[i]) && tag[i] != '=' && tag[i] != '>' {
+			i++
+		}
+		key := strings.ToLower(tag[start:i])
+		for i < len(tag) && space(tag[i]) {
+			i++
+		}
+		if i >= len(tag) || tag[i] != '=' {
+			continue
+		}
+		i++
+		for i < len(tag) && space(tag[i]) {
+			i++
+		}
+		if i >= len(tag) {
+			break
+		}
+		var value string
+		if tag[i] == '\'' || tag[i] == '"' {
+			quote := tag[i]
+			i++
+			start = i
+			for i < len(tag) && tag[i] != quote {
+				i++
+			}
+			value = tag[start:i]
+			if i < len(tag) {
+				i++
+			}
+		} else {
+			start = i
+			for i < len(tag) && !space(tag[i]) && tag[i] != '>' {
+				i++
+			}
+			value = tag[start:i]
+		}
+		if key == "href" && value != "" {
+			out = append(out, stdhtml.UnescapeString(value))
+		}
+	}
+	return out
+}

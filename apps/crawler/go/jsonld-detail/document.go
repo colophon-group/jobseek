@@ -222,3 +222,22 @@ func FetchDocument(ctx context.Context, endpoint string, opts DocumentOptions) (
 	defer client.CloseIdleConnections()
 	return fetchDocument(ctx, client, endpoint, opts, sleep)
 }
+
+// FetchDocumentWithClient preserves the public document contract when a native
+// worker supplies its sealed, observed transport. Redirects remain explicit.
+func FetchDocumentWithClient(ctx context.Context, endpoint string, opts DocumentOptions, client *http.Client) (DocumentResult, error) {
+	if client == nil {
+		return DocumentResult{}, errors.New("missing public document client")
+	}
+	return fetchDocument(ctx, client, endpoint, opts, sleep)
+}
+
+func ValidateDocumentOptions(opts DocumentOptions) error { return validateDocumentOptions(opts) }
+
+// DecodeDocument matches the existing HTTP response charset decoding, including
+// replacement of malformed UTF-8. It does not infer HTML meta charsets.
+func DecodeDocument(body []byte, contentType string) string {
+	return strings.ToValidUTF8(string(decodedBody(body, contentType)), "\ufffd")
+}
+
+func IsAvatureDetailURL(endpoint string) bool { return avatureDetail(endpoint) }

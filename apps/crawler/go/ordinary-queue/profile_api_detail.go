@@ -20,7 +20,7 @@ const joinDetailProfile = "join.nextdata-detail/v1"
 
 func independentDetailProfile(profile string) bool {
 	switch profile {
-	case jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, joinDetailProfile:
+	case domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, joinDetailProfile:
 		return true
 	}
 	return false
