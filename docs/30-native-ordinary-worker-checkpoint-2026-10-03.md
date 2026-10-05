@@ -1,6 +1,42 @@
 # Native ordinary worker continuation, 2026-10-03
 
-## Current delivery — 2026-10-05 20:13 UTC
+## Current delivery — 2026-10-05 20:49 UTC
+
+The full migration goal remains active. Routine migration releases now group
+multiple provider types and share verification, checkpointing and deployment.
+
+The startup/iCIMS prerequisite [PR #10328](https://github.com/colophon-group/jobseek/pull/10328)
+merged at the verified head as `194af110324d6eb9a09fc23619f516d656e608b5` after
+`Required CI` and `Crawler Deploy Gate` passed. Its original immutable
+[deployment](https://github.com/colophon-group/jobseek/actions/runs/37370996768)
+is queued; promotion and native adoption are unverified.
+
+The five-provider release [PR #10329](https://github.com/colophon-group/jobseek/pull/10329)
+groups Breezy, Gem, JazzHR, Gupy and direct Phenom: 106 enabled configurations.
+Only its four own commits were rebased onto the prerequisite merge. Its new
+head is `c47aee3575e694ac7061b6291e0346061e8c5d11`; fresh required checks are
+pending. Lightpanda 1.0.0 remains the verified installed renderer.
+
+The next release groups **Jobylon + NextData**, targeting 82 enabled
+configurations. Jobylon's 28 canonical/cache monitor and detail configurations
+pass local admission; four description masks use the existing JSONLD enrichment
+writer. Nineteen actual Python fixtures, 14 real worker modes, description-mask
+persistence and three cold-retirement cases pass. Full required local queue and
+worker race suites pass in 120.683s and 230.456s; 93 runtime-contract tests pass.
+[Jobylon evidence](evidence/go-native-jobylon-local-2026-10-05.json).
+The NextData document decoder now reuses the existing precise JSON/RSC/React
+Router implementation and preserves the monitor's strict first-script and
+Phenom Canvas behavior. Inventory, pagination and ownership integration remain
+in progress; no NextData admission or production claim is made.
+
+Keep this as one combined release rather than opening a Jobylon-only PR.
+Group the 125 Inline configurations and Beisen's extraction variants in the
+following larger extraction batch. Continue exact-source deployment/readback
+and original B0/ordinary activation and recovery when GitHub runners complete
+the current release. Whole-lane comparison, full reversal, rollback window and
+retirement of mandatory production Python/Playwright/Chromium remain required.
+
+## Prior serving checkpoint — 2026-10-05 20:13 UTC
 
 Lightpanda **1.0.0**, released October 2, remains the newest stable release in
 [the official release list](https://github.com/lightpanda-io/browser/releases),

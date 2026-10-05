@@ -26,6 +26,8 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		allowed[key] = value
 	}
 	switch config["crawler_type"] {
+	case "jobylon":
+		allowed["company_id"], allowed["company_group_id"] = true, true
 	case "phenom":
 		for _, key := range []string{"sitemap_url", "keep_languages", "url_exclude", "proxy", "render", "skip_ssl", "ssl_verify", "path", "source", "pagination", "slug_fields", "url_template", "rescrape_policy", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
@@ -114,6 +116,9 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 	md, err := richProfileMetadata(config)
 	if err != nil {
 		return GreenhouseMonitorProfile{}, err
+	}
+	if config["crawler_type"] == "jobylon" {
+		return inspectJobylonMonitor(boardID, config, md)
 	}
 	if config["crawler_type"] == "phenom" {
 		return inspectPhenomMonitor(boardID, config, md)

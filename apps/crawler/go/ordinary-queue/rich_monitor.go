@@ -86,7 +86,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		return nil, err
 	}
 	var enrich []string
-	if profile.Provider == "oracle_hcm" {
+	if profile.Provider == "oracle_hcm" || profile.Provider == "jobylon" {
 		enrich, err = oracleMonitorEnrichment(claim.task.Config)
 		if err != nil {
 			return nil, err
@@ -102,7 +102,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		}
 		urls = append(urls, posting.URL)
 		byURL[posting.URL] = posting.Content
-		// Oracle inventory has no description field. Preserve the delegated
+		// These rich inventories have no description field. Preserve the delegated
 		// scraper's retained body rather than letting a detached value replace it.
 		if len(enrich) > 0 && posting.Content.Description != nil {
 			return nil, ErrConfiguration

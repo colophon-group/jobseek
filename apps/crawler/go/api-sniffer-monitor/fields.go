@@ -29,6 +29,15 @@ type Document struct {
 	order map[reflect.Value][]string
 }
 
+// ObjectKeys returns the provider's original key order for a decoded object.
+// A detached copy prevents consumers from changing retained JSON provenance.
+func (d *Document) ObjectKeys(object map[string]any) []string {
+	if d == nil || object == nil {
+		return nil
+	}
+	return append([]string(nil), d.order[reflect.ValueOf(object)]...)
+}
+
 func Decode(body []byte) (*Document, error) {
 	d := &Document{order: map[reflect.Value][]string{}}
 	p := json.NewDecoder(bytes.NewReader(body))

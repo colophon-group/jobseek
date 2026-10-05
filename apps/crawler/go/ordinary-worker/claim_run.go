@@ -233,6 +233,8 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		discovery, fetchErr = discoverAPISnifferInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "breezy" || profile.Provider == "gem" {
 		discovery, fetchErr = discoverBreezyGemInventory(ctx, http.client, profile)
+	} else if profile.Provider == "jobylon" {
+		discovery, fetchErr = discoverJobylonInventory(ctx, http.client, profile)
 	} else if profile.Provider == "gupy" {
 		discovery, fetchErr = discoverGupyInventory(ctx, http.client, profile)
 	} else if profile.Provider == "jazzhr" {

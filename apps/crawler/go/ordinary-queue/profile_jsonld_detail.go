@@ -66,12 +66,21 @@ func InspectJSONLDDetail(boardID string, config map[string]string, source string
 	if jsonld.ValidateConfig(options) != nil {
 		return fail()
 	}
-	// These require the separate configured fallback/enrichment execution
-	// contract. Never adopt a board whose primary result would strand that step.
+	var enrichmentFields []string
+	// The existing detail processor and SQL writer support a description-only
+	// mask: retained monitor titles, locations and employment stay authoritative.
+	// Other masks and configured fallback chains still require their own proof.
 	for _, key := range []string{"fallback", "enrich"} {
 		if value, ok := options[key]; ok && value != nil {
-			if list, ok := value.([]any); !ok || len(list) != 0 {
+			list, ok := value.([]any)
+			if !ok {
 				return fail()
+			}
+			if len(list) > 0 {
+				if key != "enrich" || len(list) != 1 || list[0] != "description" {
+					return fail()
+				}
+				enrichmentFields = []string{"description"}
 			}
 		}
 	}
@@ -87,7 +96,7 @@ func InspectJSONLDDetail(boardID string, config map[string]string, source string
 		return fail()
 	}
 	digest := sha256.Sum256(body)
-	return WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: source, Domain: strings.ToLower(endpoint.Hostname()), Profile: jsonldDetailProfile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), JSONLDConfig: options}, nil
+	return WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: source, Domain: strings.ToLower(endpoint.Hostname()), Profile: jsonldDetailProfile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), JSONLDConfig: options, EnrichmentFields: enrichmentFields}, nil
 }
 
 func inspectDetailOwnership(boardID string, config map[string]string) (WorkdayDetailProfile, error) {
