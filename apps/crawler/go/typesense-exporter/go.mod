@@ -2,6 +2,10 @@ module jobseek/typesense-exporter
 
 go 1.26.0
 
+require github.com/colophon-group/jobseek/apps/crawler/go/oracle-hcm v0.0.0 // indirect
+
+replace github.com/colophon-group/jobseek/apps/crawler/go/oracle-hcm => ../oracle-hcm
+
 require (
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/redis/go-redis/v9 v9.14.0

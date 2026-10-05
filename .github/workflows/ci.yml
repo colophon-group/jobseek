@@ -609,7 +609,7 @@ jobs:
       - name: Verify first ownership, queues and executable processing
         run: |
           set -euo pipefail
-          for module in api-sniffer-monitor ordinary-queue ordinary-worker; do
+          for module in api-sniffer-monitor oracle-hcm ordinary-queue ordinary-worker; do
             (cd "apps/crawler/go/$module" && go test -race ./... && go vet ./... && go mod tidy -diff && test -z "$(gofmt -l .)")
           done
           (cd apps/crawler && uv run --frozen pytest -q tests/test_ordinary_ownership.py tests/test_ordinary_go_cutover.py)

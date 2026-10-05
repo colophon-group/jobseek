@@ -42,6 +42,7 @@ COPY go/workable-monitor/ go/workable-monitor/
 COPY go/join-monitor/ go/join-monitor/
 COPY go/sitemap-monitor/ go/sitemap-monitor/
 COPY go/api-sniffer-monitor/ go/api-sniffer-monitor/
+COPY go/oracle-hcm/ go/oracle-hcm/
 COPY go/ordinary-queue/ go/ordinary-queue/
 COPY go/ordinary-worker/ go/ordinary-worker/
 COPY go/workday-monitor/ go/workday-monitor/
@@ -68,6 +69,7 @@ WORKDIR /workspace/apps/crawler/go/typesense-exporter
 COPY contracts/ /workspace/apps/crawler/contracts/
 COPY go/typesense-exporter/ ./
 COPY go/api-sniffer-monitor/ ../api-sniffer-monitor/
+COPY go/oracle-hcm/ ../oracle-hcm/
 COPY go/ordinary-queue/ ../ordinary-queue/
 COPY go/jsonld-detail/ ../jsonld-detail/
 COPY go/smartrecruiters-monitor/ ../smartrecruiters-monitor/

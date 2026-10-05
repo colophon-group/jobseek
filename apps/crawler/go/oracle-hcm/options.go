@@ -195,3 +195,36 @@ func (o Options) Endpoint() string {
 func (o Options) JobURL(id string) string {
 	return "https://" + o.Host + "/hcmUI/CandidateExperience/en/sites/" + o.Site + "/job/" + id
 }
+
+// ResourceMatches limits inventory requests to this tenant/site and the
+// parser's bounded finder pagination and facet partitions.
+func (o Options) ResourceMatches(resource string) bool {
+	base := o.Endpoint()
+	if resource == base {
+		return true
+	}
+	if !strings.HasPrefix(resource, base+",") {
+		return false
+	}
+	parts := strings.Split(strings.TrimPrefix(resource, base+","), ",")
+	if len(parts) > 2 {
+		return false
+	}
+	if strings.HasPrefix(parts[0], "selected") {
+		key, encoded, found := strings.Cut(parts[0], "=")
+		value, err := url.QueryUnescape(encoded)
+		if !found || err != nil || !facetPattern.MatchString(value) || url.QueryEscape(value) != encoded || (key != "selectedCategoriesFacet" && key != "selectedOrganizationsFacet") {
+			return false
+		}
+		parts = parts[1:]
+	}
+	if len(parts) == 0 {
+		return true
+	}
+	if len(parts) != 1 || !strings.HasPrefix(parts[0], "offset=") || o.OffsetOverlap < 0 || o.OffsetOverlap >= 200 {
+		return false
+	}
+	raw := strings.TrimPrefix(parts[0], "offset=")
+	n, err := strconv.Atoi(raw)
+	return err == nil && n > 0 && n < 10000 && n%(200-o.OffsetOverlap) == 0 && strconv.Itoa(n) == raw
+}
