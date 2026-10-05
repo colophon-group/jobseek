@@ -135,10 +135,24 @@ func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client,
 				return ErrAuthorityLost
 			}
 		}
+		var snapshots map[string]boardConfigPair
 		if !retire {
-			authority := &Authority{queue: client}
+			requested := make([]string, 0, plan.MemberCount()+plan.DetailBoardCount())
 			for _, member := range plan.document.Members {
-				profile, _, err := authority.observeGreenhouseMonitor(ctx, tx, member.BoardID)
+				requested = append(requested, member.BoardID)
+			}
+			for _, detail := range plan.document.Details {
+				requested = append(requested, detail.BoardID)
+			}
+			snapshots, err = (&Authority{queue: client}).observeOwnershipConfigs(ctx, tx, requested, false)
+			if err != nil {
+				return err
+			}
+		}
+		if !retire {
+			for _, member := range plan.document.Members {
+				pair := snapshots[member.BoardID]
+				profile, _, err := inspectMonitorConfigs(member.BoardID, pair.canonical, pair.cached)
 				if err != nil {
 					return err
 				}
@@ -150,7 +164,8 @@ func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client,
 
 		if !retire {
 			for _, detail := range plan.document.Details {
-				profile, _, err := (&Authority{queue: client}).observeDetailOwnershipState(ctx, tx, detail.BoardID, false)
+				pair := snapshots[detail.BoardID]
+				profile, _, err := inspectDetailConfigs(detail.BoardID, pair.canonical, pair.cached)
 				if err != nil {
 					return err
 				}

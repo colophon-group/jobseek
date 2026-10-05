@@ -1,5 +1,48 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Full-fleet ownership staging correction — 2026-10-05
+
+The full migration goal remains active. [PR #10307](https://github.com/colophon-group/jobseek/pull/10307)
+merged nested sitemap support as `8dc9c5b99b38bbfcb1ff22442b36935d44b14126`.
+Its original immutable deployment and promotion succeeded. All six baseline
+writers were independently healthy and armed before the supported B0 activation
+selected `cdom` at epoch 179; a naturally scheduled render and canonical commit
+were observed. Ordinary Go ownership is still unselected.
+
+Fresh source/receipt-bound admission covers 5,884 monitor boards and 2,052 detail
+boards, including 335 direct DOM monitors and 486 DOM detail boards, across about
+1.04 million scheduled postings. Thirty-one boards with cached route mismatches
+retain their existing owner. Admission is an observation, not queue authority.
+The original full-fleet stage rejected twice with the fixed `stage: deadline`
+diagnostic. Twenty-four read-only SQL telemetry samples saw individual board
+snapshots and no blocking sessions; no timeout, lock or ownership bypass was used.
+
+v0.13.934 batches administrative canonical configuration reads in one sorted
+`FOR SHARE` snapshot and cached configurations in 256-board Redis pipelines. It
+retains the existing transaction/host bounds, lease/epoch barriers, canonical
+profile validators and exact ownership bytes. Staging, fresh staged inspection,
+cold activation validation and cold retirement use these snapshots; every normal
+runtime claim, request and write continues to revalidate current authority.
+The cumulative snapshot string bound is 64 MiB. Cold monitor deadline/receipt capture
+also uses one SQL read without rewriting historical receipts.
+
+A private reproduction using 6,512 unique fresh canonical/cache configurations
+staged 5,884 monitors and 2,052 detail boards in 1.83 seconds and passed inspection.
+The new 257-board regression proves one SQL snapshot and two Redis pipelines,
+equivalence to individual observations, missing/disabled admission refusal and
+safe disabled-board retirement. Full queue and worker race passed in 47.058 and 124.281 seconds, Go vet and
+module checks passed, and all 35 required Python ownership/cutover tests passed. [Portable candidate evidence](evidence/go-native-ownership-batching-candidate-2026-10-05.json)
+records this scope; candidate delivery and production adoption remain unproved.
+
+The next delivery is this fleet-stage correction through required CI and the
+original immutable deployment. Retire B0 and clear selectors through the original
+protocol, then verify the complete baseline **before merging** to avoid deploying
+against a selected-environment drift. Re-activate on the promoted source, repeat
+fresh admission, select the exact ordinary plan and prove naturally scheduled
+monitor/detail writes and supported cold reversal. The separate rendered-worker
+expansion is preserved as work in progress. Remaining enabled profiles, runtime
+consumers, whole-lane resource proof and final Python retirement still remain.
+
 ## Nested sitemap continuation — 2026-10-05
 
 [PR #10306](https://github.com/colophon-group/jobseek/pull/10306) merged the direct

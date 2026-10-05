@@ -40,18 +40,7 @@ func (a *Authority) observeGreenhouseMonitorState(ctx context.Context, tx pgx.Tx
 	if err != nil {
 		return GreenhouseMonitorProfile{}, nil, err
 	}
-	profile, err := InspectRichMonitor(boardID, canonical)
-	if err != nil {
-		return GreenhouseMonitorProfile{}, nil, err
-	}
-	projected, err := InspectRichMonitor(boardID, cached)
-	if err != nil {
-		return GreenhouseMonitorProfile{}, nil, err
-	}
-	if projected.EffectiveConfigSHA256 != profile.EffectiveConfigSHA256 {
-		return GreenhouseMonitorProfile{}, nil, ErrAuthorityLost
-	}
-	return projected, cached, nil
+	return inspectMonitorConfigs(boardID, canonical, cached)
 }
 
 func (a *Authority) observeBoardConfigsState(ctx context.Context, tx pgx.Tx, boardID string, retiring bool) (map[string]string, map[string]string, error) {
@@ -94,16 +83,5 @@ func (a *Authority) observeDetailOwnershipState(ctx context.Context, tx pgx.Tx, 
 	if err != nil {
 		return WorkdayDetailProfile{}, nil, err
 	}
-	profile, err := inspectDetailOwnership(boardID, canonical)
-	if err != nil {
-		return WorkdayDetailProfile{}, nil, err
-	}
-	projected, err := inspectDetailOwnership(boardID, cached)
-	if err != nil {
-		return WorkdayDetailProfile{}, nil, err
-	}
-	if profile.EffectiveBoardSHA256 != projected.EffectiveBoardSHA256 {
-		return WorkdayDetailProfile{}, nil, ErrAuthorityLost
-	}
-	return projected, cached, nil
+	return inspectDetailConfigs(boardID, canonical, cached)
 }

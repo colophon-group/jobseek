@@ -43,24 +43,55 @@ func firstRetirementMembers(ctx context.Context, pool *pgxpool.Pool, client *Cli
 	members := make([]firstRetirementMember, 0, plan.MemberCount())
 	err := coldTransitionTransaction(ctx, pool, func(ctx context.Context, tx pgx.Tx) error {
 		authority := &Authority{queue: client}
+		ids := make([]string, 0, plan.MemberCount())
 		for _, member := range plan.document.Members {
-			profile, config, err := authority.observeGreenhouseMonitorState(ctx, tx, member.BoardID, true)
+			ids = append(ids, member.BoardID)
+		}
+		snapshots, err := authority.observeOwnershipConfigs(ctx, tx, ids, true)
+		if err != nil {
+			return err
+		}
+		type deadlineObservation struct {
+			due                    *time.Time
+			state, digest, learned string
+		}
+		deadlines := make(map[string]deadlineObservation, len(ids))
+		rows, err := tx.Query(ctx, `SELECT b.id::text,CASE WHEN b.is_enabled THEN b.next_check_at END,
+ COALESCE(f.state,''),COALESCE(f.config_sha256,''),COALESCE(f.learned_egress_host,'')
+ FROM public.job_board b LEFT JOIN public.ordinary_worker_write_fence f
+ ON f.task_kind='monitor' AND f.task_id=b.id AND f.routing_epoch=$2
+ WHERE b.id=ANY($1::uuid[])`, ids, plan.Epoch())
+		if err != nil {
+			return err
+		}
+		for rows.Next() {
+			var id string
+			var item deadlineObservation
+			if err := rows.Scan(&id, &item.due, &item.state, &item.digest, &item.learned); err != nil {
+				rows.Close()
+				return err
+			}
+			deadlines[id] = item
+		}
+		err = rows.Err()
+		rows.Close()
+		if err != nil {
+			return err
+		}
+		if len(deadlines) != len(ids) {
+			return ErrAuthorityLost
+		}
+		for _, member := range plan.document.Members {
+			pair := snapshots[member.BoardID]
+			profile, config, err := inspectMonitorConfigs(member.BoardID, pair.canonical, pair.cached)
 			if err != nil {
 				return err
 			}
 			if profile.CompanyID != member.CompanyID || profile.Domain != member.Domain || profile.EffectiveConfigSHA256 != member.EffectiveConfigHash {
 				return ErrAuthorityLost
 			}
-			var due *time.Time
-			var state, digest, learned string
-			err = tx.QueryRow(ctx, `SELECT CASE WHEN b.is_enabled THEN b.next_check_at END,
- COALESCE(f.state,''),COALESCE(f.config_sha256,''),COALESCE(f.learned_egress_host,'')
- FROM public.job_board b LEFT JOIN public.ordinary_worker_write_fence f
- ON f.task_kind='monitor' AND f.task_id=b.id AND f.routing_epoch=$2
- WHERE b.id=$1::uuid`, member.BoardID, plan.Epoch()).Scan(&due, &state, &digest, &learned)
-			if err != nil {
-				return err
-			}
+			item := deadlines[member.BoardID]
+			due, state, digest, learned := item.due, item.state, item.digest, item.learned
 			row := firstRetirementMember{BoardID: member.BoardID, Domain: member.Domain, Completed: state == "completed", Config: config}
 			if due != nil {
 				if !validTime(seconds(*due)) {
@@ -111,8 +142,13 @@ func firstRetirementDetails(ctx context.Context, tx pgx.Tx, client *Client, plan
 		boards = append(boards, d.BoardID)
 	}
 
+	snapshots, err := (&Authority{queue: client}).observeOwnershipConfigs(ctx, tx, boards, true)
+	if err != nil {
+		return nil, err
+	}
 	for _, binding := range plan.document.Details {
-		profile, _, err := (&Authority{queue: client}).observeDetailOwnershipState(ctx, tx, binding.BoardID, true)
+		pair := snapshots[binding.BoardID]
+		profile, _, err := inspectDetailConfigs(binding.BoardID, pair.canonical, pair.cached)
 		if err != nil {
 			return nil, err
 		}

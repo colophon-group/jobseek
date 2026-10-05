@@ -1,0 +1,82 @@
+{
+  "schema": "jobseek.native-ownership-batching/v1",
+  "candidate_version": "0.13.934",
+  "source_basis": "8dc9c5b99b38bbfcb1ff22442b36935d44b14126",
+  "full_migration_complete": false,
+  "production_observation": {
+    "version": "0.13.933",
+    "epoch": 179,
+    "ordinary_owner_selected": false,
+    "original_staging_failures": 2,
+    "fixed_diagnostic": {
+      "phase": "stage",
+      "kind": "deadline"
+    },
+    "read_only_telemetry": {
+      "samples": 24,
+      "query_classes": [
+        "board_snapshot"
+      ],
+      "max_blockers": 0,
+      "wait_events": [
+        "ClientRead",
+        "DataFileRead",
+        null
+      ]
+    }
+  },
+  "change": {
+    "administrative_sql_snapshot": "one sorted FOR SHARE read across deduplicated canonical monitor/detail board IDs",
+    "redis_pipeline_batch": 256,
+    "snapshot_string_bytes_bound": 67108864,
+    "paths": [
+      "staging",
+      "staged inspection",
+      "cold activation validation",
+      "cold retirement configuration and monitor receipt capture"
+    ],
+    "retains": [
+      "existing lease and routing epoch barriers",
+      "full canonical/cache profile identity checks",
+      "transaction and host deadlines",
+      "ownership codec/projection bytes",
+      "original cold cutover and rollback workflows",
+      "fresh individual runtime claim/request/write checks"
+    ]
+  },
+  "private_reproduction": {
+    "canonical_configs_source": "0.13.933",
+    "unique_boards": 6512,
+    "monitor_boards": 5884,
+    "detail_boards": 2052,
+    "staging_seconds": 1.82725325,
+    "staging_result": "pass",
+    "staged_inspection_result": "pass",
+    "routing_epoch": 179,
+    "production_authority": false
+  },
+  "verification": {
+    "full_queue_race_seconds": 47.058,
+    "batch_regression_race_seconds": 1.782,
+    "batch_regression": {
+      "unique_boards": 257,
+      "canonical_sql_queries": 1,
+      "redis_pipelines": 2,
+      "deduplicated_monitor_detail_membership": true,
+      "individual_snapshot_equivalence": true,
+      "missing_and_disabled_boards_refused": true,
+      "disabled_retirement_preserved": true
+    },
+    "queue_vet": "pass",
+    "queue_module_diff": "clean",
+    "full_worker_race_seconds": 124.281,
+    "worker_vet": "pass",
+    "worker_module_diff": "clean",
+    "required_python_ownership_cutover_tests": {
+      "passed": 35,
+      "skipped": 0,
+      "seconds": 7.1
+    }
+  },
+  "remaining": "Deploy exact reviewed934 image, take fresh source/epoch-bound admission, stage and activate through the original protocol, prove natural canonical outputs and cold reversal. Rendered coverage, remaining profiles/consumers and production Python retirement remain incomplete."
+}

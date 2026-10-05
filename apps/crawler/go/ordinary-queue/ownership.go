@@ -257,8 +257,14 @@ func (a *Authority) StageOwnership(ctx context.Context, revision string, boardID
 	var plan *OwnershipPlan
 	err := a.transaction(ctx, true, func(ctx context.Context, tx pgx.Tx) error {
 		doc := ownershipDocument{Version: ownershipVersion, Epoch: a.epoch, SourceRevision: revision, ProjectionVersion: ownershipProjectionVersion}
+		requested := append(append([]string(nil), ids...), detailIDs...)
+		snapshots, err := a.observeOwnershipConfigs(ctx, tx, requested, false)
+		if err != nil {
+			return err
+		}
 		for _, id := range ids {
-			profile, cached, err := a.observeGreenhouseMonitor(ctx, tx, id)
+			pair := snapshots[id]
+			profile, cached, err := inspectMonitorConfigs(id, pair.canonical, pair.cached)
 			if err != nil {
 				return err
 			}
@@ -273,7 +279,8 @@ func (a *Authority) StageOwnership(ctx context.Context, revision string, boardID
 			doc.Members = append(doc.Members, ownershipMember{id, profile.CompanyID, profile.Domain, Monitor, Simple, profile.Profile, profile.EffectiveConfigSHA256, stable})
 		}
 		for _, id := range detailIDs {
-			profile, cached, err := a.observeDetailOwnershipState(ctx, tx, id, false)
+			pair := snapshots[id]
+			profile, cached, err := inspectDetailConfigs(id, pair.canonical, pair.cached)
 			if err != nil {
 				return err
 			}
@@ -388,8 +395,20 @@ func (a *Authority) InspectStagedOwnership(ctx context.Context, digest, revision
 		if err != nil {
 			return err
 		}
+		requested := make([]string, 0, plan.MemberCount()+plan.DetailBoardCount())
 		for _, member := range plan.document.Members {
-			profile, _, err := a.observeGreenhouseMonitor(ctx, tx, member.BoardID)
+			requested = append(requested, member.BoardID)
+		}
+		for _, detail := range plan.document.Details {
+			requested = append(requested, detail.BoardID)
+		}
+		snapshots, err := a.observeOwnershipConfigs(ctx, tx, requested, false)
+		if err != nil {
+			return err
+		}
+		for _, member := range plan.document.Members {
+			pair := snapshots[member.BoardID]
+			profile, _, err := inspectMonitorConfigs(member.BoardID, pair.canonical, pair.cached)
 			if err != nil {
 				return err
 			}
@@ -398,7 +417,8 @@ func (a *Authority) InspectStagedOwnership(ctx context.Context, digest, revision
 			}
 		}
 		for _, detail := range plan.document.Details {
-			profile, _, err := a.observeDetailOwnershipState(ctx, tx, detail.BoardID, false)
+			pair := snapshots[detail.BoardID]
+			profile, _, err := inspectDetailConfigs(detail.BoardID, pair.canonical, pair.cached)
 			if err != nil {
 				return err
 			}
