@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -55,7 +56,11 @@ func TestLightpandaDayforceLiveRegistryQualification(t *testing.T) {
 		}
 		count++
 		t.Run(row[columns["board_slug"]], func(t *testing.T) {
-			board, overlap, err := api.DayforceOptionsFromMetadata(row[columns["board_url"]], row[columns["monitor_config"]])
+			metadata := row[columns["monitor_config"]]
+			if strings.TrimSpace(metadata) == "" {
+				metadata = "{}" // Registry sync compiles an absent config to an object.
+			}
+			board, overlap, err := api.DayforceOptionsFromMetadata(row[columns["board_url"]], metadata)
 			if err != nil {
 				t.Fatal("registry options invalid")
 			}
