@@ -115,8 +115,10 @@ receipts remain at older epochs. Original full deployment
 succeeded. Independent 20:45 UTC readback verified promoted source
 `96601ce7fcadfa341aa153327918e0c71a84419a` and original immutable crawler/browser
 image digests, healthy services and cold native ownership at epoch 202.
-Original supported 954 B0 selector staging and activation succeeded; independent
-active readback and fresh actual-route ordinary admission remain required.
+Original supported 954 B0 selector staging and activation succeeded. Independent
+20:50 UTC readback verified the exact revision/images and active cdom receipt at
+epoch 203 with seven healthy endpoints. Fresh actual-route ordinary admission is
+running against this deployed source; ordinary ownership is not active yet.
 The four-provider candidate advances together to **0.13.955** after this fix.
 Local proof does not grant production ownership.
 
