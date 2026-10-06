@@ -1,6 +1,89 @@
 # Native ordinary worker continuation, 2026-10-03
 
-## Current delivery — 2026-10-05 22:47 UTC
+## Current delivery — 2026-10-06 00:04 UTC
+
+The full Go + Lightpanda migration goal remains active. Release batches group
+multiple provider types and use one shared verification/deployment cycle.
+
+**Jobylon + NextData (80 configurations)** merged in [PR #10330](https://github.com/colophon-group/jobseek/pull/10330)
+as `9595042b1423f2aca60e2da6f27195c1beb4b828` after Required CI, Crawler Deploy
+Gate, runtime contracts and installed-image parity passed at the exact reviewed
+head. The original immutable [946 deployment](https://github.com/colophon-group/jobseek/actions/runs/37387692274)
+succeeded. Independent 23:42 UTC observation verified all protected release
+identities, both actual image digests and six healthy restart-armed baseline
+services. Original Lightpanda B0 activation and independent readback succeeded
+at epoch 195 with seven healthy endpoints. Fresh reconciliation checked
+1,398,049 scheduled posting routes and admitted 6,595 monitors and 2,475 detail
+boards covering 1,374,668 postings. Thirty-eight detail boards retain legacy
+ownership because their actual posting-cache routes differ. The original
+ordinary staging succeeded; its exact-plan activation is running. Ordinary
+serving and naturally scheduled canonical processing remain unverified.
+[946 production evidence](evidence/go-native-embedded946-production-2026-10-06.json).
+
+**Inline + Beisen** is the next grouped batch. All 24 Beisen canonical/cache
+configurations and 100 of 125 Inline configurations admit locally against the
+fresh 946 source-bound capture. The remaining 25 Inline configurations still
+need browser/proxy/TLS or invalid alternate-header qualification. Publish the
+124 verified configurations together after final affected suites and required
+exact-head CI. Keep all remaining configurations in the full migration scope;
+do not publish a Beisen-only iteration or delay this grouped delivery for every
+remaining browser variant. The two remaining NextData routes (Yum China global
+evaluation and Revolut stealth) also remain required.
+
+Beisen's modern bootstrap/API inventories and legacy table/inline listings pass
+42 actual Python request/output/failure cases and 15 real PostgreSQL/Redis
+worker modes. Partial legacy rows preserve fully scraped title, locations,
+description and hash. Disabled portals and root/first-listing terminal responses
+use the existing spaced disappearance confirmation. API or later-page failures
+cannot authorize disappearance or earlier-prefix writes.
+[Beisen local evidence](evidence/go-native-beisen-local-2026-10-05.json).
+
+Inline reuses the production DOM tokenizer, step engine and rich writer. Its
+native static path now covers defaults, title/description filtering, stable
+synthetic/provider IDs, ordered same-origin source URLs, expiry and inclusive UTC
+deadlines, explicit-empty witnesses, aggregate-position expansion, ordered
+alternate URLs, static JSON wrappers and bounded retries. Twenty-one foundation
+cases, 51 complete inventory cases from 46 actual Python tests, 20 transport
+cases and 15 real PostgreSQL/Redis modes pass. Public-header routes retain the
+installed native same-origin/cookie-free boundary; two frozen legacy forwarding
+cases are compared explicitly against that native contract, not claimed as
+identical legacy requests. Verified expiry remains a probe witness; runtime
+empty results preserve the existing six-check confirmation window. Profile and
+cold-retirement proof passes. The final full worker race suite passes in 215.148s with required real PostgreSQL/Redis; the full queue suite passes in 110.596s.
+[Inline local evidence](evidence/go-native-inline-local-2026-10-06.json).
+
+Lightpanda 1.0.0 is still the newest stable release in the official release list,
+rechecked October 6. Full native ordinary adoption, remaining enabled monitor/
+detail/browser and maintenance consumers, canonical/policy/freshness/queue
+proof, comparable whole-lane resource/cost measurements, supported cold reversal,
+rollback window and production Python/Playwright/Chromium retirement remain
+required before goal completion.
+
+## Delivery order from this checkpoint
+
+1. Finish the original 946 activation and source-bound operational proof, or its
+   original contained recovery with a diagnosed administrative failure phase.
+2. Publish Inline + Beisen together: the verified local target is 124 boards,
+   with one combined PR, required-check cycle and immutable release. Retain all
+   149 extraction configurations as the full target.
+3. Group remaining public inventory variants into subsequent deliveries. The
+   fresh 946 monitor census still leaves 73 RSS, 33 sitemap and 10 Personio
+   configurations outside the admitted profiles. Qualify their actual enabled
+   variants through the existing extraction/transport/lifecycle paths. Larger
+   subsequent cohorts include Eightfold (30), Almacareer (23), MokaHR (22),
+   UKG/Paycom (16 each) and the remaining API/DOM options. These counts describe
+   current legacy ownership, not a promise that every configuration shares one
+   replacement profile. Each normal iteration should qualify multiple types.
+4. Complete rendered Inline and remaining NextData global/stealth routes with
+   qualified Lightpanda or proven public sources, without discarding configured
+   actions, proxy or TLS behavior. Keep those variants in the durable backlog.
+5. Complete native maintenance/deployment consumers and the full operational
+   acceptance: natural posting persistence and freshness, queue conservation,
+   comparable resource/cost measurement, cold reversal and rollback window.
+   Then remove mandatory production Python/Playwright/Chromium. Useful isolated
+   offline Python research and corpus generation can remain.
+
+## Earlier grouped delivery — 2026-10-05 22:47 UTC
 
 The full migration goal remains active. Routine migration releases now group
 multiple provider types and share verification, checkpointing and deployment.
@@ -91,42 +174,6 @@ worker flag differs, and qualify each variant through the existing paths. Contin
 and original B0/ordinary activation and recovery when GitHub runners complete
 the current release. Whole-lane comparison, full reversal, rollback window and
 retirement of mandatory production Python/Playwright/Chromium remain required.
-
-## Next grouped extraction batch — 2026-10-05 23:30 UTC
-
-The combined Jobylon + NextData [PR #10330](https://github.com/colophon-group/jobseek/pull/10330)
-merged as `9595042b1423f2aca60e2da6f27195c1beb4b828` after fresh exact-head/base,
-operator, hold and required-check audit. Required CI, Crawler Deploy Gate,
-installed image parity and runtime contracts all passed at
-`9b1f48462fc398016eeed787a1810152715b7ae5`. A transient administrative oneoff
-prevented the first pre-merge production observation. It finished without
-intervention; independent 23:16 UTC readback reverified all six healthy baseline
-writers, exact 945 images, cold epoch 194, no native owners/receipts/selectors or
-administrative container. The original immutable [946 deployment](https://github.com/colophon-group/jobseek/actions/runs/37387692274)
-is running. Incoming promotion and native ordinary adoption remain unverified.
-
-The next release keeps **Inline125 + Beisen24** together. Beisen admits all24
-captured canonical/cache configurations through one native portal profile,
-covering live modern bootstrap/API inventories and legacy table/inline listings.
-Forty-two actual Python request/output/failure cases,15 real PostgreSQL/Redis
-worker modes, resource/config binding and cold-retirement tests pass. Partial
-legacy rows retain fully scraped title, locations, description and hash on
-existing/relisted postings; selected description enrichment keeps the existing
-urgent/background queue role. Disabled portals and root/first-listing terminal
-responses use the existing spaced disappearance confirmation. API or later-page
-failures cannot authorize board disappearance or earlier-prefix writes.
-[Local Beisen evidence](evidence/go-native-beisen-local-2026-10-05.json).
-
-Inline now reuses the production Go DOM tokenizer and step engine for its
-advancing cursor, unique section boundaries and bounded posting blocks. Twenty-
-one actual Python extraction/identity cases pass, including the500-record cap,
-Unicode title/provider identities, duplicate numbering, original query grouping
-and fragments. Inline runtime admission is still unfinished: row/default/title/
-description filtering, expiry, source identity/URL and explicit-empty witnesses,
-alternate static/JSON fetches, held browser execution, canonical/policy/queue and
-cold-retirement proof remain. [Inline foundation evidence](evidence/go-native-inline-document-local-2026-10-05.json).
-Do not open a Beisen-only release or claim production processing from these local
-proofs. Continue this grouped batch and the full migration obligations.
 
 ## Prior serving checkpoint — 2026-10-05 20:13 UTC
 

@@ -12,5 +12,7 @@
     "native configuration/ownership, canonical writes, policy, queue and cold-retirement proof"
   ],
   "production_claim": false,
-  "full_migration_complete": false
+  "full_migration_complete": false,
+  "historical_foundation_only": true,
+  "superseded_by": "go-native-inline-local-2026-10-06.json"
 }

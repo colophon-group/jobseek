@@ -97,7 +97,6 @@ func inlineBoundaryMatches(e dom.Element, b dom.Object) (bool, error) {
 // preserving the inline monitor's advancing cursor and bounded item sections.
 // Row filtering, defaults, expiry and transport remain separate obligations.
 func ExtractInlineRows(source string, steps []dom.Object, item, start, end dom.Object, includeHidden bool) ([]dom.Object, bool, error) {
-	rows := []dom.Object{}
 	for _, boundary := range []dom.Object{item, start, end} {
 		if err := ValidateInlineBoundary(boundary); err != nil {
 			return nil, false, err
@@ -106,38 +105,52 @@ func ExtractInlineRows(source string, steps []dom.Object, item, start, end dom.O
 	if (start == nil) != (end == nil) {
 		return nil, false, ErrOptions
 	}
-	elements, err := dom.Flatten(source, includeHidden, false)
+	elements, err := inlineScopedElements(source, start, end, includeHidden)
 	if err != nil {
 		return nil, false, err
+	}
+	return inlineWalkRows(elements, steps, item)
+}
+
+func inlineScopedElements(source string, start, end dom.Object, includeHidden bool) ([]dom.Element, error) {
+	elements, err := dom.Flatten(source, includeHidden, false)
+	if err != nil {
+		return nil, err
 	}
 	if start != nil {
 		starts, ends := []int{}, []int{}
 		for i, e := range elements {
 			matched, err := inlineBoundaryMatches(e, start)
 			if err != nil {
-				return nil, false, err
+				return nil, err
 			}
 			if matched {
 				starts = append(starts, i)
 			}
 		}
 		if len(starts) != 1 {
-			return nil, false, ErrInventory
+			return nil, ErrInventory
 		}
 		for i := starts[0] + 1; i < len(elements); i++ {
 			matched, err := inlineBoundaryMatches(elements[i], end)
 			if err != nil {
-				return nil, false, err
+				return nil, err
 			}
 			if matched {
 				ends = append(ends, i)
 			}
 		}
 		if len(ends) != 1 {
-			return nil, false, ErrInventory
+			return nil, ErrInventory
 		}
 		elements = elements[starts[0]+1 : ends[0]]
 	}
+	return elements, nil
+}
+
+func inlineWalkRows(elements []dom.Element, steps []dom.Object, item dom.Object) ([]dom.Object, bool, error) {
+	rows := []dom.Object{}
+	var err error
 	cursor, processed := 0, 0
 	for cursor < len(elements) && processed < 500 {
 		var result dom.Object

@@ -12,7 +12,7 @@ import (
 )
 
 func TestRealFirstEmbeddedMonitorColdRetirement(t *testing.T) {
-	for _, provider := range []string{"jobylon", "nextdata", "beisen"} {
+	for _, provider := range []string{"jobylon", "nextdata", "beisen", "inline"} {
 		for _, mode := range []string{"interrupted", "committed-before-ack", "changed-token"} {
 			t.Run(provider+"/"+mode, func(t *testing.T) {
 				ctx := context.Background()
@@ -22,6 +22,9 @@ func TestRealFirstEmbeddedMonitorColdRetirement(t *testing.T) {
 				boardURL := "https://example.com/careers"
 				if provider == "nextdata" {
 					metadata = `{"path":"jobs","url_template":"https://example.com/jobs/{id}","fields":{"title":"title"},"scraper_type":"json-ld"}`
+				}
+				if provider == "inline" {
+					metadata = `{"steps":[{"tag":"h2","field":"title"}],"scraper_type":"skip"}`
 				}
 				if provider == "beisen" {
 					boardURL = "https://fixture.zhiye.com/"
@@ -70,6 +73,9 @@ func TestRealFirstEmbeddedMonitorColdRetirement(t *testing.T) {
 				}
 				if mode == "changed-token" {
 					changed := strings.ReplaceAll(metadata, "123", "456")
+					if provider == "inline" {
+						changed = strings.ReplaceAll(metadata, "h2", "h3")
+					}
 					if provider == "nextdata" {
 						changed = strings.ReplaceAll(metadata, "jobs/{id}", "changed/{id}")
 					}

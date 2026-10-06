@@ -1,7 +1,7 @@
 {
   "schema": "jobseek.native-beisen-local/v1",
   "observed_at_utc": "2026-10-05T23:27:45.458043+00:00",
-  "state": "all24 captured canonical/cache configurations admitted locally; modern and legacy worker paths pass focused native proofs; grouped Inline+Beisen batch remains in progress",
+  "state": "all24 fresh946canonical/cache configurations admit locally; grouped Inline100+Beisen24candidate awaits final affected suites and required exact-head CI",
   "canonical_and_cached_admitted": 24,
   "capture_source_revision": "194af110324d6eb9a09fc23619f516d656e608b5",
   "actual_python_cases": 42,
@@ -17,7 +17,9 @@
     "queue_and_worker_vet": "PASS",
     "full_worker_race": "PASS233.618s; required real PostgreSQL/Redis; bounded page-count overflow fix receives subsequent focused comparison",
     "full_queue_race": "PASS111.068s; required real PostgreSQL/Redis",
-    "bounded_pagecount_fix": "PASS4.484s;42actual Python comparisons after full worker suite"
+    "bounded_pagecount_fix": "PASS4.484s;42actual Python comparisons after full worker suite",
+    "final_grouped_full_worker_race": "PASS215.148s with Inline integration",
+    "final_grouped_full_queue_race": "PASS110.596s with Inline integration"
   },
   "contracts": [
     "modern bootstrap status and configured portal/tenant identity",
@@ -31,5 +33,7 @@
     "changed canonical binding rejects write and settlement"
   ],
   "production_claim": false,
-  "full_migration_complete": false
+  "full_migration_complete": false,
+  "fresh_capture_source_revision": "9595042b1423f2aca60e2da6f27195c1beb4b828",
+  "fresh_canonical_cached_admitted": 24
 }

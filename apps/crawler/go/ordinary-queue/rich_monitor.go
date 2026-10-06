@@ -89,6 +89,12 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		return nil, err
 	}
 	var enrich []string
+	if profile.Provider == "inline" {
+		enrich, err = inlineMonitorEnrichment(claim.task.Config)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if profile.Provider == "beisen" {
 		enrich, err = beisenMonitorEnrichment(claim.task.Config)
 		if err != nil {
@@ -143,7 +149,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		hybridByURL[posting.URL] = posting.Hybrid
 		// These rich inventories have no description field. Preserve the delegated
 		// scraper's retained body rather than letting a detached value replace it.
-		if len(enrich) > 0 && posting.Content.Description != nil && profile.Provider != "nextdata" {
+		if len(enrich) > 0 && posting.Content.Description != nil && profile.Provider != "nextdata" && profile.Provider != "inline" {
 			return nil, ErrConfiguration
 		}
 	}
@@ -294,7 +300,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 					for _, field := range enrich {
 						delegatedDescription = delegatedDescription || field == "description"
 					}
-					if profile.Provider == "nextdata" && delegatedDescription && row.action != "new" {
+					if (profile.Provider == "nextdata" || profile.Provider == "inline") && delegatedDescription && row.action != "new" {
 						// Same locale-only availability fallback as the legacy rich
 						// monitor: a scraped locale remains byte-authoritative.
 						d := content.Description

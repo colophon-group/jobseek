@@ -277,6 +277,8 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			}
 			return nil
 		}, renderedPage)
+	} else if profile.Provider == "inline" {
+		discovery, fetchErr = discoverInlineInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "beisen" {
 		discovery, fetchErr = discoverBeisenInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "workday" {
@@ -345,6 +347,9 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		// initial resource to this claim's endpoint or validated page. RSS may
 		// stop at a publisher header; incomplete inventories never reach writes.
 		matches := richResponseMatches(profile, response.endpoint)
+		if profile.Provider == "inline" {
+			matches = queue.InlineMonitorResourceMatches(profile, task.Config, response.endpoint)
+		}
 		if profile.Provider == "beisen" {
 			matches = queue.BeisenMonitorResourceMatches(profile, task.Config, response.endpoint)
 		}
@@ -369,7 +374,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		}
 		if response.reserved {
 			initial := profile.Endpoint
-			if profile.Provider == "beisen" || profile.Provider == "api_sniffer" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "oracle_hcm" || profile.Provider == "icims" || profile.Provider == "phenom" || profile.Provider == "nextdata" {
+			if profile.Provider == "inline" || profile.Provider == "beisen" || profile.Provider == "api_sniffer" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "oracle_hcm" || profile.Provider == "icims" || profile.Provider == "phenom" || profile.Provider == "nextdata" {
 				initial = response.endpoint
 			}
 			terminal, err := cycle.FinishReservationResource(ctx, initial, &queue.GreenhouseHeaderReservation{Endpoint: response.finalURL, PolicyURL: response.PolicyURL(), Source: response.reservationSource})
@@ -382,7 +387,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		if profile.Provider == "icims" {
 			providerGone = queue.ICIMSMonitorPrimaryGone(task.Config, response.endpoint, response.status)
 		}
-		if profile.Provider == "nextdata" {
+		if profile.Provider == "nextdata" || profile.Provider == "inline" {
 			providerGone = false
 		}
 		if profile.Provider == "beisen" {

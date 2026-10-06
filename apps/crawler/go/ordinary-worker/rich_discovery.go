@@ -19,9 +19,10 @@ import (
 )
 
 type RichDiscovery struct {
-	Jobs      []RichMonitorJob
-	Truncated bool
-	Response  *GreenhouseResponse
+	VerifiedEmptyReason string
+	Jobs                []RichMonitorJob
+	Truncated           bool
+	Response            *GreenhouseResponse
 }
 
 func pauseRich(ctx context.Context, delay time.Duration) error {

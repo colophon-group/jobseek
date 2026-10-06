@@ -11,7 +11,7 @@ require (
 	golang.org/x/text v0.42.0
 )
 
-require github.com/dlclark/regexp2/v2 v2.8.0 // indirect
+require github.com/dlclark/regexp2/v2 v2.8.0
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/dom-detail => ../dom-detail
 

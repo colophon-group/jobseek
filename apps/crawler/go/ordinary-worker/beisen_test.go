@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"reflect"
@@ -37,9 +38,11 @@ func TestBeisenDiscoveryMatchesActualPythonRequestsInventoryAndFailures(t *testi
 			counts := map[string]int{}
 			client := verifiedClaimFixtureClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				url := "https://" + r.Host + r.URL.String()
-				body := make([]byte, r.ContentLength)
-				if r.ContentLength > 0 {
-					_, _ = r.Body.Read(body)
+				body, err := io.ReadAll(r.Body)
+				if err != nil {
+					t.Error("request body read failed")
+					w.WriteHeader(500)
+					return
 				}
 				requests = append(requests, request{r.Method, url, string(body), r.Header.Get("Cookie")})
 				index := counts[url]

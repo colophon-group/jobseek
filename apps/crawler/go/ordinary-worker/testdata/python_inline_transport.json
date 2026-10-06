@@ -1,0 +1,1100 @@
+{
+  "cases": [
+    {
+      "name": "one-page",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "scraper_type": "skip",
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true
+          }
+        ]
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<h2>Senior Software Engineer</h2><p>Go in Zurich.</p>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://example.com/careers?_jid=senior-software-engineer-639b8d",
+            "title": "Senior Software Engineer",
+            "description": "Go in Zurich.",
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "extras": null,
+            "metadata": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "same-origin-redirect-cookie",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "scraper_type": "skip",
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true
+          }
+        ]
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "",
+          "status": 302,
+          "headers": {
+            "Location": "/ready",
+            "Set-Cookie": "session=owned; Path=/"
+          }
+        },
+        "https://example.com/ready": {
+          "body": "<h2>Senior Software Engineer</h2><p>Go in Zurich.</p>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        {
+          "url": "https://example.com/ready",
+          "cookie": "session=owned",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://example.com/careers?_jid=senior-software-engineer-639b8d",
+            "title": "Senior Software Engineer",
+            "description": "Go in Zurich.",
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "extras": null,
+            "metadata": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "foreign-public-redirect",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "scraper_type": "skip",
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true
+          }
+        ]
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "",
+          "status": 302,
+          "headers": {
+            "Location": "https://other.example/jobs"
+          }
+        },
+        "https://other.example/jobs": {
+          "body": "<h2>Senior Software Engineer</h2><p>Go in Zurich.</p>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        {
+          "url": "https://other.example/jobs",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://example.com/careers?_jid=senior-software-engineer-639b8d",
+            "title": "Senior Software Engineer",
+            "description": "Go in Zurich.",
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "extras": null,
+            "metadata": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "permanent403",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "scraper_type": "skip",
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true
+          }
+        ]
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "blocked",
+          "status": 403,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "jobs": [],
+        "truncated": false
+      }
+    },
+    {
+      "name": "transient403",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "scraper_type": "skip",
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true
+          }
+        ],
+        "transient_403": true
+      },
+      "pages": {
+        "https://example.com/careers": [
+          {
+            "body": "blocked",
+            "status": 403,
+            "headers": {}
+          },
+          {
+            "body": "<h2>Senior Software Engineer</h2><p>Go in Zurich.</p>",
+            "status": 200,
+            "headers": {}
+          }
+        ]
+      },
+      "requests": [
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://example.com/careers?_jid=senior-software-engineer-639b8d",
+            "title": "Senior Software Engineer",
+            "description": "Go in Zurich.",
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "extras": null,
+            "metadata": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "transient429",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "scraper_type": "skip",
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true
+          }
+        ]
+      },
+      "pages": {
+        "https://example.com/careers": [
+          {
+            "body": "busy",
+            "status": 429,
+            "headers": {}
+          },
+          {
+            "body": "<h2>Senior Software Engineer</h2><p>Go in Zurich.</p>",
+            "status": 200,
+            "headers": {}
+          }
+        ]
+      },
+      "requests": [
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://example.com/careers?_jid=senior-software-engineer-639b8d",
+            "title": "Senior Software Engineer",
+            "description": "Go in Zurich.",
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "extras": null,
+            "metadata": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "transient530",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "scraper_type": "skip",
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true
+          }
+        ]
+      },
+      "pages": {
+        "https://example.com/careers": [
+          {
+            "body": "busy",
+            "status": 530,
+            "headers": {}
+          },
+          {
+            "body": "<h2>Senior Software Engineer</h2><p>Go in Zurich.</p>",
+            "status": 200,
+            "headers": {}
+          }
+        ]
+      },
+      "requests": [
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://example.com/careers?_jid=senior-software-engineer-639b8d",
+            "title": "Senior Software Engineer",
+            "description": "Go in Zurich.",
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "extras": null,
+            "metadata": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "empty-200-retry",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "scraper_type": "skip",
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true
+          }
+        ]
+      },
+      "pages": {
+        "https://example.com/careers": [
+          {
+            "body": "",
+            "status": 200,
+            "headers": {}
+          },
+          {
+            "body": "<h2>Senior Software Engineer</h2><p>Go in Zurich.</p>",
+            "status": 200,
+            "headers": {}
+          }
+        ]
+      },
+      "requests": [
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://example.com/careers?_jid=senior-software-engineer-639b8d",
+            "title": "Senior Software Engineer",
+            "description": "Go in Zurich.",
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "extras": null,
+            "metadata": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "empty-exhausted",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "scraper_type": "skip",
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true
+          }
+        ]
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "jobs": [],
+        "truncated": false
+      }
+    },
+    {
+      "name": "404-failure",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "scraper_type": "skip",
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true
+          }
+        ]
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "missing",
+          "status": 404,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "jobs": [],
+        "truncated": false
+      }
+    },
+    {
+      "name": "410-failure",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "scraper_type": "skip",
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true
+          }
+        ]
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "missing",
+          "status": 410,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "jobs": [],
+        "truncated": false
+      }
+    },
+    {
+      "name": "bounded-attempts",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "scraper_type": "skip",
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true
+          }
+        ],
+        "transport_attempts": 2
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "busy",
+          "status": 500,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "jobs": [],
+        "truncated": false
+      }
+    },
+    {
+      "name": "contains-fallback",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "scraper_type": "skip",
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true
+          }
+        ],
+        "fetch_urls": [
+          "https://example.com/careers",
+          "https://example.com/alternate"
+        ],
+        "fetch_contains": "Senior Software Engineer"
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "no marker",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/alternate": {
+          "body": "<h2>Senior Software Engineer</h2><p>Go in Zurich.</p>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        {
+          "url": "https://example.com/alternate",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://example.com/careers?_jid=senior-software-engineer-639b8d",
+            "title": "Senior Software Engineer",
+            "description": "Go in Zurich.",
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "extras": null,
+            "metadata": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "404-fallback",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "scraper_type": "skip",
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true
+          }
+        ],
+        "fetch_urls": [
+          "https://example.com/careers",
+          "https://example.com/alternate"
+        ]
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "missing",
+          "status": 404,
+          "headers": {}
+        },
+        "https://example.com/alternate": {
+          "body": "<h2>Senior Software Engineer</h2><p>Go in Zurich.</p>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        {
+          "url": "https://example.com/alternate",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://example.com/careers?_jid=senior-software-engineer-639b8d",
+            "title": "Senior Software Engineer",
+            "description": "Go in Zurich.",
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "extras": null,
+            "metadata": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "json-wrapper",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "scraper_type": "skip",
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true
+          }
+        ],
+        "fetch_json_path": "[0].content.rendered"
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "[{\"content\": {\"rendered\": \"<h2>Senior Software Engineer</h2><p>Go in Zurich.</p>\"}}]",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://example.com/careers?_jid=senior-software-engineer-639b8d",
+            "title": "Senior Software Engineer",
+            "description": "Go in Zurich.",
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "extras": null,
+            "metadata": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "json-empty-failure",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "scraper_type": "skip",
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true
+          }
+        ],
+        "fetch_json_path": "[0].content.rendered"
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "[{\"content\":{\"rendered\":\"\"}}]",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "jobs": [],
+        "truncated": false
+      }
+    },
+    {
+      "name": "json-malformed-fallback",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "scraper_type": "skip",
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true
+          }
+        ],
+        "fetch_json_path": "html",
+        "fetch_urls": [
+          "https://example.com/careers",
+          "https://example.com/alternate"
+        ]
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "invalid JSON",
+          "status": 200,
+          "headers": {}
+        },
+        "https://example.com/alternate": {
+          "body": "{\"html\": \"<h2>Senior Software Engineer</h2><p>Go in Zurich.</p>\"}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        {
+          "url": "https://example.com/alternate",
+          "cookie": "",
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://example.com/careers?_jid=senior-software-engineer-639b8d",
+            "title": "Senior Software Engineer",
+            "description": "Go in Zurich.",
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "extras": null,
+            "metadata": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "public-header",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "scraper_type": "skip",
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true
+          }
+        ],
+        "fetch_urls": [
+          {
+            "url": "https://example.com/careers",
+            "headers": {
+              "Accept": "text/html"
+            }
+          }
+        ]
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "<h2>Senior Software Engineer</h2><p>Go in Zurich.</p>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://example.com/careers?_jid=senior-software-engineer-639b8d",
+            "title": "Senior Software Engineer",
+            "description": "Go in Zurich.",
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "extras": null,
+            "metadata": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "public-header-same-origin-redirect",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "scraper_type": "skip",
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true
+          }
+        ],
+        "fetch_urls": [
+          {
+            "url": "https://example.com/careers",
+            "headers": {
+              "Accept": "text/html"
+            }
+          }
+        ]
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "",
+          "status": 302,
+          "headers": {
+            "Location": "/ready",
+            "Set-Cookie": "private=never; Path=/"
+          }
+        },
+        "https://example.com/ready": {
+          "body": "<h2>Senior Software Engineer</h2><p>Go in Zurich.</p>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html"
+        },
+        {
+          "url": "https://example.com/ready",
+          "cookie": "private=never",
+          "accept": "text/html"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "jobs": [
+          {
+            "url": "https://example.com/careers?_jid=senior-software-engineer-639b8d",
+            "title": "Senior Software Engineer",
+            "description": "Go in Zurich.",
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "extras": null,
+            "metadata": null
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "public-header-foreign-refusal",
+      "board_url": "https://example.com/careers",
+      "metadata": {
+        "scraper_type": "skip",
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description",
+            "html": true
+          }
+        ],
+        "fetch_urls": [
+          {
+            "url": "https://example.com/careers",
+            "headers": {
+              "Accept": "text/html"
+            }
+          }
+        ]
+      },
+      "pages": {
+        "https://example.com/careers": {
+          "body": "",
+          "status": 302,
+          "headers": {
+            "Location": "https://other.example/jobs"
+          }
+        }
+      },
+      "requests": [
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html"
+        },
+        {
+          "url": "https://other.example/jobs",
+          "cookie": "",
+          "accept": "text/html"
+        },
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html"
+        },
+        {
+          "url": "https://other.example/jobs",
+          "cookie": "",
+          "accept": "text/html"
+        },
+        {
+          "url": "https://example.com/careers",
+          "cookie": "",
+          "accept": "text/html"
+        },
+        {
+          "url": "https://other.example/jobs",
+          "cookie": "",
+          "accept": "text/html"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "jobs": [],
+        "truncated": false
+      }
+    }
+  ]
+}

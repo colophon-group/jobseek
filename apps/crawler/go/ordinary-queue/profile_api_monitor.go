@@ -108,7 +108,7 @@ func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[stri
 		return fail()
 	}
 	stable, err := stableGreenhouseConfig(config, md)
-	if provider == "beisen" || provider == "sitemap" || provider == "join" || provider == "dom" || provider == "api_sniffer" || provider == "oracle_hcm" || provider == "icims" || provider == "breezy" || provider == "jazzhr" || provider == "gupy" || provider == "phenom" || provider == "jobylon" || provider == "nextdata" {
+	if provider == "inline" || provider == "beisen" || provider == "sitemap" || provider == "join" || provider == "dom" || provider == "api_sniffer" || provider == "oracle_hcm" || provider == "icims" || provider == "breezy" || provider == "jazzhr" || provider == "gupy" || provider == "phenom" || provider == "jobylon" || provider == "nextdata" {
 		// PostgreSQL jsonb and Redis may order nested filter/detail keys
 		// differently. Reuse the existing semantic configuration binding.
 		stable, err = stableJSONLDConfig(config, md)
