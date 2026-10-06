@@ -116,10 +116,6 @@ const expectedToolSchemas = {
     ],
     required: ["title"],
   },
-  get_ghost_analysis: {
-    properties: ["position", "runId"],
-    required: ["runId"],
-  },
   get_job_detail: { properties: ["id", "locale"], required: ["id"] },
   list_taxonomies: {
     properties: ["locale", "type"],
@@ -137,16 +133,41 @@ const expectedToolSchemas = {
     properties: [...PUBLIC_SEARCH_QUERY_PARAMETERS].sort(),
     required: [],
   },
-  trigger_batch_ghost_analysis: {
-    properties: ["companies"],
-    required: ["companies"],
-  },
-  trigger_ghost_analysis: {
-    properties: ["companyName", "inventoryMode", "maxSnapshots", "portalUrl"],
-    required: ["portalUrl"],
-  },
 };
 const expectedTools = Object.keys(expectedToolSchemas).sort();
+
+// The hosted endpoint already streams POST replies. Verify its public tool
+// registry too: retiring tools must affect both HTTP and stdio clients.
+const streamedToolsResponse = await handleMcpRequest(
+  new Request("https://example.invalid/mcp", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json, text/event-stream",
+      "MCP-Protocol-Version": "2025-11-25",
+    },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+  }),
+  "https://example.invalid",
+);
+assert(
+  streamedToolsResponse.status === 200 &&
+    streamedToolsResponse.headers.get("Content-Type")?.startsWith("text/event-stream"),
+  "Hosted MCP POST requests must retain SSE replies",
+);
+const streamedToolsMessages = (await streamedToolsResponse.text())
+  .split("\n")
+  .filter((line) => line.startsWith("data: ") && line.slice(6).trim())
+  .map((line) => JSON.parse(line.slice(6)));
+const streamedTools = streamedToolsMessages.find((message) => message.id === 1)
+  ?.result?.tools;
+assert(
+  Array.isArray(streamedTools) &&
+    JSON.stringify(streamedTools.map(({ name }) => name).sort()) ===
+      JSON.stringify(expectedTools),
+  "Hosted MCP tool registry must expose exactly the documented public tool set",
+);
+
 assert(
   openApi.info?.version === PUBLIC_API_VERSION,
   "OpenAPI info.version must match the public API contract",
@@ -254,14 +275,25 @@ try {
   ]);
 
   const { tools } = await client.listTools();
+  assert(
+    client.getServerVersion()?.version === packageJson.version,
+    "MCP initialize version must match the published package version",
+  );
+  assert(
+    !/ghost/i.test(client.getInstructions() ?? ""),
+    "MCP initialization must not advertise retired ghost-analysis functionality",
+  );
   const retiredTools = [
+    "get_ghost_analysis",
     "get_discovery_results",
     "search_watchlists",
+    "trigger_batch_ghost_analysis",
     "trigger_discovery_run",
+    "trigger_ghost_analysis",
   ];
   assert(
     retiredTools.every((name) => !tools.some((tool) => tool.name === name)),
-    "MCP tool registry must not restore retired discovery tools",
+    "MCP tool registry must not restore retired tools",
   );
   assert(
     JSON.stringify(tools.map(({ name }) => name).sort()) ===

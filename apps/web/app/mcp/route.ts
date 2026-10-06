@@ -25,14 +25,11 @@ const MCP_RPC_METHODS = new Set([
 
 const JOBSEEK_TOOL_NAMES = new Set([
   "create_watchlist_link",
-  "get_ghost_analysis",
   "get_job_detail",
   "list_taxonomies",
   "resolve_slugs",
   "search_companies",
   "search_jobs",
-  "trigger_batch_ghost_analysis",
-  "trigger_ghost_analysis",
 ]);
 
 type McpVerb = "POST" | "GET" | "DELETE" | "OPTIONS";
