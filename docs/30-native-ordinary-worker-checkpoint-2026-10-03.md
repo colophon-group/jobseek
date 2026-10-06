@@ -1,6 +1,6 @@
 # Native ordinary worker continuation, 2026-10-03
 
-## Current delivery — 2026-10-06
+## Current delivery — 2026-10-07
 
 The full migration goal is **active and incomplete**. Ship multiple provider
 and variant types per release, sharing reference verification, CI and cutover.
@@ -156,7 +156,9 @@ fetch, salary/enum, persistence and ownership paths. ADP handles its bounded DOC
 fallback, title-location pattern and rich pagination; Cornerstone refreshes public
 authorization and validates paginated inventory; Paylocity reads embedded records
 and its server-rendered detail markup. Seven candidate profiles bring the local
-capability list to 70, including distinct Paylocity proxy monitor/detail routes. The four-provider scope remains unchanged and unpublished.
+capability list to 71 with Dayforce's compiled browser session profile, including
+distinct Paylocity proxy monitor/detail routes. The four-provider scope remains
+unchanged and unpublished.
 
 Thirty-nine field comparisons from actual Python pass, including Unicode
 location deduplication, custom employment labels, arbitrary-precision IDs and
@@ -217,15 +219,34 @@ race passes (8.981 seconds); worker Dayforce race passes (1.956 seconds). The re
 builder now uses the repository's immutable Go 1.26.4 pin and four explicit pure
 Go library contexts. Local deployment-contract tests pass (69 passed; 24 environment skips); those skips do not qualify installed Linux behavior.
 
-Registry admission/worker dispatch, actual Lightpanda 1.0.0 session I/O, canonical
-effects, cold reversal and installed-image proofs remain required. The current
-candidate still advertises 70 profiles and does not own Dayforce in production.
+Dayforce registry admission and browser worker dispatch now use
+`dayforce.session-search/v1`; all ten registry boards compile. The original
+[dual-architecture pilot run 37538759994](https://github.com/colophon-group/jobseek/actions/runs/37538759994)
+at `bb9e4ef2a31033825ceda89904fbe1b48a2612d5` proves actual checksum-pinned
+Lightpanda 1.0.0 HTTPS, cookies, CSRF capture and overlap/retry pagination on
+amd64 (0.20 seconds) and arm64 (0.17 seconds). Nine real PostgreSQL/Redis cases
+through the production client and worker prove canonical descriptions, skip
+details, policy reservation, failed-page refusal, site/configuration drift,
+cleanup refusal, gone evidence and browser deadline/lease conservation
+(3.938 seconds). Four cold reversal cases preserve browser deadlines through
+Redis restart and allow later retirement after historical Dayforce receipts
+(5.237 seconds).
+
+That pilot run is terminal red at its later child-identity probe: the upgraded
+Go runtime opens `/sys/fs/cgroup/cpu.max` itself for CPU quota tracking. The
+candidate attestation accepts only that exact cgroup-v2 filesystem descriptor
+with read-only and close-on-exec flags; arbitrary files, other quota paths and
+inheritable descriptors remain refused. Installed qualification of this fix,
+full grouped checks and live provider bounds remain required. Lightpanda 1.0.0
+remains the latest stable official release, rechecked October 7. No Dayforce
+production ownership is claimed.
 The generic B0/B1 adapter continues to reject captures and origin-contact evaluation;
 the provider conversation grants no queue, persistence or generic resumption
 authority. A direct stateless Dayforce replay is not a verified replacement.
-Complete Dayforce browser transport and remaining provider bounds/operational proofs,
+Complete remaining provider bounds and operational proofs,
 then full races and grouped publication. The partial implementation is saved in
-local commits on the isolated batch branch; no four-provider PR is published. These local counts grant no live authority.
+commits on the isolated batch branch; no four-provider PR is published. These
+local counts grant no live authority.
 
 Finish remaining provider/browser/filter variants and runtime consumers using
 the existing delivery paths. After the selected complete immutable deployment,

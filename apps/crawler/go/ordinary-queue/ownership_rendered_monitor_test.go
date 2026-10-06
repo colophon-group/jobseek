@@ -19,13 +19,18 @@ func firstRenderedMonitorProviderFixture(t *testing.T, provider string) firstOwn
 	id := p.f.task.ID
 
 	md := `{"render":true,"scraper_type":"json-ld"}`
+	boardURL := p.f.client.redis.HGet(ctx, "board:"+id, "board_url").Val()
 	if provider == "nextdata" {
 		md = `{"render":true,"path":"jobs","url_template":"https://example.com/jobs/{id}","fields":{"title":"title"},"scraper_type":"json-ld"}`
 	}
-	if _, e := p.f.observer.Exec(ctx, "UPDATE job_board SET crawler_type=$3,monitor_needs_browser=true,metadata=$2::jsonb WHERE id=$1::uuid", id, md, provider); e != nil {
+	if provider == "dayforce" {
+		boardURL = "https://jobs.dayforcehcm.com/fixture/EXTERNAL"
+		md = `{"tenant":"fixture","portal":"EXTERNAL","offset_overlap":5,"scraper_type":"skip"}`
+	}
+	if _, e := p.f.observer.Exec(ctx, "UPDATE job_board SET crawler_type=$3,monitor_needs_browser=true,metadata=$2::jsonb,board_url=$4 WHERE id=$1::uuid", id, md, provider, boardURL); e != nil {
 		t.Fatal(e)
 	}
-	if e := p.f.client.redis.HSet(ctx, "board:"+id, "crawler_type", provider, "monitor_needs_browser", "1", "metadata", md).Err(); e != nil {
+	if e := p.f.client.redis.HSet(ctx, "board:"+id, "crawler_type", provider, "monitor_needs_browser", "1", "metadata", md, "board_url", boardURL).Err(); e != nil {
 		t.Fatal(e)
 	}
 	p.f.client.redis.Del(ctx, "monitors_simple:"+p.f.task.Domain, "ft_monitors_simple:"+p.f.task.Domain, "ready:simple:1")
@@ -41,9 +46,18 @@ func firstRenderedMonitorProviderFixture(t *testing.T, provider string) firstOwn
 }
 
 func TestRealRenderedMonitorColdRetirementRestoresBrowserDeadline(t *testing.T) {
+	testRenderedMonitorColdRetirement(t, "dom")
+}
+
+func TestRealDayforceColdRetirementRestoresBrowserDeadline(t *testing.T) {
+	testRenderedMonitorColdRetirement(t, "dayforce")
+}
+
+func testRenderedMonitorColdRetirement(t *testing.T, provider string) {
+	t.Helper()
 	for _, mode := range []string{"active", "claim-before-sql", "disabled"} {
 		t.Run(mode, func(t *testing.T) {
-			p := firstRenderedMonitorFixture(t)
+			p := firstRenderedMonitorProviderFixture(t, provider)
 			a, claim := firstRetirementClaim(t, p)
 			ctx := context.Background()
 			if mode == "claim-before-sql" {
@@ -101,6 +115,19 @@ func TestRealRenderedMonitorColdRetirementRestoresBrowserDeadline(t *testing.T) 
 				t.Fatal("projection retained after restart")
 			}
 		})
+	}
+}
+
+func TestRealDayforceRetiredAttemptAllowsLaterReversal(t *testing.T) {
+	old := firstRenderedMonitorProviderFixture(t, "dayforce")
+	firstRetirementClaim(t, old)
+	if _, err := applyFirstFixture(t, old, true); err != nil {
+		t.Fatal(err)
+	}
+	current := firstOwnershipFixtureHistory(t, true)
+	firstRetirementClaim(t, current)
+	if _, err := applyFirstFixture(t, current, true); err != nil {
+		t.Fatal("old Dayforce browser receipt blocked later reversal", err)
 	}
 }
 
