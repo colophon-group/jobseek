@@ -34,6 +34,10 @@ func fetchAPIDetail(ctx context.Context, verified *VerifiedDirectHTTP, profile q
 	var content any
 	var reservation *publisherpolicy.Reservation
 	switch profile.Profile {
+	case "adp.public-detail/v1":
+		content, reservation, err = fetchADPDetail(ctx, &client, profile)
+	case "paylocity.html-detail/v1":
+		content, reservation, err = fetchPaylocityDetail(ctx, &client, profile.SourceURL)
 	case "paycom.public-detail/v1":
 		content, reservation, err = fetchPaycomDetail(ctx, &client, profile)
 	case "rippling.v1-detail/v1":

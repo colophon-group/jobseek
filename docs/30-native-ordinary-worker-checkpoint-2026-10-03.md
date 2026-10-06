@@ -105,7 +105,15 @@ explicitly refusing SAVE during BGSAVE, within the existing 120-second budget.
 It revalidates the server incarnation before retry and still requires its own
 synchronous SAVE acknowledgment before SQL authority. Real private Redis tests
 reproduce the refusal on unchanged 953 and pass with the fix, including bounded
-cancellation; required broad and installed checks are still pending.
+cancellation; full queue race (383.506 seconds), focused worker race (23.015 seconds), Required CI, Crawler Deploy Gate and installed-image parity pass.
+[PR #10342](https://github.com/colophon-group/jobseek/pull/10342) merged its exact reviewed head `00f44a537b41a2794da31d3b6daa1495b588f7b1` to `96601ce7fcadfa341aa153327918e0c71a84419a`.
+Before merge, original supported B0 rollback and selector clear succeeded;
+independent 20:28 UTC readback proved healthy exact-953 services, cold native
+ownership, empty native projections/tokens and retired epoch 202. Historical
+receipts remain at older epochs. Original full deployment
+[37526934505](https://github.com/colophon-group/jobseek/actions/runs/37526934505)
+has completed its immutable build and is deploying; promoted 954 source/image
+readback and fresh cutover remain required.
 The four-provider candidate advances together to **0.13.955** after this fix.
 Local proof does not grant production ownership.
 
@@ -121,8 +129,8 @@ monitors and ADP/Paylocity details are implemented locally, using the existing
 fetch, salary/enum, persistence and ownership paths. ADP handles its bounded DOCX
 fallback, title-location pattern and rich pagination; Cornerstone refreshes public
 authorization and validates paginated inventory; Paylocity reads embedded records
-and its server-rendered detail markup. Five candidate profiles bring the local
-capability list to 68. The four-provider scope remains unchanged and unpublished.
+and its server-rendered detail markup. Seven candidate profiles bring the local
+capability list to 70, including distinct Paylocity proxy monitor/detail routes. The four-provider scope remains unchanged and unpublished.
 
 Thirty-nine field comparisons from actual Python pass, including Unicode
 location deduplication, custom employment labels, arbitrary-precision IDs and
@@ -144,8 +152,26 @@ Paylocity monitors. Two independent ADP scrapers preserve their API-sniffer
 monitors, and five Paylocity details preserve their independently configured
 direct transport, including two boards whose monitors use a proxy. This gives
 22 direct detail bindings including one existing JSON-LD assignment. Five
-Paylocity proxy monitors remain intentionally in the full batch scope, together
-with its three explicit proxy detail configurations.
+Paylocity proxy monitors and three explicit proxy details now have distinct
+compiled Go profiles; independent direct scrapers remain direct. The protected
+Webshare client ports the process-local endpoint pool and generation-owned
+quarantine/recovery policy. All 3,078 operations in 34 actual Python policy
+traces match. Real HTTP/CONNECT tests verify redirect exit affinity, cookies,
+pinned TLS trust, credential isolation, public-origin validation, stream
+outcomes and shared connection bounds. The supported wrapper retains protected
+endpoint credentials and excludes the operator API key; all 14 existing driver
+tests and one additional credential-scope test pass.
+
+All 43 frozen canonical cases plus 11 Paylocity cases through a real proxy hop
+pass PostgreSQL/Redis settlement, description, schedule and lease checks
+(51.317 seconds including proxy policy/transport checks). Nine publisher
+reservation cases and six enrichment mask/backfill cases pass (5.398 seconds
+including startup tests). Nine additional proxy cold reversal cases pass
+(8.957 seconds), retaining interrupted/completed attempts and refusing stale
+writes. Registry and API full races pass in 2.457 and 6.321 seconds. Proxy
+connection bounds pass separately in 3.421 seconds; HTTPS-proxy trust and
+authenticated SOCKS5 handshakes pass in 1.771 seconds. Worker/queue vet pass.
+These are local execution proofs, not installed or production ownership.
 Dayforce's ten browser boards have local Go identity/bootstrap, job projection
 and overlap-aware search pagination implementations. Eighty-nine comparisons
 from actual Python pass: 51 identity/bootstrap/page cases, 17 rich field cases,
@@ -155,9 +181,9 @@ before profile admission. The existing Go Lightpanda adapter rejects captures an
 origin-contact evaluations under B0/B1; extend its existing bounded provider path
 without weakening those rejection contracts. The renderer itself is the existing
 Go pilot/runner. A direct stateless Dayforce replay is not a verified replacement.
-Complete the two transports and remaining provider bounds/operational proofs,
+Complete Dayforce browser transport and remaining provider bounds/operational proofs,
 then full races and grouped publication. The partial implementation is saved in
-local commit `94cdee069130768dd32a0714ac83edffdea274ee`; no four-provider PR is published. These local counts grant no live authority.
+local commits on the isolated batch branch; no four-provider PR is published. These local counts grant no live authority.
 
 Finish remaining provider/browser/filter variants and runtime consumers using
 the existing delivery paths. After the selected complete immutable deployment,

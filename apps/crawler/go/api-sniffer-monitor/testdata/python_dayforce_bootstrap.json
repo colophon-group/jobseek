@@ -1,0 +1,157 @@
+[
+  {
+    "name": "valid",
+    "pages": {
+      "https://jobs.dayforcehcm.com/fixture/Careers": {
+        "status": 200,
+        "body": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"query\": {\"clientNamespace\": \"fixture\", \"careerSiteXRefCode\": \"Careers\"}, \"props\": {\"pageProps\": {\"dehydratedState\": {\"queries\": [{\"queryKey\": [\"site-info\"], \"state\": {\"data\": {\"clientNamespace\": \"fixture\", \"jobBoardCode\": \"careers\", \"jobBoardId\": 7, \"cultureCode\": \"en-US\", \"isoCultureCodes\": [\"en-US\", \"fr-CA\"], \"isDisabled\": null}}}]}}}}</script>"
+      }
+    },
+    "requests": [
+      "https://jobs.dayforcehcm.com/fixture/Careers"
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "site": {
+        "job_board_id": 7,
+        "culture": "en-US",
+        "cultures": [
+          "en-US",
+          "fr-CA"
+        ],
+        "disabled": false
+      }
+    }
+  },
+  {
+    "name": "missing",
+    "pages": {
+      "https://jobs.dayforcehcm.com/fixture/Careers": {
+        "status": 404,
+        "body": "missing"
+      }
+    },
+    "requests": [
+      "https://jobs.dayforcehcm.com/fixture/Careers"
+    ],
+    "expected": {
+      "error": false,
+      "gone": true,
+      "site": null
+    }
+  },
+  {
+    "name": "gone",
+    "pages": {
+      "https://jobs.dayforcehcm.com/fixture/Careers": {
+        "status": 410,
+        "body": "gone"
+      }
+    },
+    "requests": [
+      "https://jobs.dayforcehcm.com/fixture/Careers"
+    ],
+    "expected": {
+      "error": false,
+      "gone": true,
+      "site": null
+    }
+  },
+  {
+    "name": "foreign-redirect",
+    "pages": {
+      "https://jobs.dayforcehcm.com/fixture/Careers": {
+        "status": 302,
+        "body": "",
+        "location": "https://evil.example/fixture/Careers"
+      }
+    },
+    "requests": [
+      "https://jobs.dayforcehcm.com/fixture/Careers"
+    ],
+    "expected": {
+      "error": true,
+      "gone": false,
+      "site": null
+    }
+  },
+  {
+    "name": "localized",
+    "pages": {
+      "https://jobs.dayforcehcm.com/fixture/Careers": {
+        "status": 302,
+        "body": "",
+        "location": "/en-US/fixture/Careers"
+      },
+      "https://jobs.dayforcehcm.com/en-US/fixture/Careers": {
+        "status": 200,
+        "body": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"query\": {\"clientNamespace\": \"fixture\", \"careerSiteXRefCode\": \"Careers\"}, \"props\": {\"pageProps\": {\"dehydratedState\": {\"queries\": [{\"queryKey\": [\"site-info\"], \"state\": {\"data\": {\"clientNamespace\": \"fixture\", \"jobBoardCode\": \"careers\", \"jobBoardId\": 7, \"cultureCode\": \"en-US\", \"isoCultureCodes\": [\"en-US\", \"fr-CA\"], \"isDisabled\": null}}}]}}}}</script>"
+      }
+    },
+    "requests": [
+      "https://jobs.dayforcehcm.com/fixture/Careers",
+      "https://jobs.dayforcehcm.com/en-US/fixture/Careers"
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "site": {
+        "job_board_id": 7,
+        "culture": "en-US",
+        "cultures": [
+          "en-US",
+          "fr-CA"
+        ],
+        "disabled": false
+      }
+    }
+  },
+  {
+    "name": "wrong-culture",
+    "pages": {
+      "https://jobs.dayforcehcm.com/fixture/Careers": {
+        "status": 302,
+        "body": "",
+        "location": "/fr-CA/fixture/Careers"
+      },
+      "https://jobs.dayforcehcm.com/fr-CA/fixture/Careers": {
+        "status": 200,
+        "body": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"query\": {\"clientNamespace\": \"fixture\", \"careerSiteXRefCode\": \"Careers\"}, \"props\": {\"pageProps\": {\"dehydratedState\": {\"queries\": [{\"queryKey\": [\"site-info\"], \"state\": {\"data\": {\"clientNamespace\": \"fixture\", \"jobBoardCode\": \"careers\", \"jobBoardId\": 7, \"cultureCode\": \"en-US\", \"isoCultureCodes\": [\"en-US\", \"fr-CA\"], \"isDisabled\": null}}}]}}}}</script>"
+      }
+    },
+    "requests": [
+      "https://jobs.dayforcehcm.com/fixture/Careers",
+      "https://jobs.dayforcehcm.com/fr-CA/fixture/Careers"
+    ],
+    "expected": {
+      "error": true,
+      "gone": false,
+      "site": null
+    }
+  },
+  {
+    "name": "second-redirect",
+    "pages": {
+      "https://jobs.dayforcehcm.com/fixture/Careers": {
+        "status": 302,
+        "body": "",
+        "location": "/en-US/fixture/Careers"
+      },
+      "https://jobs.dayforcehcm.com/en-US/fixture/Careers": {
+        "status": 302,
+        "body": "",
+        "location": "/fr-CA/fixture/Careers"
+      }
+    },
+    "requests": [
+      "https://jobs.dayforcehcm.com/fixture/Careers",
+      "https://jobs.dayforcehcm.com/en-US/fixture/Careers"
+    ],
+    "expected": {
+      "error": true,
+      "gone": false,
+      "site": null
+    }
+  }
+]

@@ -72,3 +72,16 @@ func renderHTML(w io.Writer, node *html.Node) error {
 		return fmt.Errorf("unsupported HTML node %d", node.Type)
 	}
 }
+
+// InnerHTML uses the same HTML5 serialization as the existing DOM extraction.
+func InnerHTML(node *html.Node) (string, error) {
+	var out strings.Builder
+	if node != nil {
+		for child := node.FirstChild; child != nil; child = child.NextSibling {
+			if err := renderHTML(&out, child); err != nil {
+				return "", err
+			}
+		}
+	}
+	return out.String(), nil
+}

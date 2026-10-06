@@ -1,0 +1,3405 @@
+[
+  {
+    "provider": "adp",
+    "name": "complete",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "pages": {
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1": {
+        "status": 200,
+        "body": "{\"jobRequisitions\": [{\"itemID\": \"123_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}], \"meta\": {\"totalNumber\": 1, \"startSequence\": 1}}",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": false,
+      "jobs": [
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "123_1"
+          },
+          "source_identity": null
+        }
+      ],
+      "urls": [
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1"
+      ],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "empty",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "pages": {
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1": {
+        "status": 200,
+        "body": "{\"jobRequisitions\": [], \"meta\": {\"totalNumber\": 0, \"startSequence\": 1}}",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "bad-page",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "pages": {
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1": {
+        "status": 200,
+        "body": "{\"meta\": {}}",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      }
+    ],
+    "expected": {
+      "error": true,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "bad-count",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "pages": {
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1": {
+        "status": 200,
+        "body": "{\"jobRequisitions\": [{\"itemID\": \"123_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}], \"meta\": {\"totalNumber\": true, \"startSequence\": 1}}",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      }
+    ],
+    "expected": {
+      "error": true,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "wrong-start",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "pages": {
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1": {
+        "status": 200,
+        "body": "{\"jobRequisitions\": [{\"itemID\": \"123_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}], \"meta\": {\"totalNumber\": 1, \"startSequence\": 2}}",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      }
+    ],
+    "expected": {
+      "error": true,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "invalid-row",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "pages": {
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1": {
+        "status": 200,
+        "body": "{\"jobRequisitions\": [{\"itemID\": null, \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}], \"meta\": {\"totalNumber\": 1, \"startSequence\": 1}}",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": true,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "201",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "pages": {
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1": {
+        "status": 201,
+        "body": "{\"jobRequisitions\": [{\"itemID\": \"123_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}], \"meta\": {\"totalNumber\": 1, \"startSequence\": 1}}",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": false,
+      "jobs": [
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "123_1"
+          },
+          "source_identity": null
+        }
+      ],
+      "urls": [
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1"
+      ],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "404",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "pages": {
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1": {
+        "status": 404,
+        "body": "{\"jobRequisitions\": [{\"itemID\": \"123_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}], \"meta\": {\"totalNumber\": 1, \"startSequence\": 1}}",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": true,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "410",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "pages": {
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1": {
+        "status": 410,
+        "body": "{\"jobRequisitions\": [{\"itemID\": \"123_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}], \"meta\": {\"totalNumber\": 1, \"startSequence\": 1}}",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": true,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "503",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "pages": {
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1": {
+        "status": 503,
+        "body": "{\"jobRequisitions\": [{\"itemID\": \"123_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}], \"meta\": {\"totalNumber\": 1, \"startSequence\": 1}}",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      }
+    ],
+    "expected": {
+      "error": true,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "two-pages",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "pages": {
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1": {
+        "status": 200,
+        "body": "{\"jobRequisitions\": [{\"itemID\": \"0_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"1_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"2_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"3_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"4_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"5_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"6_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"7_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"8_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"9_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"10_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"11_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"12_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"13_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"14_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"15_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"16_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"17_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"18_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"19_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}], \"meta\": {\"totalNumber\": 21, \"startSequence\": 1}}",
+        "headers": {}
+      },
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=21": {
+        "status": 200,
+        "body": "{\"jobRequisitions\": [{\"itemID\": \"20_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}], \"meta\": {\"totalNumber\": 21, \"startSequence\": 21}}",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=21",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": false,
+      "jobs": [
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=0_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "0_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=10_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "10_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=11_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "11_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=12_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "12_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=13_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "13_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=14_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "14_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=15_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "15_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=16_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "16_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=17_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "17_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=18_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "18_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=19_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "19_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=1_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "1_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=20_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "20_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=2_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "2_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=3_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "3_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=4_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "4_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=5_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "5_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=6_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "6_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=7_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "7_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=8_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "8_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=9_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "9_1"
+          },
+          "source_identity": null
+        }
+      ],
+      "urls": [
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=0_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=10_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=11_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=12_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=13_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=14_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=15_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=16_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=17_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=18_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=19_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=1_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=20_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=2_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=3_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=4_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=5_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=6_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=7_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=8_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=9_1"
+      ],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "count-increase",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "pages": {
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1": {
+        "status": 200,
+        "body": "{\"jobRequisitions\": [{\"itemID\": \"0_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"1_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"2_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"3_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"4_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"5_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"6_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"7_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"8_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"9_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"10_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"11_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"12_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"13_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"14_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"15_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"16_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"17_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"18_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"19_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}], \"meta\": {\"totalNumber\": 21, \"startSequence\": 1}}",
+        "headers": {}
+      },
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=21": {
+        "status": 200,
+        "body": "{\"jobRequisitions\": [{\"itemID\": \"20_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"21_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}], \"meta\": {\"totalNumber\": 22, \"startSequence\": 21}}",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=21",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": true,
+      "jobs": [
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=0_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "0_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=10_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "10_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=11_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "11_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=12_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "12_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=13_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "13_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=14_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "14_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=15_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "15_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=16_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "16_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=17_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "17_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=18_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "18_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=19_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "19_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=1_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "1_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=20_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "20_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=21_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "21_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=2_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "2_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=3_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "3_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=4_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "4_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=5_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "5_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=6_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "6_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=7_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "7_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=8_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "8_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=9_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "9_1"
+          },
+          "source_identity": null
+        }
+      ],
+      "urls": [
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=0_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=10_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=11_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=12_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=13_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=14_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=15_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=16_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=17_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=18_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=19_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=1_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=20_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=21_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=2_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=3_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=4_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=5_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=6_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=7_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=8_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=9_1"
+      ],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "count-decrease",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "pages": {
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1": {
+        "status": 200,
+        "body": "{\"jobRequisitions\": [{\"itemID\": \"0_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"1_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"2_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"3_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"4_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"5_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"6_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"7_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"8_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"9_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"10_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"11_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"12_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"13_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"14_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"15_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"16_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"17_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"18_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}, {\"itemID\": \"19_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}}], \"meta\": {\"totalNumber\": 21, \"startSequence\": 1}}",
+        "headers": {}
+      },
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=21": {
+        "status": 200,
+        "body": "{\"jobRequisitions\": [], \"meta\": {\"totalNumber\": 20, \"startSequence\": 21}}",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=1",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US&%24skip=21",
+        "body": null,
+        "headers": {
+          "x-requested-with": "XMLHttpRequest",
+          "x-forwarded-host": "workforcenow.adp.com"
+        }
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": true,
+      "jobs": [
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=0_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "0_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=10_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "10_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=11_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "11_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=12_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "12_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=13_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "13_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=14_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "14_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=15_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "15_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=16_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "16_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=17_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "17_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=18_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "18_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=19_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "19_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=1_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "1_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=2_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "2_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=3_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "3_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=4_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "4_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=5_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "5_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=6_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "6_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=7_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "7_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=8_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "8_1"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=9_1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "full_time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "item_id": "9_1"
+          },
+          "source_identity": null
+        }
+      ],
+      "urls": [
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=0_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=10_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=11_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=12_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=13_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=14_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=15_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=16_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=17_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=18_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=19_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=1_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=2_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=3_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=4_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=5_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=6_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=7_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=8_1",
+        "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=9_1"
+      ],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "cornerstone",
+    "name": "complete",
+    "source": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+    "pages": {
+      "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture": {
+        "status": 200,
+        "body": "<script>csod.context={\"corp\": \"fixture\", \"token\": \"publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture\", \"cultureID\": 1, \"cultureName\": \"en-US\", \"endpoints\": {\"cloud\": \"https://eu-fra.api.csod.com/\"}};</script>",
+        "headers": {}
+      },
+      "https://eu-fra.api.csod.com/rec-job-search/external/jobs": {
+        "status": 200,
+        "body": "{\"status\": \"Success\", \"data\": {\"totalCount\": 1, \"requisitions\": [{\"requisitionId\": 1, \"displayJobTitle\": \"Engineer\", \"externalDescription\": \"<p>Build</p>\", \"postingEffectiveDate\": \"10/06/2026\"}]}}",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+        "body": null,
+        "headers": {}
+      },
+      {
+        "method": "POST",
+        "url": "https://eu-fra.api.csod.com/rec-job-search/external/jobs",
+        "body": {
+          "careerSiteId": 4,
+          "careerSitePageId": 4,
+          "pageNumber": 1,
+          "pageSize": 100,
+          "cultureId": 1,
+          "searchText": "",
+          "cultureName": "en-US",
+          "states": [],
+          "countryCodes": [],
+          "cities": [],
+          "placeID": "",
+          "radius": null,
+          "postingsWithinDays": null,
+          "customFieldCheckboxKeys": [],
+          "customFieldDropdowns": [],
+          "customFieldRadios": []
+        },
+        "headers": {
+          "authorization": "Bearer publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture",
+          "csod-accept-language": "en-US"
+        }
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": false,
+      "jobs": [
+        {
+          "url": "https://fixture.csod.com/ux/ats/careersite/4/home/requisition/1?c=fixture",
+          "title": "Engineer",
+          "description": "<p>Build</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-06",
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "requisition_id": 1
+          },
+          "source_identity": null
+        }
+      ],
+      "urls": [
+        "https://fixture.csod.com/ux/ats/careersite/4/home/requisition/1?c=fixture"
+      ],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "cornerstone",
+    "name": "empty",
+    "source": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+    "pages": {
+      "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture": {
+        "status": 200,
+        "body": "<script>csod.context={\"corp\": \"fixture\", \"token\": \"publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture\", \"cultureID\": 1, \"cultureName\": \"en-US\", \"endpoints\": {\"cloud\": \"https://eu-fra.api.csod.com/\"}};</script>",
+        "headers": {}
+      },
+      "https://eu-fra.api.csod.com/rec-job-search/external/jobs": {
+        "status": 200,
+        "body": "{\"status\": \"Success\", \"data\": {\"totalCount\": 0, \"requisitions\": []}}",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+        "body": null,
+        "headers": {}
+      },
+      {
+        "method": "POST",
+        "url": "https://eu-fra.api.csod.com/rec-job-search/external/jobs",
+        "body": {
+          "careerSiteId": 4,
+          "careerSitePageId": 4,
+          "pageNumber": 1,
+          "pageSize": 100,
+          "cultureId": 1,
+          "searchText": "",
+          "cultureName": "en-US",
+          "states": [],
+          "countryCodes": [],
+          "cities": [],
+          "placeID": "",
+          "radius": null,
+          "postingsWithinDays": null,
+          "customFieldCheckboxKeys": [],
+          "customFieldDropdowns": [],
+          "customFieldRadios": []
+        },
+        "headers": {
+          "authorization": "Bearer publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture",
+          "csod-accept-language": "en-US"
+        }
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "cornerstone",
+    "name": "invalid-row",
+    "source": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+    "pages": {
+      "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture": {
+        "status": 200,
+        "body": "<script>csod.context={\"corp\": \"fixture\", \"token\": \"publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture\", \"cultureID\": 1, \"cultureName\": \"en-US\", \"endpoints\": {\"cloud\": \"https://eu-fra.api.csod.com/\"}};</script>",
+        "headers": {}
+      },
+      "https://eu-fra.api.csod.com/rec-job-search/external/jobs": {
+        "status": 200,
+        "body": "{\"status\": \"Success\", \"data\": {\"totalCount\": 1, \"requisitions\": [{\"requisitionId\": null, \"displayJobTitle\": \"Engineer\", \"externalDescription\": \"<p>Build</p>\", \"postingEffectiveDate\": \"10/06/2026\"}]}}",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+        "body": null,
+        "headers": {}
+      },
+      {
+        "method": "POST",
+        "url": "https://eu-fra.api.csod.com/rec-job-search/external/jobs",
+        "body": {
+          "careerSiteId": 4,
+          "careerSitePageId": 4,
+          "pageNumber": 1,
+          "pageSize": 100,
+          "cultureId": 1,
+          "searchText": "",
+          "cultureName": "en-US",
+          "states": [],
+          "countryCodes": [],
+          "cities": [],
+          "placeID": "",
+          "radius": null,
+          "postingsWithinDays": null,
+          "customFieldCheckboxKeys": [],
+          "customFieldDropdowns": [],
+          "customFieldRadios": []
+        },
+        "headers": {
+          "authorization": "Bearer publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture",
+          "csod-accept-language": "en-US"
+        }
+      }
+    ],
+    "expected": {
+      "error": true,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "cornerstone",
+    "name": "bad-count",
+    "source": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+    "pages": {
+      "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture": {
+        "status": 200,
+        "body": "<script>csod.context={\"corp\": \"fixture\", \"token\": \"publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture\", \"cultureID\": 1, \"cultureName\": \"en-US\", \"endpoints\": {\"cloud\": \"https://eu-fra.api.csod.com/\"}};</script>",
+        "headers": {}
+      },
+      "https://eu-fra.api.csod.com/rec-job-search/external/jobs": {
+        "status": 200,
+        "body": "{\"status\": \"Success\", \"data\": {\"totalCount\": true, \"requisitions\": [{\"requisitionId\": 1, \"displayJobTitle\": \"Engineer\", \"externalDescription\": \"<p>Build</p>\", \"postingEffectiveDate\": \"10/06/2026\"}]}}",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+        "body": null,
+        "headers": {}
+      },
+      {
+        "method": "POST",
+        "url": "https://eu-fra.api.csod.com/rec-job-search/external/jobs",
+        "body": {
+          "careerSiteId": 4,
+          "careerSitePageId": 4,
+          "pageNumber": 1,
+          "pageSize": 100,
+          "cultureId": 1,
+          "searchText": "",
+          "cultureName": "en-US",
+          "states": [],
+          "countryCodes": [],
+          "cities": [],
+          "placeID": "",
+          "radius": null,
+          "postingsWithinDays": null,
+          "customFieldCheckboxKeys": [],
+          "customFieldDropdowns": [],
+          "customFieldRadios": []
+        },
+        "headers": {
+          "authorization": "Bearer publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture",
+          "csod-accept-language": "en-US"
+        }
+      }
+    ],
+    "expected": {
+      "error": true,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "cornerstone",
+    "name": "missing-data",
+    "source": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+    "pages": {
+      "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture": {
+        "status": 200,
+        "body": "<script>csod.context={\"corp\": \"fixture\", \"token\": \"publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture\", \"cultureID\": 1, \"cultureName\": \"en-US\", \"endpoints\": {\"cloud\": \"https://eu-fra.api.csod.com/\"}};</script>",
+        "headers": {}
+      },
+      "https://eu-fra.api.csod.com/rec-job-search/external/jobs": {
+        "status": 200,
+        "body": "{}",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+        "body": null,
+        "headers": {}
+      },
+      {
+        "method": "POST",
+        "url": "https://eu-fra.api.csod.com/rec-job-search/external/jobs",
+        "body": {
+          "careerSiteId": 4,
+          "careerSitePageId": 4,
+          "pageNumber": 1,
+          "pageSize": 100,
+          "cultureId": 1,
+          "searchText": "",
+          "cultureName": "en-US",
+          "states": [],
+          "countryCodes": [],
+          "cities": [],
+          "placeID": "",
+          "radius": null,
+          "postingsWithinDays": null,
+          "customFieldCheckboxKeys": [],
+          "customFieldDropdowns": [],
+          "customFieldRadios": []
+        },
+        "headers": {
+          "authorization": "Bearer publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture",
+          "csod-accept-language": "en-US"
+        }
+      }
+    ],
+    "expected": {
+      "error": true,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "cornerstone",
+    "name": "duplicates",
+    "source": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+    "pages": {
+      "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture": {
+        "status": 200,
+        "body": "<script>csod.context={\"corp\": \"fixture\", \"token\": \"publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture\", \"cultureID\": 1, \"cultureName\": \"en-US\", \"endpoints\": {\"cloud\": \"https://eu-fra.api.csod.com/\"}};</script>",
+        "headers": {}
+      },
+      "https://eu-fra.api.csod.com/rec-job-search/external/jobs": {
+        "status": 200,
+        "body": "{\"status\": \"Success\", \"data\": {\"totalCount\": 2, \"requisitions\": [{\"requisitionId\": 1, \"displayJobTitle\": \"Engineer\", \"externalDescription\": \"<p>Build</p>\", \"postingEffectiveDate\": \"10/06/2026\"}, {\"requisitionId\": 1, \"displayJobTitle\": \"Engineer\", \"externalDescription\": \"<p>Build</p>\", \"postingEffectiveDate\": \"10/06/2026\"}]}}",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+        "body": null,
+        "headers": {}
+      },
+      {
+        "method": "POST",
+        "url": "https://eu-fra.api.csod.com/rec-job-search/external/jobs",
+        "body": {
+          "careerSiteId": 4,
+          "careerSitePageId": 4,
+          "pageNumber": 1,
+          "pageSize": 100,
+          "cultureId": 1,
+          "searchText": "",
+          "cultureName": "en-US",
+          "states": [],
+          "countryCodes": [],
+          "cities": [],
+          "placeID": "",
+          "radius": null,
+          "postingsWithinDays": null,
+          "customFieldCheckboxKeys": [],
+          "customFieldDropdowns": [],
+          "customFieldRadios": []
+        },
+        "headers": {
+          "authorization": "Bearer publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture",
+          "csod-accept-language": "en-US"
+        }
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": true,
+      "jobs": [
+        {
+          "url": "https://fixture.csod.com/ux/ats/careersite/4/home/requisition/1?c=fixture",
+          "title": "Engineer",
+          "description": "<p>Build</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-06",
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "requisition_id": 1
+          },
+          "source_identity": null
+        }
+      ],
+      "urls": [
+        "https://fixture.csod.com/ux/ats/careersite/4/home/requisition/1?c=fixture"
+      ],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "cornerstone",
+    "name": "context-missing",
+    "source": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+    "pages": {
+      "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture": {
+        "status": 200,
+        "body": "<html></html>",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+        "body": null,
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+        "body": null,
+        "headers": {}
+      }
+    ],
+    "expected": {
+      "error": true,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "cornerstone",
+    "name": "context-malformed",
+    "source": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+    "pages": {
+      "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture": {
+        "status": 200,
+        "body": "csod.context={",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+        "body": null,
+        "headers": {}
+      }
+    ],
+    "expected": {
+      "error": true,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "cornerstone",
+    "name": "bootstrap-404",
+    "source": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+    "pages": {
+      "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture": {
+        "status": 404,
+        "body": "",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+        "body": null,
+        "headers": {}
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": true,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "cornerstone",
+    "name": "auth-refresh",
+    "source": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+    "pages": {
+      "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture": {
+        "status": 200,
+        "body": "<script>csod.context={\"corp\": \"fixture\", \"token\": \"publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture\", \"cultureID\": 1, \"cultureName\": \"en-US\", \"endpoints\": {\"cloud\": \"https://eu-fra.api.csod.com/\"}};</script>",
+        "headers": {}
+      },
+      "https://eu-fra.api.csod.com/rec-job-search/external/jobs": [
+        {
+          "status": 401,
+          "body": "{}",
+          "headers": {}
+        },
+        {
+          "status": 200,
+          "body": "{\"status\": \"Success\", \"data\": {\"totalCount\": 1, \"requisitions\": [{\"requisitionId\": 1, \"displayJobTitle\": \"Engineer\", \"externalDescription\": \"<p>Build</p>\", \"postingEffectiveDate\": \"10/06/2026\"}]}}",
+          "headers": {}
+        }
+      ]
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+        "body": null,
+        "headers": {}
+      },
+      {
+        "method": "POST",
+        "url": "https://eu-fra.api.csod.com/rec-job-search/external/jobs",
+        "body": {
+          "careerSiteId": 4,
+          "careerSitePageId": 4,
+          "pageNumber": 1,
+          "pageSize": 100,
+          "cultureId": 1,
+          "searchText": "",
+          "cultureName": "en-US",
+          "states": [],
+          "countryCodes": [],
+          "cities": [],
+          "placeID": "",
+          "radius": null,
+          "postingsWithinDays": null,
+          "customFieldCheckboxKeys": [],
+          "customFieldDropdowns": [],
+          "customFieldRadios": []
+        },
+        "headers": {
+          "authorization": "Bearer publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture",
+          "csod-accept-language": "en-US"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+        "body": null,
+        "headers": {}
+      },
+      {
+        "method": "POST",
+        "url": "https://eu-fra.api.csod.com/rec-job-search/external/jobs",
+        "body": {
+          "careerSiteId": 4,
+          "careerSitePageId": 4,
+          "pageNumber": 1,
+          "pageSize": 100,
+          "cultureId": 1,
+          "searchText": "",
+          "cultureName": "en-US",
+          "states": [],
+          "countryCodes": [],
+          "cities": [],
+          "placeID": "",
+          "radius": null,
+          "postingsWithinDays": null,
+          "customFieldCheckboxKeys": [],
+          "customFieldDropdowns": [],
+          "customFieldRadios": []
+        },
+        "headers": {
+          "authorization": "Bearer publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture.publicfixturepublicfixturepublicfixture",
+          "csod-accept-language": "en-US"
+        }
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": false,
+      "jobs": [
+        {
+          "url": "https://fixture.csod.com/ux/ats/careersite/4/home/requisition/1?c=fixture",
+          "title": "Engineer",
+          "description": "<p>Build</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-06",
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "requisition_id": 1
+          },
+          "source_identity": null
+        }
+      ],
+      "urls": [
+        "https://fixture.csod.com/ux/ats/careersite/4/home/requisition/1?c=fixture"
+      ],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "paylocity",
+    "name": "complete",
+    "source": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+    "pages": {
+      "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture": {
+        "status": 200,
+        "body": "window.pageData={\"Jobs\": [{\"JobId\": 1, \"JobTitle\": \"Engineer\", \"LocationName\": \"Remote US\"}]};",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+        "body": null,
+        "headers": {}
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": false,
+      "jobs": [
+        {
+          "url": "https://2000recruiting.paylocity.com/Recruiting/Jobs/Details/1",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Remote US"
+          ],
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "job_id": 1
+          },
+          "source_identity": null
+        }
+      ],
+      "urls": [
+        "https://2000recruiting.paylocity.com/Recruiting/Jobs/Details/1"
+      ],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "paylocity",
+    "name": "empty",
+    "source": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+    "pages": {
+      "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture": {
+        "status": 200,
+        "body": "window.pageData={\"Jobs\":[]};",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+        "body": null,
+        "headers": {}
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "paylocity",
+    "name": "bad-json",
+    "source": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+    "pages": {
+      "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture": {
+        "status": 200,
+        "body": "window.pageData={",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+        "body": null,
+        "headers": {}
+      }
+    ],
+    "expected": {
+      "error": true,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "paylocity",
+    "name": "missing",
+    "source": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+    "pages": {
+      "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture": {
+        "status": 200,
+        "body": "<html></html>",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+        "body": null,
+        "headers": {}
+      }
+    ],
+    "expected": {
+      "error": true,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "paylocity",
+    "name": "empty-body",
+    "source": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+    "pages": {
+      "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture": {
+        "status": 200,
+        "body": "",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+        "body": null,
+        "headers": {}
+      }
+    ],
+    "expected": {
+      "error": true,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "paylocity",
+    "name": "403",
+    "source": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+    "pages": {
+      "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture": {
+        "status": 403,
+        "body": "",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+        "body": null,
+        "headers": {}
+      }
+    ],
+    "expected": {
+      "error": true,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "paylocity",
+    "name": "404",
+    "source": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+    "pages": {
+      "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture": {
+        "status": 404,
+        "body": "",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+        "body": null,
+        "headers": {}
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": true,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "paylocity",
+    "name": "503",
+    "source": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+    "pages": {
+      "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture": {
+        "status": 503,
+        "body": "",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": false,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+        "body": null,
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+        "body": null,
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+        "body": null,
+        "headers": {}
+      }
+    ],
+    "expected": {
+      "error": true,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "complete",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+    "pages": {
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions/123_1?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US": {
+        "status": 200,
+        "body": "{\"itemID\": \"123_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}, \"requisitionDescription\": \"<p>Build &amp; ship</p>\", \"postDate\": \"2026-10-06\", \"payGradeRange\": {\"minimumRate\": {\"amountValue\": 100000, \"currencyCode\": \"USD\"}}, \"customFieldGroup\": {\"codeFields\": [{\"nameCode\": {\"codeValue\": \"SalaryType\"}, \"shortName\": \"annual\"}]}}",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": true,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions/123_1?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US",
+        "body": null,
+        "headers": {}
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": {
+        "title": "Engineer",
+        "description": "<p>Build &amp; ship</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-10-06",
+        "base_salary": {
+          "currency": "USD",
+          "min": 100000,
+          "max": null,
+          "unit": "year"
+        },
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "item_id": "123_1"
+        }
+      },
+      "empty": false,
+      "canonical_description": "<p>Build &amp; ship</p>"
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "title-location",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+    "pages": {
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions/123_1?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US": {
+        "status": 200,
+        "body": "{\"itemID\": \"123_1\", \"requisitionTitle\": \"Engineer - Zurich\", \"requisitionLocations\": [], \"workLevelCode\": {\"shortName\": \"Full Time\"}, \"requisitionDescription\": \"<p>Build &amp; ship</p>\", \"postDate\": \"2026-10-06\", \"payGradeRange\": {\"minimumRate\": {\"amountValue\": 100000, \"currencyCode\": \"USD\"}}, \"customFieldGroup\": {\"codeFields\": [{\"nameCode\": {\"codeValue\": \"SalaryType\"}, \"shortName\": \"annual\"}]}}",
+        "headers": {}
+      }
+    },
+    "metadata": {
+      "title_location_pattern": "\\s+-\\s+(?P<location>.+)$"
+    },
+    "detail": true,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions/123_1?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US",
+        "body": null,
+        "headers": {}
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": {
+        "title": "Engineer - Zurich",
+        "description": "<p>Build &amp; ship</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-10-06",
+        "base_salary": {
+          "currency": "USD",
+          "min": 100000,
+          "max": null,
+          "unit": "year"
+        },
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "item_id": "123_1"
+        }
+      },
+      "empty": false,
+      "canonical_description": "<p>Build &amp; ship</p>"
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "empty",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+    "pages": {
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions/123_1?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US": {
+        "status": 200,
+        "body": "{}",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": true,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions/123_1?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US",
+        "body": null,
+        "headers": {}
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "empty": true,
+      "canonical_description": null
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "bad-json",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+    "pages": {
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions/123_1?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US": {
+        "status": 200,
+        "body": "{",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": true,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions/123_1?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US",
+        "body": null,
+        "headers": {}
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "empty": true,
+      "canonical_description": null
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "docx",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+    "pages": {
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions/123_1?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US": {
+        "status": 200,
+        "body": "{\"itemID\": \"123_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}, \"requisitionDescription\": \"See the attached job description\", \"postDate\": \"2026-10-06\", \"payGradeRange\": {\"minimumRate\": {\"amountValue\": 100000, \"currencyCode\": \"USD\"}}, \"customFieldGroup\": {\"codeFields\": [{\"nameCode\": {\"codeValue\": \"SalaryType\"}, \"shortName\": \"annual\"}]}, \"links\": [{\"targetSchema\": \"docx\", \"schema\": \"role.docx\", \"payLoadArguments\": [{\"argumentPath\": \"public/path\"}]}]}",
+        "headers": {}
+      },
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/work-fulfillment/documents/123?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US": {
+        "status": 200,
+        "body_base64": "UEsDBBQAAAAAAAAARl0hVQAFgQEAAIEBAAARAAAAd29yZC9kb2N1bWVudC54bWw8dzpkb2N1bWVudCB4bWxuczp3PSJodHRwOi8vc2NoZW1hcy5vcGVueG1sZm9ybWF0cy5vcmcvd29yZHByb2Nlc3NpbmdtbC8yMDA2L21haW4iPjx3OmJvZHk+PHc6cD48dzpwUHI+PHc6cFN0eWxlIHc6dmFsPSJIZWFkaW5nMSIvPjwvdzpwUHI+PHc6cj48dzp0PlJvbGUgJmFtcDsgZHV0aWVzPC93OnQ+PC93OnI+PC93OnA+PHc6cD48dzpwUHI+PHc6bnVtUHIvPjwvdzpwUHI+PHc6cj48dzp0PkJ1aWxkIHN5c3RlbXM8L3c6dD48dzpici8+PHc6dD5TaGlwIHRoZW08L3c6dD48L3c6cj48L3c6cD48dzp0Ymw+PHc6dHI+PHc6dGM+PHc6cD48dzpyPjx3OnQ+Q0hGIDEwMDwvdzp0PjwvdzpyPjwvdzpwPjwvdzp0Yz48L3c6dHI+PC93OnRibD48L3c6Ym9keT48L3c6ZG9jdW1lbnQ+UEsBAhQDFAAAAAAAAABGXSFVAAWBAQAAgQEAABEAAAAAAAAAAAAAAIABAAAAAHdvcmQvZG9jdW1lbnQueG1sUEsFBgAAAAABAAEAPwAAALABAAAAAA==",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": true,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions/123_1?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US",
+        "body": null,
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/work-fulfillment/documents/123?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US",
+        "body": null,
+        "headers": {
+          "filepath": "public/path/role.docx",
+          "isabsolutepath": "true",
+          "isattachmenttype": "true",
+          "locale": "en_US",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": {
+        "title": "Engineer",
+        "description": "<h3>Role &amp; duties</h3>\n<ul><li>Build systems<br>Ship them</li></ul>\n<table><tr><td>CHF 100</td></tr></table>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-10-06",
+        "base_salary": {
+          "currency": "USD",
+          "min": 100000,
+          "max": null,
+          "unit": "year"
+        },
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "item_id": "123_1"
+        }
+      },
+      "empty": false,
+      "canonical_description": "<h3>Role &amp; duties</h3>\n<ul><li>Build systems<br>Ship them</li></ul>\nCHF 100"
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "attachment-404",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+    "pages": {
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions/123_1?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US": {
+        "status": 200,
+        "body": "{\"itemID\": \"123_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}, \"requisitionDescription\": \"See the attached job description\", \"postDate\": \"2026-10-06\", \"payGradeRange\": {\"minimumRate\": {\"amountValue\": 100000, \"currencyCode\": \"USD\"}}, \"customFieldGroup\": {\"codeFields\": [{\"nameCode\": {\"codeValue\": \"SalaryType\"}, \"shortName\": \"annual\"}]}, \"links\": [{\"targetSchema\": \"docx\", \"schema\": \"role.docx\", \"payLoadArguments\": [{\"argumentPath\": \"public/path\"}]}]}",
+        "headers": {}
+      },
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/work-fulfillment/documents/123?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US": {
+        "status": 404,
+        "body": "",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": true,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions/123_1?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US",
+        "body": null,
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/work-fulfillment/documents/123?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US",
+        "body": null,
+        "headers": {
+          "filepath": "public/path/role.docx",
+          "isabsolutepath": "true",
+          "isattachmenttype": "true",
+          "locale": "en_US",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": {
+        "title": "Engineer",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-10-06",
+        "base_salary": {
+          "currency": "USD",
+          "min": 100000,
+          "max": null,
+          "unit": "year"
+        },
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "item_id": "123_1"
+        }
+      },
+      "empty": false,
+      "canonical_description": null
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "attachment-503",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+    "pages": {
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions/123_1?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US": {
+        "status": 200,
+        "body": "{\"itemID\": \"123_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}, \"requisitionDescription\": \"See the attached job description\", \"postDate\": \"2026-10-06\", \"payGradeRange\": {\"minimumRate\": {\"amountValue\": 100000, \"currencyCode\": \"USD\"}}, \"customFieldGroup\": {\"codeFields\": [{\"nameCode\": {\"codeValue\": \"SalaryType\"}, \"shortName\": \"annual\"}]}, \"links\": [{\"targetSchema\": \"docx\", \"schema\": \"role.docx\", \"payLoadArguments\": [{\"argumentPath\": \"public/path\"}]}]}",
+        "headers": {}
+      },
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/work-fulfillment/documents/123?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US": {
+        "status": 503,
+        "body": "",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": true,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions/123_1?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US",
+        "body": null,
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/work-fulfillment/documents/123?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US",
+        "body": null,
+        "headers": {
+          "filepath": "public/path/role.docx",
+          "isabsolutepath": "true",
+          "isattachmenttype": "true",
+          "locale": "en_US",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": {
+      "error": true,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": null,
+      "empty": false
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "declared-detail-too-large",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+    "pages": {
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions/123_1?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US": {
+        "status": 200,
+        "body": "{\"itemID\": \"123_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}, \"requisitionDescription\": \"<p>Build &amp; ship</p>\", \"postDate\": \"2026-10-06\", \"payGradeRange\": {\"minimumRate\": {\"amountValue\": 100000, \"currencyCode\": \"USD\"}}, \"customFieldGroup\": {\"codeFields\": [{\"nameCode\": {\"codeValue\": \"SalaryType\"}, \"shortName\": \"annual\"}]}}",
+        "headers": {
+          "Content-Length": "3145728"
+        }
+      }
+    },
+    "metadata": {},
+    "detail": true,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions/123_1?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US",
+        "body": null,
+        "headers": {}
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "empty": true,
+      "canonical_description": null
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "declared-document-too-large",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+    "pages": {
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions/123_1?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US": {
+        "status": 200,
+        "body": "{\"itemID\": \"123_1\", \"requisitionTitle\": \"Engineer\", \"requisitionLocations\": [{\"nameCode\": {\"shortName\": \"Zurich\"}}], \"workLevelCode\": {\"shortName\": \"Full Time\"}, \"requisitionDescription\": \"See the attached job description\", \"postDate\": \"2026-10-06\", \"payGradeRange\": {\"minimumRate\": {\"amountValue\": 100000, \"currencyCode\": \"USD\"}}, \"customFieldGroup\": {\"codeFields\": [{\"nameCode\": {\"codeValue\": \"SalaryType\"}, \"shortName\": \"annual\"}]}, \"links\": [{\"targetSchema\": \"docx\", \"schema\": \"role.docx\", \"payLoadArguments\": [{\"argumentPath\": \"public/path\"}]}]}",
+        "headers": {}
+      },
+      "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/work-fulfillment/documents/123?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US": {
+        "status": 200,
+        "body": "small",
+        "headers": {
+          "Content-Length": "11534336"
+        }
+      }
+    },
+    "metadata": {},
+    "detail": true,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions/123_1?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&locale=en_US",
+        "body": null,
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/work-fulfillment/documents/123?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US",
+        "body": null,
+        "headers": {
+          "filepath": "public/path/role.docx",
+          "isabsolutepath": "true",
+          "isattachmenttype": "true",
+          "locale": "en_US",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": {
+        "title": "Engineer",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-10-06",
+        "base_salary": {
+          "currency": "USD",
+          "min": 100000,
+          "max": null,
+          "unit": "year"
+        },
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "item_id": "123_1"
+        }
+      },
+      "empty": false,
+      "canonical_description": null
+    }
+  },
+  {
+    "provider": "paylocity",
+    "name": "complete",
+    "source": "https://2000recruiting.paylocity.com/Recruiting/Jobs/Details/1",
+    "pages": {
+      "https://2000recruiting.paylocity.com/Recruiting/Jobs/Details/1": {
+        "status": 200,
+        "body": "<div class=\"job-preview-title\"><span>Engineer</span></div><div class=\"job-listing-header\">Description</div><div><p>Build</p></div>",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": true,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://2000recruiting.paylocity.com/Recruiting/Jobs/Details/1",
+        "body": null,
+        "headers": {}
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": {
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "empty": false,
+      "canonical_description": "<p>Build</p>"
+    }
+  },
+  {
+    "provider": "paylocity",
+    "name": "empty",
+    "source": "https://2000recruiting.paylocity.com/Recruiting/Jobs/Details/1",
+    "pages": {
+      "https://2000recruiting.paylocity.com/Recruiting/Jobs/Details/1": {
+        "status": 200,
+        "body": "",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": true,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://2000recruiting.paylocity.com/Recruiting/Jobs/Details/1",
+        "body": null,
+        "headers": {}
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "empty": true,
+      "canonical_description": null
+    }
+  },
+  {
+    "provider": "paylocity",
+    "name": "404",
+    "source": "https://2000recruiting.paylocity.com/Recruiting/Jobs/Details/1",
+    "pages": {
+      "https://2000recruiting.paylocity.com/Recruiting/Jobs/Details/1": {
+        "status": 404,
+        "body": "",
+        "headers": {}
+      }
+    },
+    "metadata": {},
+    "detail": true,
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://2000recruiting.paylocity.com/Recruiting/Jobs/Details/1",
+        "body": null,
+        "headers": {}
+      }
+    ],
+    "expected": {
+      "error": false,
+      "gone": false,
+      "truncated": false,
+      "jobs": [],
+      "urls": [],
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "empty": true,
+      "canonical_description": null
+    }
+  }
+]

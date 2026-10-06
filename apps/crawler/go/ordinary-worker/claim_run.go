@@ -277,6 +277,12 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			}
 			return nil
 		}, renderedPage)
+	} else if profile.Provider == "adp" {
+		discovery, fetchErr = discoverADPInventory(ctx, http.client, profile, task.Config)
+	} else if profile.Provider == "cornerstone" {
+		discovery, fetchErr = discoverCornerstoneInventory(ctx, http.client, profile, task.Config)
+	} else if profile.Provider == "paylocity" {
+		discovery, fetchErr = discoverPaylocityInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "paycom" {
 		discovery, fetchErr = discoverPaycomInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "rippling" {

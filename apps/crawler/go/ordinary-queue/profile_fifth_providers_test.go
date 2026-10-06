@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
+func TestFifthProvidersCurrentDirectRegistryConfigurationCoverage(t *testing.T) {
 	f, e := os.Open("../../data/boards.csv")
 	if e != nil {
 		t.Fatal(e)
@@ -26,7 +26,7 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 	counts := map[string]int{}
 	for _, row := range rows[1:] {
 		provider := row[headers["monitor_type"]]
-		if provider == "adp" || provider == "cornerstone" || provider == "paylocity" || !SecondaryProvider(provider) || provider == "comeet" || provider == "jobvite" || provider == "paycom" || provider == "rippling" {
+		if provider != "adp" && provider != "cornerstone" && provider != "paylocity" {
 			continue
 		}
 		metadata := map[string]any{}
@@ -67,31 +67,31 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 		}
 		var detail WorkdayDetailProfile
 		switch provider {
-		case "softgarden":
-			o, err := api.SoftgardenOptionsFromMetadata(config["board_url"], config["metadata"])
+		case "adp":
+			o, err := api.ADPOptionsFromMetadata(config["board_url"], config["metadata"])
 			if err != nil {
 				t.Fatal(err)
 			}
-			detail, e = InspectJSONLDDetail(profileBoardID, config, o.JobURL("123"), Simple)
-		case "ukg":
-			o, err := api.UKGOptionsFromMetadata(config["board_url"], config["metadata"])
+			detail, e = InspectAPIDetail(profileBoardID, config, o.JobURL("123_1"), Simple)
+		case "paylocity":
+			o, err := api.PaylocityOptionsFromMetadata(config["board_url"], config["metadata"])
 			if err != nil {
 				t.Fatal(err)
 			}
-			detail, e = InspectEmbeddedDetail(profileBoardID, config, o.JobURL("22222222-2222-2222-2222-222222222222"), Simple)
-		case "bamboohr":
-			o, err := api.BambooHROptionsFromMetadata(config["board_url"], config["metadata"])
-			if err != nil {
-				t.Fatal(err)
+			source := o.JobURL("123")
+			if scraper == "json-ld" {
+				detail, e = InspectJSONLDDetail(profileBoardID, config, source, Simple)
+			} else {
+				detail, e = InspectAPIDetail(profileBoardID, config, source, Simple)
 			}
-			detail, e = InspectHTTPAPIDetail(profileBoardID, config, o.JobURL("123"), Simple)
 		}
+
 		if e != nil || detail.EffectiveBoardSHA256 != profile.EffectiveConfigSHA256 {
 			t.Fatal("required detail binding unsupported", row[headers["board_slug"]], e)
 		}
 		counts[provider+"_detail"]++
 	}
-	if counts["softgarden"] == 0 || counts["ukg"] == 0 || counts["bamboohr"] == 0 || counts["recruiter_co_kr"] == 0 {
+	if counts["adp"] != 14 || counts["cornerstone"] != 12 || counts["paylocity"] != 4 || counts["paylocity_proxy_preserved"] != 5 {
 		t.Fatal("registry coverage fixture empty")
 	}
 	t.Logf("configuration eligibility only (no production authority): %v", counts)
