@@ -92,6 +92,12 @@ func (r *Client) Reserve(ctx context.Context) (*Reservation, error) {
 	dialer := &net.Dialer{Timeout: 10 * time.Second}
 	raw, err := dialer.DialContext(ctx, "tcp", r.address)
 	if err != nil {
+		// A capacity close can race with completion of TCP connect, before
+		// TLS starts. Preserve the same bounded retry signal at either seam.
+		// Refused connections, DNS failures and cancellation remain distinct.
+		if errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE) {
+			return nil, fmt.Errorf("renderer connect: %w", errors.Join(ErrReservationUnavailable, err))
+		}
 		return nil, fmt.Errorf("renderer connect: %w", err)
 	}
 	connection := tls.Client(raw, r.tlsConfig.Clone())
