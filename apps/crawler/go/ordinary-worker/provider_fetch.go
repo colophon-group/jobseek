@@ -24,7 +24,7 @@ func fetchProviderResource(ctx context.Context, client *http.Client, options pro
 // PCSX's 403 JSON distinguishes disabled tenants from transient failures.
 // Only that caller opts in to a bounded status body; other providers retain
 // their existing early failure behavior.
-func fetchProviderStatusResource(ctx context.Context, client *http.Client, options providerResourceScope, endpoint string, body []byte, headers http.Header, limit int64, inspectStatus map[int]bool) ([]byte, *GreenhouseResponse, error) {
+func fetchProviderStatusResource(ctx context.Context, client *http.Client, options providerResourceScope, endpoint string, body []byte, headers http.Header, limit int64, inspectStatus map[int]bool, any2xxGET ...bool) ([]byte, *GreenhouseResponse, error) {
 	if client == nil || !options.ResourceMatches(endpoint) || limit < 1 || limit > 64<<20 {
 		return nil, nil, queue.ErrConfiguration
 	}
@@ -57,9 +57,10 @@ func fetchProviderStatusResource(ctx context.Context, client *http.Client, optio
 	if response.Request == nil || response.Request.URL == nil {
 		return nil, nil, queue.ErrConfiguration
 	}
-	observed := &GreenhouseResponse{endpoint: endpoint, finalURL: response.Request.URL.String(), status: response.StatusCode}
+	observed := &GreenhouseResponse{endpoint: endpoint, finalURL: response.Request.URL.String(), status: response.StatusCode, location: response.Header.Get("Location")}
 	var statusError error
-	if response.StatusCode < 200 || response.StatusCode >= 300 || body == nil && response.StatusCode != 200 {
+	acceptAnyGET := len(any2xxGET) == 1 && any2xxGET[0]
+	if response.StatusCode < 200 || response.StatusCode >= 300 || body == nil && response.StatusCode != 200 && !acceptAnyGET {
 		kind := "http_status"
 		if body == nil && response.StatusCode == 404 {
 			kind = "provider_gone"

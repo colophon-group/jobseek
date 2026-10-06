@@ -1,0 +1,2952 @@
+{
+  "softgarden": [
+    {
+      "name": "ids",
+      "html": "var complete_job_id_list = jobs_selected = [123,456,123];",
+      "ids": [
+        "123",
+        "456",
+        "123"
+      ]
+    },
+    {
+      "name": "direct",
+      "html": "var complete_job_id_list=[1, 2, -3, +4, 0005];",
+      "ids": [
+        "1",
+        "2",
+        "-3",
+        "4",
+        "5"
+      ]
+    },
+    {
+      "name": "empty",
+      "html": "var complete_job_id_list=[];",
+      "ids": []
+    },
+    {
+      "name": "missing",
+      "html": "var other_job_id_list=[1];",
+      "ids": []
+    },
+    {
+      "name": "invalid-tokens",
+      "html": "var complete_job_id_list=[bad, 1.5, false, null, _1, 1__2, 12_, 1_2, +3];",
+      "ids": [
+        "12",
+        "3"
+      ]
+    },
+    {
+      "name": "unicode-digits",
+      "html": "var complete_job_id_list=[١٢٣,４５６];",
+      "ids": [
+        "123",
+        "456"
+      ]
+    },
+    {
+      "name": "huge-integer",
+      "html": "var complete_job_id_list=[999999999999999999999999999999];",
+      "ids": [
+        "999999999999999999999999999999"
+      ]
+    },
+    {
+      "name": "second-marker",
+      "html": "var complete_job_id_list=[1];var complete_job_id_list=[2];",
+      "ids": [
+        "1"
+      ]
+    }
+  ],
+  "ukg_routes": [
+    {
+      "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0",
+      "expected": {
+        "host": "recruiting.ultipro.com",
+        "tenant": "AMI1003AMIK",
+        "board_id": "132b6065-9187-4e0f-a292-4f67e675d1d0"
+      }
+    },
+    {
+      "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/",
+      "expected": {
+        "host": "recruiting.ultipro.com",
+        "tenant": "AMI1003AMIK",
+        "board_id": "132b6065-9187-4e0f-a292-4f67e675d1d0"
+      }
+    },
+    {
+      "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/OpportunityDetail?opportunityId=2b34c2a1-f814-4355-b347-11d1b89a948c",
+      "expected": {
+        "host": "recruiting.ultipro.com",
+        "tenant": "AMI1003AMIK",
+        "board_id": "132b6065-9187-4e0f-a292-4f67e675d1d0"
+      }
+    },
+    {
+      "url": "https://recruiting.ultipro.com/AMI1003AMIK/jobboard/132b6065-9187-4e0f-a292-4f67e675d1d0",
+      "expected": {
+        "host": "recruiting.ultipro.com",
+        "tenant": "AMI1003AMIK",
+        "board_id": "132b6065-9187-4e0f-a292-4f67e675d1d0"
+      }
+    },
+    {
+      "url": "http://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0",
+      "expected": null
+    },
+    {
+      "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0?filter=x",
+      "expected": null
+    },
+    {
+      "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0#jobs",
+      "expected": null
+    },
+    {
+      "url": "https://recruiting2.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0",
+      "expected": {
+        "host": "recruiting2.ultipro.com",
+        "tenant": "AMI1003AMIK",
+        "board_id": "132b6065-9187-4e0f-a292-4f67e675d1d0"
+      }
+    },
+    {
+      "url": "https://baptisthealth.rec.pro.ukg.net/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0",
+      "expected": {
+        "host": "baptisthealth.rec.pro.ukg.net",
+        "tenant": "AMI1003AMIK",
+        "board_id": "132b6065-9187-4e0f-a292-4f67e675d1d0"
+      }
+    },
+    {
+      "url": "https://wrong.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0",
+      "expected": null
+    }
+  ],
+  "ukg_fields": [
+    {
+      "name": "complete",
+      "raw": {
+        "Id": "00000000-0000-4000-8000-000000000001",
+        "Title": "Role 1",
+        "RequisitionNumber": "REQ-1",
+        "FullTime": true,
+        "JobCategoryName": "Engineering",
+        "Locations": [
+          {
+            "LocalizedName": null,
+            "LocalizedDescription": "HQ",
+            "Address": {
+              "City": "Patrick",
+              "State": {
+                "Code": "SC",
+                "Name": "South Carolina"
+              },
+              "Country": {
+                "Code": "USA",
+                "Name": "United States"
+              }
+            }
+          }
+        ],
+        "PostedDate": "2026-08-02T19:44:33.109Z",
+        "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "JobLocationType": 1,
+        "OpportunityType": 0
+      },
+      "expected": {
+        "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/OpportunityDetail?opportunityId=00000000-0000-4000-8000-000000000001",
+        "title": "Role 1",
+        "description": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "locations": [
+          "Patrick, South Carolina, United States"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-02",
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "opportunity_id": "00000000-0000-4000-8000-000000000001",
+          "requisition_number": "REQ-1",
+          "category": "Engineering",
+          "opportunity_type": 0
+        }
+      }
+    },
+    {
+      "name": "empty",
+      "raw": {},
+      "expected": null
+    },
+    {
+      "name": "bad-id",
+      "raw": {
+        "Id": "bad",
+        "Title": "Role 1",
+        "RequisitionNumber": "REQ-1",
+        "FullTime": true,
+        "JobCategoryName": "Engineering",
+        "Locations": [
+          {
+            "LocalizedName": null,
+            "LocalizedDescription": "HQ",
+            "Address": {
+              "City": "Patrick",
+              "State": {
+                "Code": "SC",
+                "Name": "South Carolina"
+              },
+              "Country": {
+                "Code": "USA",
+                "Name": "United States"
+              }
+            }
+          }
+        ],
+        "PostedDate": "2026-08-02T19:44:33.109Z",
+        "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "JobLocationType": 1,
+        "OpportunityType": 0
+      },
+      "expected": null
+    },
+    {
+      "name": "missing-title",
+      "raw": {
+        "Id": "00000000-0000-4000-8000-000000000001",
+        "Title": "  ",
+        "RequisitionNumber": "REQ-1",
+        "FullTime": true,
+        "JobCategoryName": "Engineering",
+        "Locations": [
+          {
+            "LocalizedName": null,
+            "LocalizedDescription": "HQ",
+            "Address": {
+              "City": "Patrick",
+              "State": {
+                "Code": "SC",
+                "Name": "South Carolina"
+              },
+              "Country": {
+                "Code": "USA",
+                "Name": "United States"
+              }
+            }
+          }
+        ],
+        "PostedDate": "2026-08-02T19:44:33.109Z",
+        "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "JobLocationType": 1,
+        "OpportunityType": 0
+      },
+      "expected": null
+    },
+    {
+      "name": "part-time",
+      "raw": {
+        "Id": "00000000-0000-4000-8000-000000000001",
+        "Title": "Role 1",
+        "RequisitionNumber": "REQ-1",
+        "FullTime": false,
+        "JobCategoryName": "Engineering",
+        "Locations": [
+          {
+            "LocalizedName": null,
+            "LocalizedDescription": "HQ",
+            "Address": {
+              "City": "Patrick",
+              "State": {
+                "Code": "SC",
+                "Name": "South Carolina"
+              },
+              "Country": {
+                "Code": "USA",
+                "Name": "United States"
+              }
+            }
+          }
+        ],
+        "PostedDate": "2026-08-02T19:44:33.109Z",
+        "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "JobLocationType": 1,
+        "OpportunityType": 0
+      },
+      "expected": {
+        "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/OpportunityDetail?opportunityId=00000000-0000-4000-8000-000000000001",
+        "title": "Role 1",
+        "description": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "locations": [
+          "Patrick, South Carolina, United States"
+        ],
+        "employment_type": "part_time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-02",
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "opportunity_id": "00000000-0000-4000-8000-000000000001",
+          "requisition_number": "REQ-1",
+          "category": "Engineering",
+          "opportunity_type": 0
+        }
+      }
+    },
+    {
+      "name": "unknown-employment",
+      "raw": {
+        "Id": "00000000-0000-4000-8000-000000000001",
+        "Title": "Role 1",
+        "RequisitionNumber": "REQ-1",
+        "FullTime": 1,
+        "JobCategoryName": "Engineering",
+        "Locations": [
+          {
+            "LocalizedName": null,
+            "LocalizedDescription": "HQ",
+            "Address": {
+              "City": "Patrick",
+              "State": {
+                "Code": "SC",
+                "Name": "South Carolina"
+              },
+              "Country": {
+                "Code": "USA",
+                "Name": "United States"
+              }
+            }
+          }
+        ],
+        "PostedDate": "2026-08-02T19:44:33.109Z",
+        "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "JobLocationType": 1,
+        "OpportunityType": 0
+      },
+      "expected": {
+        "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/OpportunityDetail?opportunityId=00000000-0000-4000-8000-000000000001",
+        "title": "Role 1",
+        "description": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "locations": [
+          "Patrick, South Carolina, United States"
+        ],
+        "employment_type": null,
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-02",
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "opportunity_id": "00000000-0000-4000-8000-000000000001",
+          "requisition_number": "REQ-1",
+          "category": "Engineering",
+          "opportunity_type": 0
+        }
+      }
+    },
+    {
+      "name": "unescape-title",
+      "raw": {
+        "Id": "00000000-0000-4000-8000-000000000001",
+        "Title": "  Research &amp;\nDevelopment ",
+        "RequisitionNumber": "REQ-1",
+        "FullTime": true,
+        "JobCategoryName": "Engineering",
+        "Locations": [
+          {
+            "LocalizedName": null,
+            "LocalizedDescription": "HQ",
+            "Address": {
+              "City": "Patrick",
+              "State": {
+                "Code": "SC",
+                "Name": "South Carolina"
+              },
+              "Country": {
+                "Code": "USA",
+                "Name": "United States"
+              }
+            }
+          }
+        ],
+        "PostedDate": "2026-08-02T19:44:33.109Z",
+        "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "JobLocationType": 1,
+        "OpportunityType": 0
+      },
+      "expected": {
+        "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/OpportunityDetail?opportunityId=00000000-0000-4000-8000-000000000001",
+        "title": "Research & Development",
+        "description": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "locations": [
+          "Patrick, South Carolina, United States"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-02",
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "opportunity_id": "00000000-0000-4000-8000-000000000001",
+          "requisition_number": "REQ-1",
+          "category": "Engineering",
+          "opportunity_type": 0
+        }
+      }
+    },
+    {
+      "name": "scalar-description",
+      "raw": {
+        "Id": "00000000-0000-4000-8000-000000000001",
+        "Title": "Role 1",
+        "RequisitionNumber": "REQ-1",
+        "FullTime": true,
+        "JobCategoryName": "Engineering",
+        "Locations": [
+          {
+            "LocalizedName": null,
+            "LocalizedDescription": "HQ",
+            "Address": {
+              "City": "Patrick",
+              "State": {
+                "Code": "SC",
+                "Name": "South Carolina"
+              },
+              "Country": {
+                "Code": "USA",
+                "Name": "United States"
+              }
+            }
+          }
+        ],
+        "PostedDate": "2026-08-02T19:44:33.109Z",
+        "BriefDescription": 1,
+        "JobLocationType": 1,
+        "OpportunityType": 0
+      },
+      "expected": {
+        "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/OpportunityDetail?opportunityId=00000000-0000-4000-8000-000000000001",
+        "title": "Role 1",
+        "description": null,
+        "locations": [
+          "Patrick, South Carolina, United States"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-02",
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "opportunity_id": "00000000-0000-4000-8000-000000000001",
+          "requisition_number": "REQ-1",
+          "category": "Engineering",
+          "opportunity_type": 0
+        }
+      }
+    },
+    {
+      "name": "empty-description",
+      "raw": {
+        "Id": "00000000-0000-4000-8000-000000000001",
+        "Title": "Role 1",
+        "RequisitionNumber": "REQ-1",
+        "FullTime": true,
+        "JobCategoryName": "Engineering",
+        "Locations": [
+          {
+            "LocalizedName": null,
+            "LocalizedDescription": "HQ",
+            "Address": {
+              "City": "Patrick",
+              "State": {
+                "Code": "SC",
+                "Name": "South Carolina"
+              },
+              "Country": {
+                "Code": "USA",
+                "Name": "United States"
+              }
+            }
+          }
+        ],
+        "PostedDate": "2026-08-02T19:44:33.109Z",
+        "BriefDescription": "",
+        "JobLocationType": 1,
+        "OpportunityType": 0
+      },
+      "expected": {
+        "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/OpportunityDetail?opportunityId=00000000-0000-4000-8000-000000000001",
+        "title": "Role 1",
+        "description": "",
+        "locations": [
+          "Patrick, South Carolina, United States"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-02",
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "opportunity_id": "00000000-0000-4000-8000-000000000001",
+          "requisition_number": "REQ-1",
+          "category": "Engineering",
+          "opportunity_type": 0
+        }
+      }
+    },
+    {
+      "name": "invalid-metadata",
+      "raw": {
+        "Id": "00000000-0000-4000-8000-000000000001",
+        "Title": "Role 1",
+        "RequisitionNumber": {},
+        "FullTime": true,
+        "JobCategoryName": "",
+        "Locations": [
+          {
+            "LocalizedName": null,
+            "LocalizedDescription": "HQ",
+            "Address": {
+              "City": "Patrick",
+              "State": {
+                "Code": "SC",
+                "Name": "South Carolina"
+              },
+              "Country": {
+                "Code": "USA",
+                "Name": "United States"
+              }
+            }
+          }
+        ],
+        "PostedDate": "2026-08-02T19:44:33.109Z",
+        "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "JobLocationType": 1,
+        "OpportunityType": true
+      },
+      "expected": {
+        "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/OpportunityDetail?opportunityId=00000000-0000-4000-8000-000000000001",
+        "title": "Role 1",
+        "description": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "locations": [
+          "Patrick, South Carolina, United States"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-02",
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "opportunity_id": "00000000-0000-4000-8000-000000000001"
+        }
+      }
+    },
+    {
+      "name": "location-fallback",
+      "raw": {
+        "Id": "00000000-0000-4000-8000-000000000001",
+        "Title": "Role 1",
+        "RequisitionNumber": "REQ-1",
+        "FullTime": true,
+        "JobCategoryName": "Engineering",
+        "Locations": [
+          {
+            "LocalizedName": " Zürich "
+          },
+          {
+            "LocalizedDescription": "ZÜRICH"
+          }
+        ],
+        "PostedDate": "2026-08-02T19:44:33.109Z",
+        "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "JobLocationType": 1,
+        "OpportunityType": 0
+      },
+      "expected": {
+        "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/OpportunityDetail?opportunityId=00000000-0000-4000-8000-000000000001",
+        "title": "Role 1",
+        "description": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-02",
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "opportunity_id": "00000000-0000-4000-8000-000000000001",
+          "requisition_number": "REQ-1",
+          "category": "Engineering",
+          "opportunity_type": 0
+        }
+      }
+    },
+    {
+      "name": "location-type-0",
+      "raw": {
+        "Id": "00000000-0000-4000-8000-000000000001",
+        "Title": "Role 1",
+        "RequisitionNumber": "REQ-1",
+        "FullTime": true,
+        "JobCategoryName": "Engineering",
+        "Locations": [
+          {
+            "LocalizedName": null,
+            "LocalizedDescription": "HQ",
+            "Address": {
+              "City": "Patrick",
+              "State": {
+                "Code": "SC",
+                "Name": "South Carolina"
+              },
+              "Country": {
+                "Code": "USA",
+                "Name": "United States"
+              }
+            }
+          }
+        ],
+        "PostedDate": "2026-08-02T19:44:33.109Z",
+        "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "JobLocationType": null,
+        "OpportunityType": 0
+      },
+      "expected": {
+        "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/OpportunityDetail?opportunityId=00000000-0000-4000-8000-000000000001",
+        "title": "Role 1",
+        "description": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "locations": [
+          "Patrick, South Carolina, United States"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-08-02",
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "opportunity_id": "00000000-0000-4000-8000-000000000001",
+          "requisition_number": "REQ-1",
+          "category": "Engineering",
+          "opportunity_type": 0
+        }
+      }
+    },
+    {
+      "name": "location-type-1",
+      "raw": {
+        "Id": "00000000-0000-4000-8000-000000000001",
+        "Title": "Role 1",
+        "RequisitionNumber": "REQ-1",
+        "FullTime": true,
+        "JobCategoryName": "Engineering",
+        "Locations": [
+          {
+            "LocalizedName": null,
+            "LocalizedDescription": "HQ",
+            "Address": {
+              "City": "Patrick",
+              "State": {
+                "Code": "SC",
+                "Name": "South Carolina"
+              },
+              "Country": {
+                "Code": "USA",
+                "Name": "United States"
+              }
+            }
+          }
+        ],
+        "PostedDate": "2026-08-02T19:44:33.109Z",
+        "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "JobLocationType": 0,
+        "OpportunityType": 0
+      },
+      "expected": {
+        "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/OpportunityDetail?opportunityId=00000000-0000-4000-8000-000000000001",
+        "title": "Role 1",
+        "description": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "locations": [
+          "Patrick, South Carolina, United States"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-08-02",
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "opportunity_id": "00000000-0000-4000-8000-000000000001",
+          "requisition_number": "REQ-1",
+          "category": "Engineering",
+          "opportunity_type": 0
+        }
+      }
+    },
+    {
+      "name": "location-type-2",
+      "raw": {
+        "Id": "00000000-0000-4000-8000-000000000001",
+        "Title": "Role 1",
+        "RequisitionNumber": "REQ-1",
+        "FullTime": true,
+        "JobCategoryName": "Engineering",
+        "Locations": [
+          {
+            "LocalizedName": null,
+            "LocalizedDescription": "HQ",
+            "Address": {
+              "City": "Patrick",
+              "State": {
+                "Code": "SC",
+                "Name": "South Carolina"
+              },
+              "Country": {
+                "Code": "USA",
+                "Name": "United States"
+              }
+            }
+          }
+        ],
+        "PostedDate": "2026-08-02T19:44:33.109Z",
+        "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "JobLocationType": 1,
+        "OpportunityType": 0
+      },
+      "expected": {
+        "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/OpportunityDetail?opportunityId=00000000-0000-4000-8000-000000000001",
+        "title": "Role 1",
+        "description": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "locations": [
+          "Patrick, South Carolina, United States"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-02",
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "opportunity_id": "00000000-0000-4000-8000-000000000001",
+          "requisition_number": "REQ-1",
+          "category": "Engineering",
+          "opportunity_type": 0
+        }
+      }
+    },
+    {
+      "name": "location-type-3",
+      "raw": {
+        "Id": "00000000-0000-4000-8000-000000000001",
+        "Title": "Role 1",
+        "RequisitionNumber": "REQ-1",
+        "FullTime": true,
+        "JobCategoryName": "Engineering",
+        "Locations": [
+          {
+            "LocalizedName": null,
+            "LocalizedDescription": "HQ",
+            "Address": {
+              "City": "Patrick",
+              "State": {
+                "Code": "SC",
+                "Name": "South Carolina"
+              },
+              "Country": {
+                "Code": "USA",
+                "Name": "United States"
+              }
+            }
+          }
+        ],
+        "PostedDate": "2026-08-02T19:44:33.109Z",
+        "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "JobLocationType": 2,
+        "OpportunityType": 0
+      },
+      "expected": {
+        "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/OpportunityDetail?opportunityId=00000000-0000-4000-8000-000000000001",
+        "title": "Role 1",
+        "description": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "locations": [
+          "Patrick, South Carolina, United States"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "remote",
+        "date_posted": "2026-08-02",
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "opportunity_id": "00000000-0000-4000-8000-000000000001",
+          "requisition_number": "REQ-1",
+          "category": "Engineering",
+          "opportunity_type": 0
+        }
+      }
+    },
+    {
+      "name": "location-type-4",
+      "raw": {
+        "Id": "00000000-0000-4000-8000-000000000001",
+        "Title": "Role 1",
+        "RequisitionNumber": "REQ-1",
+        "FullTime": true,
+        "JobCategoryName": "Engineering",
+        "Locations": [
+          {
+            "LocalizedName": null,
+            "LocalizedDescription": "HQ",
+            "Address": {
+              "City": "Patrick",
+              "State": {
+                "Code": "SC",
+                "Name": "South Carolina"
+              },
+              "Country": {
+                "Code": "USA",
+                "Name": "United States"
+              }
+            }
+          }
+        ],
+        "PostedDate": "2026-08-02T19:44:33.109Z",
+        "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "JobLocationType": 3,
+        "OpportunityType": 0
+      },
+      "expected": {
+        "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/OpportunityDetail?opportunityId=00000000-0000-4000-8000-000000000001",
+        "title": "Role 1",
+        "description": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "locations": [
+          "Patrick, South Carolina, United States"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-08-02",
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "opportunity_id": "00000000-0000-4000-8000-000000000001",
+          "requisition_number": "REQ-1",
+          "category": "Engineering",
+          "opportunity_type": 0
+        }
+      }
+    },
+    {
+      "name": "location-type-5",
+      "raw": {
+        "Id": "00000000-0000-4000-8000-000000000001",
+        "Title": "Role 1",
+        "RequisitionNumber": "REQ-1",
+        "FullTime": true,
+        "JobCategoryName": "Engineering",
+        "Locations": [
+          {
+            "LocalizedName": null,
+            "LocalizedDescription": "HQ",
+            "Address": {
+              "City": "Patrick",
+              "State": {
+                "Code": "SC",
+                "Name": "South Carolina"
+              },
+              "Country": {
+                "Code": "USA",
+                "Name": "United States"
+              }
+            }
+          }
+        ],
+        "PostedDate": "2026-08-02T19:44:33.109Z",
+        "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "JobLocationType": true,
+        "OpportunityType": 0
+      },
+      "expected": {
+        "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/OpportunityDetail?opportunityId=00000000-0000-4000-8000-000000000001",
+        "title": "Role 1",
+        "description": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "locations": [
+          "Patrick, South Carolina, United States"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-08-02",
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "opportunity_id": "00000000-0000-4000-8000-000000000001",
+          "requisition_number": "REQ-1",
+          "category": "Engineering",
+          "opportunity_type": 0
+        }
+      }
+    },
+    {
+      "name": "location-type-6",
+      "raw": {
+        "Id": "00000000-0000-4000-8000-000000000001",
+        "Title": "Role 1",
+        "RequisitionNumber": "REQ-1",
+        "FullTime": true,
+        "JobCategoryName": "Engineering",
+        "Locations": [
+          {
+            "LocalizedName": null,
+            "LocalizedDescription": "HQ",
+            "Address": {
+              "City": "Patrick",
+              "State": {
+                "Code": "SC",
+                "Name": "South Carolina"
+              },
+              "Country": {
+                "Code": "USA",
+                "Name": "United States"
+              }
+            }
+          }
+        ],
+        "PostedDate": "2026-08-02T19:44:33.109Z",
+        "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "JobLocationType": "2",
+        "OpportunityType": 0
+      },
+      "expected": {
+        "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/OpportunityDetail?opportunityId=00000000-0000-4000-8000-000000000001",
+        "title": "Role 1",
+        "description": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "locations": [
+          "Patrick, South Carolina, United States"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-08-02",
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "opportunity_id": "00000000-0000-4000-8000-000000000001",
+          "requisition_number": "REQ-1",
+          "category": "Engineering",
+          "opportunity_type": 0
+        }
+      }
+    },
+    {
+      "name": "location-type-7",
+      "raw": {
+        "Id": "00000000-0000-4000-8000-000000000001",
+        "Title": "Role 1",
+        "RequisitionNumber": "REQ-1",
+        "FullTime": true,
+        "JobCategoryName": "Engineering",
+        "Locations": [
+          {
+            "LocalizedName": null,
+            "LocalizedDescription": "HQ",
+            "Address": {
+              "City": "Patrick",
+              "State": {
+                "Code": "SC",
+                "Name": "South Carolina"
+              },
+              "Country": {
+                "Code": "USA",
+                "Name": "United States"
+              }
+            }
+          }
+        ],
+        "PostedDate": "2026-08-02T19:44:33.109Z",
+        "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "JobLocationType": 1.5,
+        "OpportunityType": 0
+      },
+      "expected": {
+        "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/OpportunityDetail?opportunityId=00000000-0000-4000-8000-000000000001",
+        "title": "Role 1",
+        "description": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "locations": [
+          "Patrick, South Carolina, United States"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-08-02",
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "opportunity_id": "00000000-0000-4000-8000-000000000001",
+          "requisition_number": "REQ-1",
+          "category": "Engineering",
+          "opportunity_type": 0
+        }
+      }
+    },
+    {
+      "name": "date-0",
+      "raw": {
+        "Id": "00000000-0000-4000-8000-000000000001",
+        "Title": "Role 1",
+        "RequisitionNumber": "REQ-1",
+        "FullTime": true,
+        "JobCategoryName": "Engineering",
+        "Locations": [
+          {
+            "LocalizedName": null,
+            "LocalizedDescription": "HQ",
+            "Address": {
+              "City": "Patrick",
+              "State": {
+                "Code": "SC",
+                "Name": "South Carolina"
+              },
+              "Country": {
+                "Code": "USA",
+                "Name": "United States"
+              }
+            }
+          }
+        ],
+        "PostedDate": null,
+        "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "JobLocationType": 1,
+        "OpportunityType": 0
+      },
+      "expected": {
+        "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/OpportunityDetail?opportunityId=00000000-0000-4000-8000-000000000001",
+        "title": "Role 1",
+        "description": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "locations": [
+          "Patrick, South Carolina, United States"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "onsite",
+        "date_posted": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "opportunity_id": "00000000-0000-4000-8000-000000000001",
+          "requisition_number": "REQ-1",
+          "category": "Engineering",
+          "opportunity_type": 0
+        }
+      }
+    },
+    {
+      "name": "date-1",
+      "raw": {
+        "Id": "00000000-0000-4000-8000-000000000001",
+        "Title": "Role 1",
+        "RequisitionNumber": "REQ-1",
+        "FullTime": true,
+        "JobCategoryName": "Engineering",
+        "Locations": [
+          {
+            "LocalizedName": null,
+            "LocalizedDescription": "HQ",
+            "Address": {
+              "City": "Patrick",
+              "State": {
+                "Code": "SC",
+                "Name": "South Carolina"
+              },
+              "Country": {
+                "Code": "USA",
+                "Name": "United States"
+              }
+            }
+          }
+        ],
+        "PostedDate": "bad",
+        "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "JobLocationType": 1,
+        "OpportunityType": 0
+      },
+      "expected": {
+        "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/OpportunityDetail?opportunityId=00000000-0000-4000-8000-000000000001",
+        "title": "Role 1",
+        "description": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "locations": [
+          "Patrick, South Carolina, United States"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "onsite",
+        "date_posted": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "opportunity_id": "00000000-0000-4000-8000-000000000001",
+          "requisition_number": "REQ-1",
+          "category": "Engineering",
+          "opportunity_type": 0
+        }
+      }
+    },
+    {
+      "name": "date-2",
+      "raw": {
+        "Id": "00000000-0000-4000-8000-000000000001",
+        "Title": "Role 1",
+        "RequisitionNumber": "REQ-1",
+        "FullTime": true,
+        "JobCategoryName": "Engineering",
+        "Locations": [
+          {
+            "LocalizedName": null,
+            "LocalizedDescription": "HQ",
+            "Address": {
+              "City": "Patrick",
+              "State": {
+                "Code": "SC",
+                "Name": "South Carolina"
+              },
+              "Country": {
+                "Code": "USA",
+                "Name": "United States"
+              }
+            }
+          }
+        ],
+        "PostedDate": "2026-10-06",
+        "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "JobLocationType": 1,
+        "OpportunityType": 0
+      },
+      "expected": {
+        "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/OpportunityDetail?opportunityId=00000000-0000-4000-8000-000000000001",
+        "title": "Role 1",
+        "description": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "locations": [
+          "Patrick, South Carolina, United States"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-06",
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "opportunity_id": "00000000-0000-4000-8000-000000000001",
+          "requisition_number": "REQ-1",
+          "category": "Engineering",
+          "opportunity_type": 0
+        }
+      }
+    },
+    {
+      "name": "date-3",
+      "raw": {
+        "Id": "00000000-0000-4000-8000-000000000001",
+        "Title": "Role 1",
+        "RequisitionNumber": "REQ-1",
+        "FullTime": true,
+        "JobCategoryName": "Engineering",
+        "Locations": [
+          {
+            "LocalizedName": null,
+            "LocalizedDescription": "HQ",
+            "Address": {
+              "City": "Patrick",
+              "State": {
+                "Code": "SC",
+                "Name": "South Carolina"
+              },
+              "Country": {
+                "Code": "USA",
+                "Name": "United States"
+              }
+            }
+          }
+        ],
+        "PostedDate": "2026-10-06T01:02:03Z",
+        "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "JobLocationType": 1,
+        "OpportunityType": 0
+      },
+      "expected": {
+        "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/OpportunityDetail?opportunityId=00000000-0000-4000-8000-000000000001",
+        "title": "Role 1",
+        "description": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "locations": [
+          "Patrick, South Carolina, United States"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-06",
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "opportunity_id": "00000000-0000-4000-8000-000000000001",
+          "requisition_number": "REQ-1",
+          "category": "Engineering",
+          "opportunity_type": 0
+        }
+      }
+    },
+    {
+      "name": "date-4",
+      "raw": {
+        "Id": "00000000-0000-4000-8000-000000000001",
+        "Title": "Role 1",
+        "RequisitionNumber": "REQ-1",
+        "FullTime": true,
+        "JobCategoryName": "Engineering",
+        "Locations": [
+          {
+            "LocalizedName": null,
+            "LocalizedDescription": "HQ",
+            "Address": {
+              "City": "Patrick",
+              "State": {
+                "Code": "SC",
+                "Name": "South Carolina"
+              },
+              "Country": {
+                "Code": "USA",
+                "Name": "United States"
+              }
+            }
+          }
+        ],
+        "PostedDate": "2026-10-06T01:02:03+09:00",
+        "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "JobLocationType": 1,
+        "OpportunityType": 0
+      },
+      "expected": {
+        "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0/OpportunityDetail?opportunityId=00000000-0000-4000-8000-000000000001",
+        "title": "Role 1",
+        "description": "<p class='intro'>Build safely.</p><script>bad()</script>",
+        "locations": [
+          "Patrick, South Carolina, United States"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-06",
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "opportunity_id": "00000000-0000-4000-8000-000000000001",
+          "requisition_number": "REQ-1",
+          "category": "Engineering",
+          "opportunity_type": 0
+        }
+      }
+    }
+  ],
+  "ukg_pages": [
+    {
+      "name": "complete",
+      "raw": {
+        "locations": [],
+        "opportunities": [
+          {
+            "Id": "00000000-0000-4000-8000-000000000001",
+            "Title": "Role 1",
+            "RequisitionNumber": "REQ-1",
+            "FullTime": true,
+            "JobCategoryName": "Engineering",
+            "Locations": [
+              {
+                "LocalizedName": null,
+                "LocalizedDescription": "HQ",
+                "Address": {
+                  "City": "Patrick",
+                  "State": {
+                    "Code": "SC",
+                    "Name": "South Carolina"
+                  },
+                  "Country": {
+                    "Code": "USA",
+                    "Name": "United States"
+                  }
+                }
+              }
+            ],
+            "PostedDate": "2026-08-02T19:44:33.109Z",
+            "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+            "JobLocationType": 1,
+            "OpportunityType": 0
+          }
+        ],
+        "totalCount": 1
+      },
+      "expected": {
+        "total": 1,
+        "rows": [
+          {
+            "Id": "00000000-0000-4000-8000-000000000001",
+            "Title": "Role 1",
+            "RequisitionNumber": "REQ-1",
+            "FullTime": true,
+            "JobCategoryName": "Engineering",
+            "Locations": [
+              {
+                "LocalizedName": null,
+                "LocalizedDescription": "HQ",
+                "Address": {
+                  "City": "Patrick",
+                  "State": {
+                    "Code": "SC",
+                    "Name": "South Carolina"
+                  },
+                  "Country": {
+                    "Code": "USA",
+                    "Name": "United States"
+                  }
+                }
+              }
+            ],
+            "PostedDate": "2026-08-02T19:44:33.109Z",
+            "BriefDescription": "<p class='intro'>Build safely.</p><script>bad()</script>",
+            "JobLocationType": 1,
+            "OpportunityType": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "empty",
+      "raw": {
+        "locations": [],
+        "opportunities": [],
+        "totalCount": 0
+      },
+      "expected": {
+        "total": 0,
+        "rows": []
+      }
+    },
+    {
+      "name": "missing-total",
+      "raw": {
+        "opportunities": []
+      },
+      "expected": null
+    },
+    {
+      "name": "bool-total",
+      "raw": {
+        "totalCount": true,
+        "opportunities": []
+      },
+      "expected": null
+    },
+    {
+      "name": "negative-total",
+      "raw": {
+        "totalCount": -1,
+        "opportunities": []
+      },
+      "expected": null
+    },
+    {
+      "name": "fraction-total",
+      "raw": {
+        "totalCount": 1.5,
+        "opportunities": []
+      },
+      "expected": null
+    },
+    {
+      "name": "missing-rows",
+      "raw": {
+        "totalCount": 1
+      },
+      "expected": null
+    }
+  ],
+  "bamboo_fields": [
+    {
+      "name": "complete",
+      "raw": {
+        "id": "347",
+        "jobOpeningName": "Enterprise Account Executive",
+        "departmentId": "19099",
+        "departmentLabel": "Sales",
+        "employmentStatusLabel": "Full-Time",
+        "location": {
+          "city": null,
+          "state": null
+        },
+        "atsLocation": {
+          "country": "Germany",
+          "province": "Upper Bavaria",
+          "city": "Munich"
+        },
+        "isRemote": null,
+        "locationType": "1"
+      },
+      "expected": {
+        "url": "https://acme.bamboohr.com/careers/347",
+        "title": "Enterprise Account Executive",
+        "description": null,
+        "locations": [
+          "Munich, Upper Bavaria, Germany"
+        ],
+        "employment_type": "Full-Time",
+        "job_location_type": "remote",
+        "date_posted": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "347",
+          "department": "Sales",
+          "department_id": "19099"
+        }
+      }
+    },
+    {
+      "name": "fallback-city",
+      "raw": {
+        "id": "347",
+        "jobOpeningName": "Enterprise Account Executive",
+        "departmentId": "19099",
+        "departmentLabel": "Sales",
+        "employmentStatusLabel": "Full-Time",
+        "location": {
+          "city": "Zurich",
+          "state": "Zurich",
+          "addressCountry": "Switzerland"
+        },
+        "atsLocation": {
+          "country": "Germany",
+          "province": "Upper Bavaria",
+          "city": "Munich"
+        },
+        "isRemote": null,
+        "locationType": "1"
+      },
+      "expected": {
+        "url": "https://acme.bamboohr.com/careers/347",
+        "title": "Enterprise Account Executive",
+        "description": null,
+        "locations": [
+          "Zurich, Switzerland"
+        ],
+        "employment_type": "Full-Time",
+        "job_location_type": "remote",
+        "date_posted": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "347",
+          "department": "Sales",
+          "department_id": "19099"
+        }
+      }
+    },
+    {
+      "name": "scalar-location",
+      "raw": {
+        "id": "347",
+        "jobOpeningName": "Enterprise Account Executive",
+        "departmentId": "19099",
+        "departmentLabel": "Sales",
+        "employmentStatusLabel": "Full-Time",
+        "location": "  Paris  ",
+        "atsLocation": {
+          "country": "Germany",
+          "province": "Upper Bavaria",
+          "city": "Munich"
+        },
+        "isRemote": null,
+        "locationType": "1"
+      },
+      "expected": {
+        "url": "https://acme.bamboohr.com/careers/347",
+        "title": "Enterprise Account Executive",
+        "description": null,
+        "locations": [
+          "Paris"
+        ],
+        "employment_type": "Full-Time",
+        "job_location_type": "remote",
+        "date_posted": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "347",
+          "department": "Sales",
+          "department_id": "19099"
+        }
+      }
+    },
+    {
+      "name": "scalar-ats-location",
+      "raw": {
+        "id": "347",
+        "jobOpeningName": "Enterprise Account Executive",
+        "departmentId": "19099",
+        "departmentLabel": "Sales",
+        "employmentStatusLabel": "Full-Time",
+        "location": {
+          "city": null,
+          "state": null
+        },
+        "atsLocation": "  Tokyo  ",
+        "isRemote": null,
+        "locationType": "1"
+      },
+      "expected": {
+        "url": "https://acme.bamboohr.com/careers/347",
+        "title": "Enterprise Account Executive",
+        "description": null,
+        "locations": [
+          "Tokyo"
+        ],
+        "employment_type": "Full-Time",
+        "job_location_type": "remote",
+        "date_posted": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "347",
+          "department": "Sales",
+          "department_id": "19099"
+        }
+      }
+    },
+    {
+      "name": "empty-location",
+      "raw": {
+        "id": "347",
+        "jobOpeningName": "Enterprise Account Executive",
+        "departmentId": "19099",
+        "departmentLabel": "Sales",
+        "employmentStatusLabel": "Full-Time",
+        "location": "",
+        "atsLocation": "Ignored",
+        "isRemote": null,
+        "locationType": "1"
+      },
+      "expected": {
+        "url": "https://acme.bamboohr.com/careers/347",
+        "title": "Enterprise Account Executive",
+        "description": null,
+        "locations": null,
+        "employment_type": "Full-Time",
+        "job_location_type": "remote",
+        "date_posted": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "347",
+          "department": "Sales",
+          "department_id": "19099"
+        }
+      }
+    },
+    {
+      "name": "bool-id",
+      "raw": {
+        "id": true,
+        "jobOpeningName": "Enterprise Account Executive",
+        "departmentId": "19099",
+        "departmentLabel": "Sales",
+        "employmentStatusLabel": "Full-Time",
+        "location": {
+          "city": null,
+          "state": null
+        },
+        "atsLocation": {
+          "country": "Germany",
+          "province": "Upper Bavaria",
+          "city": "Munich"
+        },
+        "isRemote": null,
+        "locationType": "1"
+      },
+      "expected": null
+    },
+    {
+      "name": "fraction-id",
+      "raw": {
+        "id": 1.5,
+        "jobOpeningName": "Enterprise Account Executive",
+        "departmentId": "19099",
+        "departmentLabel": "Sales",
+        "employmentStatusLabel": "Full-Time",
+        "location": {
+          "city": null,
+          "state": null
+        },
+        "atsLocation": {
+          "country": "Germany",
+          "province": "Upper Bavaria",
+          "city": "Munich"
+        },
+        "isRemote": null,
+        "locationType": "1"
+      },
+      "expected": null
+    },
+    {
+      "name": "negative-id",
+      "raw": {
+        "id": -1,
+        "jobOpeningName": "Enterprise Account Executive",
+        "departmentId": "19099",
+        "departmentLabel": "Sales",
+        "employmentStatusLabel": "Full-Time",
+        "location": {
+          "city": null,
+          "state": null
+        },
+        "atsLocation": {
+          "country": "Germany",
+          "province": "Upper Bavaria",
+          "city": "Munich"
+        },
+        "isRemote": null,
+        "locationType": "1"
+      },
+      "expected": null
+    },
+    {
+      "name": "arabic-id",
+      "raw": {
+        "id": "٣٤٧",
+        "jobOpeningName": "Enterprise Account Executive",
+        "departmentId": "19099",
+        "departmentLabel": "Sales",
+        "employmentStatusLabel": "Full-Time",
+        "location": {
+          "city": null,
+          "state": null
+        },
+        "atsLocation": {
+          "country": "Germany",
+          "province": "Upper Bavaria",
+          "city": "Munich"
+        },
+        "isRemote": null,
+        "locationType": "1"
+      },
+      "expected": {
+        "url": "https://acme.bamboohr.com/careers/٣٤٧",
+        "title": "Enterprise Account Executive",
+        "description": null,
+        "locations": [
+          "Munich, Upper Bavaria, Germany"
+        ],
+        "employment_type": "Full-Time",
+        "job_location_type": "remote",
+        "date_posted": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "٣٤٧",
+          "department": "Sales",
+          "department_id": "19099"
+        }
+      }
+    },
+    {
+      "name": "empty-id",
+      "raw": {
+        "id": "",
+        "jobOpeningName": "Enterprise Account Executive",
+        "departmentId": "19099",
+        "departmentLabel": "Sales",
+        "employmentStatusLabel": "Full-Time",
+        "location": {
+          "city": null,
+          "state": null
+        },
+        "atsLocation": {
+          "country": "Germany",
+          "province": "Upper Bavaria",
+          "city": "Munich"
+        },
+        "isRemote": null,
+        "locationType": "1"
+      },
+      "expected": null
+    },
+    {
+      "name": "metadata-coercion",
+      "raw": {
+        "id": "347",
+        "jobOpeningName": "Enterprise Account Executive",
+        "departmentId": false,
+        "departmentLabel": {
+          "name": "Sales"
+        },
+        "employmentStatusLabel": "Full-Time",
+        "location": {
+          "city": null,
+          "state": null
+        },
+        "atsLocation": {
+          "country": "Germany",
+          "province": "Upper Bavaria",
+          "city": "Munich"
+        },
+        "isRemote": null,
+        "locationType": "1"
+      },
+      "expected": {
+        "url": "https://acme.bamboohr.com/careers/347",
+        "title": "Enterprise Account Executive",
+        "description": null,
+        "locations": [
+          "Munich, Upper Bavaria, Germany"
+        ],
+        "employment_type": "Full-Time",
+        "job_location_type": "remote",
+        "date_posted": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "347",
+          "department": {
+            "name": "Sales"
+          },
+          "department_id": false
+        }
+      }
+    },
+    {
+      "name": "location-type-0",
+      "raw": {
+        "id": "347",
+        "jobOpeningName": "Enterprise Account Executive",
+        "departmentId": "19099",
+        "departmentLabel": "Sales",
+        "employmentStatusLabel": "Full-Time",
+        "location": {
+          "city": null,
+          "state": null
+        },
+        "atsLocation": {
+          "country": "Germany",
+          "province": "Upper Bavaria",
+          "city": "Munich"
+        },
+        "isRemote": true,
+        "locationType": null
+      },
+      "expected": {
+        "url": "https://acme.bamboohr.com/careers/347",
+        "title": "Enterprise Account Executive",
+        "description": null,
+        "locations": [
+          "Munich, Upper Bavaria, Germany"
+        ],
+        "employment_type": "Full-Time",
+        "job_location_type": "remote",
+        "date_posted": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "347",
+          "department": "Sales",
+          "department_id": "19099"
+        }
+      }
+    },
+    {
+      "name": "location-type-1",
+      "raw": {
+        "id": "347",
+        "jobOpeningName": "Enterprise Account Executive",
+        "departmentId": "19099",
+        "departmentLabel": "Sales",
+        "employmentStatusLabel": "Full-Time",
+        "location": {
+          "city": null,
+          "state": null
+        },
+        "atsLocation": {
+          "country": "Germany",
+          "province": "Upper Bavaria",
+          "city": "Munich"
+        },
+        "isRemote": true,
+        "locationType": 0
+      },
+      "expected": {
+        "url": "https://acme.bamboohr.com/careers/347",
+        "title": "Enterprise Account Executive",
+        "description": null,
+        "locations": [
+          "Munich, Upper Bavaria, Germany"
+        ],
+        "employment_type": "Full-Time",
+        "job_location_type": "onsite",
+        "date_posted": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "347",
+          "department": "Sales",
+          "department_id": "19099"
+        }
+      }
+    },
+    {
+      "name": "location-type-2",
+      "raw": {
+        "id": "347",
+        "jobOpeningName": "Enterprise Account Executive",
+        "departmentId": "19099",
+        "departmentLabel": "Sales",
+        "employmentStatusLabel": "Full-Time",
+        "location": {
+          "city": null,
+          "state": null
+        },
+        "atsLocation": {
+          "country": "Germany",
+          "province": "Upper Bavaria",
+          "city": "Munich"
+        },
+        "isRemote": true,
+        "locationType": 1
+      },
+      "expected": {
+        "url": "https://acme.bamboohr.com/careers/347",
+        "title": "Enterprise Account Executive",
+        "description": null,
+        "locations": [
+          "Munich, Upper Bavaria, Germany"
+        ],
+        "employment_type": "Full-Time",
+        "job_location_type": "remote",
+        "date_posted": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "347",
+          "department": "Sales",
+          "department_id": "19099"
+        }
+      }
+    },
+    {
+      "name": "location-type-3",
+      "raw": {
+        "id": "347",
+        "jobOpeningName": "Enterprise Account Executive",
+        "departmentId": "19099",
+        "departmentLabel": "Sales",
+        "employmentStatusLabel": "Full-Time",
+        "location": {
+          "city": null,
+          "state": null
+        },
+        "atsLocation": {
+          "country": "Germany",
+          "province": "Upper Bavaria",
+          "city": "Munich"
+        },
+        "isRemote": true,
+        "locationType": 2
+      },
+      "expected": {
+        "url": "https://acme.bamboohr.com/careers/347",
+        "title": "Enterprise Account Executive",
+        "description": null,
+        "locations": [
+          "Munich, Upper Bavaria, Germany"
+        ],
+        "employment_type": "Full-Time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "347",
+          "department": "Sales",
+          "department_id": "19099"
+        }
+      }
+    },
+    {
+      "name": "location-type-4",
+      "raw": {
+        "id": "347",
+        "jobOpeningName": "Enterprise Account Executive",
+        "departmentId": "19099",
+        "departmentLabel": "Sales",
+        "employmentStatusLabel": "Full-Time",
+        "location": {
+          "city": null,
+          "state": null
+        },
+        "atsLocation": {
+          "country": "Germany",
+          "province": "Upper Bavaria",
+          "city": "Munich"
+        },
+        "isRemote": true,
+        "locationType": true
+      },
+      "expected": {
+        "url": "https://acme.bamboohr.com/careers/347",
+        "title": "Enterprise Account Executive",
+        "description": null,
+        "locations": [
+          "Munich, Upper Bavaria, Germany"
+        ],
+        "employment_type": "Full-Time",
+        "job_location_type": null,
+        "date_posted": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "347",
+          "department": "Sales",
+          "department_id": "19099"
+        }
+      }
+    },
+    {
+      "name": "location-type-5",
+      "raw": {
+        "id": "347",
+        "jobOpeningName": "Enterprise Account Executive",
+        "departmentId": "19099",
+        "departmentLabel": "Sales",
+        "employmentStatusLabel": "Full-Time",
+        "location": {
+          "city": null,
+          "state": null
+        },
+        "atsLocation": {
+          "country": "Germany",
+          "province": "Upper Bavaria",
+          "city": "Munich"
+        },
+        "isRemote": true,
+        "locationType": "0"
+      },
+      "expected": {
+        "url": "https://acme.bamboohr.com/careers/347",
+        "title": "Enterprise Account Executive",
+        "description": null,
+        "locations": [
+          "Munich, Upper Bavaria, Germany"
+        ],
+        "employment_type": "Full-Time",
+        "job_location_type": "onsite",
+        "date_posted": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "347",
+          "department": "Sales",
+          "department_id": "19099"
+        }
+      }
+    },
+    {
+      "name": "location-type-6",
+      "raw": {
+        "id": "347",
+        "jobOpeningName": "Enterprise Account Executive",
+        "departmentId": "19099",
+        "departmentLabel": "Sales",
+        "employmentStatusLabel": "Full-Time",
+        "location": {
+          "city": null,
+          "state": null
+        },
+        "atsLocation": {
+          "country": "Germany",
+          "province": "Upper Bavaria",
+          "city": "Munich"
+        },
+        "isRemote": true,
+        "locationType": "1"
+      },
+      "expected": {
+        "url": "https://acme.bamboohr.com/careers/347",
+        "title": "Enterprise Account Executive",
+        "description": null,
+        "locations": [
+          "Munich, Upper Bavaria, Germany"
+        ],
+        "employment_type": "Full-Time",
+        "job_location_type": "remote",
+        "date_posted": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "347",
+          "department": "Sales",
+          "department_id": "19099"
+        }
+      }
+    },
+    {
+      "name": "location-type-7",
+      "raw": {
+        "id": "347",
+        "jobOpeningName": "Enterprise Account Executive",
+        "departmentId": "19099",
+        "departmentLabel": "Sales",
+        "employmentStatusLabel": "Full-Time",
+        "location": {
+          "city": null,
+          "state": null
+        },
+        "atsLocation": {
+          "country": "Germany",
+          "province": "Upper Bavaria",
+          "city": "Munich"
+        },
+        "isRemote": true,
+        "locationType": "2"
+      },
+      "expected": {
+        "url": "https://acme.bamboohr.com/careers/347",
+        "title": "Enterprise Account Executive",
+        "description": null,
+        "locations": [
+          "Munich, Upper Bavaria, Germany"
+        ],
+        "employment_type": "Full-Time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "347",
+          "department": "Sales",
+          "department_id": "19099"
+        }
+      }
+    },
+    {
+      "name": "location-type-8",
+      "raw": {
+        "id": "347",
+        "jobOpeningName": "Enterprise Account Executive",
+        "departmentId": "19099",
+        "departmentLabel": "Sales",
+        "employmentStatusLabel": "Full-Time",
+        "location": {
+          "city": null,
+          "state": null
+        },
+        "atsLocation": {
+          "country": "Germany",
+          "province": "Upper Bavaria",
+          "city": "Munich"
+        },
+        "isRemote": true,
+        "locationType": "other"
+      },
+      "expected": {
+        "url": "https://acme.bamboohr.com/careers/347",
+        "title": "Enterprise Account Executive",
+        "description": null,
+        "locations": [
+          "Munich, Upper Bavaria, Germany"
+        ],
+        "employment_type": "Full-Time",
+        "job_location_type": null,
+        "date_posted": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "job_id": "347",
+          "department": "Sales",
+          "department_id": "19099"
+        }
+      }
+    }
+  ],
+  "bamboo_listing": [
+    {
+      "name": "complete",
+      "raw": {
+        "meta": {
+          "totalCount": 2
+        },
+        "result": [
+          {
+            "id": "347",
+            "jobOpeningName": "Enterprise Account Executive",
+            "departmentId": "19099",
+            "departmentLabel": "Sales",
+            "employmentStatusLabel": "Full-Time",
+            "location": {
+              "city": null,
+              "state": null
+            },
+            "atsLocation": {
+              "country": "Germany",
+              "province": "Upper Bavaria",
+              "city": "Munich"
+            },
+            "isRemote": null,
+            "locationType": "1"
+          },
+          {
+            "id": 348,
+            "jobOpeningName": "Platform Engineer",
+            "employmentStatusLabel": "Part-Time",
+            "location": {
+              "city": "Zurich",
+              "state": "Zurich",
+              "addressCountry": "Switzerland"
+            },
+            "atsLocation": {},
+            "isRemote": true,
+            "locationType": "2"
+          }
+        ]
+      },
+      "expected": {
+        "jobs": [
+          {
+            "url": "https://acme.bamboohr.com/careers/347",
+            "title": "Enterprise Account Executive",
+            "description": null,
+            "locations": [
+              "Munich, Upper Bavaria, Germany"
+            ],
+            "employment_type": "Full-Time",
+            "job_location_type": "remote",
+            "date_posted": null,
+            "language": null,
+            "extras": null,
+            "metadata": {
+              "job_id": "347",
+              "department": "Sales",
+              "department_id": "19099"
+            }
+          },
+          {
+            "url": "https://acme.bamboohr.com/careers/348",
+            "title": "Platform Engineer",
+            "description": null,
+            "locations": [
+              "Zurich, Switzerland"
+            ],
+            "employment_type": "Part-Time",
+            "job_location_type": "hybrid",
+            "date_posted": null,
+            "language": null,
+            "extras": null,
+            "metadata": {
+              "job_id": "348"
+            }
+          }
+        ],
+        "truncated": false
+      }
+    },
+    {
+      "name": "empty",
+      "raw": {
+        "meta": {
+          "totalCount": 0
+        },
+        "result": []
+      },
+      "expected": {
+        "jobs": [],
+        "truncated": false
+      }
+    },
+    {
+      "name": "duplicate",
+      "raw": {
+        "meta": {
+          "totalCount": 2
+        },
+        "result": [
+          {
+            "id": "347",
+            "jobOpeningName": "Enterprise Account Executive",
+            "departmentId": "19099",
+            "departmentLabel": "Sales",
+            "employmentStatusLabel": "Full-Time",
+            "location": {
+              "city": null,
+              "state": null
+            },
+            "atsLocation": {
+              "country": "Germany",
+              "province": "Upper Bavaria",
+              "city": "Munich"
+            },
+            "isRemote": null,
+            "locationType": "1"
+          },
+          {
+            "id": "347",
+            "jobOpeningName": "Enterprise Account Executive",
+            "departmentId": "19099",
+            "departmentLabel": "Sales",
+            "employmentStatusLabel": "Full-Time",
+            "location": {
+              "city": null,
+              "state": null
+            },
+            "atsLocation": {
+              "country": "Germany",
+              "province": "Upper Bavaria",
+              "city": "Munich"
+            },
+            "isRemote": null,
+            "locationType": "1"
+          }
+        ]
+      },
+      "expected": {
+        "jobs": [
+          {
+            "url": "https://acme.bamboohr.com/careers/347",
+            "title": "Enterprise Account Executive",
+            "description": null,
+            "locations": [
+              "Munich, Upper Bavaria, Germany"
+            ],
+            "employment_type": "Full-Time",
+            "job_location_type": "remote",
+            "date_posted": null,
+            "language": null,
+            "extras": null,
+            "metadata": {
+              "job_id": "347",
+              "department": "Sales",
+              "department_id": "19099"
+            }
+          }
+        ],
+        "truncated": true
+      }
+    },
+    {
+      "name": "invalid-prefix",
+      "raw": {
+        "meta": {
+          "totalCount": 2
+        },
+        "result": [
+          true,
+          {
+            "id": "347",
+            "jobOpeningName": "Enterprise Account Executive",
+            "departmentId": "19099",
+            "departmentLabel": "Sales",
+            "employmentStatusLabel": "Full-Time",
+            "location": {
+              "city": null,
+              "state": null
+            },
+            "atsLocation": {
+              "country": "Germany",
+              "province": "Upper Bavaria",
+              "city": "Munich"
+            },
+            "isRemote": null,
+            "locationType": "1"
+          }
+        ]
+      },
+      "expected": {
+        "jobs": [
+          {
+            "url": "https://acme.bamboohr.com/careers/347",
+            "title": "Enterprise Account Executive",
+            "description": null,
+            "locations": [
+              "Munich, Upper Bavaria, Germany"
+            ],
+            "employment_type": "Full-Time",
+            "job_location_type": "remote",
+            "date_posted": null,
+            "language": null,
+            "extras": null,
+            "metadata": {
+              "job_id": "347",
+              "department": "Sales",
+              "department_id": "19099"
+            }
+          }
+        ],
+        "truncated": true
+      }
+    },
+    {
+      "name": "all-invalid",
+      "raw": {
+        "meta": {
+          "totalCount": 2
+        },
+        "result": [
+          true,
+          {}
+        ]
+      },
+      "expected": null
+    },
+    {
+      "name": "incomplete",
+      "raw": {
+        "meta": {
+          "totalCount": 10
+        },
+        "result": [
+          {
+            "id": "347",
+            "jobOpeningName": "Enterprise Account Executive",
+            "departmentId": "19099",
+            "departmentLabel": "Sales",
+            "employmentStatusLabel": "Full-Time",
+            "location": {
+              "city": null,
+              "state": null
+            },
+            "atsLocation": {
+              "country": "Germany",
+              "province": "Upper Bavaria",
+              "city": "Munich"
+            },
+            "isRemote": null,
+            "locationType": "1"
+          }
+        ]
+      },
+      "expected": {
+        "jobs": [
+          {
+            "url": "https://acme.bamboohr.com/careers/347",
+            "title": "Enterprise Account Executive",
+            "description": null,
+            "locations": [
+              "Munich, Upper Bavaria, Germany"
+            ],
+            "employment_type": "Full-Time",
+            "job_location_type": "remote",
+            "date_posted": null,
+            "language": null,
+            "extras": null,
+            "metadata": {
+              "job_id": "347",
+              "department": "Sales",
+              "department_id": "19099"
+            }
+          }
+        ],
+        "truncated": true
+      }
+    },
+    {
+      "name": "count-short",
+      "raw": {
+        "meta": {
+          "totalCount": 0
+        },
+        "result": [
+          {
+            "id": "347",
+            "jobOpeningName": "Enterprise Account Executive",
+            "departmentId": "19099",
+            "departmentLabel": "Sales",
+            "employmentStatusLabel": "Full-Time",
+            "location": {
+              "city": null,
+              "state": null
+            },
+            "atsLocation": {
+              "country": "Germany",
+              "province": "Upper Bavaria",
+              "city": "Munich"
+            },
+            "isRemote": null,
+            "locationType": "1"
+          }
+        ]
+      },
+      "expected": null
+    },
+    {
+      "name": "bool-count",
+      "raw": {
+        "result": [],
+        "meta": {
+          "totalCount": true
+        }
+      },
+      "expected": null
+    },
+    {
+      "name": "missing-count",
+      "raw": {
+        "result": [],
+        "meta": {}
+      },
+      "expected": null
+    },
+    {
+      "name": "missing-rows",
+      "raw": {
+        "result": null,
+        "meta": {
+          "totalCount": 0
+        }
+      },
+      "expected": null
+    }
+  ],
+  "ukg_metadata": [
+    {
+      "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0",
+      "metadata": {},
+      "expected": {
+        "host": "recruiting.ultipro.com",
+        "tenant": "AMI1003AMIK",
+        "board_id": "132b6065-9187-4e0f-a292-4f67e675d1d0"
+      }
+    },
+    {
+      "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0",
+      "metadata": {
+        "host": "recruiting.ultipro.com",
+        "tenant": "AMI1003AMIK",
+        "board_id": "132b6065-9187-4e0f-a292-4f67e675d1d0"
+      },
+      "expected": {
+        "host": "recruiting.ultipro.com",
+        "tenant": "AMI1003AMIK",
+        "board_id": "132b6065-9187-4e0f-a292-4f67e675d1d0"
+      }
+    },
+    {
+      "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0",
+      "metadata": {
+        "host": "RECRUITING.ULTIPRO.COM.",
+        "tenant": " AMI1003AMIK ",
+        "board_id": "132B6065-9187-4E0F-A292-4F67E675D1D0"
+      },
+      "expected": {
+        "host": "recruiting.ultipro.com",
+        "tenant": "AMI1003AMIK",
+        "board_id": "132b6065-9187-4e0f-a292-4f67e675d1d0"
+      }
+    },
+    {
+      "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0",
+      "metadata": {
+        "listing_url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0"
+      },
+      "expected": {
+        "host": "recruiting.ultipro.com",
+        "tenant": "AMI1003AMIK",
+        "board_id": "132b6065-9187-4e0f-a292-4f67e675d1d0"
+      }
+    },
+    {
+      "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0",
+      "metadata": {
+        "listing_url": "https://baptisthealth.rec.pro.ukg.net/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0",
+        "host": "recruiting.ultipro.com",
+        "tenant": "AMI1003AMIK",
+        "board_id": "132b6065-9187-4e0f-a292-4f67e675d1d0"
+      },
+      "expected": {
+        "host": "baptisthealth.rec.pro.ukg.net",
+        "tenant": "AMI1003AMIK",
+        "board_id": "132b6065-9187-4e0f-a292-4f67e675d1d0"
+      }
+    },
+    {
+      "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0",
+      "metadata": {
+        "listing_url": "bad",
+        "host": "recruiting.ultipro.com",
+        "tenant": "AMI1003AMIK",
+        "board_id": "132b6065-9187-4e0f-a292-4f67e675d1d0"
+      },
+      "expected": {
+        "host": "recruiting.ultipro.com",
+        "tenant": "AMI1003AMIK",
+        "board_id": "132b6065-9187-4e0f-a292-4f67e675d1d0"
+      }
+    },
+    {
+      "url": "https://recruiting.ultipro.com/AMI1003AMIK/JobBoard/132b6065-9187-4e0f-a292-4f67e675d1d0",
+      "metadata": {
+        "host": "bad",
+        "tenant": "x",
+        "board_id": "bad"
+      },
+      "expected": {
+        "host": "recruiting.ultipro.com",
+        "tenant": "AMI1003AMIK",
+        "board_id": "132b6065-9187-4e0f-a292-4f67e675d1d0"
+      }
+    }
+  ],
+  "recruiter_fields": [
+    {
+      "name": "complete",
+      "detail": {
+        "title": "연구 개발자",
+        "jobDescription": "<p>Build services.</p>",
+        "careerType": "CAREER",
+        "startDateTime": "2026-04-22T00:00:00",
+        "classificationCode": "HQ",
+        "tagList": [
+          {
+            "tagName": "Engineering"
+          }
+        ],
+        "regionName": "서울",
+        "endDateTime": "2026-05-22T00:00:00"
+      },
+      "summary": {
+        "positionSn": 100,
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "list_title": "Sample",
+        "startDateTime": "2026-01-15T12:00:00",
+        "careerType": "CAREER",
+        "classificationCode": "본사",
+        "tagList": []
+      },
+      "expected": {
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "title": "연구 개발자",
+        "description": "<p>Build services.</p>",
+        "locations": [
+          "서울"
+        ],
+        "employment_type": "CAREER",
+        "job_location_type": null,
+        "date_posted": "2026-04-21",
+        "language": "ko",
+        "extras": null,
+        "metadata": {
+          "classification": "HQ",
+          "tags": [
+            "Engineering"
+          ],
+          "valid_through": "2026-05-21"
+        }
+      }
+    },
+    {
+      "name": "summary-only",
+      "detail": {},
+      "summary": {
+        "positionSn": 100,
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "list_title": "Sample",
+        "startDateTime": "2026-01-15T12:00:00",
+        "careerType": "CAREER",
+        "classificationCode": "본사",
+        "tagList": []
+      },
+      "expected": {
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "title": "Sample",
+        "description": null,
+        "locations": null,
+        "employment_type": "CAREER",
+        "job_location_type": null,
+        "date_posted": "2026-01-15",
+        "language": "ko",
+        "extras": null,
+        "metadata": {
+          "classification": "본사"
+        }
+      }
+    },
+    {
+      "name": "text-description",
+      "detail": {
+        "jobDescriptionType": "TEXT",
+        "jobDescription": "<p>Raw text</p>"
+      },
+      "summary": {
+        "positionSn": 100,
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "list_title": "Sample",
+        "startDateTime": "2026-01-15T12:00:00",
+        "careerType": "CAREER",
+        "classificationCode": "본사",
+        "tagList": []
+      },
+      "expected": {
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "title": "Sample",
+        "description": "<pre><p>Raw text</p></pre>",
+        "locations": null,
+        "employment_type": "CAREER",
+        "job_location_type": null,
+        "date_posted": "2026-01-15",
+        "language": "ko",
+        "extras": null,
+        "metadata": {
+          "classification": "본사"
+        }
+      }
+    },
+    {
+      "name": "number-description",
+      "detail": {
+        "jobDescriptionType": "TEXT",
+        "jobDescription": 123
+      },
+      "summary": {
+        "positionSn": 100,
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "list_title": "Sample",
+        "startDateTime": "2026-01-15T12:00:00",
+        "careerType": "CAREER",
+        "classificationCode": "본사",
+        "tagList": []
+      },
+      "expected": {
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "title": "Sample",
+        "description": "<pre>123</pre>",
+        "locations": null,
+        "employment_type": "CAREER",
+        "job_location_type": null,
+        "date_posted": "2026-01-15",
+        "language": "ko",
+        "extras": null,
+        "metadata": {
+          "classification": "본사"
+        }
+      }
+    },
+    {
+      "name": "list-description",
+      "detail": {
+        "jobDescriptionType": "TEXT",
+        "jobDescription": [
+          "one",
+          "two"
+        ]
+      },
+      "summary": {
+        "positionSn": 100,
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "list_title": "Sample",
+        "startDateTime": "2026-01-15T12:00:00",
+        "careerType": "CAREER",
+        "classificationCode": "본사",
+        "tagList": []
+      },
+      "expected": {
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "title": "Sample",
+        "description": "<pre>['one', 'two']</pre>",
+        "locations": null,
+        "employment_type": "CAREER",
+        "job_location_type": null,
+        "date_posted": "2026-01-15",
+        "language": "ko",
+        "extras": null,
+        "metadata": {
+          "classification": "본사"
+        }
+      }
+    },
+    {
+      "name": "map-description",
+      "detail": {
+        "jobDescriptionType": "TEXT",
+        "jobDescription": {
+          "b": 1,
+          "a": 2
+        }
+      },
+      "summary": {
+        "positionSn": 100,
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "list_title": "Sample",
+        "startDateTime": "2026-01-15T12:00:00",
+        "careerType": "CAREER",
+        "classificationCode": "본사",
+        "tagList": []
+      },
+      "expected": {
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "title": "Sample",
+        "description": "<pre>{'b': 1, 'a': 2}</pre>",
+        "locations": null,
+        "employment_type": "CAREER",
+        "job_location_type": null,
+        "date_posted": "2026-01-15",
+        "language": "ko",
+        "extras": null,
+        "metadata": {
+          "classification": "본사"
+        }
+      }
+    },
+    {
+      "name": "region-list",
+      "detail": {
+        "regionList": [
+          {
+            "regionName": "서울"
+          },
+          {
+            "name": " 부산 "
+          }
+        ],
+        "siteList": [
+          "서울",
+          "대전"
+        ]
+      },
+      "summary": {
+        "positionSn": 100,
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "list_title": "Sample",
+        "startDateTime": "2026-01-15T12:00:00",
+        "careerType": "CAREER",
+        "classificationCode": "본사",
+        "tagList": []
+      },
+      "expected": {
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "title": "Sample",
+        "description": null,
+        "locations": [
+          "서울",
+          "부산",
+          "대전"
+        ],
+        "employment_type": "CAREER",
+        "job_location_type": null,
+        "date_posted": "2026-01-15",
+        "language": "ko",
+        "extras": null,
+        "metadata": {
+          "classification": "본사"
+        }
+      }
+    },
+    {
+      "name": "table-location",
+      "detail": {
+        "jobDescription": "<table><tr><td>근무 지역</td><td>서울 본사</td></tr></table>"
+      },
+      "summary": {
+        "positionSn": 100,
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "list_title": "Sample",
+        "startDateTime": "2026-01-15T12:00:00",
+        "careerType": "CAREER",
+        "classificationCode": "본사",
+        "tagList": []
+      },
+      "expected": {
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "title": "Sample",
+        "description": "<table><tr><td>근무 지역</td><td>서울 본사</td></tr></table>",
+        "locations": [
+          "서울 본사"
+        ],
+        "employment_type": "CAREER",
+        "job_location_type": null,
+        "date_posted": "2026-01-15",
+        "language": "ko",
+        "extras": null,
+        "metadata": {
+          "classification": "본사"
+        }
+      }
+    },
+    {
+      "name": "table-joined-location",
+      "detail": {
+        "jobDescription": "<table><tr><td><b>근무</b><i>지역</i></td><td><b>서울</b><span>본사</span></td></tr></table>"
+      },
+      "summary": {
+        "positionSn": 100,
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "list_title": "Sample",
+        "startDateTime": "2026-01-15T12:00:00",
+        "careerType": "CAREER",
+        "classificationCode": "본사",
+        "tagList": []
+      },
+      "expected": {
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "title": "Sample",
+        "description": "<table><tr><td><b>근무</b><i>지역</i></td><td><b>서울</b><span>본사</span></td></tr></table>",
+        "locations": [
+          "서울본사"
+        ],
+        "employment_type": "CAREER",
+        "job_location_type": null,
+        "date_posted": "2026-01-15",
+        "language": "ko",
+        "extras": null,
+        "metadata": {
+          "classification": "본사"
+        }
+      }
+    },
+    {
+      "name": "table-duplicate-location",
+      "detail": {
+        "regionName": "서울",
+        "jobDescription": "<table><tr><td>근무지</td><td>서울</td></tr></table>"
+      },
+      "summary": {
+        "positionSn": 100,
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "list_title": "Sample",
+        "startDateTime": "2026-01-15T12:00:00",
+        "careerType": "CAREER",
+        "classificationCode": "본사",
+        "tagList": []
+      },
+      "expected": {
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "title": "Sample",
+        "description": "<table><tr><td>근무지</td><td>서울</td></tr></table>",
+        "locations": [
+          "서울"
+        ],
+        "employment_type": "CAREER",
+        "job_location_type": null,
+        "date_posted": "2026-01-15",
+        "language": "ko",
+        "extras": null,
+        "metadata": {
+          "classification": "본사"
+        }
+      }
+    },
+    {
+      "name": "tag-type-guard",
+      "detail": {
+        "tagList": {
+          "tagName": "ignore"
+        }
+      },
+      "summary": {
+        "positionSn": 100,
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "list_title": "Sample",
+        "startDateTime": "2026-01-15T12:00:00",
+        "careerType": "CAREER",
+        "classificationCode": "본사",
+        "tagList": []
+      },
+      "expected": {
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "title": "Sample",
+        "description": null,
+        "locations": null,
+        "employment_type": "CAREER",
+        "job_location_type": null,
+        "date_posted": "2026-01-15",
+        "language": "ko",
+        "extras": null,
+        "metadata": {
+          "classification": "본사"
+        }
+      }
+    },
+    {
+      "name": "structured-metadata",
+      "detail": {
+        "announcementType": "OPEN",
+        "recruitmentType": "REGULAR",
+        "tagList": [
+          {
+            "tagName": 1
+          },
+          null,
+          false
+        ]
+      },
+      "summary": {
+        "positionSn": 100,
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "list_title": "Sample",
+        "startDateTime": "2026-01-15T12:00:00",
+        "careerType": "CAREER",
+        "classificationCode": "본사",
+        "tagList": []
+      },
+      "expected": {
+        "url": "https://mcdonalds.recruiter.co.kr/career/jobs/100",
+        "title": "Sample",
+        "description": null,
+        "locations": null,
+        "employment_type": "CAREER",
+        "job_location_type": null,
+        "date_posted": "2026-01-15",
+        "language": "ko",
+        "extras": null,
+        "metadata": {
+          "classification": "본사",
+          "tags": [
+            1
+          ],
+          "announcement_type": "OPEN",
+          "recruitment_type": "REGULAR"
+        }
+      }
+    }
+  ],
+  "recruiter_dates": [
+    {
+      "value": null,
+      "expected": null
+    },
+    {
+      "value": "",
+      "expected": null
+    },
+    {
+      "value": 123,
+      "expected": null
+    },
+    {
+      "value": "2026-04-22",
+      "expected": "2026-04-22"
+    },
+    {
+      "value": "2026-04-22T00:00:00",
+      "expected": "2026-04-21"
+    },
+    {
+      "value": "2026-04-22T12:00:00",
+      "expected": "2026-04-22"
+    },
+    {
+      "value": "2026-04-22T00:00:00+09:00",
+      "expected": "2026-04-21"
+    },
+    {
+      "value": "2026-04-22T00:00+09:00",
+      "expected": "2026-04-21"
+    },
+    {
+      "value": "2026-04-22T00:00:00Z",
+      "expected": "2026-04-22"
+    },
+    {
+      "value": "badTvalue",
+      "expected": "bad"
+    },
+    {
+      "value": "Tvalue",
+      "expected": null
+    },
+    {
+      "value": "2026-04-22 00:00:00",
+      "expected": "2026-04-22 00:00:00"
+    }
+  ]
+}

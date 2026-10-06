@@ -1781,3 +1781,43 @@ cross-origin/rescrape cases remain in the full migration scope. Preserve every
 enabled board while completing those replacements. The
 [candidate evidence](evidence/go-native-feed-provider-candidate-2026-10-06.json)
 records the current qualified subset and explicit remaining work.
+
+## Grouped API delivery, 2026-10-06
+
+PR [#10335](https://github.com/colophon-group/jobseek/pull/10335) merged MokaHR,
+AlmaCareer and Eightfold together as release **0.13.949**, source
+`c7f789faef866c0fd77921750095f1a6253c707d`. All required checks, installed image
+proof and ARM64 measurement passed at reviewed head
+`3e3510e66b06e6a67240abf2ceaf112c3ec91963`; the merge tree matches that head.
+The original full immutable deployment is run **37417474358**. Its successful
+build produced crawler digest `42531604eea973acd5fa0b5e893b86c016c204e146ac7990156b7931f3e07cec`
+and browser digest `52401861991705f52464c962e0527c3f172c562fedccf86ee707560be2cd9de3`.
+Host promotion and renewed native admission must be verified separately.
+
+Before that merge, the source 948 ordinary owner retired through its original
+wrapper, B0 rolled back through its original wrapper, and selectors were restored.
+Independent readback at epoch 198 proved the retired plan, absent owner receipts
+and routing projections, zero native claim tokens, six healthy exact-image legacy
+services, and a healthy claimant isolated in dark mode. Four interrupted immutable
+write receipts remain audit records; they confer no retired-owner authority.
+
+The next grouped release **0.13.950** adds **Softgarden, UKG, BambooHR and
+Recruiter.co.kr** together. The registry census admits all 55 current monitor
+configurations and their 41 configured detail bindings: 15 Softgarden JSON-LD,
+16 UKG embedded, 10 BambooHR HTTP API, and14 Recruiter.co.kr monitor-hydrated skip
+assignments. These counts describe local configuration eligibility. Production
+admission must use fresh canonical/cache and actual scheduled-route evidence.
+The four providers reuse existing claims, rich/URL-only persistence, detail engines,
+publisher-policy handling, failure/gone decisions and cold retirement. New HTTP
+reference cases preserve UKG pagination, BambooHR description filters and tenant
+retirement redirects, Recruiter.co.kr hydration retries/KST dates, and Softgarden
+custom URL patterns. Generic Softgarden 404 remains a failure, preserving Python's
+behavior. Delegated descriptions retain scraped bytes and locales during refresh.
+
+Continue with grouped provider and variant ports while immutable CI/deployment
+runs. Then complete enabled-profile coverage, remaining runtime consumers,
+natural freshness/queue conservation and comparable whole-lane cost measurements;
+exercise supported cold reversal and the rollback window; retire production
+Python, Playwright and Chromium after replacement authority is established.
+The full migration goal remains **active and incomplete**. Official releases were
+rechecked October 6: **Lightpanda 1.0.0** remains the latest stable qualified pin.

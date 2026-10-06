@@ -22,6 +22,16 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 	if provider == "almacareer" {
 		board, metadata = "https://fixture.jobs.cz/", `{"scraper_type":"skip"}`
 	}
+	switch provider {
+	case "softgarden":
+		board, metadata = "https://fixture.softgarden.io", `{"scraper_type":"json-ld"}`
+	case "ukg":
+		board, metadata = "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111", `{"scraper_type":"skip"}`
+	case "bamboohr":
+		board, metadata = "https://fixture.bamboohr.com/careers", `{"scraper_type":"skip"}`
+	case "recruiter_co_kr":
+		board, metadata = "https://fixture.recruiter.co.kr/career/home", `{"scraper_type":"skip"}`
+	}
 	if _, e := f.observer.Exec(ctx, "UPDATE job_board SET board_url=$2,crawler_type=$3,throttle_key=$3,metadata=$4::jsonb WHERE id=$1::uuid", f.task.ID, board, provider, metadata); e != nil {
 		t.Fatal(e)
 	}
@@ -81,7 +91,7 @@ func assertEightfoldCanonicalWatermarkCached(t *testing.T, p firstOwnerFixture) 
 }
 
 func TestRealProviderBatchColdRetirementAndEightfoldWatermarkRecovery(t *testing.T) {
-	for _, provider := range []string{"mokahr", "almacareer", "eightfold"} {
+	for _, provider := range []string{"mokahr", "almacareer", "eightfold", "softgarden", "ukg", "bamboohr", "recruiter_co_kr"} {
 		modes := []string{"interrupted", "committed-before-ack", "changed-setting"}
 		if provider == "eightfold" {
 			modes = append(modes, "reaped-before-ack", "recovered-ack", "settled-cold", "save-failure", "orphan-cache")
