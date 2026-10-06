@@ -206,11 +206,23 @@ passes in 3.338 seconds. Controller-private search capture and compiled browser
 POST helpers now correlate main-frame request/response identities, keep CSRF
 credentials out of results/logs and erase them on cleanup. Twelve actual Python
 CSRF header comparisons and capture/compiler race tests pass (1.329 seconds).
-These helpers are not wired into the service or worker yet. Its complete browser session/CSRF transport is still required
-before profile admission. The existing Go Lightpanda adapter rejects captures and
-origin-contact evaluations under B0/B1; extend its existing bounded provider path
-without weakening those rejection contracts. The renderer itself is the existing
-Go pilot/runner. A direct stateless Dayforce replay is not a verified replacement.
+The helpers now connect to one fresh Go Lightpanda target and a compiled Dayforce
+conversation on the existing pinned TLS/C4 service. The worker-side method uses
+verified HTTP bootstrap, site-identity matching and its existing complete inventory
+validator. Fifteen comparisons from actual Python verify search retry and
+publisher-policy order, including JSON errors, 401/403 refusal and positive
+headers/metadata. The Go/TLS tests prove retained C4 capacity, cleanup before
+success, disconnect cancellation and offset refusal before contact. Full pilot
+race passes (8.981 seconds); worker Dayforce race passes (1.956 seconds). The renderer
+builder now uses the repository's immutable Go 1.26.4 pin and four explicit pure
+Go library contexts. Local deployment-contract tests pass (69 passed; 24 environment skips); those skips do not qualify installed Linux behavior.
+
+Registry admission/worker dispatch, actual Lightpanda 1.0.0 session I/O, canonical
+effects, cold reversal and installed-image proofs remain required. The current
+candidate still advertises 70 profiles and does not own Dayforce in production.
+The generic B0/B1 adapter continues to reject captures and origin-contact evaluation;
+the provider conversation grants no queue, persistence or generic resumption
+authority. A direct stateless Dayforce replay is not a verified replacement.
 Complete Dayforce browser transport and remaining provider bounds/operational proofs,
 then full races and grouped publication. The partial implementation is saved in
 local commits on the isolated batch branch; no four-provider PR is published. These local counts grant no live authority.

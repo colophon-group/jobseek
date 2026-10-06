@@ -1209,7 +1209,7 @@ def test_running_endpoint_attestation_rejects_extra_routed_identity() -> None:
 def test_service_builder_is_patch_and_digest_pinned() -> None:
     dockerfile = (ROOT / "pilots/go-lightpanda/Dockerfile").read_text(encoding="utf-8")
     assert re.search(
-        r"^ARG GO_IMAGE=golang:1\.24\.7-alpine3\.22@sha256:[0-9a-f]{64}$",
+        r"^ARG GO_IMAGE=golang:1\.26\.4-alpine3\.22@sha256:[0-9a-f]{64}$",
         dockerfile,
         re.MULTILINE,
     )

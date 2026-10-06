@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	df "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/dayforcesession"
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/framing"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/lightpandaadapter"
@@ -140,11 +141,13 @@ type runtimeV1Service struct {
 // result. The adapter still returns its closed INTERNAL failure, while the
 // resident service independently poisons itself and exits for replacement.
 type runtimeV1ServiceExecution struct {
-	executor     runtimeV1Executor
-	egressPolicy EgressPolicy
-	fatalMu      sync.Mutex
-	fatal        func(error)
-	fatalErr     error
+	executor       runtimeV1Executor
+	dayforceConfig Config
+	dayforceRun    taskRunner
+	egressPolicy   EgressPolicy
+	fatalMu        sync.Mutex
+	fatal          func(error)
+	fatalErr       error
 }
 
 func newRuntimeV1ServiceExecution(config Config, run taskRunner) (*runtimeV1ServiceExecution, error) {
@@ -163,6 +166,7 @@ func newRuntimeV1ServiceExecution(config Config, run taskRunner) (*runtimeV1Serv
 		}
 		return result, err
 	}
+	execution.dayforceConfig, execution.dayforceRun = config, monitoredRun
 	adapter, err := lightpandaadapter.NewNavigationRenderOnly(runtimeV1Runner{config: config, run: monitoredRun})
 	if err != nil {
 		return nil, err
@@ -456,6 +460,14 @@ func (service *runtimeV1Service) handleConnection(
 			runtimev1.ErrorCode_ERROR_CODE_INVALID_CONFIG,
 			runtimev1.ErrorDisposition_ERROR_DISPOSITION_INVALID_CONFIG_POLICY,
 		))
+		return
+	}
+	if bytes.HasPrefix(bytes.TrimSpace(payload), []byte("{")) {
+		var request df.Request
+		if df.Decode(payload, df.RequestLimit, &request) != nil || !request.Valid() {
+			return
+		}
+		service.handleDayforce(connectionContext, tlsConnection, reader, request)
 		return
 	}
 

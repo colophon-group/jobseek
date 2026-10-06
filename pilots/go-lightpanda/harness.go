@@ -75,6 +75,7 @@ type Task struct {
 	URL        string
 	Evaluation *TaskEvaluation
 	Navigation *navigationOptions
+	Dayforce   *dayforceTask
 }
 
 // TaskEvaluation is present exactly for B1 work. Presence is explicit so an
@@ -255,6 +256,9 @@ func executeTask(ctx context.Context, deps dependencies, process managedProcess,
 }
 
 func validateTask(task Task) error {
+	if task.Dayforce != nil && (!task.Dayforce.request.Valid() || task.URL != task.Dayforce.request.TargetURL || task.Evaluation != nil || task.Dayforce.converse == nil) {
+		return errDayforceSession
+	}
 	if !validNavigationOptions(task.Navigation) {
 		return errors.New("navigation wait options are invalid")
 	}
@@ -315,7 +319,11 @@ func validateResult(task Task, result Result) error {
 	if !result.HTMLPresent {
 		return errors.New("main-document outerHTML is missing")
 	}
-	if len(result.HTML) > maxHTMLBytes {
+	htmlLimit := maxHTMLBytes
+	if task.Dayforce != nil {
+		htmlLimit = 1_000_000 - 1
+	}
+	if len(result.HTML) > htmlLimit {
 		return fmt.Errorf("%w: main-document outerHTML exceeds %d bytes", errResourceLimit, maxHTMLBytes)
 	}
 	if task.Evaluation == nil {
@@ -815,6 +823,16 @@ func (chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (
 	); err != nil {
 		return Result{}, fmt.Errorf("initialize fresh target: %w", err)
 	}
+	var dayforceCapture *dayforceSearchCapture
+	if task.Dayforce != nil {
+		var err error
+		dayforceCapture, err = newDayforceSearchCapture(mainFrame, task.Dayforce.request.SearchURL())
+		if err != nil {
+			return Result{}, err
+		}
+		defer dayforceCapture.erase()
+		chromedp.ListenTarget(targetCtx, dayforceCapture.observe)
+	}
 	chromedp.ListenTarget(targetCtx, func(event any) {
 		eventResponse, ok := event.(*network.EventResponseReceived)
 		if !ok || eventResponse.Response == nil || eventResponse.Type != network.ResourceTypeDocument || eventResponse.FrameID != mainFrame {
@@ -889,6 +907,11 @@ func (chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (
 	}
 	if err != nil {
 		return Result{}, err
+	}
+	if task.Dayforce != nil {
+		if err := executeDayforceConversation(targetCtx, task.Dayforce, dayforceCapture, int(mainStatus), finalURL, html, capturedResponse.resourcePolicy); err != nil {
+			return Result{}, err
+		}
 	}
 
 	var expression json.RawMessage

@@ -1,9 +1,9 @@
 ARG LIGHTPANDA_IMAGE=lightpanda/browser@sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e
-ARG GO_IMAGE=golang:1.24.7-alpine3.22@sha256:fc2cff6625f3c1c92e6c85938ac5bd09034ad0d4bc2dfb08278020b68540dbb5
+ARG GO_IMAGE=golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56
 FROM ${GO_IMAGE} AS go-source
 
 # The primary build context remains this pilot directory. The caller supplies
-# apps/crawler/contracts as the narrowly scoped BuildKit context "contracts";
+# contracts plus the four explicit pure Go library contexts below;
 # the repository root and crawler credentials never enter the build context.
 WORKDIR /workspace/pilots/go-lightpanda
 COPY --from=contracts go.mod go.sum /workspace/apps/crawler/contracts/
@@ -11,6 +11,13 @@ COPY --from=contracts v1/gen/go/ /workspace/apps/crawler/contracts/v1/gen/go/
 COPY --from=contracts v1/framing/ /workspace/apps/crawler/contracts/v1/framing/
 COPY --from=contracts v1/lightpandaadapter/ /workspace/apps/crawler/contracts/v1/lightpandaadapter/
 COPY --from=contracts v1/resourcepolicy/ /workspace/apps/crawler/contracts/v1/resourcepolicy/
+COPY --from=contracts v1/dayforcesession/ /workspace/apps/crawler/contracts/v1/dayforcesession/
+COPY --from=contracts v1/lightpandaclient/ /workspace/apps/crawler/contracts/v1/lightpandaclient/
+COPY --from=contracts v1/b0task/ /workspace/apps/crawler/contracts/v1/b0task/
+COPY --from=api-sniffer-monitor go.mod go.sum *.go adp_employment_types.json adp_salary_units.json /workspace/apps/crawler/go/api-sniffer-monitor/
+COPY --from=dom-detail go.mod go.sum *.go presets.json /workspace/apps/crawler/go/dom-detail/
+COPY --from=jsonld-detail go.mod go.sum *.go /workspace/apps/crawler/go/jsonld-detail/
+COPY --from=publisher-policy go.mod go.sum *.go /workspace/apps/crawler/go/publisher-policy/
 COPY go.mod go.sum ./
 RUN go mod download
 COPY *.go ./

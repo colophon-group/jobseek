@@ -8,6 +8,12 @@ on:
       - "apps/crawler/contracts/go.sum"
       - "apps/crawler/contracts/v1/gen/go/**"
       - "apps/crawler/contracts/v1/lightpandaadapter/**"
+      - "apps/crawler/contracts/v1/dayforcesession/**"
+      - "apps/crawler/contracts/v1/lightpandaclient/**"
+      - "apps/crawler/go/api-sniffer-monitor/**"
+      - "apps/crawler/go/dom-detail/**"
+      - "apps/crawler/go/jsonld-detail/**"
+      - "apps/crawler/go/publisher-policy/**"
       - "apps/crawler/contracts/v1/lightpanda-service.md"
       - "apps/crawler/src/lightpanda/client.py"
       - "apps/crawler/src/lightpanda/routing.py"
@@ -87,13 +93,13 @@ jobs:
         run: python3 -m unittest test_release_pin.py
 
       - name: Exercise checksum-pinned Lightpanda snapshot
-        run: docker build --build-context contracts=../../apps/crawler/contracts --platform ${{ matrix.platform }} --target integration-test --tag jobseek-lightpanda-integration:${{ matrix.arch }}-${{ github.run_id }} .
+        run: docker build --build-context contracts=../../apps/crawler/contracts --build-context api-sniffer-monitor=../../apps/crawler/go/api-sniffer-monitor --build-context dom-detail=../../apps/crawler/go/dom-detail --build-context jsonld-detail=../../apps/crawler/go/jsonld-detail --build-context publisher-policy=../../apps/crawler/go/publisher-policy --platform ${{ matrix.platform }} --target integration-test --tag jobseek-lightpanda-integration:${{ matrix.arch }}-${{ github.run_id }} .
 
       - name: Build bounded runtime image
-        run: docker build --build-context contracts=../../apps/crawler/contracts --platform ${{ matrix.platform }} --target runtime --tag jobseek-lightpanda-pilot:${{ matrix.arch }}-${{ github.run_id }} .
+        run: docker build --build-context contracts=../../apps/crawler/contracts --build-context api-sniffer-monitor=../../apps/crawler/go/api-sniffer-monitor --build-context dom-detail=../../apps/crawler/go/dom-detail --build-context jsonld-detail=../../apps/crawler/go/jsonld-detail --build-context publisher-policy=../../apps/crawler/go/publisher-policy --platform ${{ matrix.platform }} --target runtime --tag jobseek-lightpanda-pilot:${{ matrix.arch }}-${{ github.run_id }} .
 
       - name: Build inactive mTLS service image
-        run: docker build --build-context contracts=../../apps/crawler/contracts --build-arg SOURCE_COMMIT=${{ github.sha }} --platform ${{ matrix.platform }} --target service --tag jobseek-lightpanda-service:${{ matrix.arch }}-${{ github.run_id }} .
+        run: docker build --build-context contracts=../../apps/crawler/contracts --build-context api-sniffer-monitor=../../apps/crawler/go/api-sniffer-monitor --build-context dom-detail=../../apps/crawler/go/dom-detail --build-context jsonld-detail=../../apps/crawler/go/jsonld-detail --build-context publisher-policy=../../apps/crawler/go/publisher-policy --build-arg SOURCE_COMMIT=${{ github.sha }} --platform ${{ matrix.platform }} --target service --tag jobseek-lightpanda-service:${{ matrix.arch }}-${{ github.run_id }} .
 
       - name: Prove native service child identity boundary
         env:
@@ -137,7 +143,7 @@ jobs:
           DENSITY_SOURCE_COMMIT: ${{ github.sha }}
         run: |
           docker build \
-            --build-context contracts=../../apps/crawler/contracts \
+            --build-context contracts=../../apps/crawler/contracts --build-context api-sniffer-monitor=../../apps/crawler/go/api-sniffer-monitor --build-context dom-detail=../../apps/crawler/go/dom-detail --build-context jsonld-detail=../../apps/crawler/go/jsonld-detail --build-context publisher-policy=../../apps/crawler/go/publisher-policy \
             --build-arg "SOURCE_COMMIT=${DENSITY_SOURCE_COMMIT}" \
             --platform "${DENSITY_PLATFORM}" \
             --target density \
