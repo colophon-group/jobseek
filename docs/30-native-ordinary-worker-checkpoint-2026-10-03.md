@@ -1,6 +1,6 @@
 # Native ordinary worker continuation, 2026-10-03
 
-## Current delivery — 2026-10-06
+## Current delivery — 2026-10-07
 
 The full migration goal is **active and incomplete**. Ship multiple provider
 and variant types per release, sharing reference verification, CI and cutover.
@@ -105,7 +105,41 @@ explicitly refusing SAVE during BGSAVE, within the existing 120-second budget.
 It revalidates the server incarnation before retry and still requires its own
 synchronous SAVE acknowledgment before SQL authority. Real private Redis tests
 reproduce the refusal on unchanged 953 and pass with the fix, including bounded
-cancellation; required broad and installed checks are still pending.
+cancellation; full queue race (383.506 seconds), focused worker race (23.015 seconds), Required CI, Crawler Deploy Gate and installed-image parity pass.
+[PR #10342](https://github.com/colophon-group/jobseek/pull/10342) merged its exact reviewed head `00f44a537b41a2794da31d3b6daa1495b588f7b1` to `96601ce7fcadfa341aa153327918e0c71a84419a`.
+Before merge, original supported B0 rollback and selector clear succeeded;
+independent 20:28 UTC readback proved healthy exact-953 services, cold native
+ownership, empty native projections/tokens and retired epoch 202. Historical
+receipts remain at older epochs. Original full deployment
+[37526934505](https://github.com/colophon-group/jobseek/actions/runs/37526934505)
+succeeded. Independent 20:45 UTC readback verified promoted source
+`96601ce7fcadfa341aa153327918e0c71a84419a` and original immutable crawler/browser
+image digests, healthy services and cold native ownership at epoch 202.
+Original supported 954 B0 selector staging and activation succeeded. Independent
+20:50 UTC readback verified the exact revision/images and active cdom receipt at
+epoch 203 with seven healthy endpoints. Fresh source954 admission completed:
+1,447,321 actual scheduled routes, 7,085 monitor boards, 2,541 detail boards and
+1,421,855 owned postings. Thirty-eight cache mismatches and one unsupported route
+remain excluded. Original staging succeeded for plan
+`8b52154bd1551274123a16b620143b11d55965d0dc082e4cd2f6f2005ff6d2c6`.
+The original activation committed SQL/Redis authority at 21:10:48 UTC, including
+its synchronous Redis SAVE. The wrapper then failed its container readiness
+check and contained the complete lane. Original supported `recover-pending`
+succeeded. Independent 21:17 UTC readback proves nine exact-image services running
+with restart policies armed, seven healthy endpoints, active B0 at203, a retired
+ordinary plan, absent ordinary receipts/selector/projection, no current write
+fences or native claim tokens, and no administrative containers.
+
+The initiating service failure remains unproven: the old wrapper reports no
+service name, and recovery recreated the containers before their states could
+be captured. The retained native worker log reports startup stage `locations`,
+which can also result from cancellation during containment. The unchanged source954
+location loader passes against a read-only production taxonomy snapshot in an
+isolated local PostgreSQL schema (37,526 locations, 143,004 core names; 1.106 seconds).
+This local replay does not prove the original Linux process completed startup.
+The candidate wrapper now inspects exited containers and reports only its fixed
+service name, process state, exit code and OOM flag before containment. No
+activation retry or runtime overlay was used to recover production.
 The four-provider candidate advances together to **0.13.955** after this fix.
 Local proof does not grant production ownership.
 
@@ -121,8 +155,10 @@ monitors and ADP/Paylocity details are implemented locally, using the existing
 fetch, salary/enum, persistence and ownership paths. ADP handles its bounded DOCX
 fallback, title-location pattern and rich pagination; Cornerstone refreshes public
 authorization and validates paginated inventory; Paylocity reads embedded records
-and its server-rendered detail markup. Five candidate profiles bring the local
-capability list to 68. The four-provider scope remains unchanged and unpublished.
+and its server-rendered detail markup. Seven candidate profiles bring the local
+capability list to 71 with Dayforce's compiled browser session profile, including
+distinct Paylocity proxy monitor/detail routes. The four-provider scope remains
+unchanged and unpublished.
 
 Thirty-nine field comparisons from actual Python pass, including Unicode
 location deduplication, custom employment labels, arbitrary-precision IDs and
@@ -144,20 +180,97 @@ Paylocity monitors. Two independent ADP scrapers preserve their API-sniffer
 monitors, and five Paylocity details preserve their independently configured
 direct transport, including two boards whose monitors use a proxy. This gives
 22 direct detail bindings including one existing JSON-LD assignment. Five
-Paylocity proxy monitors remain intentionally in the full batch scope, together
-with its three explicit proxy detail configurations.
+Paylocity proxy monitors and three explicit proxy details now have distinct
+compiled Go profiles; independent direct scrapers remain direct. The protected
+Webshare client ports the process-local endpoint pool and generation-owned
+quarantine/recovery policy. All 3,078 operations in 34 actual Python policy
+traces match. Real HTTP/CONNECT tests verify redirect exit affinity, cookies,
+pinned TLS trust, credential isolation, public-origin validation, stream
+outcomes and shared connection bounds. The supported wrapper retains protected
+endpoint credentials and excludes the operator API key; all 14 existing driver
+tests and one additional credential-scope test pass.
+
+All 43 frozen canonical cases plus 11 Paylocity cases through a real proxy hop
+pass PostgreSQL/Redis settlement, description, schedule and lease checks
+(51.317 seconds including proxy policy/transport checks). Nine publisher
+reservation cases and six enrichment mask/backfill cases pass (5.398 seconds
+including startup tests). Nine additional proxy cold reversal cases pass
+(8.957 seconds), retaining interrupted/completed attempts and refusing stale
+writes. Registry and API full races pass in 2.457 and 6.321 seconds. Proxy
+connection bounds pass separately in 3.421 seconds; HTTPS-proxy trust and
+authenticated SOCKS5 handshakes pass in 1.771 seconds. Worker/queue vet pass.
+These are local execution proofs, not installed or production ownership.
 Dayforce's ten browser boards have local Go identity/bootstrap, job projection
 and overlap-aware search pagination implementations. Eighty-nine comparisons
 from actual Python pass: 51 identity/bootstrap/page cases, 17 rich field cases,
 14 pagination cases and seven actual HTTP bootstrap cases; final worker race
-passes in 3.338 seconds. Its browser session/CSRF transport is still required
-before profile admission. The existing Go Lightpanda adapter rejects captures and
-origin-contact evaluations under B0/B1; extend its existing bounded provider path
-without weakening those rejection contracts. The renderer itself is the existing
-Go pilot/runner. A direct stateless Dayforce replay is not a verified replacement.
-Complete the two transports and remaining provider bounds/operational proofs,
-then full races and grouped publication. The partial implementation is saved in
-local commit `94cdee069130768dd32a0714ac83edffdea274ee`; no four-provider PR is published. These local counts grant no live authority.
+passes in 3.338 seconds. Controller-private search capture and compiled browser
+POST helpers now correlate main-frame request/response identities, keep CSRF
+credentials out of results/logs and erase them on cleanup. Twelve actual Python
+CSRF header comparisons and capture/compiler race tests pass (1.329 seconds).
+The helpers now connect to one fresh Go Lightpanda target and a compiled Dayforce
+conversation on the existing pinned TLS/C4 service. The worker-side method uses
+verified HTTP bootstrap, site-identity matching and its existing complete inventory
+validator. Fifteen comparisons from actual Python verify search retry and
+publisher-policy order, including JSON errors, 401/403 refusal and positive
+headers/metadata. The Go/TLS tests prove retained C4 capacity, cleanup before
+success, disconnect cancellation and offset refusal before contact. Full pilot
+race passes (8.981 seconds); worker Dayforce race passes (1.956 seconds). The renderer
+builder now uses the repository's immutable Go 1.26.4 pin and four explicit pure
+Go library contexts. Local deployment-contract tests pass (69 passed; 24 environment skips); those skips do not qualify installed Linux behavior.
+
+Dayforce registry admission and browser worker dispatch now use
+`dayforce.session-search/v1`; all ten registry boards compile. The original
+[dual-architecture pilot run 37538759994](https://github.com/colophon-group/jobseek/actions/runs/37538759994)
+at `bb9e4ef2a31033825ceda89904fbe1b48a2612d5` proves actual checksum-pinned
+Lightpanda 1.0.0 HTTPS, cookies, CSRF capture and overlap/retry pagination on
+amd64 (0.20 seconds) and arm64 (0.17 seconds). Nine real PostgreSQL/Redis cases
+through the production client and worker prove canonical descriptions, skip
+details, policy reservation, failed-page refusal, site/configuration drift,
+cleanup refusal, gone evidence and browser deadline/lease conservation
+(3.938 seconds). Four cold reversal cases preserve browser deadlines through
+Redis restart and allow later retirement after historical Dayforce receipts
+(5.237 seconds).
+
+That initial pilot run is terminal red at its later child-identity probe: the upgraded
+Go runtime opens `/sys/fs/cgroup/cpu.max` itself for CPU quota tracking. The
+candidate attestation accepts only that exact cgroup-v2 filesystem descriptor
+with read-only and close-on-exec flags; arbitrary files, other quota paths and
+inheritable descriptors remain refused. The original fixed-image
+[run 37539866720](https://github.com/colophon-group/jobseek/actions/runs/37539866720)
+is green on both architectures, including child identity and density smoke.
+The explicit read-only public qualification in
+[run 37540756090](https://github.com/colophon-group/jobseek/actions/runs/37540756090)
+at `58304e612b64e5a1e8cc7b248374127ce4085597` passes all ten current Dayforce
+registry boards through verified HTTP and actual installed browser searches.
+It covers the first two pages where available, including overlap0/5/10; complete
+live inventory and production authority still require the ordinary worker.
+The first qualification attempt omitted the registry's empty-config default;
+its eight configured boards passed and its two blank configurations stopped
+before contact. The qualification now applies the normal `{}` default.
+Full worker and queue race suites pass in 413.569 and 235.601 seconds,
+respectively. Grouped exact-head required checks and deployment remain.
+Lightpanda 1.0.0
+remains the latest stable official release, rechecked October 7. No Dayforce
+production ownership is claimed.
+The generic B0/B1 adapter continues to reject captures and origin-contact evaluation;
+the provider conversation grants no queue, persistence or generic resumption
+authority. A direct stateless Dayforce replay is not a verified replacement.
+Complete remaining grouped checks and operational proofs,
+then grouped publication. The implementation is saved in
+commits on the isolated batch branch; no four-provider PR is published. These
+local counts grant no live authority.
+
+Next batches should close shared variant gaps across providers. Candidate955
+code screens 7,133 of 7,885 canonical monitor configurations in the retained
+source954 snapshot; 752 remain unsupported. This is historical configuration
+screening, not fresh cutover admission. DOM (280) and API-sniffer (149) make up
+the largest remaining groups. Extend the proven shared HTTP proxy transport
+across existing DOM/API, Inline, Sitemap, RSS, Eightfold and Phenom profiles in
+one batch, preserving independent detail transports. Then port remaining DOM
+actions/rich rows and browser API capture together, using existing parser,
+publisher, session and persistence paths. Group the smaller remaining providers
+by common HTTP/HTML/session behavior, rather than issuing one release per type.
 
 Finish remaining provider/browser/filter variants and runtime consumers using
 the existing delivery paths. After the selected complete immutable deployment,

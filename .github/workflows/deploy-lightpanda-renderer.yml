@@ -103,7 +103,7 @@ jobs:
         run: |
           set -euo pipefail
           docker build \
-            --build-context contracts=../../apps/crawler/contracts \
+            --build-context contracts=../../apps/crawler/contracts --build-context api-sniffer-monitor=../../apps/crawler/go/api-sniffer-monitor --build-context dom-detail=../../apps/crawler/go/dom-detail --build-context jsonld-detail=../../apps/crawler/go/jsonld-detail --build-context publisher-policy=../../apps/crawler/go/publisher-policy \
             --build-arg "SOURCE_COMMIT=$SOURCE_COMMIT" \
             --platform linux/arm64 \
             --target service \
@@ -181,6 +181,10 @@ jobs:
           file: pilots/go-lightpanda/Dockerfile
           build-contexts: |
             contracts=apps/crawler/contracts
+            api-sniffer-monitor=apps/crawler/go/api-sniffer-monitor
+            dom-detail=apps/crawler/go/dom-detail
+            jsonld-detail=apps/crawler/go/jsonld-detail
+            publisher-policy=apps/crawler/go/publisher-policy
           platforms: linux/arm64
           target: service
           build-args: |

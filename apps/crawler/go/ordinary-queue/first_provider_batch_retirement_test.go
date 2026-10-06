@@ -13,6 +13,8 @@ import (
 
 func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture {
 	t.Helper()
+	proxy := provider == "paylocity/proxy"
+	provider = strings.Split(provider, "/")[0]
 	p := firstOwnershipFixture(t)
 	f, ctx := p.f, context.Background()
 	board, metadata := "https://example.com/careers", `{"scraper_type":"eightfold"}`
@@ -23,6 +25,12 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 		board, metadata = "https://fixture.jobs.cz/", `{"scraper_type":"skip"}`
 	}
 	switch provider {
+	case "adp":
+		board, metadata = "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US", `{"scraper_type":"adp","scraper_config":{"enrich":["description"]}}`
+	case "cornerstone":
+		board, metadata = "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture", `{"scraper_type":"skip"}`
+	case "paylocity":
+		board, metadata = "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture", `{"scraper_type":"paylocity","scraper_config":{"enrich":["description","employment_type","job_location_type"]}}`
 	case "paycom":
 		board, metadata = "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page", `{"scraper_type":"paycom","scraper_config":{"enrich":["title","description","locations","employment_type","job_location_type","date_posted","base_salary"]}}`
 	case "rippling":
@@ -48,6 +56,15 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 		board, metadata = "https://fixture.bamboohr.com/careers", `{"scraper_type":"skip"}`
 	case "recruiter_co_kr":
 		board, metadata = "https://fixture.recruiter.co.kr/career/home", `{"scraper_type":"skip"}`
+	}
+	if proxy {
+		var md map[string]any
+		if json.Unmarshal([]byte(metadata), &md) != nil {
+			t.Fatal("invalid proxy fixture metadata")
+		}
+		md["proxy"] = true
+		raw, _ := json.Marshal(md)
+		metadata = string(raw)
 	}
 	if _, e := f.observer.Exec(ctx, "UPDATE job_board SET board_url=$2,crawler_type=$3,throttle_key=$3,metadata=$4::jsonb WHERE id=$1::uuid", f.task.ID, board, provider, metadata); e != nil {
 		t.Fatal(e)
@@ -108,7 +125,7 @@ func assertEightfoldCanonicalWatermarkCached(t *testing.T, p firstOwnerFixture) 
 }
 
 func TestRealProviderBatchColdRetirementAndEightfoldWatermarkRecovery(t *testing.T) {
-	for _, provider := range []string{"mokahr", "almacareer", "eightfold", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "dom", "rss", "inline", "api_sniffer", "comeet", "jobvite", "paycom", "rippling"} {
+	for _, provider := range []string{"mokahr", "almacareer", "eightfold", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "dom", "rss", "inline", "api_sniffer", "comeet", "jobvite", "paycom", "rippling", "adp", "cornerstone", "paylocity", "paylocity/proxy"} {
 		modes := []string{"interrupted", "committed-before-ack", "changed-setting"}
 		if provider == "eightfold" {
 			modes = append(modes, "reaped-before-ack", "recovered-ack", "settled-cold", "save-failure", "orphan-cache")

@@ -1,0 +1,73 @@
+{
+  "units": {
+    "year": "year",
+    "yr": "year",
+    "yearly": "year",
+    "annual": "year",
+    "annually": "year",
+    "per year": "year",
+    "per-year": "year",
+    "per-year-salary": "year",
+    "yearly_annually": "year",
+    "month": "month",
+    "mo": "month",
+    "monthly": "month",
+    "per month": "month",
+    "per-month": "month",
+    "per-month-salary": "month",
+    "week": "week",
+    "weekly": "week",
+    "per week": "week",
+    "per-week": "week",
+    "two_weeks": "week",
+    "biweekly": "week",
+    "day": "day",
+    "daily": "day",
+    "per day": "day",
+    "per-day": "day",
+    "hour": "hour",
+    "hr": "hour",
+    "hourly": "hour",
+    "per hour": "hour",
+    "per-hour": "hour",
+    "per-hour-wage": "hour"
+  },
+  "substrings": [
+    [
+      "two_weeks",
+      "week"
+    ],
+    [
+      "biweekly",
+      "week"
+    ],
+    [
+      "hour",
+      "hour"
+    ],
+    [
+      "month",
+      "month"
+    ],
+    [
+      "week",
+      "week"
+    ],
+    [
+      "year",
+      "year"
+    ],
+    [
+      "annual",
+      "year"
+    ],
+    [
+      "daily",
+      "day"
+    ],
+    [
+      "day",
+      "day"
+    ]
+  ]
+}

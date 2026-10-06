@@ -77,7 +77,38 @@ server leaf and SPKI pins. Rotation therefore updates the mounted certificate
 and its reviewed pins as one deployment change. Keys and pins are never
 embedded in the image or task.
 
-## One-shot wire order
+## Compiled Dayforce session conversation
+
+The Go ordinary worker can select `jobseek.lightpanda.dayforce-session/v1` on
+the same pinned TLS connection and C4 slot. This separate provider conversation
+accepts the exact typed canonical JSON request in `dayforcesession`, followed
+by the empty opening marker. It carries a configuration fingerprint, canonical
+Dayforce listing identity, expected HTTP-bootstrap site identity, offset overlap
+and bounded deadline. It accepts no script, request headers, proxy configuration,
+credential paths or arbitrary origin URL. Generic B0/B1 constructors continue to
+reject captures, actions and origin-contact evaluation.
+
+One fresh Lightpanda target captures the first correlated main-frame search
+request/response. Its CSRF lease stays in controller memory and is erased on
+cleanup. Only public site identity and canonical publisher-policy evidence are
+returned in the ready frame. The worker chooses each search offset and retains
+the established retry, overlap, completeness, projection and persistence rules.
+The controller compiles each POST on that same target; page frames carry bounded
+body bytes, status, exact source URL and policy signals. Sequences must increase,
+the first offset is zero, offsets advance by `25-overlap`, and at most six
+attempts can use one offset. Disconnect cancels an active fetch. A finish command
+produces success only after target/process cleanup; unproved cleanup poisons the
+resident service. Partial pages alone grant no inventory or write authority.
+
+Requests are bounded to 16 KiB, commands to 1 KiB, page bodies to 1 MiB and frames
+to 2 MiB. Sessions run within the held claim deadline and a 600-second ceiling;
+they retain the existing TLS identity, egress policy, C4 slots and 1-GiB/no-swap
+service limit. This path has local Go/TLS and actual Python retry/policy reference
+proofs. Installed Lightpanda I/O, registry admission, canonical worker effects
+and production deployment must be qualified before admitting Dayforce ownership.
+It does not implement generic `ExecutionFrame` resumption or an origin ledger.
+
+## B0/B1 one-shot wire order
 
 Each connection has this exact order:
 

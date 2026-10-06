@@ -188,7 +188,7 @@ whole-lane admission and a separate supported cold renderer deployment.
 
 ```sh
 docker build \
-  --build-context contracts=../../apps/crawler/contracts \
+  --build-context contracts=../../apps/crawler/contracts --build-context api-sniffer-monitor=../../apps/crawler/go/api-sniffer-monitor --build-context dom-detail=../../apps/crawler/go/dom-detail --build-context jsonld-detail=../../apps/crawler/go/jsonld-detail --build-context publisher-policy=../../apps/crawler/go/publisher-policy \
   --platform linux/amd64 \
   --target runtime \
   -t jobseek-lightpanda-pilot .
@@ -215,7 +215,7 @@ service contract; this command does not authorize a deployment:
 
 ```sh
 docker build \
-  --build-context contracts=../../apps/crawler/contracts \
+  --build-context contracts=../../apps/crawler/contracts --build-context api-sniffer-monitor=../../apps/crawler/go/api-sniffer-monitor --build-context dom-detail=../../apps/crawler/go/dom-detail --build-context jsonld-detail=../../apps/crawler/go/jsonld-detail --build-context publisher-policy=../../apps/crawler/go/publisher-policy \
   --build-arg SOURCE_COMMIT="$(git rev-parse HEAD)" \
   --platform linux/arm64 \
   --target service \
@@ -292,7 +292,7 @@ LIGHTPANDA_INTEGRATION_BIN=/absolute/path/to/lightpanda-x86_64-linux \
   go test -run '^(TestLightpandaIntegration|TestLightpandaRuntimeV1BridgeIntegration|TestLightpandaRuntimeV1StdioIntegration|TestLightpandaPoolRuntimeV1IntegrationC4|TestLightpandaEgressPolicyIntegration)$' \
   -count=1 -v .
 
-docker build --build-context contracts=../../apps/crawler/contracts \
+docker build --build-context contracts=../../apps/crawler/contracts --build-context api-sniffer-monitor=../../apps/crawler/go/api-sniffer-monitor --build-context dom-detail=../../apps/crawler/go/dom-detail --build-context jsonld-detail=../../apps/crawler/go/jsonld-detail --build-context publisher-policy=../../apps/crawler/go/publisher-policy \
   --platform linux/amd64 --target integration-test \
   -t jobseek-lightpanda-integration:amd64 .
 
@@ -300,7 +300,7 @@ LIGHTPANDA_INTEGRATION_BIN=/absolute/path/to/lightpanda-aarch64-linux \
   go test -run '^(TestLightpandaIntegration|TestLightpandaRuntimeV1BridgeIntegration|TestLightpandaRuntimeV1StdioIntegration|TestLightpandaPoolRuntimeV1IntegrationC4|TestLightpandaEgressPolicyIntegration)$' \
   -count=1 -v .
 
-docker build --build-context contracts=../../apps/crawler/contracts \
+docker build --build-context contracts=../../apps/crawler/contracts --build-context api-sniffer-monitor=../../apps/crawler/go/api-sniffer-monitor --build-context dom-detail=../../apps/crawler/go/dom-detail --build-context jsonld-detail=../../apps/crawler/go/jsonld-detail --build-context publisher-policy=../../apps/crawler/go/publisher-policy \
   --platform linux/arm64 --target integration-test \
   -t jobseek-lightpanda-integration:arm64 .
 ```
@@ -445,7 +445,7 @@ git diff --cached --quiet
 test -z "$(git ls-files --others --exclude-standard)"
 
 docker build \
-  --build-context contracts=../../apps/crawler/contracts \
+  --build-context contracts=../../apps/crawler/contracts --build-context api-sniffer-monitor=../../apps/crawler/go/api-sniffer-monitor --build-context dom-detail=../../apps/crawler/go/dom-detail --build-context jsonld-detail=../../apps/crawler/go/jsonld-detail --build-context publisher-policy=../../apps/crawler/go/publisher-policy \
   --build-arg "SOURCE_COMMIT=$REVIEWED_SOURCE_COMMIT" \
   --target density \
   --tag jobseek-lightpanda-density:evidence \

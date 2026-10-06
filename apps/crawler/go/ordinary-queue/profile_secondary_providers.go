@@ -6,13 +6,16 @@ import (
 )
 
 func SecondaryProvider(provider string) bool {
-	return provider == "paycom" || provider == "rippling" || provider == "comeet" || provider == "jobvite" || provider == "softgarden" || provider == "ukg" || provider == "bamboohr" || provider == "recruiter_co_kr"
+	return provider == "dayforce" || provider == "adp" || provider == "cornerstone" || provider == "paylocity" || provider == "paycom" || provider == "rippling" || provider == "comeet" || provider == "jobvite" || provider == "softgarden" || provider == "ukg" || provider == "bamboohr" || provider == "recruiter_co_kr"
 }
 func paycomEnrichmentFields(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true})
 }
 func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
 	allowed := map[string]bool{"description": true}
+	if config["crawler_type"] == "adp" || config["crawler_type"] == "paylocity" {
+		return monitorEnrichmentFields(config, map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true})
+	}
 	if config["crawler_type"] == "paycom" {
 		return paycomEnrichmentFields(config)
 	}
@@ -25,6 +28,9 @@ func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, allowed)
 }
 func inspectSecondaryMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
+	if config["crawler_type"] == "dayforce" {
+		return inspectDayforceMonitor(boardID, config, md)
+	}
 	if config["monitor_needs_browser"] != "0" {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
@@ -34,6 +40,27 @@ func inspectSecondaryMonitor(boardID string, config map[string]string, md map[st
 	provider := config["crawler_type"]
 	var profile, endpoint string
 	switch provider {
+	case "adp":
+		o, e := api.ADPOptionsFromMetadata(config["board_url"], config["metadata"])
+		if e != nil {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		profile, endpoint = "adp.search-items/v1", o.SearchURL(1)
+	case "cornerstone":
+		if e := feedRichDetailAssignment(config); e != nil {
+			return GreenhouseMonitorProfile{}, e
+		}
+		o, e := api.CornerstoneOptionsFromMetadata(config["board_url"], config["metadata"])
+		if e != nil {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		profile, endpoint = "cornerstone.search-items/v1", o.ListingURL()
+	case "paylocity":
+		o, e := api.PaylocityOptionsFromMetadata(config["board_url"], config["metadata"])
+		if e != nil {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		profile, endpoint = o.Profile(), o.Listing
 	case "paycom":
 		o, e := api.PaycomOptionsFromMetadata(config["board_url"], config["metadata"])
 		if e != nil {
@@ -103,6 +130,18 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 		return false
 	}
 	switch p.Provider {
+	case "dayforce":
+		board, _, e := api.DayforceOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && p.Profile == dayforceMonitorProfile && p.Endpoint == board.ListingURL() && board.ResourceMatches(resource)
+	case "adp":
+		o, e := api.ADPOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && p.Profile == "adp.search-items/v1" && p.Endpoint == o.SearchURL(1) && o.ResourceMatches(resource)
+	case "cornerstone":
+		o, e := api.CornerstoneOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && p.Profile == "cornerstone.search-items/v1" && p.Endpoint == o.ListingURL() && o.ResourceMatches(resource)
+	case "paylocity":
+		o, e := api.PaylocityOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && p.Profile == o.Profile() && p.Endpoint == o.Listing && o.ResourceMatches(resource)
 	case "paycom":
 		o, e := api.PaycomOptionsFromMetadata(config["board_url"], config["metadata"])
 		return e == nil && p.Profile == "paycom.preview-items/v1" && p.Endpoint == o.PortalURL() && o.ResourceMatches(resource)
@@ -138,6 +177,18 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 }
 func SecondaryMonitorGone(config map[string]string, resource string, status int, disabled bool) bool {
 	switch config["crawler_type"] {
+	case "dayforce":
+		board, _, e := api.DayforceOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && board.ResourceMatches(resource) && resource != board.SearchURL() && ((status == 404 || status == 410) && !disabled || status == 200 && disabled)
+	case "adp":
+		o, e := api.ADPOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && resource == o.SearchURL(1) && (status == 404 || status == 410) && !disabled
+	case "cornerstone":
+		o, e := api.CornerstoneOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && resource == o.ListingURL() && (status == 404 || status == 410) && !disabled
+	case "paylocity":
+		o, e := api.PaylocityOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && resource == o.Listing && (status == 404 || status == 410) && !disabled
 	case "paycom":
 		o, e := api.PaycomOptionsFromMetadata(config["board_url"], config["metadata"])
 		return e == nil && resource == o.PortalURL() && ((status == 404 || status == 410) && !disabled || status == 200 && disabled)

@@ -1,0 +1,109 @@
+[
+  {
+    "name": "minimum",
+    "headers": {
+      "x-csrf-token": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "result": {
+      "accept": "application/json",
+      "content-type": "application/json",
+      "x-csrf-token": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "error": false
+  },
+  {
+    "name": "maximum",
+    "headers": {
+      "X-Csrf-Token": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "result": {
+      "accept": "application/json",
+      "content-type": "application/json",
+      "x-csrf-token": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "error": false
+  },
+  {
+    "name": "alphabet",
+    "headers": {
+      "X-CSRF-TOKEN": "A0._~-A0._~-A0._~-A0._~-A0._~-A0._~-",
+      "Cookie": "synthetic-only"
+    },
+    "result": {
+      "accept": "application/json",
+      "content-type": "application/json",
+      "x-csrf-token": "A0._~-A0._~-A0._~-A0._~-A0._~-A0._~-"
+    },
+    "error": false
+  },
+  {
+    "name": "missing",
+    "headers": {},
+    "result": null,
+    "error": true
+  },
+  {
+    "name": "short",
+    "headers": {
+      "x-csrf-token": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "result": null,
+    "error": true
+  },
+  {
+    "name": "oversized",
+    "headers": {
+      "x-csrf-token": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    },
+    "result": null,
+    "error": true
+  },
+  {
+    "name": "unicode",
+    "headers": {
+      "x-csrf-token": "\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9\u00e9"
+    },
+    "result": null,
+    "error": true
+  },
+  {
+    "name": "line-break",
+    "headers": {
+      "x-csrf-token": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\r\n"
+    },
+    "result": null,
+    "error": true
+  },
+  {
+    "name": "space",
+    "headers": {
+      "x-csrf-token": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA "
+    },
+    "result": null,
+    "error": true
+  },
+  {
+    "name": "percent",
+    "headers": {
+      "x-csrf-token": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA%"
+    },
+    "result": null,
+    "error": true
+  },
+  {
+    "name": "non-string",
+    "headers": {
+      "x-csrf-token": 123
+    },
+    "result": null,
+    "error": true
+  },
+  {
+    "name": "null",
+    "headers": {
+      "x-csrf-token": null
+    },
+    "result": null,
+    "error": true
+  }
+]

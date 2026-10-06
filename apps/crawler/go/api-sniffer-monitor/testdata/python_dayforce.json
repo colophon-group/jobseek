@@ -1,0 +1,1270 @@
+[
+  {
+    "kind": "board",
+    "name": "listing",
+    "value": "https://jobs.dayforcehcm.com/fixture/Careers",
+    "expected": {
+      "tenant": "fixture",
+      "portal": "Careers"
+    },
+    "error": false
+  },
+  {
+    "kind": "board",
+    "name": "localized",
+    "value": "https://jobs.dayforcehcm.com/fr-CA/fixture/Careers",
+    "expected": {
+      "tenant": "fixture",
+      "portal": "Careers"
+    },
+    "error": false
+  },
+  {
+    "kind": "board",
+    "name": "detail",
+    "value": "https://jobs.dayforcehcm.com/en-US/fixture/Careers/jobs/14",
+    "expected": {
+      "tenant": "fixture",
+      "portal": "Careers"
+    },
+    "error": false
+  },
+  {
+    "kind": "board",
+    "name": "trailing-slash",
+    "value": "https://jobs.dayforcehcm.com/fixture/Careers/",
+    "expected": {
+      "tenant": "fixture",
+      "portal": "Careers"
+    },
+    "error": false
+  },
+  {
+    "kind": "board",
+    "name": "normalized-case",
+    "value": "https://jobs.dayforcehcm.com/FIXTURE/Careers",
+    "expected": {
+      "tenant": "fixture",
+      "portal": "Careers"
+    },
+    "error": false
+  },
+  {
+    "kind": "board",
+    "name": "foreign-host",
+    "value": "https://evil.example/fixture/Careers",
+    "expected": null,
+    "error": false
+  },
+  {
+    "kind": "board",
+    "name": "userinfo",
+    "value": "https://user@jobs.dayforcehcm.com/fixture/Careers",
+    "expected": null,
+    "error": false
+  },
+  {
+    "kind": "board",
+    "name": "bad-port",
+    "value": "https://jobs.dayforcehcm.com:444/fixture/Careers",
+    "expected": null,
+    "error": false
+  },
+  {
+    "kind": "board",
+    "name": "http",
+    "value": "http://jobs.dayforcehcm.com/fixture/Careers",
+    "expected": null,
+    "error": false
+  },
+  {
+    "kind": "board",
+    "name": "query",
+    "value": "https://jobs.dayforcehcm.com/fixture/Careers?x=1",
+    "expected": null,
+    "error": false
+  },
+  {
+    "kind": "board",
+    "name": "fragment",
+    "value": "https://jobs.dayforcehcm.com/fixture/Careers#x",
+    "expected": null,
+    "error": false
+  },
+  {
+    "kind": "board",
+    "name": "reserved-tenant",
+    "value": "https://jobs.dayforcehcm.com/api/Careers",
+    "expected": null,
+    "error": false
+  },
+  {
+    "kind": "board",
+    "name": "zero-detail-id",
+    "value": "https://jobs.dayforcehcm.com/en-US/fixture/Careers/jobs/0",
+    "expected": null,
+    "error": false
+  },
+  {
+    "kind": "board",
+    "name": "overflow-detail-id",
+    "value": "https://jobs.dayforcehcm.com/en-US/fixture/Careers/jobs/9223372036854775808",
+    "expected": null,
+    "error": false
+  },
+  {
+    "kind": "board",
+    "name": "empty-segment",
+    "value": "https://jobs.dayforcehcm.com/fixture//Careers",
+    "expected": null,
+    "error": false
+  },
+  {
+    "kind": "site",
+    "name": "valid",
+    "value": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"query\": {\"clientNamespace\": \"fixture\", \"careerSiteXRefCode\": \"Careers\"}, \"props\": {\"pageProps\": {\"dehydratedState\": {\"queries\": [{\"queryKey\": [\"site-info\"], \"state\": {\"data\": {\"clientNamespace\": \"fixture\", \"jobBoardCode\": \"careers\", \"jobBoardId\": 7, \"cultureCode\": \"en-US\", \"isoCultureCodes\": [\"en-US\", \"fr-CA\"], \"isDisabled\": null}}}]}}}}</script>",
+    "expected": {
+      "job_board_id": 7,
+      "culture": "en-US",
+      "cultures": [
+        "en-US",
+        "fr-CA"
+      ],
+      "disabled": false
+    },
+    "error": false
+  },
+  {
+    "kind": "site",
+    "name": "disabled",
+    "value": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"query\": {\"clientNamespace\": \"fixture\", \"careerSiteXRefCode\": \"Careers\"}, \"props\": {\"pageProps\": {\"dehydratedState\": {\"queries\": [{\"queryKey\": [\"site-info\"], \"state\": {\"data\": {\"clientNamespace\": \"fixture\", \"jobBoardCode\": \"careers\", \"jobBoardId\": 7, \"cultureCode\": \"en-US\", \"isoCultureCodes\": [\"en-US\", \"fr-CA\"], \"isDisabled\": true}}}]}}}}</script>",
+    "expected": {
+      "job_board_id": 7,
+      "culture": "en-US",
+      "cultures": [
+        "en-US",
+        "fr-CA"
+      ],
+      "disabled": true
+    },
+    "error": false
+  },
+  {
+    "kind": "site",
+    "name": "bad-disabled",
+    "value": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"query\": {\"clientNamespace\": \"fixture\", \"careerSiteXRefCode\": \"Careers\"}, \"props\": {\"pageProps\": {\"dehydratedState\": {\"queries\": [{\"queryKey\": [\"site-info\"], \"state\": {\"data\": {\"clientNamespace\": \"fixture\", \"jobBoardCode\": \"careers\", \"jobBoardId\": 7, \"cultureCode\": \"en-US\", \"isoCultureCodes\": [\"en-US\", \"fr-CA\"], \"isDisabled\": \"true\"}}}]}}}}</script>",
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "site",
+    "name": "foreign-tenant",
+    "value": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"query\": {\"clientNamespace\": \"fixture\", \"careerSiteXRefCode\": \"Careers\"}, \"props\": {\"pageProps\": {\"dehydratedState\": {\"queries\": [{\"queryKey\": [\"site-info\"], \"state\": {\"data\": {\"clientNamespace\": \"other\", \"jobBoardCode\": \"careers\", \"jobBoardId\": 7, \"cultureCode\": \"en-US\", \"isoCultureCodes\": [\"en-US\", \"fr-CA\"], \"isDisabled\": null}}}]}}}}</script>",
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "site",
+    "name": "foreign-portal",
+    "value": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"query\": {\"clientNamespace\": \"fixture\", \"careerSiteXRefCode\": \"Careers\"}, \"props\": {\"pageProps\": {\"dehydratedState\": {\"queries\": [{\"queryKey\": [\"site-info\"], \"state\": {\"data\": {\"clientNamespace\": \"fixture\", \"jobBoardCode\": \"Other\", \"jobBoardId\": 7, \"cultureCode\": \"en-US\", \"isoCultureCodes\": [\"en-US\", \"fr-CA\"], \"isDisabled\": null}}}]}}}}</script>",
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "site",
+    "name": "invalid-id",
+    "value": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"query\": {\"clientNamespace\": \"fixture\", \"careerSiteXRefCode\": \"Careers\"}, \"props\": {\"pageProps\": {\"dehydratedState\": {\"queries\": [{\"queryKey\": [\"site-info\"], \"state\": {\"data\": {\"clientNamespace\": \"fixture\", \"jobBoardCode\": \"careers\", \"jobBoardId\": true, \"cultureCode\": \"en-US\", \"isoCultureCodes\": [\"en-US\", \"fr-CA\"], \"isDisabled\": null}}}]}}}}</script>",
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "site",
+    "name": "string-id",
+    "value": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"query\": {\"clientNamespace\": \"fixture\", \"careerSiteXRefCode\": \"Careers\"}, \"props\": {\"pageProps\": {\"dehydratedState\": {\"queries\": [{\"queryKey\": [\"site-info\"], \"state\": {\"data\": {\"clientNamespace\": \"fixture\", \"jobBoardCode\": \"careers\", \"jobBoardId\": \"0007\", \"cultureCode\": \"en-US\", \"isoCultureCodes\": [\"en-US\", \"fr-CA\"], \"isDisabled\": null}}}]}}}}</script>",
+    "expected": {
+      "job_board_id": 7,
+      "culture": "en-US",
+      "cultures": [
+        "en-US",
+        "fr-CA"
+      ],
+      "disabled": false
+    },
+    "error": false
+  },
+  {
+    "kind": "site",
+    "name": "unsupported-culture",
+    "value": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"query\": {\"clientNamespace\": \"fixture\", \"careerSiteXRefCode\": \"Careers\"}, \"props\": {\"pageProps\": {\"dehydratedState\": {\"queries\": [{\"queryKey\": [\"site-info\"], \"state\": {\"data\": {\"clientNamespace\": \"fixture\", \"jobBoardCode\": \"careers\", \"jobBoardId\": 7, \"cultureCode\": \"de-DE\", \"isoCultureCodes\": [\"en-US\", \"fr-CA\"], \"isDisabled\": null}}}]}}}}</script>",
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "site",
+    "name": "bad-culture",
+    "value": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"query\": {\"clientNamespace\": \"fixture\", \"careerSiteXRefCode\": \"Careers\"}, \"props\": {\"pageProps\": {\"dehydratedState\": {\"queries\": [{\"queryKey\": [\"site-info\"], \"state\": {\"data\": {\"clientNamespace\": \"fixture\", \"jobBoardCode\": \"careers\", \"jobBoardId\": 7, \"cultureCode\": \"en\", \"isoCultureCodes\": [\"en-US\", \"fr-CA\"], \"isDisabled\": null}}}]}}}}</script>",
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "site",
+    "name": "duplicate-cultures",
+    "value": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"query\": {\"clientNamespace\": \"fixture\", \"careerSiteXRefCode\": \"Careers\"}, \"props\": {\"pageProps\": {\"dehydratedState\": {\"queries\": [{\"queryKey\": [\"site-info\"], \"state\": {\"data\": {\"clientNamespace\": \"fixture\", \"jobBoardCode\": \"careers\", \"jobBoardId\": 7, \"cultureCode\": \"en-US\", \"isoCultureCodes\": [\"en-US\", \"EN-us\"], \"isDisabled\": null}}}]}}}}</script>",
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "site",
+    "name": "empty-cultures",
+    "value": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"query\": {\"clientNamespace\": \"fixture\", \"careerSiteXRefCode\": \"Careers\"}, \"props\": {\"pageProps\": {\"dehydratedState\": {\"queries\": [{\"queryKey\": [\"site-info\"], \"state\": {\"data\": {\"clientNamespace\": \"fixture\", \"jobBoardCode\": \"careers\", \"jobBoardId\": 7, \"cultureCode\": \"en-US\", \"isoCultureCodes\": [], \"isDisabled\": null}}}]}}}}</script>",
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "site",
+    "name": "foreign-query",
+    "value": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"query\": {\"clientNamespace\": \"other\", \"careerSiteXRefCode\": \"Careers\"}, \"props\": {\"pageProps\": {\"dehydratedState\": {\"queries\": [{\"queryKey\": [\"site-info\"], \"state\": {\"data\": {\"clientNamespace\": \"fixture\", \"jobBoardCode\": \"careers\", \"jobBoardId\": 7, \"cultureCode\": \"en-US\", \"isoCultureCodes\": [\"en-US\", \"fr-CA\"], \"isDisabled\": null}}}]}}}}</script>",
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "site",
+    "name": "ambiguous-site",
+    "value": "<script id=\"__NEXT_DATA__\" type=\"application/json\">{\"query\": {\"clientNamespace\": \"fixture\", \"careerSiteXRefCode\": \"Careers\"}, \"props\": {\"pageProps\": {\"dehydratedState\": {\"queries\": [{\"queryKey\": [\"site-info\"], \"state\": {\"data\": {\"clientNamespace\": \"fixture\", \"jobBoardCode\": \"careers\", \"jobBoardId\": 7, \"cultureCode\": \"en-US\", \"isoCultureCodes\": [\"en-US\", \"fr-CA\"], \"isDisabled\": null}}}, {\"queryKey\": [\"site-info\"], \"state\": {\"data\": {\"clientNamespace\": \"fixture\", \"jobBoardCode\": \"careers\", \"jobBoardId\": 7, \"cultureCode\": \"en-US\", \"isoCultureCodes\": [\"en-US\", \"fr-CA\"], \"isDisabled\": null}}}]}}}}</script>",
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "site",
+    "name": "missing-script",
+    "value": "<p>Missing</p>",
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "site",
+    "name": "invalid-json",
+    "value": "<script id=\"__NEXT_DATA__\">{</script>",
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "field",
+    "name": "plain",
+    "value": {
+      "clientNamespace": "fixture",
+      "jobBoardId": 7,
+      "jobPostingId": 14,
+      "jobReqId": 123,
+      "jobTitle": " Engineer & Builder ",
+      "jobDescription": "Summary&nbsp;\n\nHelp customers.\nExplain benefits.",
+      "hasVirtualLocation": false,
+      "postingStartTimestampUTC": "2026-08-03T10:00:00+00:00",
+      "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+      "isEvergreen": false,
+      "postingLocations": [
+        {
+          "formattedAddress": " Zurich, CH "
+        }
+      ]
+    },
+    "expected": {
+      "url": "https://jobs.dayforcehcm.com/en-US/fixture/Careers/jobs/14",
+      "title": "Engineer & Builder",
+      "description": "<p>Summary</p>\n<p>Help customers.<br>\nExplain benefits.</p>",
+      "locations": [
+        "Zurich, CH"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-08-03",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "job_posting_id": 14,
+        "job_req_id": 123,
+        "evergreen": false,
+        "expires_at": "2026-09-03T10:00:00Z"
+      },
+      "source_identity": null
+    },
+    "error": false
+  },
+  {
+    "kind": "field",
+    "name": "html",
+    "value": {
+      "clientNamespace": "fixture",
+      "jobBoardId": 7,
+      "jobPostingId": 14,
+      "jobReqId": 123,
+      "jobTitle": " Engineer & Builder ",
+      "jobDescription": "<section><h2>Role</h2><p title=\"x\">Build&nbsp; &amp; ship</p><script>bad()</script></section>",
+      "hasVirtualLocation": false,
+      "postingStartTimestampUTC": "2026-08-03T10:00:00+00:00",
+      "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+      "isEvergreen": false,
+      "postingLocations": [
+        {
+          "formattedAddress": " Zurich, CH "
+        }
+      ]
+    },
+    "expected": {
+      "url": "https://jobs.dayforcehcm.com/en-US/fixture/Careers/jobs/14",
+      "title": "Engineer & Builder",
+      "description": "<h2>Role</h2><p>Build  &amp; ship</p>",
+      "locations": [
+        "Zurich, CH"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-08-03",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "job_posting_id": 14,
+        "job_req_id": 123,
+        "evergreen": false,
+        "expires_at": "2026-09-03T10:00:00Z"
+      },
+      "source_identity": null
+    },
+    "error": false
+  },
+  {
+    "kind": "field",
+    "name": "empty-description",
+    "value": {
+      "clientNamespace": "fixture",
+      "jobBoardId": 7,
+      "jobPostingId": 14,
+      "jobReqId": 123,
+      "jobTitle": " Engineer & Builder ",
+      "jobDescription": " ",
+      "hasVirtualLocation": false,
+      "postingStartTimestampUTC": "2026-08-03T10:00:00+00:00",
+      "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+      "isEvergreen": false,
+      "postingLocations": [
+        {
+          "formattedAddress": " Zurich, CH "
+        }
+      ]
+    },
+    "expected": {
+      "url": "https://jobs.dayforcehcm.com/en-US/fixture/Careers/jobs/14",
+      "title": "Engineer & Builder",
+      "description": null,
+      "locations": [
+        "Zurich, CH"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-08-03",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "job_posting_id": 14,
+        "job_req_id": 123,
+        "evergreen": false,
+        "expires_at": "2026-09-03T10:00:00Z"
+      },
+      "source_identity": null
+    },
+    "error": false
+  },
+  {
+    "kind": "field",
+    "name": "crlf",
+    "value": {
+      "clientNamespace": "fixture",
+      "jobBoardId": 7,
+      "jobPostingId": 14,
+      "jobReqId": 123,
+      "jobTitle": " Engineer & Builder ",
+      "jobDescription": "First\r\nsecond\r\n\r\nthird &lt;quoted&gt;",
+      "hasVirtualLocation": false,
+      "postingStartTimestampUTC": "2026-08-03T10:00:00+00:00",
+      "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+      "isEvergreen": false,
+      "postingLocations": [
+        {
+          "formattedAddress": " Zurich, CH "
+        }
+      ]
+    },
+    "expected": {
+      "url": "https://jobs.dayforcehcm.com/en-US/fixture/Careers/jobs/14",
+      "title": "Engineer & Builder",
+      "description": "<p>First<br>\nsecond</p>\n<p>third &lt;quoted&gt;</p>",
+      "locations": [
+        "Zurich, CH"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-08-03",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "job_posting_id": 14,
+        "job_req_id": 123,
+        "evergreen": false,
+        "expires_at": "2026-09-03T10:00:00Z"
+      },
+      "source_identity": null
+    },
+    "error": false
+  },
+  {
+    "kind": "field",
+    "name": "virtual",
+    "value": {
+      "clientNamespace": "fixture",
+      "jobBoardId": 7,
+      "jobPostingId": 14,
+      "jobReqId": 123,
+      "jobTitle": " Engineer & Builder ",
+      "jobDescription": "Summary&nbsp;\n\nHelp customers.\nExplain benefits.",
+      "hasVirtualLocation": true,
+      "postingStartTimestampUTC": "2026-08-03T10:00:00+00:00",
+      "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+      "isEvergreen": false,
+      "postingLocations": [
+        {
+          "formattedAddress": " Zurich, CH "
+        }
+      ]
+    },
+    "expected": {
+      "url": "https://jobs.dayforcehcm.com/en-US/fixture/Careers/jobs/14",
+      "title": "Engineer & Builder",
+      "description": "<p>Summary</p>\n<p>Help customers.<br>\nExplain benefits.</p>",
+      "locations": [
+        "Virtual",
+        "Zurich, CH"
+      ],
+      "employment_type": null,
+      "job_location_type": "remote",
+      "date_posted": "2026-08-03",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "job_posting_id": 14,
+        "job_req_id": 123,
+        "evergreen": false,
+        "expires_at": "2026-09-03T10:00:00Z"
+      },
+      "source_identity": null
+    },
+    "error": false
+  },
+  {
+    "kind": "field",
+    "name": "unicode-location",
+    "value": {
+      "clientNamespace": "fixture",
+      "jobBoardId": 7,
+      "jobPostingId": 14,
+      "jobReqId": 123,
+      "jobTitle": " Engineer & Builder ",
+      "jobDescription": "Summary&nbsp;\n\nHelp customers.\nExplain benefits.",
+      "hasVirtualLocation": false,
+      "postingStartTimestampUTC": "2026-08-03T10:00:00+00:00",
+      "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+      "isEvergreen": false,
+      "postingLocations": [
+        {
+          "formattedAddress": "Straße, DE"
+        },
+        {
+          "formattedAddress": "STRASSE, DE"
+        }
+      ]
+    },
+    "expected": {
+      "url": "https://jobs.dayforcehcm.com/en-US/fixture/Careers/jobs/14",
+      "title": "Engineer & Builder",
+      "description": "<p>Summary</p>\n<p>Help customers.<br>\nExplain benefits.</p>",
+      "locations": [
+        "Straße, DE"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-08-03",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "job_posting_id": 14,
+        "job_req_id": 123,
+        "evergreen": false,
+        "expires_at": "2026-09-03T10:00:00Z"
+      },
+      "source_identity": null
+    },
+    "error": false
+  },
+  {
+    "kind": "field",
+    "name": "virtual-duplicate",
+    "value": {
+      "clientNamespace": "fixture",
+      "jobBoardId": 7,
+      "jobPostingId": 14,
+      "jobReqId": 123,
+      "jobTitle": " Engineer & Builder ",
+      "jobDescription": "Summary&nbsp;\n\nHelp customers.\nExplain benefits.",
+      "hasVirtualLocation": true,
+      "postingStartTimestampUTC": "2026-08-03T10:00:00+00:00",
+      "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+      "isEvergreen": false,
+      "postingLocations": [
+        {
+          "formattedAddress": "VIRTUAL"
+        },
+        {
+          "formattedAddress": "Zurich"
+        }
+      ]
+    },
+    "expected": {
+      "url": "https://jobs.dayforcehcm.com/en-US/fixture/Careers/jobs/14",
+      "title": "Engineer & Builder",
+      "description": "<p>Summary</p>\n<p>Help customers.<br>\nExplain benefits.</p>",
+      "locations": [
+        "Virtual",
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": "remote",
+      "date_posted": "2026-08-03",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "job_posting_id": 14,
+        "job_req_id": 123,
+        "evergreen": false,
+        "expires_at": "2026-09-03T10:00:00Z"
+      },
+      "source_identity": null
+    },
+    "error": false
+  },
+  {
+    "kind": "field",
+    "name": "missing-title",
+    "value": {
+      "clientNamespace": "fixture",
+      "jobBoardId": 7,
+      "jobPostingId": 14,
+      "jobReqId": 123,
+      "jobTitle": null,
+      "jobDescription": "Summary&nbsp;\n\nHelp customers.\nExplain benefits.",
+      "hasVirtualLocation": false,
+      "postingStartTimestampUTC": "2026-08-03T10:00:00+00:00",
+      "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+      "isEvergreen": false,
+      "postingLocations": [
+        {
+          "formattedAddress": " Zurich, CH "
+        }
+      ]
+    },
+    "expected": null,
+    "error": false
+  },
+  {
+    "kind": "field",
+    "name": "blank-title",
+    "value": {
+      "clientNamespace": "fixture",
+      "jobBoardId": 7,
+      "jobPostingId": 14,
+      "jobReqId": 123,
+      "jobTitle": " ",
+      "jobDescription": "Summary&nbsp;\n\nHelp customers.\nExplain benefits.",
+      "hasVirtualLocation": false,
+      "postingStartTimestampUTC": "2026-08-03T10:00:00+00:00",
+      "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+      "isEvergreen": false,
+      "postingLocations": [
+        {
+          "formattedAddress": " Zurich, CH "
+        }
+      ]
+    },
+    "expected": null,
+    "error": false
+  },
+  {
+    "kind": "field",
+    "name": "boolean-id",
+    "value": {
+      "clientNamespace": "fixture",
+      "jobBoardId": 7,
+      "jobPostingId": true,
+      "jobReqId": 123,
+      "jobTitle": " Engineer & Builder ",
+      "jobDescription": "Summary&nbsp;\n\nHelp customers.\nExplain benefits.",
+      "hasVirtualLocation": false,
+      "postingStartTimestampUTC": "2026-08-03T10:00:00+00:00",
+      "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+      "isEvergreen": false,
+      "postingLocations": [
+        {
+          "formattedAddress": " Zurich, CH "
+        }
+      ]
+    },
+    "expected": null,
+    "error": false
+  },
+  {
+    "kind": "field",
+    "name": "overflow-id",
+    "value": {
+      "clientNamespace": "fixture",
+      "jobBoardId": 7,
+      "jobPostingId": 9223372036854775808,
+      "jobReqId": 123,
+      "jobTitle": " Engineer & Builder ",
+      "jobDescription": "Summary&nbsp;\n\nHelp customers.\nExplain benefits.",
+      "hasVirtualLocation": false,
+      "postingStartTimestampUTC": "2026-08-03T10:00:00+00:00",
+      "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+      "isEvergreen": false,
+      "postingLocations": [
+        {
+          "formattedAddress": " Zurich, CH "
+        }
+      ]
+    },
+    "expected": null,
+    "error": false
+  },
+  {
+    "kind": "field",
+    "name": "unicode-id",
+    "value": {
+      "clientNamespace": "fixture",
+      "jobBoardId": 7,
+      "jobPostingId": "１４",
+      "jobReqId": 123,
+      "jobTitle": " Engineer & Builder ",
+      "jobDescription": "Summary&nbsp;\n\nHelp customers.\nExplain benefits.",
+      "hasVirtualLocation": false,
+      "postingStartTimestampUTC": "2026-08-03T10:00:00+00:00",
+      "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+      "isEvergreen": false,
+      "postingLocations": [
+        {
+          "formattedAddress": " Zurich, CH "
+        }
+      ]
+    },
+    "expected": {
+      "url": "https://jobs.dayforcehcm.com/en-US/fixture/Careers/jobs/14",
+      "title": "Engineer & Builder",
+      "description": "<p>Summary</p>\n<p>Help customers.<br>\nExplain benefits.</p>",
+      "locations": [
+        "Zurich, CH"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-08-03",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "job_posting_id": 14,
+        "job_req_id": 123,
+        "evergreen": false,
+        "expires_at": "2026-09-03T10:00:00Z"
+      },
+      "source_identity": null
+    },
+    "error": false
+  },
+  {
+    "kind": "field",
+    "name": "leading-zero-id",
+    "value": {
+      "clientNamespace": "fixture",
+      "jobBoardId": 7,
+      "jobPostingId": "0014",
+      "jobReqId": 123,
+      "jobTitle": " Engineer & Builder ",
+      "jobDescription": "Summary&nbsp;\n\nHelp customers.\nExplain benefits.",
+      "hasVirtualLocation": false,
+      "postingStartTimestampUTC": "2026-08-03T10:00:00+00:00",
+      "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+      "isEvergreen": false,
+      "postingLocations": [
+        {
+          "formattedAddress": " Zurich, CH "
+        }
+      ]
+    },
+    "expected": {
+      "url": "https://jobs.dayforcehcm.com/en-US/fixture/Careers/jobs/14",
+      "title": "Engineer & Builder",
+      "description": "<p>Summary</p>\n<p>Help customers.<br>\nExplain benefits.</p>",
+      "locations": [
+        "Zurich, CH"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-08-03",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "job_posting_id": 14,
+        "job_req_id": 123,
+        "evergreen": false,
+        "expires_at": "2026-09-03T10:00:00Z"
+      },
+      "source_identity": null
+    },
+    "error": false
+  },
+  {
+    "kind": "field",
+    "name": "date-only",
+    "value": {
+      "clientNamespace": "fixture",
+      "jobBoardId": 7,
+      "jobPostingId": 14,
+      "jobReqId": 123,
+      "jobTitle": " Engineer & Builder ",
+      "jobDescription": "Summary&nbsp;\n\nHelp customers.\nExplain benefits.",
+      "hasVirtualLocation": false,
+      "postingStartTimestampUTC": "2026-01-03",
+      "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+      "isEvergreen": false,
+      "postingLocations": [
+        {
+          "formattedAddress": " Zurich, CH "
+        }
+      ]
+    },
+    "expected": {
+      "url": "https://jobs.dayforcehcm.com/en-US/fixture/Careers/jobs/14",
+      "title": "Engineer & Builder",
+      "description": "<p>Summary</p>\n<p>Help customers.<br>\nExplain benefits.</p>",
+      "locations": [
+        "Zurich, CH"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-01-03",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "job_posting_id": 14,
+        "job_req_id": 123,
+        "evergreen": false,
+        "expires_at": "2026-09-03T10:00:00Z"
+      },
+      "source_identity": null
+    },
+    "error": false
+  },
+  {
+    "kind": "field",
+    "name": "bad-date",
+    "value": {
+      "clientNamespace": "fixture",
+      "jobBoardId": 7,
+      "jobPostingId": 14,
+      "jobReqId": 123,
+      "jobTitle": " Engineer & Builder ",
+      "jobDescription": "Summary&nbsp;\n\nHelp customers.\nExplain benefits.",
+      "hasVirtualLocation": false,
+      "postingStartTimestampUTC": "nope",
+      "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+      "isEvergreen": false,
+      "postingLocations": [
+        {
+          "formattedAddress": " Zurich, CH "
+        }
+      ]
+    },
+    "expected": {
+      "url": "https://jobs.dayforcehcm.com/en-US/fixture/Careers/jobs/14",
+      "title": "Engineer & Builder",
+      "description": "<p>Summary</p>\n<p>Help customers.<br>\nExplain benefits.</p>",
+      "locations": [
+        "Zurich, CH"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "job_posting_id": 14,
+        "job_req_id": 123,
+        "evergreen": false,
+        "expires_at": "2026-09-03T10:00:00Z"
+      },
+      "source_identity": null
+    },
+    "error": false
+  },
+  {
+    "kind": "field",
+    "name": "boolean-virtual",
+    "value": {
+      "clientNamespace": "fixture",
+      "jobBoardId": 7,
+      "jobPostingId": 14,
+      "jobReqId": false,
+      "jobTitle": " Engineer & Builder ",
+      "jobDescription": "Summary&nbsp;\n\nHelp customers.\nExplain benefits.",
+      "hasVirtualLocation": "true",
+      "postingStartTimestampUTC": "2026-08-03T10:00:00+00:00",
+      "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+      "isEvergreen": "true",
+      "postingLocations": [
+        {
+          "formattedAddress": " Zurich, CH "
+        }
+      ]
+    },
+    "expected": {
+      "url": "https://jobs.dayforcehcm.com/en-US/fixture/Careers/jobs/14",
+      "title": "Engineer & Builder",
+      "description": "<p>Summary</p>\n<p>Help customers.<br>\nExplain benefits.</p>",
+      "locations": [
+        "Zurich, CH"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-08-03",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "job_posting_id": 14,
+        "expires_at": "2026-09-03T10:00:00Z"
+      },
+      "source_identity": null
+    },
+    "error": false
+  },
+  {
+    "kind": "field",
+    "name": "non-object",
+    "value": null,
+    "expected": null,
+    "error": false
+  },
+  {
+    "kind": "page",
+    "name": "valid",
+    "value": {
+      "maxCount": 1,
+      "offset": 0,
+      "count": 1,
+      "jobPostings": [
+        {
+          "clientNamespace": "fixture",
+          "jobBoardId": 7,
+          "jobPostingId": 14,
+          "jobReqId": 123,
+          "jobTitle": " Engineer & Builder ",
+          "jobDescription": "Summary&nbsp;\n\nHelp customers.\nExplain benefits.",
+          "hasVirtualLocation": false,
+          "postingStartTimestampUTC": "2026-08-03T10:00:00+00:00",
+          "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+          "isEvergreen": false,
+          "postingLocations": [
+            {
+              "formattedAddress": " Zurich, CH "
+            }
+          ]
+        }
+      ]
+    },
+    "expected": [
+      1,
+      [
+        {
+          "clientNamespace": "fixture",
+          "jobBoardId": 7,
+          "jobPostingId": 14,
+          "jobReqId": 123,
+          "jobTitle": " Engineer & Builder ",
+          "jobDescription": "Summary&nbsp;\n\nHelp customers.\nExplain benefits.",
+          "hasVirtualLocation": false,
+          "postingStartTimestampUTC": "2026-08-03T10:00:00+00:00",
+          "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+          "isEvergreen": false,
+          "postingLocations": [
+            {
+              "formattedAddress": " Zurich, CH "
+            }
+          ]
+        }
+      ]
+    ],
+    "error": false
+  },
+  {
+    "kind": "page",
+    "name": "empty",
+    "value": {
+      "maxCount": 0,
+      "offset": 0,
+      "count": 0,
+      "jobPostings": []
+    },
+    "expected": [
+      0,
+      []
+    ],
+    "error": false
+  },
+  {
+    "kind": "page",
+    "name": "bad-total",
+    "value": {
+      "maxCount": true,
+      "offset": 0,
+      "count": 1,
+      "jobPostings": [
+        {
+          "clientNamespace": "fixture",
+          "jobBoardId": 7,
+          "jobPostingId": 14,
+          "jobReqId": 123,
+          "jobTitle": " Engineer & Builder ",
+          "jobDescription": "Summary&nbsp;\n\nHelp customers.\nExplain benefits.",
+          "hasVirtualLocation": false,
+          "postingStartTimestampUTC": "2026-08-03T10:00:00+00:00",
+          "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+          "isEvergreen": false,
+          "postingLocations": [
+            {
+              "formattedAddress": " Zurich, CH "
+            }
+          ]
+        }
+      ]
+    },
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "page",
+    "name": "wrong-offset",
+    "value": {
+      "maxCount": 1,
+      "offset": 5,
+      "count": 1,
+      "jobPostings": [
+        {
+          "clientNamespace": "fixture",
+          "jobBoardId": 7,
+          "jobPostingId": 14,
+          "jobReqId": 123,
+          "jobTitle": " Engineer & Builder ",
+          "jobDescription": "Summary&nbsp;\n\nHelp customers.\nExplain benefits.",
+          "hasVirtualLocation": false,
+          "postingStartTimestampUTC": "2026-08-03T10:00:00+00:00",
+          "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+          "isEvergreen": false,
+          "postingLocations": [
+            {
+              "formattedAddress": " Zurich, CH "
+            }
+          ]
+        }
+      ]
+    },
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "page",
+    "name": "bad-count",
+    "value": {
+      "maxCount": 1,
+      "offset": 0,
+      "count": 2,
+      "jobPostings": [
+        {
+          "clientNamespace": "fixture",
+          "jobBoardId": 7,
+          "jobPostingId": 14,
+          "jobReqId": 123,
+          "jobTitle": " Engineer & Builder ",
+          "jobDescription": "Summary&nbsp;\n\nHelp customers.\nExplain benefits.",
+          "hasVirtualLocation": false,
+          "postingStartTimestampUTC": "2026-08-03T10:00:00+00:00",
+          "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+          "isEvergreen": false,
+          "postingLocations": [
+            {
+              "formattedAddress": " Zurich, CH "
+            }
+          ]
+        }
+      ]
+    },
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "page",
+    "name": "non-list",
+    "value": {
+      "maxCount": 1,
+      "offset": 0,
+      "count": 1,
+      "jobPostings": {}
+    },
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "page",
+    "name": "overflow-total",
+    "value": {
+      "maxCount": 0,
+      "offset": 0,
+      "count": 1,
+      "jobPostings": [
+        {
+          "clientNamespace": "fixture",
+          "jobBoardId": 7,
+          "jobPostingId": 14,
+          "jobReqId": 123,
+          "jobTitle": " Engineer & Builder ",
+          "jobDescription": "Summary&nbsp;\n\nHelp customers.\nExplain benefits.",
+          "hasVirtualLocation": false,
+          "postingStartTimestampUTC": "2026-08-03T10:00:00+00:00",
+          "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+          "isEvergreen": false,
+          "postingLocations": [
+            {
+              "formattedAddress": " Zurich, CH "
+            }
+          ]
+        }
+      ]
+    },
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "page",
+    "name": "foreign-board",
+    "value": {
+      "maxCount": 1,
+      "offset": 0,
+      "count": 1,
+      "jobPostings": [
+        {
+          "clientNamespace": "fixture",
+          "jobBoardId": 8,
+          "jobPostingId": 14,
+          "jobReqId": 123,
+          "jobTitle": " Engineer & Builder ",
+          "jobDescription": "Summary&nbsp;\n\nHelp customers.\nExplain benefits.",
+          "hasVirtualLocation": false,
+          "postingStartTimestampUTC": "2026-08-03T10:00:00+00:00",
+          "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+          "isEvergreen": false,
+          "postingLocations": [
+            {
+              "formattedAddress": " Zurich, CH "
+            }
+          ]
+        }
+      ]
+    },
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "page",
+    "name": "foreign-tenant",
+    "value": {
+      "maxCount": 1,
+      "offset": 0,
+      "count": 1,
+      "jobPostings": [
+        {
+          "clientNamespace": "other",
+          "jobBoardId": 7,
+          "jobPostingId": 14,
+          "jobReqId": 123,
+          "jobTitle": " Engineer & Builder ",
+          "jobDescription": "Summary&nbsp;\n\nHelp customers.\nExplain benefits.",
+          "hasVirtualLocation": false,
+          "postingStartTimestampUTC": "2026-08-03T10:00:00+00:00",
+          "postingExpiryTimestampUTC": " 2026-09-03T10:00:00Z ",
+          "isEvergreen": false,
+          "postingLocations": [
+            {
+              "formattedAddress": " Zurich, CH "
+            }
+          ]
+        }
+      ]
+    },
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "page",
+    "name": "non-object-row",
+    "value": {
+      "maxCount": 1,
+      "offset": 0,
+      "count": 1,
+      "jobPostings": [
+        null
+      ]
+    },
+    "expected": [
+      1,
+      [
+        null
+      ]
+    ],
+    "error": false
+  },
+  {
+    "kind": "overlap",
+    "name": "default",
+    "value": {},
+    "expected": 0,
+    "error": false
+  },
+  {
+    "kind": "overlap",
+    "name": "zero",
+    "value": {
+      "offset_overlap": 0
+    },
+    "expected": 0,
+    "error": false
+  },
+  {
+    "kind": "overlap",
+    "name": "five",
+    "value": {
+      "offset_overlap": 5
+    },
+    "expected": 5,
+    "error": false
+  },
+  {
+    "kind": "overlap",
+    "name": "ten",
+    "value": {
+      "offset_overlap": 10
+    },
+    "expected": 10,
+    "error": false
+  },
+  {
+    "kind": "overlap",
+    "name": "bool",
+    "value": {
+      "offset_overlap": true
+    },
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "overlap",
+    "name": "full-page",
+    "value": {
+      "offset_overlap": 25
+    },
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "overlap",
+    "name": "negative",
+    "value": {
+      "offset_overlap": -1
+    },
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "overlap",
+    "name": "string",
+    "value": {
+      "offset_overlap": "5"
+    },
+    "expected": null,
+    "error": true
+  },
+  {
+    "kind": "body",
+    "name": "0",
+    "value": 0,
+    "expected": {
+      "clientNamespace": "fixture",
+      "jobBoardCode": "Careers",
+      "cultureCode": "en-US",
+      "distanceUnit": 0,
+      "paginationStart": 0
+    },
+    "error": false
+  },
+  {
+    "kind": "body",
+    "name": "20",
+    "value": 20,
+    "expected": {
+      "clientNamespace": "fixture",
+      "jobBoardCode": "Careers",
+      "cultureCode": "en-US",
+      "distanceUnit": 0,
+      "paginationStart": 20
+    },
+    "error": false
+  },
+  {
+    "kind": "body",
+    "name": "25",
+    "value": 25,
+    "expected": {
+      "clientNamespace": "fixture",
+      "jobBoardCode": "Careers",
+      "cultureCode": "en-US",
+      "distanceUnit": 0,
+      "paginationStart": 25
+    },
+    "error": false
+  }
+]

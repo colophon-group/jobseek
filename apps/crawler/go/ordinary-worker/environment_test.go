@@ -77,7 +77,7 @@ func strconvTestIndex(values []string, value string) string {
 func TestRuntimeProtectedHostsAndConcurrency(t *testing.T) {
 	env := fixtureRuntimeEnvironment()
 	env["INTERNAL_HOSTS_ALLOW"] = " Example.COM:8080, [::1]:8108, [2001:db8::1] "
-	env["WEBSHARE_PROXY_URLS"] = `["http://secret:private@proxy-a:8080"]`
+	env["WEBSHARE_PROXY_URLS"] = `["http://synthetic:private@p.webshare.io:8080"]`
 	env["WEBSHARE_PROXY_URL"] = "http://proxy-b:8080"
 	env["TYPESENSE_HOST"] = "typesense:8108"
 	env["MONITOR_CONCURRENCY"] = "0"
@@ -93,7 +93,7 @@ func TestRuntimeProtectedHostsAndConcurrency(t *testing.T) {
 	for _, host := range c.internalHosts {
 		got[host] = true
 	}
-	for _, host := range []string{"postgres", "redis", "example.com", "::1", "2001:db8::1", "proxy-a", "proxy-b", "typesense"} {
+	for _, host := range []string{"postgres", "redis", "example.com", "::1", "2001:db8::1", "p.webshare.io", "proxy-b", "typesense"} {
 		if !got[host] {
 			t.Fatalf("protected host derivation lost %q", host)
 		}

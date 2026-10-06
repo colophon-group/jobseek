@@ -1,0 +1,103 @@
+{
+  "schema": "jobseek.native-grouped-provider-proxy-candidate/v1",
+  "observed_at_utc": "2026-10-06T22:33:12.576254+00:00",
+  "candidate_version": "0.13.955",
+  "batch": [
+    "adp",
+    "paylocity",
+    "cornerstone",
+    "dayforce"
+  ],
+  "scope": "full four-provider implementation; installed browser and local canonical/cold proofs complete; required PR CI and original deployment pending",
+  "profiles": 71,
+  "registry_monitors": {
+    "adp_direct": 14,
+    "cornerstone": 12,
+    "paylocity_direct": 4,
+    "paylocity_proxy": 5,
+    "dayforce_browser": 10
+  },
+  "independent_scrapers": {
+    "adp_api_sniffer_boards": 2,
+    "paylocity_direct": 5,
+    "paylocity_proxy": 3
+  },
+  "proxy_policy": {
+    "actual_python_traces": 34,
+    "operations": 3078,
+    "status": "pass"
+  },
+  "transport": "Protected Webshare HTTP/HTTPS/SOCKS5 configuration; real HTTP, HTTPS-proxy, authenticated SOCKS5 and CONNECT/origin-TLS fixtures pass.",
+  "validation": {
+    "canonical_direct_cases": 43,
+    "canonical_paylocity_proxy_cases": 11,
+    "canonical_transport_race_seconds": 51.317,
+    "publisher_cases": 9,
+    "enrichment_cases": 6,
+    "publisher_enrichment_startup_race_seconds": 5.398,
+    "additional_proxy_cold_cases": 9,
+    "proxy_cold_race_seconds": 8.957,
+    "registry_race_seconds": 2.457,
+    "api_full_race_seconds": 3.315,
+    "shared_proxy_connection_budget_race_seconds": 3.421,
+    "operator_wrapper_existing_tests": 14,
+    "operator_wrapper_proxy_scope_tests": 1,
+    "worker_vet": "pass",
+    "queue_vet": "pass",
+    "https_proxy_socks5_race_seconds": 1.771,
+    "full_worker_race_seconds": 413.569,
+    "full_queue_race_seconds": 235.601,
+    "dayforce_canonical_session_cases": 9,
+    "dayforce_canonical_session_race_seconds": 4.134,
+    "dayforce_cold_reversal_cases": 4,
+    "dayforce_cold_reversal_race_seconds": 5.237
+  },
+  "dayforce": {
+    "current_browser_boards": 10,
+    "actual_python_core_references": 89,
+    "browser_session_csrf_transport": "implemented and installed Lightpanda1.0.0 proven",
+    "profile": "dayforce.session-search/v1",
+    "actual_python_header_cases": 12,
+    "actual_python_retry_policy_cases": 15,
+    "installed_session": {
+      "run": 37538759994,
+      "source": "bb9e4ef2a31033825ceda89904fbe1b48a2612d5",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "status": "passed; later identity probe failed and was corrected"
+    },
+    "installed_fixed_pilot": {
+      "run": 37539866720,
+      "source": "0d54553429f0b32ed4e43e88026ec2cefe36f882",
+      "status": "complete success on both architectures"
+    },
+    "installed_public_qualification": {
+      "run": 37540756090,
+      "source": "58304e612b64e5a1e8cc7b248374127ce4085597",
+      "status": "complete success",
+      "boards": 10,
+      "scope": "Verified HTTP bootstrap and first two actual browser search pages where available; no full live inventory or write authority"
+    }
+  },
+  "remaining": [
+    "Grouped PR required CI and installed-image parity",
+    "Original immutable renderer and crawler deployment after supported baseline restoration",
+    "Fresh actual-route admission, supported ownership and every-profile freshness/queue conservation",
+    "Remaining enabled types/variants/runtime consumers, whole-lane resources, reversal/rollback window and complete Python runtime retirement"
+  ],
+  "authority": "Local reference, real network-fixture and canonical test evidence only; no live write authority granted.",
+  "historical_configuration_screen": {
+    "source": "96601ce7fcadfa341aa153327918e0c71a84419a",
+    "observed_at": "2026-10-06T20:51:19.709828+00:00",
+    "monitor_configs": 7885,
+    "candidate_admitted": 7133,
+    "unsupported": 752,
+    "largest_unsupported": {
+      "dom": 280,
+      "api_sniffer": 149
+    },
+    "authority": "Historical screening, not fresh admission"
+  }
+}

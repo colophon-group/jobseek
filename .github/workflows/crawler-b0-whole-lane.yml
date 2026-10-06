@@ -64,6 +64,10 @@ jobs:
             --label "org.opencontainers.image.revision=${source_sha}" \
             --tag "jobseek-b0-control:${source_sha}" apps/crawler
           docker build --build-context contracts=apps/crawler/contracts \
+            --build-context api-sniffer-monitor=apps/crawler/go/api-sniffer-monitor \
+            --build-context dom-detail=apps/crawler/go/dom-detail \
+            --build-context jsonld-detail=apps/crawler/go/jsonld-detail \
+            --build-context publisher-policy=apps/crawler/go/publisher-policy \
             --build-arg "SOURCE_COMMIT=${source_sha}" \
             --target service \
             --tag "jobseek-b0-renderer:${source_sha}" pilots/go-lightpanda

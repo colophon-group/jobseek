@@ -87,6 +87,9 @@ func fetchProviderStatusResource(ctx context.Context, client *http.Client, optio
 			return nil, observed, e
 		}
 	}
+	if scoped, ok := options.(interface{ HonorContentLength() bool }); ok && scoped.HonorContentLength() && response.ContentLength > limit {
+		return nil, observed, &DiscoveryError{Kind: "body_limit"}
+	}
 	raw, e := io.ReadAll(io.LimitReader(response.Body, limit+1))
 	observed.bytes = len(raw)
 	if int64(len(raw)) > limit {

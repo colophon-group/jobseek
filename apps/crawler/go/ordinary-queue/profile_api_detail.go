@@ -21,6 +21,9 @@ const smartRecruitersDetailProfile = "smartrecruiters.api-detail/v1"
 const workableDetailProfile = "workable.api-detail/v1"
 const joinDetailProfile = "join.nextdata-detail/v1"
 const oracleDetailProfile = "oracle_hcm.api-detail/v1"
+const adpDetailProfile = "adp.public-detail/v1"
+const paylocityDetailProfile = "paylocity.html-detail/v1"
+const paylocityProxyDetailProfile = "paylocity.proxy-html-detail/v1"
 const paycomDetailProfile = "paycom.public-detail/v1"
 const ripplingDetailProfile = "rippling.v1-detail/v1"
 const mokahrDetailProfile = "mokahr.encrypted-detail/v1"
@@ -28,7 +31,7 @@ const eightfoldDetailProfile = "eightfold.jsonld-api-detail/v1"
 
 func independentDetailProfile(profile string) bool {
 	switch profile {
-	case paycomDetailProfile, ripplingDetailProfile, mokahrDetailProfile, eightfoldDetailProfile, domRenderedDetailProfile, jsonldRenderedDetailProfile, embeddedRenderedDetailProfile, domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, joinDetailProfile, oracleDetailProfile, embeddedDetailProfile, httpAPIDetailProfile:
+	case adpDetailProfile, paylocityDetailProfile, paylocityProxyDetailProfile, paycomDetailProfile, ripplingDetailProfile, mokahrDetailProfile, eightfoldDetailProfile, domRenderedDetailProfile, jsonldRenderedDetailProfile, embeddedRenderedDetailProfile, domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, joinDetailProfile, oracleDetailProfile, embeddedDetailProfile, httpAPIDetailProfile:
 		return true
 	}
 	return false
@@ -73,10 +76,16 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 	if explicitScraper != "" {
 		scraper = explicitScraper
 	}
-	if scraper != "paycom" && scraper != "rippling" && scraper != "mokahr" && scraper != "eightfold" && scraper != "smartrecruiters" && scraper != "workable" && scraper != "nextdata" && scraper != "oracle_hcm" {
+	if scraper != "adp" && scraper != "paylocity" && scraper != "paycom" && scraper != "rippling" && scraper != "mokahr" && scraper != "eightfold" && scraper != "smartrecruiters" && scraper != "workable" && scraper != "nextdata" && scraper != "oracle_hcm" {
 		return fail()
 	}
 	allowed := map[string]bool{"proxy": true, "render": true, "ssl_verify": true}
+	if scraper == "adp" {
+		allowed = map[string]bool{"enrich": true, "locale": true, "title_location_pattern": true}
+	}
+	if scraper == "paylocity" {
+		allowed = map[string]bool{"enrich": true, "proxy": true}
+	}
 	if scraper == "paycom" {
 		allowed = map[string]bool{"defaults": true, "enrich": true}
 	}
@@ -106,6 +115,9 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 		}
 	}
 	for _, key := range []string{"proxy", "render"} {
+		if scraper == "paylocity" && key == "proxy" && string(options[key]) == "true" {
+			continue
+		}
 		if raw, ok := options[key]; ok && string(raw) != "false" && string(raw) != "null" {
 			return fail()
 		}
@@ -119,7 +131,29 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 	var jsonldOptions map[string]any
 	var locale string
 	var providerOptions map[string]any
-	if scraper == "paycom" {
+	if scraper == "adp" || scraper == "paylocity" {
+		providerOptions = map[string]any{}
+		raw, _ := json.Marshal(options)
+		if json.Unmarshal(raw, &providerOptions) != nil {
+			return fail()
+		}
+		enrichmentFields, err = monitorEnrichmentFields(config, map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true})
+		if scraper == "adp" {
+			o, e := apisniffer.ADPDetailRoute(source, providerOptions)
+			if e != nil {
+				return fail()
+			}
+			endpoint, profile = o.DetailURL(), adpDetailProfile
+		} else {
+			if apisniffer.PaylocityDetailRoute(source) != nil {
+				return fail()
+			}
+			endpoint, profile = source, paylocityDetailProfile
+			if string(options["proxy"]) == "true" {
+				profile = paylocityProxyDetailProfile
+			}
+		}
+	} else if scraper == "paycom" {
 		o, _, e := apisniffer.PaycomDetailRoute(source)
 		if e != nil {
 			return fail()
@@ -304,7 +338,7 @@ func inspectAPIDetailOwnership(boardID string, config map[string]string) (Workda
 			}
 		}
 	}
-	for _, source := range []string{"https://ats.rippling.com/native/jobs/OWNERSHIPADMISSION", "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/1", "https://app.mokahr.com/social-recruitment/native/1#/job/OWNERSHIPADMISSION", "https://jobs.smartrecruiters.com/native/OWNERSHIPADMISSION", "https://apply.workable.com/native/j/OWNERSHIPADMISSION/", "https://join.com/companies/native/OWNERSHIPADMISSION"} {
+	for _, source := range []string{"https://2000recruiting.paylocity.com/Recruiting/Jobs/Details/1", "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&jobId=1_1", "https://ats.rippling.com/native/jobs/OWNERSHIPADMISSION", "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/1", "https://app.mokahr.com/social-recruitment/native/1#/job/OWNERSHIPADMISSION", "https://jobs.smartrecruiters.com/native/OWNERSHIPADMISSION", "https://apply.workable.com/native/j/OWNERSHIPADMISSION/", "https://join.com/companies/native/OWNERSHIPADMISSION"} {
 		if profile, err := InspectAPIDetail(boardID, config, source, Simple); err == nil {
 			profile.Domain = "*"
 			return profile, nil

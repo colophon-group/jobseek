@@ -1,0 +1,288 @@
+[
+  {
+    "name": "success",
+    "pages": [
+      {
+        "status": 200,
+        "headers": {},
+        "body": "{\"maxCount\":0,\"offset\":0,\"count\":0,\"jobPostings\":[]}"
+      }
+    ],
+    "calls": 1,
+    "delays": [],
+    "outcome": "ok"
+  },
+  {
+    "name": "server_recovers",
+    "pages": [
+      {
+        "status": 503,
+        "headers": {},
+        "body": "bad"
+      },
+      {
+        "status": 200,
+        "headers": {},
+        "body": "{\"maxCount\":0,\"offset\":0,\"count\":0,\"jobPostings\":[]}"
+      }
+    ],
+    "calls": 2,
+    "delays": [
+      0.75
+    ],
+    "outcome": "ok"
+  },
+  {
+    "name": "server_exhausts",
+    "pages": [
+      {
+        "status": 500,
+        "headers": {},
+        "body": "bad"
+      },
+      {
+        "status": 500,
+        "headers": {},
+        "body": "bad"
+      },
+      {
+        "status": 500,
+        "headers": {},
+        "body": "bad"
+      }
+    ],
+    "calls": 3,
+    "delays": [
+      0.75,
+      1.5
+    ],
+    "outcome": "failed"
+  },
+  {
+    "name": "timeout_recovers",
+    "pages": [
+      {
+        "status": 408,
+        "headers": {},
+        "body": "bad"
+      },
+      {
+        "status": 200,
+        "headers": {},
+        "body": "{\"maxCount\":0,\"offset\":0,\"count\":0,\"jobPostings\":[]}"
+      }
+    ],
+    "calls": 2,
+    "delays": [
+      0.75
+    ],
+    "outcome": "ok"
+  },
+  {
+    "name": "early_recovers",
+    "pages": [
+      {
+        "status": 425,
+        "headers": {},
+        "body": "bad"
+      },
+      {
+        "status": 200,
+        "headers": {},
+        "body": "{\"maxCount\":0,\"offset\":0,\"count\":0,\"jobPostings\":[]}"
+      }
+    ],
+    "calls": 2,
+    "delays": [
+      0.75
+    ],
+    "outcome": "ok"
+  },
+  {
+    "name": "limited_recovers",
+    "pages": [
+      {
+        "status": 429,
+        "headers": {},
+        "body": "bad"
+      },
+      {
+        "status": 200,
+        "headers": {},
+        "body": "{\"maxCount\":0,\"offset\":0,\"count\":0,\"jobPostings\":[]}"
+      }
+    ],
+    "calls": 2,
+    "delays": [
+      0.75
+    ],
+    "outcome": "ok"
+  },
+  {
+    "name": "unauthorized",
+    "pages": [
+      {
+        "status": 401,
+        "headers": {},
+        "body": "bad"
+      },
+      {
+        "status": 200,
+        "headers": {},
+        "body": "{\"maxCount\":0,\"offset\":0,\"count\":0,\"jobPostings\":[]}"
+      }
+    ],
+    "calls": 1,
+    "delays": [],
+    "outcome": "failed"
+  },
+  {
+    "name": "forbidden",
+    "pages": [
+      {
+        "status": 403,
+        "headers": {},
+        "body": "bad"
+      },
+      {
+        "status": 200,
+        "headers": {},
+        "body": "{\"maxCount\":0,\"offset\":0,\"count\":0,\"jobPostings\":[]}"
+      }
+    ],
+    "calls": 1,
+    "delays": [],
+    "outcome": "failed"
+  },
+  {
+    "name": "invalid_json_recovers",
+    "pages": [
+      {
+        "status": 200,
+        "headers": {},
+        "body": "bad"
+      },
+      {
+        "status": 200,
+        "headers": {},
+        "body": "{\"maxCount\":0,\"offset\":0,\"count\":0,\"jobPostings\":[]}"
+      }
+    ],
+    "calls": 2,
+    "delays": [
+      0.75
+    ],
+    "outcome": "ok"
+  },
+  {
+    "name": "invalid_json_exhausts",
+    "pages": [
+      {
+        "status": 200,
+        "headers": {},
+        "body": "bad"
+      },
+      {
+        "status": 200,
+        "headers": {},
+        "body": "bad"
+      },
+      {
+        "status": 200,
+        "headers": {},
+        "body": "bad"
+      }
+    ],
+    "calls": 3,
+    "delays": [
+      0.75,
+      1.5
+    ],
+    "outcome": "failed"
+  },
+  {
+    "name": "empty_204_recovers",
+    "pages": [
+      {
+        "status": 204,
+        "headers": {},
+        "body": ""
+      },
+      {
+        "status": 200,
+        "headers": {},
+        "body": "{\"maxCount\":0,\"offset\":0,\"count\":0,\"jobPostings\":[]}"
+      }
+    ],
+    "calls": 2,
+    "delays": [
+      0.75
+    ],
+    "outcome": "ok"
+  },
+  {
+    "name": "reserved_before_json",
+    "pages": [
+      {
+        "status": 200,
+        "headers": {
+          "tdm-reservation": "1"
+        },
+        "body": "bad"
+      }
+    ],
+    "calls": 1,
+    "delays": [],
+    "outcome": "reserved"
+  },
+  {
+    "name": "reserved_meta_before_json",
+    "pages": [
+      {
+        "status": 200,
+        "headers": {},
+        "body": "<meta name=\"tdm-reservation\" content=\"1\">"
+      }
+    ],
+    "calls": 1,
+    "delays": [],
+    "outcome": "reserved"
+  },
+  {
+    "name": "failed_http_before_reservation",
+    "pages": [
+      {
+        "status": 503,
+        "headers": {
+          "tdm-reservation": "1"
+        },
+        "body": "bad"
+      },
+      {
+        "status": 200,
+        "headers": {},
+        "body": "{\"maxCount\":0,\"offset\":0,\"count\":0,\"jobPostings\":[]}"
+      }
+    ],
+    "calls": 2,
+    "delays": [
+      0.75
+    ],
+    "outcome": "ok"
+  },
+  {
+    "name": "nonretry_http_before_reservation",
+    "pages": [
+      {
+        "status": 403,
+        "headers": {
+          "tdm-reservation": "1"
+        },
+        "body": "bad"
+      }
+    ],
+    "calls": 1,
+    "delays": [],
+    "outcome": "failed"
+  }
+]

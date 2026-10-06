@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	nethttp "net/http"
 	"time"
 
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
@@ -81,7 +82,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		return result, claimRunError("startup", queue.ErrUnsupportedProfile)
 	}
 	profile, err := queue.InspectRichMonitor(task.ID, task.Config)
-	if err != nil || queue.MonitorWorker(profile) != task.Worker {
+	if err != nil || queue.MonitorWorker(profile) != task.Worker || http.proxyRequired != queue.ProfileRequiresProxy(profile.Profile) {
 		return result, claimRunError("startup", queue.ErrUnsupportedProfile)
 	}
 	var renderer renderedMonitorClient
@@ -277,6 +278,20 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			}
 			return nil
 		}, renderedPage)
+	} else if profile.Provider == "adp" {
+		discovery, fetchErr = discoverADPInventory(ctx, http.client, profile, task.Config)
+	} else if profile.Provider == "dayforce" {
+		provider, ok := renderer.(interface {
+			FetchDayforceMonitor(context.Context, queue.GreenhouseMonitorProfile, map[string]string, *nethttp.Client) (RichDiscovery, error)
+		})
+		if !ok {
+			return failure("configuration", queue.ErrConfiguration)
+		}
+		discovery, fetchErr = provider.FetchDayforceMonitor(ctx, profile, task.Config, http.client)
+	} else if profile.Provider == "cornerstone" {
+		discovery, fetchErr = discoverCornerstoneInventory(ctx, http.client, profile, task.Config)
+	} else if profile.Provider == "paylocity" {
+		discovery, fetchErr = discoverPaylocityInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "paycom" {
 		discovery, fetchErr = discoverPaycomInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "rippling" {

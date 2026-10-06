@@ -1,0 +1,1386 @@
+[
+  {
+    "provider": "adp",
+    "name": "complete",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "row": {
+      "itemID": "123_1",
+      "requisitionTitle": " Engineer &amp; Builder ",
+      "requisitionLocations": [
+        {
+          "nameCode": {
+            "shortName": " New  York , US "
+          }
+        },
+        {
+          "nameCode": {
+            "shortName": "NEW YORK, US"
+          }
+        }
+      ],
+      "workLevelCode": {
+        "shortName": "Regular - Full Time"
+      },
+      "postDate": "2026-10-06",
+      "clientRequisitionID": " Ref &amp; 1 "
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+      "title": "Engineer & Builder",
+      "description": null,
+      "locations": [
+        "New York, US"
+      ],
+      "employment_type": "full_time",
+      "job_location_type": null,
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "item_id": "123_1",
+        "requisition_id": "Ref & 1"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "numeric-id",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "row": {
+      "itemID": 123,
+      "requisitionTitle": " Engineer &amp; Builder ",
+      "requisitionLocations": [
+        {
+          "nameCode": {
+            "shortName": " New  York , US "
+          }
+        },
+        {
+          "nameCode": {
+            "shortName": "NEW YORK, US"
+          }
+        }
+      ],
+      "workLevelCode": {
+        "shortName": "Regular - Full Time"
+      },
+      "postDate": "2026-10-06",
+      "clientRequisitionID": " Ref &amp; 1 "
+    },
+    "culture": "en-US",
+    "expected": null
+  },
+  {
+    "provider": "adp",
+    "name": "missing-title",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "row": {
+      "itemID": "123_1",
+      "requisitionTitle": null,
+      "requisitionLocations": [
+        {
+          "nameCode": {
+            "shortName": " New  York , US "
+          }
+        },
+        {
+          "nameCode": {
+            "shortName": "NEW YORK, US"
+          }
+        }
+      ],
+      "workLevelCode": {
+        "shortName": "Regular - Full Time"
+      },
+      "postDate": "2026-10-06",
+      "clientRequisitionID": " Ref &amp; 1 "
+    },
+    "culture": "en-US",
+    "expected": null
+  },
+  {
+    "provider": "adp",
+    "name": "escaped-blank-title",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "row": {
+      "itemID": "123_1",
+      "requisitionTitle": "&nbsp;",
+      "requisitionLocations": [
+        {
+          "nameCode": {
+            "shortName": " New  York , US "
+          }
+        },
+        {
+          "nameCode": {
+            "shortName": "NEW YORK, US"
+          }
+        }
+      ],
+      "workLevelCode": {
+        "shortName": "Regular - Full Time"
+      },
+      "postDate": "2026-10-06",
+      "clientRequisitionID": " Ref &amp; 1 "
+    },
+    "culture": "en-US",
+    "expected": null
+  },
+  {
+    "provider": "adp",
+    "name": "unicode-location",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "row": {
+      "itemID": "123_1",
+      "requisitionTitle": " Engineer &amp; Builder ",
+      "requisitionLocations": [
+        {
+          "nameCode": {
+            "shortName": "Straße, DE"
+          }
+        },
+        {
+          "nameCode": {
+            "shortName": "STRASSE, DE"
+          }
+        }
+      ],
+      "workLevelCode": {
+        "shortName": "Regular - Full Time"
+      },
+      "postDate": "2026-10-06",
+      "clientRequisitionID": " Ref &amp; 1 "
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+      "title": "Engineer & Builder",
+      "description": null,
+      "locations": [
+        "Straße, DE"
+      ],
+      "employment_type": "full_time",
+      "job_location_type": null,
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "item_id": "123_1",
+        "requisition_id": "Ref & 1"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "empty",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "row": {},
+    "culture": "en-US",
+    "expected": null
+  },
+  {
+    "provider": "adp",
+    "name": "employment-Full-Time/Part-Time",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "row": {
+      "itemID": "123_1",
+      "requisitionTitle": " Engineer &amp; Builder ",
+      "requisitionLocations": [
+        {
+          "nameCode": {
+            "shortName": " New  York , US "
+          }
+        },
+        {
+          "nameCode": {
+            "shortName": "NEW YORK, US"
+          }
+        }
+      ],
+      "workLevelCode": {
+        "shortName": "Full-Time/Part-Time"
+      },
+      "postDate": "2026-10-06",
+      "clientRequisitionID": " Ref &amp; 1 "
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+      "title": "Engineer & Builder",
+      "description": null,
+      "locations": [
+        "New York, US"
+      ],
+      "employment_type": "full_or_part",
+      "job_location_type": null,
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "item_id": "123_1",
+        "requisition_id": "Ref & 1"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "employment-Per Diem",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "row": {
+      "itemID": "123_1",
+      "requisitionTitle": " Engineer &amp; Builder ",
+      "requisitionLocations": [
+        {
+          "nameCode": {
+            "shortName": " New  York , US "
+          }
+        },
+        {
+          "nameCode": {
+            "shortName": "NEW YORK, US"
+          }
+        }
+      ],
+      "workLevelCode": {
+        "shortName": "Per Diem"
+      },
+      "postDate": "2026-10-06",
+      "clientRequisitionID": " Ref &amp; 1 "
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+      "title": "Engineer & Builder",
+      "description": null,
+      "locations": [
+        "New York, US"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": null,
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "item_id": "123_1",
+        "requisition_id": "Ref & 1"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "employment-Seasonal",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "row": {
+      "itemID": "123_1",
+      "requisitionTitle": " Engineer &amp; Builder ",
+      "requisitionLocations": [
+        {
+          "nameCode": {
+            "shortName": " New  York , US "
+          }
+        },
+        {
+          "nameCode": {
+            "shortName": "NEW YORK, US"
+          }
+        }
+      ],
+      "workLevelCode": {
+        "shortName": "Seasonal"
+      },
+      "postDate": "2026-10-06",
+      "clientRequisitionID": " Ref &amp; 1 "
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+      "title": "Engineer & Builder",
+      "description": null,
+      "locations": [
+        "New York, US"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": null,
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "item_id": "123_1",
+        "requisition_id": "Ref & 1"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "employment-Intern - Full Time",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "row": {
+      "itemID": "123_1",
+      "requisitionTitle": " Engineer &amp; Builder ",
+      "requisitionLocations": [
+        {
+          "nameCode": {
+            "shortName": " New  York , US "
+          }
+        },
+        {
+          "nameCode": {
+            "shortName": "NEW YORK, US"
+          }
+        }
+      ],
+      "workLevelCode": {
+        "shortName": "Intern - Full Time"
+      },
+      "postDate": "2026-10-06",
+      "clientRequisitionID": " Ref &amp; 1 "
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+      "title": "Engineer & Builder",
+      "description": null,
+      "locations": [
+        "New York, US"
+      ],
+      "employment_type": "full_time",
+      "job_location_type": null,
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "item_id": "123_1",
+        "requisition_id": "Ref & 1"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "employment-Summer Intern",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "row": {
+      "itemID": "123_1",
+      "requisitionTitle": " Engineer &amp; Builder ",
+      "requisitionLocations": [
+        {
+          "nameCode": {
+            "shortName": " New  York , US "
+          }
+        },
+        {
+          "nameCode": {
+            "shortName": "NEW YORK, US"
+          }
+        }
+      ],
+      "workLevelCode": {
+        "shortName": "Summer Intern"
+      },
+      "postDate": "2026-10-06",
+      "clientRequisitionID": " Ref &amp; 1 "
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+      "title": "Engineer & Builder",
+      "description": null,
+      "locations": [
+        "New York, US"
+      ],
+      "employment_type": "internship",
+      "job_location_type": null,
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "item_id": "123_1",
+        "requisition_id": "Ref & 1"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "employment-apprentice",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "row": {
+      "itemID": "123_1",
+      "requisitionTitle": " Engineer &amp; Builder ",
+      "requisitionLocations": [
+        {
+          "nameCode": {
+            "shortName": " New  York , US "
+          }
+        },
+        {
+          "nameCode": {
+            "shortName": "NEW YORK, US"
+          }
+        }
+      ],
+      "workLevelCode": {
+        "shortName": "apprentice"
+      },
+      "postDate": "2026-10-06",
+      "clientRequisitionID": " Ref &amp; 1 "
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+      "title": "Engineer & Builder",
+      "description": null,
+      "locations": [
+        "New York, US"
+      ],
+      "employment_type": "internship",
+      "job_location_type": null,
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "item_id": "123_1",
+        "requisition_id": "Ref & 1"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "employment-temporary",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "row": {
+      "itemID": "123_1",
+      "requisitionTitle": " Engineer &amp; Builder ",
+      "requisitionLocations": [
+        {
+          "nameCode": {
+            "shortName": " New  York , US "
+          }
+        },
+        {
+          "nameCode": {
+            "shortName": "NEW YORK, US"
+          }
+        }
+      ],
+      "workLevelCode": {
+        "shortName": "temporary"
+      },
+      "postDate": "2026-10-06",
+      "clientRequisitionID": " Ref &amp; 1 "
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+      "title": "Engineer & Builder",
+      "description": null,
+      "locations": [
+        "New York, US"
+      ],
+      "employment_type": "temporary",
+      "job_location_type": null,
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "item_id": "123_1",
+        "requisition_id": "Ref & 1"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "employment-contract",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "row": {
+      "itemID": "123_1",
+      "requisitionTitle": " Engineer &amp; Builder ",
+      "requisitionLocations": [
+        {
+          "nameCode": {
+            "shortName": " New  York , US "
+          }
+        },
+        {
+          "nameCode": {
+            "shortName": "NEW YORK, US"
+          }
+        }
+      ],
+      "workLevelCode": {
+        "shortName": "contract"
+      },
+      "postDate": "2026-10-06",
+      "clientRequisitionID": " Ref &amp; 1 "
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+      "title": "Engineer & Builder",
+      "description": null,
+      "locations": [
+        "New York, US"
+      ],
+      "employment_type": "contract",
+      "job_location_type": null,
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "item_id": "123_1",
+        "requisition_id": "Ref & 1"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "employment-consultant",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "row": {
+      "itemID": "123_1",
+      "requisitionTitle": " Engineer &amp; Builder ",
+      "requisitionLocations": [
+        {
+          "nameCode": {
+            "shortName": " New  York , US "
+          }
+        },
+        {
+          "nameCode": {
+            "shortName": "NEW YORK, US"
+          }
+        }
+      ],
+      "workLevelCode": {
+        "shortName": "consultant"
+      },
+      "postDate": "2026-10-06",
+      "clientRequisitionID": " Ref &amp; 1 "
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+      "title": "Engineer & Builder",
+      "description": null,
+      "locations": [
+        "New York, US"
+      ],
+      "employment_type": "contract",
+      "job_location_type": null,
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "item_id": "123_1",
+        "requisition_id": "Ref & 1"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "employment-volunteer",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "row": {
+      "itemID": "123_1",
+      "requisitionTitle": " Engineer &amp; Builder ",
+      "requisitionLocations": [
+        {
+          "nameCode": {
+            "shortName": " New  York , US "
+          }
+        },
+        {
+          "nameCode": {
+            "shortName": "NEW YORK, US"
+          }
+        }
+      ],
+      "workLevelCode": {
+        "shortName": "volunteer"
+      },
+      "postDate": "2026-10-06",
+      "clientRequisitionID": " Ref &amp; 1 "
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+      "title": "Engineer & Builder",
+      "description": null,
+      "locations": [
+        "New York, US"
+      ],
+      "employment_type": "volunteer",
+      "job_location_type": null,
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "item_id": "123_1",
+        "requisition_id": "Ref & 1"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "employment-freelance",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "row": {
+      "itemID": "123_1",
+      "requisitionTitle": " Engineer &amp; Builder ",
+      "requisitionLocations": [
+        {
+          "nameCode": {
+            "shortName": " New  York , US "
+          }
+        },
+        {
+          "nameCode": {
+            "shortName": "NEW YORK, US"
+          }
+        }
+      ],
+      "workLevelCode": {
+        "shortName": "freelance"
+      },
+      "postDate": "2026-10-06",
+      "clientRequisitionID": " Ref &amp; 1 "
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+      "title": "Engineer & Builder",
+      "description": null,
+      "locations": [
+        "New York, US"
+      ],
+      "employment_type": "contract",
+      "job_location_type": null,
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "item_id": "123_1",
+        "requisition_id": "Ref & 1"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "employment-fulltime",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "row": {
+      "itemID": "123_1",
+      "requisitionTitle": " Engineer &amp; Builder ",
+      "requisitionLocations": [
+        {
+          "nameCode": {
+            "shortName": " New  York , US "
+          }
+        },
+        {
+          "nameCode": {
+            "shortName": "NEW YORK, US"
+          }
+        }
+      ],
+      "workLevelCode": {
+        "shortName": "fulltime"
+      },
+      "postDate": "2026-10-06",
+      "clientRequisitionID": " Ref &amp; 1 "
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+      "title": "Engineer & Builder",
+      "description": null,
+      "locations": [
+        "New York, US"
+      ],
+      "employment_type": "full_time",
+      "job_location_type": null,
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "item_id": "123_1",
+        "requisition_id": "Ref & 1"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "adp",
+    "name": "employment-unknown",
+    "source": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter",
+    "row": {
+      "itemID": "123_1",
+      "requisitionTitle": " Engineer &amp; Builder ",
+      "requisitionLocations": [
+        {
+          "nameCode": {
+            "shortName": " New  York , US "
+          }
+        },
+        {
+          "nameCode": {
+            "shortName": "NEW YORK, US"
+          }
+        }
+      ],
+      "workLevelCode": {
+        "shortName": "unknown"
+      },
+      "postDate": "2026-10-06",
+      "clientRequisitionID": " Ref &amp; 1 "
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=01234567-89ab-cdef-0123-456789abcdef&ccId=19000101_000001&lang=en_US&selectedMenuKey=CareerCenter&jobId=123_1",
+      "title": "Engineer & Builder",
+      "description": null,
+      "locations": [
+        "New York, US"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "item_id": "123_1",
+        "requisition_id": "Ref & 1"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "cornerstone",
+    "name": "complete",
+    "source": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+    "row": {
+      "requisitionId": 123,
+      "displayJobTitle": " Engineer ",
+      "externalDescription": "<p>Build &amp; ship</p>",
+      "locations": [
+        {
+          "city": "Zurich",
+          "state": "ZH",
+          "country": "CH"
+        },
+        {
+          "city": "Zurich",
+          "state": "ZH",
+          "country": "CH"
+        }
+      ],
+      "postingEffectiveDate": "10/06/2026"
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://fixture.csod.com/ux/ats/careersite/4/home/requisition/123?c=fixture",
+      "title": "Engineer",
+      "description": "<p>Build &amp; ship</p>",
+      "locations": [
+        "Zurich, ZH, CH"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "requisition_id": 123
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "cornerstone",
+    "name": "empty",
+    "source": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+    "row": {},
+    "culture": "en-US",
+    "expected": null
+  },
+  {
+    "provider": "cornerstone",
+    "name": "boolean-id",
+    "source": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+    "row": {
+      "requisitionId": true,
+      "displayJobTitle": " Engineer ",
+      "externalDescription": "<p>Build &amp; ship</p>",
+      "locations": [
+        {
+          "city": "Zurich",
+          "state": "ZH",
+          "country": "CH"
+        },
+        {
+          "city": "Zurich",
+          "state": "ZH",
+          "country": "CH"
+        }
+      ],
+      "postingEffectiveDate": "10/06/2026"
+    },
+    "culture": "en-US",
+    "expected": null
+  },
+  {
+    "provider": "cornerstone",
+    "name": "big-id",
+    "source": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+    "row": {
+      "requisitionId": "18446744073709551616",
+      "displayJobTitle": " Engineer ",
+      "externalDescription": "<p>Build &amp; ship</p>",
+      "locations": [
+        {
+          "city": "Zurich",
+          "state": "ZH",
+          "country": "CH"
+        },
+        {
+          "city": "Zurich",
+          "state": "ZH",
+          "country": "CH"
+        }
+      ],
+      "postingEffectiveDate": "10/06/2026"
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://fixture.csod.com/ux/ats/careersite/4/home/requisition/18446744073709551616?c=fixture",
+      "title": "Engineer",
+      "description": "<p>Build &amp; ship</p>",
+      "locations": [
+        "Zurich, ZH, CH"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "requisition_id": 18446744073709551616
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "cornerstone",
+    "name": "unicode-id",
+    "source": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+    "row": {
+      "requisitionId": "１２３",
+      "displayJobTitle": " Engineer ",
+      "externalDescription": "<p>Build &amp; ship</p>",
+      "locations": [
+        {
+          "city": "Zurich",
+          "state": "ZH",
+          "country": "CH"
+        },
+        {
+          "city": "Zurich",
+          "state": "ZH",
+          "country": "CH"
+        }
+      ],
+      "postingEffectiveDate": "10/06/2026"
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://fixture.csod.com/ux/ats/careersite/4/home/requisition/123?c=fixture",
+      "title": "Engineer",
+      "description": "<p>Build &amp; ship</p>",
+      "locations": [
+        "Zurich, ZH, CH"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "requisition_id": 123
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "cornerstone",
+    "name": "missing-title",
+    "source": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+    "row": {
+      "requisitionId": 123,
+      "displayJobTitle": " ",
+      "externalDescription": "<p>Build &amp; ship</p>",
+      "locations": [
+        {
+          "city": "Zurich",
+          "state": "ZH",
+          "country": "CH"
+        },
+        {
+          "city": "Zurich",
+          "state": "ZH",
+          "country": "CH"
+        }
+      ],
+      "postingEffectiveDate": "10/06/2026"
+    },
+    "culture": "en-US",
+    "expected": null
+  },
+  {
+    "provider": "cornerstone",
+    "name": "bad-date",
+    "source": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+    "row": {
+      "requisitionId": 123,
+      "displayJobTitle": " Engineer ",
+      "externalDescription": "<p>Build &amp; ship</p>",
+      "locations": [
+        {
+          "city": "Zurich",
+          "state": "ZH",
+          "country": "CH"
+        },
+        {
+          "city": "Zurich",
+          "state": "ZH",
+          "country": "CH"
+        }
+      ],
+      "postingEffectiveDate": "-"
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://fixture.csod.com/ux/ats/careersite/4/home/requisition/123?c=fixture",
+      "title": "Engineer",
+      "description": "<p>Build &amp; ship</p>",
+      "locations": [
+        "Zurich, ZH, CH"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "requisition_id": 123
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "cornerstone",
+    "name": "iso-date",
+    "source": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+    "row": {
+      "requisitionId": 123,
+      "displayJobTitle": " Engineer ",
+      "externalDescription": "<p>Build &amp; ship</p>",
+      "locations": [
+        {
+          "city": "Zurich",
+          "state": "ZH",
+          "country": "CH"
+        },
+        {
+          "city": "Zurich",
+          "state": "ZH",
+          "country": "CH"
+        }
+      ],
+      "postingEffectiveDate": "2026-1-2"
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://fixture.csod.com/ux/ats/careersite/4/home/requisition/123?c=fixture",
+      "title": "Engineer",
+      "description": "<p>Build &amp; ship</p>",
+      "locations": [
+        "Zurich, ZH, CH"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-01-02",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "requisition_id": 123
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "cornerstone",
+    "name": "european-date",
+    "source": "https://fixture.csod.com/ux/ats/careersite/4/home?c=fixture",
+    "row": {
+      "requisitionId": 123,
+      "displayJobTitle": " Engineer ",
+      "externalDescription": "<p>Build &amp; ship</p>",
+      "locations": [
+        {
+          "city": "Zurich",
+          "state": "ZH",
+          "country": "CH"
+        },
+        {
+          "city": "Zurich",
+          "state": "ZH",
+          "country": "CH"
+        }
+      ],
+      "postingEffectiveDate": "06/10/2026"
+    },
+    "culture": "de-DE",
+    "expected": {
+      "url": "https://fixture.csod.com/ux/ats/careersite/4/home/requisition/123?c=fixture",
+      "title": "Engineer",
+      "description": "<p>Build &amp; ship</p>",
+      "locations": [
+        "Zurich, ZH, CH"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": "de",
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "requisition_id": 123
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "paylocity",
+    "name": "complete",
+    "source": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+    "row": {
+      "JobId": 123,
+      "JobTitle": "Engineer",
+      "LocationName": "Zurich",
+      "HiringDepartment": "Platform",
+      "PublishedDate": "2026-10-06"
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://2000recruiting.paylocity.com/Recruiting/Jobs/Details/123",
+      "title": "Engineer",
+      "description": null,
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": null,
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "job_id": 123,
+        "department": "Platform"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "paylocity",
+    "name": "hybrid",
+    "source": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+    "row": {
+      "JobId": 123,
+      "JobTitle": "Engineer",
+      "LocationName": " Hybrid Remote ",
+      "HiringDepartment": "Platform",
+      "PublishedDate": "2026-10-06"
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://2000recruiting.paylocity.com/Recruiting/Jobs/Details/123",
+      "title": "Engineer",
+      "description": null,
+      "locations": [
+        " Hybrid Remote "
+      ],
+      "employment_type": null,
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": null,
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "job_id": 123,
+        "department": "Platform"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "paylocity",
+    "name": "remote",
+    "source": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+    "row": {
+      "JobId": 123,
+      "JobTitle": "Engineer",
+      "LocationName": "Zurich",
+      "HiringDepartment": "Platform",
+      "PublishedDate": "2026-10-06",
+      "IsRemote": true
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://2000recruiting.paylocity.com/Recruiting/Jobs/Details/123",
+      "title": "Engineer",
+      "description": null,
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": "remote",
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": null,
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "job_id": 123,
+        "department": "Platform"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "paylocity",
+    "name": "missing-id",
+    "source": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+    "row": {
+      "JobId": null,
+      "JobTitle": "Engineer",
+      "LocationName": "Zurich",
+      "HiringDepartment": "Platform",
+      "PublishedDate": "2026-10-06"
+    },
+    "culture": "en-US",
+    "expected": null
+  },
+  {
+    "provider": "paylocity",
+    "name": "string-id",
+    "source": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+    "row": {
+      "JobId": "00123",
+      "JobTitle": "Engineer",
+      "LocationName": "Zurich",
+      "HiringDepartment": "Platform",
+      "PublishedDate": "2026-10-06"
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://2000recruiting.paylocity.com/Recruiting/Jobs/Details/00123",
+      "title": "Engineer",
+      "description": null,
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": null,
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "job_id": "00123",
+        "department": "Platform"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "paylocity",
+    "name": "empty-fields",
+    "source": "https://2000recruiting.paylocity.com/Recruiting/Jobs/All/fixture",
+    "row": {
+      "JobId": 2,
+      "JobTitle": null,
+      "LocationName": " ",
+      "HiringDepartment": "Platform",
+      "PublishedDate": "2026-10-06"
+    },
+    "culture": "en-US",
+    "expected": {
+      "url": "https://2000recruiting.paylocity.com/Recruiting/Jobs/Details/2",
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-10-06",
+      "base_salary": null,
+      "language": null,
+      "localizations": null,
+      "extras": null,
+      "metadata": {
+        "job_id": 2,
+        "department": "Platform"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "paylocity-detail",
+    "name": "empty",
+    "html": "",
+    "expected": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "provider": "paylocity-detail",
+    "name": "map",
+    "html": "<div class=\"job-preview-title\"><span> Engineer &amp; Builder </span></div><div class=\"job-listing-header\">Description</div>\n<section><p title=\"x'y\"> Build &amp; ship&nbsp;today<br>Now</p></section><div class=\"job-listing-header\">Job Type</div><p>Full <b>Time</b></p><div class=\"preview-location\"><a href=\"https://maps.google.com?q=Zurich\">Zurich</a></div>",
+    "expected": {
+      "title": "Engineer & Builder",
+      "description": "<p title=\"x'y\"> Build &amp; ship&nbsp;today<br>Now</p>",
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": "FullTime",
+      "job_location_type": "onsite",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "provider": "paylocity-detail",
+    "name": "remote",
+    "html": "<div class=\"job-preview-title\"><span> Engineer &amp; Builder </span></div><div class=\"job-listing-header\">Description</div>\n<section><p title=\"x'y\"> Build &amp; ship&nbsp;today<br>Now</p></section><div class=\"job-listing-header\">Job Type</div><p>Full <b>Time</b></p><div class=\"preview-location\"><span>Fully Remote</span> • <span>US</span></div>",
+    "expected": {
+      "title": "Engineer & Builder",
+      "description": "<p title=\"x'y\"> Build &amp; ship&nbsp;today<br>Now</p>",
+      "locations": [
+        "US"
+      ],
+      "employment_type": "FullTime",
+      "job_location_type": "remote",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "provider": "paylocity-detail",
+    "name": "hybrid",
+    "html": "<div class=\"job-preview-title\"><span> Engineer &amp; Builder </span></div><div class=\"job-listing-header\">Description</div>\n<section><p title=\"x'y\"> Build &amp; ship&nbsp;today<br>Now</p></section><div class=\"job-listing-header\">Job Type</div><p>Full <b>Time</b></p><div class=\"preview-location\"><span>Hybrid Remote</span><span>Zurich</span></div>",
+    "expected": {
+      "title": "Engineer & Builder",
+      "description": "<p title=\"x'y\"> Build &amp; ship&nbsp;today<br>Now</p>",
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": "FullTime",
+      "job_location_type": "hybrid",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  },
+  {
+    "provider": "paylocity-detail",
+    "name": "onsite",
+    "html": "<div class=\"job-preview-title\"><span> Engineer &amp; Builder </span></div><div class=\"job-listing-header\">Description</div>\n<section><p title=\"x'y\"> Build &amp; ship&nbsp;today<br>Now</p></section><div class=\"job-listing-header\">Job Type</div><p>Full <b>Time</b></p><div class=\"preview-location\">On-site<span>Zurich</span></div>",
+    "expected": {
+      "title": "Engineer & Builder",
+      "description": "<p title=\"x'y\"> Build &amp; ship&nbsp;today<br>Now</p>",
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": "FullTime",
+      "job_location_type": "onsite",
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    }
+  }
+]

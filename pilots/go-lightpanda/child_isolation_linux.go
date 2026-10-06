@@ -190,12 +190,35 @@ func attestNoInheritedFileDescriptors() error {
 			if target == "anon_inode:[eventpoll]" || target == "anon_inode:[eventfd]" {
 				continue
 			}
+			if runtimeCPUQuotaDescriptor(descriptor, target) {
+				continue
+			}
 			return fmt.Errorf("child inherited unexpected descriptor %d: %s", descriptor, target)
 		} else if !errors.Is(err, os.ErrNotExist) {
 			return errors.New("child file descriptor inventory is invalid")
 		}
 	}
 	return nil
+}
+
+// Go 1.25+ opens this cgroup-v2 file during runtime startup to track the
+// container CPU limit. It is created after exec, not inherited from the
+// controller. Accept only the quota file in our container's root cgroup,
+// on the actual cgroup filesystem, read-only and close-on-exec.
+func runtimeCPUQuotaDescriptor(descriptor int, target string) bool {
+	if target != "/sys/fs/cgroup/cpu.max" {
+		return false
+	}
+	flags, _, errno := syscall.Syscall(syscall.SYS_FCNTL, uintptr(descriptor), syscall.F_GETFD, 0)
+	if errno != 0 || flags&syscall.FD_CLOEXEC == 0 {
+		return false
+	}
+	access, _, errno := syscall.Syscall(syscall.SYS_FCNTL, uintptr(descriptor), syscall.F_GETFL, 0)
+	if errno != 0 || access&syscall.O_ACCMODE != syscall.O_RDONLY {
+		return false
+	}
+	var filesystem syscall.Statfs_t
+	return syscall.Fstatfs(descriptor, &filesystem) == nil && filesystem.Type == 0x63677270 // CGROUP2_SUPER_MAGIC
 }
 
 func infoSyscallStat(info os.FileInfo) (*syscall.Stat_t, bool) {

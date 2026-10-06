@@ -127,14 +127,14 @@ func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client,
      WHERE p.state='retired' AND p.routing_epoch=f.routing_epoch
      AND EXISTS(SELECT 1 FROM jsonb_array_elements(p.payload::jsonb->'members') m
        WHERE m->>'board_id'=f.board_id::text AND m->>'kind'='monitor'
-       AND (m->>'worker'='simple' OR (m->>'worker'='browser' AND m->>'profile' IN ('dom.rendered-urls/v1','nextdata.rendered-items/v1','nextdata.rendered-urls/v1')))))))) OR
+       AND (m->>'worker'='simple' OR (m->>'worker'='browser' AND m->>'profile' IN ('dom.rendered-urls/v1','nextdata.rendered-items/v1','nextdata.rendered-urls/v1','dayforce.session-search/v1')))))))) OR
  (f.task_kind='scrape' AND (
    (f.routing_epoch=$1 AND f.board_id=ANY($3::uuid[]) AND EXISTS(SELECT 1 FROM public.job_posting jp WHERE jp.id=f.task_id AND jp.board_id=f.board_id)) OR
    (f.routing_epoch<$1 AND EXISTS(SELECT 1 FROM public.ordinary_worker_ownership_plan p
      WHERE p.state='retired' AND p.routing_epoch=f.routing_epoch
      AND EXISTS(SELECT 1 FROM jsonb_array_elements(p.payload::jsonb->'details') d
        WHERE d->>'board_id'=f.board_id::text AND (
-         (d->>'worker'='simple' AND d->>'profile' IN ('workday.cxs-detail/v1','jsonld.direct-detail/v1','smartrecruiters.api-detail/v1','workable.api-detail/v1','dom.direct-detail/v1','join.nextdata-detail/v1','oracle_hcm.api-detail/v1','embedded.direct-detail/v1','api_sniffer.http-detail/v1','mokahr.encrypted-detail/v1','eightfold.jsonld-api-detail/v1','paycom.public-detail/v1','rippling.v1-detail/v1')) OR
+         (d->>'worker'='simple' AND d->>'profile' IN ('workday.cxs-detail/v1','jsonld.direct-detail/v1','smartrecruiters.api-detail/v1','workable.api-detail/v1','dom.direct-detail/v1','join.nextdata-detail/v1','oracle_hcm.api-detail/v1','embedded.direct-detail/v1','api_sniffer.http-detail/v1','mokahr.encrypted-detail/v1','eightfold.jsonld-api-detail/v1','paycom.public-detail/v1','rippling.v1-detail/v1','adp.public-detail/v1','paylocity.html-detail/v1','paylocity.proxy-html-detail/v1')) OR
          (d->>'worker'='browser' AND d->>'profile' IN ('dom.rendered-detail/v1','jsonld.rendered-detail/v1','embedded.rendered-detail/v1'))))))))))`, epoch, ids, detailIDs).Scan(&foreign); err != nil {
 				return err
 			}

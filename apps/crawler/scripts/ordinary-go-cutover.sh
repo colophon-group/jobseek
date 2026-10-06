@@ -54,7 +54,9 @@ set -a
 # shellcheck disable=SC1090,SC1091
 source .env
 set +a
-unset WEBSHARE_PROXY_URLS
+# The native proxy profiles consume only protected endpoint credentials.
+# The operator API key is never needed by a runtime or ownership admin.
+unset WEBSHARE_API_KEY
 export ORDINARY_RETIRE_ADMIN_SOURCE_REVISION="" ORDINARY_RETIRE_ADMIN_IMAGE_REF=""
 [[ "${JOBSEEK_DEPLOY_REVISION:-}" =~ ^[0-9a-f]{40}$ && "${CRAWLER_IMAGE_REF:-}" =~ ^ghcr\.io/[^/]+/jobseek-crawler@sha256:[0-9a-f]{64}$ ]] || reject "immutable release identity is missing"
 [[ "${BROWSER_IMAGE_REF:-}" =~ ^ghcr\.io/[^/]+/jobseek-crawler-browser@sha256:[0-9a-f]{64}$ && "${LIGHTPANDA_B0_SERVICE_HOST:-}" == 10.0.0.5 ]] || reject "browser image or B0 host identity is invalid"
@@ -228,8 +230,13 @@ bounded 90s "${compose[@]}" -f "$restart_override" up -d --force-recreate "${ser
 for service in "${services[@]}"; do
   healthy=0
   for ((attempt=1; attempt<=48; attempt++)); do
-    id="$(bounded 15s "${compose[@]}" ps -q "$service")"
-    [[ "$id" =~ ^[0-9a-f]{64}$ ]] || reject "service does not resolve to one container"
+    # Include exited containers so the initiating failure survives containment
+    # and the supported recovery's recreation of the full fleet.
+    id="$(bounded 15s "${compose[@]}" ps -aq "$service")"
+    [[ "$id" =~ ^[0-9a-f]{64}$ ]] || reject "service $service does not resolve to one container"
+    process_state="$(bounded 15s docker inspect -f '{{.State.Status}}:{{.State.ExitCode}}:{{.State.OOMKilled}}' "$id")"
+    [[ "$process_state" =~ ^[a-z]+:[0-9]+:(true|false)$ ]] || reject "service $service returned invalid process state"
+    [[ "$process_state" == running:* ]] || reject "service $service failed readiness with state:exit:oom=$process_state"
     expected_image=$CRAWLER_IMAGE_REF
     [[ "$service" != browser-1 ]] || expected_image=$BROWSER_IMAGE_REF
     [[ "$(bounded 15s docker inspect -f '{{.Config.Image}}' "$id")" == "$expected_image" ]] || reject "restarted service image differs from the selected release"
@@ -237,7 +244,7 @@ for service in "${services[@]}"; do
     if [[ "$status" == healthy || "$status" == running ]]; then healthy=1; break; fi
     sleep 5
   done
-  ((healthy)) || reject "complete stack readiness failed"
+  ((healthy)) || reject "complete stack readiness failed for service $service"
 done
 for endpoint in 9095/ 9096/ 9097/ 9098/ 9093/health 9094/health 9101/healthz; do
   bounded 10s curl --silent --show-error --fail --max-time 5 "http://127.0.0.1:$endpoint" >/dev/null

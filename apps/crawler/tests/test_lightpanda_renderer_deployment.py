@@ -898,6 +898,43 @@ def test_workflow_is_manual_exact_main_deploy_with_pr_validation_only() -> None:
     assert '{{index .Config.Labels \\"' not in workflow
 
 
+def test_renderer_build_callers_supply_all_named_library_contexts() -> None:
+    dockerfile = (ROOT / "pilots/go-lightpanda/Dockerfile").read_text()
+    stages = set(re.findall(r"(?m)^FROM .+ AS ([\w-]+)$", dockerfile))
+    required = set(re.findall(r"COPY --from=([\w-]+)", dockerfile)) - stages
+    assert required == {
+        "contracts",
+        "api-sniffer-monitor",
+        "dom-detail",
+        "jsonld-detail",
+        "publisher-policy",
+    }
+    calls = 0
+    for name in (
+        "go-lightpanda-pilot.yml",
+        "deploy-lightpanda-renderer.yml",
+        "crawler-b0-whole-lane.yml",
+    ):
+        workflow = (ROOT / ".github/workflows" / name).read_text()
+        commands = re.findall(
+            r"\bdocker build\b[^\n]*--build-context\s+contracts=[^\n]*",
+            workflow.replace("\\\n", " "),
+        )
+        assert commands, name
+        for command in commands:
+            supplied = set(re.findall(r"--build-context\s+([\w-]+)=", command))
+            assert required <= supplied, (name, sorted(required - supplied))
+        calls += len(commands)
+    assert calls == 6
+    publish_contexts = re.search(
+        r"(?m)^          build-contexts: \|\n((?:            [^\n]+\n)+)",
+        WORKFLOW.read_text(),
+    )
+    assert publish_contexts is not None
+    supplied = set(re.findall(r"(?m)^\s*([\w-]+)=", publish_contexts[1]))
+    assert required <= supplied
+
+
 def test_bootstrap_workflow_is_manual_exact_main_and_root_scoped() -> None:
     workflow = BOOTSTRAP_WORKFLOW.read_text(encoding="utf-8")
     assert "workflow_dispatch:" in workflow
@@ -1209,7 +1246,7 @@ def test_running_endpoint_attestation_rejects_extra_routed_identity() -> None:
 def test_service_builder_is_patch_and_digest_pinned() -> None:
     dockerfile = (ROOT / "pilots/go-lightpanda/Dockerfile").read_text(encoding="utf-8")
     assert re.search(
-        r"^ARG GO_IMAGE=golang:1\.24\.7-alpine3\.22@sha256:[0-9a-f]{64}$",
+        r"^ARG GO_IMAGE=golang:1\.26\.4-alpine3\.22@sha256:[0-9a-f]{64}$",
         dockerfile,
         re.MULTILINE,
     )
