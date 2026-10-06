@@ -17,6 +17,12 @@ func firstWorkdayDetailFixture(t *testing.T) firstOwnerFixture {
 }
 func firstAPIDetailFixture(t *testing.T, requested string) firstOwnerFixture {
 	t.Helper()
+	if requested == "paycom" {
+		return firstIndependentDetailFixture(t, `{"scraper_type":"paycom","scraper_config":{"enrich":["description"]}}`, "https://www.paycomonline.net/v4/ats/web.php/portal/0123456789abcdef0123456789abcdef/jobs/123", "www.paycomonline.net")
+	}
+	if requested == "rippling" {
+		return firstIndependentDetailFixture(t, `{"scraper_type":"rippling"}`, "https://ats.rippling.com/acme/jobs/abc-123", "ats.rippling.com")
+	}
 	if requested == "mokahr" {
 		return firstIndependentDetailFixture(t, `{"scraper_type":"mokahr","scraper_config":{"enrich":["description"]}}`, "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6", "app.mokahr.com")
 	}
@@ -81,7 +87,7 @@ func TestRealFirstEmbeddedDetailRetirementConservesInterruptedAndCompletedAttemp
 	testFirstAPIDetailRetirement(t, "embedded")
 }
 func TestRealFirstProviderBatchDetailRetirementConservesInterruptedAndCompletedAttempts(t *testing.T) {
-	for _, provider := range []string{"mokahr", "eightfold"} {
+	for _, provider := range []string{"mokahr", "eightfold", "paycom", "rippling"} {
 		t.Run(provider, func(t *testing.T) { testFirstAPIDetailRetirement(t, provider) })
 	}
 }

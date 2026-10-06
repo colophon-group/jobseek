@@ -21,12 +21,14 @@ const smartRecruitersDetailProfile = "smartrecruiters.api-detail/v1"
 const workableDetailProfile = "workable.api-detail/v1"
 const joinDetailProfile = "join.nextdata-detail/v1"
 const oracleDetailProfile = "oracle_hcm.api-detail/v1"
+const paycomDetailProfile = "paycom.public-detail/v1"
+const ripplingDetailProfile = "rippling.v1-detail/v1"
 const mokahrDetailProfile = "mokahr.encrypted-detail/v1"
 const eightfoldDetailProfile = "eightfold.jsonld-api-detail/v1"
 
 func independentDetailProfile(profile string) bool {
 	switch profile {
-	case mokahrDetailProfile, eightfoldDetailProfile, domRenderedDetailProfile, jsonldRenderedDetailProfile, embeddedRenderedDetailProfile, domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, joinDetailProfile, oracleDetailProfile, embeddedDetailProfile, httpAPIDetailProfile:
+	case paycomDetailProfile, ripplingDetailProfile, mokahrDetailProfile, eightfoldDetailProfile, domRenderedDetailProfile, jsonldRenderedDetailProfile, embeddedRenderedDetailProfile, domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, joinDetailProfile, oracleDetailProfile, embeddedDetailProfile, httpAPIDetailProfile:
 		return true
 	}
 	return false
@@ -71,10 +73,16 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 	if explicitScraper != "" {
 		scraper = explicitScraper
 	}
-	if scraper != "mokahr" && scraper != "eightfold" && scraper != "smartrecruiters" && scraper != "workable" && scraper != "nextdata" && scraper != "oracle_hcm" {
+	if scraper != "paycom" && scraper != "rippling" && scraper != "mokahr" && scraper != "eightfold" && scraper != "smartrecruiters" && scraper != "workable" && scraper != "nextdata" && scraper != "oracle_hcm" {
 		return fail()
 	}
 	allowed := map[string]bool{"proxy": true, "render": true, "ssl_verify": true}
+	if scraper == "paycom" {
+		allowed = map[string]bool{"defaults": true, "enrich": true}
+	}
+	if scraper == "rippling" {
+		allowed = map[string]bool{"slug": true}
+	}
 	if scraper == "mokahr" {
 		allowed["locale"], allowed["enrich"] = true, true
 	}
@@ -110,7 +118,34 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 	var oracleFields map[string]any
 	var jsonldOptions map[string]any
 	var locale string
-	if scraper == "mokahr" {
+	var providerOptions map[string]any
+	if scraper == "paycom" {
+		o, _, e := apisniffer.PaycomDetailRoute(source)
+		if e != nil {
+			return fail()
+		}
+		providerOptions = map[string]any{}
+		body, _ := json.Marshal(options)
+		if json.Unmarshal(body, &providerOptions) != nil {
+			return fail()
+		}
+		if _, e := apisniffer.PaycomDefaultLocations(providerOptions); e != nil {
+			return fail()
+		}
+		endpoint, profile = o.PortalURL(), paycomDetailProfile
+		enrichmentFields, err = paycomEnrichmentFields(config)
+	} else if scraper == "rippling" {
+		if raw, present := options["slug"]; present && string(raw) != "null" {
+			if json.Unmarshal(raw, &override) != nil {
+				return fail()
+			}
+		}
+		o, id, e := apisniffer.RipplingDetailRoute(source, override)
+		if e != nil {
+			return fail()
+		}
+		endpoint, profile = o.DetailURL(id), ripplingDetailProfile
+	} else if scraper == "mokahr" {
 		route, e := apisniffer.MokahrDetailRouteForSource(source)
 		if e != nil {
 			return fail()
@@ -223,6 +258,7 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 	digest := sha256.Sum256(body)
 	p := WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: endpoint, Domain: strings.ToLower(u.Hostname()), Profile: profile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), APITokenOverride: override, EnrichmentFields: enrichmentFields, OracleFields: oracleFields}
 	p.APILocale, p.JSONLDConfig = locale, jsonldOptions
+	p.HTTPAPIConfig = providerOptions
 	if profile == joinDetailProfile {
 		p.JoinDetailConfig = options
 	}
@@ -232,6 +268,18 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 func inspectAPIDetailOwnership(boardID string, config map[string]string) (WorkdayDetailProfile, error) {
 	metadata, err := profileMetadataFields(config["metadata"], nil)
 	if err == nil {
+		if o, e := apisniffer.PaycomOptionsFromMetadata(config["board_url"], config["metadata"]); e == nil {
+			if p, e := InspectAPIDetail(boardID, config, o.JobURL("1"), Simple); e == nil && p.Profile == paycomDetailProfile {
+				p.Domain = "*"
+				return p, nil
+			}
+		}
+		if o, e := apisniffer.RipplingOptionsFromMetadata(config["board_url"], config["metadata"]); e == nil {
+			if p, e := InspectAPIDetail(boardID, config, o.JobURL("OWNERSHIPADMISSION"), Simple); e == nil && p.Profile == ripplingDetailProfile {
+				p.Domain = "*"
+				return p, nil
+			}
+		}
 		if o, e := apisniffer.MokahrOptionsFromMetadata(config["board_url"], config["metadata"]); e == nil {
 			if p, e := InspectAPIDetail(boardID, config, o.Partitions[0].JobURL("OWNERSHIPADMISSION"), Simple); e == nil && p.Profile == mokahrDetailProfile {
 				p.Domain = "*"
@@ -256,7 +304,7 @@ func inspectAPIDetailOwnership(boardID string, config map[string]string) (Workda
 			}
 		}
 	}
-	for _, source := range []string{"https://app.mokahr.com/social-recruitment/native/1#/job/OWNERSHIPADMISSION", "https://jobs.smartrecruiters.com/native/OWNERSHIPADMISSION", "https://apply.workable.com/native/j/OWNERSHIPADMISSION/", "https://join.com/companies/native/OWNERSHIPADMISSION"} {
+	for _, source := range []string{"https://ats.rippling.com/native/jobs/OWNERSHIPADMISSION", "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/1", "https://app.mokahr.com/social-recruitment/native/1#/job/OWNERSHIPADMISSION", "https://jobs.smartrecruiters.com/native/OWNERSHIPADMISSION", "https://apply.workable.com/native/j/OWNERSHIPADMISSION/", "https://join.com/companies/native/OWNERSHIPADMISSION"} {
 		if profile, err := InspectAPIDetail(boardID, config, source, Simple); err == nil {
 			profile.Domain = "*"
 			return profile, nil

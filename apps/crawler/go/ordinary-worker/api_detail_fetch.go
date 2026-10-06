@@ -34,6 +34,11 @@ func fetchAPIDetail(ctx context.Context, verified *VerifiedDirectHTTP, profile q
 	var content any
 	var reservation *publisherpolicy.Reservation
 	switch profile.Profile {
+	case "paycom.public-detail/v1":
+		content, reservation, err = fetchPaycomDetail(ctx, &client, profile)
+	case "rippling.v1-detail/v1":
+		content, reservation, err = fetchRipplingDetail(ctx, &client, profile.SourceURL, profile.APITokenOverride)
+
 	case "mokahr.encrypted-detail/v1":
 		client.CheckRedirect = verified.client.CheckRedirect
 		content, reservation, err = fetchMokahrDetail(ctx, &client, profile.SourceURL, profile.APILocale)

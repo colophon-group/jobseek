@@ -1,0 +1,1719 @@
+{
+  "http": [
+    {
+      "provider": "rippling",
+      "name": "complete",
+      "board_url": "https://ats.rippling.com/acme/jobs",
+      "endpoint": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs",
+      "metadata": {},
+      "pages": {
+        "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs": {
+          "status": 200,
+          "body": "[{\"uuid\": \"abc-123\"}, {\"uuid\": \"def-456\"}]",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": [
+          "https://ats.rippling.com/acme/jobs/abc-123",
+          "https://ats.rippling.com/acme/jobs/def-456"
+        ],
+        "hybrid": false
+      }
+    },
+    {
+      "provider": "rippling",
+      "name": "empty",
+      "board_url": "https://ats.rippling.com/acme/jobs",
+      "endpoint": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs",
+      "metadata": {},
+      "pages": {
+        "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs": {
+          "status": 200,
+          "body": "[]",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": [],
+        "hybrid": false
+      }
+    },
+    {
+      "provider": "rippling",
+      "name": "duplicates",
+      "board_url": "https://ats.rippling.com/acme/jobs",
+      "endpoint": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs",
+      "metadata": {},
+      "pages": {
+        "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs": {
+          "status": 200,
+          "body": "[{\"uuid\": \"abc-123\"}, {\"uuid\": \"abc-123\"}]",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": [
+          "https://ats.rippling.com/acme/jobs/abc-123"
+        ],
+        "hybrid": false
+      }
+    },
+    {
+      "provider": "rippling",
+      "name": "non-list-empty",
+      "board_url": "https://ats.rippling.com/acme/jobs",
+      "endpoint": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs",
+      "metadata": {},
+      "pages": {
+        "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs": {
+          "status": 200,
+          "body": "{\"jobs\": []}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": [],
+        "hybrid": false
+      }
+    },
+    {
+      "provider": "rippling",
+      "name": "bad-row",
+      "board_url": "https://ats.rippling.com/acme/jobs",
+      "endpoint": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs",
+      "metadata": {},
+      "pages": {
+        "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs": {
+          "status": 200,
+          "body": "[null]",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": true,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": [],
+        "hybrid": false
+      }
+    },
+    {
+      "provider": "rippling",
+      "name": "bad-json",
+      "board_url": "https://ats.rippling.com/acme/jobs",
+      "endpoint": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs",
+      "metadata": {},
+      "pages": {
+        "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs": {
+          "status": 200,
+          "body": "{",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": true,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": [],
+        "hybrid": false
+      }
+    },
+    {
+      "provider": "rippling",
+      "name": "any-2xx-success",
+      "board_url": "https://ats.rippling.com/acme/jobs",
+      "endpoint": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs",
+      "metadata": {},
+      "pages": {
+        "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs": {
+          "status": 201,
+          "body": "[{\"uuid\": \"abc-123\"}]",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": [
+          "https://ats.rippling.com/acme/jobs/abc-123"
+        ],
+        "hybrid": false
+      }
+    },
+    {
+      "provider": "rippling",
+      "name": "404-failure",
+      "board_url": "https://ats.rippling.com/acme/jobs",
+      "endpoint": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs",
+      "metadata": {},
+      "pages": {
+        "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs": {
+          "status": 404,
+          "body": "{}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": true,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": [],
+        "hybrid": false
+      }
+    },
+    {
+      "provider": "rippling",
+      "name": "503-failure",
+      "board_url": "https://ats.rippling.com/acme/jobs",
+      "endpoint": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs",
+      "metadata": {},
+      "pages": {
+        "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs": {
+          "status": 503,
+          "body": "{}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": true,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": [],
+        "hybrid": false
+      }
+    },
+    {
+      "provider": "rippling",
+      "name": "configured-slug",
+      "board_url": "https://ats.rippling.com/acme/jobs",
+      "endpoint": "https://api.rippling.com/platform/api/ats/v1/board/configured/jobs",
+      "metadata": {
+        "slug": "configured"
+      },
+      "pages": {
+        "https://api.rippling.com/platform/api/ats/v1/board/configured/jobs": {
+          "status": 200,
+          "body": "[{\"uuid\": \"abc-123\"}]",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.rippling.com/platform/api/ats/v1/board/configured/jobs",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": [
+          "https://ats.rippling.com/configured/jobs/abc-123"
+        ],
+        "hybrid": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "complete",
+      "board_url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "endpoint": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "metadata": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-posting-previews/search": {
+          "status": 200,
+          "body": "{\"jobPostingPreviewsCount\": 1, \"jobPostingPreviews\": [{\"jobId\": 123, \"jobTitle\": \" Engineer \", \"description\": \"<p> Build </p>\", \"locations\": \"Remote, US\", \"remoteType\": null, \"positionType\": \"Full Time\", \"postedOn\": \"2026-10-06\", \"isHotJob\": false}]}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://api.paycomonline.net/api/ats/job-posting-previews/search",
+          "body": {
+            "skip": 0,
+            "take": 100,
+            "filtersForQuery": {
+              "distanceFrom": 0,
+              "workEnvironments": [],
+              "positionTypes": [],
+              "educationLevels": [],
+              "categories": [],
+              "travelTypes": [],
+              "shiftTypes": [],
+              "otherFilters": [],
+              "keywordSearchText": "",
+              "location": "",
+              "sortOption": ""
+            }
+          },
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [
+          {
+            "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+            "title": "Engineer",
+            "description": "<p> Build </p>",
+            "locations": [
+              "Remote, US"
+            ],
+            "employment_type": "Full Time",
+            "job_location_type": "remote",
+            "date_posted": "2026-10-06",
+            "language": null,
+            "extras": null,
+            "metadata": {
+              "job_id": 123,
+              "is_hot_job": false
+            }
+          }
+        ],
+        "urls": [
+          "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123"
+        ],
+        "hybrid": true
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "empty",
+      "board_url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "endpoint": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "metadata": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-posting-previews/search": {
+          "status": 200,
+          "body": "{\"jobPostingPreviewsCount\": 0, \"jobPostingPreviews\": []}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://api.paycomonline.net/api/ats/job-posting-previews/search",
+          "body": {
+            "skip": 0,
+            "take": 100,
+            "filtersForQuery": {
+              "distanceFrom": 0,
+              "workEnvironments": [],
+              "positionTypes": [],
+              "educationLevels": [],
+              "categories": [],
+              "travelTypes": [],
+              "shiftTypes": [],
+              "otherFilters": [],
+              "keywordSearchText": "",
+              "location": "",
+              "sortOption": ""
+            }
+          },
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": [],
+        "hybrid": true
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "invalid-row-truncated",
+      "board_url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "endpoint": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "metadata": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-posting-previews/search": {
+          "status": 200,
+          "body": "{\"jobPostingPreviewsCount\": 2, \"jobPostingPreviews\": [{\"jobId\": 123, \"jobTitle\": \" Engineer \", \"description\": \"<p> Build </p>\", \"locations\": \"Remote, US\", \"remoteType\": null, \"positionType\": \"Full Time\", \"postedOn\": \"2026-10-06\", \"isHotJob\": false}, {\"jobId\": false}]}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://api.paycomonline.net/api/ats/job-posting-previews/search",
+          "body": {
+            "skip": 0,
+            "take": 100,
+            "filtersForQuery": {
+              "distanceFrom": 0,
+              "workEnvironments": [],
+              "positionTypes": [],
+              "educationLevels": [],
+              "categories": [],
+              "travelTypes": [],
+              "shiftTypes": [],
+              "otherFilters": [],
+              "keywordSearchText": "",
+              "location": "",
+              "sortOption": ""
+            }
+          },
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": true,
+        "jobs": [
+          {
+            "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+            "title": "Engineer",
+            "description": "<p> Build </p>",
+            "locations": [
+              "Remote, US"
+            ],
+            "employment_type": "Full Time",
+            "job_location_type": "remote",
+            "date_posted": "2026-10-06",
+            "language": null,
+            "extras": null,
+            "metadata": {
+              "job_id": 123,
+              "is_hot_job": false
+            }
+          }
+        ],
+        "urls": [
+          "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123"
+        ],
+        "hybrid": true
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "all-invalid-failure",
+      "board_url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "endpoint": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "metadata": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-posting-previews/search": {
+          "status": 200,
+          "body": "{\"jobPostingPreviewsCount\": 1, \"jobPostingPreviews\": [{\"jobId\": false}]}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://api.paycomonline.net/api/ats/job-posting-previews/search",
+          "body": {
+            "skip": 0,
+            "take": 100,
+            "filtersForQuery": {
+              "distanceFrom": 0,
+              "workEnvironments": [],
+              "positionTypes": [],
+              "educationLevels": [],
+              "categories": [],
+              "travelTypes": [],
+              "shiftTypes": [],
+              "otherFilters": [],
+              "keywordSearchText": "",
+              "location": "",
+              "sortOption": ""
+            }
+          },
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": true,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": [],
+        "hybrid": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "duplicates-truncated",
+      "board_url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "endpoint": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "metadata": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-posting-previews/search": {
+          "status": 200,
+          "body": "{\"jobPostingPreviewsCount\": 2, \"jobPostingPreviews\": [{\"jobId\": 123, \"jobTitle\": \" Engineer \", \"description\": \"<p> Build </p>\", \"locations\": \"Remote, US\", \"remoteType\": null, \"positionType\": \"Full Time\", \"postedOn\": \"2026-10-06\", \"isHotJob\": false}, {\"jobId\": 123, \"jobTitle\": \" Engineer \", \"description\": \"<p> Build </p>\", \"locations\": \"Remote, US\", \"remoteType\": null, \"positionType\": \"Full Time\", \"postedOn\": \"2026-10-06\", \"isHotJob\": false}]}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://api.paycomonline.net/api/ats/job-posting-previews/search",
+          "body": {
+            "skip": 0,
+            "take": 100,
+            "filtersForQuery": {
+              "distanceFrom": 0,
+              "workEnvironments": [],
+              "positionTypes": [],
+              "educationLevels": [],
+              "categories": [],
+              "travelTypes": [],
+              "shiftTypes": [],
+              "otherFilters": [],
+              "keywordSearchText": "",
+              "location": "",
+              "sortOption": ""
+            }
+          },
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": true,
+        "jobs": [
+          {
+            "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+            "title": "Engineer",
+            "description": "<p> Build </p>",
+            "locations": [
+              "Remote, US"
+            ],
+            "employment_type": "Full Time",
+            "job_location_type": "remote",
+            "date_posted": "2026-10-06",
+            "language": null,
+            "extras": null,
+            "metadata": {
+              "job_id": 123,
+              "is_hot_job": false
+            }
+          }
+        ],
+        "urls": [
+          "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123"
+        ],
+        "hybrid": true
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "two-pages",
+      "board_url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "endpoint": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "metadata": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-posting-previews/search": [
+          {
+            "status": 200,
+            "body": "{\"jobPostingPreviewsCount\": 2, \"jobPostingPreviews\": [{\"jobId\": 123, \"jobTitle\": \" Engineer \", \"description\": \"<p> Build </p>\", \"locations\": \"Remote, US\", \"remoteType\": null, \"positionType\": \"Full Time\", \"postedOn\": \"2026-10-06\", \"isHotJob\": false}]}",
+            "headers": {}
+          },
+          {
+            "status": 200,
+            "body": "{\"jobPostingPreviewsCount\": 2, \"jobPostingPreviews\": [{\"jobId\": \"00456\", \"jobTitle\": \" Engineer \", \"description\": \"<p> Build </p>\", \"locations\": \"Zurich\", \"remoteType\": \"Hybrid\", \"positionType\": \"Full Time\", \"postedOn\": \"2026-10-06\", \"isHotJob\": false}]}",
+            "headers": {}
+          }
+        ]
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://api.paycomonline.net/api/ats/job-posting-previews/search",
+          "body": {
+            "skip": 0,
+            "take": 100,
+            "filtersForQuery": {
+              "distanceFrom": 0,
+              "workEnvironments": [],
+              "positionTypes": [],
+              "educationLevels": [],
+              "categories": [],
+              "travelTypes": [],
+              "shiftTypes": [],
+              "otherFilters": [],
+              "keywordSearchText": "",
+              "location": "",
+              "sortOption": ""
+            }
+          },
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://api.paycomonline.net/api/ats/job-posting-previews/search",
+          "body": {
+            "skip": 1,
+            "take": 100,
+            "filtersForQuery": {
+              "distanceFrom": 0,
+              "workEnvironments": [],
+              "positionTypes": [],
+              "educationLevels": [],
+              "categories": [],
+              "travelTypes": [],
+              "shiftTypes": [],
+              "otherFilters": [],
+              "keywordSearchText": "",
+              "location": "",
+              "sortOption": ""
+            }
+          },
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [
+          {
+            "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+            "title": "Engineer",
+            "description": "<p> Build </p>",
+            "locations": [
+              "Remote, US"
+            ],
+            "employment_type": "Full Time",
+            "job_location_type": "remote",
+            "date_posted": "2026-10-06",
+            "language": null,
+            "extras": null,
+            "metadata": {
+              "job_id": 123,
+              "is_hot_job": false
+            }
+          },
+          {
+            "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/456",
+            "title": "Engineer",
+            "description": "<p> Build </p>",
+            "locations": [
+              "Zurich"
+            ],
+            "employment_type": "Full Time",
+            "job_location_type": "hybrid",
+            "date_posted": "2026-10-06",
+            "language": null,
+            "extras": null,
+            "metadata": {
+              "job_id": 456,
+              "is_hot_job": false
+            }
+          }
+        ],
+        "urls": [
+          "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+          "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/456"
+        ],
+        "hybrid": true
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "total-drift-failure",
+      "board_url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "endpoint": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "metadata": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-posting-previews/search": [
+          {
+            "status": 200,
+            "body": "{\"jobPostingPreviewsCount\": 2, \"jobPostingPreviews\": [{\"jobId\": 123, \"jobTitle\": \" Engineer \", \"description\": \"<p> Build </p>\", \"locations\": \"Remote, US\", \"remoteType\": null, \"positionType\": \"Full Time\", \"postedOn\": \"2026-10-06\", \"isHotJob\": false}]}",
+            "headers": {}
+          },
+          {
+            "status": 200,
+            "body": "{\"jobPostingPreviewsCount\": 3, \"jobPostingPreviews\": [{\"jobId\": 456, \"jobTitle\": \" Engineer \", \"description\": \"<p> Build </p>\", \"locations\": \"Remote, US\", \"remoteType\": null, \"positionType\": \"Full Time\", \"postedOn\": \"2026-10-06\", \"isHotJob\": false}]}",
+            "headers": {}
+          }
+        ]
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://api.paycomonline.net/api/ats/job-posting-previews/search",
+          "body": {
+            "skip": 0,
+            "take": 100,
+            "filtersForQuery": {
+              "distanceFrom": 0,
+              "workEnvironments": [],
+              "positionTypes": [],
+              "educationLevels": [],
+              "categories": [],
+              "travelTypes": [],
+              "shiftTypes": [],
+              "otherFilters": [],
+              "keywordSearchText": "",
+              "location": "",
+              "sortOption": ""
+            }
+          },
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://api.paycomonline.net/api/ats/job-posting-previews/search",
+          "body": {
+            "skip": 1,
+            "take": 100,
+            "filtersForQuery": {
+              "distanceFrom": 0,
+              "workEnvironments": [],
+              "positionTypes": [],
+              "educationLevels": [],
+              "categories": [],
+              "travelTypes": [],
+              "shiftTypes": [],
+              "otherFilters": [],
+              "keywordSearchText": "",
+              "location": "",
+              "sortOption": ""
+            }
+          },
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": true,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": [],
+        "hybrid": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "premature-empty-retry",
+      "board_url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "endpoint": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "metadata": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-posting-previews/search": [
+          {
+            "status": 200,
+            "body": "{\"jobPostingPreviewsCount\": 2, \"jobPostingPreviews\": [{\"jobId\": 123, \"jobTitle\": \" Engineer \", \"description\": \"<p> Build </p>\", \"locations\": \"Remote, US\", \"remoteType\": null, \"positionType\": \"Full Time\", \"postedOn\": \"2026-10-06\", \"isHotJob\": false}]}",
+            "headers": {}
+          },
+          {
+            "status": 200,
+            "body": "{\"jobPostingPreviewsCount\": 2, \"jobPostingPreviews\": []}",
+            "headers": {}
+          },
+          {
+            "status": 200,
+            "body": "{\"jobPostingPreviewsCount\": 2, \"jobPostingPreviews\": [{\"jobId\": 456, \"jobTitle\": \" Engineer \", \"description\": \"<p> Build </p>\", \"locations\": \"Remote, US\", \"remoteType\": null, \"positionType\": \"Full Time\", \"postedOn\": \"2026-10-06\", \"isHotJob\": false}]}",
+            "headers": {}
+          }
+        ]
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://api.paycomonline.net/api/ats/job-posting-previews/search",
+          "body": {
+            "skip": 0,
+            "take": 100,
+            "filtersForQuery": {
+              "distanceFrom": 0,
+              "workEnvironments": [],
+              "positionTypes": [],
+              "educationLevels": [],
+              "categories": [],
+              "travelTypes": [],
+              "shiftTypes": [],
+              "otherFilters": [],
+              "keywordSearchText": "",
+              "location": "",
+              "sortOption": ""
+            }
+          },
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://api.paycomonline.net/api/ats/job-posting-previews/search",
+          "body": {
+            "skip": 1,
+            "take": 100,
+            "filtersForQuery": {
+              "distanceFrom": 0,
+              "workEnvironments": [],
+              "positionTypes": [],
+              "educationLevels": [],
+              "categories": [],
+              "travelTypes": [],
+              "shiftTypes": [],
+              "otherFilters": [],
+              "keywordSearchText": "",
+              "location": "",
+              "sortOption": ""
+            }
+          },
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://api.paycomonline.net/api/ats/job-posting-previews/search",
+          "body": {
+            "skip": 1,
+            "take": 100,
+            "filtersForQuery": {
+              "distanceFrom": 0,
+              "workEnvironments": [],
+              "positionTypes": [],
+              "educationLevels": [],
+              "categories": [],
+              "travelTypes": [],
+              "shiftTypes": [],
+              "otherFilters": [],
+              "keywordSearchText": "",
+              "location": "",
+              "sortOption": ""
+            }
+          },
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [
+          {
+            "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+            "title": "Engineer",
+            "description": "<p> Build </p>",
+            "locations": [
+              "Remote, US"
+            ],
+            "employment_type": "Full Time",
+            "job_location_type": "remote",
+            "date_posted": "2026-10-06",
+            "language": null,
+            "extras": null,
+            "metadata": {
+              "job_id": 123,
+              "is_hot_job": false
+            }
+          },
+          {
+            "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/456",
+            "title": "Engineer",
+            "description": "<p> Build </p>",
+            "locations": [
+              "Remote, US"
+            ],
+            "employment_type": "Full Time",
+            "job_location_type": "remote",
+            "date_posted": "2026-10-06",
+            "language": null,
+            "extras": null,
+            "metadata": {
+              "job_id": 456,
+              "is_hot_job": false
+            }
+          }
+        ],
+        "urls": [
+          "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+          "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/456"
+        ],
+        "hybrid": true
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "premature-empty-failure",
+      "board_url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "endpoint": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "metadata": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-posting-previews/search": [
+          {
+            "status": 200,
+            "body": "{\"jobPostingPreviewsCount\": 2, \"jobPostingPreviews\": [{\"jobId\": 123, \"jobTitle\": \" Engineer \", \"description\": \"<p> Build </p>\", \"locations\": \"Remote, US\", \"remoteType\": null, \"positionType\": \"Full Time\", \"postedOn\": \"2026-10-06\", \"isHotJob\": false}]}",
+            "headers": {}
+          },
+          {
+            "status": 200,
+            "body": "{\"jobPostingPreviewsCount\": 2, \"jobPostingPreviews\": []}",
+            "headers": {}
+          }
+        ]
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://api.paycomonline.net/api/ats/job-posting-previews/search",
+          "body": {
+            "skip": 0,
+            "take": 100,
+            "filtersForQuery": {
+              "distanceFrom": 0,
+              "workEnvironments": [],
+              "positionTypes": [],
+              "educationLevels": [],
+              "categories": [],
+              "travelTypes": [],
+              "shiftTypes": [],
+              "otherFilters": [],
+              "keywordSearchText": "",
+              "location": "",
+              "sortOption": ""
+            }
+          },
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://api.paycomonline.net/api/ats/job-posting-previews/search",
+          "body": {
+            "skip": 1,
+            "take": 100,
+            "filtersForQuery": {
+              "distanceFrom": 0,
+              "workEnvironments": [],
+              "positionTypes": [],
+              "educationLevels": [],
+              "categories": [],
+              "travelTypes": [],
+              "shiftTypes": [],
+              "otherFilters": [],
+              "keywordSearchText": "",
+              "location": "",
+              "sortOption": ""
+            }
+          },
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://api.paycomonline.net/api/ats/job-posting-previews/search",
+          "body": {
+            "skip": 1,
+            "take": 100,
+            "filtersForQuery": {
+              "distanceFrom": 0,
+              "workEnvironments": [],
+              "positionTypes": [],
+              "educationLevels": [],
+              "categories": [],
+              "travelTypes": [],
+              "shiftTypes": [],
+              "otherFilters": [],
+              "keywordSearchText": "",
+              "location": "",
+              "sortOption": ""
+            }
+          },
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": true,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": [],
+        "hybrid": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "bad-total",
+      "board_url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "endpoint": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "metadata": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-posting-previews/search": {
+          "status": 200,
+          "body": "{\"jobPostingPreviewsCount\": true, \"jobPostingPreviews\": [{\"jobId\": 123, \"jobTitle\": \" Engineer \", \"description\": \"<p> Build </p>\", \"locations\": \"Remote, US\", \"remoteType\": null, \"positionType\": \"Full Time\", \"postedOn\": \"2026-10-06\", \"isHotJob\": false}]}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://api.paycomonline.net/api/ats/job-posting-previews/search",
+          "body": {
+            "skip": 0,
+            "take": 100,
+            "filtersForQuery": {
+              "distanceFrom": 0,
+              "workEnvironments": [],
+              "positionTypes": [],
+              "educationLevels": [],
+              "categories": [],
+              "travelTypes": [],
+              "shiftTypes": [],
+              "otherFilters": [],
+              "keywordSearchText": "",
+              "location": "",
+              "sortOption": ""
+            }
+          },
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": true,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": [],
+        "hybrid": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "retry-bootstrap-429",
+      "board_url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "endpoint": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "metadata": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": [
+          {
+            "status": 429,
+            "body": "",
+            "headers": {}
+          },
+          {
+            "status": 200,
+            "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+            "headers": {}
+          }
+        ],
+        "https://api.paycomonline.net/api/ats/job-posting-previews/search": {
+          "status": 200,
+          "body": "{\"jobPostingPreviewsCount\": 1, \"jobPostingPreviews\": [{\"jobId\": 123, \"jobTitle\": \" Engineer \", \"description\": \"<p> Build </p>\", \"locations\": \"Remote, US\", \"remoteType\": null, \"positionType\": \"Full Time\", \"postedOn\": \"2026-10-06\", \"isHotJob\": false}]}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://api.paycomonline.net/api/ats/job-posting-previews/search",
+          "body": {
+            "skip": 0,
+            "take": 100,
+            "filtersForQuery": {
+              "distanceFrom": 0,
+              "workEnvironments": [],
+              "positionTypes": [],
+              "educationLevels": [],
+              "categories": [],
+              "travelTypes": [],
+              "shiftTypes": [],
+              "otherFilters": [],
+              "keywordSearchText": "",
+              "location": "",
+              "sortOption": ""
+            }
+          },
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [
+          {
+            "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+            "title": "Engineer",
+            "description": "<p> Build </p>",
+            "locations": [
+              "Remote, US"
+            ],
+            "employment_type": "Full Time",
+            "job_location_type": "remote",
+            "date_posted": "2026-10-06",
+            "language": null,
+            "extras": null,
+            "metadata": {
+              "job_id": 123,
+              "is_hot_job": false
+            }
+          }
+        ],
+        "urls": [
+          "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123"
+        ],
+        "hybrid": true
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "retry-api-503",
+      "board_url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "endpoint": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "metadata": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-posting-previews/search": [
+          {
+            "status": 503,
+            "body": "{}",
+            "headers": {}
+          },
+          {
+            "status": 200,
+            "body": "{\"jobPostingPreviewsCount\": 1, \"jobPostingPreviews\": [{\"jobId\": 123, \"jobTitle\": \" Engineer \", \"description\": \"<p> Build </p>\", \"locations\": \"Remote, US\", \"remoteType\": null, \"positionType\": \"Full Time\", \"postedOn\": \"2026-10-06\", \"isHotJob\": false}]}",
+            "headers": {}
+          }
+        ]
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://api.paycomonline.net/api/ats/job-posting-previews/search",
+          "body": {
+            "skip": 0,
+            "take": 100,
+            "filtersForQuery": {
+              "distanceFrom": 0,
+              "workEnvironments": [],
+              "positionTypes": [],
+              "educationLevels": [],
+              "categories": [],
+              "travelTypes": [],
+              "shiftTypes": [],
+              "otherFilters": [],
+              "keywordSearchText": "",
+              "location": "",
+              "sortOption": ""
+            }
+          },
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://api.paycomonline.net/api/ats/job-posting-previews/search",
+          "body": {
+            "skip": 0,
+            "take": 100,
+            "filtersForQuery": {
+              "distanceFrom": 0,
+              "workEnvironments": [],
+              "positionTypes": [],
+              "educationLevels": [],
+              "categories": [],
+              "travelTypes": [],
+              "shiftTypes": [],
+              "otherFilters": [],
+              "keywordSearchText": "",
+              "location": "",
+              "sortOption": ""
+            }
+          },
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [
+          {
+            "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+            "title": "Engineer",
+            "description": "<p> Build </p>",
+            "locations": [
+              "Remote, US"
+            ],
+            "employment_type": "Full Time",
+            "job_location_type": "remote",
+            "date_posted": "2026-10-06",
+            "language": null,
+            "extras": null,
+            "metadata": {
+              "job_id": 123,
+              "is_hot_job": false
+            }
+          }
+        ],
+        "urls": [
+          "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123"
+        ],
+        "hybrid": true
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "api-404-failure",
+      "board_url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "endpoint": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "metadata": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-posting-previews/search": {
+          "status": 404,
+          "body": "{}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://api.paycomonline.net/api/ats/job-posting-previews/search",
+          "body": {
+            "skip": 0,
+            "take": 100,
+            "filtersForQuery": {
+              "distanceFrom": 0,
+              "workEnvironments": [],
+              "positionTypes": [],
+              "educationLevels": [],
+              "categories": [],
+              "travelTypes": [],
+              "shiftTypes": [],
+              "otherFilters": [],
+              "keywordSearchText": "",
+              "location": "",
+              "sortOption": ""
+            }
+          },
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": true,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": [],
+        "hybrid": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "bootstrap-gone-404",
+      "board_url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "endpoint": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "metadata": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 404,
+          "body": "",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": true,
+        "gone": true,
+        "truncated": false,
+        "jobs": [],
+        "urls": [],
+        "hybrid": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "bootstrap-gone-410",
+      "board_url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "endpoint": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "metadata": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 410,
+          "body": "",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": true,
+        "gone": true,
+        "truncated": false,
+        "jobs": [],
+        "urls": [],
+        "hybrid": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "bootstrap-missing-marker-gone",
+      "board_url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "endpoint": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "metadata": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "Job board does not exist or is unavailable",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": true,
+        "gone": true,
+        "truncated": false,
+        "jobs": [],
+        "urls": [],
+        "hybrid": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "bootstrap-malformed",
+      "board_url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "endpoint": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "metadata": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "var configsFromHost = {broken",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": true,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": [],
+        "hybrid": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "bootstrap-untrusted-service",
+      "board_url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "endpoint": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "metadata": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://example.com\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": true,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": [],
+        "hybrid": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "bootstrap-201-failure",
+      "board_url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "endpoint": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+      "metadata": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 201,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": true,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": [],
+        "hybrid": false
+      }
+    }
+  ]
+}

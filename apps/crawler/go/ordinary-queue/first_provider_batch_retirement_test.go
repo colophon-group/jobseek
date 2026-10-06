@@ -23,6 +23,10 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 		board, metadata = "https://fixture.jobs.cz/", `{"scraper_type":"skip"}`
 	}
 	switch provider {
+	case "paycom":
+		board, metadata = "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page", `{"scraper_type":"paycom","scraper_config":{"enrich":["title","description","locations","employment_type","job_location_type","date_posted","base_salary"]}}`
+	case "rippling":
+		board, metadata = "https://ats.rippling.com/fixture/jobs", `{"scraper_type":"rippling"}`
 	case "comeet":
 		board, metadata = "https://www.comeet.com/jobs/fixture/C6.001", `{"scraper_type":"skip"}`
 	case "jobvite":
@@ -104,7 +108,7 @@ func assertEightfoldCanonicalWatermarkCached(t *testing.T, p firstOwnerFixture) 
 }
 
 func TestRealProviderBatchColdRetirementAndEightfoldWatermarkRecovery(t *testing.T) {
-	for _, provider := range []string{"mokahr", "almacareer", "eightfold", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "dom", "rss", "inline", "api_sniffer", "comeet", "jobvite"} {
+	for _, provider := range []string{"mokahr", "almacareer", "eightfold", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "dom", "rss", "inline", "api_sniffer", "comeet", "jobvite", "paycom", "rippling"} {
 		modes := []string{"interrupted", "committed-before-ack", "changed-setting"}
 		if provider == "eightfold" {
 			modes = append(modes, "reaped-before-ack", "recovered-ack", "settled-cold", "save-failure", "orphan-cache")

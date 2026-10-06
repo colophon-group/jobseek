@@ -6,10 +6,16 @@ import (
 )
 
 func SecondaryProvider(provider string) bool {
-	return provider == "comeet" || provider == "jobvite" || provider == "softgarden" || provider == "ukg" || provider == "bamboohr" || provider == "recruiter_co_kr"
+	return provider == "paycom" || provider == "rippling" || provider == "comeet" || provider == "jobvite" || provider == "softgarden" || provider == "ukg" || provider == "bamboohr" || provider == "recruiter_co_kr"
+}
+func paycomEnrichmentFields(config map[string]string) ([]string, error) {
+	return monitorEnrichmentFields(config, map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true})
 }
 func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
 	allowed := map[string]bool{"description": true}
+	if config["crawler_type"] == "paycom" {
+		return paycomEnrichmentFields(config)
+	}
 	if config["crawler_type"] == "bamboohr" {
 		allowed = map[string]bool{"description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true}
 	}
@@ -28,6 +34,19 @@ func inspectSecondaryMonitor(boardID string, config map[string]string, md map[st
 	provider := config["crawler_type"]
 	var profile, endpoint string
 	switch provider {
+	case "paycom":
+		o, e := api.PaycomOptionsFromMetadata(config["board_url"], config["metadata"])
+		if e != nil {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		profile, endpoint = "paycom.preview-items/v1", o.PortalURL()
+	case "rippling":
+		o, e := api.RipplingOptionsFromMetadata(config["board_url"], config["metadata"])
+		if e != nil {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		profile, endpoint = "rippling.v1-urls/v1", o.ListingURL()
+
 	case "comeet":
 		if e := feedRichDetailAssignment(config); e != nil {
 			return GreenhouseMonitorProfile{}, e
@@ -84,6 +103,13 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 		return false
 	}
 	switch p.Provider {
+	case "paycom":
+		o, e := api.PaycomOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && p.Profile == "paycom.preview-items/v1" && p.Endpoint == o.PortalURL() && o.ResourceMatches(resource)
+	case "rippling":
+		o, e := api.RipplingOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && p.Profile == "rippling.v1-urls/v1" && p.Endpoint == o.ListingURL() && o.ResourceMatches(resource)
+
 	case "comeet":
 		o, e := api.ComeetOptionsFromMetadata(config["board_url"], config["metadata"])
 		profile := "comeet.hosted-items/v1"
@@ -112,6 +138,12 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 }
 func SecondaryMonitorGone(config map[string]string, resource string, status int, disabled bool) bool {
 	switch config["crawler_type"] {
+	case "paycom":
+		o, e := api.PaycomOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && resource == o.PortalURL() && ((status == 404 || status == 410) && !disabled || status == 200 && disabled)
+	case "rippling":
+		return false
+
 	case "comeet":
 		o, e := api.ComeetOptionsFromMetadata(config["board_url"], config["metadata"])
 		return e == nil && o.API && resource == o.Endpoint && status == 404 && !disabled

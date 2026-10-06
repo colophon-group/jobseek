@@ -277,6 +277,10 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			}
 			return nil
 		}, renderedPage)
+	} else if profile.Provider == "paycom" {
+		discovery, fetchErr = discoverPaycomInventory(ctx, http.client, profile, task.Config)
+	} else if profile.Provider == "rippling" {
+		discovery, fetchErr = discoverRipplingInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "comeet" {
 		discovery, fetchErr = discoverComeetInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "jobvite" {

@@ -144,7 +144,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 	byURL := make(map[string]*GreenhouseRichContent, len(batch))
 	hybridByURL := map[string]bool{}
 	for _, posting := range batch {
-		if posting.Hybrid && profile.Provider != "beisen" && profile.Provider != "eightfold" {
+		if posting.Hybrid && profile.Provider != "beisen" && profile.Provider != "eightfold" && profile.Provider != "paycom" {
 			return nil, ErrConfiguration
 		}
 		// Inventory filtering/normalization is the caller's earlier stage. No
