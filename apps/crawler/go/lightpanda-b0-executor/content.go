@@ -182,6 +182,20 @@ func EmploymentType(raw *string) *string {
 	return nil
 }
 
+// Detail scrapers preserve an internship signal for shared seniority matching;
+// other commitments cross the existing normalized JobContent boundary.
+func ScraperEmploymentType(raw *string) *string {
+	if raw != nil {
+		key := pythonLower(pythonTrim(*raw))
+		for _, signal := range contentRules.InternSignals {
+			if key == signal {
+				return raw
+			}
+		}
+	}
+	return EmploymentType(raw)
+}
+
 func BuildTitles(title *string) []string {
 	if title == nil || *title == "" {
 		return nil

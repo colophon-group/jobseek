@@ -89,6 +89,12 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		return nil, err
 	}
 	var enrich []string
+	if profile.Provider == "mokahr" || profile.Provider == "eightfold" {
+		enrich, err = providerBatchEnrichment(claim.task.Config)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if profile.Provider == "inline" {
 		enrich, err = inlineMonitorEnrichment(claim.task.Config)
 		if err != nil {
@@ -126,7 +132,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 	byURL := make(map[string]*GreenhouseRichContent, len(batch))
 	hybridByURL := map[string]bool{}
 	for _, posting := range batch {
-		if posting.Hybrid && profile.Provider != "beisen" {
+		if posting.Hybrid && profile.Provider != "beisen" && profile.Provider != "eightfold" {
 			return nil, ErrConfiguration
 		}
 		// Inventory filtering/normalization is the caller's earlier stage. No
@@ -149,7 +155,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		hybridByURL[posting.URL] = posting.Hybrid
 		// These rich inventories have no description field. Preserve the delegated
 		// scraper's retained body rather than letting a detached value replace it.
-		if len(enrich) > 0 && posting.Content.Description != nil && profile.Provider != "nextdata" && profile.Provider != "inline" {
+		if len(enrich) > 0 && posting.Content.Description != nil && profile.Provider != "nextdata" && profile.Provider != "inline" && profile.Provider != "mokahr" {
 			return nil, ErrConfiguration
 		}
 	}
@@ -300,7 +306,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 					for _, field := range enrich {
 						delegatedDescription = delegatedDescription || field == "description"
 					}
-					if (profile.Provider == "nextdata" || profile.Provider == "inline") && delegatedDescription && row.action != "new" {
+					if (profile.Provider == "nextdata" || profile.Provider == "inline" || profile.Provider == "mokahr") && delegatedDescription && row.action != "new" {
 						// Same locale-only availability fallback as the legacy rich
 						// monitor: a scraped locale remains byte-authoritative.
 						d := content.Description

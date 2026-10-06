@@ -9,6 +9,8 @@
 -- ARGV[6] = optional claim token returned by tokenized claim
 -- ARGV[7] = optional failure-associated host from a native committed receipt
 --           Published atomically after lease retirement; legacy calls omit it.
+-- ARGV[8/9] = optional exact previous/new Eightfold cached metadata from the
+--             native canonical settlement. Legacy callers omit both.
 --
 -- Returns: 1 if rescheduled, 0 if guarded or a stale tokenized attempt
 --
@@ -39,6 +41,20 @@ if supplied_token ~= "" and (#supplied_token ~= 32 or
     return redis.error_reply("ordinary claim token is invalid")
 end
 local learned_host = ARGV[7] or ""
+local previous_metadata, next_metadata = ARGV[8] or "", ARGV[9] or ""
+if previous_metadata ~= "" or next_metadata ~= "" then
+    if wtype ~= "simple" or task_type ~= "monitor" or supplied_token == "" or
+        previous_metadata == "" or next_metadata == "" or #next_metadata > 1048576 or
+        redis.call("TYPE", "board:" .. task_id)["ok"] ~= "hash" or
+        redis.call("HGET", "board:" .. task_id, "crawler_type") ~= "eightfold" or
+        redis.call("HGET", "board:" .. task_id, "metadata") ~= previous_metadata then
+        return redis.error_reply("ordinary watermark cache binding is invalid")
+    end
+    local ok, decoded = pcall(cjson.decode, next_metadata)
+    if not ok or type(decoded) ~= "table" or string.sub(next_metadata,1,1) ~= "{" then
+        return redis.error_reply("ordinary watermark cache metadata is invalid")
+    end
+end
 if learned_host ~= "" then
     if (wtype ~= "simple" and wtype ~= "browser") or task_type ~= "monitor" or supplied_token == "" or
         #learned_host > 253 or string.find(learned_host, "[%c|]") ~= nil then
@@ -227,5 +243,8 @@ end
 
 if learned_host ~= "" then
     redis.call("HSET", "board:" .. task_id, "egress_host", learned_host)
+end
+if next_metadata ~= "" then
+    redis.call("HSET", "board:" .. task_id, "metadata", next_metadata)
 end
 return 1

@@ -17,6 +17,12 @@ func firstWorkdayDetailFixture(t *testing.T) firstOwnerFixture {
 }
 func firstAPIDetailFixture(t *testing.T, requested string) firstOwnerFixture {
 	t.Helper()
+	if requested == "mokahr" {
+		return firstIndependentDetailFixture(t, `{"scraper_type":"mokahr","scraper_config":{"enrich":["description"]}}`, "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6", "app.mokahr.com")
+	}
+	if requested == "eightfold" {
+		return firstIndependentDetailFixture(t, `{"scraper_type":"eightfold","scraper_config":{"enrich":["description"]}}`, "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com", "citi.eightfold.ai")
+	}
 	if requested == "embedded" {
 		return firstIndependentDetailFixture(t, `{"scraper_type":"nextdata","scraper_config":{"path":"job","fields":{"title":"title","description":"description"},"enrich":["description"]}}`, "https://careers.example.net/job/123", "careers.example.net")
 	}
@@ -73,6 +79,11 @@ func TestRealFirstOracleDetailRetirementConservesInterruptedAndCompletedAttempts
 }
 func TestRealFirstEmbeddedDetailRetirementConservesInterruptedAndCompletedAttempts(t *testing.T) {
 	testFirstAPIDetailRetirement(t, "embedded")
+}
+func TestRealFirstProviderBatchDetailRetirementConservesInterruptedAndCompletedAttempts(t *testing.T) {
+	for _, provider := range []string{"mokahr", "eightfold"} {
+		t.Run(provider, func(t *testing.T) { testFirstAPIDetailRetirement(t, provider) })
+	}
 }
 func testFirstAPIDetailRetirement(t *testing.T, provider string) {
 	for _, mode := range []string{"active", "claim-before-sql", "committed-before-ack", "reaped-before-ack", "inactive", "save-failure"} {

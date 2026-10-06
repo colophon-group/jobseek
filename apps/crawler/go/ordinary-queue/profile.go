@@ -174,6 +174,13 @@ func stableGreenhouseConfig(config map[string]string, metadata map[string]json.R
 			stableMetadata[key] = value
 		}
 	}
+	if config["crawler_type"] == "eightfold" {
+		watermark, e := stableEightfoldWatermark(metadata["pcsx_watermark"])
+		if e != nil {
+			return nil, e
+		}
+		stableMetadata["pcsx_watermark"] = watermark
+	}
 	stable := cloneConfig(config)
 	// These cached egress observations are learned at execution time. The
 	// native endpoint remains fixed by the resolved token; publisher/circuit

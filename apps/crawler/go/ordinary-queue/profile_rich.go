@@ -26,6 +26,10 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		allowed[key] = value
 	}
 	switch config["crawler_type"] {
+	case "mokahr", "almacareer", "eightfold":
+		for _, key := range []string{"org_id", "site_id", "locale", "partitions", "country", "slug", "host", "widget_id", "api_key", "detail_path", "pcsx_watermark", "pcsx_force_full_crawl", "sitemap_url", "url_filter", "url_transform", "url", "proxy", "render", "skip_ssl", "ssl_verify", "actions", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+			allowed[key] = true
+		}
 	case "inline":
 		for _, key := range inlineMetadataKeys {
 			allowed[key] = true
@@ -134,6 +138,9 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 	md, err := richProfileMetadata(config)
 	if err != nil {
 		return GreenhouseMonitorProfile{}, err
+	}
+	if config["crawler_type"] == "mokahr" || config["crawler_type"] == "almacareer" || config["crawler_type"] == "eightfold" {
+		return inspectProviderBatchMonitor(boardID, config, md)
 	}
 	if config["crawler_type"] == "inline" {
 		return inspectInlineMonitor(boardID, config, md)

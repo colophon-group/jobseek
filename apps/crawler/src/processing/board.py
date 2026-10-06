@@ -373,6 +373,12 @@ def _classify_job_url(url: str, board_url: str | None = None) -> str | None:
             and (bp.path or "").rstrip("/") == path
             and not p.query
         ):
+            # MokaHR encodes the posting identity in a validated SPA fragment.
+            # Sharing the listing path does not make these links homepages.
+            from src.core.scrapers.mokahr import _parse_url as _mokahr_detail_url
+
+            if _mokahr_detail_url(url) is not None:
+                return None
             return "board_homepage"
     return None
 

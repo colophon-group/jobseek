@@ -47,6 +47,7 @@ type GreenhouseInventorySummary struct {
 	// and canonical identity collapse, matching the ordinary Python monitor.
 	Discovered, ProcessingFiltered int
 	Truncated                      bool
+	MetadataUpdates                map[string]any
 }
 
 type GreenhouseCycleResult struct {
@@ -141,6 +142,17 @@ func (c *GreenhouseCycle) FinishSuccess(ctx context.Context, inventory Greenhous
 		md, err := c.metadata(ctx, tx, true)
 		if err != nil {
 			return err
+		}
+		if len(inventory.MetadataUpdates) > 0 {
+			if inventory.Truncated || inventory.ProcessingFiltered != 0 || inventory.Discovered != c.processed || c.processed != len(c.identities) || c.claim.task.Config["crawler_type"] != "eightfold" {
+				return ErrConfiguration
+			}
+			if err := validateEightfoldWatermarkUpdate(c.claim.task.Config, md, inventory.MetadataUpdates); err != nil {
+				return err
+			}
+			if err := c.patch(ctx, tx, inventory.MetadataUpdates); err != nil {
+				return err
+			}
 		}
 		fingerprint, _ := md["_monitor_config_fingerprint"].(string)
 		var expected *string
@@ -311,7 +323,7 @@ func lifecycleInteger(value any) (int64, error) {
 
 func (c *GreenhouseCycle) markGone(ctx context.Context, tx pgx.Tx, md map[string]any, discovered int, complete bool) (int, string, error) {
 	threshold, dropThreshold := 1, 0.3
-	if kind := c.claim.task.Config["crawler_type"]; kind == "workday" || kind == "smartrecruiters" || kind == "workable" || kind == "join" || kind == "sitemap" || kind == "dom" || kind == "icims" || kind == "breezy" || kind == "jazzhr" || kind == "gupy" || kind == "phenom" || kind == "nextdata" || kind == "inline" {
+	if kind := c.claim.task.Config["crawler_type"]; kind == "eightfold" || kind == "workday" || kind == "smartrecruiters" || kind == "workable" || kind == "join" || kind == "sitemap" || kind == "dom" || kind == "icims" || kind == "breezy" || kind == "jazzhr" || kind == "gupy" || kind == "phenom" || kind == "nextdata" || kind == "inline" {
 		var err error
 		threshold, err = workdayDelistThreshold(md["delist_threshold"])
 		if err != nil {
@@ -323,7 +335,7 @@ func (c *GreenhouseCycle) markGone(ctx context.Context, tx pgx.Tx, md map[string
 		}
 	}
 	blastFloor := 0.5
-	if kind := c.claim.task.Config["crawler_type"]; kind == "workday" || kind == "smartrecruiters" || kind == "workable" || kind == "join" || kind == "sitemap" || kind == "dom" || kind == "icims" || kind == "breezy" || kind == "jazzhr" || kind == "gupy" || kind == "phenom" || kind == "nextdata" || kind == "inline" {
+	if kind := c.claim.task.Config["crawler_type"]; kind == "eightfold" || kind == "workday" || kind == "smartrecruiters" || kind == "workable" || kind == "join" || kind == "sitemap" || kind == "dom" || kind == "icims" || kind == "breezy" || kind == "jazzhr" || kind == "gupy" || kind == "phenom" || kind == "nextdata" || kind == "inline" {
 		var err error
 		blastFloor, err = workdayLifecycleSetting(md["blast_radius_floor"], 0.5)
 		if err != nil {

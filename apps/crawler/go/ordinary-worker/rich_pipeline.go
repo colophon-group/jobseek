@@ -77,9 +77,14 @@ func WriteGreenhouseInventory(ctx context.Context, sink GreenhouseSink, preparer
 	for start := 0; start < len(inventory.Jobs); start += 500 {
 		end := min(start+500, len(inventory.Jobs))
 		batch := make([]queue.GreenhouseRichPosting, 0, end-start)
+		urls := []string{}
 		for _, job := range inventory.Jobs[start:end] {
 			if err := ctx.Err(); err != nil {
 				return result, err
+			}
+			if job.URLOnly {
+				urls = append(urls, job.URL)
+				continue
 			}
 			content, err := preparer.Prepare(ctx, job)
 			if err != nil {
@@ -90,12 +95,38 @@ func WriteGreenhouseInventory(ctx context.Context, sink GreenhouseSink, preparer
 			}
 			batch = append(batch, queue.GreenhouseRichPosting{URL: job.URL, SourceIdentity: job.SourceIdentity, Content: content, Hybrid: job.Hybrid})
 		}
-		counts, err := sink.WriteRichBatch(ctx, batch)
-		if err != nil {
-			return result, claimRunError("posting_write", err)
+		counts := &queue.GreenhouseRichBatchResult{}
+		if len(batch) > 0 {
+			var err error
+			counts, err = sink.WriteRichBatch(ctx, batch)
+			if err != nil {
+				return result, claimRunError("posting_write", err)
+			}
+			if counts == nil {
+				return result, errors.New("native batch returned no committed accounting")
+			}
 		}
-		if counts == nil {
-			return result, errors.New("native batch returned no committed accounting")
+		if len(urls) > 0 {
+			publisher, ok := sink.(interface {
+				WriteURLOnlyBatch(context.Context, []string) (*queue.URLOnlyBatchResult, error)
+			})
+			if !ok {
+				return result, errors.New("native URL-only writer unavailable")
+			}
+			written, err := publisher.WriteURLOnlyBatch(ctx, urls)
+			if err != nil {
+				return result, claimRunError("posting_write", err)
+			}
+			if written == nil {
+				return result, errors.New("native URL-only batch returned no committed accounting")
+			}
+			counts.Inserted += written.Inserted
+			counts.Touched += written.Touched
+			counts.Relisted += written.Relisted
+			counts.Foreign += written.Foreign
+			counts.ForeignRelisted += written.ForeignRelisted
+			counts.Deduplicated += written.Deduplicated
+			counts.Details = append(counts.Details, written.Details...)
 		}
 		result.Batches.Inserted += counts.Inserted
 		result.Batches.Touched += counts.Touched
@@ -136,7 +167,7 @@ func PersistGreenhouseInventory(ctx context.Context, sink GreenhouseSink, prepar
 	for _, count := range inventory.DropReasons {
 		filtered += count
 	}
-	cycle, err := sink.FinishSuccess(ctx, queue.GreenhouseInventorySummary{Discovered: inventory.Discovered, ProcessingFiltered: filtered, Truncated: inventory.Truncated})
+	cycle, err := sink.FinishSuccess(ctx, queue.GreenhouseInventorySummary{Discovered: inventory.Discovered, ProcessingFiltered: filtered, Truncated: inventory.Truncated, MetadataUpdates: inventory.MetadataUpdates})
 	if err != nil {
 		sink.InvalidateInventory()
 		return result, claimRunError("finalization", err)

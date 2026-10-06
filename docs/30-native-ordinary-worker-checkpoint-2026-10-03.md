@@ -1,5 +1,64 @@
 # Native ordinary worker continuation, 2026-10-03
 
+## Current delivery — 2026-10-06
+
+The full migration goal remains active. Releases group multiple provider types
+and share verification, cutover and deployment work.
+
+Production **0.13.948** is deployed and promoted from
+`5404a5ad43b3c41241d639f270638cddd3cff3ec`; original deployment run
+`37400469318` succeeded. Ordinary Go and Lightpanda B0 serve at epoch 197.
+Fresh admission covers 6,783 ordinary monitors and 2,475 detail boards with
+1,373,062 scheduled owned detail postings. Three browser boards retain exclusive
+B0 ownership; 38 detail boards with 2,615 route/cache inconsistencies retain
+legacy authority. The independent 04:14 UTC witness verifies ten restart-armed
+services, eight healthy endpoints, 2,168 monitor and 71 detail completions across
+21 profiles, 24 canonical detail samples and no bounded processing diagnostics.
+Every-profile freshness and comparable whole-lane cost remain unfinished.
+
+The next release combines **MokaHR, AlmaCareer and Eightfold**, including required
+MokaHR and Eightfold details. All five profiles, installed dispatch, mixed rich
+and URL-only persistence, fenced terminal watermark synchronization, recovery
+and cold retirement are implemented. Current CSV qualification admits 22 MokaHR,
+23 AlmaCareer and 21 direct Eightfold monitors, plus 20 MokaHR and 21 direct
+Eightfold detail configurations. Nine Eightfold proxy configurations retain legacy
+authority and remain in the full migration goal. Configuration qualification is
+not fresh production admission.
+
+Actual Python reference proofs cover 166 API parser/watermark cases and 161
+worker field/HTTP/URL identity cases. Real PostgreSQL/Redis tests pass 25 monitor,
+28 detail-worker and two hybrid refresh cases. Cold recovery passes 14 monitor
+and 12 detail cases, including Redis reloads. Six atomic settlement and five
+terminal refusal cases preserve watermark/queue boundaries. Existing detail
+content survives Eightfold touches and relists. A shared Python/Go MokaHR URL
+classification bug was fixed so valid `#/job/<id>` postings survive processing.
+Bootstrap/HTML redirects, refused API redirects and final-resource publisher
+reservations match actual reference HTTP behavior. Incomplete inventories cannot
+advance the watermark. Changed Python source/tests and collectors pass Ruff.
+
+Continue in `fix-crawler/native-api-provider-batch`, isolated worktree
+`native-feed-coverage/jobseek`. Candidate VERSION is 0.13.949. Full queue/API/executor race and vet pass;
+389 Python batch/Redis cases and 41 ownership/cutover cases pass (six optional
+integration cases skip). The full worker run found a request-recorder test race;
+the corrected MokaHR cancellation case passes 100 race iterations and the entire
+MokaHR reference suite and worker vet pass. Required CI reruns the complete
+worker suite at the committed head. Ship one shared PR through
+required CI and installed-image checks. These candidates are versioned together and
+are not deployed. Complete current-release serving witnesses and supported cold
+reversal before the next original immutable full deployment.
+
+Continue all remaining enabled provider/browser variants and required runtime
+consumers. Establish coverage, freshness, queue conservation, comparable CPU/RAM
+and cost, final cold reversal and the rollback window before retiring production
+Python, Playwright/Chromium and obsolete runtime assets. Preserve every enabled
+board and useful isolated offline Python tooling.
+
+Lightpanda **1.0.0**, published October 2, remains the newest stable official
+release and is already pinned to the qualified deployed immutable renderer.
+The official release list was rechecked October 6; the legacy `latest` redirect
+can misleadingly select the old nightly alias. Exact operational proof resides
+in the protected checkpoint. Earlier sections below are historical.
+
 ## Current delivery — 2026-10-06 00:04 UTC
 
 The full Go + Lightpanda migration goal remains active. Release batches group

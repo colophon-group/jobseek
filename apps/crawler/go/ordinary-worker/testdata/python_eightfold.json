@@ -1,0 +1,3952 @@
+{
+  "pcsx": [
+    {
+      "name": "complete",
+      "raw": {
+        "name": "Engineer",
+        "positionUrl": "/careers/job/859033176537",
+        "standardizedLocations": [
+          "London, UK"
+        ],
+        "workLocationOption": "HYBRID",
+        "postedTs": 1769040000,
+        "department": "Engineering",
+        "atsJobId": "123"
+      },
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "expected": {
+        "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+        "title": "Engineer",
+        "description": null,
+        "locations": [
+          "London, UK"
+        ],
+        "employment_type": null,
+        "job_location_type": "hybrid",
+        "date_posted": "2026-01-22",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "department": "Engineering",
+          "ats_job_id": "123"
+        },
+        "source_identity": null
+      }
+    },
+    {
+      "name": "empty",
+      "raw": {},
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "expected": {
+        "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      }
+    },
+    {
+      "name": "locations-0",
+      "raw": {
+        "name": "Engineer",
+        "positionUrl": "/careers/job/859033176537",
+        "standardizedLocations": null,
+        "workLocationOption": "HYBRID",
+        "postedTs": 1769040000,
+        "department": "Engineering",
+        "atsJobId": "123"
+      },
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "expected": {
+        "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+        "title": "Engineer",
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": "hybrid",
+        "date_posted": "2026-01-22",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "department": "Engineering",
+          "ats_job_id": "123"
+        },
+        "source_identity": null
+      }
+    },
+    {
+      "name": "locations-1",
+      "raw": {
+        "name": "Engineer",
+        "positionUrl": "/careers/job/859033176537",
+        "standardizedLocations": [],
+        "workLocationOption": "HYBRID",
+        "postedTs": 1769040000,
+        "department": "Engineering",
+        "atsJobId": "123"
+      },
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "expected": {
+        "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+        "title": "Engineer",
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": "hybrid",
+        "date_posted": "2026-01-22",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "department": "Engineering",
+          "ats_job_id": "123"
+        },
+        "source_identity": null
+      }
+    },
+    {
+      "name": "locations-2",
+      "raw": {
+        "name": "Engineer",
+        "positionUrl": "/careers/job/859033176537",
+        "standardizedLocations": "[\"London\",\"Paris\"]",
+        "workLocationOption": "HYBRID",
+        "postedTs": 1769040000,
+        "department": "Engineering",
+        "atsJobId": "123"
+      },
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "expected": {
+        "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+        "title": "Engineer",
+        "description": null,
+        "locations": [
+          "London",
+          "Paris"
+        ],
+        "employment_type": null,
+        "job_location_type": "hybrid",
+        "date_posted": "2026-01-22",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "department": "Engineering",
+          "ats_job_id": "123"
+        },
+        "source_identity": null
+      }
+    },
+    {
+      "name": "locations-3",
+      "raw": {
+        "name": "Engineer",
+        "positionUrl": "/careers/job/859033176537",
+        "standardizedLocations": "\"London\"",
+        "workLocationOption": "HYBRID",
+        "postedTs": 1769040000,
+        "department": "Engineering",
+        "atsJobId": "123"
+      },
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "expected": {
+        "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+        "title": "Engineer",
+        "description": null,
+        "locations": [
+          "\"London\""
+        ],
+        "employment_type": null,
+        "job_location_type": "hybrid",
+        "date_posted": "2026-01-22",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "department": "Engineering",
+          "ats_job_id": "123"
+        },
+        "source_identity": null
+      }
+    },
+    {
+      "name": "locations-4",
+      "raw": {
+        "name": "Engineer",
+        "positionUrl": "/careers/job/859033176537",
+        "standardizedLocations": "broken",
+        "workLocationOption": "HYBRID",
+        "postedTs": 1769040000,
+        "department": "Engineering",
+        "atsJobId": "123"
+      },
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "expected": {
+        "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+        "title": "Engineer",
+        "description": null,
+        "locations": [
+          "broken"
+        ],
+        "employment_type": null,
+        "job_location_type": "hybrid",
+        "date_posted": "2026-01-22",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "department": "Engineering",
+          "ats_job_id": "123"
+        },
+        "source_identity": null
+      }
+    },
+    {
+      "name": "locations-5",
+      "raw": {
+        "name": "Engineer",
+        "positionUrl": "/careers/job/859033176537",
+        "standardizedLocations": [
+          "Paris",
+          1,
+          null
+        ],
+        "workLocationOption": "HYBRID",
+        "postedTs": 1769040000,
+        "department": "Engineering",
+        "atsJobId": "123"
+      },
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "expected": {
+        "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+        "title": "Engineer",
+        "description": null,
+        "locations": [
+          "Paris",
+          1,
+          null
+        ],
+        "employment_type": null,
+        "job_location_type": "hybrid",
+        "date_posted": "2026-01-22",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "department": "Engineering",
+          "ats_job_id": "123"
+        },
+        "source_identity": null
+      }
+    },
+    {
+      "name": "timestamp-0",
+      "raw": {
+        "name": "Engineer",
+        "positionUrl": "/careers/job/859033176537",
+        "standardizedLocations": [
+          "London, UK"
+        ],
+        "workLocationOption": "HYBRID",
+        "postedTs": null,
+        "department": "Engineering",
+        "atsJobId": "123"
+      },
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "expected": {
+        "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+        "title": "Engineer",
+        "description": null,
+        "locations": [
+          "London, UK"
+        ],
+        "employment_type": null,
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "department": "Engineering",
+          "ats_job_id": "123"
+        },
+        "source_identity": null
+      }
+    },
+    {
+      "name": "timestamp-1",
+      "raw": {
+        "name": "Engineer",
+        "positionUrl": "/careers/job/859033176537",
+        "standardizedLocations": [
+          "London, UK"
+        ],
+        "workLocationOption": "HYBRID",
+        "postedTs": 0,
+        "department": "Engineering",
+        "atsJobId": "123"
+      },
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "expected": {
+        "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+        "title": "Engineer",
+        "description": null,
+        "locations": [
+          "London, UK"
+        ],
+        "employment_type": null,
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "department": "Engineering",
+          "ats_job_id": "123"
+        },
+        "source_identity": null
+      }
+    },
+    {
+      "name": "timestamp-2",
+      "raw": {
+        "name": "Engineer",
+        "positionUrl": "/careers/job/859033176537",
+        "standardizedLocations": [
+          "London, UK"
+        ],
+        "workLocationOption": "HYBRID",
+        "postedTs": -1,
+        "department": "Engineering",
+        "atsJobId": "123"
+      },
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "expected": {
+        "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+        "title": "Engineer",
+        "description": null,
+        "locations": [
+          "London, UK"
+        ],
+        "employment_type": null,
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "department": "Engineering",
+          "ats_job_id": "123"
+        },
+        "source_identity": null
+      }
+    },
+    {
+      "name": "timestamp-3",
+      "raw": {
+        "name": "Engineer",
+        "positionUrl": "/careers/job/859033176537",
+        "standardizedLocations": [
+          "London, UK"
+        ],
+        "workLocationOption": "HYBRID",
+        "postedTs": true,
+        "department": "Engineering",
+        "atsJobId": "123"
+      },
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "expected": {
+        "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+        "title": "Engineer",
+        "description": null,
+        "locations": [
+          "London, UK"
+        ],
+        "employment_type": null,
+        "job_location_type": "hybrid",
+        "date_posted": "1970-01-01",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "department": "Engineering",
+          "ats_job_id": "123"
+        },
+        "source_identity": null
+      }
+    },
+    {
+      "name": "timestamp-4",
+      "raw": {
+        "name": "Engineer",
+        "positionUrl": "/careers/job/859033176537",
+        "standardizedLocations": [
+          "London, UK"
+        ],
+        "workLocationOption": "HYBRID",
+        "postedTs": "1769040000",
+        "department": "Engineering",
+        "atsJobId": "123"
+      },
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "expected": {
+        "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+        "title": "Engineer",
+        "description": null,
+        "locations": [
+          "London, UK"
+        ],
+        "employment_type": null,
+        "job_location_type": "hybrid",
+        "date_posted": "2026-01-22",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "department": "Engineering",
+          "ats_job_id": "123"
+        },
+        "source_identity": null
+      }
+    },
+    {
+      "name": "timestamp-5",
+      "raw": {
+        "name": "Engineer",
+        "positionUrl": "/careers/job/859033176537",
+        "standardizedLocations": [
+          "London, UK"
+        ],
+        "workLocationOption": "HYBRID",
+        "postedTs": "bad",
+        "department": "Engineering",
+        "atsJobId": "123"
+      },
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "expected": {
+        "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+        "title": "Engineer",
+        "description": null,
+        "locations": [
+          "London, UK"
+        ],
+        "employment_type": null,
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "department": "Engineering",
+          "ats_job_id": "123"
+        },
+        "source_identity": null
+      }
+    },
+    {
+      "name": "timestamp-6",
+      "raw": {
+        "name": "Engineer",
+        "positionUrl": "/careers/job/859033176537",
+        "standardizedLocations": [
+          "London, UK"
+        ],
+        "workLocationOption": "HYBRID",
+        "postedTs": 1769040000.9,
+        "department": "Engineering",
+        "atsJobId": "123"
+      },
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "expected": {
+        "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+        "title": "Engineer",
+        "description": null,
+        "locations": [
+          "London, UK"
+        ],
+        "employment_type": null,
+        "job_location_type": "hybrid",
+        "date_posted": "2026-01-22",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "department": "Engineering",
+          "ats_job_id": "123"
+        },
+        "source_identity": null
+      }
+    },
+    {
+      "name": "timestamp-7",
+      "raw": {
+        "name": "Engineer",
+        "positionUrl": "/careers/job/859033176537",
+        "standardizedLocations": [
+          "London, UK"
+        ],
+        "workLocationOption": "HYBRID",
+        "postedTs": 1e+20,
+        "department": "Engineering",
+        "atsJobId": "123"
+      },
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "expected": {
+        "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+        "title": "Engineer",
+        "description": null,
+        "locations": [
+          "London, UK"
+        ],
+        "employment_type": null,
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "department": "Engineering",
+          "ats_job_id": "123"
+        },
+        "source_identity": null
+      }
+    },
+    {
+      "name": "empty-metadata",
+      "raw": {
+        "name": "Engineer",
+        "positionUrl": "/careers/job/859033176537",
+        "standardizedLocations": [
+          "London, UK"
+        ],
+        "workLocationOption": "HYBRID",
+        "postedTs": 1769040000,
+        "department": "",
+        "atsJobId": null
+      },
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "expected": {
+        "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+        "title": "Engineer",
+        "description": null,
+        "locations": [
+          "London, UK"
+        ],
+        "employment_type": null,
+        "job_location_type": "hybrid",
+        "date_posted": "2026-01-22",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      }
+    },
+    {
+      "name": "numeric-title",
+      "raw": {
+        "name": 123,
+        "positionUrl": "/careers/job/859033176537",
+        "standardizedLocations": [
+          "London, UK"
+        ],
+        "workLocationOption": "HYBRID",
+        "postedTs": 1769040000,
+        "department": "Engineering",
+        "atsJobId": "123"
+      },
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "expected": {
+        "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+        "title": 123,
+        "description": null,
+        "locations": [
+          "London, UK"
+        ],
+        "employment_type": null,
+        "job_location_type": "hybrid",
+        "date_posted": "2026-01-22",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "department": "Engineering",
+          "ats_job_id": "123"
+        },
+        "source_identity": null
+      }
+    }
+  ],
+  "detail": [
+    {
+      "name": "complete",
+      "raw": {
+        "name": "canonical",
+        "posting_name": "Software Engineer",
+        "job_description": "<p>Build services.</p>",
+        "locations": [
+          " London ",
+          "Paris"
+        ],
+        "t_create": 1769040000,
+        "ats_job_id": "123",
+        "department": "Engineering",
+        "business_unit": "Products",
+        "display_job_id": "REF123"
+      },
+      "expected": {
+        "title": "Software Engineer",
+        "description": "<p>Build services.</p>",
+        "locations": [
+          "London",
+          "Paris"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-01-22",
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "ats_job_id": "123",
+          "display_job_id": "REF123",
+          "department": "Engineering",
+          "business_unit": "Products"
+        }
+      }
+    },
+    {
+      "name": "empty",
+      "raw": {},
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "name-fallback",
+      "raw": {
+        "name": "canonical",
+        "posting_name": "",
+        "job_description": "<p>Build services.</p>",
+        "locations": [
+          " London ",
+          "Paris"
+        ],
+        "t_create": 1769040000,
+        "ats_job_id": "123",
+        "department": "Engineering",
+        "business_unit": "Products",
+        "display_job_id": "REF123"
+      },
+      "expected": {
+        "title": "canonical",
+        "description": "<p>Build services.</p>",
+        "locations": [
+          "London",
+          "Paris"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-01-22",
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "ats_job_id": "123",
+          "display_job_id": "REF123",
+          "department": "Engineering",
+          "business_unit": "Products"
+        }
+      }
+    },
+    {
+      "name": "scalar-location",
+      "raw": {
+        "location": " London "
+      },
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": [
+          "London"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "empty-locations-fallback",
+      "raw": {
+        "locations": [],
+        "location": "Paris"
+      },
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": [
+          "Paris"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "location-coercion",
+      "raw": {
+        "locations": [
+          null,
+          false,
+          0,
+          true,
+          1,
+          " ",
+          {
+            "name": "Paris"
+          }
+        ]
+      },
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": [
+          "True",
+          "1",
+          "",
+          "{'name': 'Paris'}"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "timestamp-0",
+      "raw": {
+        "t_create": null
+      },
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "timestamp-1",
+      "raw": {
+        "t_create": 0
+      },
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "timestamp-2",
+      "raw": {
+        "t_create": -1
+      },
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "timestamp-3",
+      "raw": {
+        "t_create": true
+      },
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "1970-01-01",
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "timestamp-4",
+      "raw": {
+        "t_create": false
+      },
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "timestamp-5",
+      "raw": {
+        "t_create": 1769040000.9
+      },
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-01-22",
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "timestamp-6",
+      "raw": {
+        "t_create": "1769040000"
+      },
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "timestamp-7",
+      "raw": {
+        "t_create": "bad"
+      },
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "timestamp-8",
+      "raw": {
+        "t_create": 1e+20
+      },
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "structured-metadata",
+      "raw": {
+        "department": {
+          "name": "Research"
+        },
+        "ats_job_id": 123
+      },
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "ats_job_id": 123,
+          "department": {
+            "name": "Research"
+          }
+        }
+      }
+    }
+  ],
+  "watermark": [
+    {
+      "name": "first",
+      "metadata": {},
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "patch": {
+        "pcsx_watermark": {
+          "max_ts": 0,
+          "interval_days": 7,
+          "auto_full_crawl": true
+        }
+      },
+      "needs_full": true
+    },
+    {
+      "name": "malformed-state",
+      "metadata": {
+        "pcsx_watermark": []
+      },
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "patch": {
+        "pcsx_watermark": {
+          "max_ts": 0,
+          "interval_days": 7,
+          "auto_full_crawl": true
+        }
+      },
+      "needs_full": true
+    },
+    {
+      "name": "invalid-max",
+      "metadata": {
+        "pcsx_watermark": {
+          "max_ts": "bad"
+        }
+      },
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "error": true
+    },
+    {
+      "name": "age-0",
+      "metadata": {
+        "pcsx_watermark": {
+          "max_ts": 123,
+          "last_full_at": null,
+          "last_incremental_at": "2026-10-05T03:00:00.120000+00:00",
+          "enabled": true,
+          "extra": {
+            "host": "citi.eightfold.ai",
+            "domain": "citi"
+          }
+        }
+      },
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "patch": {
+        "pcsx_watermark": {
+          "max_ts": 123,
+          "interval_days": 7,
+          "auto_full_crawl": true,
+          "last_incremental_at": "2026-10-05T03:00:00.120000+00:00",
+          "enabled": true,
+          "extra": {
+            "host": "citi.eightfold.ai",
+            "domain": "citi"
+          }
+        }
+      },
+      "needs_full": true
+    },
+    {
+      "name": "age-1",
+      "metadata": {
+        "pcsx_watermark": {
+          "max_ts": 123,
+          "last_full_at": "bad",
+          "last_incremental_at": "2026-10-05T03:00:00.120000+00:00",
+          "enabled": true,
+          "extra": {
+            "host": "citi.eightfold.ai",
+            "domain": "citi"
+          }
+        }
+      },
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "patch": {
+        "pcsx_watermark": {
+          "max_ts": 123,
+          "interval_days": 7,
+          "auto_full_crawl": true,
+          "last_incremental_at": "2026-10-05T03:00:00.120000+00:00",
+          "enabled": true,
+          "extra": {
+            "host": "citi.eightfold.ai",
+            "domain": "citi"
+          }
+        }
+      },
+      "needs_full": true
+    },
+    {
+      "name": "age-2",
+      "metadata": {
+        "pcsx_watermark": {
+          "max_ts": 123,
+          "last_full_at": "2026-09-29T03:00:00.120000Z",
+          "last_incremental_at": "2026-10-05T03:00:00.120000+00:00",
+          "enabled": true,
+          "extra": {
+            "host": "citi.eightfold.ai",
+            "domain": "citi"
+          }
+        }
+      },
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "patch": {
+        "pcsx_watermark": {
+          "max_ts": 123,
+          "interval_days": 7,
+          "auto_full_crawl": true,
+          "last_full_at": "2026-09-29T03:00:00.120000+00:00",
+          "last_incremental_at": "2026-10-05T03:00:00.120000+00:00",
+          "enabled": true,
+          "extra": {
+            "host": "citi.eightfold.ai",
+            "domain": "citi"
+          }
+        }
+      },
+      "needs_full": true
+    },
+    {
+      "name": "age-3",
+      "metadata": {
+        "pcsx_watermark": {
+          "max_ts": 123,
+          "last_full_at": "2026-10-05T03:00:00.120000+00:00",
+          "last_incremental_at": "2026-10-05T03:00:00.120000+00:00",
+          "enabled": true,
+          "extra": {
+            "host": "citi.eightfold.ai",
+            "domain": "citi"
+          }
+        }
+      },
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "patch": {
+        "pcsx_watermark": {
+          "max_ts": 123,
+          "interval_days": 7,
+          "auto_full_crawl": true,
+          "last_full_at": "2026-10-05T03:00:00.120000+00:00",
+          "last_incremental_at": "2026-10-05T03:00:00.120000+00:00",
+          "enabled": true,
+          "extra": {
+            "host": "citi.eightfold.ai",
+            "domain": "citi"
+          }
+        }
+      },
+      "needs_full": false
+    },
+    {
+      "name": "manual",
+      "metadata": {
+        "pcsx_watermark": {
+          "auto_full_crawl": false,
+          "enabled": true
+        }
+      },
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "patch": {
+        "pcsx_watermark": {
+          "max_ts": 0,
+          "interval_days": 7,
+          "auto_full_crawl": false,
+          "enabled": true
+        }
+      },
+      "needs_full": true
+    },
+    {
+      "name": "disabled",
+      "metadata": {
+        "pcsx_watermark": {
+          "enabled": false,
+          "interval_days": 3
+        }
+      },
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "patch": {
+        "pcsx_watermark": {
+          "max_ts": 0,
+          "interval_days": 3,
+          "auto_full_crawl": true,
+          "enabled": false
+        }
+      },
+      "needs_full": true
+    },
+    {
+      "name": "bool-interval",
+      "metadata": {
+        "pcsx_watermark": {
+          "interval_days": true
+        }
+      },
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "patch": {
+        "pcsx_watermark": {
+          "max_ts": 0,
+          "interval_days": true,
+          "auto_full_crawl": true
+        }
+      },
+      "needs_full": true
+    },
+    {
+      "name": "float-interval",
+      "metadata": {
+        "pcsx_watermark": {
+          "interval_days": 2.0
+        }
+      },
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "patch": {
+        "pcsx_watermark": {
+          "max_ts": 0,
+          "interval_days": 7,
+          "auto_full_crawl": true
+        }
+      },
+      "needs_full": true
+    },
+    {
+      "name": "negative-max",
+      "metadata": {
+        "pcsx_watermark": {
+          "max_ts": -1
+        }
+      },
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "patch": {
+        "pcsx_watermark": {
+          "max_ts": -1,
+          "interval_days": 7,
+          "auto_full_crawl": true
+        }
+      },
+      "needs_full": true
+    }
+  ],
+  "routes": [
+    {
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "id": "859033176537",
+      "domain": "citi.com",
+      "pcsx_domain": "citi.com"
+    },
+    {
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?Domain=citi.com",
+      "id": "859033176537",
+      "domain": "citi",
+      "pcsx_domain": "citi.com"
+    },
+    {
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer",
+      "id": "859033176537",
+      "domain": "citi",
+      "pcsx_domain": null
+    },
+    {
+      "url": "https://careers.example.com/careers/job/123-title?domain=example.com",
+      "id": "123",
+      "domain": "example.com",
+      "pcsx_domain": "example.com"
+    },
+    {
+      "url": "https://careers.example.com/careers/job/123-title",
+      "id": "123",
+      "domain": null,
+      "pcsx_domain": null
+    },
+    {
+      "url": "https://citi.eightfold.ai/careers",
+      "id": null,
+      "domain": "citi",
+      "pcsx_domain": null
+    }
+  ],
+  "http": [
+    {
+      "name": "jsonld-fastpath",
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "config": {},
+      "pages": {
+        "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com": {
+          "body": "<html>\n  <head>\n    <script type=\"application/ld+json\">\n      {\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\",\n       \"title\": \"Software Engineer\",\n       \"description\": \"<p>Build things</p>\",\n       \"jobLocation\": {\"@type\": \"Place\",\n                       \"address\": {\"addressLocality\": \"Jersey City\",\n                                   \"addressRegion\": \"NJ\",\n                                   \"addressCountry\": \"US\"}}}\n    </script>\n  </head>\n</html>\n",
+          "status": 200,
+          "headers": {}
+        },
+        "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com": {
+          "body": "{\"name\": \"canonical\", \"posting_name\": \"Software Engineer\", \"job_description\": \"<p>Build services.</p>\", \"locations\": [\" London \", \"Paris\"], \"t_create\": 1769040000, \"ats_job_id\": \"123\", \"department\": \"Engineering\", \"business_unit\": \"Products\", \"display_job_id\": \"REF123\"}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "title": "Software Engineer",
+        "description": "<p>Build things</p>",
+        "locations": [
+          "Jersey City, NJ, US"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com"
+        }
+      ]
+    },
+    {
+      "name": "html-redirect",
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "config": {},
+      "pages": {
+        "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com": {
+          "body": "",
+          "status": 302,
+          "headers": {
+            "Location": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com&redirected=1"
+          }
+        },
+        "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com": {
+          "body": "{\"name\": \"canonical\", \"posting_name\": \"Software Engineer\", \"job_description\": \"<p>Build services.</p>\", \"locations\": [\" London \", \"Paris\"], \"t_create\": 1769040000, \"ats_job_id\": \"123\", \"department\": \"Engineering\", \"business_unit\": \"Products\", \"display_job_id\": \"REF123\"}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com&redirected=1": {
+          "body": "<html>\n  <head>\n    <script type=\"application/ld+json\">\n      {\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\",\n       \"title\": \"Software Engineer\",\n       \"description\": \"<p>Build things</p>\",\n       \"jobLocation\": {\"@type\": \"Place\",\n                       \"address\": {\"addressLocality\": \"Jersey City\",\n                                   \"addressRegion\": \"NJ\",\n                                   \"addressCountry\": \"US\"}}}\n    </script>\n  </head>\n</html>\n",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "native_reserved": false,
+      "expected": {
+        "title": "Software Engineer",
+        "description": "<p>Build things</p>",
+        "locations": [
+          "Jersey City, NJ, US"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com"
+        },
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com&redirected=1"
+        }
+      ]
+    },
+    {
+      "name": "html-redirect-reserved",
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "config": {},
+      "pages": {
+        "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com": {
+          "body": "",
+          "status": 302,
+          "headers": {
+            "Location": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com&redirected=1"
+          }
+        },
+        "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com": {
+          "body": "{\"name\": \"canonical\", \"posting_name\": \"Software Engineer\", \"job_description\": \"<p>Build services.</p>\", \"locations\": [\" London \", \"Paris\"], \"t_create\": 1769040000, \"ats_job_id\": \"123\", \"department\": \"Engineering\", \"business_unit\": \"Products\", \"display_job_id\": \"REF123\"}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com&redirected=1": {
+          "body": "<html>\n  <head>\n    <script type=\"application/ld+json\">\n      {\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\",\n       \"title\": \"Software Engineer\",\n       \"description\": \"<p>Build things</p>\",\n       \"jobLocation\": {\"@type\": \"Place\",\n                       \"address\": {\"addressLocality\": \"Jersey City\",\n                                   \"addressRegion\": \"NJ\",\n                                   \"addressCountry\": \"US\"}}}\n    </script>\n  </head>\n</html>\n",
+          "status": 200,
+          "headers": {
+            "TDM-Reservation": "1"
+          }
+        }
+      },
+      "native_reserved": true,
+      "expected": {
+        "title": "Software Engineer",
+        "description": "<p>Build things</p>",
+        "locations": [
+          "Jersey City, NJ, US"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com"
+        },
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com&redirected=1"
+        }
+      ]
+    },
+    {
+      "name": "api-redirect-refused",
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "config": {},
+      "pages": {
+        "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com": {
+          "body": "<html>shell</html>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com": {
+          "body": "{\"name\": \"canonical\", \"posting_name\": \"Software Engineer\", \"job_description\": \"<p>Build services.</p>\", \"locations\": [\" London \", \"Paris\"], \"t_create\": 1769040000, \"ats_job_id\": \"123\", \"department\": \"Engineering\", \"business_unit\": \"Products\", \"display_job_id\": \"REF123\"}",
+          "status": 302,
+          "headers": {
+            "Location": "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com&redirected=1"
+          }
+        }
+      },
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com"
+        },
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com"
+        }
+      ]
+    },
+    {
+      "name": "api-fallback",
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "config": {},
+      "pages": {
+        "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com": {
+          "body": "<html>shell</html>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com": {
+          "body": "{\"name\": \"canonical\", \"posting_name\": \"Software Engineer\", \"job_description\": \"<p>Build services.</p>\", \"locations\": [\" London \", \"Paris\"], \"t_create\": 1769040000, \"ats_job_id\": \"123\", \"department\": \"Engineering\", \"business_unit\": \"Products\", \"display_job_id\": \"REF123\"}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "title": "Software Engineer",
+        "description": "<p>Build services.</p>",
+        "locations": [
+          "London",
+          "Paris"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-01-22",
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "ats_job_id": "123",
+          "display_job_id": "REF123",
+          "department": "Engineering",
+          "business_unit": "Products"
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com"
+        },
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com"
+        }
+      ]
+    },
+    {
+      "name": "html-gone-api-recovers",
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "config": {},
+      "pages": {
+        "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com": {
+          "body": "<html>shell</html>",
+          "status": 404,
+          "headers": {}
+        },
+        "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com": {
+          "body": "{\"name\": \"canonical\", \"posting_name\": \"Software Engineer\", \"job_description\": \"<p>Build services.</p>\", \"locations\": [\" London \", \"Paris\"], \"t_create\": 1769040000, \"ats_job_id\": \"123\", \"department\": \"Engineering\", \"business_unit\": \"Products\", \"display_job_id\": \"REF123\"}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "title": "Software Engineer",
+        "description": "<p>Build services.</p>",
+        "locations": [
+          "London",
+          "Paris"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-01-22",
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "ats_job_id": "123",
+          "display_job_id": "REF123",
+          "department": "Engineering",
+          "business_unit": "Products"
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com"
+        },
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com"
+        }
+      ]
+    },
+    {
+      "name": "html-blocked-api-recovers",
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "config": {},
+      "pages": {
+        "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com": {
+          "body": "<html>shell</html>",
+          "status": 403,
+          "headers": {}
+        },
+        "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com": {
+          "body": "{\"name\": \"canonical\", \"posting_name\": \"Software Engineer\", \"job_description\": \"<p>Build services.</p>\", \"locations\": [\" London \", \"Paris\"], \"t_create\": 1769040000, \"ats_job_id\": \"123\", \"department\": \"Engineering\", \"business_unit\": \"Products\", \"display_job_id\": \"REF123\"}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "title": "Software Engineer",
+        "description": "<p>Build services.</p>",
+        "locations": [
+          "London",
+          "Paris"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-01-22",
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "ats_job_id": "123",
+          "display_job_id": "REF123",
+          "department": "Engineering",
+          "business_unit": "Products"
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com"
+        },
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com"
+        }
+      ]
+    },
+    {
+      "name": "no-content",
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "config": {},
+      "pages": {
+        "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com": {
+          "body": "<html>shell</html>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com": {
+          "body": "{}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com"
+        },
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com"
+        }
+      ]
+    },
+    {
+      "name": "api-bad-json",
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "config": {},
+      "pages": {
+        "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com": {
+          "body": "<html>shell</html>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com": {
+          "body": "bad",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com"
+        },
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com"
+        }
+      ]
+    },
+    {
+      "name": "api-list",
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "config": {},
+      "pages": {
+        "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com": {
+          "body": "<html>shell</html>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com": {
+          "body": "[]",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com"
+        },
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com"
+        }
+      ]
+    },
+    {
+      "name": "api-gone",
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "config": {},
+      "pages": {
+        "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com": {
+          "body": "<html>shell</html>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com": {
+          "body": "{\"name\": \"canonical\", \"posting_name\": \"Software Engineer\", \"job_description\": \"<p>Build services.</p>\", \"locations\": [\" London \", \"Paris\"], \"t_create\": 1769040000, \"ats_job_id\": \"123\", \"department\": \"Engineering\", \"business_unit\": \"Products\", \"display_job_id\": \"REF123\"}",
+          "status": 404,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com"
+        },
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com"
+        }
+      ]
+    },
+    {
+      "name": "api-201",
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "config": {},
+      "pages": {
+        "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com": {
+          "body": "<html>shell</html>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com": {
+          "body": "{\"name\": \"canonical\", \"posting_name\": \"Software Engineer\", \"job_description\": \"<p>Build services.</p>\", \"locations\": [\" London \", \"Paris\"], \"t_create\": 1769040000, \"ats_job_id\": \"123\", \"department\": \"Engineering\", \"business_unit\": \"Products\", \"display_job_id\": \"REF123\"}",
+          "status": 201,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com"
+        },
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com"
+        }
+      ]
+    },
+    {
+      "name": "description-only",
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "config": {},
+      "pages": {
+        "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com": {
+          "body": "<html>shell</html>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com": {
+          "body": "{\"job_description\": \"<p>Recover body</p>\"}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "title": null,
+        "description": "<p>Recover body</p>",
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com"
+        },
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com"
+        }
+      ]
+    },
+    {
+      "name": "title-only",
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "config": {},
+      "pages": {
+        "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com": {
+          "body": "<html>shell</html>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com": {
+          "body": "{\"name\": \"Engineer\"}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "title": "Engineer",
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com"
+        },
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com"
+        }
+      ]
+    },
+    {
+      "name": "missing-title-merge",
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "config": {},
+      "pages": {
+        "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com": {
+          "body": "<script type=\"application/ld+json\">{\"@type\": \"JobPosting\", \"description\": \"<p>Primary description</p>\", \"identifier\": {\"value\": \"primary\"}, \"datePosted\": \"2026-10-01\", \"jobLocation\": {\"address\": {\"addressLocality\": \"London\"}}}</script>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com": {
+          "body": "{\"name\": \"canonical\", \"posting_name\": \"Software Engineer\", \"job_description\": \"<p>Build services.</p>\", \"locations\": [\" London \", \"Paris\"], \"t_create\": 1769040000, \"ats_job_id\": \"123\", \"department\": \"Engineering\", \"business_unit\": \"Products\", \"display_job_id\": \"REF123\"}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "title": "Software Engineer",
+        "description": "<p>Primary description</p>",
+        "locations": [
+          "London"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-10-01",
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "ats_job_id": "123",
+          "display_job_id": "REF123",
+          "department": "Engineering",
+          "business_unit": "Products"
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com"
+        },
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com"
+        }
+      ]
+    },
+    {
+      "name": "defaults-stop-fallback",
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "config": {
+        "defaults": {
+          "title": "Configured title"
+        }
+      },
+      "pages": {
+        "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com": {
+          "body": "<html>shell</html>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com": {
+          "body": "{\"name\": \"canonical\", \"posting_name\": \"Software Engineer\", \"job_description\": \"<p>Build services.</p>\", \"locations\": [\" London \", \"Paris\"], \"t_create\": 1769040000, \"ats_job_id\": \"123\", \"department\": \"Engineering\", \"business_unit\": \"Products\", \"display_job_id\": \"REF123\"}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "title": "Software Engineer",
+        "description": "<p>Build services.</p>",
+        "locations": [
+          "London",
+          "Paris"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-01-22",
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "ats_job_id": "123",
+          "display_job_id": "REF123",
+          "department": "Engineering",
+          "business_unit": "Products"
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com"
+        },
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com"
+        }
+      ]
+    },
+    {
+      "name": "html-reserved",
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "config": {},
+      "pages": {
+        "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com": {
+          "body": "<html>shell</html>",
+          "status": 200,
+          "headers": {
+            "TDM-Reservation": "1"
+          }
+        },
+        "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com": {
+          "body": "{\"name\": \"canonical\", \"posting_name\": \"Software Engineer\", \"job_description\": \"<p>Build services.</p>\", \"locations\": [\" London \", \"Paris\"], \"t_create\": 1769040000, \"ats_job_id\": \"123\", \"department\": \"Engineering\", \"business_unit\": \"Products\", \"display_job_id\": \"REF123\"}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "native_reserved": true,
+      "expected": {
+        "title": "Software Engineer",
+        "description": "<p>Build services.</p>",
+        "locations": [
+          "London",
+          "Paris"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-01-22",
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "ats_job_id": "123",
+          "display_job_id": "REF123",
+          "department": "Engineering",
+          "business_unit": "Products"
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com"
+        },
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com"
+        }
+      ]
+    },
+    {
+      "name": "api-reserved",
+      "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com",
+      "config": {},
+      "pages": {
+        "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com": {
+          "body": "<html>shell</html>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com": {
+          "body": "{\"name\": \"canonical\", \"posting_name\": \"Software Engineer\", \"job_description\": \"<p>Build services.</p>\", \"locations\": [\" London \", \"Paris\"], \"t_create\": 1769040000, \"ats_job_id\": \"123\", \"department\": \"Engineering\", \"business_unit\": \"Products\", \"display_job_id\": \"REF123\"}",
+          "status": 200,
+          "headers": {
+            "TDM-Reservation": "1"
+          }
+        }
+      },
+      "native_reserved": true,
+      "expected": {
+        "title": "Software Engineer",
+        "description": "<p>Build services.</p>",
+        "locations": [
+          "London",
+          "Paris"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-01-22",
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "ats_job_id": "123",
+          "display_job_id": "REF123",
+          "department": "Engineering",
+          "business_unit": "Products"
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com"
+        },
+        {
+          "method": "GET",
+          "url": "https://citi.eightfold.ai/api/apply/v2/jobs/859033176537?domain=citi.com"
+        }
+      ]
+    }
+  ],
+  "monitor": [
+    {
+      "name": "first-full",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {},
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}, {\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/222\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10": {
+          "body": "{\"data\": {\"positions\": []}}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering": {
+            "url": "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+            "title": "Engineer",
+            "description": null,
+            "locations": [
+              "London, UK"
+            ],
+            "employment_type": null,
+            "job_location_type": "hybrid",
+            "date_posted": "2026-01-22",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "department": "Engineering",
+              "ats_job_id": "123"
+            },
+            "source_identity": null
+          },
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering": {
+            "url": "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+            "title": "Engineer",
+            "description": null,
+            "locations": [
+              "London, UK"
+            ],
+            "employment_type": null,
+            "job_location_type": "hybrid",
+            "date_posted": "2026-01-22",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "department": "Engineering",
+              "ats_job_id": "123"
+            },
+            "source_identity": null
+          }
+        },
+        "patch": {
+          "pcsx_watermark": {
+            "max_ts": 1769040000,
+            "interval_days": 7,
+            "auto_full_crawl": true,
+            "last_full_at": "2026-10-06T03:00:00.120000+00:00",
+            "last_incremental_at": "2026-10-06T03:00:00.120000+00:00",
+            "enabled": true,
+            "extra": {
+              "host": "careers.kering.com",
+              "domain": "kering"
+            }
+          }
+        },
+        "hybrid": true
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10"
+        }
+      ]
+    },
+    {
+      "name": "incremental",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {
+        "pcsx_watermark": {
+          "max_ts": 1769040000,
+          "last_full_at": "2026-10-05T03:00:00.120000+00:00",
+          "enabled": true
+        }
+      },
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}, {\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/222\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10": {
+          "body": "{\"data\": {\"positions\": []}}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering": {
+            "url": "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+            "title": "Engineer",
+            "description": null,
+            "locations": [
+              "London, UK"
+            ],
+            "employment_type": null,
+            "job_location_type": "hybrid",
+            "date_posted": "2026-01-22",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "department": "Engineering",
+              "ats_job_id": "123"
+            },
+            "source_identity": null
+          },
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering": {
+            "url": "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+            "title": "Engineer",
+            "description": null,
+            "locations": [
+              "London, UK"
+            ],
+            "employment_type": null,
+            "job_location_type": "hybrid",
+            "date_posted": "2026-01-22",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "department": "Engineering",
+              "ats_job_id": "123"
+            },
+            "source_identity": null
+          }
+        },
+        "patch": {
+          "pcsx_watermark": {
+            "max_ts": 1769040000,
+            "interval_days": 7,
+            "auto_full_crawl": true,
+            "last_full_at": "2026-10-05T03:00:00.120000+00:00",
+            "last_incremental_at": "2026-10-06T03:00:00.120000+00:00",
+            "enabled": true,
+            "extra": {
+              "host": "careers.kering.com",
+              "domain": "kering"
+            }
+          }
+        },
+        "hybrid": true
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10"
+        }
+      ]
+    },
+    {
+      "name": "weekly-full",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {
+        "pcsx_watermark": {
+          "max_ts": 1769040000,
+          "last_full_at": "2026-09-28T03:00:00Z",
+          "enabled": true
+        }
+      },
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}, {\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/222\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10": {
+          "body": "{\"data\": {\"positions\": []}}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering": {
+            "url": "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+            "title": "Engineer",
+            "description": null,
+            "locations": [
+              "London, UK"
+            ],
+            "employment_type": null,
+            "job_location_type": "hybrid",
+            "date_posted": "2026-01-22",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "department": "Engineering",
+              "ats_job_id": "123"
+            },
+            "source_identity": null
+          },
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering": {
+            "url": "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+            "title": "Engineer",
+            "description": null,
+            "locations": [
+              "London, UK"
+            ],
+            "employment_type": null,
+            "job_location_type": "hybrid",
+            "date_posted": "2026-01-22",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "department": "Engineering",
+              "ats_job_id": "123"
+            },
+            "source_identity": null
+          }
+        },
+        "patch": {
+          "pcsx_watermark": {
+            "max_ts": 1769040000,
+            "interval_days": 7,
+            "auto_full_crawl": true,
+            "last_full_at": "2026-10-06T03:00:00.120000+00:00",
+            "last_incremental_at": "2026-10-06T03:00:00.120000+00:00",
+            "enabled": true,
+            "extra": {
+              "host": "careers.kering.com",
+              "domain": "kering"
+            }
+          }
+        },
+        "hybrid": true
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10"
+        }
+      ]
+    },
+    {
+      "name": "force-full",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {
+        "pcsx_watermark": {
+          "max_ts": 1769040000,
+          "last_full_at": "2026-10-05T03:00:00.120000+00:00",
+          "enabled": true
+        },
+        "pcsx_force_full_crawl": true
+      },
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}, {\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/222\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10": {
+          "body": "{\"data\": {\"positions\": []}}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering": {
+            "url": "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+            "title": "Engineer",
+            "description": null,
+            "locations": [
+              "London, UK"
+            ],
+            "employment_type": null,
+            "job_location_type": "hybrid",
+            "date_posted": "2026-01-22",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "department": "Engineering",
+              "ats_job_id": "123"
+            },
+            "source_identity": null
+          },
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering": {
+            "url": "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+            "title": "Engineer",
+            "description": null,
+            "locations": [
+              "London, UK"
+            ],
+            "employment_type": null,
+            "job_location_type": "hybrid",
+            "date_posted": "2026-01-22",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "department": "Engineering",
+              "ats_job_id": "123"
+            },
+            "source_identity": null
+          }
+        },
+        "patch": {
+          "pcsx_watermark": {
+            "max_ts": 1769040000,
+            "interval_days": 7,
+            "auto_full_crawl": true,
+            "last_full_at": "2026-10-06T03:00:00.120000+00:00",
+            "last_incremental_at": "2026-10-06T03:00:00.120000+00:00",
+            "enabled": true,
+            "extra": {
+              "host": "careers.kering.com",
+              "domain": "kering"
+            }
+          }
+        },
+        "hybrid": true
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10"
+        }
+      ]
+    },
+    {
+      "name": "manual-first",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {
+        "pcsx_watermark": {
+          "auto_full_crawl": false,
+          "enabled": true
+        }
+      },
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}, {\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/222\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10": {
+          "body": "{\"data\": {\"positions\": []}}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {},
+        "patch": {
+          "pcsx_watermark": {
+            "max_ts": 0,
+            "interval_days": 7,
+            "auto_full_crawl": false,
+            "enabled": true,
+            "extra": {
+              "host": "careers.kering.com",
+              "domain": "kering"
+            }
+          }
+        },
+        "hybrid": false
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1"
+        }
+      ]
+    },
+    {
+      "name": "manual-forced",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {
+        "pcsx_watermark": {
+          "auto_full_crawl": false
+        },
+        "pcsx_force_full_crawl": true
+      },
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}, {\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/222\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10": {
+          "body": "{\"data\": {\"positions\": []}}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering": {
+            "url": "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+            "title": "Engineer",
+            "description": null,
+            "locations": [
+              "London, UK"
+            ],
+            "employment_type": null,
+            "job_location_type": "hybrid",
+            "date_posted": "2026-01-22",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "department": "Engineering",
+              "ats_job_id": "123"
+            },
+            "source_identity": null
+          },
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering": {
+            "url": "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+            "title": "Engineer",
+            "description": null,
+            "locations": [
+              "London, UK"
+            ],
+            "employment_type": null,
+            "job_location_type": "hybrid",
+            "date_posted": "2026-01-22",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "department": "Engineering",
+              "ats_job_id": "123"
+            },
+            "source_identity": null
+          }
+        },
+        "patch": {
+          "pcsx_watermark": {
+            "max_ts": 1769040000,
+            "interval_days": 7,
+            "auto_full_crawl": false,
+            "last_full_at": "2026-10-06T03:00:00.120000+00:00",
+            "last_incremental_at": "2026-10-06T03:00:00.120000+00:00",
+            "enabled": true,
+            "extra": {
+              "host": "careers.kering.com",
+              "domain": "kering"
+            }
+          }
+        },
+        "hybrid": true
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10"
+        }
+      ]
+    },
+    {
+      "name": "cached-disabled",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {
+        "pcsx_watermark": {
+          "max_ts": 1769040000,
+          "last_full_at": "2026-10-05T03:00:00.120000+00:00",
+          "enabled": false
+        }
+      },
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}, {\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/222\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10": {
+          "body": "{\"data\": {\"positions\": []}}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {},
+        "patch": {
+          "pcsx_watermark": {
+            "max_ts": 1769040000,
+            "interval_days": 7,
+            "auto_full_crawl": true,
+            "last_full_at": "2026-10-05T03:00:00.120000+00:00",
+            "enabled": false,
+            "extra": {
+              "host": "careers.kering.com",
+              "domain": "kering"
+            }
+          }
+        },
+        "hybrid": false
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        }
+      ]
+    },
+    {
+      "name": "probe-disabled",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {},
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1": {
+          "body": "{\"message\": \"PCSX is not enabled for this user.\"}",
+          "status": 403,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {},
+        "patch": {
+          "pcsx_watermark": {
+            "max_ts": 0,
+            "interval_days": 7,
+            "auto_full_crawl": true,
+            "enabled": false,
+            "extra": {
+              "host": "careers.kering.com",
+              "domain": "kering"
+            }
+          }
+        },
+        "hybrid": false
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1"
+        }
+      ]
+    },
+    {
+      "name": "probe-403-transient",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {},
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1": {
+          "body": "{\"message\": \"Denied\"}",
+          "status": 403,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {},
+        "patch": null,
+        "hybrid": true
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1"
+        }
+      ]
+    },
+    {
+      "name": "probe-405-transient",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {},
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1": {
+          "body": "{}",
+          "status": 405,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {},
+        "patch": null,
+        "hybrid": true
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1"
+        }
+      ]
+    },
+    {
+      "name": "probe-503-transient",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {},
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1": {
+          "body": "{}",
+          "status": 503,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {},
+        "patch": null,
+        "hybrid": true
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1"
+        }
+      ]
+    },
+    {
+      "name": "probe-invalid-json",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {},
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1": {
+          "body": "bad",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {},
+        "patch": null,
+        "hybrid": true
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1"
+        }
+      ]
+    },
+    {
+      "name": "probe-invalid-shape",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {},
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1": {
+          "body": "[]",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {},
+        "patch": null,
+        "hybrid": true
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1"
+        }
+      ]
+    },
+    {
+      "name": "probe-retries-recover",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {},
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1": [
+          {
+            "body": "{}",
+            "status": 503,
+            "headers": {}
+          },
+          {
+            "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+            "status": 200,
+            "headers": {}
+          }
+        ],
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}, {\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/222\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10": {
+          "body": "{\"data\": {\"positions\": []}}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering": {
+            "url": "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+            "title": "Engineer",
+            "description": null,
+            "locations": [
+              "London, UK"
+            ],
+            "employment_type": null,
+            "job_location_type": "hybrid",
+            "date_posted": "2026-01-22",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "department": "Engineering",
+              "ats_job_id": "123"
+            },
+            "source_identity": null
+          },
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering": {
+            "url": "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+            "title": "Engineer",
+            "description": null,
+            "locations": [
+              "London, UK"
+            ],
+            "employment_type": null,
+            "job_location_type": "hybrid",
+            "date_posted": "2026-01-22",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "department": "Engineering",
+              "ats_job_id": "123"
+            },
+            "source_identity": null
+          }
+        },
+        "patch": {
+          "pcsx_watermark": {
+            "max_ts": 1769040000,
+            "interval_days": 7,
+            "auto_full_crawl": true,
+            "last_full_at": "2026-10-06T03:00:00.120000+00:00",
+            "last_incremental_at": "2026-10-06T03:00:00.120000+00:00",
+            "enabled": true,
+            "extra": {
+              "host": "careers.kering.com",
+              "domain": "kering"
+            }
+          }
+        },
+        "hybrid": true
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10"
+        }
+      ]
+    },
+    {
+      "name": "fetch-disabled",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {
+        "pcsx_watermark": {
+          "max_ts": 1769040000,
+          "last_full_at": "2026-10-05T03:00:00.120000+00:00",
+          "enabled": true
+        }
+      },
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10": {
+          "body": "{\"message\": \"PCSX is not enabled for this user.\"}",
+          "status": 403,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {},
+        "patch": {
+          "pcsx_watermark": {
+            "max_ts": 1769040000,
+            "interval_days": 7,
+            "auto_full_crawl": true,
+            "last_full_at": "2026-10-05T03:00:00.120000+00:00",
+            "enabled": false,
+            "extra": {
+              "host": "careers.kering.com",
+              "domain": "kering"
+            }
+          }
+        },
+        "hybrid": false
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10"
+        }
+      ]
+    },
+    {
+      "name": "fetch-stable-405",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {
+        "pcsx_watermark": {
+          "max_ts": 1769040000,
+          "last_full_at": "2026-10-05T03:00:00.120000+00:00",
+          "enabled": true
+        }
+      },
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10": {
+          "body": "{}",
+          "status": 405,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {},
+        "patch": {
+          "pcsx_watermark": {
+            "max_ts": 1769040000,
+            "interval_days": 7,
+            "auto_full_crawl": true,
+            "last_full_at": "2026-10-05T03:00:00.120000+00:00",
+            "enabled": false,
+            "extra": {
+              "host": "careers.kering.com",
+              "domain": "kering"
+            }
+          }
+        },
+        "hybrid": false
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10"
+        }
+      ]
+    },
+    {
+      "name": "fetch-transient",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {
+        "pcsx_watermark": {
+          "max_ts": 1769040000,
+          "last_full_at": "2026-10-05T03:00:00.120000+00:00",
+          "enabled": true
+        }
+      },
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10": {
+          "body": "{}",
+          "status": 503,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {},
+        "patch": null,
+        "hybrid": true
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10"
+        }
+      ]
+    },
+    {
+      "name": "fetch-prefix-failure",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {
+        "pcsx_watermark": {
+          "max_ts": 1769040000,
+          "last_full_at": "2026-10-05T03:00:00.120000+00:00",
+          "enabled": true
+        }
+      },
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040100, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10": {
+          "body": "{}",
+          "status": 503,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {},
+        "patch": null,
+        "hybrid": true
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10"
+        }
+      ]
+    },
+    {
+      "name": "fetch-missing-data",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {
+        "pcsx_watermark": {
+          "max_ts": 1769040000,
+          "last_full_at": "2026-10-05T03:00:00.120000+00:00",
+          "enabled": true
+        }
+      },
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10": {
+          "body": "{}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {},
+        "patch": {
+          "pcsx_watermark": {
+            "max_ts": 1769040000,
+            "interval_days": 7,
+            "auto_full_crawl": true,
+            "last_full_at": "2026-10-05T03:00:00.120000+00:00",
+            "last_incremental_at": "2026-10-06T03:00:00.120000+00:00",
+            "enabled": true,
+            "extra": {
+              "host": "careers.kering.com",
+              "domain": "kering"
+            }
+          }
+        },
+        "hybrid": true
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10"
+        }
+      ]
+    },
+    {
+      "name": "unmatched-does-not-advance",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {},
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}, {\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/999\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769050000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10": {
+          "body": "{\"data\": {\"positions\": []}}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering": {
+            "url": "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+            "title": "Engineer",
+            "description": null,
+            "locations": [
+              "London, UK"
+            ],
+            "employment_type": null,
+            "job_location_type": "hybrid",
+            "date_posted": "2026-01-22",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "department": "Engineering",
+              "ats_job_id": "123"
+            },
+            "source_identity": null
+          }
+        },
+        "patch": {
+          "pcsx_watermark": {
+            "max_ts": 1769040000,
+            "interval_days": 7,
+            "auto_full_crawl": true,
+            "last_full_at": "2026-10-06T03:00:00.120000+00:00",
+            "last_incremental_at": "2026-10-06T03:00:00.120000+00:00",
+            "enabled": true,
+            "extra": {
+              "host": "careers.kering.com",
+              "domain": "kering"
+            }
+          }
+        },
+        "hybrid": true
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10"
+        }
+      ]
+    },
+    {
+      "name": "last-rich-row-wins",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {},
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"First\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}, {\"name\": \"Last\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10": {
+          "body": "{\"data\": {\"positions\": []}}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering": {
+            "url": "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+            "title": "Last",
+            "description": null,
+            "locations": [
+              "London, UK"
+            ],
+            "employment_type": null,
+            "job_location_type": "hybrid",
+            "date_posted": "2026-01-22",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "department": "Engineering",
+              "ats_job_id": "123"
+            },
+            "source_identity": null
+          }
+        },
+        "patch": {
+          "pcsx_watermark": {
+            "max_ts": 1769040000,
+            "interval_days": 7,
+            "auto_full_crawl": true,
+            "last_full_at": "2026-10-06T03:00:00.120000+00:00",
+            "last_incremental_at": "2026-10-06T03:00:00.120000+00:00",
+            "enabled": true,
+            "extra": {
+              "host": "careers.kering.com",
+              "domain": "kering"
+            }
+          }
+        },
+        "hybrid": true
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10"
+        }
+      ]
+    },
+    {
+      "name": "missing-ts",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {
+        "pcsx_watermark": {
+          "max_ts": 1769040000,
+          "last_full_at": "2026-10-05T03:00:00.120000+00:00",
+          "enabled": true
+        }
+      },
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": null, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10": {
+          "body": "{\"data\": {\"positions\": []}}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering": {
+            "url": "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+            "title": "Engineer",
+            "description": null,
+            "locations": [
+              "London, UK"
+            ],
+            "employment_type": null,
+            "job_location_type": "hybrid",
+            "date_posted": null,
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "department": "Engineering",
+              "ats_job_id": "123"
+            },
+            "source_identity": null
+          }
+        },
+        "patch": {
+          "pcsx_watermark": {
+            "max_ts": 1769040000,
+            "interval_days": 7,
+            "auto_full_crawl": true,
+            "last_full_at": "2026-10-05T03:00:00.120000+00:00",
+            "last_incremental_at": "2026-10-06T03:00:00.120000+00:00",
+            "enabled": true,
+            "extra": {
+              "host": "careers.kering.com",
+              "domain": "kering"
+            }
+          }
+        },
+        "hybrid": true
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10"
+        }
+      ]
+    },
+    {
+      "name": "empty-sitemap",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {},
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"/>",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [],
+        "rich": {},
+        "patch": null,
+        "hybrid": false
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        }
+      ]
+    },
+    {
+      "name": "sitemap-reserved",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {},
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {
+            "TDM-Reservation": "1"
+          }
+        }
+      },
+      "native_reserved": true,
+      "expected": {
+        "error": "TDMReservedError"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        }
+      ]
+    },
+    {
+      "name": "probe-reserved",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {},
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1": {
+          "body": "{\"data\": {\"positions\": []}}",
+          "status": 200,
+          "headers": {
+            "TDM-Reservation": "1"
+          }
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}, {\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/222\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10": {
+          "body": "{\"data\": {\"positions\": []}}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "native_reserved": true,
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {},
+        "patch": null,
+        "hybrid": true
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1"
+        }
+      ]
+    },
+    {
+      "name": "fetch-reserved",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {
+        "pcsx_watermark": {
+          "max_ts": 1769040000,
+          "last_full_at": "2026-10-05T03:00:00.120000+00:00",
+          "enabled": true
+        }
+      },
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=1": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10": {
+          "body": "{\"data\": {\"positions\": []}}",
+          "status": 200,
+          "headers": {
+            "TDM-Reservation": "1"
+          }
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10": {
+          "body": "{\"data\": {\"positions\": []}}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "native_reserved": true,
+      "expected": {
+        "error": "TDMReservedError"
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10"
+        }
+      ]
+    },
+    {
+      "name": "boundary-jitter-resets-safety",
+      "board_url": "https://careers.kering.com",
+      "now": "2026-10-06T03:00:00.120000+00:00",
+      "metadata": {
+        "pcsx_watermark": {
+          "max_ts": 1769040000,
+          "last_full_at": "2026-10-05T03:00:00.120000+00:00",
+          "enabled": true
+        }
+      },
+      "pages": {
+        "https://careers.kering.com/careers/sitemap.xml": {
+          "body": "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://careers.kering.com/careers/job/111-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/222-engineer?domain=kering</loc></url><url><loc>https://careers.kering.com/careers/job/333-engineer?domain=kering</loc></url></urlset>",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=20&num=10": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040200, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=30&num=10": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=40&num=10": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=50&num=10": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        },
+        "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=60&num=10": {
+          "body": "{\"data\": {\"positions\": [{\"name\": \"Engineer\", \"positionUrl\": \"/careers/job/111\", \"standardizedLocations\": [\"London, UK\"], \"workLocationOption\": \"HYBRID\", \"postedTs\": 1769040000, \"department\": \"Engineering\", \"atsJobId\": \"123\"}]}}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "expected": {
+        "urls": [
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/222-engineer?domain=kering",
+          "https://careers.kering.com/careers/job/333-engineer?domain=kering"
+        ],
+        "rich": {
+          "https://careers.kering.com/careers/job/111-engineer?domain=kering": {
+            "url": "https://careers.kering.com/careers/job/111-engineer?domain=kering",
+            "title": "Engineer",
+            "description": null,
+            "locations": [
+              "London, UK"
+            ],
+            "employment_type": null,
+            "job_location_type": "hybrid",
+            "date_posted": "2026-01-22",
+            "base_salary": null,
+            "language": null,
+            "localizations": null,
+            "extras": null,
+            "metadata": {
+              "department": "Engineering",
+              "ats_job_id": "123"
+            },
+            "source_identity": null
+          }
+        },
+        "patch": {
+          "pcsx_watermark": {
+            "max_ts": 1769040200,
+            "interval_days": 7,
+            "auto_full_crawl": true,
+            "last_full_at": "2026-10-05T03:00:00.120000+00:00",
+            "last_incremental_at": "2026-10-06T03:00:00.120000+00:00",
+            "enabled": true,
+            "extra": {
+              "host": "careers.kering.com",
+              "domain": "kering"
+            }
+          }
+        },
+        "hybrid": true
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/careers/sitemap.xml"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=0&num=10"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=10&num=10"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=20&num=10"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=30&num=10"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=40&num=10"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=50&num=10"
+        },
+        {
+          "method": "GET",
+          "url": "https://careers.kering.com/api/pcsx/search?domain=kering&query=&location=&start=60&num=10"
+        }
+      ]
+    }
+  ]
+}

@@ -2111,6 +2111,26 @@ class TestClassifyJobUrl:
     def test_plausible_returns_none(self):
         assert self.classify("https://example.com/jobs/123") is None
 
+    @pytest.mark.parametrize(
+        "route", ["social-recruitment", "campus-recruitment", "social_apply", "campus_apply"]
+    )
+    @pytest.mark.parametrize("host", ["app.mokahr.com", "careers.example.com"])
+    def test_mokahr_posting_fragment_is_identity(self, route, host):
+        board = f"https://{host}/{route}/fixture/123"
+        assert self.classify(board + "#/job/first", board) is None
+        assert self.classify(board + "#/job/second", board) is None
+
+    @pytest.mark.parametrize(
+        "fragment", ["", "#0", "#/jobs", "#/job/", "#/job/bad/id", "#/job/%61"]
+    )
+    def test_mokahr_homepage_guard_still_rejects_missing_or_invalid_identity(self, fragment):
+        board = "https://app.mokahr.com/social-recruitment/fixture/123"
+        assert self.classify(board + fragment, board) == "board_homepage"
+
+    def test_generic_fragment_does_not_exempt_a_board_homepage(self):
+        board = "https://example.com/careers"
+        assert self.classify(board + "#/job/first", board) == "board_homepage"
+
     def test_invalid_reason(self):
         assert self.classify("") == "invalid"
         assert self.classify("not-a-url") == "invalid"

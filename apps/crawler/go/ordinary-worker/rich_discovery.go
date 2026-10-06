@@ -23,6 +23,7 @@ type RichDiscovery struct {
 	Jobs                []RichMonitorJob
 	Truncated           bool
 	Response            *GreenhouseResponse
+	MetadataUpdates     map[string]any
 }
 
 func pauseRich(ctx context.Context, delay time.Duration) error {

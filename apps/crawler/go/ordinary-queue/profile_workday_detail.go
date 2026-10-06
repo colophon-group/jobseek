@@ -23,6 +23,7 @@ type WorkdayDetailProfile struct {
 	JSONLDConfig                                    map[string]any
 	DOMConfig                                       map[string]any
 	APITokenOverride                                string
+	APILocale                                       string
 	JoinDetailConfig                                map[string]json.RawMessage
 }
 
