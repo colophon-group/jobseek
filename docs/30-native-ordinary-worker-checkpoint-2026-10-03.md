@@ -1644,3 +1644,45 @@ Each continuation should remove a concrete remaining migration obligation;
 new generic orchestration or recovery frameworks are not prerequisites.
 Honor current holds and other operators' locks. Update this checkpoint with
 the actual first ordinary owner and subsequent enabled-profile coverage.
+
+
+## Multi-provider continuation and UKG retirement — 2026-10-06
+
+Release 0.13.946 (Jobylon + NextData, 80 additional configurations) deployed
+through the original immutable workflow. Native ordinary ownership activated at
+epoch 195 for 6,595 monitors and 2,475 detail boards. Independent observation at
+00:18 UTC verified 165 completed monitor attempts, six completed detail attempts,
+canonical posting/description effects, all ten services healthy and restart armed,
+and no bounded processing diagnostics. Lightpanda 1.0.0 remains the latest stable
+release and its qualified renderer stays pinned by digest.
+
+The supported retirement before the Inline + Beisen batch failed after natural
+legacy lease expiry. The wrapper retained its retiring receipt and contained the
+crawler lane. Read-only source-bound inspection found unchanged monitor bindings
+and exact SQL/cache agreement. Seven UKG legacy monitors had added their public
+listing URL and, on two boards, host/tenant/board identifiers after native detail
+ownership was staged. The existing Avature learned-portal case covers the eighth
+changed detail binding. No successful cold reversal is claimed yet.
+
+The amendment permits UKG detail retirement only when added values are exactly
+derivable from the originally bound first-party HTTPS board URL. Removing only
+those additions must reproduce the prior configuration hash. Other changes,
+previously configured values, foreign URLs and cache-only updates still refuse;
+runtime claims continue to lose authority on a changed configuration. Real
+PostgreSQL/Redis regression coverage verifies canonical deadlines, retained content,
+queue conservation, durable retirement and rejection of unrelated changes.
+
+After required checks on the amended head, use its original immutable build and
+the existing pre-pull/compatibility administrator surfaces to retire source 946
+through its unchanged wrapper. Verify the restored complete stack, roll back B0,
+clear selectors through the original helper, and independently verify the baseline
+before the original full rollout. Never edit the retained plan, fences, leases or
+receipt to obtain recovery.
+
+Port several types per release. The Inline + Beisen batch qualifies 124 additional
+configurations. The next isolated batch groups RSS, sitemap and Personio; its
+current configuration screening qualifies 36 RSS, 19 sitemap and all ten remaining
+Personio boards. That work and its validation remain in progress. Complex browser,
+proxy, filtering/collision and remaining extraction variants stay in full scope.
+Complete enabled coverage, maintenance/deployment consumers, whole-lane resource
+proof, cold reversal and final production Python retirement remain required.
