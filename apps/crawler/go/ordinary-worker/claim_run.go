@@ -277,6 +277,10 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			}
 			return nil
 		}, renderedPage)
+	} else if profile.Provider == "comeet" {
+		discovery, fetchErr = discoverComeetInventory(ctx, http.client, profile, task.Config)
+	} else if profile.Provider == "jobvite" {
+		discovery, fetchErr = discoverJobviteInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "softgarden" {
 		discovery, fetchErr = discoverSoftgardenInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "ukg" {

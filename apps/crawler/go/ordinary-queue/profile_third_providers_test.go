@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
+func TestThirdProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 	f, e := os.Open("../../data/boards.csv")
 	if e != nil {
 		t.Fatal(e)
@@ -26,7 +26,7 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 	counts := map[string]int{}
 	for _, row := range rows[1:] {
 		provider := row[headers["monitor_type"]]
-		if !SecondaryProvider(provider) || provider == "comeet" || provider == "jobvite" {
+		if provider != "comeet" && provider != "jobvite" {
 			continue
 		}
 		metadata := map[string]any{}
@@ -67,31 +67,36 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 		}
 		var detail WorkdayDetailProfile
 		switch provider {
-		case "softgarden":
-			o, err := api.SoftgardenOptionsFromMetadata(config["board_url"], config["metadata"])
+		case "jobvite":
+			o, err := api.JobviteOptionsFromMetadata(config["board_url"], config["metadata"])
 			if err != nil {
 				t.Fatal(err)
 			}
-			detail, e = InspectJSONLDDetail(profileBoardID, config, o.JobURL("123"), Simple)
-		case "ukg":
-			o, err := api.UKGOptionsFromMetadata(config["board_url"], config["metadata"])
-			if err != nil {
-				t.Fatal(err)
+			source := "https://jobs.jobvite.com/" + o.Tenant + "/job/ABC123"
+			worker := Simple
+			if opts, ok := metadata["scraper_config"].(map[string]any); ok && opts["render"] == true {
+				config["scraper_needs_browser"] = "1"
+				worker = Browser
+				profile, e = InspectRichMonitor(profileBoardID, config)
+				if e != nil {
+					t.Fatal(e)
+				}
 			}
-			detail, e = InspectEmbeddedDetail(profileBoardID, config, o.JobURL("22222222-2222-2222-2222-222222222222"), Simple)
-		case "bamboohr":
-			o, err := api.BambooHROptionsFromMetadata(config["board_url"], config["metadata"])
-			if err != nil {
-				t.Fatal(err)
+			if worker == Browser {
+				detail, e = InspectRenderedDetail(profileBoardID, config, source, worker)
+			} else if scraper == "dom" {
+				detail, e = InspectDOMDetail(profileBoardID, config, source, worker)
+			} else {
+				detail, e = InspectJSONLDDetail(profileBoardID, config, source, worker)
 			}
-			detail, e = InspectHTTPAPIDetail(profileBoardID, config, o.JobURL("123"), Simple)
+
 		}
 		if e != nil || detail.EffectiveBoardSHA256 != profile.EffectiveConfigSHA256 {
 			t.Fatal("required detail binding unsupported", row[headers["board_slug"]], e)
 		}
 		counts[provider+"_detail"]++
 	}
-	if counts["softgarden"] == 0 || counts["ukg"] == 0 || counts["bamboohr"] == 0 || counts["recruiter_co_kr"] == 0 {
+	if counts["comeet"] == 0 || counts["jobvite"] == 0 {
 		t.Fatal("registry coverage fixture empty")
 	}
 	t.Logf("configuration eligibility only (no production authority): %v", counts)
