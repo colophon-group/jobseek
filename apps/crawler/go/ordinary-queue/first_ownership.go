@@ -231,12 +231,33 @@ func firstOwnershipSave(ctx context.Context, client *Client) error {
 	options.MinIdleConns = 0
 	saving := &Client{redis: redis.NewClient(&options)}
 	defer saving.Close()
-	identity, err := saving.RedisInstanceSHA256(ctx)
-	if err != nil || identity != before {
-		return ErrObservation
-	}
-	if reply, err := saving.redis.Save(ctx).Result(); err != nil || reply != "OK" {
-		return ErrObservation
+	var identity string
+	for {
+		identity, err = saving.RedisInstanceSHA256(ctx)
+		if err != nil || identity != before {
+			return ErrObservation
+		}
+		reply, err := saving.redis.Save(ctx).Result()
+		if err == nil {
+			if reply != "OK" {
+				return ErrObservation
+			}
+			break
+		}
+		// Redis can start its automatic BGSAVE immediately after projection
+		// publication. Only its explicit refusal permits a later SAVE;
+		// a lost acknowledgment or any other failure remains authoritative.
+		var serverError redis.Error
+		if !errors.As(err, &serverError) || serverError.Error() != "ERR Background save already in progress" {
+			return ErrObservation
+		}
+		timer := time.NewTimer(250 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
 	}
 	identity, err = saving.RedisInstanceSHA256(ctx)
 	if err != nil || identity != before {

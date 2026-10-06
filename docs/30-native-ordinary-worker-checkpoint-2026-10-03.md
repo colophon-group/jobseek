@@ -83,9 +83,31 @@ mask/backfill cases preserve selected field authority. Eighteen new monitor/deta
 cold reversal cases pass, covering interrupted and committed claims, configuration
 drift, recovery and failed Redis restoration. API race, vet, module tidiness and
 Python fixture lint/format checks pass. The full queue race suite passes in
-196.065 seconds; the full worker race suite passes in 350.513 seconds. Publish
-the grouped release through required CI and installed-image parity, then use the
-original full deployment. Local proof does not grant production ownership.
+196.065 seconds; the full worker race suite passes in 350.513 seconds.
+[PR #10339](https://github.com/colophon-group/jobseek/pull/10339) passed exact-head
+Required CI, Crawler Deploy Gate and installed-image parity at
+`2f9d2060a378d412d4a08175757509bb2fdfe496`, then merged to
+`baf9e70ee800154475d845710c3dd4ae2d8a7229` after fresh head-bound authority.
+Original full [deployment 37435753033](https://github.com/colophon-group/jobseek/actions/runs/37435753033)
+succeeded. Independent readback at 08:46 UTC verified its exact source and
+immutable images, all six healthy service endpoints, epoch 200 and cold native
+ownership. Original supported B0 activation succeeded and independent readback verified
+its active cdom receipt at epoch 201, seven healthy endpoints and one native
+render/commit. Fresh ordinary reconciliation checked 1,435,073 actual scheduled routes and
+admitted 7,085 monitors plus 2,541 detail boards covering 1,409,808 postings.
+Thirty-eight posting-cache mismatches and one unsupported route retain their
+current owner. Original exact-plan staging succeeded, but activation was refused at
+`redis-save` at 09:23:48 UTC, immediately as automatic BGSAVE started. The
+original pending recovery succeeded; independent 09:26 UTC readback verified
+nine restart-armed services, seven healthy endpoints, active B0 epoch 201, absent
+ordinary owner/projection/tokens and the ordinary plan staged/inert. The isolated **0.13.954** fix waits only for Redis
+explicitly refusing SAVE during BGSAVE, within the existing 120-second budget.
+It revalidates the server incarnation before retry and still requires its own
+synchronous SAVE acknowledgment before SQL authority. Real private Redis tests
+reproduce the refusal on unchanged 953 and pass with the fix, including bounded
+cancellation; required broad and installed checks are still pending.
+The four-provider candidate advances together to **0.13.955** after this fix.
+Local proof does not grant production ownership.
 
 The upstream salary DTO is independently compared. Canonical SQL salary comes
 only from description text in the actual legacy processor; native execution
@@ -93,13 +115,49 @@ preserves that behavior. The reference test was corrected to expect NULL salary
 columns for descriptions without compensation text. No runtime behavior changed
 to accommodate the mistaken test expectation.
 
-Continue with **ADP + Paylocity + Cornerstone + Dayforce** as the next grouped
-provider target: 45 current registry monitors. Read-only screening finds 14 ADP
-native detail requirements, eight Paylocity details plus one existing JSON-LD
-assignment, and 22 rich/skip Cornerstone and Dayforce boards. Dayforce requires
-browser session/CSRF capture and must use the existing Lightpanda path; direct
-HTTP is not an established replacement. Paylocity proxy assignments remain in
-scope and require proven transport. These counts are research, not admission.
+The **0.13.955 ADP + Paylocity + Cornerstone + Dayforce** batch is in progress
+in the isolated `fix-crawler/native-api-provider-batch-five` branch. Three HTTP
+monitors and ADP/Paylocity details are implemented locally, using the existing
+fetch, salary/enum, persistence and ownership paths. ADP handles its bounded DOCX
+fallback, title-location pattern and rich pagination; Cornerstone refreshes public
+authorization and validates paginated inventory; Paylocity reads embedded records
+and its server-rendered detail markup. Five candidate profiles bring the local
+capability list to 68. The four-provider scope remains unchanged and unpublished.
+
+Thirty-nine field comparisons from actual Python pass, including Unicode
+location deduplication, custom employment labels, arbitrary-precision IDs and
+Lexbor detail markup. Forty-three actual Python HTTP request/output comparisons
+and forty-three real PostgreSQL/Redis canonical settlement cases pass in
+35.533 seconds, including ADP declared attachment size limits. The actual
+Python HTML normalizer independently freezes canonical DOCX descriptions; raw
+upstream tables are normalized by the existing processor. Ten DOCX malformed-input references additionally pass, including inert
+external DTD declarations and rejection of malformed XML/root bodies. Final
+HTTP plus detail canonical checks pass in 9.500 seconds after those corrections.
+Twenty-one new cold
+reversal cases pass in 38.365 seconds. API full race passes in 5.018 seconds;
+vet, module tidiness and Python fixture lint/format pass. Seven new publisher
+reservation cases and four description-mask/backfill cases pass in 8.351
+seconds, including both Cornerstone resources and ADP attachment responses.
+
+Registry proof currently covers 14 direct ADP, 12 Cornerstone and four direct
+Paylocity monitors. Two independent ADP scrapers preserve their API-sniffer
+monitors, and five Paylocity details preserve their independently configured
+direct transport, including two boards whose monitors use a proxy. This gives
+22 direct detail bindings including one existing JSON-LD assignment. Five
+Paylocity proxy monitors remain intentionally in the full batch scope, together
+with its three explicit proxy detail configurations.
+Dayforce's ten browser boards have local Go identity/bootstrap, job projection
+and overlap-aware search pagination implementations. Eighty-nine comparisons
+from actual Python pass: 51 identity/bootstrap/page cases, 17 rich field cases,
+14 pagination cases and seven actual HTTP bootstrap cases; final worker race
+passes in 3.338 seconds. Its browser session/CSRF transport is still required
+before profile admission. The existing Go Lightpanda adapter rejects captures and
+origin-contact evaluations under B0/B1; extend its existing bounded provider path
+without weakening those rejection contracts. The renderer itself is the existing
+Go pilot/runner. A direct stateless Dayforce replay is not a verified replacement.
+Complete the two transports and remaining provider bounds/operational proofs,
+then full races and grouped publication. The partial implementation is saved in
+local commit `94cdee069130768dd32a0714ac83edffdea274ee`; no four-provider PR is published. These local counts grant no live authority.
 
 Finish remaining provider/browser/filter variants and runtime consumers using
 the existing delivery paths. After the selected complete immutable deployment,
