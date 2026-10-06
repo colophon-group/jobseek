@@ -46,6 +46,7 @@ func bootstrapDayforce(ctx context.Context, client *http.Client, board api.Dayfo
 		return "", api.DayforceSite{}, observed, api.ErrInventory
 	}
 	if site.Disabled {
+		observed.providerDisabled = true
 		return "", api.DayforceSite{}, observed, &DiscoveryError{Kind: "provider_gone"}
 	}
 	return page, site, observed, nil

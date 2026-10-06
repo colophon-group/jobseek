@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	nethttp "net/http"
 	"time"
 
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
@@ -279,6 +280,14 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		}, renderedPage)
 	} else if profile.Provider == "adp" {
 		discovery, fetchErr = discoverADPInventory(ctx, http.client, profile, task.Config)
+	} else if profile.Provider == "dayforce" {
+		provider, ok := renderer.(interface {
+			FetchDayforceMonitor(context.Context, queue.GreenhouseMonitorProfile, map[string]string, *nethttp.Client) (RichDiscovery, error)
+		})
+		if !ok {
+			return failure("configuration", queue.ErrConfiguration)
+		}
+		discovery, fetchErr = provider.FetchDayforceMonitor(ctx, profile, task.Config, http.client)
 	} else if profile.Provider == "cornerstone" {
 		discovery, fetchErr = discoverCornerstoneInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "paylocity" {

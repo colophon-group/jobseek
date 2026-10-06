@@ -65,6 +65,9 @@ func (r *NativeRenderedDetails) FetchDayforceMonitor(ctx context.Context, p queu
 	if !board.ResourceMatches(ready.FinalURL) || ready.FinalURL == board.SearchURL() || !ready.PublisherChecked {
 		return out, queue.ErrConfiguration
 	}
+	observation := httpObservation(ctx)
+	observation.noteRequest("jobs.dayforcehcm.com")
+	observation.noteResponse("jobs.dayforcehcm.com", ready.Status)
 	if ready.Reservation != nil {
 		response.reserved = true
 		response.policy = ready.Reservation.PolicyURL
@@ -108,6 +111,12 @@ func fetchDayforceSessionPage(ctx context.Context, session dayforcePageSession, 
 			return nil, response, queue.ErrConfiguration
 		}
 		response = &GreenhouseResponse{endpoint: source, finalURL: source, status: page.Status, bytes: len(page.Body)}
+		observation := httpObservation(ctx)
+		observation.noteRequest("jobs.dayforcehcm.com")
+		if !page.TransportFailed {
+			observation.noteResponse("jobs.dayforcehcm.com", page.Status)
+			observation.noteBytes(len(page.Body))
+		}
 		if !page.TransportFailed && page.Status >= 200 && page.Status < 300 {
 			if page.Policy == nil {
 				return nil, response, policy.ErrSignals

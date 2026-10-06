@@ -802,7 +802,14 @@ func comparableDocumentURL(raw string) (string, error) {
 func (chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (Result, error) {
 	allocatorCtx, cancelAllocator := chromedp.NewRemoteAllocator(ctx, cdpURL, chromedp.NoModifyURL)
 	defer cancelAllocator()
-	targetCtx, cancelTarget := chromedp.NewContext(allocatorCtx)
+	var targetOptions []chromedp.ContextOption
+	if task.Dayforce != nil {
+		// CDP decode/exception diagnostics can contain private request headers
+		// or the compiled expression. Session failures use fixed owned errors.
+		discardDiagnostic := func(string, ...any) {}
+		targetOptions = []chromedp.ContextOption{chromedp.WithLogf(discardDiagnostic), chromedp.WithErrorf(discardDiagnostic)}
+	}
+	targetCtx, cancelTarget := chromedp.NewContext(allocatorCtx, targetOptions...)
 	defer cancelTarget()
 
 	var mainFrame cdp.FrameID

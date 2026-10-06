@@ -6,7 +6,7 @@ import (
 )
 
 func SecondaryProvider(provider string) bool {
-	return provider == "adp" || provider == "cornerstone" || provider == "paylocity" || provider == "paycom" || provider == "rippling" || provider == "comeet" || provider == "jobvite" || provider == "softgarden" || provider == "ukg" || provider == "bamboohr" || provider == "recruiter_co_kr"
+	return provider == "dayforce" || provider == "adp" || provider == "cornerstone" || provider == "paylocity" || provider == "paycom" || provider == "rippling" || provider == "comeet" || provider == "jobvite" || provider == "softgarden" || provider == "ukg" || provider == "bamboohr" || provider == "recruiter_co_kr"
 }
 func paycomEnrichmentFields(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true})
@@ -28,6 +28,9 @@ func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, allowed)
 }
 func inspectSecondaryMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
+	if config["crawler_type"] == "dayforce" {
+		return inspectDayforceMonitor(boardID, config, md)
+	}
 	if config["monitor_needs_browser"] != "0" {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
@@ -127,6 +130,9 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 		return false
 	}
 	switch p.Provider {
+	case "dayforce":
+		board, _, e := api.DayforceOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && p.Profile == dayforceMonitorProfile && p.Endpoint == board.ListingURL() && board.ResourceMatches(resource)
 	case "adp":
 		o, e := api.ADPOptionsFromMetadata(config["board_url"], config["metadata"])
 		return e == nil && p.Profile == "adp.search-items/v1" && p.Endpoint == o.SearchURL(1) && o.ResourceMatches(resource)
@@ -171,6 +177,9 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 }
 func SecondaryMonitorGone(config map[string]string, resource string, status int, disabled bool) bool {
 	switch config["crawler_type"] {
+	case "dayforce":
+		board, _, e := api.DayforceOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && board.ResourceMatches(resource) && resource != board.SearchURL() && ((status == 404 || status == 410) && !disabled || status == 200 && disabled)
 	case "adp":
 		o, e := api.ADPOptionsFromMetadata(config["board_url"], config["metadata"])
 		return e == nil && resource == o.SearchURL(1) && (status == 404 || status == 410) && !disabled
