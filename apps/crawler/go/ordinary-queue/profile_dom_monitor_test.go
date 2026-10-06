@@ -32,7 +32,7 @@ func TestDOMMonitorBindsStaticInventoryAndSeparateBrowserDetails(t *testing.T) {
 func TestDOMMonitorRejectsUnsupportedRoutesBeforeOwnership(t *testing.T) {
 	for _, md := range []string{
 		`{"render":true}`, `{"actions":[{"action":"click"}]}`, `{"pagination":{"selector":"a.next"}}`,
-		`{"proxy":true}`, `{"skip_ssl":true}`, `{"ssl_verify":false}`, `{"transport_attempts":6}`,
+		`{"proxy":"enabled"}`, `{"skip_ssl":true}`, `{"ssl_verify":false}`, `{"transport_attempts":6}`,
 		`{"transport_attempts":true}`, `{"link_selector":"["}`, `{"encoding":"shift_jis"}`,
 		`{"request_headers":{"Authorization":"private"}}`, `{"request_headers":{"Accept":"a"," accept ":"b"}}`,
 		`{"url_filter":{"include":42}}`, `{"url_filter":{"unknown":"x"}}`, `{"unknown":true}`,

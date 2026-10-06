@@ -42,8 +42,8 @@
     "queue_profile_race": "passed; 4.035 seconds",
     "runtime_and_cutover_python_contracts": "60 passed, 6 environment skips; 11.19 seconds",
     "worker_vet_and_module_tidiness": "passed",
-    "full_worker_race": "running; record terminal result before merge",
-    "installed_image_checks": "pending PR CI"
+    "full_worker_race": "passed; 478.461 seconds",
+    "installed_image_checks": "pending exact-head CI; previous native queue run exposed obsolete proxy refusal assertion, corrected"
   },
   "historical_local_monitor_screen": {
     "capture_source": "96601ce7fcadfa341aa153327918e0c71a84419a",
