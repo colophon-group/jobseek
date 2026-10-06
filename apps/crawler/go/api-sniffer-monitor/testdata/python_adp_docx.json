@@ -1,0 +1,52 @@
+[
+  {
+    "name": "valid",
+    "body": "UEsDBBQAAAAAAAAARl3xR77QogAAAKIAAAARAAAAd29yZC9kb2N1bWVudC54bWw8dzpkb2N1bWVudCB4bWxuczp3PSJodHRwOi8vc2NoZW1hcy5vcGVueG1sZm9ybWF0cy5vcmcvd29yZHByb2Nlc3NpbmdtbC8yMDA2L21haW4iPjx3OmJvZHk+PHc6cD48dzpyPjx3OnQ+QnVpbGQgJmFtcDsgc2hpcDwvdzp0PjwvdzpyPjwvdzpwPjwvdzpib2R5Pjwvdzpkb2N1bWVudD5QSwECFAMUAAAAAAAAAEZd8Ue+0KIAAACiAAAAEQAAAAAAAAAAAAAAgAEAAAAAd29yZC9kb2N1bWVudC54bWxQSwUGAAAAAAEAAQA/AAAA0QAAAAAA",
+    "expected": "<p>Build &amp; ship</p>"
+  },
+  {
+    "name": "harmless-doctype",
+    "body": "UEsDBBQAAAAAAAAARl2kE2rytwAAALcAAAARAAAAd29yZC9kb2N1bWVudC54bWw8IURPQ1RZUEUgdzpkb2N1bWVudD48dzpkb2N1bWVudCB4bWxuczp3PSJodHRwOi8vc2NoZW1hcy5vcGVueG1sZm9ybWF0cy5vcmcvd29yZHByb2Nlc3NpbmdtbC8yMDA2L21haW4iPjx3OmJvZHk+PHc6cD48dzpyPjx3OnQ+QnVpbGQgJmFtcDsgc2hpcDwvdzp0PjwvdzpyPjwvdzpwPjwvdzpib2R5Pjwvdzpkb2N1bWVudD5QSwECFAMUAAAAAAAAAEZdpBNq8rcAAAC3AAAAEQAAAAAAAAAAAAAAgAEAAAAAd29yZC9kb2N1bWVudC54bWxQSwUGAAAAAAEAAQA/AAAA5gAAAAAA",
+    "expected": "<p>Build &amp; ship</p>"
+  },
+  {
+    "name": "invalid-doctype",
+    "body": "UEsDBBQAAAAAAAAARl0eBzqPwAAAAMAAAAARAAAAd29yZC9kb2N1bWVudC54bWw8IURPQ1RZUEUgdzpkb2N1bWVudCBub25zZW5zZT48dzpkb2N1bWVudCB4bWxuczp3PSJodHRwOi8vc2NoZW1hcy5vcGVueG1sZm9ybWF0cy5vcmcvd29yZHByb2Nlc3NpbmdtbC8yMDA2L21haW4iPjx3OmJvZHk+PHc6cD48dzpyPjx3OnQ+QnVpbGQgJmFtcDsgc2hpcDwvdzp0PjwvdzpyPjwvdzpwPjwvdzpib2R5Pjwvdzpkb2N1bWVudD5QSwECFAMUAAAAAAAAAEZdHgc6j8AAAADAAAAAEQAAAAAAAAAAAAAAgAEAAAAAd29yZC9kb2N1bWVudC54bWxQSwUGAAAAAAEAAQA/AAAA7wAAAAAA",
+    "expected": null
+  },
+  {
+    "name": "external-doctype",
+    "body": "UEsDBBQAAAAAAAAARl1KqsWD1gAAANYAAAARAAAAd29yZC9kb2N1bWVudC54bWw8IURPQ1RZUEUgdzpkb2N1bWVudCBTWVNURU0gImh0dHBzOi8vZXhhbXBsZS5jb20veCI+PHc6ZG9jdW1lbnQgeG1sbnM6dz0iaHR0cDovL3NjaGVtYXMub3BlbnhtbGZvcm1hdHMub3JnL3dvcmRwcm9jZXNzaW5nbWwvMjAwNi9tYWluIj48dzpib2R5Pjx3OnA+PHc6cj48dzp0PkJ1aWxkICZhbXA7IHNoaXA8L3c6dD48L3c6cj48L3c6cD48L3c6Ym9keT48L3c6ZG9jdW1lbnQ+UEsBAhQDFAAAAAAAAABGXUqqxYPWAAAA1gAAABEAAAAAAAAAAAAAAIABAAAAAHdvcmQvZG9jdW1lbnQueG1sUEsFBgAAAAABAAEAPwAAAAUBAAAAAA==",
+    "expected": "<p>Build &amp; ship</p>"
+  },
+  {
+    "name": "entity",
+    "body": "UEsDBBQAAAAAAAAARl1aBPtcwwAAAMMAAAARAAAAd29yZC9kb2N1bWVudC54bWw8IURPQ1RZUEUgdzpkb2N1bWVudCBbPCFFTlRJVFkgeCAiZXhwYW5kZWQiPl0+PHc6ZG9jdW1lbnQgeG1sbnM6dz0iaHR0cDovL3NjaGVtYXMub3BlbnhtbGZvcm1hdHMub3JnL3dvcmRwcm9jZXNzaW5nbWwvMjAwNi9tYWluIj48dzpib2R5Pjx3OnA+PHc6cj48dzp0PiZ4Ozwvdzp0PjwvdzpyPjwvdzpwPjwvdzpib2R5Pjwvdzpkb2N1bWVudD5QSwECFAMUAAAAAAAAAEZdWgT7XMMAAADDAAAAEQAAAAAAAAAAAAAAgAEAAAAAd29yZC9kb2N1bWVudC54bWxQSwUGAAAAAAEAAQA/AAAA8gAAAAAA",
+    "expected": null
+  },
+  {
+    "name": "root-body",
+    "body": "UEsDBBQAAAAAAAAARl3fzCxsfQAAAH0AAAARAAAAd29yZC9kb2N1bWVudC54bWw8dzpib2R5IHhtbG5zOnc9Imh0dHA6Ly9zY2hlbWFzLm9wZW54bWxmb3JtYXRzLm9yZy93b3JkcHJvY2Vzc2luZ21sLzIwMDYvbWFpbiI+PHc6cD48dzpyPjx3OnQ+Um9vdDwvdzp0PjwvdzpyPjwvdzpwPjwvdzpib2R5PlBLAQIUAxQAAAAAAAAARl3fzCxsfQAAAH0AAAARAAAAAAAAAAAAAACAAQAAAAB3b3JkL2RvY3VtZW50LnhtbFBLBQYAAAAAAQABAD8AAACsAAAAAAA=",
+    "expected": null
+  },
+  {
+    "name": "trailing-garbage",
+    "body": "UEsDBBQAAAAAAAAARl04MG4FqQAAAKkAAAARAAAAd29yZC9kb2N1bWVudC54bWw8dzpkb2N1bWVudCB4bWxuczp3PSJodHRwOi8vc2NoZW1hcy5vcGVueG1sZm9ybWF0cy5vcmcvd29yZHByb2Nlc3NpbmdtbC8yMDA2L21haW4iPjx3OmJvZHk+PHc6cD48dzpyPjx3OnQ+QnVpbGQgJmFtcDsgc2hpcDwvdzp0PjwvdzpyPjwvdzpwPjwvdzpib2R5Pjwvdzpkb2N1bWVudD5nYXJiYWdlUEsBAhQDFAAAAAAAAABGXTgwbgWpAAAAqQAAABEAAAAAAAAAAAAAAIABAAAAAHdvcmQvZG9jdW1lbnQueG1sUEsFBgAAAAABAAEAPwAAANgAAAAAAA==",
+    "expected": null
+  },
+  {
+    "name": "two-roots",
+    "body": "UEsDBBQAAAAAAAAARl3gjFb3RAEAAEQBAAARAAAAd29yZC9kb2N1bWVudC54bWw8dzpkb2N1bWVudCB4bWxuczp3PSJodHRwOi8vc2NoZW1hcy5vcGVueG1sZm9ybWF0cy5vcmcvd29yZHByb2Nlc3NpbmdtbC8yMDA2L21haW4iPjx3OmJvZHk+PHc6cD48dzpyPjx3OnQ+QnVpbGQgJmFtcDsgc2hpcDwvdzp0PjwvdzpyPjwvdzpwPjwvdzpib2R5Pjwvdzpkb2N1bWVudD48dzpkb2N1bWVudCB4bWxuczp3PSJodHRwOi8vc2NoZW1hcy5vcGVueG1sZm9ybWF0cy5vcmcvd29yZHByb2Nlc3NpbmdtbC8yMDA2L21haW4iPjx3OmJvZHk+PHc6cD48dzpyPjx3OnQ+QnVpbGQgJmFtcDsgc2hpcDwvdzp0PjwvdzpyPjwvdzpwPjwvdzpib2R5Pjwvdzpkb2N1bWVudD5QSwECFAMUAAAAAAAAAEZd4IxW90QBAABEAQAAEQAAAAAAAAAAAAAAgAEAAAAAd29yZC9kb2N1bWVudC54bWxQSwUGAAAAAAEAAQA/AAAAcwEAAAAA",
+    "expected": null
+  },
+  {
+    "name": "missing-document",
+    "body": "UEsDBBQAAAAAAAAARl3Ze6DwBwAAAAcAAAAJAAAAb3RoZXIueG1sbWlzc2luZ1BLAQIUAxQAAAAAAAAARl3Ze6DwBwAAAAcAAAAJAAAAAAAAAAAAAACAAQAAAABvdGhlci54bWxQSwUGAAAAAAEAAQA3AAAALgAAAAAA",
+    "expected": null
+  },
+  {
+    "name": "invalid-zip",
+    "body": "bm90IGEgemlw",
+    "expected": null
+  }
+]

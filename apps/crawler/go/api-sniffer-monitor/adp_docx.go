@@ -6,10 +6,15 @@ import (
 	"encoding/xml"
 	"html"
 	"io"
+	"regexp"
 	"strings"
 )
 
 const adpWordNS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+
+// Like defusedxml's default parser, external DTD declarations are inert;
+// encoding/xml never resolves them. Entity definitions remain rejected.
+var adpWordDoctype = regexp.MustCompile(`^DOCTYPE[\t\r\n ]+[A-Za-z_:][A-Za-z0-9_.:-]*(?:[\t\r\n ]+SYSTEM[\t\r\n ]+(?:"[^"]*"|'[^']*')|[\t\r\n ]+PUBLIC[\t\r\n ]+(?:"[^"]*"|'[^']*')[\t\r\n ]+(?:"[^"]*"|'[^']*'))?[\t\r\n ]*(?:\[[\t\r\n ]*\])?$`)
 
 type adpWordNode struct {
 	Name     xml.Name
@@ -22,6 +27,7 @@ func adpWordXML(raw []byte) (*adpWordNode, error) {
 	d := xml.NewDecoder(bytes.NewReader(raw))
 	stack := []*adpWordNode{}
 	var root *adpWordNode
+	doctype := false
 	for {
 		token, e := d.Token()
 		if e == io.EOF {
@@ -32,9 +38,10 @@ func adpWordXML(raw []byte) (*adpWordNode, error) {
 		}
 		switch t := token.(type) {
 		case xml.Directive:
-			if strings.Contains(strings.ToUpper(string(t)), "SYSTEM") || strings.Contains(strings.ToUpper(string(t)), "PUBLIC") || strings.Contains(strings.ToUpper(string(t)), "ENTITY") {
+			if doctype || root != nil || !adpWordDoctype.MatchString(strings.TrimSpace(string(t))) {
 				return nil, ErrInventory
 			}
+			doctype = true
 		case xml.StartElement:
 			n := &adpWordNode{Name: t.Name, Attr: t.Attr}
 			if len(stack) == 0 {
@@ -132,11 +139,13 @@ func ADPDocxToHTML(content []byte) string {
 		return ""
 	}
 	var body *adpWordNode
-	adpWordWalk(root, func(n *adpWordNode) {
-		if body == nil && n.Name.Space == adpWordNS && n.Name.Local == "body" {
-			body = n
-		}
-	})
+	for _, child := range root.Children {
+		adpWordWalk(child, func(n *adpWordNode) {
+			if body == nil && n.Name.Space == adpWordNS && n.Name.Local == "body" {
+				body = n
+			}
+		})
+	}
 	if body == nil {
 		return ""
 	}
