@@ -70,8 +70,23 @@ async function main() {
     const session = await context.request.get("/api/auth/get-session");
     assert.equal((await session.json()).user.id, user.id, "Request-derived session must match dedicated fixture identity");
     page = await context.newPage(); page.setDefaultTimeout(45_000);
+    // Learn the current build's account action from its successful fixture
+    // response. Owner pages also dispatch other actions during hydration;
+    // rejecting every POST conflates those reads with an account replay.
+    // Keep the opaque identifier and response body in memory only.
+    const bootstrapResponse = page.waitForResponse(async response => {
+      const request = response.request();
+      if (request.method() !== "POST" || !request.headers()["next-action"] ||
+        new URL(request.url()).origin !== baseUrl || response.status() !== 200) return false;
+      try {
+        const body = await response.text();
+        return body.includes('"savedStatuses":') && body.includes('"starredIds":') && body.includes(user.id);
+      } catch { return false; }
+    });
     browserPhase = "create_watchlist";
     await navigateCanary(page, "/en/watchlists");
+    const accountAction = (await bootstrapResponse).request().headers()["next-action"];
+    assert.ok(accountAction, "Initial account bootstrap must identify its current-build action");
     await page.getByRole("button", { name: "Create", exact: true }).click();
     await page.waitForURL(/\/en\/watchlists\/[0-9a-f-]{36}/);
     const watchlistId = page.url().split("/").pop()!;
@@ -118,7 +133,9 @@ async function main() {
     const rejectedActionIds = new Set<string>();
     let rejectedAction: string | undefined;
     const rejectInitialAccount = async (route: Route) => {
-      if (!isOwnedAction(route.request())) { await route.continue(); return; }
+      if (!isOwnedAction(route.request()) || route.request().headers()["next-action"] !== accountAction) {
+        await route.continue(); return;
+      }
       rejectedActions += 1;
       rejectedActionIds.add(route.request().headers()["next-action"]);
       // Current-build opaque identifier stays in memory and is never logged.
