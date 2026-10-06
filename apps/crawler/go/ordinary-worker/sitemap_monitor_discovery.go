@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"time"
 
-	dom "github.com/colophon-group/jobseek/apps/crawler/go/dom-detail"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	policy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 	bounded "github.com/colophon-group/jobseek/apps/crawler/go/sitemap-monitor/boundedhttp"
@@ -89,7 +88,7 @@ func (s *nativeSitemapSession) Get(ctx context.Context, resource string, headers
 
 func discoverSitemapInventory(ctx context.Context, client *http.Client, profile queue.GreenhouseMonitorProfile, config map[string]string) (RichDiscovery, error) {
 	result := RichDiscovery{Jobs: []RichMonitorJob{}}
-	c, include, exclude, err := queue.SitemapMonitorConfig(config)
+	c, _, _, err := queue.SitemapMonitorConfig(config)
 	if err != nil || client == nil || c.SitemapURL != profile.Endpoint {
 		return result, queue.ErrConfiguration
 	}
@@ -106,33 +105,11 @@ func discoverSitemapInventory(ctx context.Context, client *http.Client, profile 
 	if err != nil {
 		return result, &DiscoveryError{Kind: "inventory_failed", cause: err}
 	}
-	inc, err := dom.CompileURLPattern(include)
-	if err != nil {
-		return result, err
-	}
-	exc, err := dom.CompileURLPattern(exclude)
-	if err != nil {
-		return result, err
-	}
+	// Configured filters and posting rewrites run together after discovery,
+	// before normalization/preparation or any canonical write.
 	for _, raw := range found.URLs {
 		if ctx.Err() != nil {
 			return RichDiscovery{}, ctx.Err()
-		}
-		keep, err := inc.MatchString(raw)
-		if err != nil {
-			return RichDiscovery{}, err
-		}
-		if !keep {
-			continue
-		}
-		if exclude != "" {
-			reject, err := exc.MatchString(raw)
-			if err != nil {
-				return RichDiscovery{}, err
-			}
-			if reject {
-				continue
-			}
 		}
 		result.Jobs = append(result.Jobs, RichMonitorJob{URL: raw})
 	}

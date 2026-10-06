@@ -1,8 +1,6 @@
 package queue
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"net/url"
 	"regexp"
@@ -11,8 +9,8 @@ import (
 
 var rssCategoryQuery = regexp.MustCompile(`^catid=[1-9][0-9]{0,15}$`)
 
-// Admit the existing direct Teamtailor and SuccessFactors feed/skip contracts.
-// Other RSS variants and detail assignments retain their current owner.
+// Native ownership of direct Teamtailor and SuccessFactors feeds preserves
+// their configured detail assignment and downstream URL policy.
 func inspectRSSRich(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
 	var preset, feed, variant string
 	if json.Unmarshal(md["preset"], &preset) != nil || preset != "teamtailor" && preset != "successfactors" {
@@ -49,37 +47,19 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 	if !validFeed {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
-	validation := cloneConfig(config)
-	validation["crawler_type"] = "greenhouse"
-	common := map[string]json.RawMessage{}
-	for key, value := range md {
-		if greenhouseMetadataFields[key] {
-			common[key] = value
-		}
+	if err := feedRichDetailAssignment(config); err != nil {
+		return GreenhouseMonitorProfile{}, err
 	}
-	common["token"] = json.RawMessage(`"provider-token"`)
-	body, err := json.Marshal(common)
-	if err != nil {
-		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+	if _, err := FeedMonitorURLRules(config); err != nil {
+		return GreenhouseMonitorProfile{}, err
 	}
-	validation["metadata"] = string(body)
-	profile, err := InspectGreenhouseMonitor(boardID, validation)
+	name := "rss." + preset + "-skip/v1"
+	if feedHasDetailAssignment(md) {
+		name = "rss." + preset + "-items/v1"
+	}
+	profile, err := inspectURLOnlyMonitor(boardID, config, md, "rss", name, "feed", feed)
 	if err != nil {
 		return GreenhouseMonitorProfile{}, err
 	}
-	stable, err := stableGreenhouseConfig(config, md)
-	if err != nil {
-		return GreenhouseMonitorProfile{}, err
-	}
-	body, err = json.Marshal(struct {
-		BoardID string            `json:"board_id"`
-		Config  map[string]string `json:"config"`
-	}{boardID, stable})
-	if err != nil {
-		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
-	}
-	digest := sha256.Sum256(body)
-	profile.Provider, profile.Profile, profile.Endpoint = "rss", "rss."+preset+"-skip/v1", feed
-	profile.EffectiveConfigSHA256, profile.SnapshotSHA256 = hex.EncodeToString(digest[:]), configDigest(config)
 	return profile, nil
 }

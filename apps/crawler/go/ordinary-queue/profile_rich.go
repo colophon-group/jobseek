@@ -72,6 +72,9 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 	case "rss":
 		allowed["preset"], allowed["feed_url"] = true, true
 		allowed["variant"] = true
+		for _, key := range []string{"url", "url_filter", "url_allowlist", "url_transform"} {
+			allowed[key] = true
+		}
 	case "workday":
 		for _, key := range []string{"company", "wd_instance", "site", "all_sites", "sites", "search_text", "split_facet", "facet_union", "tenant", "board", "board_id", "employer", "site_id", "instance", "job_board", "board_slug", "ssl_verify", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
@@ -94,7 +97,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 			allowed[key] = true
 		}
 	case "sitemap":
-		for _, key := range []string{"sitemap_url", "xml_attempts", "url_filter", "proxy", "render", "skip_ssl", "ssl_verify", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+		for _, key := range []string{"sitemap_url", "xml_attempts", "url_filter", "url_transform", "url", "urls", "proxy", "render", "skip_ssl", "ssl_verify", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
 		}
 	case "workable":

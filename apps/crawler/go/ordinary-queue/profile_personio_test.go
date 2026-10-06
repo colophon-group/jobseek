@@ -26,7 +26,6 @@ func TestPersonioRichProfilePreservesLanguagesAndOriginalBinding(t *testing.T) {
 		}
 	}
 	for _, md := range []string{
-		`{"scraper_type":"dom"}`,
 		`{"scraper_type":"skip","language":null}`,
 		`{"scraper_type":"skip","language":"EN"}`,
 		`{"scraper_type":"skip","backfill_languages":["de","de"]}`,

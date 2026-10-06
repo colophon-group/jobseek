@@ -413,6 +413,12 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		}
 		return finishSuccess(terminal)
 	}
+	if profile.Provider == "rss" || profile.Provider == "sitemap" {
+		discovery.Jobs, err = applyFeedMonitorURLs(ctx, task.Config, discovery.Jobs)
+		if err != nil {
+			return failure("processing", err)
+		}
+	}
 	inventory, err := NormalizeRichInventory(ctx, task.Config["board_url"], discovery.Jobs, discovery.Truncated)
 	if err != nil {
 		return failure("inventory", err)

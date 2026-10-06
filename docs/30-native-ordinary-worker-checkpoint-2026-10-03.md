@@ -1686,3 +1686,39 @@ Personio boards. That work and its validation remain in progress. Complex browse
 proxy, filtering/collision and remaining extraction variants stay in full scope.
 Complete enabled coverage, maintenance/deployment consumers, whole-lane resource
 proof, cold reversal and final production Python retirement remain required.
+
+
+## RSS + sitemap + Personio grouped continuation — 2026-10-06
+
+The next release groups three existing provider types. Screening the remaining
+source-946 configurations qualifies 36 RSS, 19 sitemap and all ten Personio boards,
+65 additional configurations. The new item profiles reuse the existing Go
+Teamtailor/SuccessFactors/Personio parsers, sealed transport, rich normalization,
+canonical writer and lifecycle. Configured JSON-LD/DOM detail scrapers remain
+bound without implying enrichment: an explicit scraper with no enrich list keeps
+the feed's authoritative description and fields, matching the actual processor.
+
+Sitemap and RSS URL filters/replacements run before native normalization or any
+canonical write. Replacements preserve the actual identity published to PostgreSQL,
+the detail cache and the urgent queue; they grant no additional fetch authority.
+Ignored legacy URL aliases and sitemap count metadata stay bound. Nested detail
+configuration keys use semantic JSON binding, preserving array/step order and
+separate browser detail assignment.
+
+The actual Python processor supplied 14 URL-policy cases and 32 assignment cases.
+Real worker suites exercise skip, JSON-LD and DOM assignments, translation/fallback,
+partial XML/later-page failures and publisher reservations. Four real sitemap
+cases verify rewritten canonical identity, cache, deadline and urgent queue.
+The full real PostgreSQL/Redis worker race suite passed in 224.352 seconds; all
+57 required Python runtime/ownership tests passed, with six optional cases skipped.
+The complete real PostgreSQL/Redis queue race suite passed in 120.752 seconds. The executable and installed
+image identity expand from 42 to 45 profiles.
+
+This is candidate qualification, not deployed source-948 authority. Complete
+fresh admission from canonical/cache posting routes after deployment, natural
+processing and supported cold reversal. Remaining generic/paginated/browser/RMK/
+legacy RSS variants, job filters/collision/security policy, and sitemap proxy/TLS/
+cross-origin/rescrape cases remain in the full migration scope. Preserve every
+enabled board while completing those replacements. The
+[candidate evidence](evidence/go-native-feed-provider-candidate-2026-10-06.json)
+records the current qualified subset and explicit remaining work.

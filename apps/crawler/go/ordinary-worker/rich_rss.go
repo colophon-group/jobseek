@@ -27,10 +27,10 @@ func richResponseMatches(profile queue.GreenhouseMonitorProfile, endpoint string
 	if profile.Provider == "lever" {
 		return strings.HasPrefix(endpoint, strings.TrimSuffix(profile.Endpoint, "skip=0")+"skip=")
 	}
-	if profile.Profile == "personio.xml-skip/v1" {
+	if profile.Profile == "personio.xml-skip/v1" || profile.Profile == "personio.xml-items/v1" {
 		return personioResponseMatches(profile, endpoint)
 	}
-	if profile.Profile != "rss.teamtailor-skip/v1" {
+	if profile.Profile != "rss.teamtailor-skip/v1" && profile.Profile != "rss.teamtailor-items/v1" {
 		return false
 	}
 	u, err := url.Parse(endpoint)

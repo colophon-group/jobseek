@@ -1,0 +1,1089 @@
+{
+  "cases": [
+    {
+      "name": "sitemap-iframe-suffix",
+      "metadata": {
+        "url_transform": {
+          "find": "$",
+          "replace": "?in_iframe=1"
+        }
+      },
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/123/job",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "expected": [
+        {
+          "url": "https://example.com/jobs/123/job?in_iframe=1",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "sitemap-job-suffix",
+      "metadata": {
+        "url_transform": {
+          "find": "/job$",
+          "replace": "/job?in_iframe=1"
+        }
+      },
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/123/job",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        },
+        {
+          "url": "https://example.com/job/123",
+          "title": "Job 1",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "expected": [
+        {
+          "url": "https://example.com/job/123",
+          "title": "Job 1",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        },
+        {
+          "url": "https://example.com/jobs/123/job?in_iframe=1",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "sitemap-language-query",
+      "metadata": {
+        "url_transform": {
+          "find": "\\?lang=.*$",
+          "replace": ""
+        }
+      },
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/123?lang=en",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        },
+        {
+          "url": "https://example.com/jobs/123?lang=de",
+          "title": "Job 1",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "expected": [
+        {
+          "url": "https://example.com/jobs/123",
+          "title": "Job 1",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "sitemap-https-upgrade",
+      "metadata": {
+        "url_transform": {
+          "find": "^http://",
+          "replace": "https://"
+        }
+      },
+      "jobs": [
+        {
+          "url": "http://nttdata.jobs/vacancies/123/engineer",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        },
+        {
+          "url": "https://nttdata.jobs/vacancies/456/engineer",
+          "title": "Job 1",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "expected": [
+        {
+          "url": "https://nttdata.jobs/vacancies/123/engineer",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        },
+        {
+          "url": "https://nttdata.jobs/vacancies/456/engineer",
+          "title": "Job 1",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "sitemap-cms-origin",
+      "metadata": {
+        "url_transform": {
+          "find": "https://website-cms\\.internal\\.aldi\\.cn",
+          "replace": "https://www.aldi.com.cn"
+        }
+      },
+      "jobs": [
+        {
+          "url": "https://website-cms.internal.aldi.cn/joinus/123",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "expected": [
+        {
+          "url": "https://www.aldi.com.cn/joinus/123",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "filter-before-transform",
+      "metadata": {
+        "url_filter": {
+          "include": "/jobs/",
+          "exclude": "intern"
+        },
+        "url_transform": {
+          "find": "$",
+          "replace": "?in_iframe=1"
+        }
+      },
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/123",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        },
+        {
+          "url": "https://example.com/jobs/intern",
+          "title": "Job 1",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        },
+        {
+          "url": "https://example.com/contact",
+          "title": "Job 2",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "expected": [
+        {
+          "url": "https://example.com/jobs/123?in_iframe=1",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "python-unicode-filter",
+      "metadata": {
+        "url_filter": "/jobs/\\w+$"
+      },
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/工程師",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        },
+        {
+          "url": "https://example.com/jobs/é",
+          "title": "Job 1",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        },
+        {
+          "url": "https://example.com/jobs/-",
+          "title": "Job 2",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "expected": [
+        {
+          "url": "https://example.com/jobs/é",
+          "title": "Job 1",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        },
+        {
+          "url": "https://example.com/jobs/工程師",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "python-negative-lookahead",
+      "metadata": {
+        "url_filter": "/jobs/(?!domains|p\\d)[a-z]"
+      },
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/engineer",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        },
+        {
+          "url": "https://example.com/jobs/domains",
+          "title": "Job 1",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        },
+        {
+          "url": "https://example.com/jobs/p1",
+          "title": "Job 2",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "expected": [
+        {
+          "url": "https://example.com/jobs/engineer",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "rss-successfactors-division",
+      "metadata": {
+        "url_filter": "/VIVO/job/"
+      },
+      "jobs": [
+        {
+          "url": "https://example.com/VIVO/job/123",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        },
+        {
+          "url": "https://example.com/Other/job/456",
+          "title": "Job 1",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "expected": [
+        {
+          "url": "https://example.com/VIVO/job/123",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "rss-exclude-country",
+      "metadata": {
+        "url_filter": {
+          "exclude": "/Cesko/"
+        }
+      },
+      "jobs": [
+        {
+          "url": "https://example.com/Cesko/job/123",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        },
+        {
+          "url": "https://example.com/Germany/job/456",
+          "title": "Job 1",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "expected": [
+        {
+          "url": "https://example.com/Germany/job/456",
+          "title": "Job 1",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "python-capture-replacement",
+      "metadata": {
+        "url_transform": {
+          "find": "^https://example\\.com/jobs/(\\d+)-[^/]+$",
+          "replace": "https://example.com/jobs/\\1"
+        }
+      },
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/123-engineer",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "expected": [
+        {
+          "url": "https://example.com/jobs/123",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "literal-dollar-replacement",
+      "metadata": {
+        "url_transform": {
+          "find": "$",
+          "replace": "?value=$1"
+        }
+      },
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/123",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "expected": [
+        {
+          "url": "https://example.com/jobs/123?value=$1",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "empty-include-null-exclude",
+      "metadata": {
+        "url_filter": {
+          "include": "",
+          "exclude": null
+        }
+      },
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/123",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "expected": [
+        {
+          "url": "https://example.com/jobs/123",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "legacy-url-is-bookkeeping",
+      "metadata": {
+        "url": "https://unused.example.com/googlefeed.xml"
+      },
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/123",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "expected": [
+        {
+          "url": "https://example.com/jobs/123",
+          "title": "Job 0",
+          "description": "<p>Feed content.</p>",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    }
+  ],
+  "assignments": [
+    {
+      "provider": "personio",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "enrich": null
+    },
+    {
+      "provider": "personio",
+      "metadata": {
+        "scraper_type": "skip",
+        "scraper_config": {}
+      },
+      "enrich": null
+    },
+    {
+      "provider": "personio",
+      "metadata": {
+        "scraper_type": "skip",
+        "scraper_config": {
+          "steps": []
+        }
+      },
+      "enrich": null
+    },
+    {
+      "provider": "personio",
+      "metadata": {
+        "scraper_type": "skip",
+        "scraper_config": {
+          "enrich": []
+        }
+      },
+      "enrich": null
+    },
+    {
+      "provider": "personio",
+      "metadata": {
+        "scraper_type": "json-ld"
+      },
+      "enrich": null
+    },
+    {
+      "provider": "personio",
+      "metadata": {
+        "scraper_type": "json-ld",
+        "scraper_config": {}
+      },
+      "enrich": null
+    },
+    {
+      "provider": "personio",
+      "metadata": {
+        "scraper_type": "json-ld",
+        "scraper_config": {
+          "steps": []
+        }
+      },
+      "enrich": null
+    },
+    {
+      "provider": "personio",
+      "metadata": {
+        "scraper_type": "json-ld",
+        "scraper_config": {
+          "enrich": []
+        }
+      },
+      "enrich": null
+    },
+    {
+      "provider": "personio",
+      "metadata": {
+        "scraper_type": "dom"
+      },
+      "enrich": null
+    },
+    {
+      "provider": "personio",
+      "metadata": {
+        "scraper_type": "dom",
+        "scraper_config": {}
+      },
+      "enrich": null
+    },
+    {
+      "provider": "personio",
+      "metadata": {
+        "scraper_type": "dom",
+        "scraper_config": {
+          "steps": []
+        }
+      },
+      "enrich": null
+    },
+    {
+      "provider": "personio",
+      "metadata": {
+        "scraper_type": "dom",
+        "scraper_config": {
+          "enrich": []
+        }
+      },
+      "enrich": null
+    },
+    {
+      "provider": "personio",
+      "metadata": {
+        "scraper_type": "embedded"
+      },
+      "enrich": null
+    },
+    {
+      "provider": "personio",
+      "metadata": {
+        "scraper_type": "embedded",
+        "scraper_config": {}
+      },
+      "enrich": null
+    },
+    {
+      "provider": "personio",
+      "metadata": {
+        "scraper_type": "embedded",
+        "scraper_config": {
+          "steps": []
+        }
+      },
+      "enrich": null
+    },
+    {
+      "provider": "personio",
+      "metadata": {
+        "scraper_type": "embedded",
+        "scraper_config": {
+          "enrich": []
+        }
+      },
+      "enrich": null
+    },
+    {
+      "provider": "rss",
+      "metadata": {
+        "scraper_type": "skip"
+      },
+      "enrich": null
+    },
+    {
+      "provider": "rss",
+      "metadata": {
+        "scraper_type": "skip",
+        "scraper_config": {}
+      },
+      "enrich": null
+    },
+    {
+      "provider": "rss",
+      "metadata": {
+        "scraper_type": "skip",
+        "scraper_config": {
+          "steps": []
+        }
+      },
+      "enrich": null
+    },
+    {
+      "provider": "rss",
+      "metadata": {
+        "scraper_type": "skip",
+        "scraper_config": {
+          "enrich": []
+        }
+      },
+      "enrich": null
+    },
+    {
+      "provider": "rss",
+      "metadata": {
+        "scraper_type": "json-ld"
+      },
+      "enrich": null
+    },
+    {
+      "provider": "rss",
+      "metadata": {
+        "scraper_type": "json-ld",
+        "scraper_config": {}
+      },
+      "enrich": null
+    },
+    {
+      "provider": "rss",
+      "metadata": {
+        "scraper_type": "json-ld",
+        "scraper_config": {
+          "steps": []
+        }
+      },
+      "enrich": null
+    },
+    {
+      "provider": "rss",
+      "metadata": {
+        "scraper_type": "json-ld",
+        "scraper_config": {
+          "enrich": []
+        }
+      },
+      "enrich": null
+    },
+    {
+      "provider": "rss",
+      "metadata": {
+        "scraper_type": "dom"
+      },
+      "enrich": null
+    },
+    {
+      "provider": "rss",
+      "metadata": {
+        "scraper_type": "dom",
+        "scraper_config": {}
+      },
+      "enrich": null
+    },
+    {
+      "provider": "rss",
+      "metadata": {
+        "scraper_type": "dom",
+        "scraper_config": {
+          "steps": []
+        }
+      },
+      "enrich": null
+    },
+    {
+      "provider": "rss",
+      "metadata": {
+        "scraper_type": "dom",
+        "scraper_config": {
+          "enrich": []
+        }
+      },
+      "enrich": null
+    },
+    {
+      "provider": "rss",
+      "metadata": {
+        "scraper_type": "embedded"
+      },
+      "enrich": null
+    },
+    {
+      "provider": "rss",
+      "metadata": {
+        "scraper_type": "embedded",
+        "scraper_config": {}
+      },
+      "enrich": null
+    },
+    {
+      "provider": "rss",
+      "metadata": {
+        "scraper_type": "embedded",
+        "scraper_config": {
+          "steps": []
+        }
+      },
+      "enrich": null
+    },
+    {
+      "provider": "rss",
+      "metadata": {
+        "scraper_type": "embedded",
+        "scraper_config": {
+          "enrich": []
+        }
+      },
+      "enrich": null
+    }
+  ]
+}

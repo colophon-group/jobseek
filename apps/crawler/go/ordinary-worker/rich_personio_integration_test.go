@@ -15,100 +15,102 @@ func personioRichXML(title, description string) string {
 }
 
 func TestRealOwnedPersonioPreservesTranslationsAndRejectsIncompleteInventory(t *testing.T) {
-	for _, mode := range []string{"translated", "promote_english", "optional404", "alternate_domain", "unavailable", "backfill_reserved"} {
-		t.Run(mode, func(t *testing.T) {
-			language, backfill := "en", "de"
-			if mode == "promote_english" {
-				language, backfill = "de", "en"
-			}
-			f := privateRichPipelineFixture(t, "personio", fmt.Sprintf(`{"slug":"fixture","language":"%s","backfill_languages":["%s"],"scraper_type":"skip"}`, language, backfill))
-			ctx := context.Background()
-			claim, err := f.a.Claim(ctx, queue.Simple)
-			if err != nil || claim == nil {
-				t.Fatal("native Personio claim unavailable", err)
-			}
-			circuits, err := queue.NewHostCircuits(f.client, queue.DefaultHostCircuitSettings())
-			if err != nil {
-				t.Fatal(err)
-			}
-			description := "<p>Python. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>"
-			requests := 0
-			client := richPipelineHTTP(t, func(w http.ResponseWriter, r *http.Request) {
-				requests++
-				if mode == "unavailable" {
-					if r.URL.Path == "/xml" {
-						_, _ = w.Write([]byte(personioRichXML("partial", description)[:len(personioRichXML("partial", description))-15]))
-						return
-					}
-					w.WriteHeader(404)
-					return
+	for _, assignment := range []string{"skip", "json-ld", "dom"} {
+		for _, mode := range []string{"translated", "promote_english", "optional404", "alternate_domain", "unavailable", "backfill_reserved"} {
+			t.Run(assignment+"/"+mode, func(t *testing.T) {
+				language, backfill := "en", "de"
+				if mode == "promote_english" {
+					language, backfill = "de", "en"
 				}
-				if mode == "alternate_domain" && r.Host == "fixture.jobs.personio.de" {
-					w.WriteHeader(404)
-					return
+				f := privateRichPipelineFixture(t, "personio", fmt.Sprintf(`{"slug":"fixture","language":"%s","backfill_languages":["%s"],"scraper_type":"%s"}`, language, backfill, assignment))
+				ctx := context.Background()
+				claim, err := f.a.Claim(ctx, queue.Simple)
+				if err != nil || claim == nil {
+					t.Fatal("native Personio claim unavailable", err)
 				}
-				if r.URL.Query().Get("language") == backfill {
-					if mode == "optional404" {
+				circuits, err := queue.NewHostCircuits(f.client, queue.DefaultHostCircuitSettings())
+				if err != nil {
+					t.Fatal(err)
+				}
+				description := "<p>Python. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>"
+				requests := 0
+				client := richPipelineHTTP(t, func(w http.ResponseWriter, r *http.Request) {
+					requests++
+					if mode == "unavailable" {
+						if r.URL.Path == "/xml" {
+							_, _ = w.Write([]byte(personioRichXML("partial", description)[:len(personioRichXML("partial", description))-15]))
+							return
+						}
 						w.WriteHeader(404)
 						return
 					}
-					if mode == "backfill_reserved" {
-						w.Header().Set("TDM-Reservation", "1")
-						w.Header().Set("TDM-Policy", "https://example.com/policy")
+					if mode == "alternate_domain" && r.Host == "fixture.jobs.personio.de" {
+						w.WriteHeader(404)
+						return
 					}
+					if r.URL.Query().Get("language") == backfill {
+						if mode == "optional404" {
+							w.WriteHeader(404)
+							return
+						}
+						if mode == "backfill_reserved" {
+							w.Header().Set("TDM-Reservation", "1")
+							w.Header().Set("TDM-Policy", "https://example.com/policy")
+						}
+					}
+					title, html := "Senior Software Engineer", description
+					if r.URL.Query().Get("language") == "de" {
+						title, html = "Softwareentwickler &amp; Ingenieur", "<p>Deutsche Beschreibung.</p>"
+					}
+					_, _ = w.Write([]byte(personioRichXML(title, html)))
+				})
+				result, err := RunGreenhouseClaim(ctx, f.a, claim, client, richPipelinePreparer(t, f), circuits)
+				if err != nil || result == nil || !result.Settled {
+					t.Fatalf("native Personio did not settle: %+v %v", result, err)
 				}
-				title, html := "Senior Software Engineer", description
-				if r.URL.Query().Get("language") == "de" {
-					title, html = "Softwareentwickler &amp; Ingenieur", "<p>Deutsche Beschreibung.</p>"
+				assertRichDeadlineAndLease(t, f, "personio")
+				var reserved bool
+				var gone, failures int
+				if err := f.pg.QueryRow(ctx, "SELECT tdm_reserved,gone_confirmation_count,consecutive_failures FROM job_board WHERE id=$1::uuid", f.board).Scan(&reserved, &gone, &failures); err != nil {
+					t.Fatal(err)
 				}
-				_, _ = w.Write([]byte(personioRichXML(title, html)))
+				if gone != 0 || reserved != (mode == "backfill_reserved") || failures != map[string]int{"unavailable": 1}[mode] {
+					t.Fatal("Personio failure/publisher contract differs", reserved, gone, failures)
+				}
+				if mode == "unavailable" || mode == "backfill_reserved" {
+					var count, active int
+					if err := f.pg.QueryRow(ctx, "SELECT count(*),count(*) FILTER(WHERE is_active) FROM job_posting WHERE board_id=$1::uuid", f.board).Scan(&count, &active); err != nil || count != 1 || active != 1 || result.Batches.Inserted != 0 {
+						t.Fatal("incomplete Personio inventory changed canonical postings", err)
+					}
+					return
+				}
+				var titles, locales []string
+				var locations, technologies []int32
+				var html, currency, employment, source string
+				var uploaded bool
+				if err := f.pg.QueryRow(ctx, `SELECT p.titles,p.locales,p.location_ids,p.technology_ids,p.salary_currency,p.employment_type,p.source_url,d.html,d.r2_uploaded FROM job_posting p JOIN descriptions d ON d.posting_id=p.id WHERE p.board_id=$1::uuid AND p.is_active`, f.board).Scan(&titles, &locales, &locations, &technologies, &currency, &employment, &source, &html, &uploaded); err != nil {
+					t.Fatal(err)
+				}
+				wantTitles, wantLocales := []string{"Senior Software Engineer", "Softwareentwickler & Ingenieur"}, []string{"en", "de"}
+				if mode == "optional404" {
+					wantTitles, wantLocales = wantTitles[:1], wantLocales[:1]
+				}
+				domain := "de"
+				if mode == "alternate_domain" {
+					domain = "com"
+				}
+				if result.Batches.Inserted != 1 || result.Cycle.Gone != 1 || !reflect.DeepEqual(titles, wantTitles) || !reflect.DeepEqual(locales, wantLocales) || fmt.Sprint(locations) != "[2]" || fmt.Sprint(technologies) != "[4]" || currency != "CHF" || employment != "full_time" || source != "https://fixture.jobs.personio."+domain+"/job/123" || html != description || uploaded {
+					t.Fatalf("Personio localized fields/primary description/lifecycle differ: titles=%v locales=%v employment=%s source=%s", titles, locales, employment, source)
+				}
+				wantRequests := 2
+				if mode == "alternate_domain" {
+					wantRequests = 3
+				}
+				if requests != wantRequests {
+					t.Fatal("Personio request count changed", requests)
+				}
 			})
-			result, err := RunGreenhouseClaim(ctx, f.a, claim, client, richPipelinePreparer(t, f), circuits)
-			if err != nil || result == nil || !result.Settled {
-				t.Fatalf("native Personio did not settle: %+v %v", result, err)
-			}
-			assertRichDeadlineAndLease(t, f, "personio")
-			var reserved bool
-			var gone, failures int
-			if err := f.pg.QueryRow(ctx, "SELECT tdm_reserved,gone_confirmation_count,consecutive_failures FROM job_board WHERE id=$1::uuid", f.board).Scan(&reserved, &gone, &failures); err != nil {
-				t.Fatal(err)
-			}
-			if gone != 0 || reserved != (mode == "backfill_reserved") || failures != map[string]int{"unavailable": 1}[mode] {
-				t.Fatal("Personio failure/publisher contract differs", reserved, gone, failures)
-			}
-			if mode == "unavailable" || mode == "backfill_reserved" {
-				var count, active int
-				if err := f.pg.QueryRow(ctx, "SELECT count(*),count(*) FILTER(WHERE is_active) FROM job_posting WHERE board_id=$1::uuid", f.board).Scan(&count, &active); err != nil || count != 1 || active != 1 || result.Batches.Inserted != 0 {
-					t.Fatal("incomplete Personio inventory changed canonical postings", err)
-				}
-				return
-			}
-			var titles, locales []string
-			var locations, technologies []int32
-			var html, currency, employment, source string
-			var uploaded bool
-			if err := f.pg.QueryRow(ctx, `SELECT p.titles,p.locales,p.location_ids,p.technology_ids,p.salary_currency,p.employment_type,p.source_url,d.html,d.r2_uploaded FROM job_posting p JOIN descriptions d ON d.posting_id=p.id WHERE p.board_id=$1::uuid AND p.is_active`, f.board).Scan(&titles, &locales, &locations, &technologies, &currency, &employment, &source, &html, &uploaded); err != nil {
-				t.Fatal(err)
-			}
-			wantTitles, wantLocales := []string{"Senior Software Engineer", "Softwareentwickler & Ingenieur"}, []string{"en", "de"}
-			if mode == "optional404" {
-				wantTitles, wantLocales = wantTitles[:1], wantLocales[:1]
-			}
-			domain := "de"
-			if mode == "alternate_domain" {
-				domain = "com"
-			}
-			if result.Batches.Inserted != 1 || result.Cycle.Gone != 1 || !reflect.DeepEqual(titles, wantTitles) || !reflect.DeepEqual(locales, wantLocales) || fmt.Sprint(locations) != "[2]" || fmt.Sprint(technologies) != "[4]" || currency != "CHF" || employment != "full_time" || source != "https://fixture.jobs.personio."+domain+"/job/123" || html != description || uploaded {
-				t.Fatalf("Personio localized fields/primary description/lifecycle differ: titles=%v locales=%v employment=%s source=%s", titles, locales, employment, source)
-			}
-			wantRequests := 2
-			if mode == "alternate_domain" {
-				wantRequests = 3
-			}
-			if requests != wantRequests {
-				t.Fatal("Personio request count changed", requests)
-			}
-		})
+		}
 	}
 }
 
