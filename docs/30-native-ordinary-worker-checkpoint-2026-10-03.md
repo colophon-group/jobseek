@@ -112,8 +112,11 @@ independent 20:28 UTC readback proved healthy exact-953 services, cold native
 ownership, empty native projections/tokens and retired epoch 202. Historical
 receipts remain at older epochs. Original full deployment
 [37526934505](https://github.com/colophon-group/jobseek/actions/runs/37526934505)
-has completed its immutable build and is deploying; promoted 954 source/image
-readback and fresh cutover remain required.
+succeeded. Independent 20:45 UTC readback verified promoted source
+`96601ce7fcadfa341aa153327918e0c71a84419a` and original immutable crawler/browser
+image digests, healthy services and cold native ownership at epoch 202.
+Original supported 954 B0 selector staging and activation succeeded; independent
+active readback and fresh actual-route ordinary admission remain required.
 The four-provider candidate advances together to **0.13.955** after this fix.
 Local proof does not grant production ownership.
 
