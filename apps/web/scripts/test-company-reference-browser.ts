@@ -31,8 +31,8 @@ async function waitForApp(url: string, child: ChildProcess) {
 async function main() {
   // This runner never loads .env files. Its app child receives only isolated dependency URLs.
   const databaseUrl = fixtureDatabaseUrl(); const sql = fixtureClient();
-  const writeMode = process.env.COMPANY_REFERENCE_TEST_WRITE_MODE ?? "bridge";
-  assert.ok(writeMode === "bridge" || writeMode === "reference", "Invalid browser fixture write mode");
+  const writeMode = process.env.COMPANY_REFERENCE_TEST_WRITE_MODE ?? "reference";
+  assert.equal(writeMode, "reference", "Current browser fixture requires the contracted reference-only service");
   const doc = companyDocument(randomUUID(), `Reference fixture ${randomUUID().slice(0, 8)}`);
   const delayedDoc = companyDocument(randomUUID(), `Delayed reference fixture ${randomUUID().slice(0, 8)}`);
   const search = await startTypesenseFixture([doc, delayedDoc], { [delayedDoc.id]: 2000 });
@@ -106,7 +106,7 @@ async function main() {
     assert.equal(persisted.length, 1, "Picker save must commit a materialized reference");
     assert.equal(persisted[0].any_company, "false", "Company membership and scope must commit atomically before quick reload");
     assert.equal(persisted[0].user_id, user.id); assert.equal(persisted[0].source, "typesense"); assert.equal(persisted[0].alerts_enabled, false);
-    assert.equal((await sql`SELECT id FROM company WHERE id=${doc.id}`).length, writeMode === "bridge" ? 1 : 0);
+    assert.equal((await sql`SELECT id FROM company WHERE id=${doc.id}`).length, 0);
     browserPhase = "account_recovery_snapshot";
     // Owner GETs intentionally update private last_accessed_at via after().
     // Compare account business state, memberships, and session metadata rather
@@ -209,7 +209,7 @@ async function main() {
     assert.equal(await page.getByRole("button", { name: "Company", exact: true }).isDisabled(), true);
     assert.equal(await page.getByRole("button", { name: `Remove ${delayedDoc.name}`, exact: true }).count(), 0);
     assert.equal((await sql`SELECT 1 FROM watchlist_company WHERE watchlist_id=${watchlistId} AND company_id=${delayedDoc.id}`).length, 1);
-    assert.equal((await sql`SELECT id FROM company WHERE id=${delayedDoc.id}`).length, process.env.COMPANY_REFERENCE_TEST_WRITE_MODE === "reference" ? 0 : 1);
+    assert.equal((await sql`SELECT id FROM company WHERE id=${delayedDoc.id}`).length, 0);
     browserPhase = "complete_canary_lifecycle";
     await page.getByRole("button", { name: "Any company", exact: true }).click();
     await page.getByRole("button", { name: `Remove ${delayedDoc.name}`, exact: true }).click();
@@ -228,7 +228,7 @@ async function main() {
     assert.equal((await sql`SELECT 1 FROM watchlist WHERE id=${watchlistId} AND user_id=${user.id}`).length, 0);
     assert.equal((await sql`SELECT 1 FROM company_reference WHERE id=${doc.id}`).length, 1, "Cleanup must retain shared durable reference");
     console.log(JSON.stringify({ contract: "company_reference_authenticated_browser", outcome: "passed", absentLegacyBefore: true, absentReferenceBefore: true,
-      authenticatedMutation: true, accountRecoveryAfter429: true, noAutomaticAccountReplay: true, committedMembership: true, persistedReload: true, laterScopeDuringLookup: true, ...lifecycle, notificationsEnabled: false, scopedCleanup: true, writeMode, legacyRowsAfterSelection: writeMode === "bridge" ? 1 : 0 }));
+      authenticatedMutation: true, accountRecoveryAfter429: true, noAutomaticAccountReplay: true, committedMembership: true, persistedReload: true, laterScopeDuringLookup: true, ...lifecycle, notificationsEnabled: false, scopedCleanup: true, writeMode, legacyRowsAfterSelection: 0 }));
     await context.close();
   } catch (error) {
     await page?.screenshot({ path: "/tmp/jobseek-company-reference-browser-failure.png", fullPage: true });

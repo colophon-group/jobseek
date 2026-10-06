@@ -278,44 +278,57 @@ cascade FKs or pre-bridge app
 releases as an automatic rollback. Schema restoration is a protected backup/restore
 operation with preserved selection data, not the destructive inverse of expansion.
 
-## Temporary bridge-code retention and removal gate (#10228)
+## Final bridge-code retirement (#10228)
 
-The web selections owner temporarily retains `writesLegacyBridge()` and the
-conditional minimal legacy `company` INSERT/conflict handling in
-[`company-references.ts`](../../apps/web/src/lib/services/company-references.ts).
-The deployed reference-mode artifact does not execute that branch. Retention
-supports the expanded-phase coexistence and rollback proofs while final rollout
-qualification remains open; it does not authorize bridge-mode production rollback.
+The active web selection materializer is reference-only. It no longer contains
+`writesLegacyBridge()` or the conditional minimal legacy `company` INSERT/conflict
+handling. It retains canonical UUID validation, sorted transactional writes,
+`legacy_seed` promotion only from verified catalogue evidence, and offline reuse
+of durable references. The current browser fixture uses exact 0101 and rejects
+bridge mode; the protected staged/public canary requires explicit reference
+configuration and proves zero legacy rows for a novel selection.
 
-Removal becomes eligible only after independently accepted 24-hour and seven-day
-qualification beginning **2026-10-04T00:30:00Z**, the first complete quarter after
-the [account-repair deployment](https://github.com/colophon-group/jobseek/actions/runs/37164396800)
-at `ed1817aa68573b847d5c006b101591711f68421e` passed promotion and public lifecycle
-acceptance.
-The earliest seven-day calendar boundary is **2026-10-11T00:30:00Z**. Elapsed time
-alone is insufficient: retain authenticated, digest-verified closed-window
-coverage, period-scoped positive telemetry and classified outcomes, current
-reference drift, and the supported immutable reference-mode rollback floor.
+The original removal prerequisite required independently accepted 24-hour and
+seven-day qualification beginning **2026-10-04T00:30:00Z**, after the
+[account-repair deployment](https://github.com/colophon-group/jobseek/actions/runs/37164396800)
+at `ed1817aa68573b847d5c006b101591711f68421e`. The 24-hour interval was independently
+accepted. On **2026-10-06**, the operator explicitly directed: “Its enough
+monitoring, progress to final stage”. This waives the remaining seven-day wait
+for this final-stage implementation; **seven-day qualification remains
+uncompleted**, and must not be represented as accepted. The retained private
+operator decision and rollout state record that disposition. Calendar time and
+this decision do not certify telemetry that was not collected or reviewed.
+
 Provider capture remains explicitly conditional. Preserve the original
 **2026-10-03T15:22:34Z** observation start and its five historical gaps; the
-qualifying interval does not reset or certify that earlier period.
+qualifying interval does not reset or certify that earlier period. Preserve the
+authenticated period evidence and all failed runs independently of the waiver.
 
-After acceptance, remove unused live compatibility code only in a separate
-reviewed PR with green Required CI and Crawler Deploy Gate. Require reference-only
-production-service tests against real PostgreSQL, authenticated browser
-first-use/reload, offline reuse and reference-only reused-slug preservation.
-Complete the protected deployment's novel staged/public lifecycle and scoped
-cleanup gates, with fresh alias identity and reference drift evidence. Retain
-the supported rollback artifact through that deployment; do not remove code or
-change the mode solely because the calendar boundary has passed.
+Final delivery still requires a separate reviewed PR with green Required CI and
+Crawler Deploy Gate, reference-only production-service tests against real
+PostgreSQL, authenticated browser first-use/reload, offline reuse and reused-slug
+preservation. Complete the protected deployment's novel staged/public lifecycle
+and scoped cleanup gates, with fresh alias identity and reference drift evidence.
+The operator decision does not establish these implementation/deployment gates;
+final issue and epic closure depend on their actual completion.
 
-Historical phase fixtures, immutable migrations/journal identities, phase-aware
-backup/restore verifiers and rollback proofs remain retained evidence. Existing
+Retain the supported immutable reference-mode rollback artifact through final
+deployment. Never promote the original bridge-mode release below that floor.
+Historical expansion, coexistence and unsupported bridge rollback tests run
+against a frozen test-only service at
+`apps/web/scripts/company-reference/historical-company-references.ts`, with exact
+source commit/blob and a SHA256 checked by the real-PG historical suite. Only
+that suite substitutes it; the current service and all browser/canary flows use
+the active reference-only service. The historical suite retains legacy trigger
+lock order, provenance races, failed-transaction preservation, exact 0101
+transition and reference-mode rollback with saved/interview history.
+
+Immutable migrations/journal identities, phase-aware backup/restore verifiers,
 `legacy_seed` provenance and canonical rows remain intact. Residual company/support
 tables keep the owners and retained-history dispositions in the dependency
 inventory below; their separate retirement requires a complete transitive FK,
-read/write and preservation audit. Passing qualification does not authorize
-dropping them or reactivating a mirror, resolver or notification delivery.
+read/write and preservation audit. This code removal does not authorize dropping
+those tables or reactivating a mirror, resolver or notification delivery.
 
 ## Dependency retirement gate
 

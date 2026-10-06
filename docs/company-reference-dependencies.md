@@ -61,12 +61,16 @@ artifacts, not imported by runtime or configured as migration inputs. Their old
 saved-job relationships must not be copied into new migrations. The expansion
 adds the new reference declaration without recreating historical constraints.
 Historical migration SQL/snapshots are immutable evidence, not runtime writers.
+The retained `company` table remains owned by the catalogue/history owners above.
+Final service bridge-code removal does not retire their inbound or transitive
+relationships, grant a table drop, or reactivate a producer.
 
 ## Active consumers and producers
 
 | Path / surface | Owner and target | Behavioral contract |
 | --- | --- | --- |
 | `src/lib/services/company.ts`, `company-detail.ts`, `company-detail-lookup.ts`, `src/lib/search/company-browser-data.ts`, `typesense-posting-detail.ts` | Catalogue reader; keep Typesense | Search/detail publish canonical identity; first-use selectable result can be saved. Public routes may disappear without deleting selections. |
+| `src/lib/services/company-references.ts` | Reference materializer owner (#10225/#10228) | Reference-only canonical UUID materialization in the caller's transaction; no legacy catalogue INSERT or mode switch. Promote only verified legacy seeds, preserve existing canonical snapshots, reuse durable references offline. |
 | `src/lib/services/watchlists.ts`: create, replacement update, duplicate/copy, individual add, remove/clear | Selection writer (#10225) | Every introduced UUID materializes atomically. Copies reuse durable references. Unauthorized or partial verification changes nothing; remove/clear remain search-independent. |
 | `src/lib/services/watchlists.ts`: detail/shared/detail preview, user listing/overview, top-company/activity previews and raw SQL company joins | Durable reader (#10226) | Join `company_reference`; preserve all selected UUIDs and last-known display when search retires/offline. Zero silent omitted references. |
 | `src/lib/actions/session-watchlists.ts`: hydration/materialize/import | Session/handoff owner (#10225/#10226) | Resolve preview display from existing references or server-verified catalogue; import through common writer; browser snapshots are not authority. |
@@ -84,6 +88,7 @@ Historical migration SQL/snapshots are immutable evidence, not runtime writers.
 | Surface | Classification / disposition |
 | --- | --- |
 | `apps/crawler/src/sync.py` company/board/mirror helper functions | Library-only compatibility, not a live company producer for web. Do not restore catalogue mirroring as the repair. Crawler UUID allocation/Typesense publication remain authoritative. |
+| `apps/web/scripts/company-reference/historical-company-references.ts`, `historical-bridge-pg.test.ts` | Frozen test-only expanded-phase/coexistence/rollback service with commit/blob/SHA256 provenance. Only the historical real-PG suite imports it; active service/browser/staged/public gates remain reference-only. |
 | `apps/web/scripts/repair-company-reference.ts` | Explicit one-company legacy operational repair. Deprecated by common reference boundary; historical use is not verification provenance. Expansion trigger labels its writes `legacy_seed`. No unattended production usage. |
 | `apps/web/src/db/seed.ts` | Development fixture writer with random legacy IDs. Never production/canonical seed; compatibility trigger supports its fixtures. It cannot supply `typesense` provenance. |
 | `apps/web/scripts/backfill-slugs.ts`, `scripts/verify-*retirement*`, `test-job-posting-retirement-pg17.ts`, old mirror cutover tests | Historical migrations/verifiers and isolated fixtures. Keep to prove the prior contract; do not treat mirror coverage as active reference coverage. |

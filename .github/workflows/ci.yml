@@ -1538,11 +1538,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Install browser
         run: pnpm --filter @jobseek/web exec playwright install --with-deps chromium
-      - name: Prove first-use references and transaction invariants
+      - name: Prove reference-only services and retained historical phase invariants
         run: pnpm --filter @jobseek/web test:company-reference
-      - name: Prove authenticated picker save and persisted reload
-        run: pnpm --filter @jobseek/web test:company-reference:browser
-      - name: Prove authenticated picker save after reference-only cutover
+      - name: Prove authenticated reference-only picker save and persisted reload
         env:
           COMPANY_REFERENCE_TEST_WRITE_MODE: reference
         run: pnpm --filter @jobseek/web test:company-reference:browser

@@ -1,8 +1,16 @@
+/**
+ * Frozen test-only company-reference bridge service, retained for expansion,
+ * coexistence and unsupported bridge rollback evidence. Never import in runtime.
+ * Source: baf9e70ee800154475d845710c3dd4ae2d8a7229
+ * Git blob: c1997df3a0619a74d63063d7de6a3424626fabce
+ * SHA256 of the unmodified source following this header: 53b244f0aa050920c3e4c0b011a33fdb75b87628194852836c63230bed966f0f
+ */
 import "server-only";
 
 import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { companyReference } from "@/db/schema";
+import { company, companyReference } from "@/db/schema";
+import { isUniqueViolation } from "@/lib/db-conflict";
 import { logExternalError } from "@/lib/safe-external-error";
 import { getSearchClient } from "@/lib/search/typesense-client";
 import { assertTypesenseSearchResult, withTypesenseRetry } from "@/lib/search/typesense-retry";
@@ -136,19 +144,43 @@ export async function fetchCanonicalCompanyReferences(ids: readonly string[]): P
   return missing.flatMap((id) => byId.has(id) ? [byId.get(id)!] : []);
 }
 
+function writesLegacyBridge(): boolean {
+  const mode = process.env.COMPANY_REFERENCE_WRITE_MODE ?? "bridge";
+  if (mode !== "bridge" && mode !== "reference") {
+    throw new Error("Invalid company reference write mode");
+  }
+  return mode === "bridge";
+}
+
 /**
- * Materialize durable references in the SAME transaction as the selection.
- * Canonical UUIDs are stable; slugs are display metadata and may be reused.
- * The contracted runtime never writes the retained legacy catalogue.
+ * Materialize both representations in the SAME transaction as the selection.
+ * ID conflicts are idempotent; a legacy slug assigned to a different canonical
+ * UUID is a hard conflict, never an opportunity to remap someone's selection.
  */
 export async function persistCompanyReferences(tx: CompanyTransaction, references: readonly PreparedCompanyReference[]): Promise<void> {
+  const bridge = writesLegacyBridge();
   // Sorted insertion avoids reversed lock order between overlapping batches.
   const sorted = [...references].sort((left, right) => left.id < right.id ? -1 : left.id > right.id ? 1 : 0);
   for (const reference of sorted) {
+    // Legacy INSERT/UPDATE holds a company row before its AFTER trigger takes
+    // the reference row. Use the same lock order during coexistence; taking
+    // reference first would deadlock against the old writer for the same UUID.
+    if (bridge) {
+      try {
+        await tx.insert(company).values({
+          id: reference.id, name: reference.name, slug: reference.slug, icon: reference.icon,
+        }).onConflictDoNothing({ target: company.id });
+      } catch (error) {
+        if (isUniqueViolation(error, "company_slug_unique") || isUniqueViolation(error, "company_slug_key")) {
+          throw new CompanyReferenceError("company_identity_conflict");
+        }
+        throw error;
+      }
+    }
     if (reference.source === "typesense") {
-      // A retained legacy seed may appear between preparation and persistence.
-      // Promote that snapshot in the same transaction; never overwrite a
-      // canonical snapshot another request already persisted.
+      // The compatibility trigger may seed a legacy row during preparation
+      // or immediately above. Promote that snapshot in the same transaction;
+      // never overwrite a canonical snapshot another request already persisted.
       await tx.insert(companyReference).values(reference).onConflictDoUpdate({
         target: companyReference.id,
         set: {
