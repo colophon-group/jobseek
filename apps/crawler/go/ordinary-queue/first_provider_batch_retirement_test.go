@@ -13,7 +13,7 @@ import (
 
 func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture {
 	t.Helper()
-	proxy := provider == "paylocity/proxy"
+	proxy := strings.HasSuffix(provider, "/proxy")
 	provider = strings.Split(provider, "/")[0]
 	p := firstOwnershipFixture(t)
 	f, ctx := p.f, context.Background()
@@ -39,6 +39,10 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 		board, metadata = "https://www.comeet.com/jobs/fixture/C6.001", `{"scraper_type":"skip"}`
 	case "jobvite":
 		board, metadata = "https://jobs.jobvite.com/fixture", `{"scraper_type":"json-ld"}`
+	case "phenom":
+		metadata = `{"sitemap_url":"https://example.com/sitemap.xml","scraper_type":"json-ld"}`
+	case "sitemap":
+		metadata = `{"sitemap_url":"https://example.com/jobs.xml","scraper_type":"json-ld"}`
 	case "dom":
 		metadata = `{"url_filter":"/jobs/","pagination":{"param_name":"page","max_pages":3},"url_transform":{"find":"\\?tracking=.*$","replace":""},"scraper_type":"json-ld"}`
 	case "rss":
@@ -125,9 +129,9 @@ func assertEightfoldCanonicalWatermarkCached(t *testing.T, p firstOwnerFixture) 
 }
 
 func TestRealProviderBatchColdRetirementAndEightfoldWatermarkRecovery(t *testing.T) {
-	for _, provider := range []string{"mokahr", "almacareer", "eightfold", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "dom", "rss", "inline", "api_sniffer", "comeet", "jobvite", "paycom", "rippling", "adp", "cornerstone", "paylocity", "paylocity/proxy"} {
+	for _, provider := range []string{"mokahr", "almacareer", "eightfold", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "dom", "rss", "inline", "api_sniffer", "comeet", "jobvite", "paycom", "rippling", "adp", "cornerstone", "paylocity", "paylocity/proxy", "dom/proxy", "api_sniffer/proxy", "inline/proxy", "sitemap/proxy", "eightfold/proxy", "phenom/proxy"} {
 		modes := []string{"interrupted", "committed-before-ack", "changed-setting"}
-		if provider == "eightfold" {
+		if strings.Split(provider, "/")[0] == "eightfold" {
 			modes = append(modes, "reaped-before-ack", "recovered-ack", "settled-cold", "save-failure", "orphan-cache")
 		}
 		for _, mode := range modes {
@@ -142,14 +146,14 @@ func TestRealProviderBatchColdRetirementAndEightfoldWatermarkRecovery(t *testing
 						t.Fatal(e)
 					}
 					summary := GreenhouseInventorySummary{}
-					if provider == "eightfold" {
+					if strings.Split(provider, "/")[0] == "eightfold" {
 						summary.MetadataUpdates = map[string]any{"pcsx_watermark": map[string]any{"max_ts": 123, "interval_days": 7, "auto_full_crawl": true, "enabled": true, "last_full_at": "2026-10-06T03:00:00.120000+00:00", "last_incremental_at": "2026-10-06T03:00:00.120000+00:00", "extra": map[string]any{"host": "example.com", "domain": "fixture"}}}
 					}
 					result, e = cycle.FinishSuccess(ctx, summary)
 					if e != nil {
 						t.Fatal(e)
 					}
-					if provider == "eightfold" && strings.Contains(p.f.client.redis.HGet(ctx, "board:"+claim.task.ID, "metadata").Val(), "max_ts") {
+					if strings.Split(provider, "/")[0] == "eightfold" && strings.Contains(p.f.client.redis.HGet(ctx, "board:"+claim.task.ID, "metadata").Val(), "max_ts") {
 						t.Fatal("watermark cache advanced before canonical settlement")
 					}
 				}
@@ -229,14 +233,14 @@ func TestRealProviderBatchColdRetirementAndEightfoldWatermarkRecovery(t *testing
 				if coldCanonicalSnapshot(t, p.f) != canonical {
 					t.Fatal("retirement rewrote canonical output or receipt")
 				}
-				if provider == "eightfold" {
+				if strings.Split(provider, "/")[0] == "eightfold" {
 					assertEightfoldCanonicalWatermarkCached(t, p)
 				}
 				if e := a.Heartbeat(ctx, claim); !errors.Is(e, ErrAuthorityLost) {
 					t.Fatal("retired writer retained authority", e)
 				}
 				restartPublicationRedisWithoutSave(t, p.f.client)
-				if provider == "eightfold" {
+				if strings.Split(provider, "/")[0] == "eightfold" {
 					assertEightfoldCanonicalWatermarkCached(t, p)
 				}
 				if mode != "orphan-cache" {

@@ -9,9 +9,15 @@ import (
 )
 
 func TestRealOwnedPhenomLocalesShardsPublisherPolicyAndQueueConservation(t *testing.T) {
+	realPhenomTransportCases(t, false)
+}
+func TestRealProxyPhenomLocalesShardsPublisherPolicyAndQueueConservation(t *testing.T) {
+	realPhenomTransportCases(t, true)
+}
+func realPhenomTransportCases(t *testing.T, proxy bool) {
 	for _, mode := range []string{"success", "later_failure", "retry403", "retry202", "root_missing", "root_invalid", "root_nonxml", "child_missing", "child_invalid", "empty_leaf", "root_header", "header", "meta", "foreign"} {
 		t.Run(mode, func(t *testing.T) {
-			f := privateRichPipelineFixture(t, "phenom", `{"sitemap_url":"https://example.com/sitemap.xml","scraper_type":"json-ld"}`)
+			f := privateRichPipelineFixture(t, "phenom", proxyFixtureMetadata(t, `{"sitemap_url":"https://example.com/sitemap.xml","scraper_type":"json-ld"}`, proxy))
 			ctx := context.Background()
 			if _, err := f.pg.Exec(ctx, "UPDATE job_posting SET missing_count=3 WHERE id=$1::uuid", f.original); err != nil {
 				t.Fatal(err)
@@ -85,6 +91,9 @@ func TestRealOwnedPhenomLocalesShardsPublisherPolicyAndQueueConservation(t *test
 				}
 			}))
 			preparer := &pipelinePreparer{}
+			if proxy {
+				client = credentialedProxyFixture(t, client)
+			}
 			result, err := RunGreenhouseClaim(ctx, f.a, claim, client, preparer, circuits)
 			if err != nil || result == nil || !result.Settled || preparer.at != 0 {
 				t.Fatal(result, err)

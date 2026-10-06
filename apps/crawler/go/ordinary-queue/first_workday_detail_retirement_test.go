@@ -17,6 +17,9 @@ func firstWorkdayDetailFixture(t *testing.T) firstOwnerFixture {
 }
 func firstAPIDetailFixture(t *testing.T, requested string) firstOwnerFixture {
 	t.Helper()
+	if requested == "eightfold/proxy" {
+		return firstIndependentDetailFixture(t, `{"scraper_type":"eightfold","scraper_config":{"proxy":true,"enrich":["description"]}}`, "https://citi.eightfold.ai/careers/job/859033176537-engineer?domain=citi.com", "citi.eightfold.ai")
+	}
 	if requested == "paylocity/proxy" {
 		return firstIndependentDetailFixture(t, `{"scraper_type":"paylocity","scraper_config":{"proxy":true,"enrich":["description"]}}`, "https://2000recruiting.paylocity.com/Recruiting/Jobs/Details/123", "2000recruiting.paylocity.com")
 	}
@@ -96,7 +99,7 @@ func TestRealFirstEmbeddedDetailRetirementConservesInterruptedAndCompletedAttemp
 	testFirstAPIDetailRetirement(t, "embedded")
 }
 func TestRealFirstProviderBatchDetailRetirementConservesInterruptedAndCompletedAttempts(t *testing.T) {
-	for _, provider := range []string{"mokahr", "eightfold", "paycom", "rippling", "adp", "paylocity", "paylocity/proxy"} {
+	for _, provider := range []string{"mokahr", "eightfold", "paycom", "rippling", "adp", "paylocity", "paylocity/proxy", "eightfold/proxy"} {
 		t.Run(provider, func(t *testing.T) { testFirstAPIDetailRetirement(t, provider) })
 	}
 }

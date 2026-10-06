@@ -24,7 +24,7 @@ func TestInlineProfileBindsExtractionIdentityAndAlternatePublicResources(t *test
 	if err != nil || q.EffectiveConfigSHA256 == p.EffectiveConfigSHA256 {
 		t.Fatal("step binding lost", err)
 	}
-	for _, m := range []string{`{"unknown":true}`, `{"render":true,"steps":[{"tag":"h2","field":"title"}]}`, `{"proxy":true,"steps":[{"tag":"h2","field":"title"}]}`, `{"steps":[{"tag":"h2","field":"title"}],"fetch_urls":[{"url":"https://example.com/jobs","headers":{"Authorization":"Bearer private"}}]}`, `{"require_zero_proof":true}`, `{"positions_per_listing":true}`, `{"include_hidden":"true"}`} {
+	for _, m := range []string{`{"unknown":true}`, `{"render":true,"steps":[{"tag":"h2","field":"title"}]}`, `{"proxy":"enabled","steps":[{"tag":"h2","field":"title"}]}`, `{"steps":[{"tag":"h2","field":"title"}],"fetch_urls":[{"url":"https://example.com/jobs","headers":{"Authorization":"Bearer private"}}]}`, `{"require_zero_proof":true}`, `{"positions_per_listing":true}`, `{"include_hidden":"true"}`} {
 		c["metadata"] = m
 		if _, err := InspectRichMonitor(profileBoardID, c); err == nil {
 			t.Fatal("unsupported configuration gained authority")

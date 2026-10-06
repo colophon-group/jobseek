@@ -43,6 +43,11 @@ func fifthExecutionHTTPFixture(t *testing.T, c fifthHTTPCase, requests *[]fourth
 	if !strings.HasSuffix(c.Name, "/proxy") {
 		return origin
 	}
+	return credentialedProxyFixture(t, origin)
+}
+
+func credentialedProxyFixture(t *testing.T, origin *VerifiedHTTP) *VerifiedHTTP {
+	t.Helper()
 	original := origin.client.Transport.(*directTransport)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		if request.Method != "CONNECT" || request.Header.Get("Proxy-Authorization") == "" {
@@ -71,11 +76,17 @@ func fifthExecutionHTTPFixture(t *testing.T, c fifthHTTPCase, requests *[]fourth
 	endpoint, _ := url.Parse(server.URL)
 	endpoint.User = url.UserPassword("synthetic-user", "synthetic-password")
 	base := &directTransport{inner: original.inner.Clone(), allowed: map[string]bool{"127.0.0.1": true}, lookup: original.lookup, timeout: original.timeout, requests: original.requests, connections: original.connections, dial: (&net.Dialer{}).DialContext}
-	pool, err := newLiveProxyPool(1, -1)
+	endpoints := []*url.URL{endpoint}
+	for _, username := range []string{"synthetic-user-2", "synthetic-user-3"} {
+		copy := *endpoint
+		copy.User = url.UserPassword(username, "synthetic-password")
+		endpoints = append(endpoints, &copy)
+	}
+	pool, err := newLiveProxyPool(len(endpoints), -1)
 	if err != nil {
 		t.Fatal(err)
 	}
-	transport := &rotatingProxyTransport{pool: pool, base: base, endpoints: []*url.URL{endpoint}, transports: make([]*directTransport, 1)}
+	transport := &rotatingProxyTransport{pool: pool, base: base, endpoints: endpoints, transports: make([]*directTransport, len(endpoints))}
 	client := *origin.client
 	client.Transport = transport
 	client.CheckRedirect = func(request *http.Request, via []*http.Request) error {

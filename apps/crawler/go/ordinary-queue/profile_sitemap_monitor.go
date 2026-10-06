@@ -9,6 +9,11 @@ import (
 )
 
 func SitemapMonitorConfig(config map[string]string) (sitemap.Config, string, string, error) {
+	parsed, parseErr := httpMonitorParsingConfig(config)
+	if parseErr != nil {
+		return sitemap.Config{}, "", "", parseErr
+	}
+	config = parsed
 	var md map[string]json.RawMessage
 	fail := func() (sitemap.Config, string, string, error) { return sitemap.Config{}, "", "", ErrUnsupportedProfile }
 	if json.Unmarshal([]byte(config["metadata"]), &md) != nil {

@@ -5,6 +5,58 @@
 The full migration goal is **active and incomplete**. Ship multiple provider
 and variant types per release, sharing reference verification, CI and cutover.
 
+Production **0.13.955** is now independently verified from merged source
+`d123d6fcfc14ef2b38c81d1722a53f83ce7b93b2`, after [PR #10343](https://github.com/colophon-group/jobseek/pull/10343)
+ported ADP, Paylocity, Cornerstone and Dayforce together. Original crawler
+[37545348696](https://github.com/colophon-group/jobseek/actions/runs/37545348696)
+and renderer [37545455840](https://github.com/colophon-group/jobseek/actions/runs/37545455840)
+both completed successfully. Read-only production observation at 23:34 UTC
+October 6 verified both exact digest-pinned crawler images, six healthy services,
+seven restart-armed base processes, epoch 204, cleared native selectors and absent
+B0/ordinary ownership, projection and native tokens. The prior 954 ordinary plan
+is retired; historical audit receipts remain intact. Go code being deployed does
+not yet mean native production ownership has been activated.
+
+The selected standalone renderer was independently verified at 23:21 UTC against
+its original release generation, immutable image, network policy, PKI, isolation
+and actual ARM64 Lightpanda **1.0.0** binary hash. The official non-prerelease
+release list was rechecked October 7; 1.0.0 remains the latest stable release.
+
+Original [B0 whole-lane benchmark 37542921649](https://github.com/colophon-group/jobseek/actions/runs/37542921649)
+completed all 16 synthetic trials with exact canonical output, queue accounting
+and cleanup. Its CI merge source `cfb2b44e388c790485e815a6924b0e1dd1606e7d`
+has the same tree `46a20c8646d26cf7e66b0cdccb116b9b58c56c9a` as the reviewed
+head and deployed squash. At concurrency four, synchronized whole-lane peak RAM
+was 11.65–12.28% of the Python control, lifetime CPU 4.63–4.67s versus
+10.36–10.88s, and fixture density 12.86–13.49 times the control. This proves the
+bounded B0 fixture; full ordinary production workload cost remains to be measured.
+
+The next grouped candidate **0.13.956** extends the existing protected proxy
+transport across **DOM + API-sniffer + Inline + Sitemap + Eightfold + Phenom**,
+and Eightfold's independently configured detail scraper. Seven new compiled
+profiles bring the installed capability list to 78. Original configuration hashes,
+TLS/public-origin checks, publisher-policy attribution, bounded pooling/retries,
+independent detail choices and cold reversal remain required. HTTP proxy support
+does not admit browser proxy configurations or unrelated unported options.
+
+Against the retained source954 canonical capture, actual candidate code admits
+27 additional monitor configurations: six DOM, two Inline, three Sitemap, nine
+Eightfold and seven Phenom. It raises historical monitor eligibility from 7133 to
+7160 of 7885, without changing those configurations. This is historical local
+eligibility, not current ownership or complete detail coverage. The current CSV
+also verifies all nine Eightfold proxy monitor/detail assignments; remaining
+DOM/JSON-LD proxy detail variants still need implementation before their boards
+can enter a complete native cohort.
+
+Continue with source-bound fresh cohort admission and supported activation,
+using the deployed failure diagnostics to establish any startup cause. Preserve
+cold reversal before another rollout. Port browser actions/capture and richer
+feeds in grouped batches, then remaining provider families, runtime consumers,
+full ordinary resource/cost proof and production Python retirement. Do not retry
+the retired source954 ownership identity.
+
+### Prior releases and evidence
+
 Production **0.13.949** was deployed from
 `c7f789faef866c0fd77921750095f1a6253c707d` through original immutable deployment
 [37417474358](https://github.com/colophon-group/jobseek/actions/runs/37417474358).

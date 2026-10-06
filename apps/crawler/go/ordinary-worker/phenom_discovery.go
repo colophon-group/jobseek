@@ -172,7 +172,7 @@ func fetchPhenomXML(ctx context.Context, s *nativeSitemapSession, resource strin
 func discoverPhenomInventory(ctx context.Context, client *http.Client, p queue.GreenhouseMonitorProfile, config map[string]string) (RichDiscovery, error) {
 	result := RichDiscovery{Jobs: []RichMonitorJob{}}
 	root, languages, exclude, err := queue.PhenomMonitorConfig(config)
-	if err != nil || client == nil || p.Provider != "phenom" || p.Profile != "phenom.sitemap-urls/v1" || root != p.Endpoint {
+	if err != nil || client == nil || p.Provider != "phenom" || (p.Profile != "phenom.sitemap-urls/v1" && p.Profile != "phenom.proxy-sitemap-urls/v1") || root != p.Endpoint {
 		return result, queue.ErrConfiguration
 	}
 	op := *client

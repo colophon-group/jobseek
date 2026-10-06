@@ -115,12 +115,21 @@ func providerBatchReferenceHTTP(t *testing.T, c providerBatchHTTPCase) *Verified
 }
 
 func TestRealProviderBatchReferenceHTTPCommitsCanonicalContentAndDetails(t *testing.T) {
+	realProviderBatchTransportCases(t, false)
+}
+func TestRealProxyEightfoldReferenceHTTPCommitsCanonicalContentAndDetails(t *testing.T) {
+	realProviderBatchTransportCases(t, true)
+}
+func realProviderBatchTransportCases(t *testing.T, proxy bool) {
 	cases := map[string][]string{
 		"mokahr":     {"complete", "enrich-new", "enrich-retained", "zero-confirmed", "foreign-row", "page-gone", "page-shutdown", "partition-failure-discards-prefix"},
 		"almacareer": {"complete", "empty", "later-listing-failure", "detail-failure-teaser", "listing-header-reserved", "detail-header-reserved", "script-native-header-boundary", "script-gone"},
 		"eightfold":  {"first-full", "incremental", "cached-disabled", "probe-disabled", "manual-first", "boundary-jitter-resets-safety", "probe-reserved", "fetch-reserved", "fetch-prefix-failure"},
 	}
 	for _, provider := range []string{"mokahr", "almacareer", "eightfold"} {
+		if proxy && provider != "eightfold" {
+			continue
+		}
 		for _, mode := range cases[provider] {
 			t.Run(provider+"/"+mode, func(t *testing.T) {
 				name := mode
@@ -139,6 +148,9 @@ func TestRealProviderBatchReferenceHTTPCommitsCanonicalContentAndDetails(t *test
 					metadata["scraper_type"] = provider
 					metadata["scraper_config"] = map[string]any{"enrich": []string{"description"}}
 				}
+				if proxy {
+					metadata["proxy"] = true
+				}
 				body, e := json.Marshal(metadata)
 				if e != nil {
 					t.Fatal(e)
@@ -155,7 +167,11 @@ func TestRealProviderBatchReferenceHTTPCommitsCanonicalContentAndDetails(t *test
 					}
 				}
 				claim, circuits := claimFixture(t, f)
-				result, e := RunGreenhouseClaim(ctx, f.a, claim, providerBatchReferenceHTTP(t, c), richPipelinePreparer(t, f), circuits)
+				client := providerBatchReferenceHTTP(t, c)
+				if proxy {
+					client = credentialedProxyFixture(t, client)
+				}
+				result, e := RunGreenhouseClaim(ctx, f.a, claim, client, richPipelinePreparer(t, f), circuits)
 				if e != nil || result == nil || !result.Settled {
 					t.Fatal("provider did not reach canonical settlement", result, e)
 				}

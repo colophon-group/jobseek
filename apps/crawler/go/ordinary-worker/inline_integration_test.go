@@ -11,6 +11,12 @@ import (
 )
 
 func TestRealInlineCanonicalEmptyPolicyAlternateIdentityAndEnrichment(t *testing.T) {
+	realInlineTransportCases(t, false)
+}
+func TestRealProxyInlineCanonicalEmptyPolicyAlternateIdentityAndEnrichment(t *testing.T) {
+	realInlineTransportCases(t, true)
+}
+func realInlineTransportCases(t *testing.T, proxy bool) {
 	for _, mode := range []string{"rich", "description-mask-new", "description-mask-retained", "reserved", "meta-reserved", "alternate-reserved", "root404", "section-drift", "source-origin-drift", "zero-proof", "explicit-empty", "all-expired", "changed-binding", "json-wrapper", "alternate"} {
 		t.Run(mode, func(t *testing.T) {
 			md := map[string]any{"scraper_type": "skip", "steps": []any{map[string]any{"tag": "h2", "field": "title"}, map[string]any{"tag": "p", "field": "description", "html": true, "stop_tag": "h2"}}, "defaults": map[string]any{"locations": []string{"Zurich"}}}
@@ -40,6 +46,9 @@ func TestRealInlineCanonicalEmptyPolicyAlternateIdentityAndEnrichment(t *testing
 			}
 			if mode == "json-wrapper" {
 				md["fetch_json_path"] = "[0].content.rendered"
+			}
+			if proxy {
+				md["proxy"] = true
 			}
 			encoded, _ := json.Marshal(md)
 			f := privateRichPipelineFixture(t, "inline", string(encoded))
@@ -101,6 +110,9 @@ func TestRealInlineCanonicalEmptyPolicyAlternateIdentityAndEnrichment(t *testing
 				}
 				fmt.Fprint(w, body)
 			})
+			if proxy {
+				client = credentialedProxyFixture(t, client)
+			}
 			result, err := RunGreenhouseClaim(ctx, f.a, claim, client, richPipelinePreparer(t, f), circuits)
 			if mode == "changed-binding" {
 				if err == nil || result.Settled {

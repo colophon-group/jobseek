@@ -10,9 +10,15 @@ import (
 )
 
 func TestRealOwnedSitemapCompleteInventoryFiltersFailureAndPolicy(t *testing.T) {
+	realSitemapTransportCases(t, false)
+}
+func TestRealProxySitemapCompleteInventoryFiltersFailureAndPolicy(t *testing.T) {
+	realSitemapTransportCases(t, true)
+}
+func realSitemapTransportCases(t *testing.T, proxy bool) {
 	for _, mode := range []string{"success", "retry429", "empty", "status404", "malformed", "index", "header", "meta"} {
 		t.Run(mode, func(t *testing.T) {
-			f := privateRichPipelineFixture(t, "sitemap", `{"sitemap_url":"https://example.com/jobs.xml","url_filter":{"include":"/jobs/\\w+","exclude":"intern"},"scraper_type":"json-ld"}`)
+			f := privateRichPipelineFixture(t, "sitemap", proxyFixtureMetadata(t, `{"sitemap_url":"https://example.com/jobs.xml","url_filter":{"include":"/jobs/\\w+","exclude":"intern"},"scraper_type":"json-ld"}`, proxy))
 			ctx := context.Background()
 			if _, err := f.pg.Exec(ctx, "UPDATE job_posting SET missing_count=3 WHERE id=$1::uuid", f.original); err != nil {
 				t.Fatal(err)
@@ -48,6 +54,9 @@ func TestRealOwnedSitemapCompleteInventoryFiltersFailureAndPolicy(t *testing.T) 
 				}
 			}))
 			preparer := &pipelinePreparer{}
+			if proxy {
+				client = credentialedProxyFixture(t, client)
+			}
 			result, err := RunGreenhouseClaim(ctx, f.a, claim, client, preparer, circuits)
 			if err != nil || result == nil || !result.Settled || preparer.at != 0 {
 				t.Fatal(result, err)

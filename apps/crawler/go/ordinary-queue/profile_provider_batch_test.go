@@ -50,11 +50,10 @@ func TestProviderBatchCurrentRegistryConfigurationCoverage(t *testing.T) {
 		config["crawler_type"], config["board_url"], config["metadata"] = provider, row[headers["board_url"]], string(encoded)
 		profile, e := InspectRichMonitor(profileBoardID, config)
 		if metadata["proxy"] == true {
-			if e == nil {
-				t.Fatal("configured proxy acquired direct monitor authority")
+			if provider != "eightfold" || e != nil || profile.Profile != "eightfold.proxy-pcsx-sitemap/v1" {
+				t.Fatal("configured proxy lacks bound transport authority", e)
 			}
-			counts[provider+"_proxy_preserved"]++
-			continue
+			counts[provider+"_proxy"]++
 		}
 		if e != nil || profile.Provider != provider || MonitorWorker(profile) != Simple {
 			t.Fatal("configured direct provider unsupported", row[headers["board_slug"]])
@@ -115,7 +114,7 @@ func TestEightfoldStableBindingPreservesOperatorConfigAndIgnoresOnlyRuntimeState
 			t.Fatal("operator setting lost immutable binding", e)
 		}
 	}
-	for _, change := range []string{`{"scraper_type":"eightfold","pcsx_watermark":{"unknown":true}}`, `{"scraper_type":"eightfold","proxy":true}`, `{"scraper_type":"eightfold","render":true}`, `{"scraper_type":"eightfold","sitemap_url":"https://foreign.example/sitemap.xml"}`} {
+	for _, change := range []string{`{"scraper_type":"eightfold","pcsx_watermark":{"unknown":true}}`, `{"scraper_type":"eightfold","proxy":"enabled"}`, `{"scraper_type":"eightfold","render":true}`, `{"scraper_type":"eightfold","sitemap_url":"https://foreign.example/sitemap.xml"}`} {
 		c["metadata"] = change
 		if _, e := InspectRichMonitor(profileBoardID, c); e == nil {
 			t.Fatal("unsupported source acquired direct authority")

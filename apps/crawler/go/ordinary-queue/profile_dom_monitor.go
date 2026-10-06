@@ -17,6 +17,11 @@ func DOMMonitorOptions(config map[string]string) (dom.ListingConfig, error) {
 }
 
 func directDOMMonitorOptions(config map[string]string) (dom.ListingConfig, error) {
+	parsed, parseErr := httpMonitorParsingConfig(config)
+	if parseErr != nil {
+		return dom.ListingConfig{}, parseErr
+	}
+	config = parsed
 	md, err := richProfileMetadata(config)
 	if err != nil {
 		return dom.ListingConfig{}, err

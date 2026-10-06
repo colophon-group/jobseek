@@ -1,9 +1,58 @@
 package queue
 
+import "encoding/json"
+
+var httpMonitorProxyProfiles = map[string]string{
+	"dom.direct-urls/v1":        "dom.proxy-urls/v1",
+	"api_sniffer.http-items/v1": "api_sniffer.proxy-http-items/v1",
+	"inline.document-items/v1":  "inline.proxy-document-items/v1",
+	"sitemap.explicit-urls/v1":  "sitemap.proxy-explicit-urls/v1",
+	"eightfold.pcsx-sitemap/v1": "eightfold.proxy-pcsx-sitemap/v1",
+	"phenom.sitemap-urls/v1":    "phenom.proxy-sitemap-urls/v1",
+}
+
+// Parsers receive content options, while the immutable profile and process
+// client own transport. Only the proven HTTP families may separate proxy=true
+// here; browser settings and every other option still pass their strict parser.
+// The original configuration remains the claim and ownership hash input.
+func httpMonitorParsingConfig(config map[string]string) (map[string]string, error) {
+	md, err := profileMetadataFields(config["metadata"], nil)
+	if err != nil {
+		return nil, err
+	}
+	if string(md["proxy"]) != "true" {
+		return config, nil
+	}
+	switch config["crawler_type"] {
+	case "dom", "api_sniffer", "inline", "sitemap", "eightfold", "phenom":
+	default:
+		return nil, ErrUnsupportedProfile
+	}
+	if config["monitor_needs_browser"] != "0" {
+		return nil, ErrUnsupportedProfile
+	}
+	md["proxy"] = json.RawMessage("false")
+	body, err := json.Marshal(md)
+	if err != nil {
+		return nil, ErrUnsupportedProfile
+	}
+	parsed := cloneConfig(config)
+	parsed["metadata"] = string(body)
+	return parsed, nil
+}
+
 // Transport choice is compiled into immutable profile identities; neither a
 // generic caller flag nor a runtime selector grants proxy write authority.
 func ProfileRequiresProxy(profile string) bool {
-	return profile == "paylocity.proxy-embedded-items/v1" || profile == paylocityProxyDetailProfile
+	if profile == "paylocity.proxy-embedded-items/v1" || profile == paylocityProxyDetailProfile || profile == eightfoldProxyDetailProfile {
+		return true
+	}
+	for _, proxy := range httpMonitorProxyProfiles {
+		if profile == proxy {
+			return true
+		}
+	}
+	return false
 }
 
 func (a *Authority) RequiresProxyHTTP() bool {

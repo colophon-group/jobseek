@@ -42,7 +42,7 @@ func TestSitemapMonitorBindsExplicitResourceFiltersAndDetailConfig(t *testing.T)
 		`{"sitemap_url":"https://example.com/jobs.xml#fragment"}`,
 		`{"sitemap_url":"https://example.com/jobs.xml","xml_attempts":true}`,
 		`{"sitemap_url":"https://example.com/jobs.xml","xml_attempts":2}`,
-		`{"sitemap_url":"https://example.com/jobs.xml","proxy":true}`,
+		`{"sitemap_url":"https://example.com/jobs.xml","proxy":"enabled"}`,
 		`{"sitemap_url":"https://example.com/jobs.xml","ssl_verify":false}`,
 		`{"sitemap_url":"https://example.com/jobs.xml","url_filter":{"include":"["}}`,
 		`{"sitemap_url":"https://example.com/jobs.xml","url_filter":{"include":1}}`,

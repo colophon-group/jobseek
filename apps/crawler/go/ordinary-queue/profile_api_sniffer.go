@@ -6,6 +6,11 @@ import (
 )
 
 func APISnifferMonitorOptions(config map[string]string) (apisniffer.Options, error) {
+	parsed, parseErr := httpMonitorParsingConfig(config)
+	if parseErr != nil {
+		return apisniffer.Options{}, parseErr
+	}
+	config = parsed
 	if config["crawler_type"] != "api_sniffer" || config["monitor_needs_browser"] != "0" {
 		return apisniffer.Options{}, ErrUnsupportedProfile
 	}
@@ -35,5 +40,5 @@ func inspectAPISnifferMonitor(boardID string, config map[string]string, md map[s
 
 func APISnifferMonitorResourceMatches(p GreenhouseMonitorProfile, config map[string]string, endpoint string) bool {
 	o, err := APISnifferMonitorOptions(config)
-	return err == nil && p.Provider == "api_sniffer" && p.Profile == "api_sniffer.http-items/v1" && p.Endpoint == o.Endpoint && o.ResourceMatches(endpoint)
+	return err == nil && p.Provider == "api_sniffer" && (p.Profile == "api_sniffer.http-items/v1" || p.Profile == "api_sniffer.proxy-http-items/v1") && p.Endpoint == o.Endpoint && o.ResourceMatches(endpoint)
 }
