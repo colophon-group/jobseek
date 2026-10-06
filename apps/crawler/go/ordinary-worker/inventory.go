@@ -11,6 +11,7 @@ import (
 type RichMonitorJob struct {
 	URL                                  string
 	SourceIdentity                       string
+	Hybrid                               bool
 	Title, Description                   *string
 	Locations                            []string
 	Language                             any

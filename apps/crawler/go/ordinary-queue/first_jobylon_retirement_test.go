@@ -12,7 +12,7 @@ import (
 )
 
 func TestRealFirstEmbeddedMonitorColdRetirement(t *testing.T) {
-	for _, provider := range []string{"jobylon", "nextdata"} {
+	for _, provider := range []string{"jobylon", "nextdata", "beisen", "inline"} {
 		for _, mode := range []string{"interrupted", "committed-before-ack", "changed-token"} {
 			t.Run(provider+"/"+mode, func(t *testing.T) {
 				ctx := context.Background()
@@ -22,6 +22,13 @@ func TestRealFirstEmbeddedMonitorColdRetirement(t *testing.T) {
 				boardURL := "https://example.com/careers"
 				if provider == "nextdata" {
 					metadata = `{"path":"jobs","url_template":"https://example.com/jobs/{id}","fields":{"title":"title"},"scraper_type":"json-ld"}`
+				}
+				if provider == "inline" {
+					metadata = `{"steps":[{"tag":"h2","field":"title"}],"scraper_type":"skip"}`
+				}
+				if provider == "beisen" {
+					boardURL = "https://fixture.zhiye.com/"
+					metadata = `{"tenant":"fixture","variant":"modern","portal_id":"22222222-2222-4222-8222-222222222222","tenant_id":123,"scraper_type":"skip"}`
 				}
 				if _, err := f.observer.Exec(ctx, "UPDATE job_board SET board_url=$2,crawler_type=$4,throttle_key=$4,metadata=$3::jsonb WHERE id=$1::uuid", f.task.ID, boardURL, metadata, provider); err != nil {
 					t.Fatal(err)
@@ -66,6 +73,9 @@ func TestRealFirstEmbeddedMonitorColdRetirement(t *testing.T) {
 				}
 				if mode == "changed-token" {
 					changed := strings.ReplaceAll(metadata, "123", "456")
+					if provider == "inline" {
+						changed = strings.ReplaceAll(metadata, "h2", "h3")
+					}
 					if provider == "nextdata" {
 						changed = strings.ReplaceAll(metadata, "jobs/{id}", "changed/{id}")
 					}

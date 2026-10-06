@@ -27,8 +27,9 @@ type greenhouseGoneDecision struct {
 // signal. Generic network, parsing, HTTP failures and partial inventories must
 // never enter this path. The cycle verifies the exact endpoint and status.
 type GreenhouseGoneObservation struct {
-	Endpoint   string
-	HTTPStatus int
+	Endpoint       string
+	HTTPStatus     int
+	PortalDisabled bool
 }
 
 func evaluateGreenhouseGone(state greenhouseGoneState, now time.Time) (greenhouseGoneDecision, error) {
@@ -97,7 +98,7 @@ func (c *GreenhouseCycle) FinishProviderGone(ctx context.Context, observation Gr
 // The worker must supply its own completed verified response, never a URL from
 // an inventory posting, redirect header, probe or caller-synthesized result.
 func (c *GreenhouseCycle) FinishProviderGoneResource(ctx context.Context, initialEndpoint string, observation GreenhouseGoneObservation) (*GreenhouseCycleResult, error) {
-	if c == nil || c.authority == nil || (observation.HTTPStatus != 404 && observation.HTTPStatus != 410) {
+	if c == nil || c.authority == nil {
 		return nil, ErrConfiguration
 	}
 	c.mu.Lock()
@@ -106,7 +107,14 @@ func (c *GreenhouseCycle) FinishProviderGoneResource(ctx context.Context, initia
 		return nil, ErrConfiguration
 	}
 	profile, err := InspectRichMonitor(c.claim.task.ID, c.claim.task.Config)
-	if err != nil || initialEndpoint != profile.Endpoint || observation.HTTPStatus == 410 && profile.Provider != "join" && profile.Provider != "dom" && profile.Provider != "icims" && profile.Provider != "jazzhr" && profile.Provider != "gupy" || !validGreenhouseResponseResource(observation.Endpoint) {
+	if err != nil || !validGreenhouseResponseResource(observation.Endpoint) {
+		return nil, ErrConfiguration
+	}
+	if profile.Provider == "beisen" {
+		if !BeisenMonitorPrimaryGone(c.claim.task.Config, initialEndpoint, observation.HTTPStatus, observation.PortalDisabled) {
+			return nil, ErrConfiguration
+		}
+	} else if observation.PortalDisabled || (observation.HTTPStatus != 404 && observation.HTTPStatus != 410) || initialEndpoint != profile.Endpoint || observation.HTTPStatus == 410 && profile.Provider != "join" && profile.Provider != "dom" && profile.Provider != "icims" && profile.Provider != "jazzhr" && profile.Provider != "gupy" {
 		return nil, ErrConfiguration
 	}
 	if profile.Provider == "icims" && !ICIMSMonitorPrimaryGone(c.claim.task.Config, initialEndpoint, observation.HTTPStatus) {
@@ -133,8 +141,17 @@ func (c *GreenhouseCycle) FinishProviderGoneResource(ctx context.Context, initia
 		var count int
 		var due time.Time
 		provider := map[string]string{"greenhouse": "Greenhouse", "ashby": "Ashby", "lever": "Lever", "recruitee": "Recruitee", "join": "JOIN", "icims": "iCIMS", "jazzhr": "JazzHR", "gupy": "Gupy", "jobylon": "Jobylon"}[profile.Provider]
+		message := fmt.Sprintf("%s API returned HTTP %d", provider, observation.HTTPStatus)
+		var goneStatus any = observation.HTTPStatus
+		if profile.Provider == "beisen" {
+			goneStatus = nil
+			message = "Beisen board no longer exists"
+			if observation.PortalDisabled {
+				message = "Beisen portal is disabled"
+			}
+		}
 		if err := tx.QueryRow(ctx, lifecycleQuery("gone"), c.claim.task.ID, decision.Status, decision.Count,
-			decision.First, decision.Last, decision.Gone, decision.Due, fmt.Sprintf("%s API returned HTTP %d", provider, observation.HTTPStatus), observation.Endpoint, observation.HTTPStatus, decision.Terminal).Scan(&status, &count, &due); err != nil {
+			decision.First, decision.Last, decision.Gone, decision.Due, message, observation.Endpoint, goneStatus, decision.Terminal).Scan(&status, &count, &due); err != nil {
 			return err
 		}
 		result.Status = decision.Status

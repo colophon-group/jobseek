@@ -1,0 +1,440 @@
+{
+  "schema": "jobseek.native-inline-local/v1",
+  "observed_at_utc": "2026-10-06T00:02:38.687029+00:00",
+  "capture_source_revision": "9595042b1423f2aca60e2da6f27195c1beb4b828",
+  "canonical_cached_admitted": 100,
+  "enabled_inline_target": 125,
+  "remaining": [
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_monitor_config_fingerprint",
+        "defaults",
+        "fetch_contains",
+        "fetch_urls",
+        "recent_discovered_counts",
+        "scraper_type",
+        "steps",
+        "suspect_streak"
+      ],
+      "slug": "coupang-cls-camp"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_monitor_config_fingerprint",
+        "item_boundary",
+        "preserve_single_location",
+        "recent_discovered_counts",
+        "require_zero_proof",
+        "scraper_type",
+        "skip_ssl",
+        "steps",
+        "suspect_streak"
+      ],
+      "slug": "assa-abloy-careers-china-entrance"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_monitor_config_fingerprint",
+        "defaults",
+        "defaults_by_title",
+        "item_boundary_tag",
+        "recent_discovered_counts",
+        "render",
+        "require_zero_proof",
+        "scraper_type",
+        "section_end",
+        "section_start",
+        "steps",
+        "suspect_streak"
+      ],
+      "slug": "arcadis-kua-dc"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_monitor_config_fingerprint",
+        "defaults",
+        "defaults_by_title",
+        "preserve_single_location",
+        "recent_discovered_counts",
+        "render",
+        "require_zero_proof",
+        "scraper_type",
+        "steps",
+        "suspect_streak"
+      ],
+      "slug": "skechers-israel-retail"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_monitor_config_fingerprint",
+        "recent_discovered_counts",
+        "render",
+        "scraper_type",
+        "stealth",
+        "steps",
+        "suspect_streak",
+        "timeout",
+        "wait"
+      ],
+      "slug": "daiichi-sankyo-vietnam"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_monitor_config_fingerprint",
+        "defaults",
+        "fetch_contains",
+        "fetch_urls",
+        "scraper_type",
+        "steps"
+      ],
+      "slug": "coupang-cls-drivers"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_monitor_config_fingerprint",
+        "actions",
+        "defaults",
+        "recent_discovered_counts",
+        "render",
+        "scraper_type",
+        "steps",
+        "suspect_streak",
+        "timeout"
+      ],
+      "slug": "manukai-careers"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_confirmed_drop_candidate",
+        "_monitor_config_fingerprint",
+        "actions",
+        "fetch_contains",
+        "recent_discovered_counts",
+        "render",
+        "scraper_type",
+        "steps",
+        "suspect_streak",
+        "timeout",
+        "wait"
+      ],
+      "slug": "depict-careers"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_confirmed_drop_candidate",
+        "_monitor_config_fingerprint",
+        "defaults",
+        "fetch_contains",
+        "fetch_urls",
+        "recent_discovered_counts",
+        "scraper_type",
+        "steps",
+        "suspect_streak"
+      ],
+      "slug": "coupang-flex-assistant"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_confirmed_drop_candidate",
+        "_monitor_config_fingerprint",
+        "actions",
+        "defaults",
+        "defaults_by_title",
+        "detail_click_selector",
+        "detail_content_selector",
+        "detail_identity_attribute",
+        "detail_identity_regex",
+        "detail_identity_selector",
+        "preserve_single_location",
+        "recent_discovered_counts",
+        "render",
+        "scraper_type",
+        "steps",
+        "suspect_streak",
+        "timeout",
+        "wait"
+      ],
+      "slug": "mediamarktsaturn-dtb-headquarters"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_monitor_config_fingerprint",
+        "defaults",
+        "empty_requires_no_jobs",
+        "empty_selector",
+        "empty_text",
+        "fetch_urls",
+        "recent_discovered_counts",
+        "render",
+        "scraper_type",
+        "steps",
+        "suspect_streak"
+      ],
+      "slug": "international-ice-hockey-federation-jobs"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_monitor_config_fingerprint",
+        "defaults",
+        "recent_discovered_counts",
+        "render",
+        "scraper_type",
+        "steps",
+        "suspect_streak",
+        "wait"
+      ],
+      "slug": "softbank-disability"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_monitor_config_fingerprint",
+        "defaults",
+        "fetch_contains",
+        "recent_discovered_counts",
+        "render",
+        "scraper_type",
+        "steps",
+        "suspect_streak"
+      ],
+      "slug": "howden-israel-jobs"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_confirmed_drop_candidate",
+        "_monitor_config_fingerprint",
+        "fetch_contains",
+        "item_boundary",
+        "preserve_single_location",
+        "proxy",
+        "recent_discovered_counts",
+        "require_zero_proof",
+        "scraper_type",
+        "steps",
+        "suspect_streak",
+        "synthetic_identity_field"
+      ],
+      "slug": "amplifon-egypt"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_monitor_config_fingerprint",
+        "recent_discovered_counts",
+        "render",
+        "scraper_type",
+        "steps",
+        "suspect_streak"
+      ],
+      "slug": "novogene-japan-global"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_monitor_config_fingerprint",
+        "fetch_contains",
+        "recent_discovered_counts",
+        "render",
+        "scraper_type",
+        "steps",
+        "suspect_streak"
+      ],
+      "slug": "howden-germany-inline"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_monitor_config_fingerprint",
+        "defaults",
+        "proxy",
+        "recent_discovered_counts",
+        "render",
+        "require_zero_proof",
+        "scraper_type",
+        "stealth",
+        "steps",
+        "suspect_streak",
+        "timeout",
+        "wait"
+      ],
+      "slug": "skechers-israel-corporate"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_monitor_config_fingerprint",
+        "defaults",
+        "recent_discovered_counts",
+        "render",
+        "scraper_config",
+        "scraper_type",
+        "steps",
+        "suspect_streak",
+        "timeout",
+        "wait"
+      ],
+      "slug": "sail-research-careers"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_monitor_config_fingerprint",
+        "defaults",
+        "preserve_single_location",
+        "proxy",
+        "render",
+        "scraper_type",
+        "stealth",
+        "steps",
+        "timeout",
+        "wait"
+      ],
+      "slug": "bae-systems-malloy-aeronautics"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_monitor_config_fingerprint",
+        "fetch_contains",
+        "fetch_urls",
+        "recent_discovered_counts",
+        "require_zero_proof",
+        "scraper_type",
+        "section_end",
+        "section_start",
+        "steps",
+        "suspect_streak"
+      ],
+      "slug": "csb-bank-official-careers"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_monitor_config_fingerprint",
+        "defaults",
+        "recent_discovered_counts",
+        "render",
+        "scraper_type",
+        "steps",
+        "suspect_streak"
+      ],
+      "slug": "safe-superintelligence-ashby"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_monitor_config_fingerprint",
+        "defaults_by_title",
+        "fetch_contains",
+        "recent_discovered_counts",
+        "render",
+        "scraper_type",
+        "steps",
+        "suspect_streak"
+      ],
+      "slug": "howden-thailand-inline"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_monitor_config_fingerprint",
+        "defaults",
+        "proxy",
+        "recent_discovered_counts",
+        "scraper_type",
+        "steps",
+        "suspect_streak",
+        "transient_403",
+        "transport_attempts"
+      ],
+      "slug": "mcdonalds-sg"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_monitor_config_fingerprint",
+        "defaults",
+        "recent_discovered_counts",
+        "render",
+        "scraper_type",
+        "steps",
+        "suspect_streak"
+      ],
+      "slug": "avientus-careers"
+    },
+    {
+      "cached_error": "ordinary monitor profile is unsupported",
+      "canonical_error": "ordinary monitor profile is unsupported",
+      "metadata_keys": [
+        "_monitor_config_fingerprint",
+        "defaults",
+        "recent_discovered_counts",
+        "render",
+        "scraper_type",
+        "steps",
+        "suspect_streak",
+        "timeout",
+        "wait"
+      ],
+      "slug": "state-bank-of-india-careers"
+    }
+  ],
+  "checks": {
+    "foundation_python_cases": 21,
+    "actual_python_inventory_cases": 51,
+    "actual_python_inventory_tests": 46,
+    "actual_python_transport_cases": 20,
+    "transport_result": "PASS7.250s",
+    "public_header_boundary": "18 exact ordinary request comparisons;2 explicit installed-native same-origin/cookie-free comparisons against frozen observed legacy forwarding",
+    "real_postgres_redis_modes": 15,
+    "worker_modes_and_corpora": "PASS9.382s",
+    "profile_and_embedded_cold_retirement": "PASS10.933s",
+    "api_module_full_race": "PASS1.776s",
+    "api_queue_worker_vet": "PASS",
+    "python_runtime_contracts": "57passed6skipped7.08s",
+    "full_worker_race": "PASS215.148s; required real PostgreSQL/Redis;42profiles identity and new Inline frozen-clock corpus",
+    "full_queue_race": "PASS110.596s; required real PostgreSQL/Redis"
+  },
+  "grouped_beisen_admitted": 24,
+  "verified_grouped_target": 124,
+  "single_provider_release_allowed": false,
+  "production_claim": false,
+  "full_migration_complete": false
+}

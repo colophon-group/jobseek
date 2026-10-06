@@ -1,0 +1,1867 @@
+{
+  "cases": [
+    {
+      "name": "two-titles",
+      "html": "<h2>Engineer</h2><h2>Designer</h2>",
+      "steps": [
+        {
+          "tag": "h2",
+          "field": "title"
+        }
+      ],
+      "item": null,
+      "start": null,
+      "end": null,
+      "hidden": false,
+      "rows": [
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Designer"
+        }
+      ],
+      "error": false,
+      "truncated": false
+    },
+    {
+      "name": "missing-title",
+      "html": "<p>No roles</p>",
+      "steps": [
+        {
+          "tag": "h2",
+          "field": "title"
+        }
+      ],
+      "item": null,
+      "start": null,
+      "end": null,
+      "hidden": false,
+      "rows": [],
+      "error": false,
+      "truncated": false
+    },
+    {
+      "name": "hidden",
+      "html": "<h2 hidden>Hidden</h2><h2>Engineer</h2>",
+      "steps": [
+        {
+          "tag": "h2",
+          "field": "title"
+        }
+      ],
+      "item": null,
+      "start": null,
+      "end": null,
+      "hidden": false,
+      "rows": [
+        {
+          "title": "Engineer"
+        }
+      ],
+      "error": false,
+      "truncated": false
+    },
+    {
+      "name": "include-hidden",
+      "html": "<h2 hidden>Hidden</h2><h2>Engineer</h2>",
+      "steps": [
+        {
+          "tag": "h2",
+          "field": "title"
+        }
+      ],
+      "item": null,
+      "start": null,
+      "end": null,
+      "hidden": true,
+      "rows": [
+        {
+          "title": "Hidden"
+        },
+        {
+          "title": "Engineer"
+        }
+      ],
+      "error": false,
+      "truncated": false
+    },
+    {
+      "name": "bounded",
+      "html": "<p>Item</p><h2>Engineer</h2><p>Item</p><h2>Designer</h2>",
+      "steps": [
+        {
+          "tag": "h2",
+          "field": "title"
+        }
+      ],
+      "item": {
+        "tag": "p",
+        "text": "Item"
+      },
+      "start": null,
+      "end": null,
+      "hidden": false,
+      "rows": [
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Designer"
+        }
+      ],
+      "error": false,
+      "truncated": false
+    },
+    {
+      "name": "bounded-missing-title",
+      "html": "<p>Item</p><p>No title</p><p>Item</p><h2>Engineer</h2>",
+      "steps": [
+        {
+          "tag": "h2",
+          "field": "title"
+        }
+      ],
+      "item": {
+        "tag": "p",
+        "text": "Item"
+      },
+      "start": null,
+      "end": null,
+      "hidden": false,
+      "rows": [
+        {
+          "title": "Engineer"
+        }
+      ],
+      "error": false,
+      "truncated": false
+    },
+    {
+      "name": "section",
+      "html": "<h1>Jobs</h1><h2>Engineer</h2><h1>End</h1><h2>Outside</h2>",
+      "steps": [
+        {
+          "tag": "h2",
+          "field": "title"
+        }
+      ],
+      "item": null,
+      "start": {
+        "tag": "h1",
+        "text": "Jobs"
+      },
+      "end": {
+        "tag": "h1",
+        "text": "End"
+      },
+      "hidden": false,
+      "rows": [
+        {
+          "title": "Engineer"
+        }
+      ],
+      "error": false,
+      "truncated": false
+    },
+    {
+      "name": "missing-section",
+      "html": "<h2>Engineer</h2>",
+      "steps": [
+        {
+          "tag": "h2",
+          "field": "title"
+        }
+      ],
+      "item": null,
+      "start": {
+        "text": "Jobs"
+      },
+      "end": {
+        "text": "End"
+      },
+      "hidden": false,
+      "rows": [],
+      "error": true,
+      "truncated": false
+    },
+    {
+      "name": "duplicate-section",
+      "html": "<h1>Jobs</h1><h1>Jobs</h1><h2>Engineer</h2><h1>End</h1>",
+      "steps": [
+        {
+          "tag": "h2",
+          "field": "title"
+        }
+      ],
+      "item": null,
+      "start": {
+        "text": "Jobs"
+      },
+      "end": {
+        "text": "End"
+      },
+      "hidden": false,
+      "rows": [],
+      "error": true,
+      "truncated": false
+    },
+    {
+      "name": "missing-end",
+      "html": "<h1>Jobs</h1><h2>Engineer</h2>",
+      "steps": [
+        {
+          "tag": "h2",
+          "field": "title"
+        }
+      ],
+      "item": null,
+      "start": {
+        "text": "Jobs"
+      },
+      "end": {
+        "text": "End"
+      },
+      "hidden": false,
+      "rows": [],
+      "error": true,
+      "truncated": false
+    },
+    {
+      "name": "regex-attribute",
+      "html": "<p class=\"item\">Straße</p><h2>Engineer</h2>",
+      "steps": [
+        {
+          "tag": "h2",
+          "field": "title"
+        }
+      ],
+      "item": {
+        "attr": "class=item",
+        "text": "STRASSE",
+        "match_regex": "Stra.e"
+      },
+      "start": null,
+      "end": null,
+      "hidden": false,
+      "rows": [
+        {
+          "title": "Engineer"
+        }
+      ],
+      "error": false,
+      "truncated": false
+    },
+    {
+      "name": "cap",
+      "html": "<h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2><h2>Engineer</h2>",
+      "steps": [
+        {
+          "tag": "h2",
+          "field": "title"
+        }
+      ],
+      "item": null,
+      "start": null,
+      "end": null,
+      "hidden": false,
+      "rows": [
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        },
+        {
+          "title": "Engineer"
+        }
+      ],
+      "error": false,
+      "truncated": true
+    }
+  ],
+  "identities": [
+    {
+      "board_url": "https://example.com/jobs?z=one&lang=en&z=two&empty=#roles",
+      "titles": [
+        "Engineer",
+        "Engineer",
+        "ENGINEER"
+      ],
+      "stable": null,
+      "urls": [
+        "https://example.com/jobs?z=one&z=two&lang=en&empty=&_jid=engineer-7826b9#roles",
+        "https://example.com/jobs?z=one&z=two&lang=en&empty=&_jid=engineer-7826b9-2#roles",
+        "https://example.com/jobs?z=one&z=two&lang=en&empty=&_jid=engineer-7826b9-3#roles"
+      ],
+      "error": false
+    },
+    {
+      "board_url": "https://example.com/jobs",
+      "titles": [
+        "École & C++",
+        "İstanbul",
+        "工程师"
+      ],
+      "stable": null,
+      "urls": [
+        "https://example.com/jobs?_jid=ecole-and-cplusplus-9846f5",
+        "https://example.com/jobs?_jid=istanbul-4a4df1",
+        "https://example.com/jobs?_jid=bc2f82"
+      ],
+      "error": false
+    },
+    {
+      "board_url": "https://example.com/jobs",
+      "titles": [
+        "Engineer",
+        "Designer"
+      ],
+      "stable": [
+        "Straße",
+        "STRASSE"
+      ],
+      "urls": [
+        "https://example.com/jobs?_jid=strae-16d969",
+        "https://example.com/jobs?_jid=strasse-16d969"
+      ],
+      "error": false
+    },
+    {
+      "board_url": "https://example.com/jobs?_jid=old&locale=en",
+      "titles": [
+        "Engineer",
+        "Designer"
+      ],
+      "stable": [
+        "Provider 42",
+        "Provider 43"
+      ],
+      "urls": [
+        "https://example.com/jobs?_jid=provider-42-2d250c&locale=en",
+        "https://example.com/jobs?_jid=provider-43-0e56bd&locale=en"
+      ],
+      "error": false
+    },
+    {
+      "board_url": "https://example.com/jobs?name=a~b",
+      "titles": [
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      ],
+      "stable": null,
+      "urls": [
+        "https://example.com/jobs?name=a~b&_jid=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-0f45e8"
+      ],
+      "error": false
+    }
+  ],
+  "direct": [
+    {
+      "identity": "abc",
+      "url": "https://example.com/jobs?lang=en&_jid=abc#roles"
+    },
+    {
+      "identity": "item 42",
+      "url": "https://example.com/jobs?lang=en&_jid=item+42#roles"
+    },
+    {
+      "identity": "~&/?",
+      "url": "https://example.com/jobs?lang=en&_jid=~%26%2F%3F#roles"
+    },
+    {
+      "identity": "Straße",
+      "url": "https://example.com/jobs?lang=en&_jid=Stra%C3%9Fe#roles"
+    }
+  ]
+}
