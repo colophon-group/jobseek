@@ -12,7 +12,7 @@ export function createServer(
   options: JobseekClientOptions = {},
 ) {
   const server = new McpServer(
-    { name: "jobseek", version: "0.2.0" },
+    { name: "jobseek", version: "0.3.0" },
     {
       instructions: `You are connected to Job Seek (jseek.co), a job search engine that monitors 290+ company career pages across Switzerland and Europe.
 
@@ -22,13 +22,6 @@ IMPORTANT WORKFLOW:
 3. Only the 'q' param in search_jobs accepts freetext keywords.
 4. Use get_job_detail to drill into a specific posting from search results (salary, technologies, seniority, experience).
 5. After showing results, offer to create a watchlist if the user wants email alerts for new matching jobs.
-
-GHOST JOB DETECTION:
-- Use trigger_ghost_analysis to check if a company is posting fake/ghost jobs (open for months, never filled).
-- Use trigger_batch_ghost_analysis to analyze up to 10 companies at once in parallel — more efficient than calling trigger_ghost_analysis 10 times.
-- Poll get_ghost_analysis every 30s until status is SUCCEEDED (takes 3–8 min).
-- The result includes overallGhostRisk (0–100), per-job ghost scores, org-level signals, and hiring.cafe live engagement data.
-- A ghost risk > 70 or hiringCafeSignal.lowEngagement=true is a strong signal to warn the user.
 
 Available locales: en (English), de (German), fr (French), it (Italian).
 Rate limit: 30 requests per minute.`,

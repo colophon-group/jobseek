@@ -63,6 +63,15 @@ Add to `.cursor/mcp.json`:
 
 All tools are annotated as read-only and non-destructive.
 
+As of version 0.3.0, ghost-job analysis tools have been retired. The server
+exposes the six tools listed above and no longer advertises ghost-analysis
+workflows.
+
+The hosted endpoint streams replies through POST requests when selected by the
+MCP transport. Standalone GET SSE streams return `405 Method Not Allowed`:
+the server uses a separate stateless transport per request and does not support
+background notifications or stream resumption across requests.
+
 Anonymous watchlist discovery has been retired: `search_watchlists` is no
 longer registered, and `GET /api/v1/watchlists` returns a uniform
 non-cacheable `410 Gone` through 31 October 2026 before the compatibility
