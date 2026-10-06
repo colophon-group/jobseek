@@ -113,6 +113,12 @@ docker() {
       image="ghcr.io/example/jobseek-crawler@sha256:$(printf '%064d' 99)"
     fi
     case "$2:$3" in
+      *State.Status*ExitCode*OOMKilled*)
+        if [[ "$TEST_FAILURE" == readiness-exit && "$index" == 1 ]]; then
+          printf 'exited:17:false\n'
+        elif [[ "$TEST_FAILURE" == readiness-oom && "$index" == 10 ]]; then
+          printf 'exited:137:true\n'
+        else printf 'running:0:false\n'; fi ;;
       '-f:{{.Config.Image}}') printf '%s\n' "$image" ;;
       *RestartPolicy*Image*) printf 'false:no:%s\n' "$image" ;;
       *RestartPolicy*) printf 'true:unless-stopped\n' ;;
@@ -162,6 +168,31 @@ def test_native_proxy_profiles_keep_endpoint_scope_without_operator_api_key(host
     env["TEST_EXPECTED_PROXY_POOL"] = pool
     result = invoke(host, "activate", PLAN, PROJECTION)
     assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize(
+    "failure,service,state",
+    [
+        ("readiness-exit", "worker-1", "exited:17:false"),
+        ("readiness-oom", "ordinary-go", "exited:137:true"),
+    ],
+)
+def test_readiness_failure_preserves_service_exit_evidence_and_recovery(
+    host, failure, service, state
+) -> None:
+    _, deploy, env = host
+    env["TEST_FAILURE"] = failure
+    result = invoke(host, "activate", PLAN, PROJECTION)
+    assert result.returncode != 0
+    assert f"service {service} failed readiness with state:exit:oom={state}" in result.stderr
+    assert "state=pending\n" in (deploy / ".ordinary-go-owner-v1").read_text()
+    events = Path(env["TEST_LOG"]).read_text().splitlines()
+    assert "native-effect" in events
+    assert not any("update --restart unless-stopped" in event for event in events)
+    assert any(" kill worker-1 worker-2 worker-3" in event for event in events)
+    env["TEST_FAILURE"] = ""
+    assert invoke(host, "recover-pending").returncode == 0
+    assert not (deploy / ".ordinary-go-owner-v1").exists()
 
 
 def test_complete_first_owner_cutover_and_retirement(

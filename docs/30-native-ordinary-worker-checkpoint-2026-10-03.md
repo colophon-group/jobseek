@@ -117,8 +117,29 @@ succeeded. Independent 20:45 UTC readback verified promoted source
 image digests, healthy services and cold native ownership at epoch 202.
 Original supported 954 B0 selector staging and activation succeeded. Independent
 20:50 UTC readback verified the exact revision/images and active cdom receipt at
-epoch 203 with seven healthy endpoints. Fresh actual-route ordinary admission is
-running against this deployed source; ordinary ownership is not active yet.
+epoch 203 with seven healthy endpoints. Fresh source954 admission completed:
+1,447,321 actual scheduled routes, 7,085 monitor boards, 2,541 detail boards and
+1,421,855 owned postings. Thirty-eight cache mismatches and one unsupported route
+remain excluded. Original staging succeeded for plan
+`8b52154bd1551274123a16b620143b11d55965d0dc082e4cd2f6f2005ff6d2c6`.
+The original activation committed SQL/Redis authority at 21:10:48 UTC, including
+its synchronous Redis SAVE. The wrapper then failed its container readiness
+check and contained the complete lane. Original supported `recover-pending`
+succeeded. Independent 21:17 UTC readback proves nine exact-image services running
+with restart policies armed, seven healthy endpoints, active B0 at203, a retired
+ordinary plan, absent ordinary receipts/selector/projection, no current write
+fences or native claim tokens, and no administrative containers.
+
+The initiating service failure remains unproven: the old wrapper reports no
+service name, and recovery recreated the containers before their states could
+be captured. The retained native worker log reports startup stage `locations`,
+which can also result from cancellation during containment. The unchanged source954
+location loader passes against a read-only production taxonomy snapshot in an
+isolated local PostgreSQL schema (37,526 locations, 143,004 core names; 1.106 seconds).
+This local replay does not prove the original Linux process completed startup.
+The candidate wrapper now inspects exited containers and reports only its fixed
+service name, process state, exit code and OOM flag before containment. No
+activation retry or runtime overlay was used to recover production.
 The four-provider candidate advances together to **0.13.955** after this fix.
 Local proof does not grant production ownership.
 
@@ -181,7 +202,11 @@ Dayforce's ten browser boards have local Go identity/bootstrap, job projection
 and overlap-aware search pagination implementations. Eighty-nine comparisons
 from actual Python pass: 51 identity/bootstrap/page cases, 17 rich field cases,
 14 pagination cases and seven actual HTTP bootstrap cases; final worker race
-passes in 3.338 seconds. Its browser session/CSRF transport is still required
+passes in 3.338 seconds. Controller-private search capture and compiled browser
+POST helpers now correlate main-frame request/response identities, keep CSRF
+credentials out of results/logs and erase them on cleanup. Twelve actual Python
+CSRF header comparisons and capture/compiler race tests pass (1.329 seconds).
+These helpers are not wired into the service or worker yet. Its complete browser session/CSRF transport is still required
 before profile admission. The existing Go Lightpanda adapter rejects captures and
 origin-contact evaluations under B0/B1; extend its existing bounded provider path
 without weakening those rejection contracts. The renderer itself is the existing
