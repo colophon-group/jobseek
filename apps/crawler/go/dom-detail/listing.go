@@ -4,6 +4,7 @@ import (
 	"errors"
 	stdhtml "html"
 	"io"
+	"net/url"
 	"strings"
 
 	"github.com/andybalholm/cascadia"
@@ -15,6 +16,7 @@ type ListingConfig struct {
 	Document                             jsonld.DocumentOptions
 	Selector, Include, Exclude, Encoding string
 	Attempts                             int
+	Pagination                           *ListingPagination
 }
 
 // ListingOptions covers the existing static single-page href inventory.
@@ -23,7 +25,7 @@ type ListingConfig struct {
 func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 	c := ListingConfig{Attempts: 3}
 	allowed := map[string]bool{}
-	for _, key := range []string{"url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy"} {
+	for _, key := range []string{"url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "url_transform"} {
 		allowed[key] = true
 	}
 	for key := range config {
@@ -31,7 +33,7 @@ func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 			return c, errors.New("unsupported static DOM listing option")
 		}
 	}
-	for _, key := range []string{"render", "proxy", "skip_ssl", "actions", "pagination"} {
+	for _, key := range []string{"render", "proxy", "skip_ssl", "actions"} {
 		if truth(config[key]) {
 			return c, errors.New("unsupported static DOM listing route")
 		}
@@ -102,10 +104,23 @@ func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 		}
 	}
 	var err error
+	c.Pagination, err = listingPagination(config["pagination"], endpoint)
+	if err != nil {
+		return c, err
+	}
 	c.Document, err = directDocumentOptions(config, endpoint)
 	// The listing outer loop owns one shared attempt budget across statuses,
 	// empty documents and transport failures, including public-header requests.
 	c.Document.RetryLimits = nil
+	if err == nil && c.Pagination != nil && c.Pagination.MaxPages >= 2 && c.Document.PublicHeaders {
+		initial, _ := url.Parse(endpoint)
+		for _, page := range []int{2, c.Pagination.MaxPages} {
+			next, _ := url.Parse(c.Pagination.URL(endpoint, page))
+			if next == nil || initial.Scheme != next.Scheme || initial.Host != next.Host {
+				return c, errors.New("public-header pagination requires the board origin")
+			}
+		}
+	}
 	return c, err
 }
 

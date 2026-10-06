@@ -361,6 +361,9 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		// initial resource to this claim's endpoint or validated page. RSS may
 		// stop at a publisher header; incomplete inventories never reach writes.
 		matches := richResponseMatches(profile, response.endpoint)
+		if profile.Provider == "dom" {
+			matches = queue.DOMMonitorResourceMatches(profile, task.Config, response.endpoint)
+		}
 		if queue.SecondaryProvider(profile.Provider) {
 			matches = queue.SecondaryMonitorResourceMatches(profile, task.Config, response.endpoint)
 		}
@@ -397,7 +400,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			if queue.SecondaryProvider(profile.Provider) {
 				initial = response.endpoint
 			}
-			if profile.Provider == "mokahr" || profile.Provider == "almacareer" || profile.Provider == "eightfold" || profile.Provider == "inline" || profile.Provider == "beisen" || profile.Provider == "api_sniffer" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "oracle_hcm" || profile.Provider == "icims" || profile.Provider == "phenom" || profile.Provider == "nextdata" {
+			if profile.Provider == "dom" || profile.Provider == "mokahr" || profile.Provider == "almacareer" || profile.Provider == "eightfold" || profile.Provider == "inline" || profile.Provider == "beisen" || profile.Provider == "api_sniffer" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "oracle_hcm" || profile.Provider == "icims" || profile.Provider == "phenom" || profile.Provider == "nextdata" {
 				initial = response.endpoint
 			}
 			terminal, err := cycle.FinishReservationResource(ctx, initial, &queue.GreenhouseHeaderReservation{Endpoint: response.finalURL, PolicyURL: response.PolicyURL(), Source: response.reservationSource})
@@ -406,7 +409,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			}
 			return finishSuccess(terminal)
 		}
-		providerGone := (response.status == 404 || (profile.Provider == "join" || profile.Provider == "dom" || profile.Provider == "jazzhr" || profile.Provider == "gupy") && response.status == 410) && profile.Provider != "api_sniffer" && profile.Provider != "pinpoint" && profile.Provider != "rss" && profile.Provider != "personio" && profile.Provider != "smartrecruiters" && profile.Provider != "workable" && profile.Provider != "sitemap" && profile.Provider != "oracle_hcm" && profile.Provider != "breezy" && profile.Provider != "gem" && profile.Provider != "phenom"
+		providerGone := (profile.Provider != "dom" || response.endpoint == profile.Endpoint) && (response.status == 404 || (profile.Provider == "join" || profile.Provider == "dom" || profile.Provider == "jazzhr" || profile.Provider == "gupy") && response.status == 410) && profile.Provider != "api_sniffer" && profile.Provider != "pinpoint" && profile.Provider != "rss" && profile.Provider != "personio" && profile.Provider != "smartrecruiters" && profile.Provider != "workable" && profile.Provider != "sitemap" && profile.Provider != "oracle_hcm" && profile.Provider != "breezy" && profile.Provider != "gem" && profile.Provider != "phenom"
 		if queue.SecondaryProvider(profile.Provider) {
 			var failure *DiscoveryError
 			providerGone = errors.As(fetchErr, &failure) && failure.Kind == "provider_gone" && queue.SecondaryMonitorGone(task.Config, response.endpoint, response.status, response.providerDisabled)
@@ -444,7 +447,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		}
 		return finishSuccess(terminal)
 	}
-	if profile.Provider == "rss" || profile.Provider == "sitemap" || profile.Provider == "eightfold" {
+	if profile.Provider == "rss" || profile.Provider == "sitemap" || profile.Provider == "eightfold" || profile.Provider == "dom" {
 		discovery.Jobs, err = applyFeedMonitorURLs(ctx, task.Config, discovery.Jobs)
 		if err != nil {
 			return failure("processing", err)

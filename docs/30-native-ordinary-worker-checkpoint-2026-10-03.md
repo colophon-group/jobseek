@@ -2,64 +2,51 @@
 
 ## Current delivery — 2026-10-06
 
-The full migration goal remains active. Releases group multiple provider types
-and share verification, cutover and deployment work.
+The full migration goal is **active and incomplete**. Ship multiple provider
+and variant types per release, sharing reference verification, CI and cutover.
 
-Production **0.13.948** is deployed and promoted from
-`5404a5ad43b3c41241d639f270638cddd3cff3ec`; original deployment run
-`37400469318` succeeded. Ordinary Go and Lightpanda B0 serve at epoch 197.
-Fresh admission covers 6,783 ordinary monitors and 2,475 detail boards with
-1,373,062 scheduled owned detail postings. Three browser boards retain exclusive
-B0 ownership; 38 detail boards with 2,615 route/cache inconsistencies retain
-legacy authority. The independent 04:14 UTC witness verifies ten restart-armed
-services, eight healthy endpoints, 2,168 monitor and 71 detail completions across
-21 profiles, 24 canonical detail samples and no bounded processing diagnostics.
-Every-profile freshness and comparable whole-lane cost remain unfinished.
+Production **0.13.949** (MokaHR + AlmaCareer + Eightfold) is deployed from
+`c7f789faef866c0fd77921750095f1a6253c707d` through original immutable deployment
+[37417474358](https://github.com/colophon-group/jobseek/actions/runs/37417474358).
+Lightpanda **1.0.0** is the latest stable qualified renderer and B0 is selected
+at epoch 199. Fresh admission reconciled 1,417,415 scheduled detail routes and
+selected 6,849 ordinary monitors and 2,515 detail boards. The first ordinary
+activation was rejected. Its original pending recovery succeeded, and independent
+readback verified the complete restored fleet, active B0 and an inert staged
+ordinary plan. An exact-plan retry now holds the full fleet cold while five
+legacy board leases expire naturally; the latest deadline is 06:37:44 UTC.
+Do not claim active ordinary ownership before successful activation/readback.
 
-The next release combines **MokaHR, AlmaCareer and Eightfold**, including required
-MokaHR and Eightfold details. All five profiles, installed dispatch, mixed rich
-and URL-only persistence, fenced terminal watermark synchronization, recovery
-and cold retirement are implemented. Current CSV qualification admits 22 MokaHR,
-23 AlmaCareer and 21 direct Eightfold monitors, plus 20 MokaHR and 21 direct
-Eightfold detail configurations. Nine Eightfold proxy configurations retain legacy
-authority and remain in the full migration goal. Configuration qualification is
-not fresh production admission.
+[PR #10336](https://github.com/colophon-group/jobseek/pull/10336), release
+**0.13.950**, ports **Softgarden + UKG + BambooHR + Recruiter.co.kr** together:
+55 current monitor configurations and 41 detail bindings. The exact candidate
+`ce311df349d75ea799fb2be90248027ca23a19cb` passes Required CI, Crawler Deploy Gate, native execution, parser, browser
+image and installed-image contracts. Deployment waits for the current original
+cutover operation to finish and the supported outgoing reversal.
+Its account-recovery browser test targets the actual account action, and early
+renderer TCP capacity resets retain their bounded retry classification.
 
-Actual Python reference proofs cover 166 API parser/watermark cases and 161
-worker field/HTTP/URL identity cases. Real PostgreSQL/Redis tests pass 25 monitor,
-28 detail-worker and two hybrid refresh cases. Cold recovery passes 14 monitor
-and 12 detail cases, including Redis reloads. Six atomic settlement and five
-terminal refusal cases preserve watermark/queue boundaries. Existing detail
-content survives Eightfold touches and relists. A shared Python/Go MokaHR URL
-classification bug was fixed so valid `#/job/<id>` postings survive processing.
-Bootstrap/HTML redirects, refused API redirects and final-resource publisher
-reservations match actual reference HTTP behavior. Incomplete inventories cannot
-advance the watermark. Changed Python source/tests and collectors pass Ruff.
+The next grouped candidate **0.13.951**, in
+`fix-crawler/native-generic-provider-variants`, ports **DOM + RSS + Inline +
+API-sniffer variants** together. Local eligibility covers 62 DOM pagination and
+20 DOM rewrite configurations (overlap), 11 generic RSS feeds, 4 inline public
+cache-bypass routes and 43 explicit API enrichment assignments. Twenty-five
+actual Python HTTP comparisons, 12 canonical PostgreSQL/Redis cases and 12
+cold-reversal cases pass. API, DOM and JSON-LD parser race suites and the full
+queue race suite pass (172.126 seconds). The full worker race suite passes in
+323.882 seconds. Publish this grouped candidate and ship only through
+required exact-head CI, installed-image proof and the original full deployment.
 
-Continue in `fix-crawler/native-api-provider-batch`, isolated worktree
-`native-feed-coverage/jobseek`. Candidate VERSION is 0.13.949. Full queue/API/executor race and vet pass;
-389 Python batch/Redis cases and 41 ownership/cutover cases pass (six optional
-integration cases skip). The full worker run found a request-recorder test race;
-the corrected MokaHR cancellation case passes 100 race iterations and the entire
-MokaHR reference suite and worker vet pass. Required CI reruns the complete
-worker suite at the committed head. Ship one shared PR through
-required CI and installed-image checks. These candidates are versioned together and
-are not deployed. Complete current-release serving witnesses and supported cold
-reversal before the next original immutable full deployment.
+Continue grouped remaining provider/browser/filter variants and runtime consumers.
+Verify deployed ownership, every-profile freshness and queue conservation; measure
+comparable whole-lane CPU/RAM/cost; prove cold reversal and the rollback window.
+Then retire production Python, Playwright/Chromium and obsolete runtime assets,
+while preserving every enabled board and useful isolated Python reference tools.
+No staged admission or local parser proof grants production authority. Protected
+operational evidence and the current exact handles remain in the private durable
+checkpoint. All sections below this current summary are historical snapshots.
 
-Continue all remaining enabled provider/browser variants and required runtime
-consumers. Establish coverage, freshness, queue conservation, comparable CPU/RAM
-and cost, final cold reversal and the rollback window before retiring production
-Python, Playwright/Chromium and obsolete runtime assets. Preserve every enabled
-board and useful isolated offline Python tooling.
-
-Lightpanda **1.0.0**, published October 2, remains the newest stable official
-release and is already pinned to the qualified deployed immutable renderer.
-The official release list was rechecked October 6; the legacy `latest` redirect
-can misleadingly select the old nightly alias. Exact operational proof resides
-in the protected checkpoint. Earlier sections below are historical.
-
-## Current delivery — 2026-10-06 00:04 UTC
+## Historical delivery — 2026-10-06 00:04 UTC
 
 The full Go + Lightpanda migration goal remains active. Release batches group
 multiple provider types and use one shared verification/deployment cycle.
@@ -1821,3 +1808,36 @@ exercise supported cold reversal and the rollback window; retire production
 Python, Playwright and Chromium after replacement authority is established.
 The full migration goal remains **active and incomplete**. Official releases were
 rechecked October 6: **Lightpanda 1.0.0** remains the latest stable qualified pin.
+
+## Grouped generic variants, 2026-10-06
+
+Release **0.13.951** continues with four engines in one iteration: DOM static
+URL pagination and rewrites, generic RSS feeds, inline alternate fetches with
+public cache-bypass headers, and explicit API-sniffer detail enrichment.
+The current registry admits 62 DOM pagination configurations, 20 DOM rewrite
+configurations, 11 generic RSS feeds, 4 inline cache-bypass routes and 43 API
+enrichment assignments. DOM counts overlap. These are local eligibility counts,
+not new production ownership. The installed runtime advertises 56 profiles.
+
+Twenty-five actual Python HTTP cases compare request URLs/order, retries,
+transformed identities, XML fields, fallback fetches, publisher reservations
+and later-page failure outcomes. Twelve real canonical PostgreSQL/Redis cases
+cover all four engines; twelve additional cold reversal cases preserve deadlines,
+interrupted/committed audit receipts and stale-writer refusal. Rendered DOM
+pagination remains excluded until its complete inventory contract is ported.
+Cold-owner errors now log fixed phase/reason enums without upstream data.
+
+Production source 949 completed its original immutable deployment and reactivated
+Lightpanda 1.0.0 at B0 epoch 199. Its fresh admission reconciled 1,417,415 scheduled
+detail routes and selected 6,849 monitors and 2,515 detail boards. The first
+ordinary activation was rejected. The original pending recovery restored the
+full fleet; independent exact-source/image readback proved active B0, an inert
+staged ordinary plan, absent ordinary projection/receipt and no native ordinary
+claim tokens. A supported exact-plan activation retry is in progress. Do not
+infer ordinary ownership from staged admission or candidate parser tests.
+
+Continue grouped remaining provider/browser/filter variants, verify deployed
+ownership and natural processing, finish runtime/deployment consumers and
+whole-lane measurements, then establish reversal/rollback evidence before
+retiring production Python, Playwright and Chromium. Preserve isolated useful
+Python reference tooling. The full migration goal remains active and incomplete.

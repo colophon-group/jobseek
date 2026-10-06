@@ -12,10 +12,23 @@ func APISnifferMonitorOptions(config map[string]string) (apisniffer.Options, err
 	return apisniffer.OptionsFromMetadata(config["board_url"], config["metadata"])
 }
 
+// API monitors auto-select skip when they already expose fields. Only an
+// explicit scraper enrichment list delegates data and schedules detail work.
+func apiSnifferMonitorEnrichment(config map[string]string) ([]string, error) {
+	o, err := APISnifferMonitorOptions(config)
+	if err != nil {
+		return nil, err
+	}
+	return o.Enrichment, nil
+}
+
 func inspectAPISnifferMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
 	o, err := APISnifferMonitorOptions(config)
 	if err != nil {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+	}
+	if _, err := apiSnifferMonitorEnrichment(config); err != nil {
+		return GreenhouseMonitorProfile{}, err
 	}
 	return inspectURLOnlyMonitor(boardID, config, md, "api_sniffer", "api_sniffer.http-items/v1", "api_sniffer", o.Endpoint)
 }

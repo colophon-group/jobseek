@@ -32,6 +32,7 @@ type Options struct {
 	PathValues                             bool
 	MaxItems, Attempts                     int
 	Transient403                           bool
+	Enrichment                             []string
 }
 
 var ConfigKeys = []string{"api_url", "method", "json_path", "json_path_values", "total_path", "url_field", "url_template", "url_template_fields", "fields", "params", "post_data", "post_body", "request_headers", "headers", "pagination", "max_items", "transient_403", "transport_attempts", "browser", "render", "proxy", "skip_ssl", "ssl_verify", "wait", "timeout", "settle", "items", "score", "total"}
@@ -62,8 +63,21 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 		}
 	}
 	if sc, ok := m["scraper_config"].(map[string]any); ok {
-		if enrich, ok := sc["enrich"].([]any); ok && len(enrich) > 0 {
-			return o, ErrOptions
+		if raw, present := sc["enrich"]; present && raw != nil {
+			fields, ok := raw.([]any)
+			if !ok {
+				return o, ErrOptions
+			}
+			allowed := map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true}
+			seen := map[string]bool{}
+			for _, raw := range fields {
+				field, ok := raw.(string)
+				if !ok || !allowed[field] || seen[field] || m["scraper_type"] == "skip" {
+					return o, ErrOptions
+				}
+				seen[field] = true
+				o.Enrichment = append(o.Enrichment, field)
+			}
 		}
 	}
 	for _, k := range []string{"browser", "render", "proxy", "skip_ssl"} {

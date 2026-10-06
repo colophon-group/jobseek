@@ -23,6 +23,15 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 		board, metadata = "https://fixture.jobs.cz/", `{"scraper_type":"skip"}`
 	}
 	switch provider {
+	case "dom":
+		metadata = `{"url_filter":"/jobs/","pagination":{"param_name":"page","max_pages":3},"url_transform":{"find":"\\?tracking=.*$","replace":""},"scraper_type":"json-ld"}`
+	case "rss":
+		metadata = `{"preset":"generic","feed_url":"https://example.com/feed","scraper_type":"skip"}`
+	case "inline":
+		metadata = `{"steps":[{"tag":"h2","field":"title"}],"fetch_urls":[{"url":"https://example.com/alternate","headers":{"X-No-Cache":"true"}}],"scraper_type":"skip"}`
+	case "api_sniffer":
+		metadata = `{"api_url":"https://example.com/api","json_path":"jobs","url_field":"url","fields":{"title":"title"},"scraper_type":"json-ld","scraper_config":{"enrich":["description"]}}`
+
 	case "softgarden":
 		board, metadata = "https://fixture.softgarden.io", `{"scraper_type":"json-ld"}`
 	case "ukg":
@@ -91,7 +100,7 @@ func assertEightfoldCanonicalWatermarkCached(t *testing.T, p firstOwnerFixture) 
 }
 
 func TestRealProviderBatchColdRetirementAndEightfoldWatermarkRecovery(t *testing.T) {
-	for _, provider := range []string{"mokahr", "almacareer", "eightfold", "softgarden", "ukg", "bamboohr", "recruiter_co_kr"} {
+	for _, provider := range []string{"mokahr", "almacareer", "eightfold", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "dom", "rss", "inline", "api_sniffer"} {
 		modes := []string{"interrupted", "committed-before-ack", "changed-setting"}
 		if provider == "eightfold" {
 			modes = append(modes, "reaped-before-ack", "recovered-ack", "settled-cold", "save-failure", "orphan-cache")

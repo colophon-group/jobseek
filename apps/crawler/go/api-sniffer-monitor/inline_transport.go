@@ -87,6 +87,9 @@ func InlineMonitorOptionsFromMetadata(boardURL, raw string) (InlineMonitorOption
 						return ErrOptions
 					}
 					c.Document.Headers[k] = s
+					if strings.EqualFold(strings.TrimSpace(k), "X-No-Cache") {
+						c.Document.InlineCacheBypass = true
+					}
 				}
 				c.Document.PublicHeaders = len(h) > 0
 				c.Document.SameOrigin = len(h) > 0
