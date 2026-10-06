@@ -23,6 +23,7 @@ const joinDetailProfile = "join.nextdata-detail/v1"
 const oracleDetailProfile = "oracle_hcm.api-detail/v1"
 const adpDetailProfile = "adp.public-detail/v1"
 const paylocityDetailProfile = "paylocity.html-detail/v1"
+const paylocityProxyDetailProfile = "paylocity.proxy-html-detail/v1"
 const paycomDetailProfile = "paycom.public-detail/v1"
 const ripplingDetailProfile = "rippling.v1-detail/v1"
 const mokahrDetailProfile = "mokahr.encrypted-detail/v1"
@@ -30,7 +31,7 @@ const eightfoldDetailProfile = "eightfold.jsonld-api-detail/v1"
 
 func independentDetailProfile(profile string) bool {
 	switch profile {
-	case adpDetailProfile, paylocityDetailProfile, paycomDetailProfile, ripplingDetailProfile, mokahrDetailProfile, eightfoldDetailProfile, domRenderedDetailProfile, jsonldRenderedDetailProfile, embeddedRenderedDetailProfile, domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, joinDetailProfile, oracleDetailProfile, embeddedDetailProfile, httpAPIDetailProfile:
+	case adpDetailProfile, paylocityDetailProfile, paylocityProxyDetailProfile, paycomDetailProfile, ripplingDetailProfile, mokahrDetailProfile, eightfoldDetailProfile, domRenderedDetailProfile, jsonldRenderedDetailProfile, embeddedRenderedDetailProfile, domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, joinDetailProfile, oracleDetailProfile, embeddedDetailProfile, httpAPIDetailProfile:
 		return true
 	}
 	return false
@@ -114,6 +115,9 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 		}
 	}
 	for _, key := range []string{"proxy", "render"} {
+		if scraper == "paylocity" && key == "proxy" && string(options[key]) == "true" {
+			continue
+		}
 		if raw, ok := options[key]; ok && string(raw) != "false" && string(raw) != "null" {
 			return fail()
 		}
@@ -145,6 +149,9 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 				return fail()
 			}
 			endpoint, profile = source, paylocityDetailProfile
+			if string(options["proxy"]) == "true" {
+				profile = paylocityProxyDetailProfile
+			}
 		}
 	} else if scraper == "paycom" {
 		o, _, e := apisniffer.PaycomDetailRoute(source)

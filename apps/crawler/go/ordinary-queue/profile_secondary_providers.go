@@ -57,7 +57,7 @@ func inspectSecondaryMonitor(boardID string, config map[string]string, md map[st
 		if e != nil {
 			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 		}
-		profile, endpoint = "paylocity.embedded-items/v1", o.Listing
+		profile, endpoint = o.Profile(), o.Listing
 	case "paycom":
 		o, e := api.PaycomOptionsFromMetadata(config["board_url"], config["metadata"])
 		if e != nil {
@@ -135,7 +135,7 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 		return e == nil && p.Profile == "cornerstone.search-items/v1" && p.Endpoint == o.ListingURL() && o.ResourceMatches(resource)
 	case "paylocity":
 		o, e := api.PaylocityOptionsFromMetadata(config["board_url"], config["metadata"])
-		return e == nil && p.Profile == "paylocity.embedded-items/v1" && p.Endpoint == o.Listing && o.ResourceMatches(resource)
+		return e == nil && p.Profile == o.Profile() && p.Endpoint == o.Listing && o.ResourceMatches(resource)
 	case "paycom":
 		o, e := api.PaycomOptionsFromMetadata(config["board_url"], config["metadata"])
 		return e == nil && p.Profile == "paycom.preview-items/v1" && p.Endpoint == o.PortalURL() && o.ResourceMatches(resource)

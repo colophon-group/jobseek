@@ -81,7 +81,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		return result, claimRunError("startup", queue.ErrUnsupportedProfile)
 	}
 	profile, err := queue.InspectRichMonitor(task.ID, task.Config)
-	if err != nil || queue.MonitorWorker(profile) != task.Worker {
+	if err != nil || queue.MonitorWorker(profile) != task.Worker || http.proxyRequired != queue.ProfileRequiresProxy(profile.Profile) {
 		return result, claimRunError("startup", queue.ErrUnsupportedProfile)
 	}
 	var renderer renderedMonitorClient

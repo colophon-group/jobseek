@@ -13,6 +13,8 @@ import (
 
 func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture {
 	t.Helper()
+	proxy := provider == "paylocity/proxy"
+	provider = strings.Split(provider, "/")[0]
 	p := firstOwnershipFixture(t)
 	f, ctx := p.f, context.Background()
 	board, metadata := "https://example.com/careers", `{"scraper_type":"eightfold"}`
@@ -54,6 +56,15 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 		board, metadata = "https://fixture.bamboohr.com/careers", `{"scraper_type":"skip"}`
 	case "recruiter_co_kr":
 		board, metadata = "https://fixture.recruiter.co.kr/career/home", `{"scraper_type":"skip"}`
+	}
+	if proxy {
+		var md map[string]any
+		if json.Unmarshal([]byte(metadata), &md) != nil {
+			t.Fatal("invalid proxy fixture metadata")
+		}
+		md["proxy"] = true
+		raw, _ := json.Marshal(md)
+		metadata = string(raw)
 	}
 	if _, e := f.observer.Exec(ctx, "UPDATE job_board SET board_url=$2,crawler_type=$3,throttle_key=$3,metadata=$4::jsonb WHERE id=$1::uuid", f.task.ID, board, provider, metadata); e != nil {
 		t.Fatal(e)
@@ -114,7 +125,7 @@ func assertEightfoldCanonicalWatermarkCached(t *testing.T, p firstOwnerFixture) 
 }
 
 func TestRealProviderBatchColdRetirementAndEightfoldWatermarkRecovery(t *testing.T) {
-	for _, provider := range []string{"mokahr", "almacareer", "eightfold", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "dom", "rss", "inline", "api_sniffer", "comeet", "jobvite", "paycom", "rippling", "adp", "cornerstone", "paylocity"} {
+	for _, provider := range []string{"mokahr", "almacareer", "eightfold", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "dom", "rss", "inline", "api_sniffer", "comeet", "jobvite", "paycom", "rippling", "adp", "cornerstone", "paylocity", "paylocity/proxy"} {
 		modes := []string{"interrupted", "committed-before-ack", "changed-setting"}
 		if provider == "eightfold" {
 			modes = append(modes, "reaped-before-ack", "recovered-ack", "settled-cold", "save-failure", "orphan-cache")

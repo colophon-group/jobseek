@@ -233,7 +233,7 @@ func discoverPaylocityInventory(ctx context.Context, client *http.Client, p queu
 func discoverPaylocityInventoryWithWait(ctx context.Context, client *http.Client, p queue.GreenhouseMonitorProfile, config map[string]string, wait func(context.Context, time.Duration) error) (RichDiscovery, error) {
 	out := RichDiscovery{Jobs: []RichMonitorJob{}}
 	o, e := api.PaylocityOptionsFromMetadata(config["board_url"], config["metadata"])
-	if e != nil || client == nil || wait == nil || config["monitor_needs_browser"] != "0" || p.Provider != "paylocity" || p.Profile != "paylocity.embedded-items/v1" || p.Endpoint != o.Listing {
+	if e != nil || client == nil || wait == nil || config["monitor_needs_browser"] != "0" || p.Provider != "paylocity" || p.Profile != o.Profile() || p.Endpoint != o.Listing {
 		return out, queue.ErrConfiguration
 	}
 	sealed := *client

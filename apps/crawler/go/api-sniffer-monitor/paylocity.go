@@ -10,7 +10,17 @@ import (
 	"strings"
 )
 
-type PaylocityOptions struct{ Listing string }
+type PaylocityOptions struct {
+	Listing string
+	Proxy   bool
+}
+
+func (o PaylocityOptions) Profile() string {
+	if o.Proxy {
+		return "paylocity.proxy-embedded-items/v1"
+	}
+	return "paylocity.embedded-items/v1"
+}
 
 var paylocityPageData = regexp.MustCompile(`\bwindow\.pageData\s*=\s*`)
 var paylocityDetail = regexp.MustCompile(`(?i)^/recruiting/jobs/details/([0-9]{1,32})/?$`)
@@ -20,12 +30,12 @@ func PaylocityHost(host string) bool {
 	return len(labels) == 3 && labels[1] == "paylocity" && labels[2] == "com" && strings.HasSuffix(labels[0], "recruiting")
 }
 func PaylocityOptionsFromMetadata(source, raw string) (PaylocityOptions, error) {
-	_, e := fifthDirectMetadata(source, raw)
+	md, e := fifthMetadata(source, raw, true)
 	u, ue := url.Parse(source)
 	if e != nil || ue != nil || !PaylocityHost(u.Hostname()) || !strings.Contains(strings.ToLower(u.Path), "/recruiting/jobs/") {
 		return PaylocityOptions{}, ErrOptions
 	}
-	return PaylocityOptions{source}, nil
+	return PaylocityOptions{Listing: source, Proxy: md["proxy"] == true}, nil
 }
 func (o PaylocityOptions) ResourceMatches(source string) bool { return source == o.Listing }
 func (o PaylocityOptions) JobURL(id string) string {

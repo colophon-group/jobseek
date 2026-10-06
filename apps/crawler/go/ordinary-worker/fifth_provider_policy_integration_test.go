@@ -11,7 +11,7 @@ import (
 )
 
 func TestRealFifthProviderMonitorReservationPreservesCanonicalContent(t *testing.T) {
-	for _, scenario := range []string{"adp-search", "cornerstone-bootstrap", "cornerstone-search", "paylocity-listing"} {
+	for _, scenario := range []string{"adp-search", "cornerstone-bootstrap", "cornerstone-search", "paylocity-listing", "paylocity-proxy-listing"} {
 		t.Run(scenario, func(t *testing.T) {
 			provider := strings.Split(scenario, "-")[0]
 			c := fifthPolicyReference(t, provider, false, "complete")
@@ -19,7 +19,13 @@ func TestRealFifthProviderMonitorReservationPreservesCanonicalContent(t *testing
 			if provider == "cornerstone" {
 				scraper = "skip"
 			}
-			metadata, e := json.Marshal(map[string]any{"scraper_type": scraper})
+			monitorConfig := map[string]any{"scraper_type": scraper}
+			if strings.Contains(scenario, "-proxy-") {
+				c.Name += "/proxy"
+				c.Metadata["proxy"] = true
+				monitorConfig["proxy"] = true
+			}
+			metadata, e := json.Marshal(monitorConfig)
 			if e != nil {
 				t.Fatal(e)
 			}
@@ -36,7 +42,7 @@ func TestRealFifthProviderMonitorReservationPreservesCanonicalContent(t *testing
 			claim, circuits := claimFixture(t, f)
 			requests := []fourthHTTPRequest{}
 			var mutex sync.Mutex
-			result, e := RunGreenhouseClaim(ctx, f.a, claim, fifthHTTPFixture(t, c, &requests, &mutex), richPipelinePreparer(t, f), circuits)
+			result, e := RunGreenhouseClaim(ctx, f.a, claim, fifthExecutionHTTPFixture(t, c, &requests, &mutex), richPipelinePreparer(t, f), circuits)
 			if e != nil || result == nil || !result.Settled {
 				t.Fatal("reservation failed to settle", e)
 			}
@@ -61,7 +67,7 @@ func TestRealFifthProviderMonitorReservationPreservesCanonicalContent(t *testing
 }
 
 func TestRealFifthProviderDetailReservationPreservesCanonicalContent(t *testing.T) {
-	for _, scenario := range []string{"adp-detail", "adp-document", "paylocity-detail"} {
+	for _, scenario := range []string{"adp-detail", "adp-document", "paylocity-detail", "paylocity-proxy-detail"} {
 		t.Run(scenario, func(t *testing.T) {
 			provider := strings.Split(scenario, "-")[0]
 			name := "complete"
@@ -69,6 +75,10 @@ func TestRealFifthProviderDetailReservationPreservesCanonicalContent(t *testing.
 				name = "docx"
 			}
 			c := fifthPolicyReference(t, provider, true, name)
+			if strings.Contains(scenario, "-proxy-") {
+				c.Name += "/proxy"
+				c.Metadata["proxy"] = true
+			}
 			metadata, e := json.Marshal(map[string]any{"scraper_type": provider, "scraper_config": c.Metadata})
 			if e != nil {
 				t.Fatal(e)
@@ -86,7 +96,7 @@ func TestRealFifthProviderDetailReservationPreservesCanonicalContent(t *testing.
 			if e != nil {
 				t.Fatal(e)
 			}
-			result, e := RunDetail(ctx, a, claim, fifthHTTPFixture(t, c, &requests, &mutex), richPipelinePreparer(t, f).Processor, circuits)
+			result, e := RunDetail(ctx, a, claim, fifthExecutionHTTPFixture(t, c, &requests, &mutex), richPipelinePreparer(t, f).Processor, circuits)
 			if e != nil || result == nil || !result.Settled || result.Cycle.Status != "publisher_reserved" {
 				t.Fatal("detail reservation did not settle", result, e)
 			}

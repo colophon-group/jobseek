@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/netip"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -34,7 +35,14 @@ type DirectHTTPConfig struct {
 // VerifiedDirectHTTP seals the process-owned client used by the native claim
 // runner. Callers cannot swap its transport, redirect policy or cookie jar.
 // CA/internal-host inputs still require protected installed startup admission.
-type VerifiedDirectHTTP struct{ client *http.Client }
+type VerifiedHTTP struct {
+	client        *http.Client
+	proxyRequired bool
+}
+
+// Keep existing direct callers source-compatible while the compiled profile
+// determines whether this sealed process client requires proxy egress.
+type VerifiedDirectHTTP = VerifiedHTTP
 
 func NewVerifiedDirectHTTP(config DirectHTTPConfig) (*VerifiedDirectHTTP, error) {
 	client, err := NewDirectHTTP(config)
@@ -97,11 +105,13 @@ func NewDirectHTTP(config DirectHTTPConfig) (*http.Client, error) {
 
 type directTransport struct {
 	inner                 *http.Transport
+	proxy                 *url.URL
 	allowed               map[string]bool
 	lookup                lookupIPFunc
 	dial                  func(context.Context, string, string) (net.Conn, error)
 	timeout               time.Duration
 	requests, connections chan struct{}
+	evictIdle             func()
 }
 
 type pinnedTarget struct {
@@ -211,6 +221,19 @@ func (t *directTransport) dialContext(ctx context.Context, network, address stri
 		return nil, ErrUnsafeURL
 	}
 	target, ok := ctx.Value(targetContextKey{}).(pinnedTarget)
+	if t.proxy != nil {
+		proxyHost, e := directHost(t.proxy.Hostname())
+		if e != nil || !strings.EqualFold(host, proxyHost) {
+			return nil, ErrUnsafeURL
+		}
+		// Only the protected, immutable endpoint is a socket destination in
+		// proxy mode. Origin requests still pass validate before RoundTrip.
+		target, err = t.validate(ctx, proxyHost)
+		if err != nil {
+			return nil, err
+		}
+		ok = true
+	}
 	if !ok || !strings.EqualFold(host, target.host) {
 		return nil, ErrUnsafeURL
 	}
@@ -222,7 +245,11 @@ func (t *directTransport) dialContext(ctx context.Context, network, address stri
 		// Evict idle connections to other origins before waiting for this
 		// pool slot. CloseIdleConnections also closes newly idle connections;
 		// neither active requests nor the total connection budget are enlarged.
-		t.inner.CloseIdleConnections()
+		if t.evictIdle != nil {
+			t.evictIdle()
+		} else {
+			t.inner.CloseIdleConnections()
+		}
 		select {
 		case t.connections <- struct{}{}:
 		case <-connect.Done():

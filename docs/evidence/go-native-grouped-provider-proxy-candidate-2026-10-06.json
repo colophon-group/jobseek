@@ -1,0 +1,62 @@
+{
+  "schema": "jobseek.native-grouped-provider-proxy-candidate/v1",
+  "observed_at_utc": "2026-10-06T20:40:56.316449+00:00",
+  "candidate_version": "0.13.955",
+  "batch": [
+    "adp",
+    "paylocity",
+    "cornerstone",
+    "dayforce"
+  ],
+  "scope": "full four-provider batch, partial implementation; not published or installed",
+  "profiles": 70,
+  "registry_monitors": {
+    "adp_direct": 14,
+    "cornerstone": 12,
+    "paylocity_direct": 4,
+    "paylocity_proxy": 5
+  },
+  "independent_scrapers": {
+    "adp_api_sniffer_boards": 2,
+    "paylocity_direct": 5,
+    "paylocity_proxy": 3
+  },
+  "proxy_policy": {
+    "actual_python_traces": 34,
+    "operations": 3078,
+    "status": "pass"
+  },
+  "transport": "Protected Webshare HTTP/HTTPS/SOCKS5 configuration; real HTTP, HTTPS-proxy, authenticated SOCKS5 and CONNECT/origin-TLS fixtures pass.",
+  "validation": {
+    "canonical_direct_cases": 43,
+    "canonical_paylocity_proxy_cases": 11,
+    "canonical_transport_race_seconds": 51.317,
+    "publisher_cases": 9,
+    "enrichment_cases": 6,
+    "publisher_enrichment_startup_race_seconds": 5.398,
+    "additional_proxy_cold_cases": 9,
+    "proxy_cold_race_seconds": 8.957,
+    "registry_race_seconds": 2.457,
+    "api_full_race_seconds": 6.321,
+    "shared_proxy_connection_budget_race_seconds": 3.421,
+    "operator_wrapper_existing_tests": 14,
+    "operator_wrapper_proxy_scope_tests": 1,
+    "worker_vet": "pass",
+    "queue_vet": "pass",
+    "https_proxy_socks5_race_seconds": 1.771
+  },
+  "dayforce": {
+    "current_browser_boards": 10,
+    "actual_python_core_references": 89,
+    "browser_session_csrf_transport": "pending"
+  },
+  "remaining": [
+    "Dayforce bounded session/capture/pagination via the existing Go Lightpanda renderer",
+    "Actual installed proxy handshake/configuration and complete four-provider tests",
+    "Full module races and installed-image parity",
+    "Grouped PR and original immutable deployment",
+    "Fresh actual-route admission and supported ownership cutover",
+    "Every-profile freshness, whole-lane resources, reversal/rollback window and full Python runtime retirement"
+  ],
+  "authority": "Local reference, real network-fixture and canonical test evidence only; no live write authority granted."
+}

@@ -49,6 +49,9 @@ func fifthHTTPFixture(t *testing.T, c fifthHTTPCase, requests *[]fourthHTTPReque
 	t.Helper()
 	counts := map[string]int{}
 	return verifiedClaimFixtureClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Proxy-Authorization") != "" {
+			t.Error("proxy credential reached canonical origin fixture")
+		}
 		source := "https://" + r.Host + r.URL.String()
 		rawBody, e := io.ReadAll(r.Body)
 		if e != nil {

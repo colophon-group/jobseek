@@ -32,11 +32,20 @@ func init() {
 var adpSpaceComma = regexp.MustCompile(`\s+,`)
 
 func fifthDirectMetadata(source, raw string) (map[string]any, error) {
+	return fifthMetadata(source, raw, false)
+}
+func fifthMetadata(source, raw string, allowProxy bool) (map[string]any, error) {
 	m, e := DecodeInlineMetadata(raw)
 	if e != nil || !validURL(source) {
 		return nil, ErrOptions
 	}
 	for _, key := range []string{"proxy", "render", "skip_ssl", "actions"} {
+		if key == "proxy" && allowProxy {
+			if m[key] != nil && m[key] != true && m[key] != false {
+				return nil, ErrOptions
+			}
+			continue
+		}
 		if detailTruthy(m[key]) {
 			return nil, ErrOptions
 		}

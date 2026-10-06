@@ -271,7 +271,11 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 	var locations *executor.Locations
 	var httpClient *VerifiedDirectHTTP
 	var workdayHTTP *VerifiedDirectHTTP
+	var proxyHTTP *VerifiedHTTP
 	cleanup := func() {
+		if proxyHTTP != nil {
+			proxyHTTP.CloseIdleConnections()
+		}
 		if workdayHTTP != nil {
 			workdayHTTP.CloseIdleConnections()
 		}
@@ -333,6 +337,13 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		cleanup()
 		return runtimeStartupFailure("http2_transport")
 	}
+	if authority.RequiresProxyHTTP() {
+		proxyHTTP, err = newVerifiedProxyHTTP(DirectHTTPConfig{CABundlePEM: pinnedCA, InternalHosts: c.internalHosts}, c.proxy)
+		if err != nil {
+			cleanup()
+			return runtimeStartupFailure("proxy_transport")
+		}
+	}
 	circuits, err := queue.NewHostCircuits(client, c.circuits)
 	if err != nil {
 		cleanup()
@@ -392,6 +403,12 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		}
 		return authority.Claim(ctx, worker)
 	}, heartbeat: authority.Heartbeat, execute: func(ctx context.Context, claim *queue.Claim) (*GreenhouseClaimResult, error) {
+		if runtimeUsesProxy(claim.Descriptor()) {
+			if claim.Descriptor().Kind == queue.Scrape {
+				return RunDetail(ctx, authority, claim, proxyHTTP, preparer.Processor, circuits, renderer)
+			}
+			return RunGreenhouseClaim(ctx, authority, claim, proxyHTTP, preparer, circuits)
+		}
 		if claim.Descriptor().Kind == queue.Scrape {
 			return RunDetail(ctx, authority, claim, workdayHTTP, preparer.Processor, circuits, renderer)
 		}

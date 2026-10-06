@@ -51,16 +51,17 @@ func TestFifthProvidersCurrentDirectRegistryConfigurationCoverage(t *testing.T) 
 		config["crawler_type"], config["board_url"], config["metadata"] = provider, row[headers["board_url"]], string(encoded)
 		profile, e := InspectRichMonitor(profileBoardID, config)
 		if metadata["proxy"] == true {
-			if e == nil {
-				t.Fatal("configured proxy acquired direct monitor authority")
+			if e != nil || profile.Profile != "paylocity.proxy-embedded-items/v1" {
+				t.Fatal("configured proxy lacks bound proxy monitor authority", e)
 			}
-			counts[provider+"_proxy_preserved"]++
-			continue
+			counts[provider+"_proxy"]++
 		}
 		if e != nil || profile.Provider != provider || MonitorWorker(profile) != Simple {
 			t.Fatal("configured direct provider unsupported", row[headers["board_slug"]])
 		}
-		counts[provider]++
+		if metadata["proxy"] != true {
+			counts[provider]++
+		}
 		scraper, _ := metadata["scraper_type"].(string)
 		if scraper == "skip" {
 			continue
@@ -91,7 +92,7 @@ func TestFifthProvidersCurrentDirectRegistryConfigurationCoverage(t *testing.T) 
 		}
 		counts[provider+"_detail"]++
 	}
-	if counts["adp"] != 14 || counts["cornerstone"] != 12 || counts["paylocity"] != 4 || counts["paylocity_proxy_preserved"] != 5 {
+	if counts["adp"] != 14 || counts["cornerstone"] != 12 || counts["paylocity"] != 4 || counts["paylocity_proxy"] != 5 {
 		t.Fatal("registry coverage fixture empty")
 	}
 	t.Logf("configuration eligibility only (no production authority): %v", counts)
@@ -188,8 +189,8 @@ func TestPaylocityDetailsKeepIndependentProxyConfiguration(t *testing.T) {
 		}
 		profile, e := InspectAPIDetail(profileBoardID, config, o.JobURL("123"), Simple)
 		if detail["proxy"] == true {
-			if e == nil {
-				t.Fatal("explicit proxy detail acquired direct authority")
+			if e != nil || profile.Profile != paylocityProxyDetailProfile {
+				t.Fatal("explicit proxy detail lacks bound proxy authority", e)
 			}
 			proxy++
 			continue

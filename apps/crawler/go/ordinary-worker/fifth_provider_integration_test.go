@@ -11,7 +11,7 @@ import (
 )
 
 func TestRealFifthProviderMonitorReferencesCommitCanonicalContentAndSettlement(t *testing.T) {
-	for _, c := range fifthHTTPCases(t) {
+	for _, c := range fifthExecutionCases(t) {
 		if c.Detail {
 			continue
 		}
@@ -32,7 +32,7 @@ func TestRealFifthProviderMonitorReferencesCommitCanonicalContentAndSettlement(t
 			claim, circuits := claimFixture(t, f)
 			requests := []fourthHTTPRequest{}
 			var mutex sync.Mutex
-			result, e := RunGreenhouseClaim(ctx, f.a, claim, fifthHTTPFixture(t, c, &requests, &mutex), richPipelinePreparer(t, f), circuits)
+			result, e := RunGreenhouseClaim(ctx, f.a, claim, fifthExecutionHTTPFixture(t, c, &requests, &mutex), richPipelinePreparer(t, f), circuits)
 			if e != nil || result == nil || !result.Settled {
 				t.Fatal("provider did not settle", result, e)
 			}
@@ -90,7 +90,7 @@ func TestRealFifthProviderMonitorReferencesCommitCanonicalContentAndSettlement(t
 	}
 }
 func TestRealFifthProviderDetailReferencesCommitCanonicalContentAndSettlement(t *testing.T) {
-	for _, c := range fifthHTTPCases(t) {
+	for _, c := range fifthExecutionCases(t) {
 		if !c.Detail {
 			continue
 		}
@@ -107,7 +107,7 @@ func TestRealFifthProviderDetailReferencesCommitCanonicalContentAndSettlement(t 
 			if e != nil {
 				t.Fatal(e)
 			}
-			result, e := RunDetail(ctx, a, claim, fifthHTTPFixture(t, c, &requests, &mutex), richPipelinePreparer(t, f).Processor, circuits)
+			result, e := RunDetail(ctx, a, claim, fifthExecutionHTTPFixture(t, c, &requests, &mutex), richPipelinePreparer(t, f).Processor, circuits)
 			status := "succeeded"
 			if c.Expected.Error || c.Expected.Empty {
 				status = "failed"

@@ -12,11 +12,16 @@ import (
 )
 
 func TestRealFifthProviderDetailEnrichmentPreservesSelectedAuthorityAndBackfillsEmptyFields(t *testing.T) {
-	for _, provider := range []string{"adp", "paylocity"} {
+	for _, route := range []string{"adp", "paylocity", "paylocity/proxy"} {
+		provider := strings.Split(route, "/")[0]
 		for _, mode := range []string{"description-mask", "empty-backfill"} {
-			t.Run(provider+"/"+mode, func(t *testing.T) {
+			t.Run(route+"/"+mode, func(t *testing.T) {
 				c := fifthPolicyReference(t, provider, true, "complete")
 				c.Metadata["enrich"] = []string{"description"}
+				if route == "paylocity/proxy" {
+					c.Name += "/proxy"
+					c.Metadata["proxy"] = true
+				}
 				metadata, e := json.Marshal(map[string]any{"scraper_type": provider, "scraper_config": c.Metadata})
 				if e != nil {
 					t.Fatal(e)
@@ -37,7 +42,7 @@ func TestRealFifthProviderDetailEnrichmentPreservesSelectedAuthorityAndBackfills
 				if e != nil {
 					t.Fatal(e)
 				}
-				result, e := RunDetail(ctx, a, claim, fifthHTTPFixture(t, c, &requests, &mutex), richPipelinePreparer(t, f).Processor, circuits)
+				result, e := RunDetail(ctx, a, claim, fifthExecutionHTTPFixture(t, c, &requests, &mutex), richPipelinePreparer(t, f).Processor, circuits)
 				if e != nil || result == nil || !result.Settled || result.Cycle.Status != "succeeded" {
 					t.Fatal("masked detail did not settle", result, e)
 				}

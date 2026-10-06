@@ -40,6 +40,7 @@ type RuntimeConfig struct {
 	delay                                                                                         float64
 	maxDomains                                                                                    int
 	internalHosts                                                                                 []string
+	proxy                                                                                         proxyRuntimeConfig
 	circuits                                                                                      queue.HostCircuitSettings
 }
 
@@ -257,6 +258,10 @@ func ReadRuntimeConfig(getenv func(string) string, installedRevision string) (Ru
 	if hex.EncodeToString(hash[:]) != pinnedCASHA256 {
 		return RuntimeConfig{}, ErrStartup
 	}
+	c.proxy, err = readProxyRuntimeConfig(getenv)
+	if err != nil {
+		return RuntimeConfig{}, ErrStartup
+	}
 	return c, nil
 }
 
@@ -265,7 +270,7 @@ type BuildIdentity struct {
 	SourceRevision string     `json:"source_revision"`
 	CASHA256       string     `json:"ca_sha256"`
 	Profile        string     `json:"profile"`
-	Profiles       [68]string `json:"profiles"`
+	Profiles       [70]string `json:"profiles"`
 }
 
 func Identity(linked string) (BuildIdentity, error) {
@@ -273,5 +278,5 @@ func Identity(linked string) (BuildIdentity, error) {
 	if err != nil {
 		return BuildIdentity{}, err
 	}
-	return BuildIdentity{revision, pinnedCASHA256, "greenhouse.token-skip/v1", [68]string{"greenhouse.token-skip/v1", "ashby.token-skip/v1", "lever.token-skip/v1", "recruitee.api-skip/v1", "pinpoint.slug-skip/v1", "rss.teamtailor-skip/v1", "rss.successfactors-skip/v1", "personio.xml-skip/v1", "workday.cxs-urls/v1", "workday.cxs-detail/v1", "jsonld.direct-detail/v1", "smartrecruiters.api-detail/v1", "workable.api-detail/v1", "smartrecruiters.api-urls/v1", "workable.api-urls/v1", "join.nextdata-urls/v1", "join.nextdata-detail/v1", "sitemap.explicit-urls/v1", "dom.direct-detail/v1", "dom.direct-urls/v1", "dom.rendered-urls/v1", "dom.rendered-detail/v1", "jsonld.rendered-detail/v1", "api_sniffer.http-items/v1", "oracle_hcm.finder-items/v1", "oracle_hcm.api-detail/v1", "embedded.direct-detail/v1", "embedded.rendered-detail/v1", "api_sniffer.http-detail/v1", "icims.listing-urls/v1", "breezy.api-urls/v1", "gem.token-skip/v1", "jazzhr.listing-urls/v1", "gupy.nextdata-urls/v1", "phenom.sitemap-urls/v1", "jobylon.embed-items/v1", "nextdata.embedded-items/v1", "nextdata.embedded-urls/v1", "nextdata.rendered-items/v1", "nextdata.rendered-urls/v1", "beisen.portal-items/v1", "inline.document-items/v1", "personio.xml-items/v1", "rss.teamtailor-items/v1", "rss.successfactors-items/v1", "mokahr.encrypted-items/v1", "almacareer.graphql-items/v1", "eightfold.pcsx-sitemap/v1", "mokahr.encrypted-detail/v1", "eightfold.jsonld-api-detail/v1", "softgarden.inline-urls/v1", "ukg.search-items/v1", "bamboohr.careers-list/v1", "recruiter-co-kr.jobflex/v1", "rss.generic-skip/v1", "rss.generic-items/v1", "comeet.hosted-items/v1", "comeet.api-items/v1", "jobvite.listing-urls/v1", "adp.search-items/v1", "cornerstone.search-items/v1", "paylocity.embedded-items/v1", "adp.public-detail/v1", "paylocity.html-detail/v1", "paycom.preview-items/v1", "rippling.v1-urls/v1", "paycom.public-detail/v1", "rippling.v1-detail/v1"}}, nil
+	return BuildIdentity{revision, pinnedCASHA256, "greenhouse.token-skip/v1", [70]string{"greenhouse.token-skip/v1", "ashby.token-skip/v1", "lever.token-skip/v1", "recruitee.api-skip/v1", "pinpoint.slug-skip/v1", "rss.teamtailor-skip/v1", "rss.successfactors-skip/v1", "personio.xml-skip/v1", "workday.cxs-urls/v1", "workday.cxs-detail/v1", "jsonld.direct-detail/v1", "smartrecruiters.api-detail/v1", "workable.api-detail/v1", "smartrecruiters.api-urls/v1", "workable.api-urls/v1", "join.nextdata-urls/v1", "join.nextdata-detail/v1", "sitemap.explicit-urls/v1", "dom.direct-detail/v1", "dom.direct-urls/v1", "dom.rendered-urls/v1", "dom.rendered-detail/v1", "jsonld.rendered-detail/v1", "api_sniffer.http-items/v1", "oracle_hcm.finder-items/v1", "oracle_hcm.api-detail/v1", "embedded.direct-detail/v1", "embedded.rendered-detail/v1", "api_sniffer.http-detail/v1", "icims.listing-urls/v1", "breezy.api-urls/v1", "gem.token-skip/v1", "jazzhr.listing-urls/v1", "gupy.nextdata-urls/v1", "phenom.sitemap-urls/v1", "jobylon.embed-items/v1", "nextdata.embedded-items/v1", "nextdata.embedded-urls/v1", "nextdata.rendered-items/v1", "nextdata.rendered-urls/v1", "beisen.portal-items/v1", "inline.document-items/v1", "personio.xml-items/v1", "rss.teamtailor-items/v1", "rss.successfactors-items/v1", "mokahr.encrypted-items/v1", "almacareer.graphql-items/v1", "eightfold.pcsx-sitemap/v1", "mokahr.encrypted-detail/v1", "eightfold.jsonld-api-detail/v1", "softgarden.inline-urls/v1", "ukg.search-items/v1", "bamboohr.careers-list/v1", "recruiter-co-kr.jobflex/v1", "rss.generic-skip/v1", "rss.generic-items/v1", "comeet.hosted-items/v1", "comeet.api-items/v1", "jobvite.listing-urls/v1", "adp.search-items/v1", "cornerstone.search-items/v1", "paylocity.embedded-items/v1", "adp.public-detail/v1", "paylocity.html-detail/v1", "paycom.preview-items/v1", "rippling.v1-urls/v1", "paycom.public-detail/v1", "rippling.v1-detail/v1", "paylocity.proxy-embedded-items/v1", "paylocity.proxy-html-detail/v1"}}, nil
 }

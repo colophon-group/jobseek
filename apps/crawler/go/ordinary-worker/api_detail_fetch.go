@@ -21,7 +21,7 @@ import (
 // The worker supplies the sealed transport and the original request observation;
 // no child process, additional publisher probe or persistence path is introduced.
 func fetchAPIDetail(ctx context.Context, verified *VerifiedDirectHTTP, profile queue.WorkdayDetailProfile) (map[string]any, *publisherpolicy.Reservation, error) {
-	if verified == nil || verified.client == nil {
+	if verified == nil || verified.client == nil || verified.proxyRequired != queue.ProfileRequiresProxy(profile.Profile) {
 		return nil, nil, queue.ErrConfiguration
 	}
 	client := *verified.client
@@ -36,7 +36,8 @@ func fetchAPIDetail(ctx context.Context, verified *VerifiedDirectHTTP, profile q
 	switch profile.Profile {
 	case "adp.public-detail/v1":
 		content, reservation, err = fetchADPDetail(ctx, &client, profile)
-	case "paylocity.html-detail/v1":
+	case "paylocity.html-detail/v1", "paylocity.proxy-html-detail/v1":
+		client.CheckRedirect = verified.client.CheckRedirect
 		content, reservation, err = fetchPaylocityDetail(ctx, &client, profile.SourceURL)
 	case "paycom.public-detail/v1":
 		content, reservation, err = fetchPaycomDetail(ctx, &client, profile)

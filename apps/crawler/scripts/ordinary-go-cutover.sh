@@ -54,7 +54,9 @@ set -a
 # shellcheck disable=SC1090,SC1091
 source .env
 set +a
-unset WEBSHARE_PROXY_URLS
+# The native proxy profiles consume only protected endpoint credentials.
+# The operator API key is never needed by a runtime or ownership admin.
+unset WEBSHARE_API_KEY
 export ORDINARY_RETIRE_ADMIN_SOURCE_REVISION="" ORDINARY_RETIRE_ADMIN_IMAGE_REF=""
 [[ "${JOBSEEK_DEPLOY_REVISION:-}" =~ ^[0-9a-f]{40}$ && "${CRAWLER_IMAGE_REF:-}" =~ ^ghcr\.io/[^/]+/jobseek-crawler@sha256:[0-9a-f]{64}$ ]] || reject "immutable release identity is missing"
 [[ "${BROWSER_IMAGE_REF:-}" =~ ^ghcr\.io/[^/]+/jobseek-crawler-browser@sha256:[0-9a-f]{64}$ && "${LIGHTPANDA_B0_SERVICE_HOST:-}" == 10.0.0.5 ]] || reject "browser image or B0 host identity is invalid"
