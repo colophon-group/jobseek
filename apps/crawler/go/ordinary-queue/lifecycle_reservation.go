@@ -48,6 +48,9 @@ func (a *Authority) FinishGreenhouseReservationResource(ctx context.Context, cla
 	}
 	if observation != nil {
 		matches := initialMonitorResourceMatches(profile, initialEndpoint)
+		if profile.Provider == "mokahr" || profile.Provider == "almacareer" || profile.Provider == "eightfold" {
+			matches = ProviderBatchMonitorResourceMatches(profile, claim.task.Config, initialEndpoint)
+		}
 		if profile.Provider == "inline" {
 			matches = InlineMonitorResourceMatches(profile, claim.task.Config, initialEndpoint)
 		}

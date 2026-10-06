@@ -146,6 +146,8 @@ def ownership_projection(payload: str) -> str:
                     "embedded.direct-detail/v1",
                     "embedded.rendered-detail/v1",
                     "api_sniffer.http-detail/v1",
+                    "mokahr.encrypted-detail/v1",
+                    "eightfold.jsonld-api-detail/v1",
                 )
                 or (d["profile"] == "workday.cxs-detail/v1" and d["board_id"] not in members)
                 or (

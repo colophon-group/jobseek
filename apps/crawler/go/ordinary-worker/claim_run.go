@@ -277,6 +277,12 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			}
 			return nil
 		}, renderedPage)
+	} else if profile.Provider == "mokahr" {
+		discovery, fetchErr = discoverMokahrInventory(ctx, http.client, profile, task.Config)
+	} else if profile.Provider == "almacareer" {
+		discovery, fetchErr = discoverAlmaInventory(ctx, http.client, profile, task.Config)
+	} else if profile.Provider == "eightfold" {
+		discovery, fetchErr = discoverEightfoldInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "inline" {
 		discovery, fetchErr = discoverInlineInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "beisen" {
@@ -347,6 +353,9 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		// initial resource to this claim's endpoint or validated page. RSS may
 		// stop at a publisher header; incomplete inventories never reach writes.
 		matches := richResponseMatches(profile, response.endpoint)
+		if profile.Provider == "mokahr" || profile.Provider == "almacareer" || profile.Provider == "eightfold" {
+			matches = queue.ProviderBatchMonitorResourceMatches(profile, task.Config, response.endpoint)
+		}
 		if profile.Provider == "inline" {
 			matches = queue.InlineMonitorResourceMatches(profile, task.Config, response.endpoint)
 		}
@@ -374,7 +383,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		}
 		if response.reserved {
 			initial := profile.Endpoint
-			if profile.Provider == "inline" || profile.Provider == "beisen" || profile.Provider == "api_sniffer" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "oracle_hcm" || profile.Provider == "icims" || profile.Provider == "phenom" || profile.Provider == "nextdata" {
+			if profile.Provider == "mokahr" || profile.Provider == "almacareer" || profile.Provider == "eightfold" || profile.Provider == "inline" || profile.Provider == "beisen" || profile.Provider == "api_sniffer" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "oracle_hcm" || profile.Provider == "icims" || profile.Provider == "phenom" || profile.Provider == "nextdata" {
 				initial = response.endpoint
 			}
 			terminal, err := cycle.FinishReservationResource(ctx, initial, &queue.GreenhouseHeaderReservation{Endpoint: response.finalURL, PolicyURL: response.PolicyURL(), Source: response.reservationSource})
@@ -384,6 +393,10 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			return finishSuccess(terminal)
 		}
 		providerGone := (response.status == 404 || (profile.Provider == "join" || profile.Provider == "dom" || profile.Provider == "jazzhr" || profile.Provider == "gupy") && response.status == 410) && profile.Provider != "api_sniffer" && profile.Provider != "pinpoint" && profile.Provider != "rss" && profile.Provider != "personio" && profile.Provider != "smartrecruiters" && profile.Provider != "workable" && profile.Provider != "sitemap" && profile.Provider != "oracle_hcm" && profile.Provider != "breezy" && profile.Provider != "gem" && profile.Provider != "phenom"
+		if profile.Provider == "mokahr" || profile.Provider == "almacareer" || profile.Provider == "eightfold" {
+			var failure *DiscoveryError
+			providerGone = errors.As(fetchErr, &failure) && failure.Kind == "provider_gone" && queue.ProviderBatchMonitorGone(task.Config, response.endpoint, response.status, response.providerDisabled)
+		}
 		if profile.Provider == "icims" {
 			providerGone = queue.ICIMSMonitorPrimaryGone(task.Config, response.endpoint, response.status)
 		}
@@ -413,7 +426,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		}
 		return finishSuccess(terminal)
 	}
-	if profile.Provider == "rss" || profile.Provider == "sitemap" {
+	if profile.Provider == "rss" || profile.Provider == "sitemap" || profile.Provider == "eightfold" {
 		discovery.Jobs, err = applyFeedMonitorURLs(ctx, task.Config, discovery.Jobs)
 		if err != nil {
 			return failure("processing", err)
@@ -423,6 +436,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 	if err != nil {
 		return failure("inventory", err)
 	}
+	inventory.MetadataUpdates = discovery.MetadataUpdates
 	if profile.Provider == "workday" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "dom" || profile.Provider == "icims" || profile.Provider == "breezy" || profile.Provider == "jazzhr" || profile.Provider == "gupy" || profile.Provider == "phenom" {
 		for offset := 0; offset < len(inventory.Jobs); offset += 500 {
 			end := min(offset+500, len(inventory.Jobs))

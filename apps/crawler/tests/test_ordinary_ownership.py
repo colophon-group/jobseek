@@ -550,3 +550,19 @@ def test_rendered_monitor_projection_preserves_exact_worker_boundary():
     member["worker"] = "browser"
     with pytest.raises(OrdinaryOwnershipError):
         ownership_projection(json.dumps(doc, separators=(",", ":")))
+
+
+@pytest.mark.parametrize(
+    "profile", ["mokahr.encrypted-detail/v1", "eightfold.jsonld-api-detail/v1"]
+)
+def test_provider_batch_detail_projection_preserves_independent_legacy_exclusion(profile):
+    _, payload = expectation(jsonld=True)
+    doc = json.loads(payload)
+    doc["details"][0]["profile"] = profile
+    raw = json.dumps(doc, separators=(",", ":"))
+    projection = json.loads(ownership_projection(raw))
+    assert projection["details"] == {doc["details"][0]["board_id"]: "*"}
+    assert projection["plan_sha256"] == hashlib.sha256(raw.encode()).hexdigest()
+    doc["details"][0]["worker"] = "browser"
+    with pytest.raises(OrdinaryOwnershipError):
+        ownership_projection(json.dumps(doc, separators=(",", ":")))

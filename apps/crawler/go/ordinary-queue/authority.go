@@ -477,10 +477,21 @@ func (a *Authority) Settle(ctx context.Context, claim *Claim, receipt *Receipt) 
 			return ErrAuthorityLost
 		}
 		var accepted bool
+		var metadata *string
+		if claim.task.Kind == Monitor && claim.task.Config["crawler_type"] == "eightfold" {
+			var watermark []byte
+			if err := tx.QueryRow(ctx, "SELECT metadata->'pcsx_watermark' FROM public.job_board WHERE id=$1::uuid", claim.boardID).Scan(&watermark); err != nil {
+				return err
+			}
+			metadata, err = eightfoldCacheMetadata(claim.task.Config, watermark)
+			if err != nil {
+				return err
+			}
+		}
 		if receipt.nextDue == nil {
 			accepted, err = a.queue.Complete(ctx, &claim.task)
 		} else {
-			accepted, err = a.queue.rescheduleHost(ctx, &claim.task, seconds(*receipt.nextDue), receipt.learnedHost)
+			accepted, err = a.queue.rescheduleMetadata(ctx, &claim.task, seconds(*receipt.nextDue), receipt.learnedHost, metadata)
 		}
 		if err != nil {
 			return err

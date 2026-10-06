@@ -26,6 +26,7 @@ type firstRetirementMember struct {
 	Completed   bool              `json:"completed"`
 	LearnedHost string            `json:"learned_host"`
 	Config      map[string]string `json:"config"`
+	Metadata    *string           `json:"metadata,omitempty"`
 	Kind        Kind              `json:"kind,omitempty"`
 	TaskID      string            `json:"task_id,omitempty"`
 }
@@ -93,6 +94,16 @@ func firstRetirementMembers(ctx context.Context, pool *pgxpool.Pool, client *Cli
 			item := deadlines[member.BoardID]
 			due, state, digest, learned := item.due, item.state, item.digest, item.learned
 			row := firstRetirementMember{BoardID: member.BoardID, Domain: member.Domain, Completed: state == "completed", Config: config}
+			if profile.Provider == "eightfold" {
+				canonical, e := profileMetadataFields(pair.canonical["metadata"], nil)
+				if e != nil {
+					return e
+				}
+				row.Metadata, e = eightfoldCacheMetadata(config, canonical["pcsx_watermark"])
+				if e != nil {
+					return e
+				}
+			}
 			if due != nil {
 				if !validTime(seconds(*due)) {
 					return ErrAuthorityLost

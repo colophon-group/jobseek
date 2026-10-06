@@ -245,6 +245,10 @@ func (c *Client) Reschedule(ctx context.Context, task *Task, nextDue float64) (b
 }
 
 func (c *Client) rescheduleHost(ctx context.Context, task *Task, nextDue float64, learned *string) (bool, error) {
+	return c.rescheduleMetadata(ctx, task, nextDue, learned, nil)
+}
+
+func (c *Client) rescheduleMetadata(ctx context.Context, task *Task, nextDue float64, learned, metadata *string) (bool, error) {
 	if !validTask(task) || !validTime(nextDue) {
 		return false, ErrConfiguration
 	}
@@ -257,7 +261,14 @@ func (c *Client) rescheduleHost(ctx context.Context, task *Task, nextDue float64
 		}
 		host = *learned
 	}
-	return c.transition(ctx, c.reschedule, string(task.Worker), task.Domain, task.ID, string(task.Kind), number(nextDue), task.claimToken, host)
+	expected, next := "", ""
+	if metadata != nil {
+		if task.Kind != Monitor || task.Worker != Simple || !task.Fenced() || task.Config["crawler_type"] != "eightfold" || *metadata == "" || len(*metadata) > 1<<20 {
+			return false, ErrConfiguration
+		}
+		expected, next = task.Config["metadata"], *metadata
+	}
+	return c.transition(ctx, c.reschedule, string(task.Worker), task.Domain, task.ID, string(task.Kind), number(nextDue), task.claimToken, host, expected, next)
 }
 func (c *Client) transition(ctx context.Context, script *redis.Script, args ...any) (bool, error) {
 	raw, err := script.Run(ctx, c.redis, nil, args...).Result()

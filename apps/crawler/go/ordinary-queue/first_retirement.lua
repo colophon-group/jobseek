@@ -72,6 +72,13 @@ local function prepare_first_retirement(plan, raw, exists, adopting)
             fields = fields + 1
         end
         if fields == 0 or redis.call("HLEN", board_key) ~= fields then return nil end
+        if row.metadata ~= nil then
+            if kind ~= "monitor" or worker ~= "simple" or member.profile ~= "eightfold.pcsx-sitemap/v1"
+                or row.config.crawler_type ~= "eightfold" or type(row.metadata) ~= "string"
+                or #row.metadata > 1048576 or string.sub(row.metadata,1,1) ~= "{" then return nil end
+            local ok, decoded = pcall(cjson.decode, row.metadata)
+            if not ok or type(decoded) ~= "table" then return nil end
+        end
         local domain = row.domain
         local keys = {"ft_monitors_" .. worker .. ":" .. domain, "ft_scrapes_" .. worker .. ":" .. domain,
             "monitors_" .. worker .. ":" .. domain, "scrapes_" .. worker .. ":" .. domain}
@@ -112,6 +119,7 @@ local function prepare_first_retirement(plan, raw, exists, adopting)
         if kind == "scrape" then first_key, recurring_key = keys[2], keys[4] end
         local first = redis.call("ZSCORE", first_key, id)
         local recurring = redis.call("ZSCORE", recurring_key, id)
+        local queue_changed = false
         -- A completed SQL receipt can precede ACK or reaping. Repair its queued
         -- deadline from SQL as well; do not resurrect dead letters/orphans.
         if lease ~= false or (row.completed and (first ~= false or recurring ~= false)) then
@@ -121,9 +129,13 @@ local function prepare_first_retirement(plan, raw, exists, adopting)
                 or (due ~= nil and (recurring == false or tonumber(recurring) ~= due))
                 or repair ~= false
             if changed then
+                queue_changed = true
                 changes[#changes + 1] = {row = row, task = task, due = due, kind = kind, id = id, first_key = first_key, recurring_key = recurring_key, config_key = board_key, worker = worker}
                 domains[worker .. "|" .. domain] = {worker = worker, domain = domain, rate = tonumber(rate) or 0, rotation = tonumber(rotation) or 0}
             end
+        end
+        if row.metadata ~= nil and not queue_changed then
+            changes[#changes + 1] = {row=row, config_key=board_key, metadata_only=true}
         end
     end
     return changes, domains
@@ -132,6 +144,7 @@ end
 local function apply_first_retirement(changes, domains)
     for _, change in ipairs(changes) do
         local row, task, worker = change.row, change.task, change.worker
+        if not change.metadata_only then
         redis.call("ZREM", change.first_key, change.id)
         redis.call("ZREM", change.recurring_key, change.id)
         if change.due ~= nil then
@@ -142,6 +155,8 @@ local function apply_first_retirement(changes, domains)
         if change.kind == "monitor" then redis.call("HDEL", "monitor_repair_due:" .. worker, task) end
         if row.completed then redis.call("HDEL", "inflight_strikes:" .. worker, task) end
         if row.learned_host ~= "" then redis.call("HSET", change.config_key, "egress_host", row.learned_host) end
+        end
+        if row.metadata ~= nil then redis.call("HSET", change.config_key, "metadata", row.metadata) end
     end
     for _, floors in pairs(domains) do
         local domain, worker = floors.domain, floors.worker

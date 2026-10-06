@@ -12,6 +12,7 @@ type RichMonitorJob struct {
 	URL                                  string
 	SourceIdentity                       string
 	Hybrid                               bool
+	URLOnly                              bool
 	Title, Description                   *string
 	Locations                            []string
 	Language                             any
@@ -23,10 +24,11 @@ type RichMonitorJob struct {
 }
 
 type GreenhouseInventory struct {
-	Jobs        []RichMonitorJob
-	Discovered  int
-	DropReasons map[string]int
-	Truncated   bool
+	Jobs            []RichMonitorJob
+	Discovered      int
+	DropReasons     map[string]int
+	Truncated       bool
+	MetadataUpdates map[string]any
 }
 
 // NormalizeGreenhouseInventory implements the default non-streaming Python

@@ -49,6 +49,10 @@ func privatePipelineFixture(t *testing.T) nativePipelineFixture {
 }
 
 func privateRichPipelineFixture(t *testing.T, provider, metadata string, workers ...queue.WorkerType) nativePipelineFixture {
+	return privateRichPipelineFixtureURL(t, provider, metadata, "", workers...)
+}
+
+func privateRichPipelineFixtureURL(t *testing.T, provider, metadata, configuredURL string, workers ...queue.WorkerType) nativePipelineFixture {
 	worker := queue.Simple
 	if len(workers) > 0 {
 		worker = workers[0]
@@ -148,6 +152,9 @@ func privateRichPipelineFixture(t *testing.T, provider, metadata string, workers
 		_, _ = pg.Exec(ctx, "DELETE FROM company WHERE id=$1::uuid", f.company)
 	})
 	boardURL := "https://example.com/careers"
+	if provider == "mokahr" {
+		boardURL = "https://example.com/social-recruitment/fixture/123"
+	}
 	if provider == "beisen" {
 		boardURL = "https://fixture.zhiye.com/"
 	}
@@ -165,6 +172,9 @@ func privateRichPipelineFixture(t *testing.T, provider, metadata string, workers
 	}
 	if provider == "workable" {
 		boardURL = "https://apply.workable.com/fixture"
+	}
+	if configuredURL != "" {
+		boardURL = configuredURL
 	}
 	if _, err := pg.Exec(ctx, `INSERT INTO job_board(id,company_id,board_slug,board_url,crawler_type,metadata,throttle_key,check_interval_minutes,scrape_interval_hours,next_check_at,monitor_needs_browser,scraper_needs_browser)
  VALUES($1::uuid,$2::uuid,$3,$5,$6,$4::jsonb,$6,60,24,now()-interval '1 minute',$7,$8)`, f.board, f.company, "native-"+f.board, metadata, boardURL, provider, worker == queue.Browser, detailBrowser); err != nil {

@@ -11,6 +11,7 @@ import (
 
 	apisniffer "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
 	join "github.com/colophon-group/jobseek/apps/crawler/go/join-monitor"
+	jsonld "github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail"
 	oracle "github.com/colophon-group/jobseek/apps/crawler/go/oracle-hcm"
 	smartrecruiters "github.com/colophon-group/jobseek/apps/crawler/go/smartrecruiters-monitor"
 	workable "github.com/colophon-group/jobseek/apps/crawler/go/workable-monitor"
@@ -20,10 +21,12 @@ const smartRecruitersDetailProfile = "smartrecruiters.api-detail/v1"
 const workableDetailProfile = "workable.api-detail/v1"
 const joinDetailProfile = "join.nextdata-detail/v1"
 const oracleDetailProfile = "oracle_hcm.api-detail/v1"
+const mokahrDetailProfile = "mokahr.encrypted-detail/v1"
+const eightfoldDetailProfile = "eightfold.jsonld-api-detail/v1"
 
 func independentDetailProfile(profile string) bool {
 	switch profile {
-	case domRenderedDetailProfile, jsonldRenderedDetailProfile, embeddedRenderedDetailProfile, domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, joinDetailProfile, oracleDetailProfile, embeddedDetailProfile, httpAPIDetailProfile:
+	case mokahrDetailProfile, eightfoldDetailProfile, domRenderedDetailProfile, jsonldRenderedDetailProfile, embeddedRenderedDetailProfile, domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, joinDetailProfile, oracleDetailProfile, embeddedDetailProfile, httpAPIDetailProfile:
 		return true
 	}
 	return false
@@ -68,10 +71,16 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 	if explicitScraper != "" {
 		scraper = explicitScraper
 	}
-	if scraper != "smartrecruiters" && scraper != "workable" && scraper != "nextdata" && scraper != "oracle_hcm" {
+	if scraper != "mokahr" && scraper != "eightfold" && scraper != "smartrecruiters" && scraper != "workable" && scraper != "nextdata" && scraper != "oracle_hcm" {
 		return fail()
 	}
 	allowed := map[string]bool{"proxy": true, "render": true, "ssl_verify": true}
+	if scraper == "mokahr" {
+		allowed["locale"], allowed["enrich"] = true, true
+	}
+	if scraper == "eightfold" {
+		allowed = nil
+	} // Validate the existing JSON-LD parser options below.
 	if scraper == "workable" {
 		allowed["token"] = true
 	}
@@ -99,7 +108,50 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 	var endpoint, profile, override string
 	var enrichmentFields []string
 	var oracleFields map[string]any
-	if scraper == "smartrecruiters" {
+	var jsonldOptions map[string]any
+	var locale string
+	if scraper == "mokahr" {
+		route, e := apisniffer.MokahrDetailRouteForSource(source)
+		if e != nil {
+			return fail()
+		}
+		locale = "zh-CN"
+		if raw, present := options["locale"]; present {
+			if string(raw) == "null" || json.Unmarshal(raw, &locale) != nil || len(locale) < 2 || len(locale) > 32 || strings.ContainsAny(locale, "\x00\r\n") {
+				return fail()
+			}
+		}
+		endpoint, profile = route.APIURL(), mokahrDetailProfile
+		enrichmentFields, err = providerBatchEnrichment(config)
+	} else if scraper == "eightfold" {
+		route, e := apisniffer.EightfoldDetailRouteForSource(source)
+		if e != nil {
+			return fail()
+		}
+		jsonldOptions = map[string]any{}
+		for key, raw := range options {
+			var value any
+			if json.Unmarshal(raw, &value) != nil {
+				return fail()
+			}
+			jsonldOptions[key] = value
+		}
+		if jsonld.ValidateConfig(jsonldOptions) != nil {
+			return fail()
+		}
+		// Eightfold's legacy fast path uses parse_html directly: transport,
+		// fallback and description-selector behavior belongs to other scrapers.
+		for _, key := range []string{"request_headers", "description_selector", "transport_attempts", "iframe_src"} {
+			if _, present := options[key]; present {
+				return fail()
+			}
+		}
+		if raw, present := options["fallback"]; present && string(raw) != "null" && string(raw) != "[]" {
+			return fail()
+		}
+		endpoint, profile = route.APIURL, eightfoldDetailProfile
+		enrichmentFields, err = providerBatchEnrichment(config)
+	} else if scraper == "smartrecruiters" {
 		_, endpoint, err = smartrecruiters.DetailEndpoint(source)
 		profile = smartRecruitersDetailProfile
 	} else if scraper == "workable" {
@@ -170,6 +222,7 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 	}
 	digest := sha256.Sum256(body)
 	p := WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: endpoint, Domain: strings.ToLower(u.Hostname()), Profile: profile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), APITokenOverride: override, EnrichmentFields: enrichmentFields, OracleFields: oracleFields}
+	p.APILocale, p.JSONLDConfig = locale, jsonldOptions
 	if profile == joinDetailProfile {
 		p.JoinDetailConfig = options
 	}
@@ -179,6 +232,19 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 func inspectAPIDetailOwnership(boardID string, config map[string]string) (WorkdayDetailProfile, error) {
 	metadata, err := profileMetadataFields(config["metadata"], nil)
 	if err == nil {
+		if o, e := apisniffer.MokahrOptionsFromMetadata(config["board_url"], config["metadata"]); e == nil {
+			if p, e := InspectAPIDetail(boardID, config, o.Partitions[0].JobURL("OWNERSHIPADMISSION"), Simple); e == nil && p.Profile == mokahrDetailProfile {
+				p.Domain = "*"
+				return p, nil
+			}
+		}
+		if source, e := url.Parse(config["board_url"]); e == nil && source.Scheme == "https" && source.Host != "" {
+			candidate := "https://" + source.Host + "/careers/job/1?domain=" + url.QueryEscape(source.Hostname())
+			if p, e := InspectAPIDetail(boardID, config, candidate, Simple); e == nil && p.Profile == eightfoldDetailProfile {
+				p.Domain = "*"
+				return p, nil
+			}
+		}
 		var options map[string]any
 		if raw, ok := metadata["scraper_config"]; ok {
 			_ = json.Unmarshal(raw, &options)
@@ -190,7 +256,7 @@ func inspectAPIDetailOwnership(boardID string, config map[string]string) (Workda
 			}
 		}
 	}
-	for _, source := range []string{"https://jobs.smartrecruiters.com/native/OWNERSHIPADMISSION", "https://apply.workable.com/native/j/OWNERSHIPADMISSION/", "https://join.com/companies/native/OWNERSHIPADMISSION"} {
+	for _, source := range []string{"https://app.mokahr.com/social-recruitment/native/1#/job/OWNERSHIPADMISSION", "https://jobs.smartrecruiters.com/native/OWNERSHIPADMISSION", "https://apply.workable.com/native/j/OWNERSHIPADMISSION/", "https://join.com/companies/native/OWNERSHIPADMISSION"} {
 		if profile, err := InspectAPIDetail(boardID, config, source, Simple); err == nil {
 			profile.Domain = "*"
 			return profile, nil

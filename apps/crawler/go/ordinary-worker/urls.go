@@ -2,6 +2,7 @@ package worker
 
 import (
 	"errors"
+	api "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
 	"net"
 	"net/url"
 	"regexp"
@@ -195,6 +196,9 @@ func classifyJobURL(raw, board string) string {
 		return "bare_host"
 	}
 	if bp, ok := parsePythonURL(board); ok && strings.EqualFold(bp.host, p.host) && strings.TrimRight(bp.path, "/") == path && p.query == "" {
+		if _, err := api.MokahrDetailRouteForSource(raw); err == nil {
+			return ""
+		}
 		return "board_homepage"
 	}
 	return ""

@@ -71,7 +71,7 @@ func TestNativeRichPipelineWholeInventoryAndPartialSummary(t *testing.T) {
 			sink := &pipelineSink{}
 			preparer := &pipelinePreparer{}
 			result, err := PersistGreenhouseInventory(context.Background(), sink, preparer, inventory)
-			if err != nil || result.Cycle == nil || result.Batches.Inserted != 1001 || !reflect.DeepEqual(sink.chunks, []int{500, 500, 1}) || !sink.finished || preparer.at != 1001 || sink.summary != (queue.GreenhouseInventorySummary{Discovered: 1003, ProcessingFiltered: 2, Truncated: partial}) {
+			if err != nil || result.Cycle == nil || result.Batches.Inserted != 1001 || !reflect.DeepEqual(sink.chunks, []int{500, 500, 1}) || !sink.finished || preparer.at != 1001 || !reflect.DeepEqual(sink.summary, queue.GreenhouseInventorySummary{Discovered: 1003, ProcessingFiltered: 2, Truncated: partial}) {
 				t.Fatal("native pipeline lost global inventory or committed-chunk accounting")
 			}
 		})

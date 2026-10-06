@@ -1,0 +1,2376 @@
+{
+  "projection": [
+    {
+      "name": "complete",
+      "raw": {
+        "id": "0c44abe6",
+        "title": "通信设备电源专家",
+        "jobDescription": "<p>工作职责：</p><p>1、从事...</p>",
+        "commitment": "全职",
+        "publishedAt": "2026-04-28T08:41:14",
+        "openedAt": "2025-09-01T00:00",
+        "locations": [
+          {
+            "cityId": 420100,
+            "country": "中国",
+            "address": "湖北省武汉市"
+          },
+          {
+            "cityId": 320100,
+            "country": "中国",
+            "address": "南京"
+          }
+        ],
+        "minSalary": 40,
+        "maxSalary": 80,
+        "salaryUnit": 0,
+        "minExperience": 5,
+        "maxExperience": 10,
+        "education": "硕士",
+        "department": {
+          "id": 430278,
+          "name": "中兴通讯股份有限公司"
+        },
+        "zhineng": {
+          "id": 72363,
+          "name": "研发类"
+        }
+      },
+      "cities": {
+        "420100": "武汉市",
+        "320100": "南京市"
+      },
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      }
+    },
+    {
+      "name": "empty",
+      "raw": {},
+      "cities": {
+        "420100": "武汉市",
+        "320100": "南京市"
+      },
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "empty-fields",
+      "raw": {
+        "id": "0c44abe6",
+        "title": "",
+        "jobDescription": "",
+        "commitment": "",
+        "publishedAt": "2026-04-28T08:41:14",
+        "openedAt": "2025-09-01T00:00",
+        "locations": [
+          {
+            "cityId": 420100,
+            "country": "中国",
+            "address": "湖北省武汉市"
+          },
+          {
+            "cityId": 320100,
+            "country": "中国",
+            "address": "南京"
+          }
+        ],
+        "minSalary": 40,
+        "maxSalary": 80,
+        "salaryUnit": 0,
+        "minExperience": 5,
+        "maxExperience": 10,
+        "education": "硕士",
+        "department": {
+          "id": 430278,
+          "name": "中兴通讯股份有限公司"
+        },
+        "zhineng": {
+          "id": 72363,
+          "name": "研发类"
+        }
+      },
+      "cities": {
+        "420100": "武汉市",
+        "320100": "南京市"
+      },
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      }
+    },
+    {
+      "name": "opened-date",
+      "raw": {
+        "id": "0c44abe6",
+        "title": "通信设备电源专家",
+        "jobDescription": "<p>工作职责：</p><p>1、从事...</p>",
+        "commitment": "全职",
+        "publishedAt": null,
+        "openedAt": "2025-09-01T00:00",
+        "locations": [
+          {
+            "cityId": 420100,
+            "country": "中国",
+            "address": "湖北省武汉市"
+          },
+          {
+            "cityId": 320100,
+            "country": "中国",
+            "address": "南京"
+          }
+        ],
+        "minSalary": 40,
+        "maxSalary": 80,
+        "salaryUnit": 0,
+        "minExperience": 5,
+        "maxExperience": 10,
+        "education": "硕士",
+        "department": {
+          "id": 430278,
+          "name": "中兴通讯股份有限公司"
+        },
+        "zhineng": {
+          "id": 72363,
+          "name": "研发类"
+        }
+      },
+      "cities": {
+        "420100": "武汉市",
+        "320100": "南京市"
+      },
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2025-09-01",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      }
+    },
+    {
+      "name": "string-department",
+      "raw": {
+        "id": "0c44abe6",
+        "title": "通信设备电源专家",
+        "jobDescription": "<p>工作职责：</p><p>1、从事...</p>",
+        "commitment": "全职",
+        "publishedAt": "2026-04-28T08:41:14",
+        "openedAt": "2025-09-01T00:00",
+        "locations": [
+          {
+            "cityId": 420100,
+            "country": "中国",
+            "address": "湖北省武汉市"
+          },
+          {
+            "cityId": 320100,
+            "country": "中国",
+            "address": "南京"
+          }
+        ],
+        "minSalary": 40,
+        "maxSalary": 80,
+        "salaryUnit": 0,
+        "minExperience": 5,
+        "maxExperience": 10,
+        "education": "硕士",
+        "department": "Engineering",
+        "zhineng": "Research"
+      },
+      "cities": {
+        "420100": "武汉市",
+        "320100": "南京市"
+      },
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "Engineering",
+          "education": "硕士",
+          "job_function": "Research"
+        }
+      }
+    },
+    {
+      "name": "no-experience",
+      "raw": {
+        "id": "0c44abe6",
+        "title": "通信设备电源专家",
+        "jobDescription": "<p>工作职责：</p><p>1、从事...</p>",
+        "commitment": "全职",
+        "publishedAt": "2026-04-28T08:41:14",
+        "openedAt": "2025-09-01T00:00",
+        "locations": [
+          {
+            "cityId": 420100,
+            "country": "中国",
+            "address": "湖北省武汉市"
+          },
+          {
+            "cityId": 320100,
+            "country": "中国",
+            "address": "南京"
+          }
+        ],
+        "minSalary": 40,
+        "maxSalary": 80,
+        "salaryUnit": 0,
+        "minExperience": null,
+        "maxExperience": null,
+        "education": "硕士",
+        "department": {
+          "id": 430278,
+          "name": "中兴通讯股份有限公司"
+        },
+        "zhineng": {
+          "id": 72363,
+          "name": "研发类"
+        }
+      },
+      "cities": {
+        "420100": "武汉市",
+        "320100": "南京市"
+      },
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      }
+    },
+    {
+      "name": "zero-salary",
+      "raw": {
+        "id": "0c44abe6",
+        "title": "通信设备电源专家",
+        "jobDescription": "<p>工作职责：</p><p>1、从事...</p>",
+        "commitment": "全职",
+        "publishedAt": "2026-04-28T08:41:14",
+        "openedAt": "2025-09-01T00:00",
+        "locations": [
+          {
+            "cityId": 420100,
+            "country": "中国",
+            "address": "湖北省武汉市"
+          },
+          {
+            "cityId": 320100,
+            "country": "中国",
+            "address": "南京"
+          }
+        ],
+        "minSalary": 0,
+        "maxSalary": 0,
+        "salaryUnit": 0,
+        "minExperience": 5,
+        "maxExperience": 10,
+        "education": "硕士",
+        "department": {
+          "id": 430278,
+          "name": "中兴通讯股份有限公司"
+        },
+        "zhineng": {
+          "id": 72363,
+          "name": "研发类"
+        }
+      },
+      "cities": {
+        "420100": "武汉市",
+        "320100": "南京市"
+      },
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": null,
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      }
+    },
+    {
+      "name": "locations-fallback",
+      "raw": {
+        "id": "0c44abe6",
+        "title": "通信设备电源专家",
+        "jobDescription": "<p>工作职责：</p><p>1、从事...</p>",
+        "commitment": "全职",
+        "publishedAt": "2026-04-28T08:41:14",
+        "openedAt": "2025-09-01T00:00",
+        "locations": [
+          {
+            "provinceName": "湖北",
+            "country": "中国"
+          }
+        ],
+        "minSalary": 40,
+        "maxSalary": 80,
+        "salaryUnit": 0,
+        "minExperience": 5,
+        "maxExperience": 10,
+        "education": "硕士",
+        "department": {
+          "id": 430278,
+          "name": "中兴通讯股份有限公司"
+        },
+        "zhineng": {
+          "id": 72363,
+          "name": "研发类"
+        }
+      },
+      "cities": {
+        "420100": "武汉市",
+        "320100": "南京市"
+      },
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "湖北, 中国"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      }
+    },
+    {
+      "name": "employment-全职",
+      "raw": {
+        "id": "0c44abe6",
+        "title": "通信设备电源专家",
+        "jobDescription": "<p>工作职责：</p><p>1、从事...</p>",
+        "commitment": "全职",
+        "publishedAt": "2026-04-28T08:41:14",
+        "openedAt": "2025-09-01T00:00",
+        "locations": [
+          {
+            "cityId": 420100,
+            "country": "中国",
+            "address": "湖北省武汉市"
+          },
+          {
+            "cityId": 320100,
+            "country": "中国",
+            "address": "南京"
+          }
+        ],
+        "minSalary": 40,
+        "maxSalary": 80,
+        "salaryUnit": 0,
+        "minExperience": 5,
+        "maxExperience": 10,
+        "education": "硕士",
+        "department": {
+          "id": 430278,
+          "name": "中兴通讯股份有限公司"
+        },
+        "zhineng": {
+          "id": 72363,
+          "name": "研发类"
+        }
+      },
+      "cities": {
+        "420100": "武汉市",
+        "320100": "南京市"
+      },
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      }
+    },
+    {
+      "name": "employment-兼职",
+      "raw": {
+        "id": "0c44abe6",
+        "title": "通信设备电源专家",
+        "jobDescription": "<p>工作职责：</p><p>1、从事...</p>",
+        "commitment": "兼职",
+        "publishedAt": "2026-04-28T08:41:14",
+        "openedAt": "2025-09-01T00:00",
+        "locations": [
+          {
+            "cityId": 420100,
+            "country": "中国",
+            "address": "湖北省武汉市"
+          },
+          {
+            "cityId": 320100,
+            "country": "中国",
+            "address": "南京"
+          }
+        ],
+        "minSalary": 40,
+        "maxSalary": 80,
+        "salaryUnit": 0,
+        "minExperience": 5,
+        "maxExperience": 10,
+        "education": "硕士",
+        "department": {
+          "id": 430278,
+          "name": "中兴通讯股份有限公司"
+        },
+        "zhineng": {
+          "id": 72363,
+          "name": "研发类"
+        }
+      },
+      "cities": {
+        "420100": "武汉市",
+        "320100": "南京市"
+      },
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": "part_time",
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      }
+    },
+    {
+      "name": "employment-实习",
+      "raw": {
+        "id": "0c44abe6",
+        "title": "通信设备电源专家",
+        "jobDescription": "<p>工作职责：</p><p>1、从事...</p>",
+        "commitment": "实习",
+        "publishedAt": "2026-04-28T08:41:14",
+        "openedAt": "2025-09-01T00:00",
+        "locations": [
+          {
+            "cityId": 420100,
+            "country": "中国",
+            "address": "湖北省武汉市"
+          },
+          {
+            "cityId": 320100,
+            "country": "中国",
+            "address": "南京"
+          }
+        ],
+        "minSalary": 40,
+        "maxSalary": 80,
+        "salaryUnit": 0,
+        "minExperience": 5,
+        "maxExperience": 10,
+        "education": "硕士",
+        "department": {
+          "id": 430278,
+          "name": "中兴通讯股份有限公司"
+        },
+        "zhineng": {
+          "id": 72363,
+          "name": "研发类"
+        }
+      },
+      "cities": {
+        "420100": "武汉市",
+        "320100": "南京市"
+      },
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": "实习",
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      }
+    },
+    {
+      "name": "employment-fullTime",
+      "raw": {
+        "id": "0c44abe6",
+        "title": "通信设备电源专家",
+        "jobDescription": "<p>工作职责：</p><p>1、从事...</p>",
+        "commitment": "fullTime",
+        "publishedAt": "2026-04-28T08:41:14",
+        "openedAt": "2025-09-01T00:00",
+        "locations": [
+          {
+            "cityId": 420100,
+            "country": "中国",
+            "address": "湖北省武汉市"
+          },
+          {
+            "cityId": 320100,
+            "country": "中国",
+            "address": "南京"
+          }
+        ],
+        "minSalary": 40,
+        "maxSalary": 80,
+        "salaryUnit": 0,
+        "minExperience": 5,
+        "maxExperience": 10,
+        "education": "硕士",
+        "department": {
+          "id": 430278,
+          "name": "中兴通讯股份有限公司"
+        },
+        "zhineng": {
+          "id": 72363,
+          "name": "研发类"
+        }
+      },
+      "cities": {
+        "420100": "武汉市",
+        "320100": "南京市"
+      },
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      }
+    },
+    {
+      "name": "employment-partTime",
+      "raw": {
+        "id": "0c44abe6",
+        "title": "通信设备电源专家",
+        "jobDescription": "<p>工作职责：</p><p>1、从事...</p>",
+        "commitment": "partTime",
+        "publishedAt": "2026-04-28T08:41:14",
+        "openedAt": "2025-09-01T00:00",
+        "locations": [
+          {
+            "cityId": 420100,
+            "country": "中国",
+            "address": "湖北省武汉市"
+          },
+          {
+            "cityId": 320100,
+            "country": "中国",
+            "address": "南京"
+          }
+        ],
+        "minSalary": 40,
+        "maxSalary": 80,
+        "salaryUnit": 0,
+        "minExperience": 5,
+        "maxExperience": 10,
+        "education": "硕士",
+        "department": {
+          "id": 430278,
+          "name": "中兴通讯股份有限公司"
+        },
+        "zhineng": {
+          "id": 72363,
+          "name": "研发类"
+        }
+      },
+      "cities": {
+        "420100": "武汉市",
+        "320100": "南京市"
+      },
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": "part_time",
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      }
+    },
+    {
+      "name": "employment-intern",
+      "raw": {
+        "id": "0c44abe6",
+        "title": "通信设备电源专家",
+        "jobDescription": "<p>工作职责：</p><p>1、从事...</p>",
+        "commitment": "intern",
+        "publishedAt": "2026-04-28T08:41:14",
+        "openedAt": "2025-09-01T00:00",
+        "locations": [
+          {
+            "cityId": 420100,
+            "country": "中国",
+            "address": "湖北省武汉市"
+          },
+          {
+            "cityId": 320100,
+            "country": "中国",
+            "address": "南京"
+          }
+        ],
+        "minSalary": 40,
+        "maxSalary": 80,
+        "salaryUnit": 0,
+        "minExperience": 5,
+        "maxExperience": 10,
+        "education": "硕士",
+        "department": {
+          "id": 430278,
+          "name": "中兴通讯股份有限公司"
+        },
+        "zhineng": {
+          "id": 72363,
+          "name": "研发类"
+        }
+      },
+      "cities": {
+        "420100": "武汉市",
+        "320100": "南京市"
+      },
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": "intern",
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      }
+    },
+    {
+      "name": "employment-contract",
+      "raw": {
+        "id": "0c44abe6",
+        "title": "通信设备电源专家",
+        "jobDescription": "<p>工作职责：</p><p>1、从事...</p>",
+        "commitment": "contract",
+        "publishedAt": "2026-04-28T08:41:14",
+        "openedAt": "2025-09-01T00:00",
+        "locations": [
+          {
+            "cityId": 420100,
+            "country": "中国",
+            "address": "湖北省武汉市"
+          },
+          {
+            "cityId": 320100,
+            "country": "中国",
+            "address": "南京"
+          }
+        ],
+        "minSalary": 40,
+        "maxSalary": 80,
+        "salaryUnit": 0,
+        "minExperience": 5,
+        "maxExperience": 10,
+        "education": "硕士",
+        "department": {
+          "id": 430278,
+          "name": "中兴通讯股份有限公司"
+        },
+        "zhineng": {
+          "id": 72363,
+          "name": "研发类"
+        }
+      },
+      "cities": {
+        "420100": "武汉市",
+        "320100": "南京市"
+      },
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": "contract",
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      }
+    },
+    {
+      "name": "employment-unknown",
+      "raw": {
+        "id": "0c44abe6",
+        "title": "通信设备电源专家",
+        "jobDescription": "<p>工作职责：</p><p>1、从事...</p>",
+        "commitment": "unknown",
+        "publishedAt": "2026-04-28T08:41:14",
+        "openedAt": "2025-09-01T00:00",
+        "locations": [
+          {
+            "cityId": 420100,
+            "country": "中国",
+            "address": "湖北省武汉市"
+          },
+          {
+            "cityId": 320100,
+            "country": "中国",
+            "address": "南京"
+          }
+        ],
+        "minSalary": 40,
+        "maxSalary": 80,
+        "salaryUnit": 0,
+        "minExperience": 5,
+        "maxExperience": 10,
+        "education": "硕士",
+        "department": {
+          "id": 430278,
+          "name": "中兴通讯股份有限公司"
+        },
+        "zhineng": {
+          "id": 72363,
+          "name": "研发类"
+        }
+      },
+      "cities": {
+        "420100": "武汉市",
+        "320100": "南京市"
+      },
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      }
+    },
+    {
+      "name": "employment-None",
+      "raw": {
+        "id": "0c44abe6",
+        "title": "通信设备电源专家",
+        "jobDescription": "<p>工作职责：</p><p>1、从事...</p>",
+        "commitment": null,
+        "publishedAt": "2026-04-28T08:41:14",
+        "openedAt": "2025-09-01T00:00",
+        "locations": [
+          {
+            "cityId": 420100,
+            "country": "中国",
+            "address": "湖北省武汉市"
+          },
+          {
+            "cityId": 320100,
+            "country": "中国",
+            "address": "南京"
+          }
+        ],
+        "minSalary": 40,
+        "maxSalary": 80,
+        "salaryUnit": 0,
+        "minExperience": 5,
+        "maxExperience": 10,
+        "education": "硕士",
+        "department": {
+          "id": 430278,
+          "name": "中兴通讯股份有限公司"
+        },
+        "zhineng": {
+          "id": 72363,
+          "name": "研发类"
+        }
+      },
+      "cities": {
+        "420100": "武汉市",
+        "320100": "南京市"
+      },
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      }
+    }
+  ],
+  "http": [
+    {
+      "name": "complete",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;0123456789abcdef&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {}
+        },
+        "https://app.mokahr.com/api/outer/ats-apply/website/job": {
+          "body": "{\"data\": \"5PlYf1FERQb6BSyvMbTQ13aTow8zNQsOw+ygwdSOlRjygWX8T+TmEd80PRbYgKOZHPMtREr+Pz6VhJ5XdWi4x85bUUalHCMo+pmfktyMVdbpIqFjWibRXZE6rvDDdlEEueX+joz/EuU+7VO4OQJy/sEXp0No95sLJHWEN5eZxe8lOO/N/bB1pSttFpMumEprb7NhcVSK5rr6wJjxVCZK7T2av55U7f5mxtToecDJxbAv14dfU4IdF4ft89C/cVKltQWjVIFycP3z6RS7LgX+pRWt5wJYjxRbsDoaDZ3HN94eUJXqsCoPkyJZ4s+7c5S6Fkzi6KCUyTctHrus0UcA2kdi8VtBtqE4tfgvdU1hSRjPK0gtqpDP1pMz0RtYWd7NoJ/zifehIpT5Hxpbfdcx96Vg4fUo/7kdaYodI5lCD+EthEQr6EWBTInmqlBwvied0T/+lbnVrg6VSZpD0uNT22qINhNaIv6h/Ee8+ApazM3pmlFWSW1FHlatx8Pz1UNkR4XCK+uIVJXLi48OycXcScIAKIvO3qLiVxIEeNcvNAofzp+f+kNFlDqXbV3Pr/s+3yAzQ/xEMtK+l5ExYql5OOCVgTtSeEMT5D1vvvv9zSaUrldMydv/Uklm7FKfXxIpugTQteqUCyW33ONM3rbvjmQs3jaAXBFrRYi00AeViVtgua50DG6283d19IqT4pjhTSH1Q3d/+pciu9IEZkRpH6A8BNXaNEXwdYZwd3CdVRr90XJPWYmPcOWGTp52DWRi25Atp68o9Ed+WjZDEriONHpklkXKOxzku+yeA733vroXOL5UjryRRXhy3qXF2WFSo7e6E9eKiSi7S96lyG9n1L1w1bC9h+djPUPZcXxtet1s2gvT8MVNUKCHgpA2qinVH2OnK0nra8oOOlNzGyU9D8udjrI1fupOiHg1CdtR7yZd1PYh64qmgtwpiN90dYHQvIVvcb43EJ+4/oSK0DExNv5MFOMKaRI58SXOxL9opqU=\", \"necromancer\": \"fedcba9876543210\"}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "url": "https://app.mokahr.com/api/outer/ats-apply/website/job",
+          "body": {
+            "orgId": "zte",
+            "siteId": 47588,
+            "jobId": "0c44abe6",
+            "locale": "zh-CN"
+          }
+        }
+      ],
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      }
+    },
+    {
+      "name": "bootstrap-redirect",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "",
+          "status": 302,
+          "headers": {
+            "Location": "https://app.mokahr.com/social-recruitment/zte/47588?redirected=1"
+          }
+        },
+        "https://app.mokahr.com/social-recruitment/zte/47588?redirected=1": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;0123456789abcdef&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {}
+        },
+        "https://app.mokahr.com/api/outer/ats-apply/website/job": {
+          "body": "{\"data\": \"5PlYf1FERQb6BSyvMbTQ13aTow8zNQsOw+ygwdSOlRjygWX8T+TmEd80PRbYgKOZHPMtREr+Pz6VhJ5XdWi4x85bUUalHCMo+pmfktyMVdbpIqFjWibRXZE6rvDDdlEEueX+joz/EuU+7VO4OQJy/sEXp0No95sLJHWEN5eZxe8lOO/N/bB1pSttFpMumEprb7NhcVSK5rr6wJjxVCZK7T2av55U7f5mxtToecDJxbAv14dfU4IdF4ft89C/cVKltQWjVIFycP3z6RS7LgX+pRWt5wJYjxRbsDoaDZ3HN94eUJXqsCoPkyJZ4s+7c5S6Fkzi6KCUyTctHrus0UcA2kdi8VtBtqE4tfgvdU1hSRjPK0gtqpDP1pMz0RtYWd7NoJ/zifehIpT5Hxpbfdcx96Vg4fUo/7kdaYodI5lCD+EthEQr6EWBTInmqlBwvied0T/+lbnVrg6VSZpD0uNT22qINhNaIv6h/Ee8+ApazM3pmlFWSW1FHlatx8Pz1UNkR4XCK+uIVJXLi48OycXcScIAKIvO3qLiVxIEeNcvNAofzp+f+kNFlDqXbV3Pr/s+3yAzQ/xEMtK+l5ExYql5OOCVgTtSeEMT5D1vvvv9zSaUrldMydv/Uklm7FKfXxIpugTQteqUCyW33ONM3rbvjmQs3jaAXBFrRYi00AeViVtgua50DG6283d19IqT4pjhTSH1Q3d/+pciu9IEZkRpH6A8BNXaNEXwdYZwd3CdVRr90XJPWYmPcOWGTp52DWRi25Atp68o9Ed+WjZDEriONHpklkXKOxzku+yeA733vroXOL5UjryRRXhy3qXF2WFSo7e6E9eKiSi7S96lyG9n1L1w1bC9h+djPUPZcXxtet1s2gvT8MVNUKCHgpA2qinVH2OnK0nra8oOOlNzGyU9D8udjrI1fupOiHg1CdtR7yZd1PYh64qmgtwpiN90dYHQvIVvcb43EJ+4/oSK0DExNv5MFOMKaRI58SXOxL9opqU=\", \"necromancer\": \"fedcba9876543210\"}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588?redirected=1",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "url": "https://app.mokahr.com/api/outer/ats-apply/website/job",
+          "body": {
+            "orgId": "zte",
+            "siteId": 47588,
+            "jobId": "0c44abe6",
+            "locale": "zh-CN"
+          }
+        }
+      ],
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      },
+      "native_reserved": false
+    },
+    {
+      "name": "bootstrap-redirect-reserved",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "",
+          "status": 302,
+          "headers": {
+            "Location": "https://app.mokahr.com/social-recruitment/zte/47588?redirected=1"
+          }
+        },
+        "https://app.mokahr.com/social-recruitment/zte/47588?redirected=1": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;0123456789abcdef&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {
+            "TDM-Reservation": "1"
+          }
+        },
+        "https://app.mokahr.com/api/outer/ats-apply/website/job": {
+          "body": "{\"data\": \"5PlYf1FERQb6BSyvMbTQ13aTow8zNQsOw+ygwdSOlRjygWX8T+TmEd80PRbYgKOZHPMtREr+Pz6VhJ5XdWi4x85bUUalHCMo+pmfktyMVdbpIqFjWibRXZE6rvDDdlEEueX+joz/EuU+7VO4OQJy/sEXp0No95sLJHWEN5eZxe8lOO/N/bB1pSttFpMumEprb7NhcVSK5rr6wJjxVCZK7T2av55U7f5mxtToecDJxbAv14dfU4IdF4ft89C/cVKltQWjVIFycP3z6RS7LgX+pRWt5wJYjxRbsDoaDZ3HN94eUJXqsCoPkyJZ4s+7c5S6Fkzi6KCUyTctHrus0UcA2kdi8VtBtqE4tfgvdU1hSRjPK0gtqpDP1pMz0RtYWd7NoJ/zifehIpT5Hxpbfdcx96Vg4fUo/7kdaYodI5lCD+EthEQr6EWBTInmqlBwvied0T/+lbnVrg6VSZpD0uNT22qINhNaIv6h/Ee8+ApazM3pmlFWSW1FHlatx8Pz1UNkR4XCK+uIVJXLi48OycXcScIAKIvO3qLiVxIEeNcvNAofzp+f+kNFlDqXbV3Pr/s+3yAzQ/xEMtK+l5ExYql5OOCVgTtSeEMT5D1vvvv9zSaUrldMydv/Uklm7FKfXxIpugTQteqUCyW33ONM3rbvjmQs3jaAXBFrRYi00AeViVtgua50DG6283d19IqT4pjhTSH1Q3d/+pciu9IEZkRpH6A8BNXaNEXwdYZwd3CdVRr90XJPWYmPcOWGTp52DWRi25Atp68o9Ed+WjZDEriONHpklkXKOxzku+yeA733vroXOL5UjryRRXhy3qXF2WFSo7e6E9eKiSi7S96lyG9n1L1w1bC9h+djPUPZcXxtet1s2gvT8MVNUKCHgpA2qinVH2OnK0nra8oOOlNzGyU9D8udjrI1fupOiHg1CdtR7yZd1PYh64qmgtwpiN90dYHQvIVvcb43EJ+4/oSK0DExNv5MFOMKaRI58SXOxL9opqU=\", \"necromancer\": \"fedcba9876543210\"}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588?redirected=1",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "url": "https://app.mokahr.com/api/outer/ats-apply/website/job",
+          "body": {
+            "orgId": "zte",
+            "siteId": 47588,
+            "jobId": "0c44abe6",
+            "locale": "zh-CN"
+          }
+        }
+      ],
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      },
+      "native_reserved": true
+    },
+    {
+      "name": "detail-redirect-refused",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;0123456789abcdef&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {}
+        },
+        "https://app.mokahr.com/api/outer/ats-apply/website/job": {
+          "body": "",
+          "status": 307,
+          "headers": {
+            "Location": "https://app.mokahr.com/api/outer/ats-apply/website/job?redirected=1"
+          }
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "url": "https://app.mokahr.com/api/outer/ats-apply/website/job",
+          "body": {
+            "orgId": "zte",
+            "siteId": 47588,
+            "jobId": "0c44abe6",
+            "locale": "zh-CN"
+          }
+        }
+      ],
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "custom-locale",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {
+        "locale": "en-US"
+      },
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;0123456789abcdef&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {}
+        },
+        "https://app.mokahr.com/api/outer/ats-apply/website/job": {
+          "body": "{\"data\": \"5PlYf1FERQb6BSyvMbTQ13aTow8zNQsOw+ygwdSOlRjygWX8T+TmEd80PRbYgKOZHPMtREr+Pz6VhJ5XdWi4x85bUUalHCMo+pmfktyMVdbpIqFjWibRXZE6rvDDdlEEueX+joz/EuU+7VO4OQJy/sEXp0No95sLJHWEN5eZxe8lOO/N/bB1pSttFpMumEprb7NhcVSK5rr6wJjxVCZK7T2av55U7f5mxtToecDJxbAv14dfU4IdF4ft89C/cVKltQWjVIFycP3z6RS7LgX+pRWt5wJYjxRbsDoaDZ3HN94eUJXqsCoPkyJZ4s+7c5S6Fkzi6KCUyTctHrus0UcA2kdi8VtBtqE4tfgvdU1hSRjPK0gtqpDP1pMz0RtYWd7NoJ/zifehIpT5Hxpbfdcx96Vg4fUo/7kdaYodI5lCD+EthEQr6EWBTInmqlBwvied0T/+lbnVrg6VSZpD0uNT22qINhNaIv6h/Ee8+ApazM3pmlFWSW1FHlatx8Pz1UNkR4XCK+uIVJXLi48OycXcScIAKIvO3qLiVxIEeNcvNAofzp+f+kNFlDqXbV3Pr/s+3yAzQ/xEMtK+l5ExYql5OOCVgTtSeEMT5D1vvvv9zSaUrldMydv/Uklm7FKfXxIpugTQteqUCyW33ONM3rbvjmQs3jaAXBFrRYi00AeViVtgua50DG6283d19IqT4pjhTSH1Q3d/+pciu9IEZkRpH6A8BNXaNEXwdYZwd3CdVRr90XJPWYmPcOWGTp52DWRi25Atp68o9Ed+WjZDEriONHpklkXKOxzku+yeA733vroXOL5UjryRRXhy3qXF2WFSo7e6E9eKiSi7S96lyG9n1L1w1bC9h+djPUPZcXxtet1s2gvT8MVNUKCHgpA2qinVH2OnK0nra8oOOlNzGyU9D8udjrI1fupOiHg1CdtR7yZd1PYh64qmgtwpiN90dYHQvIVvcb43EJ+4/oSK0DExNv5MFOMKaRI58SXOxL9opqU=\", \"necromancer\": \"fedcba9876543210\"}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "url": "https://app.mokahr.com/api/outer/ats-apply/website/job",
+          "body": {
+            "orgId": "zte",
+            "siteId": 47588,
+            "jobId": "0c44abe6",
+            "locale": "en-US"
+          }
+        }
+      ],
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      }
+    },
+    {
+      "name": "campus-fallback",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "gone",
+          "status": 404,
+          "headers": {}
+        },
+        "https://app.mokahr.com/campus-recruitment/zte/47588": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;0123456789abcdef&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {}
+        },
+        "https://app.mokahr.com/api/outer/ats-apply/website/job": {
+          "body": "{\"data\": \"5PlYf1FERQb6BSyvMbTQ13aTow8zNQsOw+ygwdSOlRjygWX8T+TmEd80PRbYgKOZHPMtREr+Pz6VhJ5XdWi4x85bUUalHCMo+pmfktyMVdbpIqFjWibRXZE6rvDDdlEEueX+joz/EuU+7VO4OQJy/sEXp0No95sLJHWEN5eZxe8lOO/N/bB1pSttFpMumEprb7NhcVSK5rr6wJjxVCZK7T2av55U7f5mxtToecDJxbAv14dfU4IdF4ft89C/cVKltQWjVIFycP3z6RS7LgX+pRWt5wJYjxRbsDoaDZ3HN94eUJXqsCoPkyJZ4s+7c5S6Fkzi6KCUyTctHrus0UcA2kdi8VtBtqE4tfgvdU1hSRjPK0gtqpDP1pMz0RtYWd7NoJ/zifehIpT5Hxpbfdcx96Vg4fUo/7kdaYodI5lCD+EthEQr6EWBTInmqlBwvied0T/+lbnVrg6VSZpD0uNT22qINhNaIv6h/Ee8+ApazM3pmlFWSW1FHlatx8Pz1UNkR4XCK+uIVJXLi48OycXcScIAKIvO3qLiVxIEeNcvNAofzp+f+kNFlDqXbV3Pr/s+3yAzQ/xEMtK+l5ExYql5OOCVgTtSeEMT5D1vvvv9zSaUrldMydv/Uklm7FKfXxIpugTQteqUCyW33ONM3rbvjmQs3jaAXBFrRYi00AeViVtgua50DG6283d19IqT4pjhTSH1Q3d/+pciu9IEZkRpH6A8BNXaNEXwdYZwd3CdVRr90XJPWYmPcOWGTp52DWRi25Atp68o9Ed+WjZDEriONHpklkXKOxzku+yeA733vroXOL5UjryRRXhy3qXF2WFSo7e6E9eKiSi7S96lyG9n1L1w1bC9h+djPUPZcXxtet1s2gvT8MVNUKCHgpA2qinVH2OnK0nra8oOOlNzGyU9D8udjrI1fupOiHg1CdtR7yZd1PYh64qmgtwpiN90dYHQvIVvcb43EJ+4/oSK0DExNv5MFOMKaRI58SXOxL9opqU=\", \"necromancer\": \"fedcba9876543210\"}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/campus-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "url": "https://app.mokahr.com/api/outer/ats-apply/website/job",
+          "body": {
+            "orgId": "zte",
+            "siteId": 47588,
+            "jobId": "0c44abe6",
+            "locale": "zh-CN"
+          }
+        }
+      ],
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      }
+    },
+    {
+      "name": "missing-bootstrap",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "shell",
+          "status": 200,
+          "headers": {}
+        },
+        "https://app.mokahr.com/campus-recruitment/zte/47588": {
+          "body": "shell",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/campus-recruitment/zte/47588",
+          "body": null
+        }
+      ],
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "empty-iv",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {}
+        },
+        "https://app.mokahr.com/campus-recruitment/zte/47588": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/campus-recruitment/zte/47588",
+          "body": null
+        }
+      ],
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "malformed-bootstrap",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "<input id=\"init-data\" value=\"bad\">",
+          "status": 200,
+          "headers": {}
+        },
+        "https://app.mokahr.com/campus-recruitment/zte/47588": {
+          "body": "shell",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/campus-recruitment/zte/47588",
+          "body": null
+        }
+      ],
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "detail-status-201",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;0123456789abcdef&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {}
+        },
+        "https://app.mokahr.com/api/outer/ats-apply/website/job": {
+          "body": "",
+          "status": 201,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "url": "https://app.mokahr.com/api/outer/ats-apply/website/job",
+          "body": {
+            "orgId": "zte",
+            "siteId": 47588,
+            "jobId": "0c44abe6",
+            "locale": "zh-CN"
+          }
+        }
+      ],
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "detail-status-204",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;0123456789abcdef&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {}
+        },
+        "https://app.mokahr.com/api/outer/ats-apply/website/job": {
+          "body": "",
+          "status": 204,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "url": "https://app.mokahr.com/api/outer/ats-apply/website/job",
+          "body": {
+            "orgId": "zte",
+            "siteId": 47588,
+            "jobId": "0c44abe6",
+            "locale": "zh-CN"
+          }
+        }
+      ],
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "detail-status-403",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;0123456789abcdef&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {}
+        },
+        "https://app.mokahr.com/api/outer/ats-apply/website/job": {
+          "body": "",
+          "status": 403,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "url": "https://app.mokahr.com/api/outer/ats-apply/website/job",
+          "body": {
+            "orgId": "zte",
+            "siteId": 47588,
+            "jobId": "0c44abe6",
+            "locale": "zh-CN"
+          }
+        }
+      ],
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "detail-status-404",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;0123456789abcdef&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {}
+        },
+        "https://app.mokahr.com/api/outer/ats-apply/website/job": {
+          "body": "",
+          "status": 404,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "url": "https://app.mokahr.com/api/outer/ats-apply/website/job",
+          "body": {
+            "orgId": "zte",
+            "siteId": 47588,
+            "jobId": "0c44abe6",
+            "locale": "zh-CN"
+          }
+        }
+      ],
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "detail-status-500",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;0123456789abcdef&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {}
+        },
+        "https://app.mokahr.com/api/outer/ats-apply/website/job": {
+          "body": "",
+          "status": 500,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "url": "https://app.mokahr.com/api/outer/ats-apply/website/job",
+          "body": {
+            "orgId": "zte",
+            "siteId": 47588,
+            "jobId": "0c44abe6",
+            "locale": "zh-CN"
+          }
+        }
+      ],
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "detail-bad-json",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;0123456789abcdef&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {}
+        },
+        "https://app.mokahr.com/api/outer/ats-apply/website/job": {
+          "body": "bad",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "url": "https://app.mokahr.com/api/outer/ats-apply/website/job",
+          "body": {
+            "orgId": "zte",
+            "siteId": 47588,
+            "jobId": "0c44abe6",
+            "locale": "zh-CN"
+          }
+        }
+      ],
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "detail-missing-crypto",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;0123456789abcdef&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {}
+        },
+        "https://app.mokahr.com/api/outer/ats-apply/website/job": {
+          "body": "{}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "url": "https://app.mokahr.com/api/outer/ats-apply/website/job",
+          "body": {
+            "orgId": "zte",
+            "siteId": 47588,
+            "jobId": "0c44abe6",
+            "locale": "zh-CN"
+          }
+        }
+      ],
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "detail-invalid-crypto",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;0123456789abcdef&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {}
+        },
+        "https://app.mokahr.com/api/outer/ats-apply/website/job": {
+          "body": "{\"data\": \"bad\", \"necromancer\": \"fedcba9876543210\"}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "url": "https://app.mokahr.com/api/outer/ats-apply/website/job",
+          "body": {
+            "orgId": "zte",
+            "siteId": 47588,
+            "jobId": "0c44abe6",
+            "locale": "zh-CN"
+          }
+        }
+      ],
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "detail-missing-data",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;0123456789abcdef&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {}
+        },
+        "https://app.mokahr.com/api/outer/ats-apply/website/job": {
+          "body": "{\"data\": \"2/6TidHyn3RjcNB9eFxrDomFv4t5yTaRzV5Chm6qXMI=\", \"necromancer\": \"fedcba9876543210\"}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "url": "https://app.mokahr.com/api/outer/ats-apply/website/job",
+          "body": {
+            "orgId": "zte",
+            "siteId": 47588,
+            "jobId": "0c44abe6",
+            "locale": "zh-CN"
+          }
+        }
+      ],
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "detail-empty-data",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;0123456789abcdef&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {}
+        },
+        "https://app.mokahr.com/api/outer/ats-apply/website/job": {
+          "body": "{\"data\": \"A1NZyMWTQXepp0dlNEBvAQ==\", \"necromancer\": \"fedcba9876543210\"}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "url": "https://app.mokahr.com/api/outer/ats-apply/website/job",
+          "body": {
+            "orgId": "zte",
+            "siteId": 47588,
+            "jobId": "0c44abe6",
+            "locale": "zh-CN"
+          }
+        }
+      ],
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "detail-error-envelope-with-data",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;0123456789abcdef&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {}
+        },
+        "https://app.mokahr.com/api/outer/ats-apply/website/job": {
+          "body": "{\"data\": \"mlUKHxzRxGRjxxeYvREIYIdvyZ3ebh0Syor21xUfll/hKB2ln9QvLr5R0MwjuvomGaOY22t0m6fXWX3u5eLmQeRFUX+2O+z2FE0IeBnbcP7nN40eu6cRc2YwdXx4Fo7AF5c2c7SuMrSAXerVETILdGboLAtYyoCF2eeazE6AW4oob9om4QCk1tXY5sDp+YymdOT1z3dI1BzDLa+UB48yBa+lVhr5punm7vV778WHgnjbqaWFJZJuYAgpwuQkJz7NSzViAywR3+QOPIhObYw0krRgWPQpjZrntn3JeauA++t6pJoLpguGWl1Qo5g8XDnynMvttmosCB2HrJO0G/JPK90IlKKRWa8NI3wYyBL72v8RPZlvRtoyRYI26m/fiDAQzOana3eVT9iULdndkKtwJGs+COGMPtglG/sZIKjPFqzOCaa7nKSvm3Hxw/LYNkIIYxALJTf2s9J9Hfk5d+YirCeMD5RmmySIVCMyRTq/OKfDOARTFrPAdvAOsaeJ3zGw9gb4iQ/y4dMQdDQl8HODVYWogl+xYj9lizXV/t+npkFPXJ9K4m/57PU8iRCB2EGVgGJdFr1YQHhb/uhIKEB8xnUD55fkYrZ4pCgtrEb5xcKpBqtR9jubg0B9rdUmypblhmMcqvYY+HS69F9wo5mstmUBYkpLyLZQ6PWqzg2RVfF4ad4+IfiNWdE6BxTOCt69NcaNfB3mMOko0aUu/J9VX4Co2gfdXOk//Raw5JcGhLCVpk3SB7ApPhTXnviyEzBigiPf+/yesvNkAUB+bIIv0bBvtUgOy1wtaLk52Xgw9k8Ldkg0laTIe0nCXLqX7QcUauIrLakSq4q/zZaJoPRPeAZEJd+uWM3eiRTtgVEsEZLlaRA3MwrI3QZyWiNspVNmBGEi5yjoPFoamH/fZ2kS2ll0z8xEtEa878flG6xYTYafnC3wrTONnGPLVyanCP8Oy9MEMjs94LtJkvvbU/k8PAHyn/lgAvILptOLpCiMxFrYOsUc28XV818tCg2xUXh5HxWTQ5GKeWsd+EftHZpQ7Q==\", \"necromancer\": \"fedcba9876543210\"}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "url": "https://app.mokahr.com/api/outer/ats-apply/website/job",
+          "body": {
+            "orgId": "zte",
+            "siteId": 47588,
+            "jobId": "0c44abe6",
+            "locale": "zh-CN"
+          }
+        }
+      ],
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      }
+    },
+    {
+      "name": "unparseable-source",
+      "url": "https://app.mokahr.com/not-a-job",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;0123456789abcdef&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {}
+        },
+        "https://app.mokahr.com/api/outer/ats-apply/website/job": {
+          "body": "{\"data\": \"5PlYf1FERQb6BSyvMbTQ13aTow8zNQsOw+ygwdSOlRjygWX8T+TmEd80PRbYgKOZHPMtREr+Pz6VhJ5XdWi4x85bUUalHCMo+pmfktyMVdbpIqFjWibRXZE6rvDDdlEEueX+joz/EuU+7VO4OQJy/sEXp0No95sLJHWEN5eZxe8lOO/N/bB1pSttFpMumEprb7NhcVSK5rr6wJjxVCZK7T2av55U7f5mxtToecDJxbAv14dfU4IdF4ft89C/cVKltQWjVIFycP3z6RS7LgX+pRWt5wJYjxRbsDoaDZ3HN94eUJXqsCoPkyJZ4s+7c5S6Fkzi6KCUyTctHrus0UcA2kdi8VtBtqE4tfgvdU1hSRjPK0gtqpDP1pMz0RtYWd7NoJ/zifehIpT5Hxpbfdcx96Vg4fUo/7kdaYodI5lCD+EthEQr6EWBTInmqlBwvied0T/+lbnVrg6VSZpD0uNT22qINhNaIv6h/Ee8+ApazM3pmlFWSW1FHlatx8Pz1UNkR4XCK+uIVJXLi48OycXcScIAKIvO3qLiVxIEeNcvNAofzp+f+kNFlDqXbV3Pr/s+3yAzQ/xEMtK+l5ExYql5OOCVgTtSeEMT5D1vvvv9zSaUrldMydv/Uklm7FKfXxIpugTQteqUCyW33ONM3rbvjmQs3jaAXBFrRYi00AeViVtgua50DG6283d19IqT4pjhTSH1Q3d/+pciu9IEZkRpH6A8BNXaNEXwdYZwd3CdVRr90XJPWYmPcOWGTp52DWRi25Atp68o9Ed+WjZDEriONHpklkXKOxzku+yeA733vroXOL5UjryRRXhy3qXF2WFSo7e6E9eKiSi7S96lyG9n1L1w1bC9h+djPUPZcXxtet1s2gvT8MVNUKCHgpA2qinVH2OnK0nra8oOOlNzGyU9D8udjrI1fupOiHg1CdtR7yZd1PYh64qmgtwpiN90dYHQvIVvcb43EJ+4/oSK0DExNv5MFOMKaRI58SXOxL9opqU=\", \"necromancer\": \"fedcba9876543210\"}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [],
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "name": "bootstrap-reserved",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;0123456789abcdef&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {
+            "TDM-Reservation": "1"
+          }
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "url": "https://app.mokahr.com/api/outer/ats-apply/website/job",
+          "body": {
+            "orgId": "zte",
+            "siteId": 47588,
+            "jobId": "0c44abe6",
+            "locale": "zh-CN"
+          }
+        }
+      ],
+      "expected": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "native_reserved": true
+    },
+    {
+      "name": "detail-reserved",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;0123456789abcdef&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {}
+        },
+        "https://app.mokahr.com/api/outer/ats-apply/website/job": {
+          "body": "{\"data\": \"5PlYf1FERQb6BSyvMbTQ13aTow8zNQsOw+ygwdSOlRjygWX8T+TmEd80PRbYgKOZHPMtREr+Pz6VhJ5XdWi4x85bUUalHCMo+pmfktyMVdbpIqFjWibRXZE6rvDDdlEEueX+joz/EuU+7VO4OQJy/sEXp0No95sLJHWEN5eZxe8lOO/N/bB1pSttFpMumEprb7NhcVSK5rr6wJjxVCZK7T2av55U7f5mxtToecDJxbAv14dfU4IdF4ft89C/cVKltQWjVIFycP3z6RS7LgX+pRWt5wJYjxRbsDoaDZ3HN94eUJXqsCoPkyJZ4s+7c5S6Fkzi6KCUyTctHrus0UcA2kdi8VtBtqE4tfgvdU1hSRjPK0gtqpDP1pMz0RtYWd7NoJ/zifehIpT5Hxpbfdcx96Vg4fUo/7kdaYodI5lCD+EthEQr6EWBTInmqlBwvied0T/+lbnVrg6VSZpD0uNT22qINhNaIv6h/Ee8+ApazM3pmlFWSW1FHlatx8Pz1UNkR4XCK+uIVJXLi48OycXcScIAKIvO3qLiVxIEeNcvNAofzp+f+kNFlDqXbV3Pr/s+3yAzQ/xEMtK+l5ExYql5OOCVgTtSeEMT5D1vvvv9zSaUrldMydv/Uklm7FKfXxIpugTQteqUCyW33ONM3rbvjmQs3jaAXBFrRYi00AeViVtgua50DG6283d19IqT4pjhTSH1Q3d/+pciu9IEZkRpH6A8BNXaNEXwdYZwd3CdVRr90XJPWYmPcOWGTp52DWRi25Atp68o9Ed+WjZDEriONHpklkXKOxzku+yeA733vroXOL5UjryRRXhy3qXF2WFSo7e6E9eKiSi7S96lyG9n1L1w1bC9h+djPUPZcXxtet1s2gvT8MVNUKCHgpA2qinVH2OnK0nra8oOOlNzGyU9D8udjrI1fupOiHg1CdtR7yZd1PYh64qmgtwpiN90dYHQvIVvcb43EJ+4/oSK0DExNv5MFOMKaRI58SXOxL9opqU=\", \"necromancer\": \"fedcba9876543210\"}",
+          "status": 200,
+          "headers": {
+            "TDM-Reservation": "1"
+          }
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "url": "https://app.mokahr.com/api/outer/ats-apply/website/job",
+          "body": {
+            "orgId": "zte",
+            "siteId": 47588,
+            "jobId": "0c44abe6",
+            "locale": "zh-CN"
+          }
+        }
+      ],
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      },
+      "native_reserved": true
+    },
+    {
+      "name": "foreign-id",
+      "url": "https://app.mokahr.com/social-recruitment/zte/47588#/job/0c44abe6",
+      "config": {},
+      "pages": {
+        "https://app.mokahr.com/social-recruitment/zte/47588": {
+          "body": "<input id=\"init-data\" value=\"{&quot;aesIv&quot;: &quot;0123456789abcdef&quot;, &quot;jobsGroupedByLocation&quot;: [{&quot;cityId&quot;: 420100, &quot;label&quot;: &quot;\\u6b66\\u6c49\\u5e02&quot;}, {&quot;cityId&quot;: 320100, &quot;label&quot;: &quot;\\u5357\\u4eac\\u5e02&quot;}]}\">",
+          "status": 200,
+          "headers": {}
+        },
+        "https://app.mokahr.com/api/outer/ats-apply/website/job": {
+          "body": "{\"data\": \"5PlYf1FERQb6BSyvMbTQ1xXsiUQSTDiVL8W39EAbDgR7krtOZmoFXx+F7OTcYonzEp8w/Gdn9jEZng/1UqOAwN8Y/WvP5nF/WkY/4A16DKw9jPqDpN3Gfdw1o09fCArmFBdb4PPRfZ3TgGiW+iwhA9dyxQJi+JRP3tPsPt7+Nkf8FCUUYOWgqrlDwANNI1Y9vnxQP7vyHlNoFbFpJLoqmfc/tGz9vj9eVv2/EX5dk6rl2ZlENbYP+w29eOW1C7yBmpclVpYM9fjhGoJTFjAT638pkLqcOCJEQlZ/B0hwdkiLqZPaYt9ZKqhx5nJ0UqwSzQyJPnJ9+y2lXCVkLzqoPg+Vp7Uvsl2+riyv1B0cv2jPyQAMZhGTwjSyCUujpCgS2w9CT5EfqDl5bSDr6RovRYqDjBd+K5ufBFu3kPjHp2ZEX4AuwJf0yIzJgU7nnvoUR6MlVDtcb/91qsGsIUFB2Rs2bNGKYlf3BxJn5wRb2PSrvXOofo5FMIQKLZCyYuMwnQkjEZPzDdUoywNO8wEk/qX8CHEFfGiUxoBEnA1uMNxrF1CpIeCGpupE2dqq5J7vtncVD5Vu7IG3AqV79vVaQHKbOGYvF3JA0mtVfmwO6cZUOHMHuCBB7ZRRMcPdle1L/sla4sMxQCYwEje16JzBexEIu8uKpLa1nva2lRQlqObMzxuTx7Fg6jHQNPF7nX5BXCe8YkJcHpSYYqtWam37Zcu32kOM1NynU2TxVqJd7jErrje7oQoMslLVyKrfbfUc0fDfo5qJcHMq7CrtwfpbvKHfvhG/99q8a9FD7H8o12bbvXyjNbXxj39hv7niPxXP5ADTnL1M6yxd38hs+RVZPyRuNl9dDyyInScYAhVL9UKPFeopaeieUk8UmupKWQh9Rt9vMg0PhJ+E9PQV6CjMhDsrtIf7iOD2wWwPRjhV/vEEdgn+L9tJG1dpiwINIOXp9L6hw2p1gfOjwlUPhFK1E1DL1n4OAQqGHPQI60FAnY0=\", \"necromancer\": \"fedcba9876543210\"}",
+          "status": 200,
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://app.mokahr.com/social-recruitment/zte/47588",
+          "body": null
+        },
+        {
+          "method": "POST",
+          "url": "https://app.mokahr.com/api/outer/ats-apply/website/job",
+          "body": {
+            "orgId": "zte",
+            "siteId": 47588,
+            "jobId": "0c44abe6",
+            "locale": "zh-CN"
+          }
+        }
+      ],
+      "expected": {
+        "title": "通信设备电源专家",
+        "description": "<p>工作职责：</p><p>1、从事...</p>",
+        "locations": [
+          "武汉市, 中国",
+          "南京市, 中国"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": "2026-04-28",
+        "base_salary": {
+          "currency": "CNY",
+          "min": 40000,
+          "max": 80000,
+          "unit": "monthly"
+        },
+        "language": null,
+        "extras": {
+          "experience": {
+            "min_years": 5.0,
+            "max_years": 10.0
+          }
+        },
+        "metadata": {
+          "department": "中兴通讯股份有限公司",
+          "education": "硕士",
+          "job_function": "研发类"
+        }
+      },
+      "native_empty": true
+    }
+  ]
+}
