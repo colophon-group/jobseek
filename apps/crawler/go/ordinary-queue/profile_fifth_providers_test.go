@@ -96,3 +96,110 @@ func TestFifthProvidersCurrentDirectRegistryConfigurationCoverage(t *testing.T) 
 	}
 	t.Logf("configuration eligibility only (no production authority): %v", counts)
 }
+
+func TestADPIndependentScraperAssignmentsKeepExistingAPIMonitor(t *testing.T) {
+	f, e := os.Open("../../data/boards.csv")
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer f.Close()
+	rows, e := csv.NewReader(f).ReadAll()
+	if e != nil {
+		t.Fatal(e)
+	}
+	headers := map[string]int{}
+	for i, key := range rows[0] {
+		headers[key] = i
+	}
+	count := 0
+	for _, row := range rows[1:] {
+		if row[headers["scraper_type"]] != "adp" || row[headers["monitor_type"]] == "adp" {
+			continue
+		}
+		var md map[string]any
+		if json.Unmarshal([]byte(row[headers["monitor_config"]]), &md) != nil {
+			t.Fatal("invalid existing monitor config")
+		}
+		var detail map[string]any
+		if json.Unmarshal([]byte(row[headers["scraper_config"]]), &detail) != nil {
+			t.Fatal("invalid ADP config")
+		}
+		md["scraper_type"], md["scraper_config"] = "adp", detail
+		raw, e := json.Marshal(md)
+		if e != nil {
+			t.Fatal(e)
+		}
+		config := profileConfig()
+		config["board_url"], config["crawler_type"], config["metadata"] = row[headers["board_url"]], row[headers["monitor_type"]], string(raw)
+		board, e := api.ADPBoardFromURL(config["board_url"])
+		if e != nil {
+			t.Fatal("ADP listing identity lost", e)
+		}
+		route, e := InspectAPIDetail(profileBoardID, config, board.JobURL("123_1"), Simple)
+		if e != nil || route.Profile != adpDetailProfile {
+			t.Fatal("independent scraper unsupported", row[headers["board_slug"]], e)
+		}
+		monitor, e := InspectRichMonitor(profileBoardID, config)
+		if e != nil || monitor.Profile != "api_sniffer.http-items/v1" || route.EffectiveBoardSHA256 != monitor.EffectiveConfigSHA256 {
+			t.Fatal("existing API monitor changed", row[headers["board_slug"]], e)
+		}
+		count++
+	}
+	if count != 2 {
+		t.Fatal("independent ADP assignments lost", count)
+	}
+}
+
+func TestPaylocityDetailsKeepIndependentProxyConfiguration(t *testing.T) {
+	f, e := os.Open("../../data/boards.csv")
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer f.Close()
+	rows, e := csv.NewReader(f).ReadAll()
+	if e != nil {
+		t.Fatal(e)
+	}
+	headers := map[string]int{}
+	for i, key := range rows[0] {
+		headers[key] = i
+	}
+	direct, proxy := 0, 0
+	for _, row := range rows[1:] {
+		if row[headers["scraper_type"]] != "paylocity" {
+			continue
+		}
+		md, detail := map[string]any{}, map[string]any{}
+		if raw := row[headers["monitor_config"]]; raw != "" && json.Unmarshal([]byte(raw), &md) != nil {
+			t.Fatal("invalid monitor config")
+		}
+		if raw := row[headers["scraper_config"]]; raw != "" && json.Unmarshal([]byte(raw), &detail) != nil {
+			t.Fatal("invalid detail config")
+		}
+		md["scraper_type"], md["scraper_config"] = "paylocity", detail
+		raw, _ := json.Marshal(md)
+		config := profileConfig()
+		config["crawler_type"], config["board_url"], config["metadata"] = row[headers["monitor_type"]], row[headers["board_url"]], string(raw)
+		// Source identity comes from the canonical vendor listing. Only the
+		// scraper's own configuration chooses its transport in the legacy batch.
+		o, e := api.PaylocityOptionsFromMetadata(config["board_url"], "{}")
+		if e != nil {
+			t.Fatal(e)
+		}
+		profile, e := InspectAPIDetail(profileBoardID, config, o.JobURL("123"), Simple)
+		if detail["proxy"] == true {
+			if e == nil {
+				t.Fatal("explicit proxy detail acquired direct authority")
+			}
+			proxy++
+			continue
+		}
+		if e != nil || profile.Profile != paylocityDetailProfile {
+			t.Fatal("independent direct detail rejected", row[headers["board_slug"]], e)
+		}
+		direct++
+	}
+	if direct != 5 || proxy != 3 {
+		t.Fatal("Paylocity transport assignments changed", direct, proxy)
+	}
+}
