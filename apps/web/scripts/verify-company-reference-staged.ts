@@ -36,8 +36,8 @@ async function main() {
   const sql = postgres(required("DATABASE_URL_UNPOOLED"), { max: 1, prepare: false,
     connection: { application_name: "jobseek-company-reference-canary-read-only", default_transaction_read_only: true, statement_timeout: 10_000 } });
   const values = parse(await readFile(new URL("../../../.vercel/.env.production.local", import.meta.url), "utf8"));
-  const writeMode = values.COMPANY_REFERENCE_WRITE_MODE ?? "bridge";
-  check(writeMode === "bridge" || writeMode === "reference", "INVALID_PRODUCTION_WRITE_MODE");
+  const writeMode = values.COMPANY_REFERENCE_WRITE_MODE;
+  check(writeMode === "reference", "REFERENCE_ONLY_PRODUCTION_WRITE_MODE_REQUIRED");
   const search = new Client({ nodes: [{ host: values.TYPESENSE_HOST, port: Number(values.TYPESENSE_PORT), protocol: values.TYPESENSE_PROTOCOL }],
     apiKey: values.TYPESENSE_SEARCH_KEY, logLevel: "silent", connectionTimeoutSeconds: 5 });
   const browser = await chromium.launch({ headless: true });
@@ -127,7 +127,7 @@ async function main() {
     }
     check(persisted, "FIRST_USE_SELECTION_NOT_COMMITTED");
     const legacy = await sql`SELECT 1 FROM company WHERE id=${doc.id}`;
-    check(legacy.length === (writeMode === "bridge" ? 1 : 0), "PRODUCTION_WRITE_MODE_CONTRACT_MISMATCH");
+    check(legacy.length === 0, "PRODUCTION_WRITE_MODE_CONTRACT_MISMATCH");
     phase = "persisted_reload";
     await navigateCanary(page, page.url()); await page.getByRole("button", { name: `Remove ${doc.name}`, exact: true }).waitFor();
     const dangling = await sql`SELECT 1 FROM watchlist_company wc LEFT JOIN company_reference r ON r.id=wc.company_id WHERE wc.watchlist_id=${watchlistId} AND r.id IS NULL`;
@@ -205,7 +205,7 @@ async function main() {
     phase = "production_identity_after_cleanup";
     await reattestPublicCanaryIdentity(expectedIdentity);
   }
-  console.log(JSON.stringify({ contract, target: target.kind, aliasIdentityBefore: Boolean(expectedIdentity), aliasIdentityAfter: Boolean(expectedIdentity), outcome: "passed", firstUse: true, realRequestIdentity: true, committedSelection: true, persistedReload: true, scopedCleanup: true, ...lifecycleProof, writeMode, legacyRowsAfterSelection: writeMode === "bridge" ? 1 : 0 }));
+  console.log(JSON.stringify({ contract, target: target.kind, aliasIdentityBefore: Boolean(expectedIdentity), aliasIdentityAfter: Boolean(expectedIdentity), outcome: "passed", firstUse: true, realRequestIdentity: true, committedSelection: true, persistedReload: true, scopedCleanup: true, ...lifecycleProof, writeMode, legacyRowsAfterSelection: 0 }));
 }
 void main().catch(error => {
   // This tested classifier returns only fixed categories; it never returns error text or codes.

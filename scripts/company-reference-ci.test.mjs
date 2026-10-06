@@ -50,6 +50,9 @@ test("required job executes real PostgreSQL production services and authenticate
   assert.match(job, /playwright install --with-deps chromium/);
   assert.ok(job.indexOf("playwright install") < job.indexOf("test:company-reference\n"));
   assert.match(job, /COMPANY_REFERENCE_TEST_WRITE_MODE: reference/);
+  assert.equal((job.match(/run: pnpm --filter @jobseek\/web test:company-reference:browser/g) ?? []).length, 1,
+    "Current source must run the reference-only browser contract once, not the retired bridge runtime");
+  assert.match(job, /Prove reference-only services and retained historical phase invariants/);
 });
 
 test("bridge promotion requires a nonoptional authenticated first-use canary", () => {

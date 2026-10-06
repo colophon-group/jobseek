@@ -5,7 +5,7 @@ export default defineConfig({
   resolve: { alias: { "@": path.resolve(__dirname, "src") } },
   test: {
     environment: "node",
-    include: ["scripts/test-company-reference-pg.test.ts", "scripts/test-company-reference-deployment-access.test.ts"],
+    include: ["scripts/test-company-reference-pg.test.ts", "scripts/company-reference/historical-bridge-pg.test.ts", "scripts/test-company-reference-deployment-access.test.ts"],
     fileParallelism: false,
     testTimeout: 30_000,
     hookTimeout: 60_000,

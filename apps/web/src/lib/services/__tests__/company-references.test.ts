@@ -93,45 +93,37 @@ describe("company reference identity preparation", () => {
   });
 });
 
-describe("company reference bridge persistence", () => {
+describe("reference-only persistence", () => {
   const prepared: PreparedCompanyReference = { ...document, source: "typesense", verifiedAt: new Date() };
-  function transaction(rejectLegacy?: unknown) {
-    const writes: Array<{ table: unknown; value: unknown }> = [];
-    const insert = (table: unknown) => ({ values: (value: unknown) => {
-      const apply = async () => {
-        writes.push({ table, value });
-        if (table === mocks.companyTable && rejectLegacy) throw rejectLegacy;
-      };
-      return { onConflictDoNothing: apply, onConflictDoUpdate: apply };
-    } });
+  function transaction() {
+    const writes: Array<{ table: unknown; value: unknown; conflict: string; options: unknown }> = [];
+    const insert = (table: unknown) => ({ values: (value: unknown) => ({
+      onConflictDoNothing: async (options: unknown) => { writes.push({ table, value, conflict: "nothing", options }); },
+      onConflictDoUpdate: async (options: unknown) => { writes.push({ table, value, conflict: "update", options }); },
+    }) });
     return { writes, tx: { insert } as unknown as Parameters<typeof persistCompanyReferences>[0] };
   }
 
-  it("uses the legacy trigger lock order in the caller's transaction", async () => {
+  it.each([undefined, "bridge", "reference", "invalid"])("never creates a legacy row with stale write-mode setting %s", async (mode) => {
+    vi.stubEnv("COMPANY_REFERENCE_WRITE_MODE", mode);
     const { tx, writes } = transaction();
     await persistCompanyReferences(tx, [prepared]);
-    expect(writes).toEqual([
-      { table: mocks.companyTable, value: document },
-      { table: mocks.referenceTable, value: prepared },
-    ]);
+    expect(writes).toHaveLength(1);
+    expect(writes[0]).toMatchObject({ table: mocks.referenceTable, value: prepared, conflict: "update" });
   });
 
-  it("supports the explicit reference-only retirement mode", async () => {
-    vi.stubEnv("COMPANY_REFERENCE_WRITE_MODE", "reference");
+  it("sorts overlapping batches by canonical UUID before inserting", async () => {
+    const other = { ...prepared, id: OTHER_ID };
     const { tx, writes } = transaction();
-    await persistCompanyReferences(tx, [prepared]);
-    expect(writes).toEqual([{ table: mocks.referenceTable, value: prepared }]);
+    await persistCompanyReferences(tx, [other, prepared]);
+    expect(writes.map(write => write.value)).toEqual([prepared, other]);
+    expect(writes.every(write => write.table === mocks.referenceTable)).toBe(true);
   });
 
-  it("fails closed on an invalid writer mode before database writes", async () => {
-    vi.stubEnv("COMPANY_REFERENCE_WRITE_MODE", "invalid");
+  it("preserves legacy provenance for offline reuse without promoting it", async () => {
+    const seed: PreparedCompanyReference = { ...prepared, source: "legacy_seed", verifiedAt: null };
     const { tx, writes } = transaction();
-    await expect(persistCompanyReferences(tx, [prepared])).rejects.toThrow("Invalid company reference write mode");
-    expect(writes).toEqual([]);
-  });
-
-  it("classifies a conflicting legacy slug without remapping the UUID", async () => {
-    const { tx } = transaction({ cause: { code: "23505", constraint_name: "company_slug_unique" } });
-    await expect(persistCompanyReferences(tx, [prepared])).rejects.toMatchObject({ code: "company_identity_conflict" });
+    await persistCompanyReferences(tx, [seed]);
+    expect(writes).toEqual([{ table: mocks.referenceTable, value: seed, conflict: "nothing", options: { target: mocks.referenceTable.id } }]);
   });
 });
