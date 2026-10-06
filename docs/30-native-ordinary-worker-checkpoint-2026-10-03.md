@@ -5,45 +5,71 @@
 The full migration goal is **active and incomplete**. Ship multiple provider
 and variant types per release, sharing reference verification, CI and cutover.
 
-Production **0.13.949** (MokaHR + AlmaCareer + Eightfold) is deployed from
+Production **0.13.949** was deployed from
 `c7f789faef866c0fd77921750095f1a6253c707d` through original immutable deployment
 [37417474358](https://github.com/colophon-group/jobseek/actions/runs/37417474358).
-Lightpanda **1.0.0** is the latest stable qualified renderer and B0 is selected
-at epoch 199. Fresh admission reconciled 1,417,415 scheduled detail routes and
-selected 6,849 ordinary monitors and 2,515 detail boards. The first ordinary
-activation was rejected. Its original pending recovery succeeded, and independent
-readback verified the complete restored fleet, active B0 and an inert staged
-ordinary plan. An exact-plan retry now holds the full fleet cold while five
-legacy board leases expire naturally; the latest deadline is 06:37:44 UTC.
-Do not claim active ordinary ownership before successful activation/readback.
+Both ordinary activation attempts were refused before ownership activation.
+The second refusal is explained by three UKG detail configuration hashes changing
+as their legacy monitors learned `listing_url`, `host`, `tenant` and `board_id`.
+The first refusal remains unexplained. Both original pending recoveries succeeded.
+Original B0 rollback and selector clear then completed; independent readback at
+06:50 UTC verified epoch 200, six healthy legacy services, no native claim tokens,
+no ordinary projection or active owner receipt, and the old ordinary plan staged
+and inert. Historical immutable audit receipts remain intact.
 
 [PR #10336](https://github.com/colophon-group/jobseek/pull/10336), release
 **0.13.950**, ports **Softgarden + UKG + BambooHR + Recruiter.co.kr** together:
-55 current monitor configurations and 41 detail bindings. The exact candidate
-`ce311df349d75ea799fb2be90248027ca23a19cb` passes Required CI, Crawler Deploy Gate, native execution, parser, browser
-image and installed-image contracts. Deployment waits for the current original
-cutover operation to finish and the supported outgoing reversal.
-Its account-recovery browser test targets the actual account action, and early
-renderer TCP capacity resets retain their bounded retry classification.
+55 current monitor configurations and 41 detail bindings. Its exact reviewed head
+`ce311df349d75ea799fb2be90248027ca23a19cb` passed all required and installed-image
+checks and merged to `e310db696b8815ba11201aad97d57fd69f9d4a3e`. Original full
+[deployment 37426031356](https://github.com/colophon-group/jobseek/actions/runs/37426031356)
+succeeded. Independent readback at 07:10 UTC verified its exact immutable images,
+six healthy legacy services, cold native actors and epoch 200. The account-recovery
+fixture targets the actual account action;
+early Lightpanda capacity resets retain bounded renderer retry classification.
 
-The next grouped candidate **0.13.951**, in
-`fix-crawler/native-generic-provider-variants`, ports **DOM + RSS + Inline +
-API-sniffer variants** together. Local eligibility covers 62 DOM pagination and
-20 DOM rewrite configurations (overlap), 11 generic RSS feeds, 4 inline public
-cache-bypass routes and 43 explicit API enrichment assignments. Twenty-five
-actual Python HTTP comparisons, 12 canonical PostgreSQL/Redis cases and 12
-cold-reversal cases pass. API, DOM and JSON-LD parser race suites and the full
-queue race suite pass (172.126 seconds). The full worker race suite passes in
-323.882 seconds. Publish this grouped candidate and ship only through
-required exact-head CI, installed-image proof and the original full deployment.
+[PR #10337](https://github.com/colophon-group/jobseek/pull/10337), release
+**0.13.951**, ports **DOM + RSS + Inline + API-sniffer variants** together.
+Local eligibility covers 62 DOM pagination and 20 DOM rewrite configurations
+(overlap), 11 generic RSS feeds, 4 inline cache-bypass routes and 43 explicit API
+enrichment assignments. Twenty-five actual Python HTTP comparisons, 12 canonical
+PostgreSQL/Redis cases and 12 cold-reversal cases pass. Full queue and worker race
+suites pass in 172.126 and 323.882 seconds. All exact-head required checks and
+installed-image parity passed; reviewed head
+`368ca83e25eaeeb1df7d3338c71efed84b6877e5` merged to
+`20e29703d8bf48594e91f85c02d6d075ca963ab7`. Original full
+[deployment 37427352256](https://github.com/colophon-group/jobseek/actions/runs/37427352256)
+has started after successful 950 in the normal production concurrency group.
+Do not cancel or replace either operation. Lightpanda **1.0.0** remains the latest published stable
+release, rechecked against the upstream release list on October 6.
 
-Continue grouped remaining provider/browser/filter variants and runtime consumers.
-Verify deployed ownership, every-profile freshness and queue conservation; measure
-comparable whole-lane CPU/RAM/cost; prove cold reversal and the rollback window.
-Then retire production Python, Playwright/Chromium and obsolete runtime assets,
-while preserving every enabled board and useful isolated Python reference tools.
-No staged admission or local parser proof grants production authority. Protected
-operational evidence and the current exact handles remain in the private durable
+The next grouped candidate **0.13.952** ports **Comeet + Jobvite** together:
+Comeet hosted assignments and configured public API feeds, and Jobvite static
+listings, branded linked listings and category pagination. Local registry proof
+covers 9 Comeet and 9 Jobvite monitors, including all 9 Jobvite detail assignments
+through existing direct DOM/JSON-LD or rendered JSON-LD routes. Thirty-seven actual
+Python HTTP comparisons and canonical PostgreSQL/Redis settlement comparisons
+pass. Three publisher reservation cases, including a category resource, preserve
+existing postings. Six new cold reversal cases pass. Full queue and worker race
+suites pass in 177.608 and 345.917 seconds; final strict-anchor HTTP/canonical
+checks pass in 14.313 seconds. API parser race, vet, module tidiness and formatting
+checks pass. Publish the grouped release through exact-head required CI and
+installed-image proof, then the original full deployment.
+No local parser or registry proof grants production ownership.
+
+Continue with **Paycom + Rippling** together, including both monitor and required
+detail execution. Then finish remaining provider/browser/filter variants and
+runtime consumers using the existing delivery paths. After 951's complete
+immutable deployment succeeds, independently verify its selected baseline,
+activate the supported B0 cohort and capture fresh canonical/cache/actual-route
+admission evidence before ordinary staging. Never retry the stale 949 hash or
+ignore the learned UKG configuration drift. Verify active ownership, every-profile
+freshness and queue conservation; measure comparable whole-lane CPU/RAM/cost;
+prove cold reversal and establish the rollback window. Retire production Python,
+Playwright/Chromium and obsolete runtime assets only after replacement authority
+is verified, preserving every enabled board and useful isolated reference tools.
+
+Protected operational evidence and exact live handles are in the private durable
 checkpoint. All sections below this current summary are historical snapshots.
 
 ## Historical delivery — 2026-10-06 00:04 UTC

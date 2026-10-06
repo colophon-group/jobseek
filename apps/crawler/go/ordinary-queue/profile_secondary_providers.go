@@ -6,14 +6,14 @@ import (
 )
 
 func SecondaryProvider(provider string) bool {
-	return provider == "softgarden" || provider == "ukg" || provider == "bamboohr" || provider == "recruiter_co_kr"
+	return provider == "comeet" || provider == "jobvite" || provider == "softgarden" || provider == "ukg" || provider == "bamboohr" || provider == "recruiter_co_kr"
 }
 func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
 	allowed := map[string]bool{"description": true}
 	if config["crawler_type"] == "bamboohr" {
 		allowed = map[string]bool{"description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true}
 	}
-	if config["crawler_type"] == "recruiter_co_kr" {
+	if config["crawler_type"] == "recruiter_co_kr" || config["crawler_type"] == "comeet" {
 		allowed = map[string]bool{}
 	}
 	return monitorEnrichmentFields(config, allowed)
@@ -28,6 +28,25 @@ func inspectSecondaryMonitor(boardID string, config map[string]string, md map[st
 	provider := config["crawler_type"]
 	var profile, endpoint string
 	switch provider {
+	case "comeet":
+		if e := feedRichDetailAssignment(config); e != nil {
+			return GreenhouseMonitorProfile{}, e
+		}
+		o, e := api.ComeetOptionsFromMetadata(config["board_url"], config["metadata"])
+		if e != nil {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		profile, endpoint = "comeet.hosted-items/v1", o.Endpoint
+		if o.API {
+			profile = "comeet.api-items/v1"
+		}
+	case "jobvite":
+		o, e := api.JobviteOptionsFromMetadata(config["board_url"], config["metadata"])
+		if e != nil {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		profile, endpoint = "jobvite.listing-urls/v1", o.Endpoint
+
 	case "softgarden":
 		o, e := api.SoftgardenOptionsFromMetadata(config["board_url"], config["metadata"])
 		if e != nil {
@@ -65,6 +84,17 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 		return false
 	}
 	switch p.Provider {
+	case "comeet":
+		o, e := api.ComeetOptionsFromMetadata(config["board_url"], config["metadata"])
+		profile := "comeet.hosted-items/v1"
+		if o.API {
+			profile = "comeet.api-items/v1"
+		}
+		return e == nil && p.Profile == profile && p.Endpoint == o.Endpoint && o.ResourceMatches(resource)
+	case "jobvite":
+		o, e := api.JobviteOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && p.Profile == "jobvite.listing-urls/v1" && p.Endpoint == o.Endpoint && o.ResourceMatches(resource)
+
 	case "softgarden":
 		o, e := api.SoftgardenOptionsFromMetadata(config["board_url"], config["metadata"])
 		return e == nil && p.Profile == "softgarden.inline-urls/v1" && p.Endpoint == o.ListingURL() && o.ResourceMatches(resource)
@@ -82,6 +112,13 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 }
 func SecondaryMonitorGone(config map[string]string, resource string, status int, disabled bool) bool {
 	switch config["crawler_type"] {
+	case "comeet":
+		o, e := api.ComeetOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && o.API && resource == o.Endpoint && status == 404 && !disabled
+	case "jobvite":
+		o, e := api.JobviteOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && resource == o.Endpoint && ((status == 404 || status == 410) && !disabled || disabled && (status == 301 || status == 302 || status == 303 || status == 307 || status == 308))
+
 	case "softgarden":
 		o, e := api.SoftgardenOptionsFromMetadata(config["board_url"], config["metadata"])
 		return e == nil && resource == o.ListingURL() && status == 404 && !disabled

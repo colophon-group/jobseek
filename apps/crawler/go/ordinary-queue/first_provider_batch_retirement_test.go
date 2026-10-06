@@ -23,6 +23,10 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 		board, metadata = "https://fixture.jobs.cz/", `{"scraper_type":"skip"}`
 	}
 	switch provider {
+	case "comeet":
+		board, metadata = "https://www.comeet.com/jobs/fixture/C6.001", `{"scraper_type":"skip"}`
+	case "jobvite":
+		board, metadata = "https://jobs.jobvite.com/fixture", `{"scraper_type":"json-ld"}`
 	case "dom":
 		metadata = `{"url_filter":"/jobs/","pagination":{"param_name":"page","max_pages":3},"url_transform":{"find":"\\?tracking=.*$","replace":""},"scraper_type":"json-ld"}`
 	case "rss":
@@ -100,7 +104,7 @@ func assertEightfoldCanonicalWatermarkCached(t *testing.T, p firstOwnerFixture) 
 }
 
 func TestRealProviderBatchColdRetirementAndEightfoldWatermarkRecovery(t *testing.T) {
-	for _, provider := range []string{"mokahr", "almacareer", "eightfold", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "dom", "rss", "inline", "api_sniffer"} {
+	for _, provider := range []string{"mokahr", "almacareer", "eightfold", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "dom", "rss", "inline", "api_sniffer", "comeet", "jobvite"} {
 		modes := []string{"interrupted", "committed-before-ack", "changed-setting"}
 		if provider == "eightfold" {
 			modes = append(modes, "reaped-before-ack", "recovered-ack", "settled-cold", "save-failure", "orphan-cache")
