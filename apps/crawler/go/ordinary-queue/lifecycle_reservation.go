@@ -48,6 +48,9 @@ func (a *Authority) FinishGreenhouseReservationResource(ctx context.Context, cla
 	}
 	if observation != nil {
 		matches := initialMonitorResourceMatches(profile, initialEndpoint)
+		if profile.Provider == "dom" {
+			matches = DOMMonitorResourceMatches(profile, claim.task.Config, initialEndpoint)
+		}
 		if SecondaryProvider(profile.Provider) {
 			matches = SecondaryMonitorResourceMatches(profile, claim.task.Config, initialEndpoint)
 		}

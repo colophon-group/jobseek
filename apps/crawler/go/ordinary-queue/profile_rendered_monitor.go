@@ -63,7 +63,7 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 	clone := cloneConfig(config)
 	clone["monitor_needs_browser"], clone["metadata"] = "0", string(body)
 	listing, err := directDOMMonitorOptions(clone)
-	if err != nil {
+	if err != nil || listing.Pagination != nil {
 		return fail()
 	}
 	return listing, options, nil

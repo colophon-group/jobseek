@@ -20,6 +20,9 @@ type DocumentOptions struct {
 	RetryLimits   map[int]int       `json:"retry_limits"`
 	SameOrigin    bool              `json:"same_origin"`
 	PublicHeaders bool              `json:"public_headers"`
+	// Inline alternate feeds use Jina's public cache bypass header. Other
+	// configured document routes retain their narrower header vocabulary.
+	InlineCacheBypass bool `json:"inline_cache_bypass,omitempty"`
 }
 type DocumentResult struct {
 	Requests    int    `json:"requests"`
@@ -163,6 +166,7 @@ func validateDocumentOptions(opts DocumentOptions) error {
 		return errors.New("configured public headers require the public redirect contract")
 	}
 	allowed := map[string]bool{"accept": true, "accept-language": true, "cache-control": true, "pragma": true, "user-agent": true, "x-return-format": true}
+	allowed["x-no-cache"] = opts.InlineCacheBypass
 	seen := map[string]bool{}
 	for k, v := range opts.Headers {
 		key := strings.ToLower(strings.TrimSpace(k))

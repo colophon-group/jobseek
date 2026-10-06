@@ -25,7 +25,7 @@ func directDOMMonitorOptions(config map[string]string) (dom.ListingConfig, error
 		return dom.ListingConfig{}, ErrUnsupportedProfile
 	}
 	options := dom.Object{}
-	keys := []string{"url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy"}
+	keys := []string{"url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "url_transform"}
 	for _, key := range keys {
 		if raw, ok := md[key]; ok {
 			if (key == "url_filter" || key == "request_headers") && strings.HasPrefix(strings.TrimSpace(string(raw)), "{") {
@@ -50,6 +50,9 @@ func inspectDOMMonitor(boardID string, config map[string]string, md map[string]j
 	if err != nil || len(config["board_url"]) > 8192 || u.Scheme != "https" || u.User != nil || u.Opaque != "" || u.Fragment != "" || !validHost(u.Hostname()) || u.Port() != "" {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
+	if _, err := FeedMonitorURLRules(config); err != nil {
+		return GreenhouseMonitorProfile{}, err
+	}
 	if _, err := DOMMonitorOptions(config); err != nil {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
@@ -58,4 +61,9 @@ func inspectDOMMonitor(boardID string, config map[string]string, md map[string]j
 		profile = domRenderedMonitorProfile
 	}
 	return inspectURLOnlyMonitor(boardID, config, md, "dom", profile, "dom", config["board_url"])
+}
+
+func DOMMonitorResourceMatches(p GreenhouseMonitorProfile, config map[string]string, resource string) bool {
+	c, err := DOMMonitorOptions(config)
+	return err == nil && p.Provider == "dom" && c.ResourceMatches(p.Endpoint, resource)
 }

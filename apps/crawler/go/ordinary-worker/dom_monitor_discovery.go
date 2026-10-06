@@ -7,6 +7,7 @@ import (
 	"mime"
 	"net/http"
 	"net/http/cookiejar"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -18,14 +19,16 @@ import (
 	"golang.org/x/text/cases"
 )
 
-func discoverDOMInventory(ctx context.Context, verified *http.Client, profile queue.GreenhouseMonitorProfile, config map[string]string) (RichDiscovery, error) {
+func discoverDOMSingleInventory(ctx context.Context, verified *http.Client, profile queue.GreenhouseMonitorProfile, c dom.ListingConfig, later bool) (RichDiscovery, error) {
 	result := RichDiscovery{Jobs: []RichMonitorJob{}}
-	c, err := queue.DOMMonitorOptions(config)
-	if err != nil || verified == nil || profile.Endpoint != config["board_url"] {
+	var err error
+	if verified == nil {
 		return result, queue.ErrConfiguration
 	}
 	client := *verified
-	client.Jar, err = cookiejar.New(nil)
+	if client.Jar == nil {
+		client.Jar, err = cookiejar.New(nil)
+	}
 	if err != nil {
 		return result, err
 	}
@@ -48,6 +51,10 @@ func discoverDOMInventory(ctx context.Context, verified *http.Client, profile qu
 		if ctx.Err() != nil {
 			return result, ctx.Err()
 		}
+		if later && (doc.Status == 404 || doc.Status == 410) {
+			return result, nil
+		}
+
 		if failure == nil && doc.Status == 200 && len(doc.Body) > 0 {
 			contentType := doc.ContentType
 			if c.Encoding != "" {
@@ -55,6 +62,9 @@ func discoverDOMInventory(ctx context.Context, verified *http.Client, profile qu
 			}
 			source = jsonld.DecodeDocument(doc.Body, contentType)
 			break
+		}
+		if later && (doc.Status == 401 || doc.Status == 403) && !c.Pagination.Transient403 {
+			return result, nil
 		}
 		if failure == nil && doc.Status != 200 && doc.Status != 202 && doc.Status != 401 && doc.Status != 403 && doc.Status != 429 && doc.Status < 500 {
 			return result, &DiscoveryError{Kind: "inventory_failed", cause: errors.New("DOM listing HTTP failure")}
@@ -74,7 +84,7 @@ func discoverDOMInventory(ctx context.Context, verified *http.Client, profile qu
 	// Preserve the existing 500,000-codepoint single-page listing preview.
 	count := 0
 	for offset := range source {
-		if count == 500_000 {
+		if !later && count == 500_000 {
 			source = source[:offset]
 			break
 		}
@@ -182,4 +192,83 @@ func parseDOMInventory(ctx context.Context, result RichDiscovery, profile queue.
 func joinPythonURL(base, reference string) (string, bool) {
 	result, err := pythonJoinURL(base, reference)
 	return result, err == nil
+}
+
+func discoverDOMInventory(ctx context.Context, client *http.Client, profile queue.GreenhouseMonitorProfile, config map[string]string) (RichDiscovery, error) {
+	c, err := queue.DOMMonitorOptions(config)
+	if err != nil || profile.Endpoint != config["board_url"] {
+		return RichDiscovery{}, queue.ErrConfiguration
+	}
+	if client == nil {
+		return RichDiscovery{}, queue.ErrConfiguration
+	}
+	scoped := *client
+	scoped.Jar, err = cookiejar.New(nil)
+	if err != nil {
+		return RichDiscovery{}, err
+	}
+	client = &scoped
+	result, err := discoverDOMSingleInventory(ctx, client, profile, c, false)
+	if err != nil || c.Pagination == nil {
+		return result, err
+	}
+	rules, err := queue.FeedMonitorURLRules(config)
+	if err != nil {
+		return result, err
+	}
+	seen := map[string]bool{}
+	jobs := []RichMonitorJob{}
+	add := func(in []RichMonitorJob) (int, error) {
+		added := 0
+		for _, job := range in {
+			identity, keep, err := rules.Apply(job.URL)
+			if err != nil {
+				return 0, err
+			}
+			if keep && !seen[identity] {
+				seen[identity] = true
+				jobs = append(jobs, job)
+				added++
+			}
+		}
+		return added, nil
+	}
+	if _, err = add(result.Jobs); err != nil {
+		return result, err
+	}
+	for page := 2; page <= c.Pagination.MaxPages && !result.Truncated; page++ {
+		endpoint := c.Pagination.URL(profile.Endpoint, page)
+		if c.Document.PublicHeaders {
+			a, _ := url.Parse(profile.Endpoint)
+			b, _ := url.Parse(endpoint)
+			if a.Scheme != b.Scheme || a.Host != b.Host {
+				return result, queue.ErrConfiguration
+			}
+		}
+		pageProfile := profile
+		pageProfile.Endpoint = endpoint
+		pageOptions := c
+		pageOptions.Attempts = c.Pagination.Attempts
+		next, e := discoverDOMSingleInventory(ctx, client, pageProfile, pageOptions, true)
+		result.Response = next.Response
+		if e != nil {
+			result.Jobs = nil
+			return result, e
+		}
+		count, e := add(next.Jobs)
+		if e != nil {
+			return result, e
+		}
+		result.Truncated = result.Truncated || next.Truncated
+		if len(jobs) >= 50000 {
+			result.Truncated = true
+			jobs = jobs[:50000]
+			break
+		}
+		if count == 0 {
+			break
+		}
+	}
+	result.Jobs = jobs
+	return result, nil
 }

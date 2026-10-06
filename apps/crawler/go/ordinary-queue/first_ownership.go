@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"errors"
+	"log"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -248,10 +249,33 @@ func firstOwnershipSave(ctx context.Context, client *Client) error {
 	return nil
 }
 
-func applyFirstOwnership(ctx context.Context, pool *pgxpool.Pool, client *Client, epoch int64, digest, source string, target *ColdB0Target, retire bool) (*FirstOwnershipResult, error) {
+func applyFirstOwnership(ctx context.Context, pool *pgxpool.Pool, client *Client, epoch int64, digest, source string, target *ColdB0Target, retire bool) (result *FirstOwnershipResult, err error) {
+	phase := "cold-scope"
+	defer func() {
+		if err == nil {
+			return
+		}
+		reason := "observation"
+		switch {
+		case errors.Is(err, context.DeadlineExceeded):
+			reason = "deadline"
+		case errors.Is(err, context.Canceled):
+			reason = "cancelled"
+		case errors.Is(err, ErrAuthorityLost):
+			reason = "authority"
+		case errors.Is(err, ErrConfiguration):
+			reason = "configuration"
+		case errors.Is(err, ErrUnsupportedProfile):
+			reason = "unsupported-profile"
+		}
+		// Fixed enums only: no SQL, Redis errors, URLs, metadata or credentials.
+		log.Printf("ordinary first ownership rejection: phase=%s reason=%s", phase, reason)
+	}()
+
 	if client == nil || target == nil || epoch < 1 || epoch > 9999999999999 || !ownershipSHA256.MatchString(digest) || CheckHostColdSQLScope(ctx, pool, source) != nil {
 		return nil, ErrAuthorityLost
 	}
+	phase = "eligibility"
 	plan, state, err := firstOwnershipPlan(ctx, pool, client, epoch, digest, source, target, retire)
 	if err != nil {
 		return nil, authorityError(err)
@@ -267,6 +291,7 @@ func applyFirstOwnership(ctx context.Context, pool *pgxpool.Pool, client *Client
 		// reversal. Expired legacy claims may outlive their SQL leases when the
 		// original host stops the complete fleet; Lua must attest the whole
 		// cohort before restoring any of them or publishing the new owner.
+		phase = "canonical-restoration"
 		retirement, err = firstRetirementMembers(ctx, pool, client, plan)
 		if err != nil {
 			return nil, err
@@ -281,15 +306,18 @@ func applyFirstOwnership(ctx context.Context, pool *pgxpool.Pool, client *Client
 			}
 		}
 	}
+	phase = "projection"
 	if err := firstOwnershipProjection(ctx, client, epoch, plan, target, operation, retirement); err != nil {
 		return nil, err
 	}
 	if !completed {
+		phase = "redis-save"
 		if err := firstOwnershipSave(ctx, client); err != nil {
 			return nil, err
 		}
 		// Revalidate canonical eligibility, current epoch, held barriers and
 		// the exact projection AFTER durable Redis publication, before SQL.
+		phase = "eligibility-recheck"
 		fresh, actual, err := firstOwnershipPlan(ctx, pool, client, epoch, digest, source, target, retire)
 		if err != nil {
 			return nil, authorityError(err)
@@ -304,6 +332,7 @@ func applyFirstOwnership(ctx context.Context, pool *pgxpool.Pool, client *Client
 				inspect = "inspect-staged-cancelled"
 			}
 		}
+		phase = "projection-recheck"
 		if err := firstOwnershipProjection(ctx, client, epoch, plan, target, inspect, "[]"); err != nil {
 			return nil, err
 		}
@@ -312,6 +341,7 @@ func applyFirstOwnership(ctx context.Context, pool *pgxpool.Pool, client *Client
 			if retire {
 				next = "retired"
 			}
+			phase = "sql-commit"
 			if err := coldTransitionTransaction(ctx, pool, func(ctx context.Context, tx pgx.Tx) error {
 				tag, err := tx.Exec(ctx, "UPDATE public.ordinary_worker_ownership_plan SET state=$1 WHERE plan_sha256=$2 AND state=$3", next, digest, state)
 				if err != nil {

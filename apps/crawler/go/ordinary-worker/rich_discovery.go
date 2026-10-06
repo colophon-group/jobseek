@@ -94,6 +94,9 @@ func DiscoverRichMonitor(ctx context.Context, client *http.Client, profile queue
 	if profile.Profile == "personio.xml-skip/v1" || profile.Profile == "personio.xml-items/v1" {
 		return discoverPersonioRich(ctx, client, profile)
 	}
+	if profile.Profile == "rss.generic-skip/v1" || profile.Profile == "rss.generic-items/v1" {
+		return discoverGenericRSS(ctx, client, profile)
+	}
 	if profile.Profile == "rss.teamtailor-skip/v1" || profile.Profile == "rss.teamtailor-items/v1" {
 		return discoverTeamtailorRich(ctx, client, profile)
 	}

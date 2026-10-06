@@ -1,0 +1,1277 @@
+{
+  "cases": [
+    {
+      "name": "dom-empty",
+      "provider": "dom",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "url_filter": "/jobs/",
+        "pagination": {
+          "param_name": "page",
+          "max_pages": 4,
+          "transport_attempts": 3
+        }
+      },
+      "pages": [
+        {
+          "body": "<a href=\"/jobs/one?tracking=1\">One</a>",
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": "<a href=\"/jobs/two\">Two</a>",
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": "",
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=2",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=3",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=3",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=3",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        }
+      ],
+      "error": true,
+      "reserved": false,
+      "jobs": []
+    },
+    {
+      "name": "dom-gone404",
+      "provider": "dom",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "url_filter": "/jobs/",
+        "pagination": {
+          "param_name": "page",
+          "max_pages": 4,
+          "transport_attempts": 3
+        }
+      },
+      "pages": [
+        {
+          "body": "<a href=\"/jobs/one?tracking=1\">One</a>",
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": "<a href=\"/jobs/two\">Two</a>",
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": "",
+          "status": 404,
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=2",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=3",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        }
+      ],
+      "error": false,
+      "reserved": false,
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/one?tracking=1"
+        },
+        {
+          "url": "https://example.com/jobs/two"
+        }
+      ]
+    },
+    {
+      "name": "dom-gone410",
+      "provider": "dom",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "url_filter": "/jobs/",
+        "pagination": {
+          "param_name": "page",
+          "max_pages": 4,
+          "transport_attempts": 3
+        }
+      },
+      "pages": [
+        {
+          "body": "<a href=\"/jobs/one?tracking=1\">One</a>",
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": "<a href=\"/jobs/two\">Two</a>",
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": "",
+          "status": 410,
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=2",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=3",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        }
+      ],
+      "error": false,
+      "reserved": false,
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/one?tracking=1"
+        },
+        {
+          "url": "https://example.com/jobs/two"
+        }
+      ]
+    },
+    {
+      "name": "dom-duplicate",
+      "provider": "dom",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "url_filter": "/jobs/",
+        "pagination": {
+          "param_name": "page",
+          "max_pages": 4,
+          "transport_attempts": 3
+        }
+      },
+      "pages": [
+        {
+          "body": "<a href=\"/jobs/one?tracking=1\">One</a>",
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": "<a href=\"/jobs/two\">Two</a>",
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": "<a href=\"/jobs/two\">Two</a>",
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=2",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=3",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        }
+      ],
+      "error": false,
+      "reserved": false,
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/one?tracking=1"
+        },
+        {
+          "url": "https://example.com/jobs/two"
+        }
+      ]
+    },
+    {
+      "name": "dom-retry429",
+      "provider": "dom",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "url_filter": "/jobs/",
+        "pagination": {
+          "param_name": "page",
+          "max_pages": 4,
+          "transport_attempts": 3
+        }
+      },
+      "pages": [
+        {
+          "body": "<a href=\"/jobs/one?tracking=1\">One</a>",
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": "",
+          "status": 429,
+          "headers": {}
+        },
+        {
+          "body": "<a href=\"/jobs/two\">Two</a>",
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": "",
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=2",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=2",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=3",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=3",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=3",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        }
+      ],
+      "error": true,
+      "reserved": false,
+      "jobs": []
+    },
+    {
+      "name": "dom-failed500",
+      "provider": "dom",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "url_filter": "/jobs/",
+        "pagination": {
+          "param_name": "page",
+          "max_pages": 4,
+          "transport_attempts": 3
+        }
+      },
+      "pages": [
+        {
+          "body": "<a href=\"/jobs/one?tracking=1\">One</a>",
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": "",
+          "status": 500,
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=2",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=2",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=2",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        }
+      ],
+      "error": true,
+      "reserved": false,
+      "jobs": []
+    },
+    {
+      "name": "dom-failed403",
+      "provider": "dom",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "url_filter": "/jobs/",
+        "pagination": {
+          "param_name": "page",
+          "max_pages": 4,
+          "transport_attempts": 3
+        }
+      },
+      "pages": [
+        {
+          "body": "<a href=\"/jobs/one?tracking=1\">One</a>",
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": "",
+          "status": 403,
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=2",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        }
+      ],
+      "error": false,
+      "reserved": false,
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/one?tracking=1"
+        }
+      ]
+    },
+    {
+      "name": "dom-retry403",
+      "provider": "dom",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "url_filter": "/jobs/",
+        "pagination": {
+          "param_name": "page",
+          "max_pages": 4,
+          "transport_attempts": 3,
+          "transient_403": true
+        }
+      },
+      "pages": [
+        {
+          "body": "<a href=\"/jobs/one?tracking=1\">One</a>",
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": "",
+          "status": 403,
+          "headers": {}
+        },
+        {
+          "body": "<a href=\"/jobs/two\">Two</a>",
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": "",
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=2",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=2",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=3",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=3",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=3",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        }
+      ],
+      "error": true,
+      "reserved": false,
+      "jobs": []
+    },
+    {
+      "name": "dom-reserved",
+      "provider": "dom",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "url_filter": "/jobs/",
+        "pagination": {
+          "param_name": "page",
+          "max_pages": 4,
+          "transport_attempts": 3
+        }
+      },
+      "pages": [
+        {
+          "body": "<a href=\"/jobs/one?tracking=1\">One</a>",
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": "<a href=\"/jobs/two\">Two</a>",
+          "status": 200,
+          "headers": {
+            "TDM-Reservation": "1",
+            "TDM-Policy": "https://example.com/policy"
+          }
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=2",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        }
+      ],
+      "error": true,
+      "reserved": true,
+      "jobs": []
+    },
+    {
+      "name": "dom-challenge",
+      "provider": "dom",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "url_filter": "/jobs/",
+        "pagination": {
+          "param_name": "page",
+          "max_pages": 4,
+          "transport_attempts": 3
+        }
+      },
+      "pages": [
+        {
+          "body": "<a href=\"/jobs/one?tracking=1\">One</a>",
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": "<html><title>Just a moment...</title><div id='cf-chl-widget'>Verify you are human</div></html>",
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=2",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        }
+      ],
+      "error": true,
+      "reserved": false,
+      "jobs": []
+    },
+    {
+      "name": "dom-transform-identity",
+      "provider": "dom",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "url_filter": "/jobs/",
+        "url_transform": {
+          "find": "\\?tracking=\\d+$",
+          "replace": ""
+        },
+        "pagination": {
+          "param_name": "page",
+          "max_pages": 4
+        }
+      },
+      "pages": [
+        {
+          "body": "<a href=\"/jobs/one?tracking=1\">One</a>",
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": "<a href=\"/jobs/one?tracking=2\">One</a><a href=\"/jobs/two\">Two</a>",
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": "<a href=\"/jobs/two\">Two</a>",
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=2",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&page=3",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        }
+      ],
+      "error": false,
+      "reserved": false,
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/one"
+        },
+        {
+          "url": "https://example.com/jobs/two"
+        }
+      ]
+    },
+    {
+      "name": "dom-template",
+      "provider": "dom",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "url_filter": "/jobs/",
+        "link_selector": "main a",
+        "pagination": {
+          "url_template": "https://example.com/list/{page}",
+          "start": 0,
+          "increment": 2,
+          "max_pages": 3
+        }
+      },
+      "pages": [
+        {
+          "body": "<main><a href=\"/jobs/one?tracking=1\">One</a></main>",
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": "<main><a href=\"/jobs/two\">Two</a></main>",
+          "status": 200,
+          "headers": {}
+        },
+        {
+          "body": "",
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/list/2",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/list/4",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/list/4",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/list/4",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        }
+      ],
+      "error": true,
+      "reserved": false,
+      "jobs": []
+    },
+    {
+      "name": "rss-complete",
+      "provider": "rss",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "preset": "generic",
+        "feed_url": "https://example.com/feed?department=eng"
+      },
+      "pages": [
+        {
+          "body": "<rss><channel><item><link>https://example.com/jobs/one</link><title> Café Engineer 東京 </title><description><![CDATA[<p>Build &amp; learn</p>]]></description><Location> Zürich </Location><JobID> 123 </JobID><pubDate>2026-10-06</pubDate></item></channel></rss>",
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/feed?department=eng",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        }
+      ],
+      "error": false,
+      "reserved": false,
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/one",
+          "title": "Café Engineer 東京",
+          "description": "<p>Build & learn</p>",
+          "locations": [
+            "Zürich"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-06",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123"
+          },
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "rss-empty",
+      "provider": "rss",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "preset": "generic",
+        "feed_url": "https://example.com/feed?department=eng"
+      },
+      "pages": [
+        {
+          "body": "<rss><channel/></rss>",
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/feed?department=eng",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        }
+      ],
+      "error": false,
+      "reserved": false,
+      "jobs": []
+    },
+    {
+      "name": "rss-namespaced",
+      "provider": "rss",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "preset": "generic",
+        "feed_url": "https://example.com/feed?department=eng"
+      },
+      "pages": [
+        {
+          "body": "<rss><channel><x:item xmlns:x=\"urn:item\"><link>https://example.com/jobs/one</link><title> Café Engineer 東京 </title><description><![CDATA[<p>Build &amp; learn</p>]]></description><Location> Zürich </Location><JobID> 123 </JobID><pubDate>2026-10-06</pubDate></x:item></channel></rss>",
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/feed?department=eng",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        }
+      ],
+      "error": false,
+      "reserved": false,
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/one",
+          "title": "Café Engineer 東京",
+          "description": "<p>Build & learn</p>",
+          "locations": [
+            "Zürich"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-06",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123"
+          },
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "rss-nested",
+      "provider": "rss",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "preset": "generic",
+        "feed_url": "https://example.com/feed?department=eng"
+      },
+      "pages": [
+        {
+          "body": "<rss><channel><item><link>https://example.com/jobs/one</link><title> Head <b>ignored</b> tail </title><description><![CDATA[<p>Build &amp; learn</p>]]></description><Location> Zürich </Location><JobID> 123 </JobID><pubDate>2026-10-06</pubDate></item></channel></rss>",
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/feed?department=eng",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        }
+      ],
+      "error": false,
+      "reserved": false,
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/one",
+          "title": "Head",
+          "description": "<p>Build & learn</p>",
+          "locations": [
+            "Zürich"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-06",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123"
+          },
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "rss-malformed",
+      "provider": "rss",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "preset": "generic",
+        "feed_url": "https://example.com/feed?department=eng"
+      },
+      "pages": [
+        {
+          "body": "<rss><channel><item><link>https://example.com/jobs/one</link><title> Café Engineer 東京 </title><description><![CDATA[<p>Build &amp; learn</p>]]></description><Location> Zürich </Location><JobID> 123 </JobID><pubDate>2026-10-06</pubDate></item></channel>",
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/feed?department=eng",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        }
+      ],
+      "error": true,
+      "reserved": false,
+      "jobs": []
+    },
+    {
+      "name": "rss-trailing",
+      "provider": "rss",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "preset": "generic",
+        "feed_url": "https://example.com/feed?department=eng"
+      },
+      "pages": [
+        {
+          "body": "<rss><channel><item><link>https://example.com/jobs/one</link><title> Café Engineer 東京 </title><description><![CDATA[<p>Build &amp; learn</p>]]></description><Location> Zürich </Location><JobID> 123 </JobID><pubDate>2026-10-06</pubDate></item></channel></rss><rss/>",
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/feed?department=eng",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        }
+      ],
+      "error": true,
+      "reserved": false,
+      "jobs": []
+    },
+    {
+      "name": "rss-retry429",
+      "provider": "rss",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "preset": "generic",
+        "feed_url": "https://example.com/feed?department=eng"
+      },
+      "pages": [
+        {
+          "body": "",
+          "status": 429,
+          "headers": {}
+        },
+        {
+          "body": "<rss><channel><item><link>https://example.com/jobs/one</link><title> Café Engineer 東京 </title><description><![CDATA[<p>Build &amp; learn</p>]]></description><Location> Zürich </Location><JobID> 123 </JobID><pubDate>2026-10-06</pubDate></item></channel></rss>",
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/feed?department=eng",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/feed?department=eng",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        }
+      ],
+      "error": false,
+      "reserved": false,
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/one",
+          "title": "Café Engineer 東京",
+          "description": "<p>Build & learn</p>",
+          "locations": [
+            "Zürich"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-06",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123"
+          },
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "rss-failed404",
+      "provider": "rss",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "preset": "generic",
+        "feed_url": "https://example.com/feed?department=eng"
+      },
+      "pages": [
+        {
+          "body": "",
+          "status": 404,
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/feed?department=eng",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        }
+      ],
+      "error": true,
+      "reserved": false,
+      "jobs": []
+    },
+    {
+      "name": "rss-failed500",
+      "provider": "rss",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "preset": "generic",
+        "feed_url": "https://example.com/feed?department=eng"
+      },
+      "pages": [
+        {
+          "body": "",
+          "status": 500,
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/feed?department=eng",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/feed?department=eng",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/feed?department=eng",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        }
+      ],
+      "error": true,
+      "reserved": false,
+      "jobs": []
+    },
+    {
+      "name": "rss-reserved",
+      "provider": "rss",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "preset": "generic",
+        "feed_url": "https://example.com/feed?department=eng"
+      },
+      "pages": [
+        {
+          "body": "<rss><channel><item><link>https://example.com/jobs/one</link><title> Café Engineer 東京 </title><description><![CDATA[<p>Build &amp; learn</p>]]></description><Location> Zürich </Location><JobID> 123 </JobID><pubDate>2026-10-06</pubDate></item></channel></rss>",
+          "status": 200,
+          "headers": {
+            "TDM-Reservation": "1",
+            "TDM-Policy": "https://example.com/policy"
+          }
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/feed?department=eng",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        }
+      ],
+      "error": true,
+      "reserved": true,
+      "jobs": []
+    },
+    {
+      "name": "inline-cache",
+      "provider": "inline",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description"
+          }
+        ],
+        "fetch_contains": "Engineer",
+        "fetch_urls": [
+          {
+            "url": "https://example.com/alternate",
+            "headers": {
+              "X-No-Cache": "true",
+              "X-Return-Format": "html"
+            }
+          }
+        ]
+      },
+      "pages": [
+        {
+          "body": "<h2>Engineer</h2><p>Build products</p>",
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/alternate",
+          "method": "GET",
+          "cache": "true",
+          "format": "html"
+        }
+      ],
+      "error": false,
+      "reserved": false,
+      "jobs": [
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&_jid=engineer-7826b9",
+          "title": "Engineer",
+          "description": "Build products",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "inline-fallback",
+      "provider": "inline",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description"
+          }
+        ],
+        "fetch_contains": "Engineer",
+        "fetch_urls": [
+          "https://example.com/unavailable",
+          {
+            "url": "https://example.com/alternate",
+            "headers": {
+              "X-No-Cache": "true",
+              "X-Return-Format": "html"
+            }
+          }
+        ]
+      },
+      "pages": [
+        {
+          "body": "",
+          "status": 404,
+          "headers": {}
+        },
+        {
+          "body": "<h2>Engineer</h2><p>Build products</p>",
+          "status": 200,
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/unavailable",
+          "method": "GET",
+          "cache": "",
+          "format": ""
+        },
+        {
+          "url": "https://example.com/alternate",
+          "method": "GET",
+          "cache": "true",
+          "format": "html"
+        }
+      ],
+      "error": false,
+      "reserved": false,
+      "jobs": [
+        {
+          "url": "https://example.com/careers?z=last&a=first&a=again&_jid=engineer-7826b9",
+          "title": "Engineer",
+          "description": "Build products",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "inline-reserved",
+      "provider": "inline",
+      "board_url": "https://example.com/careers?z=last&a=first&a=again",
+      "metadata": {
+        "steps": [
+          {
+            "tag": "h2",
+            "field": "title"
+          },
+          {
+            "tag": "p",
+            "field": "description"
+          }
+        ],
+        "fetch_contains": "Engineer",
+        "fetch_urls": [
+          {
+            "url": "https://example.com/alternate",
+            "headers": {
+              "X-No-Cache": "true",
+              "X-Return-Format": "html"
+            }
+          }
+        ]
+      },
+      "pages": [
+        {
+          "body": "<h2>Engineer</h2><p>Build products</p>",
+          "status": 200,
+          "headers": {
+            "TDM-Reservation": "1",
+            "TDM-Policy": "https://example.com/policy"
+          }
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://example.com/alternate",
+          "method": "GET",
+          "cache": "true",
+          "format": "html"
+        }
+      ],
+      "error": true,
+      "reserved": true,
+      "jobs": []
+    }
+  ]
+}

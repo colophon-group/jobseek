@@ -13,16 +13,19 @@ var rssCategoryQuery = regexp.MustCompile(`^catid=[1-9][0-9]{0,15}$`)
 // their configured detail assignment and downstream URL policy.
 func inspectRSSRich(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
 	var preset, feed, variant string
-	if json.Unmarshal(md["preset"], &preset) != nil || preset != "teamtailor" && preset != "successfactors" {
+	if json.Unmarshal(md["preset"], &preset) != nil || preset != "teamtailor" && preset != "successfactors" && preset != "generic" {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
 	if raw, ok := md["variant"]; ok && json.Unmarshal(raw, &variant) != nil {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
-	if preset == "teamtailor" && variant != "" || preset == "successfactors" && variant != "" && variant != "feed" {
+	if (preset == "teamtailor" || preset == "generic") && variant != "" || preset == "successfactors" && variant != "" && variant != "feed" {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
 	if raw, ok := md["feed_url"]; ok && json.Unmarshal(raw, &feed) != nil {
+		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+	}
+	if feed == "" && preset == "generic" {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
 	if feed == "" {
@@ -40,7 +43,7 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 	if err != nil || len(feed) > 8192 || u.Scheme != "https" || u.Hostname() == "" || u.Host != u.Hostname() || u.User != nil || u.Opaque != "" || u.Fragment != "" || strings.ContainsAny(feed, "\x00\r\n") {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
-	validFeed := u.RawQuery == "" && strings.HasSuffix(u.Path, "/jobs.rss")
+	validFeed := preset == "generic" || u.RawQuery == "" && strings.HasSuffix(u.Path, "/jobs.rss")
 	if preset == "successfactors" {
 		validFeed = u.RawQuery == "" && strings.EqualFold(strings.TrimRight(u.Path, "/"), "/googlefeed.xml") || u.Path == "/services/rss/category/" && rssCategoryQuery.MatchString(u.RawQuery)
 	}
