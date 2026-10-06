@@ -39,11 +39,12 @@ installed-image parity passed; reviewed head
 `368ca83e25eaeeb1df7d3338c71efed84b6877e5` merged to
 `20e29703d8bf48594e91f85c02d6d075ca963ab7`. Original full
 [deployment 37427352256](https://github.com/colophon-group/jobseek/actions/runs/37427352256)
-has started after successful 950 in the normal production concurrency group.
-Do not cancel or replace either operation. Lightpanda **1.0.0** remains the latest published stable
-release, rechecked against the upstream release list on October 6.
+succeeded. Independent readback at 07:32 UTC verified the exact original images,
+six healthy legacy services, epoch 200, absent native claims/projection/receipts
+and the old 949 plan staged and inert. Lightpanda **1.0.0** remains the latest
+stable release in the official release list, rechecked October 6.
 
-The next grouped candidate **0.13.952** ports **Comeet + Jobvite** together:
+Release **0.13.952** ports **Comeet + Jobvite** together:
 Comeet hosted assignments and configured public API feeds, and Jobvite static
 listings, branded linked listings and category pagination. Local registry proof
 covers 9 Comeet and 9 Jobvite monitors, including all 9 Jobvite detail assignments
@@ -53,21 +54,62 @@ pass. Three publisher reservation cases, including a category resource, preserve
 existing postings. Six new cold reversal cases pass. Full queue and worker race
 suites pass in 177.608 and 345.917 seconds; final strict-anchor HTTP/canonical
 checks pass in 14.313 seconds. API parser race, vet, module tidiness and formatting
-checks pass. Publish the grouped release through exact-head required CI and
-installed-image proof, then the original full deployment.
+checks pass. [PR #10338](https://github.com/colophon-group/jobseek/pull/10338)
+passed all exact-head required CI and installed-image parity at
+`80807c17947a09ccd9a7c65161f32591588e02d2` and merged to
+`bd043e3ba94761d01ace0181d7ddf22e63458e50` after fresh head-bound merge authority.
+Original full [deployment 37431155889](https://github.com/colophon-group/jobseek/actions/runs/37431155889)
+succeeded through its original build, deploy and promotion. Independent readback
+at 07:57 UTC verified its exact source/image identities, all six healthy services,
+epoch 200 and absent native authority; the old 949 plan remains staged and inert.
 No local parser or registry proof grants production ownership.
 
-Continue with **Paycom + Rippling** together, including both monitor and required
-detail execution. Then finish remaining provider/browser/filter variants and
-runtime consumers using the existing delivery paths. After 951's complete
-immutable deployment succeeds, independently verify its selected baseline,
-activate the supported B0 cohort and capture fresh canonical/cache/actual-route
-admission evidence before ordinary staging. Never retry the stale 949 hash or
-ignore the learned UKG configuration drift. Verify active ownership, every-profile
-freshness and queue conservation; measure comparable whole-lane CPU/RAM/cost;
+The next grouped candidate **0.13.953** ports **Paycom + Rippling**, including
+both monitors and all required detail scrapers: 16 Paycom and 10 Rippling current
+registry configurations, 26 native detail bindings and four profiles, bringing
+the installed total to 63. Paycom refreshes its public bootstrap and paginated
+previews, preserves Hybrid detail authority and uses the existing Go salary
+parser. Rippling lists canonical public URLs and hydrates its V1 detail records.
+Both use the existing sealed HTTP, publisher policy, canonical persistence,
+claim settlement and source-bound ownership paths.
+
+Twenty-nine monitor and 27 detail request/output cases come from the actual
+Python implementations; Paycom salary references use the independent legacy
+Python parser. Twenty-nine monitor and 26 admitted detail canonical PostgreSQL/
+Redis cases pass, including exact deadlines and lease conservation. Six publisher
+reservation cases cover both provider resources and both Paycom bootstrap phases.
+Two Paycom Hybrid refresh cases preserve authoritative detail content; two detail
+mask/backfill cases preserve selected field authority. Eighteen new monitor/detail
+cold reversal cases pass, covering interrupted and committed claims, configuration
+drift, recovery and failed Redis restoration. API race, vet, module tidiness and
+Python fixture lint/format checks pass. The full queue race suite passes in
+196.065 seconds; the full worker race suite passes in 350.513 seconds. Publish
+the grouped release through required CI and installed-image parity, then use the
+original full deployment. Local proof does not grant production ownership.
+
+The upstream salary DTO is independently compared. Canonical SQL salary comes
+only from description text in the actual legacy processor; native execution
+preserves that behavior. The reference test was corrected to expect NULL salary
+columns for descriptions without compensation text. No runtime behavior changed
+to accommodate the mistaken test expectation.
+
+Continue with **ADP + Paylocity + Cornerstone + Dayforce** as the next grouped
+provider target: 45 current registry monitors. Read-only screening finds 14 ADP
+native detail requirements, eight Paylocity details plus one existing JSON-LD
+assignment, and 22 rich/skip Cornerstone and Dayforce boards. Dayforce requires
+browser session/CSRF capture and must use the existing Lightpanda path; direct
+HTTP is not an established replacement. Paylocity proxy assignments remain in
+scope and require proven transport. These counts are research, not admission.
+
+Finish remaining provider/browser/filter variants and runtime consumers using
+the existing delivery paths. After the selected complete immutable deployment,
+independently verify its baseline, activate the supported B0 cohort and capture
+fresh canonical/cache/actual-route admission before ordinary staging. Never retry
+the stale 949 hash or ignore learned UKG drift. Verify active ownership,
+every-profile freshness and queue conservation; compare whole-lane CPU/RAM/cost;
 prove cold reversal and establish the rollback window. Retire production Python,
-Playwright/Chromium and obsolete runtime assets only after replacement authority
-is verified, preserving every enabled board and useful isolated reference tools.
+Playwright/Chromium and obsolete runtime assets after replacement authority is
+verified, preserving every enabled board and useful isolated reference tools.
 
 Protected operational evidence and exact live handles are in the private durable
 checkpoint. All sections below this current summary are historical snapshots.

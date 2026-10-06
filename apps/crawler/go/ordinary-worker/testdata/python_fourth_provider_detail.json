@@ -1,0 +1,1330 @@
+{
+  "http": [
+    {
+      "provider": "rippling",
+      "name": "complete",
+      "url": "https://ats.rippling.com/acme/jobs/abc-123",
+      "config": {},
+      "pages": {
+        "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/abc-123": {
+          "status": 200,
+          "body": "{\"name\": \"Engineer\", \"description\": {\"company\": \"<p>Company</p>\", \"role\": \"<p>Build</p>\"}, \"workLocations\": [\"Zurich, On-site\", \"Remote US\"], \"employmentType\": {\"label\": \"SALARIED_FT\", \"id\": \"salary\"}, \"createdOn\": \"2026-10-06T00:00:00Z\", \"department\": {\"name\": \"Platform\", \"base_department\": \"Engineering\"}, \"companyName\": \"Acme\", \"payRangeDetails\": [{\"rangeStart\": 100000, \"rangeEnd\": 140000, \"currency\": \"CHF\", \"frequency\": \"YEARLY_ANNUALLY\"}]}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/abc-123",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": false,
+        "content": {
+          "title": "Engineer",
+          "description": "<p>Company</p>\n<p>Build</p>",
+          "locations": [
+            "Zurich, On-site",
+            "Remote US"
+          ],
+          "employment_type": "SALARIED_FT",
+          "job_location_type": "onsite",
+          "date_posted": "2026-10-06T00:00:00Z",
+          "base_salary": {
+            "currency": "CHF",
+            "min": 100000,
+            "max": 140000,
+            "unit": "year"
+          },
+          "language": null,
+          "extras": null,
+          "metadata": {
+            "department": "Platform",
+            "base_department": "Engineering",
+            "company": "Acme"
+          }
+        },
+        "empty": false
+      }
+    },
+    {
+      "provider": "rippling",
+      "name": "empty",
+      "url": "https://ats.rippling.com/acme/jobs/abc-123",
+      "config": {},
+      "pages": {
+        "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/abc-123": {
+          "status": 200,
+          "body": "{}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/abc-123",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": false,
+        "content": {
+          "title": null,
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "extras": null,
+          "metadata": null
+        },
+        "empty": true
+      }
+    },
+    {
+      "provider": "rippling",
+      "name": "unknown-salary-frequency",
+      "url": "https://ats.rippling.com/acme/jobs/abc-123",
+      "config": {},
+      "pages": {
+        "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/abc-123": {
+          "status": 200,
+          "body": "{\"name\": \"Engineer\", \"description\": {\"company\": \"<p>Company</p>\", \"role\": \"<p>Build</p>\"}, \"workLocations\": [\"Zurich, On-site\", \"Remote US\"], \"employmentType\": {\"label\": \"SALARIED_FT\", \"id\": \"salary\"}, \"createdOn\": \"2026-10-06T00:00:00Z\", \"department\": {\"name\": \"Platform\", \"base_department\": \"Engineering\"}, \"companyName\": \"Acme\", \"payRangeDetails\": [{\"rangeStart\": 10, \"rangeEnd\": 20, \"currency\": \"USD\", \"frequency\": \"unknown\"}]}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/abc-123",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": false,
+        "content": {
+          "title": "Engineer",
+          "description": "<p>Company</p>\n<p>Build</p>",
+          "locations": [
+            "Zurich, On-site",
+            "Remote US"
+          ],
+          "employment_type": "SALARIED_FT",
+          "job_location_type": "onsite",
+          "date_posted": "2026-10-06T00:00:00Z",
+          "base_salary": {
+            "currency": "USD",
+            "min": 10,
+            "max": 20,
+            "unit": "year"
+          },
+          "language": null,
+          "extras": null,
+          "metadata": {
+            "department": "Platform",
+            "base_department": "Engineering",
+            "company": "Acme"
+          }
+        },
+        "empty": false
+      }
+    },
+    {
+      "provider": "rippling",
+      "name": "hourly",
+      "url": "https://ats.rippling.com/acme/jobs/abc-123",
+      "config": {},
+      "pages": {
+        "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/abc-123": {
+          "status": 200,
+          "body": "{\"name\": \"Engineer\", \"description\": {\"company\": \"<p>Company</p>\", \"role\": \"<p>Build</p>\"}, \"workLocations\": [\"New York, Remote\"], \"employmentType\": {\"id\": \"HOURLY_PT\"}, \"createdOn\": \"2026-10-06T00:00:00Z\", \"department\": {\"name\": \"Platform\", \"base_department\": \"Engineering\"}, \"companyName\": \"Acme\", \"payRangeDetails\": [{\"rangeStart\": 20.5, \"rangeEnd\": 32.5, \"currency\": \"USD\", \"frequency\": \"per-hour-wage\"}]}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/abc-123",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": false,
+        "content": {
+          "title": "Engineer",
+          "description": "<p>Company</p>\n<p>Build</p>",
+          "locations": [
+            "New York, Remote"
+          ],
+          "employment_type": "HOURLY_PT",
+          "job_location_type": "remote",
+          "date_posted": "2026-10-06T00:00:00Z",
+          "base_salary": {
+            "currency": "USD",
+            "min": 20.5,
+            "max": 32.5,
+            "unit": "hour"
+          },
+          "language": null,
+          "extras": null,
+          "metadata": {
+            "department": "Platform",
+            "base_department": "Engineering",
+            "company": "Acme"
+          }
+        },
+        "empty": false
+      }
+    },
+    {
+      "provider": "rippling",
+      "name": "description-role-only",
+      "url": "https://ats.rippling.com/acme/jobs/abc-123",
+      "config": {},
+      "pages": {
+        "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/abc-123": {
+          "status": 200,
+          "body": "{\"name\": \"Engineer\", \"description\": {\"role\": \"<p>Build</p>\"}, \"workLocations\": [\"Berlin Hybrid\"], \"employmentType\": {\"label\": \"SALARIED_FT\", \"id\": \"salary\"}, \"createdOn\": \"2026-10-06T00:00:00Z\", \"department\": {\"name\": \"Platform\", \"base_department\": \"Engineering\"}, \"companyName\": \"Acme\", \"payRangeDetails\": [{\"rangeStart\": 100000, \"rangeEnd\": 140000, \"currency\": \"CHF\", \"frequency\": \"YEARLY_ANNUALLY\"}]}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/abc-123",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": false,
+        "content": {
+          "title": "Engineer",
+          "description": "<p>Build</p>",
+          "locations": [
+            "Berlin Hybrid"
+          ],
+          "employment_type": "SALARIED_FT",
+          "job_location_type": "hybrid",
+          "date_posted": "2026-10-06T00:00:00Z",
+          "base_salary": {
+            "currency": "CHF",
+            "min": 100000,
+            "max": 140000,
+            "unit": "year"
+          },
+          "language": null,
+          "extras": null,
+          "metadata": {
+            "department": "Platform",
+            "base_department": "Engineering",
+            "company": "Acme"
+          }
+        },
+        "empty": false
+      }
+    },
+    {
+      "provider": "rippling",
+      "name": "404-empty",
+      "url": "https://ats.rippling.com/acme/jobs/abc-123",
+      "config": {},
+      "pages": {
+        "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/abc-123": {
+          "status": 404,
+          "body": "{}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/abc-123",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": false,
+        "content": {
+          "title": null,
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "extras": null,
+          "metadata": null
+        },
+        "empty": true
+      }
+    },
+    {
+      "provider": "rippling",
+      "name": "503-empty",
+      "url": "https://ats.rippling.com/acme/jobs/abc-123",
+      "config": {},
+      "pages": {
+        "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/abc-123": {
+          "status": 503,
+          "body": "{}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/abc-123",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": false,
+        "content": {
+          "title": null,
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "extras": null,
+          "metadata": null
+        },
+        "empty": true
+      }
+    },
+    {
+      "provider": "rippling",
+      "name": "201-empty",
+      "url": "https://ats.rippling.com/acme/jobs/abc-123",
+      "config": {},
+      "pages": {
+        "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/abc-123": {
+          "status": 201,
+          "body": "{\"name\": \"Engineer\", \"description\": {\"company\": \"<p>Company</p>\", \"role\": \"<p>Build</p>\"}, \"workLocations\": [\"Zurich, On-site\", \"Remote US\"], \"employmentType\": {\"label\": \"SALARIED_FT\", \"id\": \"salary\"}, \"createdOn\": \"2026-10-06T00:00:00Z\", \"department\": {\"name\": \"Platform\", \"base_department\": \"Engineering\"}, \"companyName\": \"Acme\", \"payRangeDetails\": [{\"rangeStart\": 100000, \"rangeEnd\": 140000, \"currency\": \"CHF\", \"frequency\": \"YEARLY_ANNUALLY\"}]}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/abc-123",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": false,
+        "content": {
+          "title": null,
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "extras": null,
+          "metadata": null
+        },
+        "empty": true
+      }
+    },
+    {
+      "provider": "rippling",
+      "name": "malformed-json",
+      "url": "https://ats.rippling.com/acme/jobs/abc-123",
+      "config": {},
+      "pages": {
+        "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/abc-123": {
+          "status": 200,
+          "body": "{",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/abc-123",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": true,
+        "content": null,
+        "empty": false
+      }
+    },
+    {
+      "provider": "rippling",
+      "name": "description-invalid-failure",
+      "url": "https://ats.rippling.com/acme/jobs/abc-123",
+      "config": {},
+      "pages": {
+        "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/abc-123": {
+          "status": 200,
+          "body": "{\"name\": \"Engineer\", \"description\": \"wrong\", \"workLocations\": [\"Zurich, On-site\", \"Remote US\"], \"employmentType\": {\"label\": \"SALARIED_FT\", \"id\": \"salary\"}, \"createdOn\": \"2026-10-06T00:00:00Z\", \"department\": {\"name\": \"Platform\", \"base_department\": \"Engineering\"}, \"companyName\": \"Acme\", \"payRangeDetails\": [{\"rangeStart\": 100000, \"rangeEnd\": 140000, \"currency\": \"CHF\", \"frequency\": \"YEARLY_ANNUALLY\"}]}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/abc-123",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": true,
+        "content": null,
+        "empty": false
+      }
+    },
+    {
+      "provider": "rippling",
+      "name": "slug-override",
+      "url": "https://ats.rippling.com/acme/jobs/abc-123",
+      "config": {
+        "slug": "override"
+      },
+      "pages": {
+        "https://api.rippling.com/platform/api/ats/v1/board/override/jobs/abc-123": {
+          "status": 200,
+          "body": "{\"name\": \"Engineer\", \"description\": {\"company\": \"<p>Company</p>\", \"role\": \"<p>Build</p>\"}, \"workLocations\": [\"Zurich, On-site\", \"Remote US\"], \"employmentType\": {\"label\": \"SALARIED_FT\", \"id\": \"salary\"}, \"createdOn\": \"2026-10-06T00:00:00Z\", \"department\": {\"name\": \"Platform\", \"base_department\": \"Engineering\"}, \"companyName\": \"Acme\", \"payRangeDetails\": [{\"rangeStart\": 100000, \"rangeEnd\": 140000, \"currency\": \"CHF\", \"frequency\": \"YEARLY_ANNUALLY\"}]}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.rippling.com/platform/api/ats/v1/board/override/jobs/abc-123",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": false,
+        "content": {
+          "title": "Engineer",
+          "description": "<p>Company</p>\n<p>Build</p>",
+          "locations": [
+            "Zurich, On-site",
+            "Remote US"
+          ],
+          "employment_type": "SALARIED_FT",
+          "job_location_type": "onsite",
+          "date_posted": "2026-10-06T00:00:00Z",
+          "base_salary": {
+            "currency": "CHF",
+            "min": 100000,
+            "max": 140000,
+            "unit": "year"
+          },
+          "language": null,
+          "extras": null,
+          "metadata": {
+            "department": "Platform",
+            "base_department": "Engineering",
+            "company": "Acme"
+          }
+        },
+        "empty": false
+      }
+    },
+    {
+      "provider": "rippling",
+      "name": "regional-localized-source",
+      "url": "https://ats.us1.rippling.com/en-US/acme/jobs/abc-123",
+      "config": {},
+      "pages": {
+        "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/abc-123": {
+          "status": 200,
+          "body": "{\"name\": \"Engineer\", \"description\": {\"company\": \"<p>Company</p>\", \"role\": \"<p>Build</p>\"}, \"workLocations\": [\"Zurich, On-site\", \"Remote US\"], \"employmentType\": {\"label\": \"SALARIED_FT\", \"id\": \"salary\"}, \"createdOn\": \"2026-10-06T00:00:00Z\", \"department\": {\"name\": \"Platform\", \"base_department\": \"Engineering\"}, \"companyName\": \"Acme\", \"payRangeDetails\": [{\"rangeStart\": 100000, \"rangeEnd\": 140000, \"currency\": \"CHF\", \"frequency\": \"YEARLY_ANNUALLY\"}]}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs/abc-123",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": false,
+        "content": {
+          "title": "Engineer",
+          "description": "<p>Company</p>\n<p>Build</p>",
+          "locations": [
+            "Zurich, On-site",
+            "Remote US"
+          ],
+          "employment_type": "SALARIED_FT",
+          "job_location_type": "onsite",
+          "date_posted": "2026-10-06T00:00:00Z",
+          "base_salary": {
+            "currency": "CHF",
+            "min": 100000,
+            "max": 140000,
+            "unit": "year"
+          },
+          "language": null,
+          "extras": null,
+          "metadata": {
+            "department": "Platform",
+            "base_department": "Engineering",
+            "company": "Acme"
+          }
+        },
+        "empty": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "complete",
+      "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+      "config": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-postings/123": {
+          "status": 200,
+          "body": "{\"jobPosting\": {\"jobId\": 123, \"jobTitle\": \" Engineer \", \"description\": \"<p>Build</p>\", \"qualifications\": \"<p>Go</p>\", \"location\": \"Zurich\", \"secondaryLocations\": [\"ZURICH\", \"London\", \" london \"], \"positionType\": \"Full-Time\", \"remoteType\": \"Hybrid\", \"googleJobJson\": \"{\\\"datePosted\\\": \\\"2026-10-06\\\", \\\"title\\\": \\\"Fallback\\\", \\\"employmentType\\\": \\\"CONTRACT\\\"}\", \"salaryRange\": \"CHF 100000-140000 per year\", \"clientCode\": \"ACME\", \"jobCategory\": \"Platform\", \"jobShift\": \"Day\", \"educationLevel\": \"Bachelors\", \"travelPercentage\": 0, \"isHotJob\": false}}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "GET",
+          "url": "https://api.paycomonline.net/api/ats/job-postings/123",
+          "body": null,
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": false,
+        "content": {
+          "title": "Engineer",
+          "description": "<p>Build</p>",
+          "locations": [
+            "Zurich",
+            "London"
+          ],
+          "employment_type": "Full-Time",
+          "job_location_type": "hybrid",
+          "date_posted": "2026-10-06",
+          "base_salary": {
+            "currency": "CHF",
+            "min": 100000,
+            "max": 140000,
+            "unit": "year"
+          },
+          "language": null,
+          "extras": {
+            "qualifications": "<p>Go</p>"
+          },
+          "metadata": {
+            "ats_job_id": 123,
+            "client_code": "ACME",
+            "department": "Platform",
+            "shift": "Day",
+            "education_level": "Bachelors",
+            "travel_percentage": 0,
+            "is_hot_job": false
+          }
+        },
+        "empty": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "default-locations",
+      "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+      "config": {
+        "defaults": {
+          "locations": [
+            " Hawarden, IA ",
+            "Hawarden, IA"
+          ]
+        }
+      },
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-postings/123": {
+          "status": 200,
+          "body": "{\"jobPosting\": {\"jobId\": 123, \"jobTitle\": \" Engineer \", \"description\": \"<p>Build</p>\", \"qualifications\": \"<p>Go</p>\", \"location\": null, \"secondaryLocations\": null, \"positionType\": \"Full-Time\", \"remoteType\": \"Hybrid\", \"googleJobJson\": \"{\\\"datePosted\\\": \\\"2026-10-06\\\", \\\"title\\\": \\\"Fallback\\\", \\\"employmentType\\\": \\\"CONTRACT\\\"}\", \"salaryRange\": \"CHF 100000-140000 per year\", \"clientCode\": \"ACME\", \"jobCategory\": \"Platform\", \"jobShift\": \"Day\", \"educationLevel\": \"Bachelors\", \"travelPercentage\": 0, \"isHotJob\": false}}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "GET",
+          "url": "https://api.paycomonline.net/api/ats/job-postings/123",
+          "body": null,
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": false,
+        "content": {
+          "title": "Engineer",
+          "description": "<p>Build</p>",
+          "locations": [
+            "Hawarden, IA"
+          ],
+          "employment_type": "Full-Time",
+          "job_location_type": "hybrid",
+          "date_posted": "2026-10-06",
+          "base_salary": {
+            "currency": "CHF",
+            "min": 100000,
+            "max": 140000,
+            "unit": "year"
+          },
+          "language": null,
+          "extras": {
+            "qualifications": "<p>Go</p>"
+          },
+          "metadata": {
+            "ats_job_id": 123,
+            "client_code": "ACME",
+            "department": "Platform",
+            "shift": "Day",
+            "education_level": "Bachelors",
+            "travel_percentage": 0,
+            "is_hot_job": false
+          }
+        },
+        "empty": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "google-fallback",
+      "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+      "config": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-postings/123": {
+          "status": 200,
+          "body": "{\"jobPosting\": {\"jobId\": 123, \"jobTitle\": null, \"description\": \"<p>Build</p>\", \"qualifications\": \"<p>Go</p>\", \"location\": \"Zurich\", \"secondaryLocations\": [\"ZURICH\", \"London\", \" london \"], \"positionType\": null, \"remoteType\": \"Hybrid\", \"googleJobJson\": \"{\\\"datePosted\\\": \\\"2026-10-06\\\", \\\"title\\\": \\\"Fallback\\\", \\\"employmentType\\\": \\\"CONTRACT\\\"}\", \"salaryRange\": \"CHF 100000-140000 per year\", \"clientCode\": \"ACME\", \"jobCategory\": \"Platform\", \"jobShift\": \"Day\", \"educationLevel\": \"Bachelors\", \"travelPercentage\": 0, \"isHotJob\": false}}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "GET",
+          "url": "https://api.paycomonline.net/api/ats/job-postings/123",
+          "body": null,
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": false,
+        "content": {
+          "title": "Fallback",
+          "description": "<p>Build</p>",
+          "locations": [
+            "Zurich",
+            "London"
+          ],
+          "employment_type": "CONTRACT",
+          "job_location_type": "hybrid",
+          "date_posted": "2026-10-06",
+          "base_salary": {
+            "currency": "CHF",
+            "min": 100000,
+            "max": 140000,
+            "unit": "year"
+          },
+          "language": null,
+          "extras": {
+            "qualifications": "<p>Go</p>"
+          },
+          "metadata": {
+            "ats_job_id": 123,
+            "client_code": "ACME",
+            "department": "Platform",
+            "shift": "Day",
+            "education_level": "Bachelors",
+            "travel_percentage": 0,
+            "is_hot_job": false
+          }
+        },
+        "empty": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "bad-google-json",
+      "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+      "config": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-postings/123": {
+          "status": 200,
+          "body": "{\"jobPosting\": {\"jobId\": 123, \"jobTitle\": \" Engineer \", \"description\": \"<p>Build</p>\", \"qualifications\": \"<p>Go</p>\", \"location\": \"Zurich\", \"secondaryLocations\": [\"ZURICH\", \"London\", \" london \"], \"positionType\": \"Full-Time\", \"remoteType\": \"Hybrid\", \"googleJobJson\": \"{\", \"salaryRange\": \"CHF 100000-140000 per year\", \"clientCode\": \"ACME\", \"jobCategory\": \"Platform\", \"jobShift\": \"Day\", \"educationLevel\": \"Bachelors\", \"travelPercentage\": 0, \"isHotJob\": false}}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "GET",
+          "url": "https://api.paycomonline.net/api/ats/job-postings/123",
+          "body": null,
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": false,
+        "content": {
+          "title": "Engineer",
+          "description": "<p>Build</p>",
+          "locations": [
+            "Zurich",
+            "London"
+          ],
+          "employment_type": "Full-Time",
+          "job_location_type": "hybrid",
+          "date_posted": null,
+          "base_salary": {
+            "currency": "CHF",
+            "min": 100000,
+            "max": 140000,
+            "unit": "year"
+          },
+          "language": null,
+          "extras": {
+            "qualifications": "<p>Go</p>"
+          },
+          "metadata": {
+            "ats_job_id": 123,
+            "client_code": "ACME",
+            "department": "Platform",
+            "shift": "Day",
+            "education_level": "Bachelors",
+            "travel_percentage": 0,
+            "is_hot_job": false
+          }
+        },
+        "empty": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "missing-job",
+      "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+      "config": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-postings/123": {
+          "status": 200,
+          "body": "{}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "GET",
+          "url": "https://api.paycomonline.net/api/ats/job-postings/123",
+          "body": null,
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": true,
+        "content": null,
+        "empty": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "salary-hourly",
+      "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+      "config": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-postings/123": {
+          "status": 200,
+          "body": "{\"jobPosting\": {\"jobId\": 123, \"jobTitle\": \" Engineer \", \"description\": \"<p>Build</p>\", \"qualifications\": \"<p>Go</p>\", \"location\": \"Zurich\", \"secondaryLocations\": [\"ZURICH\", \"London\", \" london \"], \"positionType\": \"Full-Time\", \"remoteType\": \"Hybrid\", \"googleJobJson\": \"{\\\"datePosted\\\": \\\"2026-10-06\\\", \\\"title\\\": \\\"Fallback\\\", \\\"employmentType\\\": \\\"CONTRACT\\\"}\", \"salaryRange\": \"$20-$30 per hour\", \"clientCode\": \"ACME\", \"jobCategory\": \"Platform\", \"jobShift\": \"Day\", \"educationLevel\": \"Bachelors\", \"travelPercentage\": 0, \"isHotJob\": false}}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "GET",
+          "url": "https://api.paycomonline.net/api/ats/job-postings/123",
+          "body": null,
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": false,
+        "content": {
+          "title": "Engineer",
+          "description": "<p>Build</p>",
+          "locations": [
+            "Zurich",
+            "London"
+          ],
+          "employment_type": "Full-Time",
+          "job_location_type": "hybrid",
+          "date_posted": "2026-10-06",
+          "base_salary": null,
+          "language": null,
+          "extras": {
+            "qualifications": "<p>Go</p>"
+          },
+          "metadata": {
+            "ats_job_id": 123,
+            "client_code": "ACME",
+            "department": "Platform",
+            "shift": "Day",
+            "education_level": "Bachelors",
+            "travel_percentage": 0,
+            "is_hot_job": false
+          }
+        },
+        "empty": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "detail-404-empty",
+      "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+      "config": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-postings/123": {
+          "status": 404,
+          "body": "{}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "GET",
+          "url": "https://api.paycomonline.net/api/ats/job-postings/123",
+          "body": null,
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": false,
+        "content": {
+          "title": null,
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "extras": null,
+          "metadata": null
+        },
+        "empty": true
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "detail-410-empty",
+      "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+      "config": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-postings/123": {
+          "status": 410,
+          "body": "{}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "GET",
+          "url": "https://api.paycomonline.net/api/ats/job-postings/123",
+          "body": null,
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": false,
+        "content": {
+          "title": null,
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "extras": null,
+          "metadata": null
+        },
+        "empty": true
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "detail-503-failure",
+      "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+      "config": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-postings/123": {
+          "status": 503,
+          "body": "{}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "GET",
+          "url": "https://api.paycomonline.net/api/ats/job-postings/123",
+          "body": null,
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://api.paycomonline.net/api/ats/job-postings/123",
+          "body": null,
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://api.paycomonline.net/api/ats/job-postings/123",
+          "body": null,
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": true,
+        "content": null,
+        "empty": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "detail-201-failure",
+      "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+      "config": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-postings/123": {
+          "status": 201,
+          "body": "{\"jobPosting\": {\"jobId\": 123, \"jobTitle\": \" Engineer \", \"description\": \"<p>Build</p>\", \"qualifications\": \"<p>Go</p>\", \"location\": \"Zurich\", \"secondaryLocations\": [\"ZURICH\", \"London\", \" london \"], \"positionType\": \"Full-Time\", \"remoteType\": \"Hybrid\", \"googleJobJson\": \"{\\\"datePosted\\\": \\\"2026-10-06\\\", \\\"title\\\": \\\"Fallback\\\", \\\"employmentType\\\": \\\"CONTRACT\\\"}\", \"salaryRange\": \"CHF 100000-140000 per year\", \"clientCode\": \"ACME\", \"jobCategory\": \"Platform\", \"jobShift\": \"Day\", \"educationLevel\": \"Bachelors\", \"travelPercentage\": 0, \"isHotJob\": false}}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "GET",
+          "url": "https://api.paycomonline.net/api/ats/job-postings/123",
+          "body": null,
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": true,
+        "content": null,
+        "empty": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "detail-malformed-json",
+      "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+      "config": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-postings/123": {
+          "status": 200,
+          "body": "{",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "GET",
+          "url": "https://api.paycomonline.net/api/ats/job-postings/123",
+          "body": null,
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://api.paycomonline.net/api/ats/job-postings/123",
+          "body": null,
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://api.paycomonline.net/api/ats/job-postings/123",
+          "body": null,
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": true,
+        "content": null,
+        "empty": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "detail-retry-503",
+      "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+      "config": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://api.paycomonline.net\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        },
+        "https://api.paycomonline.net/api/ats/job-postings/123": [
+          {
+            "status": 503,
+            "body": "{}",
+            "headers": {}
+          },
+          {
+            "status": 200,
+            "body": "{\"jobPosting\": {\"jobId\": 123, \"jobTitle\": \" Engineer \", \"description\": \"<p>Build</p>\", \"qualifications\": \"<p>Go</p>\", \"location\": \"Zurich\", \"secondaryLocations\": [\"ZURICH\", \"London\", \" london \"], \"positionType\": \"Full-Time\", \"remoteType\": \"Hybrid\", \"googleJobJson\": \"{\\\"datePosted\\\": \\\"2026-10-06\\\", \\\"title\\\": \\\"Fallback\\\", \\\"employmentType\\\": \\\"CONTRACT\\\"}\", \"salaryRange\": \"CHF 100000-140000 per year\", \"clientCode\": \"ACME\", \"jobCategory\": \"Platform\", \"jobShift\": \"Day\", \"educationLevel\": \"Bachelors\", \"travelPercentage\": 0, \"isHotJob\": false}}",
+            "headers": {}
+          }
+        ]
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        },
+        {
+          "method": "GET",
+          "url": "https://api.paycomonline.net/api/ats/job-postings/123",
+          "body": null,
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://api.paycomonline.net/api/ats/job-postings/123",
+          "body": null,
+          "headers": {
+            "authorization": "public.fixture.signature",
+            "locale": "en-US",
+            "translation-highlights": "true",
+            "portal-host-referrer": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page"
+          }
+        }
+      ],
+      "expected": {
+        "error": false,
+        "content": {
+          "title": "Engineer",
+          "description": "<p>Build</p>",
+          "locations": [
+            "Zurich",
+            "London"
+          ],
+          "employment_type": "Full-Time",
+          "job_location_type": "hybrid",
+          "date_posted": "2026-10-06",
+          "base_salary": {
+            "currency": "CHF",
+            "min": 100000,
+            "max": 140000,
+            "unit": "year"
+          },
+          "language": null,
+          "extras": {
+            "qualifications": "<p>Go</p>"
+          },
+          "metadata": {
+            "ats_job_id": 123,
+            "client_code": "ACME",
+            "department": "Platform",
+            "shift": "Day",
+            "education_level": "Bachelors",
+            "travel_percentage": 0,
+            "is_hot_job": false
+          }
+        },
+        "empty": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "bootstrap-404-failure",
+      "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+      "config": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 404,
+          "body": "",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": true,
+        "content": null,
+        "empty": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "bootstrap-untrusted-service",
+      "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+      "config": {},
+      "pages": {
+        "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page": {
+          "status": 200,
+          "body": "<script>var configsFromHost = {\"sessionJWT\": \"public.fixture.signature\", \"libConfig\": \"{\\\"atsPortalMantleServiceUrl\\\": \\\"https://example.com\\\", \\\"locale\\\": \\\"en-US\\\", \\\"translationHighlights\\\": true}\"};</script>",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/career-page",
+          "body": null,
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "error": true,
+        "content": null,
+        "empty": false
+      }
+    },
+    {
+      "provider": "paycom",
+      "name": "invalid-defaults",
+      "url": "https://www.paycomonline.net/v4/ats/web.php/portal/11111111111111111111111111111111/jobs/123",
+      "config": {
+        "defaults": {
+          "locations": []
+        }
+      },
+      "pages": {},
+      "requests": [],
+      "expected": {
+        "error": true,
+        "content": null,
+        "empty": false
+      }
+    }
+  ]
+}
