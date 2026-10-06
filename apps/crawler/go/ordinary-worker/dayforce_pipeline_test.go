@@ -171,7 +171,7 @@ func dayforcePipelinePeer(t *testing.T, mode string, changed func()) *NativeRend
 					count = 25
 				}
 				for i := 1; i <= count; i++ {
-					rows = append(rows, map[string]any{"jobPostingId": i, "jobBoardId": request.ExpectedSite.JobBoardID, "clientNamespace": request.Tenant, "jobTitle": "Senior Software Engineer", "jobDescription": "<p>Python. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>", "jobLocations": []any{map[string]any{"city": "Zurich", "country": "Switzerland"}}})
+					rows = append(rows, map[string]any{"jobPostingId": i, "jobBoardId": request.ExpectedSite.JobBoardID, "clientNamespace": request.Tenant, "jobTitle": "Senior Software Engineer", "jobDescription": "<p>Python. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>", "postingLocations": []any{map[string]any{"formattedAddress": "Zurich"}}})
 				}
 			}
 			page.Body, _ = json.Marshal(map[string]any{"maxCount": total, "offset": offset, "count": len(rows), "jobPostings": rows})
@@ -288,6 +288,11 @@ func TestRealDayforceSessionOwnedCanonicalPolicyFailuresAndSettlement(t *testing
 			}
 			if e = f.pg.QueryRow(ctx, "SELECT html FROM descriptions WHERE posting_id=$1::uuid LIMIT 1", id).Scan(&html); e != nil || title != "Senior Software Engineer" || detail || !strings.Contains(html, "100000-120000") {
 				t.Fatal("canonical rich content/skip detail differs", e)
+			}
+			var currency string
+			var locations, technologies []int32
+			if e = f.pg.QueryRow(ctx, "SELECT salary_currency,location_ids,technology_ids FROM job_posting WHERE id=$1::uuid", id).Scan(&currency, &locations, &technologies); e != nil || currency != "CHF" || len(locations) != 1 || locations[0] != 2 || len(technologies) != 1 || technologies[0] != 4 {
+				t.Fatal("canonical salary/location/technology enrichment differs", e)
 			}
 		})
 	}

@@ -232,21 +232,45 @@ cleanup refusal, gone evidence and browser deadline/lease conservation
 Redis restart and allow later retirement after historical Dayforce receipts
 (5.237 seconds).
 
-That pilot run is terminal red at its later child-identity probe: the upgraded
+That initial pilot run is terminal red at its later child-identity probe: the upgraded
 Go runtime opens `/sys/fs/cgroup/cpu.max` itself for CPU quota tracking. The
 candidate attestation accepts only that exact cgroup-v2 filesystem descriptor
 with read-only and close-on-exec flags; arbitrary files, other quota paths and
-inheritable descriptors remain refused. Installed qualification of this fix,
-full grouped checks and live provider bounds remain required. Lightpanda 1.0.0
+inheritable descriptors remain refused. The original fixed-image
+[run 37539866720](https://github.com/colophon-group/jobseek/actions/runs/37539866720)
+is green on both architectures, including child identity and density smoke.
+The explicit read-only public qualification in
+[run 37540756090](https://github.com/colophon-group/jobseek/actions/runs/37540756090)
+at `58304e612b64e5a1e8cc7b248374127ce4085597` passes all ten current Dayforce
+registry boards through verified HTTP and actual installed browser searches.
+It covers the first two pages where available, including overlap0/5/10; complete
+live inventory and production authority still require the ordinary worker.
+The first qualification attempt omitted the registry's empty-config default;
+its eight configured boards passed and its two blank configurations stopped
+before contact. The qualification now applies the normal `{}` default.
+Full worker and queue race suites pass in 413.569 and 235.601 seconds,
+respectively. Grouped exact-head required checks and deployment remain.
+Lightpanda 1.0.0
 remains the latest stable official release, rechecked October 7. No Dayforce
 production ownership is claimed.
 The generic B0/B1 adapter continues to reject captures and origin-contact evaluation;
 the provider conversation grants no queue, persistence or generic resumption
 authority. A direct stateless Dayforce replay is not a verified replacement.
-Complete remaining provider bounds and operational proofs,
-then full races and grouped publication. The partial implementation is saved in
+Complete remaining grouped checks and operational proofs,
+then grouped publication. The implementation is saved in
 commits on the isolated batch branch; no four-provider PR is published. These
 local counts grant no live authority.
+
+Next batches should close shared variant gaps across providers. Candidate955
+code screens 7,133 of 7,885 canonical monitor configurations in the retained
+source954 snapshot; 752 remain unsupported. This is historical configuration
+screening, not fresh cutover admission. DOM (280) and API-sniffer (149) make up
+the largest remaining groups. Extend the proven shared HTTP proxy transport
+across existing DOM/API, Inline, Sitemap, RSS, Eightfold and Phenom profiles in
+one batch, preserving independent detail transports. Then port remaining DOM
+actions/rich rows and browser API capture together, using existing parser,
+publisher, session and persistence paths. Group the smaller remaining providers
+by common HTTP/HTML/session behavior, rather than issuing one release per type.
 
 Finish remaining provider/browser/filter variants and runtime consumers using
 the existing delivery paths. After the selected complete immutable deployment,
