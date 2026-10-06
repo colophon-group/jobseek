@@ -1,8 +1,6 @@
 package queue
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"net/url"
 	"regexp"
@@ -52,39 +50,19 @@ func inspectPersonioRich(boardID string, config map[string]string, md map[string
 		}
 		seen[alternate] = true
 	}
-	validation := cloneConfig(config)
-	validation["crawler_type"] = "greenhouse"
-	common := map[string]json.RawMessage{}
-	for key, value := range md {
-		if greenhouseMetadataFields[key] {
-			common[key] = value
-		}
+	if err := feedRichDetailAssignment(config); err != nil {
+		return GreenhouseMonitorProfile{}, err
 	}
-	common["token"] = json.RawMessage(`"provider-token"`)
-	body, err := json.Marshal(common)
-	if err != nil {
-		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+	name := "personio.xml-skip/v1"
+	if feedHasDetailAssignment(md) {
+		name = "personio.xml-items/v1"
 	}
-	validation["metadata"] = string(body)
-	profile, err := InspectGreenhouseMonitor(boardID, validation)
+	profile, err := inspectURLOnlyMonitor(boardID, config, md, "personio", name, slug, "https://"+slug+".jobs.personio."+region+"/xml?language="+language)
 	if err != nil {
 		return GreenhouseMonitorProfile{}, err
 	}
-	stable, err := stableGreenhouseConfig(config, md)
-	if err != nil {
-		return GreenhouseMonitorProfile{}, err
-	}
-	body, err = json.Marshal(struct {
-		BoardID string            `json:"board_id"`
-		Config  map[string]string `json:"config"`
-	}{boardID, stable})
-	if err != nil {
-		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
-	}
-	digest := sha256.Sum256(body)
-	profile.Provider, profile.Profile = "personio", "personio.xml-skip/v1"
+	profile.Provider, profile.Profile = "personio", name
 	profile.Token, profile.Region, profile.Language, profile.BackfillLanguages = slug, region, language, backfill
 	profile.Endpoint = "https://" + slug + ".jobs.personio." + region + "/xml?language=" + language
-	profile.EffectiveConfigSHA256, profile.SnapshotSHA256 = hex.EncodeToString(digest[:]), configDigest(config)
 	return profile, nil
 }

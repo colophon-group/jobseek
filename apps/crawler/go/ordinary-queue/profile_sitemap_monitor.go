@@ -68,6 +68,15 @@ func SitemapMonitorConfig(config map[string]string) (sitemap.Config, string, str
 }
 
 func inspectSitemapMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
+	if _, err := FeedMonitorURLRules(config); err != nil {
+		return GreenhouseMonitorProfile{}, err
+	}
+	if raw, ok := md["urls"]; ok {
+		var n int
+		if json.Unmarshal(raw, &n) != nil || n < 0 || n > 50000 {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+	}
 	c, _, _, err := SitemapMonitorConfig(config)
 	if err != nil {
 		return GreenhouseMonitorProfile{}, err

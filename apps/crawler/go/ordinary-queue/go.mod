@@ -18,7 +18,6 @@ replace github.com/colophon-group/jobseek/apps/crawler/go/workday-monitor => ../
 
 require (
 	github.com/andybalholm/cascadia v1.3.3 // indirect
-	github.com/dlclark/regexp2/v2 v2.8.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
@@ -55,6 +54,9 @@ require github.com/colophon-group/jobseek/apps/crawler/go/dom-detail v0.0.0
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/dom-detail => ../dom-detail
 
-require github.com/colophon-group/jobseek/apps/crawler/go/sitemap-monitor v0.0.0
+require (
+	github.com/colophon-group/jobseek/apps/crawler/go/sitemap-monitor v0.0.0
+	github.com/dlclark/regexp2/v2 v2.8.0
+)
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/sitemap-monitor => ../sitemap-monitor

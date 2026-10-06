@@ -18,7 +18,6 @@ func TestTeamtailorRichProfileBindsFeedAndRefusesOtherRSSContracts(t *testing.T)
 	}
 	for _, md := range []string{
 		`{"preset":"successfactors","variant":"legacy","scraper_type":"skip"}`,
-		`{"preset":"teamtailor","scraper_type":"json-ld"}`,
 		`{"preset":"teamtailor","scraper_type":"skip","scraper_config":{"enrich":["title"]}}`,
 		`{"preset":"teamtailor","scraper_type":"skip","pagination":{"page_size":1}}`,
 		`{"preset":"teamtailor","scraper_type":"skip","feed_url":"http://example.com/jobs.rss"}`,
@@ -50,7 +49,6 @@ func TestSuccessFactorsRichProfileBindsOnlyFeedSkipContract(t *testing.T) {
 	for _, md := range []string{
 		`{"preset":"successfactors","variant":"rmk","scraper_type":"skip"}`,
 		`{"preset":"successfactors","variant":"legacy_xml","scraper_type":"skip"}`,
-		`{"preset":"successfactors","scraper_type":"dom"}`,
 		`{"preset":"successfactors","scraper_type":"skip","job_filter":{"title":"Engineer"}}`,
 		`{"preset":"successfactors","scraper_type":"skip","feed_url":"https://example.com/googlefeed.xml?page=2"}`,
 		`{"preset":"successfactors","scraper_type":"skip","feed_url":"https://example.com/services/rss/category/?catid=0"}`,

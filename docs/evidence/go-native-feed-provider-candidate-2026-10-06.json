@@ -1,0 +1,47 @@
+{
+  "schema": "jobseek.native-feed-provider-candidate/v1",
+  "observed_at_utc": "2026-10-06T00:57:22.485659+00:00",
+  "candidate_version": "0.13.948",
+  "configuration_capture_source": "9595042b1423f2aca60e2da6f27195c1beb4b828",
+  "configured_remaining_candidates": {
+    "rss": 73,
+    "sitemap": 33,
+    "personio": 10
+  },
+  "additional_qualified_configurations": {
+    "rss": 36,
+    "sitemap": 19,
+    "personio": 10
+  },
+  "installed_profiles": 45,
+  "native_contracts": [
+    "RSS Teamtailor and SuccessFactors direct rich feeds preserve independently configured detail assignments without implicit enrichment",
+    "Personio XML/domain/HTML/language fallback preserves independently configured detail assignments",
+    "Sitemap filter-before-rewrite preserves canonical detail URL, cache and urgent queue identity",
+    "Semantic nested JSON binding retains scraper configuration and separate browser detail assignment",
+    "No posting rewrite changes permitted network resources"
+  ],
+  "actual_python_comparison": {
+    "url_policy_cases": 14,
+    "detail_assignment_cases": 32
+  },
+  "local_validation": {
+    "full_worker_race_seconds": 224.352,
+    "postgres_required": true,
+    "redis_required": true,
+    "runtime_python_passed": 57,
+    "runtime_python_skipped": 6,
+    "worker_vet": "passed",
+    "queue_race": "passed",
+    "full_queue_race_seconds": 120.752,
+    "queue_vet": "passed"
+  },
+  "authority": "Offline configuration/parser/canonical fixture qualification only. Fresh exact deployed source admission, actual posting routes, supported cutover and natural canonical processing remain required.",
+  "remaining_scope": [
+    "RSS generic/paginated/browser/RMK/legacy/governmentjobs/HR/Zoho variants",
+    "RSS rich job filters, provider collision identities and security allowlists",
+    "Sitemap proxy/TLS/cross-origin/rescrape variants",
+    "Remaining enabled monitor/detail/browser families and runtime consumers",
+    "Whole-lane resource proof, supported reversal and production Python retirement"
+  ]
+}

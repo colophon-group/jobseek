@@ -12,7 +12,7 @@ import (
 )
 
 func TestRealFirstEmbeddedMonitorColdRetirement(t *testing.T) {
-	for _, provider := range []string{"jobylon", "nextdata", "beisen", "inline"} {
+	for _, provider := range []string{"jobylon", "nextdata", "beisen", "inline", "personio", "rss", "sitemap"} {
 		for _, mode := range []string{"interrupted", "committed-before-ack", "changed-token"} {
 			t.Run(provider+"/"+mode, func(t *testing.T) {
 				ctx := context.Background()
@@ -25,6 +25,15 @@ func TestRealFirstEmbeddedMonitorColdRetirement(t *testing.T) {
 				}
 				if provider == "inline" {
 					metadata = `{"steps":[{"tag":"h2","field":"title"}],"scraper_type":"skip"}`
+				}
+				if provider == "personio" {
+					metadata = `{"slug":"fixture123","scraper_type":"dom","scraper_config":{"steps":[]}}`
+				}
+				if provider == "rss" {
+					metadata = `{"preset":"teamtailor","feed_url":"https://example.com/123/jobs.rss","scraper_type":"json-ld"}`
+				}
+				if provider == "sitemap" {
+					metadata = `{"sitemap_url":"https://example.com/jobs123.xml","url_transform":{"find":"$","replace":"?in_iframe=1"},"scraper_type":"json-ld"}`
 				}
 				if provider == "beisen" {
 					boardURL = "https://fixture.zhiye.com/"
