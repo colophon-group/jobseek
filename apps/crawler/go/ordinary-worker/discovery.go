@@ -41,6 +41,7 @@ func (e *DiscoveryError) Unwrap() error { return e.cause }
 // only its own completed sealed-client response under an installed opaque claim.
 type GreenhouseResponse struct {
 	endpoint, finalURL string
+	location           string
 	status, bytes      int
 	reserved           bool
 	providerDisabled   bool

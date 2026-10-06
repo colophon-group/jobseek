@@ -110,7 +110,11 @@ func (c *GreenhouseCycle) FinishProviderGoneResource(ctx context.Context, initia
 	if err != nil || !validGreenhouseResponseResource(observation.Endpoint) {
 		return nil, ErrConfiguration
 	}
-	if profile.Provider == "mokahr" || profile.Provider == "almacareer" || profile.Provider == "eightfold" {
+	if SecondaryProvider(profile.Provider) {
+		if !SecondaryMonitorGone(c.claim.task.Config, initialEndpoint, observation.HTTPStatus, observation.PortalDisabled) {
+			return nil, ErrConfiguration
+		}
+	} else if profile.Provider == "mokahr" || profile.Provider == "almacareer" || profile.Provider == "eightfold" {
 		if !ProviderBatchMonitorGone(c.claim.task.Config, initialEndpoint, observation.HTTPStatus, observation.PortalDisabled) {
 			return nil, ErrConfiguration
 		}

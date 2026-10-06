@@ -1,0 +1,1271 @@
+{
+  "http": [
+    {
+      "provider": "softgarden",
+      "name": "complete",
+      "board_url": "https://acme.softgarden.io",
+      "endpoint": "https://acme.softgarden.io",
+      "metadata": {},
+      "pages": {
+        "https://acme.softgarden.io": {
+          "status": 200,
+          "body": "var complete_job_id_list=[123,456];",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.softgarden.io",
+          "body": null,
+          "prefix": ""
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": [
+          "https://acme.softgarden.io/job/123?l=en",
+          "https://acme.softgarden.io/job/456?l=en"
+        ]
+      }
+    },
+    {
+      "provider": "softgarden",
+      "name": "custom-german",
+      "board_url": "https://acme.softgarden.io",
+      "endpoint": "https://acme.softgarden.io",
+      "metadata": {
+        "job_url_pattern": "{base}/job/{id}?l=de"
+      },
+      "pages": {
+        "https://acme.softgarden.io": {
+          "status": 200,
+          "body": "var complete_job_id_list=[123];",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.softgarden.io",
+          "body": null,
+          "prefix": ""
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": [
+          "https://acme.softgarden.io/job/123?l=de"
+        ]
+      }
+    },
+    {
+      "provider": "softgarden",
+      "name": "empty",
+      "board_url": "https://acme.softgarden.io",
+      "endpoint": "https://acme.softgarden.io",
+      "metadata": {},
+      "pages": {
+        "https://acme.softgarden.io": {
+          "status": 200,
+          "body": "var complete_job_id_list=[];",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.softgarden.io",
+          "body": null,
+          "prefix": ""
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": []
+      }
+    },
+    {
+      "provider": "softgarden",
+      "name": "missing-marker",
+      "board_url": "https://acme.softgarden.io",
+      "endpoint": "https://acme.softgarden.io",
+      "metadata": {},
+      "pages": {
+        "https://acme.softgarden.io": {
+          "status": 200,
+          "body": "<html>No marker</html>",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.softgarden.io",
+          "body": null,
+          "prefix": ""
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": []
+      }
+    },
+    {
+      "provider": "softgarden",
+      "name": "any-success",
+      "board_url": "https://acme.softgarden.io",
+      "endpoint": "https://acme.softgarden.io",
+      "metadata": {},
+      "pages": {
+        "https://acme.softgarden.io": {
+          "status": 201,
+          "body": "var complete_job_id_list=[123];",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.softgarden.io",
+          "body": null,
+          "prefix": ""
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": [
+          "https://acme.softgarden.io/job/123?l=en"
+        ]
+      }
+    },
+    {
+      "provider": "softgarden",
+      "name": "failure",
+      "board_url": "https://acme.softgarden.io",
+      "endpoint": "https://acme.softgarden.io",
+      "metadata": {},
+      "pages": {
+        "https://acme.softgarden.io": {
+          "status": 503,
+          "body": "",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.softgarden.io",
+          "body": null,
+          "prefix": ""
+        }
+      ],
+      "expected": {
+        "error": true,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": []
+      }
+    },
+    {
+      "provider": "softgarden",
+      "name": "generic-404-failure",
+      "board_url": "https://acme.softgarden.io",
+      "endpoint": "https://acme.softgarden.io",
+      "metadata": {},
+      "pages": {
+        "https://acme.softgarden.io": {
+          "status": 404,
+          "body": "",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.softgarden.io",
+          "body": null,
+          "prefix": ""
+        }
+      ],
+      "expected": {
+        "error": true,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": []
+      }
+    },
+    {
+      "provider": "ukg",
+      "name": "complete",
+      "board_url": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111",
+      "endpoint": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/JobBoardView/LoadSearchResults",
+      "metadata": {},
+      "pages": {
+        "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/JobBoardView/LoadSearchResults": {
+          "status": 200,
+          "body": "{\"totalCount\": 1, \"opportunities\": [{\"Id\": \"22222222-2222-2222-2222-222222222222\", \"Title\": \"Engineer\", \"BriefDescription\": \"<p>Build</p>\", \"FullTime\": true}]}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "POST",
+          "url": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/JobBoardView/LoadSearchResults",
+          "body": {
+            "opportunitySearch": {
+              "Top": 100,
+              "Skip": 0,
+              "QueryString": "",
+              "Filters": []
+            }
+          },
+          "prefix": ""
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [
+          {
+            "url": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/OpportunityDetail?opportunityId=22222222-2222-2222-2222-222222222222",
+            "title": "Engineer",
+            "description": "<p>Build</p>",
+            "locations": null,
+            "employment_type": "full_time",
+            "job_location_type": null,
+            "date_posted": null,
+            "language": null,
+            "extras": null,
+            "metadata": {
+              "opportunity_id": "22222222-2222-2222-2222-222222222222"
+            }
+          }
+        ],
+        "urls": [
+          "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/OpportunityDetail?opportunityId=22222222-2222-2222-2222-222222222222"
+        ]
+      }
+    },
+    {
+      "provider": "ukg",
+      "name": "empty",
+      "board_url": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111",
+      "endpoint": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/JobBoardView/LoadSearchResults",
+      "metadata": {},
+      "pages": {
+        "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/JobBoardView/LoadSearchResults": {
+          "status": 200,
+          "body": "{\"totalCount\": 0, \"opportunities\": []}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "POST",
+          "url": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/JobBoardView/LoadSearchResults",
+          "body": {
+            "opportunitySearch": {
+              "Top": 100,
+              "Skip": 0,
+              "QueryString": "",
+              "Filters": []
+            }
+          },
+          "prefix": ""
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": []
+      }
+    },
+    {
+      "provider": "ukg",
+      "name": "bad-total",
+      "board_url": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111",
+      "endpoint": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/JobBoardView/LoadSearchResults",
+      "metadata": {},
+      "pages": {
+        "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/JobBoardView/LoadSearchResults": {
+          "status": 200,
+          "body": "{\"totalCount\": true, \"opportunities\": [{\"Id\": \"22222222-2222-2222-2222-222222222222\", \"Title\": \"Engineer\", \"BriefDescription\": \"<p>Build</p>\", \"FullTime\": true}]}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "POST",
+          "url": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/JobBoardView/LoadSearchResults",
+          "body": {
+            "opportunitySearch": {
+              "Top": 100,
+              "Skip": 0,
+              "QueryString": "",
+              "Filters": []
+            }
+          },
+          "prefix": ""
+        }
+      ],
+      "expected": {
+        "error": true,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": []
+      }
+    },
+    {
+      "provider": "ukg",
+      "name": "retry-202",
+      "board_url": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111",
+      "endpoint": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/JobBoardView/LoadSearchResults",
+      "metadata": {},
+      "pages": {
+        "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/JobBoardView/LoadSearchResults": [
+          {
+            "status": 202,
+            "body": "{}",
+            "headers": {}
+          },
+          {
+            "status": 200,
+            "body": "{\"totalCount\": 1, \"opportunities\": [{\"Id\": \"22222222-2222-2222-2222-222222222222\", \"Title\": \"Engineer\", \"BriefDescription\": \"<p>Build</p>\", \"FullTime\": true}]}",
+            "headers": {}
+          }
+        ]
+      },
+      "requests": [
+        {
+          "method": "POST",
+          "url": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/JobBoardView/LoadSearchResults",
+          "body": {
+            "opportunitySearch": {
+              "Top": 100,
+              "Skip": 0,
+              "QueryString": "",
+              "Filters": []
+            }
+          },
+          "prefix": ""
+        },
+        {
+          "method": "POST",
+          "url": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/JobBoardView/LoadSearchResults",
+          "body": {
+            "opportunitySearch": {
+              "Top": 100,
+              "Skip": 0,
+              "QueryString": "",
+              "Filters": []
+            }
+          },
+          "prefix": ""
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [
+          {
+            "url": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/OpportunityDetail?opportunityId=22222222-2222-2222-2222-222222222222",
+            "title": "Engineer",
+            "description": "<p>Build</p>",
+            "locations": null,
+            "employment_type": "full_time",
+            "job_location_type": null,
+            "date_posted": null,
+            "language": null,
+            "extras": null,
+            "metadata": {
+              "opportunity_id": "22222222-2222-2222-2222-222222222222"
+            }
+          }
+        ],
+        "urls": [
+          "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/OpportunityDetail?opportunityId=22222222-2222-2222-2222-222222222222"
+        ]
+      }
+    },
+    {
+      "provider": "ukg",
+      "name": "partial",
+      "board_url": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111",
+      "endpoint": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/JobBoardView/LoadSearchResults",
+      "metadata": {},
+      "pages": {
+        "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/JobBoardView/LoadSearchResults": {
+          "status": 200,
+          "body": "{\"totalCount\": 2, \"opportunities\": [{\"Id\": \"22222222-2222-2222-2222-222222222222\", \"Title\": \"Engineer\", \"BriefDescription\": \"<p>Build</p>\", \"FullTime\": true}]}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "POST",
+          "url": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/JobBoardView/LoadSearchResults",
+          "body": {
+            "opportunitySearch": {
+              "Top": 100,
+              "Skip": 0,
+              "QueryString": "",
+              "Filters": []
+            }
+          },
+          "prefix": ""
+        },
+        {
+          "method": "POST",
+          "url": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/JobBoardView/LoadSearchResults",
+          "body": {
+            "opportunitySearch": {
+              "Top": 100,
+              "Skip": 0,
+              "QueryString": "",
+              "Filters": []
+            }
+          },
+          "prefix": ""
+        }
+      ],
+      "expected": {
+        "error": true,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": []
+      }
+    },
+    {
+      "provider": "ukg",
+      "name": "duplicate",
+      "board_url": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111",
+      "endpoint": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/JobBoardView/LoadSearchResults",
+      "metadata": {},
+      "pages": {
+        "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/JobBoardView/LoadSearchResults": {
+          "status": 200,
+          "body": "{\"totalCount\": 2, \"opportunities\": [{\"Id\": \"22222222-2222-2222-2222-222222222222\", \"Title\": \"Engineer\", \"BriefDescription\": \"<p>Build</p>\", \"FullTime\": true}, {\"Id\": \"22222222-2222-2222-2222-222222222222\", \"Title\": \"Engineer\", \"BriefDescription\": \"<p>Build</p>\", \"FullTime\": true}]}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "POST",
+          "url": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/JobBoardView/LoadSearchResults",
+          "body": {
+            "opportunitySearch": {
+              "Top": 100,
+              "Skip": 0,
+              "QueryString": "",
+              "Filters": []
+            }
+          },
+          "prefix": ""
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": true,
+        "jobs": [
+          {
+            "url": "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/OpportunityDetail?opportunityId=22222222-2222-2222-2222-222222222222",
+            "title": "Engineer",
+            "description": "<p>Build</p>",
+            "locations": null,
+            "employment_type": "full_time",
+            "job_location_type": null,
+            "date_posted": null,
+            "language": null,
+            "extras": null,
+            "metadata": {
+              "opportunity_id": "22222222-2222-2222-2222-222222222222"
+            }
+          }
+        ],
+        "urls": [
+          "https://recruiting.ultipro.com/ABC123/JobBoard/11111111-1111-1111-1111-111111111111/OpportunityDetail?opportunityId=22222222-2222-2222-2222-222222222222"
+        ]
+      }
+    },
+    {
+      "provider": "bamboohr",
+      "name": "complete",
+      "board_url": "https://acme.bamboohr.com/careers",
+      "endpoint": "https://acme.bamboohr.com/careers/list",
+      "metadata": {},
+      "pages": {
+        "https://acme.bamboohr.com/careers/list": {
+          "status": 200,
+          "body": "{\"meta\": {\"totalCount\": 1}, \"result\": [{\"id\": 123, \"jobOpeningName\": \"Engineer\"}]}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.bamboohr.com/careers/list",
+          "body": null,
+          "prefix": ""
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [
+          {
+            "url": "https://acme.bamboohr.com/careers/123",
+            "title": "Engineer",
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "language": null,
+            "extras": null,
+            "metadata": {
+              "job_id": "123"
+            }
+          }
+        ],
+        "urls": [
+          "https://acme.bamboohr.com/careers/123"
+        ]
+      }
+    },
+    {
+      "provider": "bamboohr",
+      "name": "empty",
+      "board_url": "https://acme.bamboohr.com/careers",
+      "endpoint": "https://acme.bamboohr.com/careers/list",
+      "metadata": {},
+      "pages": {
+        "https://acme.bamboohr.com/careers/list": {
+          "status": 200,
+          "body": "{\"meta\": {\"totalCount\": 0}, \"result\": []}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.bamboohr.com/careers/list",
+          "body": null,
+          "prefix": ""
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": []
+      }
+    },
+    {
+      "provider": "bamboohr",
+      "name": "retry-json",
+      "board_url": "https://acme.bamboohr.com/careers",
+      "endpoint": "https://acme.bamboohr.com/careers/list",
+      "metadata": {},
+      "pages": {
+        "https://acme.bamboohr.com/careers/list": [
+          {
+            "status": 200,
+            "body": "{",
+            "headers": {}
+          },
+          {
+            "status": 200,
+            "body": "{\"meta\": {\"totalCount\": 1}, \"result\": [{\"id\": 123, \"jobOpeningName\": \"Engineer\"}]}",
+            "headers": {}
+          }
+        ]
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.bamboohr.com/careers/list",
+          "body": null,
+          "prefix": ""
+        },
+        {
+          "method": "GET",
+          "url": "https://acme.bamboohr.com/careers/list",
+          "body": null,
+          "prefix": ""
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [
+          {
+            "url": "https://acme.bamboohr.com/careers/123",
+            "title": "Engineer",
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "language": null,
+            "extras": null,
+            "metadata": {
+              "job_id": "123"
+            }
+          }
+        ],
+        "urls": [
+          "https://acme.bamboohr.com/careers/123"
+        ]
+      }
+    },
+    {
+      "provider": "bamboohr",
+      "name": "retirement-redirect",
+      "board_url": "https://acme.bamboohr.com/careers",
+      "endpoint": "https://acme.bamboohr.com/careers/list",
+      "metadata": {},
+      "pages": {
+        "https://acme.bamboohr.com/careers/list": {
+          "status": 302,
+          "body": "",
+          "headers": {
+            "Location": "https://www.bamboohr.com/careers/"
+          }
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.bamboohr.com/careers/list",
+          "body": null,
+          "prefix": ""
+        }
+      ],
+      "expected": {
+        "error": true,
+        "gone": true,
+        "truncated": false,
+        "jobs": [],
+        "urls": []
+      }
+    },
+    {
+      "provider": "bamboohr",
+      "name": "filter-match",
+      "board_url": "https://acme.bamboohr.com/careers",
+      "endpoint": "https://acme.bamboohr.com/careers/list",
+      "metadata": {
+        "description_include_regex": "(?i)ExecuJet"
+      },
+      "pages": {
+        "https://acme.bamboohr.com/careers/list": {
+          "status": 200,
+          "body": "{\"meta\": {\"totalCount\": 1}, \"result\": [{\"id\": 123, \"jobOpeningName\": \"Engineer\"}]}",
+          "headers": {}
+        },
+        "https://acme.bamboohr.com/careers/123/detail": {
+          "status": 200,
+          "body": "{\"result\": {\"jobOpening\": {\"description\": \"<p>ExecuJet&#39;s FBO</p>\"}}}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.bamboohr.com/careers/list",
+          "body": null,
+          "prefix": ""
+        },
+        {
+          "method": "GET",
+          "url": "https://acme.bamboohr.com/careers/123/detail",
+          "body": null,
+          "prefix": ""
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [
+          {
+            "url": "https://acme.bamboohr.com/careers/123",
+            "title": "Engineer",
+            "description": "<p>ExecuJet's FBO</p>",
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "language": null,
+            "extras": null,
+            "metadata": {
+              "job_id": "123"
+            }
+          }
+        ],
+        "urls": [
+          "https://acme.bamboohr.com/careers/123"
+        ]
+      }
+    },
+    {
+      "provider": "bamboohr",
+      "name": "filter-no-match",
+      "board_url": "https://acme.bamboohr.com/careers",
+      "endpoint": "https://acme.bamboohr.com/careers/list",
+      "metadata": {
+        "description_include_regex": "(?i)ExecuJet"
+      },
+      "pages": {
+        "https://acme.bamboohr.com/careers/list": {
+          "status": 200,
+          "body": "{\"meta\": {\"totalCount\": 1}, \"result\": [{\"id\": 123, \"jobOpeningName\": \"Engineer\"}]}",
+          "headers": {}
+        },
+        "https://acme.bamboohr.com/careers/123/detail": {
+          "status": 200,
+          "body": "{\"result\": {\"jobOpening\": {\"description\": \"<p>Other division</p>\"}}}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://acme.bamboohr.com/careers/list",
+          "body": null,
+          "prefix": ""
+        },
+        {
+          "method": "GET",
+          "url": "https://acme.bamboohr.com/careers/123/detail",
+          "body": null,
+          "prefix": ""
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [],
+        "urls": []
+      }
+    },
+    {
+      "provider": "recruiter_co_kr",
+      "name": "complete",
+      "board_url": "https://acme.recruiter.co.kr/career/home",
+      "endpoint": "https://api-recruiter.recruiter.co.kr/position/v1/jobflex",
+      "metadata": {},
+      "pages": {
+        "https://api-recruiter.recruiter.co.kr/position/v1/jobflex": {
+          "status": 200,
+          "body": "{\"pagination\": {\"totalPages\": 1}, \"list\": [{\"positionSn\": 123, \"title\": \"Engineer\"}]}",
+          "headers": {}
+        },
+        "https://api-recruiter.recruiter.co.kr/position/v2/jobflex/123": {
+          "status": 200,
+          "body": "{\"title\": \"Engineer\", \"jobDescription\": \"<p>Build</p>\", \"startDateTime\": \"2026-10-06T00:00:00\"}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "POST",
+          "url": "https://api-recruiter.recruiter.co.kr/position/v1/jobflex",
+          "body": {
+            "pageableRq": {
+              "page": 1,
+              "size": 100,
+              "sort": [
+                "CREATED_DATE_TIME"
+              ]
+            },
+            "filter": {
+              "keyword": "",
+              "tagSnList": [],
+              "jobGroupSnList": [],
+              "careerTypeList": [],
+              "regionSnList": [],
+              "submissionStatusList": [
+                "IN_SUBMISSION"
+              ],
+              "openStatusList": [
+                "OPEN"
+              ],
+              "resumeLanguageTypeList": []
+            }
+          },
+          "prefix": "acme.recruiter.co.kr"
+        },
+        {
+          "method": "GET",
+          "url": "https://api-recruiter.recruiter.co.kr/position/v2/jobflex/123",
+          "body": null,
+          "prefix": "acme.recruiter.co.kr"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [
+          {
+            "url": "https://acme.recruiter.co.kr/career/jobs/123",
+            "title": "Engineer",
+            "description": "<p>Build</p>",
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": "2026-10-05",
+            "language": "ko",
+            "extras": null,
+            "metadata": null
+          }
+        ],
+        "urls": [
+          "https://acme.recruiter.co.kr/career/jobs/123"
+        ]
+      }
+    },
+    {
+      "provider": "recruiter_co_kr",
+      "name": "detail-404-fallback",
+      "board_url": "https://acme.recruiter.co.kr/career/home",
+      "endpoint": "https://api-recruiter.recruiter.co.kr/position/v1/jobflex",
+      "metadata": {},
+      "pages": {
+        "https://api-recruiter.recruiter.co.kr/position/v1/jobflex": {
+          "status": 200,
+          "body": "{\"pagination\": {\"totalPages\": 1}, \"list\": [{\"positionSn\": 123, \"title\": \"Engineer\"}]}",
+          "headers": {}
+        },
+        "https://api-recruiter.recruiter.co.kr/position/v2/jobflex/123": {
+          "status": 404,
+          "body": "{}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "POST",
+          "url": "https://api-recruiter.recruiter.co.kr/position/v1/jobflex",
+          "body": {
+            "pageableRq": {
+              "page": 1,
+              "size": 100,
+              "sort": [
+                "CREATED_DATE_TIME"
+              ]
+            },
+            "filter": {
+              "keyword": "",
+              "tagSnList": [],
+              "jobGroupSnList": [],
+              "careerTypeList": [],
+              "regionSnList": [],
+              "submissionStatusList": [
+                "IN_SUBMISSION"
+              ],
+              "openStatusList": [
+                "OPEN"
+              ],
+              "resumeLanguageTypeList": []
+            }
+          },
+          "prefix": "acme.recruiter.co.kr"
+        },
+        {
+          "method": "GET",
+          "url": "https://api-recruiter.recruiter.co.kr/position/v2/jobflex/123",
+          "body": null,
+          "prefix": "acme.recruiter.co.kr"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [
+          {
+            "url": "https://acme.recruiter.co.kr/career/jobs/123",
+            "title": "Engineer",
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "language": "ko",
+            "extras": null,
+            "metadata": null
+          }
+        ],
+        "urls": [
+          "https://acme.recruiter.co.kr/career/jobs/123"
+        ]
+      }
+    },
+    {
+      "provider": "recruiter_co_kr",
+      "name": "list-retry",
+      "board_url": "https://acme.recruiter.co.kr/career/home",
+      "endpoint": "https://api-recruiter.recruiter.co.kr/position/v1/jobflex",
+      "metadata": {},
+      "pages": {
+        "https://api-recruiter.recruiter.co.kr/position/v1/jobflex": [
+          {
+            "status": 429,
+            "body": "{}",
+            "headers": {}
+          },
+          {
+            "status": 200,
+            "body": "{\"pagination\": {\"totalPages\": 1}, \"list\": [{\"positionSn\": 123, \"title\": \"Engineer\"}]}",
+            "headers": {}
+          }
+        ],
+        "https://api-recruiter.recruiter.co.kr/position/v2/jobflex/123": {
+          "status": 200,
+          "body": "{\"title\": \"Engineer\", \"jobDescription\": \"<p>Build</p>\", \"startDateTime\": \"2026-10-06T00:00:00\"}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "POST",
+          "url": "https://api-recruiter.recruiter.co.kr/position/v1/jobflex",
+          "body": {
+            "pageableRq": {
+              "page": 1,
+              "size": 100,
+              "sort": [
+                "CREATED_DATE_TIME"
+              ]
+            },
+            "filter": {
+              "keyword": "",
+              "tagSnList": [],
+              "jobGroupSnList": [],
+              "careerTypeList": [],
+              "regionSnList": [],
+              "submissionStatusList": [
+                "IN_SUBMISSION"
+              ],
+              "openStatusList": [
+                "OPEN"
+              ],
+              "resumeLanguageTypeList": []
+            }
+          },
+          "prefix": "acme.recruiter.co.kr"
+        },
+        {
+          "method": "POST",
+          "url": "https://api-recruiter.recruiter.co.kr/position/v1/jobflex",
+          "body": {
+            "pageableRq": {
+              "page": 1,
+              "size": 100,
+              "sort": [
+                "CREATED_DATE_TIME"
+              ]
+            },
+            "filter": {
+              "keyword": "",
+              "tagSnList": [],
+              "jobGroupSnList": [],
+              "careerTypeList": [],
+              "regionSnList": [],
+              "submissionStatusList": [
+                "IN_SUBMISSION"
+              ],
+              "openStatusList": [
+                "OPEN"
+              ],
+              "resumeLanguageTypeList": []
+            }
+          },
+          "prefix": "acme.recruiter.co.kr"
+        },
+        {
+          "method": "GET",
+          "url": "https://api-recruiter.recruiter.co.kr/position/v2/jobflex/123",
+          "body": null,
+          "prefix": "acme.recruiter.co.kr"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [
+          {
+            "url": "https://acme.recruiter.co.kr/career/jobs/123",
+            "title": "Engineer",
+            "description": "<p>Build</p>",
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": "2026-10-05",
+            "language": "ko",
+            "extras": null,
+            "metadata": null
+          }
+        ],
+        "urls": [
+          "https://acme.recruiter.co.kr/career/jobs/123"
+        ]
+      }
+    },
+    {
+      "provider": "recruiter_co_kr",
+      "name": "tenant-gone",
+      "board_url": "https://acme.recruiter.co.kr/career/home",
+      "endpoint": "https://api-recruiter.recruiter.co.kr/position/v1/jobflex",
+      "metadata": {},
+      "pages": {
+        "https://api-recruiter.recruiter.co.kr/position/v1/jobflex": {
+          "status": 400,
+          "body": "{\"code\": \"NotFoundCompanyException\"}",
+          "headers": {}
+        },
+        "https://api-recruiter.recruiter.co.kr/position/v2/jobflex/123": {
+          "status": 200,
+          "body": "{\"title\": \"Engineer\", \"jobDescription\": \"<p>Build</p>\", \"startDateTime\": \"2026-10-06T00:00:00\"}",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "POST",
+          "url": "https://api-recruiter.recruiter.co.kr/position/v1/jobflex",
+          "body": {
+            "pageableRq": {
+              "page": 1,
+              "size": 100,
+              "sort": [
+                "CREATED_DATE_TIME"
+              ]
+            },
+            "filter": {
+              "keyword": "",
+              "tagSnList": [],
+              "jobGroupSnList": [],
+              "careerTypeList": [],
+              "regionSnList": [],
+              "submissionStatusList": [
+                "IN_SUBMISSION"
+              ],
+              "openStatusList": [
+                "OPEN"
+              ],
+              "resumeLanguageTypeList": []
+            }
+          },
+          "prefix": "acme.recruiter.co.kr"
+        }
+      ],
+      "expected": {
+        "error": true,
+        "gone": true,
+        "truncated": false,
+        "jobs": [],
+        "urls": []
+      }
+    },
+    {
+      "provider": "recruiter_co_kr",
+      "name": "detail-bad-json",
+      "board_url": "https://acme.recruiter.co.kr/career/home",
+      "endpoint": "https://api-recruiter.recruiter.co.kr/position/v1/jobflex",
+      "metadata": {},
+      "pages": {
+        "https://api-recruiter.recruiter.co.kr/position/v1/jobflex": {
+          "status": 200,
+          "body": "{\"pagination\": {\"totalPages\": 1}, \"list\": [{\"positionSn\": 123, \"title\": \"Engineer\"}]}",
+          "headers": {}
+        },
+        "https://api-recruiter.recruiter.co.kr/position/v2/jobflex/123": {
+          "status": 200,
+          "body": "{",
+          "headers": {}
+        }
+      },
+      "requests": [
+        {
+          "method": "POST",
+          "url": "https://api-recruiter.recruiter.co.kr/position/v1/jobflex",
+          "body": {
+            "pageableRq": {
+              "page": 1,
+              "size": 100,
+              "sort": [
+                "CREATED_DATE_TIME"
+              ]
+            },
+            "filter": {
+              "keyword": "",
+              "tagSnList": [],
+              "jobGroupSnList": [],
+              "careerTypeList": [],
+              "regionSnList": [],
+              "submissionStatusList": [
+                "IN_SUBMISSION"
+              ],
+              "openStatusList": [
+                "OPEN"
+              ],
+              "resumeLanguageTypeList": []
+            }
+          },
+          "prefix": "acme.recruiter.co.kr"
+        },
+        {
+          "method": "GET",
+          "url": "https://api-recruiter.recruiter.co.kr/position/v2/jobflex/123",
+          "body": null,
+          "prefix": "acme.recruiter.co.kr"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [
+          {
+            "url": "https://acme.recruiter.co.kr/career/jobs/123",
+            "title": "Engineer",
+            "description": null,
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": null,
+            "language": "ko",
+            "extras": null,
+            "metadata": null
+          }
+        ],
+        "urls": [
+          "https://acme.recruiter.co.kr/career/jobs/123"
+        ]
+      }
+    },
+    {
+      "provider": "recruiter_co_kr",
+      "name": "detail-retry",
+      "board_url": "https://acme.recruiter.co.kr/career/home",
+      "endpoint": "https://api-recruiter.recruiter.co.kr/position/v1/jobflex",
+      "metadata": {},
+      "pages": {
+        "https://api-recruiter.recruiter.co.kr/position/v1/jobflex": {
+          "status": 200,
+          "body": "{\"pagination\": {\"totalPages\": 1}, \"list\": [{\"positionSn\": 123, \"title\": \"Engineer\"}]}",
+          "headers": {}
+        },
+        "https://api-recruiter.recruiter.co.kr/position/v2/jobflex/123": [
+          {
+            "status": 500,
+            "body": "{}",
+            "headers": {}
+          },
+          {
+            "status": 200,
+            "body": "{\"title\": \"Engineer\", \"jobDescription\": \"<p>Build</p>\", \"startDateTime\": \"2026-10-06T00:00:00\"}",
+            "headers": {}
+          }
+        ]
+      },
+      "requests": [
+        {
+          "method": "POST",
+          "url": "https://api-recruiter.recruiter.co.kr/position/v1/jobflex",
+          "body": {
+            "pageableRq": {
+              "page": 1,
+              "size": 100,
+              "sort": [
+                "CREATED_DATE_TIME"
+              ]
+            },
+            "filter": {
+              "keyword": "",
+              "tagSnList": [],
+              "jobGroupSnList": [],
+              "careerTypeList": [],
+              "regionSnList": [],
+              "submissionStatusList": [
+                "IN_SUBMISSION"
+              ],
+              "openStatusList": [
+                "OPEN"
+              ],
+              "resumeLanguageTypeList": []
+            }
+          },
+          "prefix": "acme.recruiter.co.kr"
+        },
+        {
+          "method": "GET",
+          "url": "https://api-recruiter.recruiter.co.kr/position/v2/jobflex/123",
+          "body": null,
+          "prefix": "acme.recruiter.co.kr"
+        },
+        {
+          "method": "GET",
+          "url": "https://api-recruiter.recruiter.co.kr/position/v2/jobflex/123",
+          "body": null,
+          "prefix": "acme.recruiter.co.kr"
+        }
+      ],
+      "expected": {
+        "error": false,
+        "gone": false,
+        "truncated": false,
+        "jobs": [
+          {
+            "url": "https://acme.recruiter.co.kr/career/jobs/123",
+            "title": "Engineer",
+            "description": "<p>Build</p>",
+            "locations": null,
+            "employment_type": null,
+            "job_location_type": null,
+            "date_posted": "2026-10-05",
+            "language": "ko",
+            "extras": null,
+            "metadata": null
+          }
+        ],
+        "urls": [
+          "https://acme.recruiter.co.kr/career/jobs/123"
+        ]
+      }
+    }
+  ]
+}

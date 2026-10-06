@@ -89,6 +89,12 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		return nil, err
 	}
 	var enrich []string
+	if SecondaryProvider(profile.Provider) {
+		enrich, err = secondaryMonitorEnrichment(claim.task.Config)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if profile.Provider == "mokahr" || profile.Provider == "eightfold" {
 		enrich, err = providerBatchEnrichment(claim.task.Config)
 		if err != nil {
@@ -155,7 +161,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		hybridByURL[posting.URL] = posting.Hybrid
 		// These rich inventories have no description field. Preserve the delegated
 		// scraper's retained body rather than letting a detached value replace it.
-		if len(enrich) > 0 && posting.Content.Description != nil && profile.Provider != "nextdata" && profile.Provider != "inline" && profile.Provider != "mokahr" {
+		if len(enrich) > 0 && posting.Content.Description != nil && profile.Provider != "nextdata" && profile.Provider != "inline" && profile.Provider != "mokahr" && !SecondaryProvider(profile.Provider) {
 			return nil, ErrConfiguration
 		}
 	}
@@ -283,7 +289,15 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 						return errors.New("rich monitor classification lost posting identity")
 					}
 					if !hybridByURL[row.url] {
-						if err := refreshRichMonitorContent(ctx, tx, row.id, content.Fields); err != nil {
+						fields := content.Fields
+						if SecondaryProvider(profile.Provider) {
+							for _, field := range enrich {
+								if field == "description" {
+									fields.Locales = nil
+								}
+							}
+						}
+						if err := refreshRichMonitorContent(ctx, tx, row.id, fields); err != nil {
 							return err
 						}
 					}
@@ -306,7 +320,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 					for _, field := range enrich {
 						delegatedDescription = delegatedDescription || field == "description"
 					}
-					if (profile.Provider == "nextdata" || profile.Provider == "inline" || profile.Provider == "mokahr") && delegatedDescription && row.action != "new" {
+					if (profile.Provider == "nextdata" || profile.Provider == "inline" || profile.Provider == "mokahr" || SecondaryProvider(profile.Provider)) && delegatedDescription && row.action != "new" {
 						// Same locale-only availability fallback as the legacy rich
 						// monitor: a scraped locale remains byte-authoritative.
 						d := content.Description
