@@ -42,18 +42,22 @@ failed legacy worker readiness: the installed Python projection reader omitted
 original wrapper contained all writers and retained its exact pending identity.
 Supported `recover-pending` retired that plan and restored the complete
 restart-armed base/B0 stack. All seven independent HTTP health probes passed;
-nine services were independently verified running. **B0 remains active at 217;
-broad ordinary ownership is withdrawn.** No direct SQL/Redis repairs occurred.
+nine services were independently verified running. Broad ordinary ownership remains withdrawn. Before the source965 rollout,
+the original B0 rollback and exact selector clear succeeded; independent cold218
+verification is in progress. No direct SQL/Redis repairs occurred.
 
-[PR #10351](https://github.com/colophon-group/jobseek/pull/10351), candidate
-0.13.965 at `dd6f470bdb0e3fab4b6521a3e7ce3fc108b6a4b5`, repairs that reader and
+[PR #10351](https://github.com/colophon-group/jobseek/pull/10351), release
+0.13.965 reviewed at `dd6f470bdb0e3fab4b6521a3e7ce3fc108b6a4b5`, repairs that reader and
 moves the remaining deployment proxy preflight into the installed Go binary.
 The old reader rejects the actual captured production plan; the patched reader
 reproduces its exact Go projection. The shared Go/Python fixture now includes
 API browser ownership. The installed-image codec and network-disabled native
-preflight checks passed at this exact head. Required CI's native job stalled
-in Ubuntu package-mirror setup before tests; its targeted retry has entered
-execution tests. **The repair is not merged or deployed at this checkpoint.**
+preflight checks passed at this exact head. Required CI's native and exporter jobs stalled during fixture setup before
+tests; targeted retries passed without repeating the other successful checks.
+The exact-head merge completed as `0a6ddda170478cc6b6469615e086734940cf5fbf`.
+The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37686292179)
+and matching-source [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37686710589)
+are running. **Source965 is not yet promoted at this checkpoint.**
 See the [reader correction](evidence/go-native-api-browser-legacy-reader-repair-2026-10-07.json).
 
 The next grouped candidate ports **Deel, HiBob and TRAFFIT together**. It covers
@@ -67,12 +71,11 @@ remain necessary; do not count the ten boards as delivered yet.
 
 ## Continue delivery
 
-1. Finish exact-head required checks for #10351, re-read merge authority and
-   deployment holds, then merge the repair. Use original immutable-image
-   deployment. Before promotion, retire outgoing B0 with the original wrapper,
-   clear exact selectors and independently verify the cold epoch, retired
-   ordinary plan, preserved historical receipts, SQL/Redis ownership absence
-   and restored base writers. Do not retry the incompatible source964 broad plan.
+1. Finish the original immutable source965 crawler and renderer rollouts.
+   Verify the independently observed cold218 reversal, retired ordinary plan,
+   preserved historical receipts, SQL/Redis ownership absence and restored base
+   writers. Preserve exact build/image identities and re-read deployment holds.
+   Do not retry the incompatible source964 broad plan.
 2. After exact-source promotion, activate/read back B0, then capture fresh
    canonical configurations, cache and actual posting routes. Stage and activate
    the resulting source/epoch-bound ordinary plan. Independently verify all

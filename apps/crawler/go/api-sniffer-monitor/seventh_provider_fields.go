@@ -42,6 +42,9 @@ func (d *Document) SeventhProviderRows(provider string) ([]any, error) {
 func (d *Document) SeventhProviderJobFields(raw any, o SeventhProviderOptions) (map[string]any, error) {
 	m, ok := raw.(map[string]any)
 	if !ok {
+		if o.Provider == "traffit" {
+			return nil, ErrInventory
+		}
 		return nil, nil
 	}
 	out := map[string]any{}
@@ -58,6 +61,27 @@ func (d *Document) SeventhProviderJobFields(raw any, o SeventhProviderOptions) (
 		out["url"] = "https://jobs.deel.com/" + o.Slug + "/job-details/" + id + "/overview"
 		out["title"], out["description"], out["date_posted"] = m["title"], m["richtextDescription"], m["createdAt"]
 		job := seventhObject(m["job"])
+		if detailTruthy(m["job"]) && job == nil {
+			return nil, ErrInventory
+		}
+		for key, child := range map[string]string{"jobLocations": "location", "jobEmploymentTypes": "employmentType", "jobTeams": "team", "jobDepartments": "department"} {
+			if !detailTruthy(job[key]) {
+				continue
+			}
+			rows, ok := job[key].([]any)
+			if !ok {
+				return nil, ErrInventory
+			}
+			for _, row := range rows {
+				item, ok := row.(map[string]any)
+				if !ok {
+					return nil, ErrInventory
+				}
+				if detailTruthy(item[child]) && seventhObject(item[child]) == nil {
+					return nil, ErrInventory
+				}
+			}
+		}
 		if loc := seventhJoinedNames(job["jobLocations"], "location"); len(loc) > 0 {
 			out["locations"] = loc
 		}
@@ -72,6 +96,9 @@ func (d *Document) SeventhProviderJobFields(raw any, o SeventhProviderOptions) (
 		}
 		metadata["id"] = m["id"]
 		comp := seventhObject(job["currentCompensation"])
+		if detailTruthy(m["isCompensationVisible"]) && detailTruthy(job["currentCompensation"]) && comp == nil {
+			return nil, ErrInventory
+		}
 		if detailTruthy(m["isCompensationVisible"]) && (comp["minAmount"] != nil || comp["maxAmount"] != nil) {
 			out["base_salary"] = map[string]any{"currency": comp["currencyIsoCode"], "min": comp["minAmount"], "max": comp["maxAmount"], "unit": "year"}
 		}
@@ -130,6 +157,20 @@ func (d *Document) SeventhProviderJobFields(raw any, o SeventhProviderOptions) (
 			return nil, nil
 		}
 		advert, options := seventhObject(m["advert"]), seventhObject(m["options"])
+		if detailTruthy(m["advert"]) && advert == nil || detailTruthy(m["options"]) && options == nil {
+			return nil, ErrInventory
+		}
+		if detailTruthy(advert["values"]) {
+			rows, ok := advert["values"].([]any)
+			if !ok {
+				return nil, ErrInventory
+			}
+			for _, row := range rows {
+				if seventhObject(row) == nil {
+					return nil, ErrInventory
+				}
+			}
+		}
 		value := func(id string) any {
 			for _, r := range seventhRows(advert["values"]) {
 				v := seventhObject(r)

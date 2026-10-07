@@ -75,6 +75,25 @@ func normalizeSeventhLocationType(fields map[string]any) {
 	}
 }
 
+func TestSeventhProviderMalformedFieldsCannotBecomeCompleteInventory(t *testing.T) {
+	for _, c := range []struct{ provider, row string }{
+		{"deel", `{"id":"one","job":"broken"}`},
+		{"deel", `{"id":"one","job":{"jobLocations":"broken"}}`},
+		{"deel", `{"id":"one","job":{"jobTeams":[false]}}`},
+		{"traffit", `false`},
+		{"traffit", `{"url":"https://tenant.traffit.com/job/one","advert":true}`},
+		{"traffit", `{"url":"https://tenant.traffit.com/job/one","advert":{"values":[false]}}`},
+	} {
+		d, e := api.Decode([]byte(c.row))
+		if e != nil {
+			t.Fatal(e)
+		}
+		if fields, e := d.SeventhProviderJobFields(d.Value, api.SeventhProviderOptions{Provider: c.provider, Slug: "tenant"}); e == nil || fields != nil {
+			t.Fatal("malformed provider fields admitted", c.provider)
+		}
+	}
+}
+
 func TestSeventhProviderHTTPPaginationAndPolicy(t *testing.T) {
 	for _, provider := range []string{"deel", "hibob", "traffit"} {
 		for _, denied := range []bool{false, true} {
