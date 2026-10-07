@@ -52,7 +52,8 @@ and13 cross-page traversal cases.18 canonical PostgreSQL/Redis worker cases and
 on amd64 and arm64. Full worker and queue race suites passed503.995/302.496 seconds at da4aea356.
 Direct and affine rendered pagination now passes28 canonical PostgreSQL/Redis
 cases and15 additional cold-retirement cases. Browser ownership projection
-passes12 Python cases. Installed Linux cookie affinity, current full suites,
+passes12 Python cases. Installed Linux cookie affinity and disposal passed on both architectures in
+[original pilot37576862528](https://github.com/colophon-group/jobseek/actions/runs/37576862528). Current full suites,
 proxy transport, remaining RSS properties and deployment/adoption still remain.
 
 Self-hosted Lightpanda uses the latest verified stable **1.0.0**, published

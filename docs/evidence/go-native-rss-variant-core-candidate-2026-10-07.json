@@ -44,7 +44,9 @@
     "queue_race_seconds": 302.496,
     "require_postgres": true,
     "require_redis": true,
-    "status": "historical passed at da4aea356; current expanded transport requires fresh full suites"
+    "status": "current83b24 full worker found provider resource regressions; corrected7fc940c06 focused PG/Redis26.394s passed; fresh full worker/queue suites running",
+    "original_failed_source": "83b24db21116dde368690a7698aa8c9e96da856d",
+    "current_source": "7fc940c060ea38a8e7a845ff410f4dac6c8e12e3"
   },
   "actual_python_stream_cases": 9,
   "stream_reference_race_seconds": 1.989,
@@ -71,10 +73,13 @@
   "new_cold_pagination_race_seconds": 13.284,
   "python_browser_projection_cases": 12,
   "affine_feed_session": {
-    "state": "local pinned-TLS cleanup/disconnect tests passed; installed Linux affinity proof pending",
+    "state": "installed Linux amd64/arm64 passed cookie affinity, raw XML/CDATA and disposal",
     "protocol": "jobseek.lightpanda.feed-session/v1",
     "raw_body_limit": 2000000,
     "duration_ms": 600000,
-    "no_proxy_admission": true
+    "no_proxy_admission": true,
+    "original_ci_run": 37576862528,
+    "exact_tested_head": "7fc940c060ea38a8e7a845ff410f4dac6c8e12e3",
+    "fix": "initialize CDP connection at session scope before cancellable page listeners"
   }
 }

@@ -27,5 +27,21 @@
   "canonical_detail_samples": 4,
   "processing_diagnostics": [],
   "whole_lane_freshness_and_attributable_cost_proven": false,
-  "full_migration_complete": false
+  "full_migration_complete": false,
+  "continued_observation": {
+    "observed_at_utc": "2026-10-07T05:17:36.469775+00:00",
+    "health_endpoints": 8,
+    "successful_monitor_tasks": 205,
+    "successful_detail_tasks": 12,
+    "skipped_detail_tasks": 135,
+    "failed_monitor_tasks": 10,
+    "failed_detail_tasks": 1,
+    "unacknowledged_monitor_tasks": 7,
+    "unacknowledged_detail_tasks": 89,
+    "claim_errors": 181,
+    "canonical_monitor_samples": 28,
+    "canonical_monitor_profiles": 8,
+    "processing_diagnostics": [],
+    "scope": "bounded exact source/image/epoch/receipt readback; counters are not full-lane freshness or attributable cost proof"
+  }
 }
