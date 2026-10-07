@@ -45,7 +45,6 @@ require (
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	golang.org/x/sync v0.23.0 // indirect
-	google.golang.org/protobuf v1.36.10 // indirect
 	modernc.org/libc v1.77.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
@@ -113,6 +112,7 @@ require (
 	github.com/colophon-group/jobseek/apps/crawler/go/dom-detail v0.0.0
 	github.com/colophon-group/jobseek/apps/crawler/go/sitemap-monitor v0.0.0
 	github.com/nlnwa/whatwg-url v0.6.2
+	google.golang.org/protobuf v1.36.10
 )
 
 replace github.com/colophon-group/jobseek/apps/crawler/go/sitemap-monitor => ../sitemap-monitor
