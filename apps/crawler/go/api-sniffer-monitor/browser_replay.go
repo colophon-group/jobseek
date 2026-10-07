@@ -15,6 +15,7 @@ type BrowserReplayOptions struct {
 	Inventory           Options
 	Wait                string
 	TimeoutMS, SettleMS uint64
+	pageCapConfigured   bool
 }
 
 func BrowserReplayOptionsFromMetadata(boardURL, raw string) (BrowserReplayOptions, error) {
@@ -60,6 +61,9 @@ func BrowserReplayOptionsFromMetadata(boardURL, raw string) (BrowserReplayOption
 	metadata, e := d.jsonBody(m, false)
 	if e != nil {
 		return o, ErrOptions
+	}
+	if pg, ok := m["pagination"].(map[string]any); ok {
+		_, o.pageCapConfigured = pg["max_pages"]
 	}
 	o.Inventory, e = OptionsFromMetadata(boardURL, metadata)
 	if e != nil {
@@ -153,4 +157,35 @@ func SelectBrowserReplayExchange(o BrowserReplayOptions, exchanges []BrowserRepl
 		d = nil
 	}
 	return exchanges[best].headers.Clone(), d, true, nil
+}
+
+// PaginationLimit preserves Python's browser default (50), HTTP fallback
+// default (200), explicit cap, and initial known-total expansion up to 200.
+// Controllers compute it before the existing size probe/pagination traversal.
+func (o BrowserReplayOptions) PaginationLimit(first *Document, httpFallback bool) (int, error) {
+	if o.Inventory.Pagination == nil {
+		return 1, nil
+	}
+	limit := o.Inventory.Pagination.MaxPages
+	if !o.pageCapConfigured {
+		limit = 50
+		if httpFallback {
+			limit = 200
+		}
+	}
+	if first == nil {
+		return limit, nil
+	}
+	items, e := first.items(o.Inventory.Path, o.Inventory.PathValues)
+	if e != nil {
+		return 0, e
+	}
+	total, known := first.total(o.Inventory.Path, o.Inventory.TotalPath)
+	if known && total > 0 && len(items) > 0 && limit < 200 {
+		needed := (total + len(items) - 1) / len(items)
+		if needed > limit {
+			limit = min(needed, 200)
+		}
+	}
+	return limit, nil
 }

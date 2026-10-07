@@ -113,3 +113,33 @@ func TestBrowserReplayRanksMatchingCaptureAndKeepsCredentialsPrivate(t *testing.
 		t.Fatal("capture material escaped diagnostics")
 	}
 }
+
+func TestBrowserReplayPaginationCapsMatchPython(t *testing.T) {
+	base := `{"browser":true,"api_url":"https://example.com/api","json_path":"jobs","total_path":"total","url_template":"https://example.com/jobs/{id}","fields":{"title":"title"},"pagination":{"param_name":"page","start_value":1%s}}`
+	for _, c := range []struct {
+		extra, body string
+		fallback    bool
+		want        int
+	}{
+		{"", `{"jobs":[{}]}`, false, 50},
+		{"", `{"jobs":[{}]}`, true, 200},
+		{",\"max_pages\":5", `{"jobs":[{}]}`, false, 5},
+		{",\"max_pages\":5", `{"jobs":[{},{}],"total":24}`, false, 12},
+		{"", `{"jobs":[{}],"total":1000}`, false, 200},
+		{",\"max_pages\":300", `{"jobs":[{}],"total":1000}`, false, 300},
+		{"", `{"jobs":[],"total":1000}`, false, 50},
+	} {
+		o, e := BrowserReplayOptionsFromMetadata("https://example.com/careers", fmt.Sprintf(base, c.extra))
+		if e != nil {
+			t.Fatal(e)
+		}
+		d, e := Decode([]byte(c.body))
+		if e != nil {
+			t.Fatal(e)
+		}
+		got, e := o.PaginationLimit(d, c.fallback)
+		if e != nil || got != c.want {
+			t.Fatal("Python browser/HTTP cap differs", got, c.want, e)
+		}
+	}
+}
