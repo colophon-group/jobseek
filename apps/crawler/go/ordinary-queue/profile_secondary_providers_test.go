@@ -67,6 +67,12 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 		}
 		var detail WorkdayDetailProfile
 		switch provider {
+		case "hrmos":
+			o, err := api.HRMOSOptionsFromMetadata(config["board_url"], config["metadata"])
+			if err != nil {
+				t.Fatal(err)
+			}
+			detail, e = InspectJSONLDDetail(profileBoardID, config, o.ListingURL(1)+"/123", Simple)
 		case "softgarden":
 			o, err := api.SoftgardenOptionsFromMetadata(config["board_url"], config["metadata"])
 			if err != nil {
