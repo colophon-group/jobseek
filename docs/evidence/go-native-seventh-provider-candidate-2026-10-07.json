@@ -1,0 +1,28 @@
+{
+  "schema": "jobseek.native-seventh-provider-candidate/v1",
+  "version": "0.13.966",
+  "providers": [
+    "deel",
+    "hibob",
+    "traffit"
+  ],
+  "registry_configurations": {
+    "deel": 3,
+    "hibob": 4,
+    "traffit": 3
+  },
+  "verification": {
+    "actual_python_field_cases": 17,
+    "http_pagination_and_publisher_policy": "pass",
+    "real_postgresql_redis_write_and_policy_cases": 6,
+    "real_cold_retirement_cases": 9,
+    "required_release_ci": "pending",
+    "fresh_production_admission": "pending"
+  },
+  "native_profiles": 111,
+  "production_source_revision": "16ebb019d7b3dbafbf33bb829200369713a4da5c",
+  "production_ordinary_owner": "withdrawn after supported compatibility-failure recovery",
+  "production_b0_epoch": 217,
+  "candidate_deployed": false,
+  "full_migration_complete": false
+}

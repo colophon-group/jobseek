@@ -1,0 +1,464 @@
+{
+  "schema": "jobseek.seventh-provider-core/v1",
+  "cases": [
+    {
+      "provider": "deel",
+      "row": {
+        "id": "one",
+        "title": "Engineer",
+        "richtextDescription": "<p>Build</p>",
+        "createdAt": "2026-10-07",
+        "isCompensationVisible": true,
+        "job": {
+          "jobLocations": [
+            {
+              "location": {
+                "name": "Zürich"
+              }
+            }
+          ],
+          "jobEmploymentTypes": [
+            {
+              "employmentType": {
+                "name": "Full time"
+              }
+            }
+          ],
+          "jobTeams": [
+            {
+              "team": {
+                "name": "Platform"
+              }
+            }
+          ],
+          "jobDepartments": [
+            {
+              "department": {
+                "name": "Engineering"
+              }
+            }
+          ],
+          "currentCompensation": {
+            "currencyIsoCode": "CHF",
+            "minAmount": 100000,
+            "maxAmount": 120000
+          }
+        }
+      },
+      "expected": {
+        "url": "https://jobs.deel.com/tenant/job-details/one/overview",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": null,
+        "date_posted": "2026-10-07",
+        "base_salary": {
+          "currency": "CHF",
+          "min": 100000,
+          "max": 120000,
+          "unit": "year"
+        },
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "team": "Platform",
+          "department": "Engineering",
+          "id": "one"
+        }
+      }
+    },
+    {
+      "provider": "deel",
+      "row": {
+        "id": 42,
+        "title": false,
+        "isCompensationVisible": false,
+        "job": {
+          "currentCompensation": {
+            "minAmount": 1
+          }
+        }
+      },
+      "expected": {
+        "url": "https://jobs.deel.com/tenant/job-details/42/overview",
+        "title": false,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "id": 42
+        }
+      }
+    },
+    {
+      "provider": "deel",
+      "row": {
+        "id": "one",
+        "job": {
+          "jobEmploymentTypes": [
+            {},
+            {
+              "employmentType": {
+                "name": "Contractor"
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "url": "https://jobs.deel.com/tenant/job-details/one/overview",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": "Contractor",
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "id": "one"
+        }
+      }
+    },
+    {
+      "provider": "deel",
+      "row": {
+        "id": 0
+      },
+      "expected": null
+    },
+    {
+      "provider": "deel",
+      "row": {},
+      "expected": null
+    },
+    {
+      "provider": "hibob",
+      "row": {
+        "id": " one ",
+        "title": "Engineer",
+        "description": " <p>Build</p> ",
+        "responsibilities": "<p>Own it</p>",
+        "requirements": "<p>Go</p>",
+        "benefits": "<p>Leave</p>",
+        "site": " Zürich ",
+        "country": "CH",
+        "employmentType": "Employee",
+        "employmentTypeId": "Permanent",
+        "workspaceType": "Hybrid",
+        "publishedAt": "2026-10-07",
+        "language": "en",
+        "payTransparencyMinSalary": 0,
+        "payTransparencyMaxSalary": 120000,
+        "payTransparencySalaryCurrency": "CHF",
+        "payTransparencySalaryPayPeriod": "Monthly",
+        "departmentId": 0,
+        "workspaceTypeId": "Hybrid"
+      },
+      "expected": {
+        "url": "https://tenant.careers.hibob.com/jobs/one",
+        "title": "Engineer",
+        "description": "<p>Build</p>\n<h3>Responsibilities</h3>\n<p>Own it</p>\n<h3>Requirements</h3>\n<p>Go</p>\n<h3>Benefits</h3>\n<p>Leave</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": "Permanent",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-07",
+        "base_salary": {
+          "currency": "CHF",
+          "min": 0,
+          "max": 120000,
+          "unit": "month"
+        },
+        "language": "en",
+        "extras": {
+          "responsibilities": "<p>Own it</p>",
+          "qualifications": "<p>Go</p>",
+          "benefits": "<p>Leave</p>"
+        },
+        "metadata": {
+          "id": " one ",
+          "department_id": 0,
+          "country": "CH",
+          "employment_type_id": "Permanent",
+          "workspace_type_id": "Hybrid"
+        }
+      }
+    },
+    {
+      "provider": "hibob",
+      "row": {
+        "id": "two",
+        "country": " CH ",
+        "employmentTypeId": "Contractor",
+        "workspaceTypeId": "Remote",
+        "payTransparencyMinSalary": 12
+      },
+      "expected": {
+        "url": "https://tenant.careers.hibob.com/jobs/two",
+        "title": null,
+        "description": null,
+        "locations": [
+          "CH"
+        ],
+        "employment_type": "Contractor",
+        "job_location_type": "remote",
+        "date_posted": null,
+        "base_salary": {
+          "currency": null,
+          "min": 12,
+          "max": null,
+          "unit": "year"
+        },
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "id": "two",
+          "country": " CH ",
+          "employment_type_id": "Contractor",
+          "workspace_type_id": "Remote"
+        }
+      }
+    },
+    {
+      "provider": "hibob",
+      "row": {
+        "id": "three",
+        "site": " ",
+        "workspaceType": "unclassifiable"
+      },
+      "expected": {
+        "url": "https://tenant.careers.hibob.com/jobs/three",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "id": "three"
+        }
+      }
+    },
+    {
+      "provider": "hibob",
+      "row": {
+        "id": "four",
+        "description": false,
+        "payTransparencyMaxSalary": 0
+      },
+      "expected": {
+        "url": "https://tenant.careers.hibob.com/jobs/four",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": {
+          "currency": null,
+          "min": null,
+          "max": 0,
+          "unit": "year"
+        },
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "id": "four"
+        }
+      }
+    },
+    {
+      "provider": "hibob",
+      "row": {
+        "id": 42
+      },
+      "expected": null
+    },
+    {
+      "provider": "hibob",
+      "row": {
+        "id": " "
+      },
+      "expected": null
+    },
+    {
+      "provider": "hibob",
+      "row": {},
+      "expected": null
+    },
+    {
+      "provider": "traffit",
+      "row": {
+        "url": "https://tenant.traffit.com/job/one",
+        "advert": {
+          "name": "Engineer",
+          "language": "en",
+          "values": [
+            {
+              "field_id": "description",
+              "value": "<p>Build</p>"
+            },
+            {
+              "field_id": "geolocation",
+              "value": "{\"locality\":\"Zürich\",\"country\":\"CH\"}"
+            },
+            {
+              "field_id": "requirements",
+              "value": "<p>Go</p>"
+            }
+          ],
+          "recruitment": {
+            "nr_ref": "REF"
+          }
+        },
+        "options": {
+          "job_type": [
+            "Full time"
+          ],
+          "remote": "1",
+          "branches": [
+            "Engineering"
+          ],
+          "_Salary_MIN": "100.5",
+          "_Salary_MAX": "invalid",
+          "_Salary_Currency": "CHF",
+          "_Salary_Rate": "Hourly"
+        },
+        "valid_start": "2026-10-07 10:00:00"
+      },
+      "expected": {
+        "url": "https://tenant.traffit.com/job/one",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Zürich, CH"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "remote",
+        "date_posted": "2026-10-07",
+        "base_salary": {
+          "currency": "CHF",
+          "min": 100.5,
+          "max": null,
+          "unit": "hour"
+        },
+        "language": "en",
+        "extras": {
+          "requirements": "<p>Go</p>"
+        },
+        "metadata": {
+          "reference": "REF",
+          "department": [
+            "Engineering"
+          ]
+        }
+      }
+    },
+    {
+      "provider": "traffit",
+      "row": {
+        "url": "https://tenant.traffit.com/job/two",
+        "options": {
+          "_work_model": "Hybrid",
+          "_Salary_MIN": false,
+          "_Salary_MAX": true,
+          "_Salary_Currency": "PLN",
+          "_Salary_Rate": "unknown"
+        }
+      },
+      "expected": {
+        "url": "https://tenant.traffit.com/job/two",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": {
+          "currency": "PLN",
+          "min": 0.0,
+          "max": 1.0,
+          "unit": "month"
+        },
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "provider": "traffit",
+      "row": {
+        "url": "https://tenant.traffit.com/job/three",
+        "advert": {
+          "values": [
+            {
+              "field_id": "geolocation",
+              "value": "invalid"
+            },
+            {
+              "field_id": "benefits",
+              "value": "<p>Leave</p>"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "url": "https://tenant.traffit.com/job/three",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": {
+          "benefits": "<p>Leave</p>"
+        },
+        "metadata": null
+      }
+    },
+    {
+      "provider": "traffit",
+      "row": {
+        "url": "https://tenant.traffit.com/job/four",
+        "options": {
+          "remote": "0",
+          "_work_model": "Remote"
+        }
+      },
+      "expected": {
+        "url": "https://tenant.traffit.com/job/four",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": "remote",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      }
+    },
+    {
+      "provider": "traffit",
+      "row": {},
+      "expected": null
+    }
+  ]
+}
