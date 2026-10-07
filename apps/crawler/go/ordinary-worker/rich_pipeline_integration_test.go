@@ -126,15 +126,19 @@ func TestRealOwnedRichProvidersPersistPrepareAndSettle(t *testing.T) {
 	}
 }
 
-func assertRichDeadlineAndLease(t *testing.T, f nativePipelineFixture, provider string) {
+func assertRichDeadlineAndLease(t *testing.T, f nativePipelineFixture, provider string, workers ...queue.WorkerType) {
 	t.Helper()
+	worker := queue.Simple
+	if len(workers) > 0 {
+		worker = workers[0]
+	}
 	ctx := context.Background()
 	var due time.Time
 	if err := f.pg.QueryRow(ctx, "SELECT next_check_at FROM job_board WHERE id=$1::uuid", f.board).Scan(&due); err != nil {
 		t.Fatal(err)
 	}
-	score, err := f.r.ZScore(ctx, "monitors_simple:"+provider, f.board).Result()
-	if err != nil || score != float64(due.UnixMicro())/1e6 || f.r.ZCard(ctx, "inflight:simple").Val() != 0 {
+	score, err := f.r.ZScore(ctx, "monitors_"+string(worker)+":"+provider, f.board).Result()
+	if err != nil || score != float64(due.UnixMicro())/1e6 || f.r.ZCard(ctx, "inflight:"+string(worker)).Val() != 0 {
 		t.Fatal("canonical/native deadline or claim conservation changed", err)
 	}
 }

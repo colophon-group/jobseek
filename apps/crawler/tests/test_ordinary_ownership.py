@@ -534,6 +534,7 @@ def test_detail_projection_is_independent_of_monitor_membership(profile):
     "profile",
     [
         "dom.rendered-urls/v1",
+        "dom.rendered-rows/v1",
         "dayforce.session-search/v1",
         "nextdata.rendered-items/v1",
         "nextdata.rendered-urls/v1",

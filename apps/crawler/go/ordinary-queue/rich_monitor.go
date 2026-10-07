@@ -129,6 +129,12 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 			return nil, err
 		}
 	}
+	if DOMMonitorUsesRichRows(profile.Profile) {
+		enrich, err = DOMRichMonitorEnrichment(claim.task.Config)
+		if err != nil {
+			return nil, err
+		}
+	}
 	var identityConfig *apisniffer.NextdataIdentity
 	if profile.Provider == "nextdata" {
 		o, err := NextdataMonitorOptions(claim.task.Config)
@@ -138,7 +144,8 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		identityConfig = o.Identity
 	}
 	zohoIdentity := profile.Profile == "rss.zoho_recruit-skip/v1" || profile.Profile == "rss.zoho_recruit-items/v1"
-	identityEnabled := identityConfig != nil || zohoIdentity
+	hrIdentity := profile.Profile == "rss.hr_manager-skip/v1" || profile.Profile == "rss.hr_manager-items/v1"
+	identityEnabled := identityConfig != nil || zohoIdentity || hrIdentity
 	identities := []string{}
 	explicit := []bool{}
 	identityByURL := map[string]string{}
@@ -154,7 +161,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		if posting.URL == "" || strings.ContainsRune(posting.URL, 0) || posting.Content == nil || posting.Content.Enrich || posting.Content.Fields.Titles == nil || len(posting.Content.Fields.Locales) == 0 || byURL[posting.URL] != nil {
 			return nil, ErrConfiguration
 		}
-		if !identityEnabled && posting.SourceIdentity != "" || identityConfig != nil && !identityConfig.Valid(posting.SourceIdentity) || zohoIdentity && !validZohoRSSIdentity(posting.URL, posting.SourceIdentity) {
+		if !identityEnabled && posting.SourceIdentity != "" || identityConfig != nil && !identityConfig.Valid(posting.SourceIdentity) || zohoIdentity && !validZohoRSSIdentity(posting.URL, posting.SourceIdentity) || hrIdentity && !validHRManagerRSSIdentity(claim.task.Config, posting.SourceIdentity) {
 			return nil, ErrConfiguration
 		}
 		identity := posting.URL
@@ -169,7 +176,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		hybridByURL[posting.URL] = posting.Hybrid
 		// These rich inventories have no description field. Preserve the delegated
 		// scraper's retained body rather than letting a detached value replace it.
-		if len(enrich) > 0 && posting.Content.Description != nil && profile.Provider != "nextdata" && profile.Provider != "inline" && profile.Provider != "mokahr" && !SecondaryProvider(profile.Provider) && profile.Provider != "api_sniffer" {
+		if len(enrich) > 0 && posting.Content.Description != nil && profile.Provider != "nextdata" && profile.Provider != "inline" && profile.Provider != "mokahr" && !SecondaryProvider(profile.Provider) && profile.Provider != "api_sniffer" && !DOMMonitorUsesRichRows(profile.Profile) {
 			return nil, ErrConfiguration
 		}
 	}
@@ -298,7 +305,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 					}
 					if !hybridByURL[row.url] {
 						fields := content.Fields
-						if SecondaryProvider(profile.Provider) || profile.Provider == "api_sniffer" {
+						if SecondaryProvider(profile.Provider) || profile.Provider == "api_sniffer" || DOMMonitorUsesRichRows(profile.Profile) {
 							for _, field := range enrich {
 								if field == "description" {
 									fields.Locales = nil
@@ -328,7 +335,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 					for _, field := range enrich {
 						delegatedDescription = delegatedDescription || field == "description"
 					}
-					if (profile.Provider == "nextdata" || profile.Provider == "inline" || profile.Provider == "mokahr" || SecondaryProvider(profile.Provider) || profile.Provider == "api_sniffer") && delegatedDescription && row.action != "new" {
+					if (profile.Provider == "nextdata" || profile.Provider == "inline" || profile.Provider == "mokahr" || SecondaryProvider(profile.Provider) || profile.Provider == "api_sniffer" || DOMMonitorUsesRichRows(profile.Profile)) && delegatedDescription && row.action != "new" {
 						// Same locale-only availability fallback as the legacy rich
 						// monitor: a scraped locale remains byte-authoritative.
 						d := content.Description

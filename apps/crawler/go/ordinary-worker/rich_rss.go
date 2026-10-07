@@ -12,6 +12,9 @@ import (
 )
 
 func richResponseMatches(profile queue.GreenhouseMonitorProfile, endpoint string) bool {
+	if profile.Profile == "rss.hr_manager-skip/v1" || profile.Profile == "rss.hr_manager-items/v1" {
+		return endpoint == profile.Endpoint || endpoint == profile.Token
+	}
 	if profile.Provider == "sitemap" {
 		return queue.SitemapMonitorResourceMatches(profile, endpoint)
 	}

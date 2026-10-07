@@ -107,7 +107,7 @@ func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[stri
 		return fail()
 	}
 	validation["metadata"] = string(body)
-	if profile == dayforceMonitorProfile || profile == domRenderedMonitorProfile || profile == "nextdata.rendered-items/v1" || profile == "nextdata.rendered-urls/v1" {
+	if profile == dayforceMonitorProfile || profile == domRenderedMonitorProfile || profile == domRenderedRowsProfile || profile == "nextdata.rendered-items/v1" || profile == "nextdata.rendered-urls/v1" {
 		validation["monitor_needs_browser"] = "0"
 	}
 	p, err := InspectGreenhouseMonitor(boardID, validation)
@@ -129,6 +129,19 @@ func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[stri
 	}{boardID, stable})
 	if err != nil {
 		return fail()
+	}
+	// Replacement order is semantic even though ordinary JSON object order is
+	// normalized. Bind the sequence without changing the stored config shape.
+	if DOMMonitorUsesRichRows(profile) {
+		options, err := DOMMonitorOptions(config)
+		if err != nil || options.RichRows == nil {
+			return fail()
+		}
+		ordered, err := json.Marshal(options.RichRows.Replacements)
+		if err != nil {
+			return fail()
+		}
+		body = append(append(body, '\n'), ordered...)
 	}
 	digest := sha256.Sum256(body)
 	p.EffectiveConfigSHA256, p.SnapshotSHA256 = hex.EncodeToString(digest[:]), configDigest(config)

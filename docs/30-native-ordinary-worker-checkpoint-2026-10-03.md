@@ -5,6 +5,37 @@
 The full migration goal is **active and incomplete**. Ship multiple provider
 and variant types per release, sharing reference verification, CI and cutover.
 
+### Grouped candidate959 implementation — 02:36 UTC October7
+
+Candidate959 now integrates DOM rich rows across direct HTTP, credentialed proxy
+HTTP and Lightpanda rendered single pages, plus HR Manager RSS. The executable
+reports90 compiled profiles. Fifty-two actual Python DOM reference cases,
+17 actual Python HR Manager join cases,39 PostgreSQL/Redis worker cases and
+18 cold-retirement cases pass. The cold cases include direct/proxy/rendered DOM
+rows and HR Manager, with interrupted claims, committed-before-ack receipts,
+config drift, and Redis restart. Python ownership attestation passes42 cases
+with six environment-dependent skips. Full DOM race tests, focused worker/queue
+race tests, formatting and module dependency checks pass; full worker/queue
+suites and immutable-image CI remain required before merge or deployment.
+
+The native DOM path preserves complete first-page rich HTML, first raw URL
+across pagination, Python URL joining even for rendered rich rows, ordered
+replacement ownership hashes, missing-content detail recovery, future detail
+deadlines, and scraper-owned descriptions/locales. HR Manager binds the first-
+party tenant board and feed, validates exact position/feed IDs, persists durable
+source identity and structured locations/employment/language, and attributes
+publisher reservations to the observed board or feed resource.
+
+An offline screen of the unchanged source957 canonical census admits18 direct
+DOM rich-row boards and one HR Manager board. Ten of28 DOM rich-row boards remain
+refused because they require additional options, including browser pagination,
+empty states, prospective canonical paths, job filters and portal-specific
+behavior. Pure parsing of all28 rich_rows objects is narrower evidence than
+whole-profile eligibility. No candidate959 production ownership is active.
+Continue these remaining variants and RSS extensions in subsequent grouped
+ports; preserve every currently enabled legacy route until its replacement is
+proved. Candidate958's original Required CI browser-image build is still live.
+
 ### Latest operational update — 02:10 UTC October7
 
 Production source957 is now independently verified **cold at epoch208** after

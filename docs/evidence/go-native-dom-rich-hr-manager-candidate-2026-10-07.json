@@ -1,0 +1,42 @@
+{
+  "candidate_version": "0.13.959",
+  "base_candidate_head": "0a4bc8efc598772602ddbdfe4c33d2d93403e34e",
+  "scope": "DOM rich rows and HR Manager RSS grouped native integration; candidate only",
+  "compiled_profiles": 90,
+  "reference_cases": {
+    "dom_rich_rows_actual_python": 52,
+    "hr_manager_actual_python": 17
+  },
+  "verification": {
+    "real_worker_pg_redis_cases": 39,
+    "cold_retirement_cases": 18,
+    "python_ownership_passed": 42,
+    "python_ownership_environment_skipped": 6,
+    "full_dom_module_race": "passed",
+    "focused_worker_race": "passed",
+    "focused_queue_race": "passed",
+    "full_worker_queue_suites": "pending",
+    "immutable_image_ci": "pending"
+  },
+  "offline_canonical_screen": {
+    "source_revision": "60d0de8bebfbd25486791cb741d3b5ce814dfbce",
+    "dom_rich_rows_configs": 28,
+    "dom_direct_rows_profiles_admitted": 18,
+    "hr_manager_profiles_admitted": 1,
+    "dom_rich_profiles_refused": 10,
+    "authority": "eligibility only; fresh deployed-source census and cutover required"
+  },
+  "production_ownership": false,
+  "remaining_options": [
+    "DOM browser pagination",
+    "DOM empty states",
+    "prospective canonical paths",
+    "job filters and portal behavior",
+    "remaining RSS presets and variants"
+  ],
+  "lightpanda": {
+    "latest_stable_verified": "1.0.0",
+    "official_release": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
+    "existing_renderer_pin_retained": true
+  }
+}

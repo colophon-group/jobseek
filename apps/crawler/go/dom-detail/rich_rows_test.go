@@ -21,7 +21,7 @@ func TestRichRowsMatchActualPythonInventory(t *testing.T) {
 		}
 	}
 	raw, e := os.ReadFile("testdata/python_rich_rows.json")
-	if e != nil || json.Unmarshal(raw, &corpus) != nil || len(corpus.Cases) != 50 {
+	if e != nil || json.Unmarshal(raw, &corpus) != nil || len(corpus.Cases) != 52 {
 		t.Fatal("actual Python rich-row evidence missing", e)
 	}
 	for _, c := range corpus.Cases {

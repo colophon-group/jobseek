@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/andybalholm/cascadia"
@@ -144,9 +145,22 @@ func ParseRichRows(ctx context.Context, source, base string, c *RichRowsConfig, 
 	total := -1
 	if c.TotalSelector != "" {
 		text := strings.Join(strings.Fields(richRowsText(richRowSelect(doc, c.TotalSelector), " ")), " ")
-		if !regexp.MustCompile("^(0|[1-9][0-9]{0,5})$").MatchString(text) {
+		if !regexp.MustCompile(`^(0|[1-9][\p{Nd}]{0,5})$`).MatchString(text) {
 			return nil, ErrRichRows
 		}
+		text = strings.Map(func(r rune) rune {
+			for _, span := range unicode.Digit.R16 {
+				if uint32(r) >= uint32(span.Lo) && uint32(r) <= uint32(span.Hi) && (uint32(r)-uint32(span.Lo))%uint32(span.Stride) == 0 {
+					return '0' + rune((uint32(r)-uint32(span.Lo))/uint32(span.Stride)%10)
+				}
+			}
+			for _, span := range unicode.Digit.R32 {
+				if uint32(r) >= span.Lo && uint32(r) <= span.Hi && (uint32(r)-span.Lo)%span.Stride == 0 {
+					return '0' + rune((uint32(r)-span.Lo)/span.Stride%10)
+				}
+			}
+			return r
+		}, text)
 		total, e = strconv.Atoi(text)
 		if e != nil || total > 50000 {
 			return nil, ErrRichRows
@@ -241,15 +255,15 @@ func ParseRichRows(ctx context.Context, source, base string, c *RichRowsConfig, 
 			}
 		}
 		if len(c.ActiveURLs) > 0 {
-			u, e := url.Parse(raw)
+			_, e := url.Parse(raw)
 			if e != nil {
 				return nil, e
 			}
-			u.RawQuery = ""
-			u.ForceQuery = false
-			u.Fragment = ""
-			u.RawFragment = ""
-			raw = u.String()
+			// urllib preserves raw Unicode and escapes when removing query and
+			// fragment decoration; net/url serialization would escape them.
+			if end := strings.IndexAny(raw, "?#"); end >= 0 {
+				raw = raw[:end]
+			}
 			if c.InactiveURLs[raw] {
 				continue
 			}

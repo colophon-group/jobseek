@@ -156,6 +156,18 @@ case(
     .replace("/jobs/123", "/jobs/456"),
 )
 
+case(
+    "unicode-total-digits",
+    {"total_selector": ".total"},
+    source='<span class="total">1١</span>'
+    + "".join(ROW.replace("/jobs/123", f"/jobs/{i}") for i in range(11)),
+)
+case(
+    "unicode-total-first-digit-refused",
+    {"total_selector": ".total"},
+    source='<span class="total">١</span>' + ROW,
+)
+
 Path(__file__).with_name("python_rich_rows.json").write_text(
     json.dumps({"cases": CASES}, ensure_ascii=False, indent=2) + "\n"
 )

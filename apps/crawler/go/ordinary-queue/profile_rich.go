@@ -83,7 +83,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		allowed["slug"], allowed["language"], allowed["backfill_languages"] = true, true, true
 	case "rss":
 		allowed["preset"], allowed["feed_url"] = true, true
-		allowed["variant"], allowed["agency"], allowed["tenant"] = true, true, true
+		allowed["variant"], allowed["agency"], allowed["tenant"], allowed["customer"] = true, true, true, true
 		for _, key := range []string{"url", "url_filter", "url_allowlist", "url_transform"} {
 			allowed[key] = true
 		}
@@ -100,7 +100,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 			allowed[key] = true
 		}
 	case "dom":
-		for _, key := range []string{"url_filter", "url_transform", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "browser_backend", "routing_revision", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+		for _, key := range []string{"rich_rows", "url_filter", "url_transform", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "browser_backend", "routing_revision", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
 		}
 

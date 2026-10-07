@@ -109,6 +109,9 @@ func parseRSSProvider(raw []byte, preset string) (RichDiscovery, error) {
 		}
 		depth--
 		if fields["link"] == "" {
+			if preset == "hr_manager" {
+				return RichDiscovery{}, errHRManagerInventory
+			}
 			continue
 		}
 		job, err := rssProviderJob(fields, preset)
@@ -134,6 +137,9 @@ func discoverGenericRSS(ctx context.Context, client *http.Client, profile queue.
 		result.Response = observed
 		if err == nil {
 			preset := "generic"
+			if strings.HasPrefix(profile.Profile, "rss.hr_manager-") {
+				preset = "hr_manager"
+			}
 			if strings.HasPrefix(profile.Profile, "rss.governmentjobs-") {
 				preset = "governmentjobs"
 			}

@@ -4,6 +4,7 @@ import "testing"
 
 func TestGroupedRSSProviderProfilesBindCanonicalFeedAndDetails(t *testing.T) {
 	for _, c := range []struct{ preset, board, metadata, feed string }{
+		{"hr_manager", "https://candidate.hr-manager.net/vacancies/list.aspx?customer=fixture", `"customer":"fixture"`, "https://api.hr-manager.net/JobPortal.svc/fixture/PositionList/rss/?protype=RecruitmentProject&incads=true"},
 		{"governmentjobs", "https://www.governmentjobs.com/careers/Fixture/", `"agency":"fixture"`, "https://www.governmentjobs.com/SearchEngine/JobsFeed?agency=fixture"},
 		{"zoho_recruit", "https://fixture.zohorecruit.eu/jobs/Careers", `"tenant":"fixture.eu","feed_url":"https://fixture.zohorecruit.eu/jobs/Careers/rss"`, "https://fixture.zohorecruit.eu/jobs/Careers/rss"},
 	} {

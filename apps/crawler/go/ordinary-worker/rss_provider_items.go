@@ -39,7 +39,7 @@ func rssProviderJob(fields map[string]string, preset string) (RichMonitorJob, er
 		job.Metadata = map[string]any{"id": id}
 	}
 	switch preset {
-	case "generic":
+	case "generic", "hr_manager":
 	case "governmentjobs":
 		field := func(name string) string { return fields[governmentJobsNamespace+"\x00"+name] }
 		sections := []struct{ heading, value string }{{"", fields["description"]}, {"Examples of Duties", field("examplesofduties")}, {"Qualifications", field("qualifications")}, {"Supplemental Information", field("supplementalinformation")}}
