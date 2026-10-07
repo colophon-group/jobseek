@@ -107,8 +107,8 @@ func discoverEightfoldInventory(ctx context.Context, client *http.Client, p queu
 
 func discoverEightfoldInventoryAt(ctx context.Context, client *http.Client, p queue.GreenhouseMonitorProfile, config map[string]string, now time.Time, wait func(context.Context, time.Duration) error) (RichDiscovery, error) {
 	result := RichDiscovery{Jobs: []RichMonitorJob{}}
-	o, e := api.EightfoldOptionsFromMetadata(config["board_url"], config["metadata"])
-	if e != nil || client == nil || wait == nil || p.Provider != "eightfold" || p.Profile != "eightfold.pcsx-sitemap/v1" || p.Endpoint != o.SitemapURL {
+	o, e := queue.EightfoldMonitorOptions(config)
+	if e != nil || client == nil || wait == nil || p.Provider != "eightfold" || (p.Profile != "eightfold.pcsx-sitemap/v1" && p.Profile != "eightfold.proxy-pcsx-sitemap/v1") || p.Endpoint != o.SitemapURL {
 		return result, queue.ErrConfiguration
 	}
 	c, e := sitemap.NormalizeConfig(sitemap.Config{SitemapURL: o.SitemapURL, MaxURLs: 50000, MaxIndexChildren: 200, MaxIndexDepth: 8, ChildMaxAttempts: 3})

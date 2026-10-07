@@ -1,0 +1,74 @@
+{
+  "schema": "jobseek.native-migration-evidence/v1",
+  "candidate_version": "0.13.956",
+  "base_source": "d123d6fcfc14ef2b38c81d1722a53f83ce7b93b2",
+  "implementation": [
+    "DOM HTTP proxy monitor",
+    "API-sniffer HTTP proxy monitor",
+    "Inline HTTP proxy monitor",
+    "Sitemap HTTP proxy monitor",
+    "Eightfold HTTP proxy monitor",
+    "Phenom HTTP proxy monitor",
+    "independent Eightfold proxy detail scraper"
+  ],
+  "installed_profiles": 78,
+  "new_profiles": 7,
+  "canonical_proxy_verification": {
+    "actual_credentialed_connect": true,
+    "cases": 79,
+    "result": "passed",
+    "elapsed_seconds": 54.678,
+    "covers": [
+      "canonical postings and descriptions",
+      "publisher reservations and resource provenance",
+      "retry and pagination requests",
+      "incomplete inventory protection",
+      "independent detail choices",
+      "deadline and lease settlement"
+    ]
+  },
+  "cold_reversal": {
+    "six_monitor_families": "passed; 19.739 seconds",
+    "eightfold_proxy_detail": "passed; 6.969 seconds",
+    "covers": [
+      "interrupted attempts",
+      "committed attempts before acknowledgement",
+      "configuration drift rejection",
+      "Redis restart survival",
+      "Eightfold watermark publication and failed SAVE"
+    ]
+  },
+  "other_validation": {
+    "queue_profile_race": "passed; 4.035 seconds",
+    "runtime_and_cutover_python_contracts": "60 passed, 6 environment skips; 11.19 seconds",
+    "worker_vet_and_module_tidiness": "passed",
+    "full_worker_race": "passed; 478.461 seconds",
+    "installed_image_checks": "pending exact-head CI; previous native queue run exposed obsolete proxy refusal assertion, corrected"
+  },
+  "historical_local_monitor_screen": {
+    "capture_source": "96601ce7fcadfa341aa153327918e0c71a84419a",
+    "records": 7885,
+    "eligible_before": 7133,
+    "eligible_after": 7160,
+    "added_by_provider": {
+      "dom": 6,
+      "inline": 2,
+      "sitemap": 3,
+      "eightfold": 9,
+      "phenom": 7
+    },
+    "scope": "unchanged canonical configurations; historical local monitor eligibility, not production ownership or complete detail coverage"
+  },
+  "production_checkpoint": {
+    "version": "0.13.955",
+    "source": "d123d6fcfc14ef2b38c81d1722a53f83ce7b93b2",
+    "original_crawler_run": 37545348696,
+    "original_renderer_run": 37545455840,
+    "rollouts": "success",
+    "independent_crawler_readback_utc": "2026-10-06T23:34:15.621143+00:00",
+    "native_owner": "cold",
+    "routing_epoch": 204,
+    "lightpanda": "1.0.0"
+  },
+  "full_migration_complete": false
+}

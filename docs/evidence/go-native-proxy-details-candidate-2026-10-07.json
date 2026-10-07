@@ -1,0 +1,62 @@
+{
+  "schema": "jobseek.native-migration-evidence/v1",
+  "candidate_version": "0.13.957",
+  "base_reviewed_head": "2d2d7841f9bdf079e588e6836be30d5d79a70a0d",
+  "implementation": [
+    "DOM proxy details",
+    "JSON-LD proxy details",
+    "API-sniffer proxy details"
+  ],
+  "installed_profiles": 81,
+  "new_profiles": 3,
+  "verification": {
+    "focused_canonical_cases": 36,
+    "focused_canonical_race_seconds": 17.98,
+    "scope": "network-bearing cases use credentialed CONNECT; explicit sealed transport cases use mocks; refusal cases do not fetch",
+    "ownership_and_cold_race_seconds": 4.137,
+    "avature_proxy_cold_cases": 6,
+    "avature_proxy_cold_race_seconds": 3.223,
+    "vet_and_module_tidiness": "passed",
+    "full_queue_race": "264.881s completed with two obsolete proxy-refusal expectations (DOM secondary options and staged JSON-LD transport drift); drift still refused as authority lost. Corrected expectations; final-head full CI required.",
+    "full_worker_race": "478.165s completed with one obsolete Paylocity/JSON-LD proxy refusal assertion; all other cases completed without failure. Assertion corrected; final-head CI required.",
+    "required_and_installed_image_CI": "pending",
+    "independent_runtime_transport_race_seconds": 1.782,
+    "runtime_and_cutover_python_contracts": "60 passed,6 environment skips; corrected wrapper17 passed8.81s",
+    "corrected_paylocity_and_independent_runtime_race_seconds": 1.757,
+    "corrected_queue_contract_race_seconds": 2.536
+  },
+  "production": {
+    "source": "d123d6fcfc14ef2b38c81d1722a53f83ce7b93b2",
+    "version": "0.13.955",
+    "B0": "cold; original source955 supported reversal and selector clear independently verified at epoch206",
+    "ordinary": "cold; source955 stage refused Compose mismatch before mutation",
+    "lightpanda": "1.0.0",
+    "independent_cold_readback_utc": "2026-10-07T00:15:34.416898+00:00",
+    "native_stopped": "producer/executor stopped with exit0 and exact original supported policies; ordinary actor absent",
+    "owners_and_native_tokens": "absent",
+    "restored_base_writers": 7
+  },
+  "full_migration_complete": false,
+  "configuration_screen": {
+    "capture_source": "d123d6fcfc14ef2b38c81d1722a53f83ce7b93b2",
+    "canonical_boards": 7885,
+    "detail_configs_source955": 2604,
+    "detail_configs_candidate957": 2657,
+    "gain_since_source955": 53,
+    "added_proxy_profiles": {
+      "dom.proxy-detail/v1": 25,
+      "jsonld.proxy-detail/v1": 19,
+      "eightfold.proxy-jsonld-api-detail/v1": 9
+    },
+    "new_generic_detail_gain": 44,
+    "canonical_cache_mismatches": 0,
+    "scope": "actual detached candidate957 code on unchanged fresh source955 canonical/cache configurations; configuration-only eligibility, not current route admission or production ownership"
+  },
+  "cutover_fix": {
+    "trigger": "source955 ordinary stage rejected B0 Compose contract drift before ownership changed",
+    "cause": "B0 wrapper unsets WEBSHARE_PROXY_URLS for Compose .env parsing; ordinary wrapper exported Bash-decoded pool, changing rendered contract",
+    "production_readonly_proof": "Only removing the sourced pool environment override reproduced the active B0 receipt Compose digest; no host configs or ownership mutated",
+    "change": "ordinary wrapper now uses Compose .env parsing consistently, while withholding operator API key from runtime/admin",
+    "activation": "fresh immutable rollout and new source/receipt-bound cohort required"
+  }
+}

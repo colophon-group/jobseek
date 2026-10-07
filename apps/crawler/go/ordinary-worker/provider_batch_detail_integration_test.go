@@ -51,11 +51,20 @@ func providerBatchDetailReference(t *testing.T, provider, name string) providerB
 }
 
 func TestRealProviderBatchDetailReferenceHTTPCommitsCanonicalContentAndSettlement(t *testing.T) {
+	realProviderBatchDetailTransportCases(t, false)
+}
+func TestRealProxyEightfoldDetailReferenceHTTPCommitsCanonicalContentAndSettlement(t *testing.T) {
+	realProviderBatchDetailTransportCases(t, true)
+}
+func realProviderBatchDetailTransportCases(t *testing.T, proxy bool) {
 	cases := map[string][]string{
 		"mokahr":    {"complete", "description-mask", "empty-backfill", "custom-locale", "campus-fallback", "bootstrap-redirect", "bootstrap-redirect-reserved", "detail-redirect-refused", "missing-bootstrap", "detail-status-500", "detail-bad-json", "bootstrap-reserved", "detail-reserved", "foreign-id"},
 		"eightfold": {"jsonld-fastpath", "description-mask", "empty-backfill", "api-fallback", "html-gone-api-recovers", "html-redirect", "html-redirect-reserved", "api-redirect-refused", "missing-title-merge", "no-content", "api-bad-json", "api-201", "html-reserved", "api-reserved"},
 	}
 	for _, provider := range []string{"mokahr", "eightfold"} {
+		if proxy && provider != "eightfold" {
+			continue
+		}
 		for _, mode := range cases[provider] {
 			t.Run(provider+"/"+mode, func(t *testing.T) {
 				reference := mode
@@ -72,6 +81,9 @@ func TestRealProviderBatchDetailReferenceHTTPCommitsCanonicalContentAndSettlemen
 				}
 				if mode == "description-mask" || mode == "empty-backfill" {
 					config["enrich"] = []string{"description"}
+				}
+				if proxy {
+					config["proxy"] = true
 				}
 				metadata, err := json.Marshal(map[string]any{"scraper_type": provider, "scraper_config": config})
 				if err != nil {
@@ -130,6 +142,9 @@ func TestRealProviderBatchDetailReferenceHTTPCommitsCanonicalContentAndSettlemen
 				circuits, err := queue.NewHostCircuits(f.client, queue.DefaultHostCircuitSettings())
 				if err != nil {
 					t.Fatal(err)
+				}
+				if proxy {
+					client = credentialedProxyFixture(t, client)
 				}
 				result, err := RunDetail(ctx, a, claim, client, richPipelinePreparer(t, f).Processor, circuits)
 				status := "succeeded"

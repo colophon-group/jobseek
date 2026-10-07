@@ -13,6 +13,7 @@ import (
 )
 
 const domDetailProfile = "dom.direct-detail/v1"
+const domProxyDetailProfile = "dom.proxy-detail/v1"
 
 // InspectDOMDetail binds the configured direct DOM scraper independently of its monitor.
 func InspectDOMDetail(boardID string, config map[string]string, source string, worker WorkerType) (WorkdayDetailProfile, error) {
@@ -62,6 +63,7 @@ func InspectDOMDetail(boardID string, config map[string]string, source string, w
 			options[k] = value
 		}
 	}
+	options, proxy := httpDetailParsingOptions(options)
 	if dom.ValidateDirectConfig(options) != nil {
 		return fail()
 	}
@@ -77,5 +79,9 @@ func InspectDOMDetail(boardID string, config map[string]string, source string, w
 		return fail()
 	}
 	digest := sha256.Sum256(body)
-	return WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: source, Domain: strings.ToLower(endpoint.Hostname()), Profile: domDetailProfile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), DOMConfig: options}, nil
+	profile := domDetailProfile
+	if proxy {
+		profile = domProxyDetailProfile
+	}
+	return WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: source, Domain: strings.ToLower(endpoint.Hostname()), Profile: profile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), DOMConfig: options}, nil
 }

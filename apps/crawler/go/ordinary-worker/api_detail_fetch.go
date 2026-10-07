@@ -47,10 +47,10 @@ func fetchAPIDetail(ctx context.Context, verified *VerifiedDirectHTTP, profile q
 	case "mokahr.encrypted-detail/v1":
 		client.CheckRedirect = verified.client.CheckRedirect
 		content, reservation, err = fetchMokahrDetail(ctx, &client, profile.SourceURL, profile.APILocale)
-	case "eightfold.jsonld-api-detail/v1":
+	case "eightfold.jsonld-api-detail/v1", "eightfold.proxy-jsonld-api-detail/v1":
 		client.CheckRedirect = verified.client.CheckRedirect
 		content, reservation, err = fetchEightfoldDetail(ctx, &client, profile.SourceURL, profile.JSONLDConfig)
-	case "api_sniffer.http-detail/v1":
+	case "api_sniffer.http-detail/v1", "api_sniffer.proxy-http-detail/v1":
 		// This configured route follows the Python shared client redirect contract.
 		client.CheckRedirect = verified.client.CheckRedirect
 		content, reservation, err = fetchHTTPAPIDetail(ctx, &client, profile)

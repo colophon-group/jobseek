@@ -10,9 +10,15 @@ import (
 )
 
 func TestRealOwnedDOMCompleteInventoryRetryGoneAndPolicy(t *testing.T) {
+	realDOMTransportCases(t, false)
+}
+func TestRealProxyDOMCompleteInventoryRetryGoneAndPolicy(t *testing.T) {
+	realDOMTransportCases(t, true)
+}
+func realDOMTransportCases(t *testing.T, proxy bool) {
 	for _, mode := range []string{"success", "retry429", "empty", "retry403", "gone404", "gone410", "challenge", "header", "meta", "redirect_header"} {
 		t.Run(mode, func(t *testing.T) {
-			f := privateRichPipelineFixture(t, "dom", `{"url_filter":{"include":"/jobs/\\w+","exclude":"intern"},"scraper_type":"json-ld"}`)
+			f := privateRichPipelineFixture(t, "dom", proxyFixtureMetadata(t, `{"url_filter":{"include":"/jobs/\\w+","exclude":"intern"},"scraper_type":"json-ld"}`, proxy))
 			ctx := context.Background()
 			if _, err := f.pg.Exec(ctx, "UPDATE job_posting SET missing_count=3 WHERE id=$1::uuid", f.original); err != nil {
 				t.Fatal(err)
@@ -58,6 +64,9 @@ func TestRealOwnedDOMCompleteInventoryRetryGoneAndPolicy(t *testing.T) {
 				}
 			}))
 			preparer := &pipelinePreparer{}
+			if proxy {
+				client = credentialedProxyFixture(t, client)
+			}
 			result, err := RunGreenhouseClaim(ctx, f.a, claim, client, preparer, circuits)
 			if err != nil || result == nil || !result.Settled || preparer.at != 0 {
 				t.Fatal(result, err)

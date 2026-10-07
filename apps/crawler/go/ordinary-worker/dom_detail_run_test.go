@@ -12,14 +12,21 @@ import (
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 )
 
-func domOwnedFixture(t *testing.T) (nativePipelineFixture, *queue.Authority, *queue.Claim) {
-	return independentDetailOwnedFixture(t, `{"scraper_type":"dom","selector":"a.job","render":true,"scraper_config":{"steps":[{"tag":"h1","field":"title"},{"tag":"p","attr":"data-field=location","field":"location"},{"tag":"h2","text":"Role","offset":1,"field":"description","html":true}],"defaults":{"employment_type":"FULL_TIME","language":"en"}}}`, "")
+func domOwnedFixture(t *testing.T, proxyFlags ...bool) (nativePipelineFixture, *queue.Authority, *queue.Claim) {
+	proxy := len(proxyFlags) > 0 && proxyFlags[0]
+	return independentDetailOwnedFixture(t, proxyDetailFixtureMetadata(t, `{"scraper_type":"dom","selector":"a.job","render":true,"scraper_config":{"steps":[{"tag":"h1","field":"title"},{"tag":"p","attr":"data-field=location","field":"location"},{"tag":"h2","text":"Role","offset":1,"field":"description","html":true}],"defaults":{"employment_type":"FULL_TIME","language":"en"}}}`, proxy), "")
 }
 
 const nativeDOMHTML = `<html><h1>Senior Software Engineer</h1><p data-field="location">Zurich</p><h2>Role</h2><p>Python. Salary CHF 100000-120000 yearly. 5+ years of experience.</p></html>`
 
 func TestRealDOMDetailUsesVerifiedHTTPSharedEnrichmentAndCanonicalSettlement(t *testing.T) {
-	f, a, claim := domOwnedFixture(t)
+	realDOMDetailTransportSuccess(t, false)
+}
+func TestRealProxyDOMDetailUsesVerifiedHTTPSharedEnrichmentAndCanonicalSettlement(t *testing.T) {
+	realDOMDetailTransportSuccess(t, true)
+}
+func realDOMDetailTransportSuccess(t *testing.T, proxy bool) {
+	f, a, claim := domOwnedFixture(t, proxy)
 	ctx := context.Background()
 	calls := 0
 	client := richPipelineHTTP(t, func(w http.ResponseWriter, r *http.Request) {
@@ -33,6 +40,9 @@ func TestRealDOMDetailUsesVerifiedHTTPSharedEnrichmentAndCanonicalSettlement(t *
 	circuits, err := queue.NewHostCircuits(f.client, queue.DefaultHostCircuitSettings())
 	if err != nil {
 		t.Fatal(err)
+	}
+	if proxy {
+		client = credentialedProxyFixture(t, client)
 	}
 	result, err := RunDetail(ctx, a, claim, client, richPipelinePreparer(t, f).Processor, circuits)
 	if err != nil || !result.Settled || result.Cycle.Status != "succeeded" || calls != 1 || result.HTTP.Requests != 1 || result.HTTP.Responses != 1 || result.TaskKind != queue.Scrape {
@@ -57,10 +67,16 @@ func TestRealDOMDetailUsesVerifiedHTTPSharedEnrichmentAndCanonicalSettlement(t *
 }
 
 func TestRealDOMDetailPreservesOptOutFailureAndFreshCanonicalPolicy(t *testing.T) {
+	realDOMDetailTransportPolicy(t, false)
+}
+func TestRealProxyDOMDetailPreservesOptOutFailureAndFreshCanonicalPolicy(t *testing.T) {
+	realDOMDetailTransportPolicy(t, true)
+}
+func realDOMDetailTransportPolicy(t *testing.T, proxy bool) {
 	for _, mode := range []string{"header-reserved", "meta-reserved", "inactive-header-reserved", "existing-reserved", "fresh-reserved", "404-gone", "gone-redirect", "challenge", "503-transient", "empty", "transport"} {
 		t.Run(mode, func(t *testing.T) {
 			metadata := `{"scraper_type":"dom","scraper_config":{"gone_url_pattern":"/Error$","steps":[{"tag":"h1","field":"title"},{"tag":"h2","text":"Role","offset":1,"field":"description","html":true}]}}`
-			f, a, claim := independentDetailOwnedFixture(t, metadata, "")
+			f, a, claim := independentDetailOwnedFixture(t, proxyDetailFixtureMetadata(t, metadata, proxy), "")
 			ctx := context.Background()
 			calls := 0
 			if mode == "existing-reserved" {
@@ -110,6 +126,13 @@ func TestRealDOMDetailPreservesOptOutFailureAndFreshCanonicalPolicy(t *testing.T
 			circuits, err := queue.NewHostCircuits(f.client, queue.DefaultHostCircuitSettings())
 			if err != nil {
 				t.Fatal(err)
+			}
+			if proxy {
+				if mode == "transport" {
+					client.proxyRequired = true
+				} else {
+					client = credentialedProxyFixture(t, client)
+				}
 			}
 			result, err := RunDetail(ctx, a, claim, client, richPipelinePreparer(t, f).Processor, circuits)
 			if err != nil || result == nil || !result.Settled {

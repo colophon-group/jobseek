@@ -22,7 +22,20 @@ func runtimeUsesProxy(task queue.Task) bool {
 		return false
 	}
 	if task.Kind == queue.Monitor {
-		return task.Config["crawler_type"] == "paylocity" && md["proxy"] == true
+		if md["proxy"] != true {
+			return false
+		}
+		if task.Config["crawler_type"] == "paylocity" {
+			return true
+		}
+		if task.Config["monitor_needs_browser"] != "0" {
+			return false
+		}
+		switch task.Config["crawler_type"] {
+		case "dom", "api_sniffer", "inline", "sitemap", "eightfold", "phenom":
+			return true
+		}
+		return false
 	}
 	if task.Kind != queue.Scrape {
 		return false
@@ -32,7 +45,7 @@ func runtimeUsesProxy(task queue.Task) bool {
 		scraper = s
 	}
 	options, _ := md["scraper_config"].(map[string]any)
-	return scraper == "paylocity" && options["proxy"] == true
+	return (scraper == "paylocity" || scraper == "eightfold" || scraper == "dom" || scraper == "json-ld" || scraper == "api_sniffer") && options["proxy"] == true
 }
 
 // All endpoint authority comes from protected startup settings. Configs and

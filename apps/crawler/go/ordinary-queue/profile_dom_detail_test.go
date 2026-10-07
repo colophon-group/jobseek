@@ -50,7 +50,7 @@ func TestDOMDetailRefusesUnimplementedTransportAndPipeline(t *testing.T) {
 	for name, change := range map[string]func(map[string]string){
 		"browser": func(c map[string]string) { c["scraper_needs_browser"] = "1" },
 		"proxy": func(c map[string]string) {
-			c["metadata"] = `{"scraper_type":"dom","scraper_config":{"proxy":true}}`
+			c["metadata"] = `{"scraper_type":"dom","scraper_config":{"proxy":"enabled"}}`
 		},
 		"render": func(c map[string]string) {
 			c["metadata"] = `{"scraper_type":"dom","scraper_config":{"render":true}}`
@@ -114,7 +114,7 @@ func TestDOMDetailCanonicalizesNestedSQLAndRedisMetadata(t *testing.T) {
 
 func TestDOMDetailRetainsUnsupportedSecondaryAndTransportContracts(t *testing.T) {
 	for _, extra := range []string{
-		`"proxy":true`, `"render":true`, `"skip_ssl":true`, `"ssl_verify":false`,
+		`"proxy":"enabled"`, `"render":true`, `"skip_ssl":true`, `"ssl_verify":false`,
 		`"actions":[{"action":"click","selector":"button"}]`, `"enrich":["json-ld"]`,
 		`"document_fallback":{"pdf":{}}`, `"linked_description":{"selector":"a.detail"}`,
 		`"fetch_url_transform":{"find":"a","replace":"b"}`, `"encoding":"utf-16"`,

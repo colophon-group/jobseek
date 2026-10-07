@@ -11,6 +11,12 @@ import (
 )
 
 func TestRealOwnedConfiguredAPIWritesRichContentAndConservesQueue(t *testing.T) {
+	realAPIRichTransportCases(t, false)
+}
+func TestRealProxyConfiguredAPIWritesRichContentAndConservesQueue(t *testing.T) {
+	realAPIRichTransportCases(t, true)
+}
+func realAPIRichTransportCases(t *testing.T, proxy bool) {
 	for _, method := range []string{"GET", "POST"} {
 		t.Run(method, func(t *testing.T) {
 			metadata := map[string]any{"api_url": "https://example.com/api?page=1", "method": method, "json_path": "jobs", "url_field": "url", "fields": map[string]any{"title": "name", "description": "body", "locations": "city", "employment_type": "employment", "job_location_type": "workplace", "skills": "skills", "responsibilities": "tasks"}, "scraper_type": "json-ld", "request_headers": map[string]any{"X-Required": "fixture"}, "pagination": map[string]any{"param_name": "page", "start_value": 1, "max_pages": 2}}
@@ -18,6 +24,9 @@ func TestRealOwnedConfiguredAPIWritesRichContentAndConservesQueue(t *testing.T) 
 				metadata["api_url"] = "https://example.com/api"
 				metadata["post_data"] = map[string]any{"page": 1}
 				metadata["pagination"] = map[string]any{"param_name": "page", "start_value": 1, "max_pages": 2, "location": "body"}
+			}
+			if proxy {
+				metadata["proxy"] = true
 			}
 			raw, _ := json.Marshal(metadata)
 			f := privateRichPipelineFixture(t, "api_sniffer", string(raw))
@@ -44,6 +53,9 @@ func TestRealOwnedConfiguredAPIWritesRichContentAndConservesQueue(t *testing.T) 
 				}
 				fmt.Fprintf(w, `{"total":2,"jobs":[{"url":%q,"name":"Senior Software Engineer","body":"<p>Build useful systems.</p>","city":"Zurich","employment":"Full-time","workplace":"remote","skills":["Go","Python"],"tasks":["Salary CHF 100000-120000 yearly. 5+ years of experience."]}]}`, fmt.Sprintf("/job/%s/%d", f.company, calls))
 			}))
+			if proxy {
+				client = credentialedProxyFixture(t, client)
+			}
 			result, err := RunGreenhouseClaim(ctx, f.a, claim, client, preparer, circuits)
 			if err != nil || result == nil || !result.Settled || result.Batches.Inserted != 2 || calls != 2 {
 				t.Fatalf("rich API did not settle: %+v %v", result, err)
@@ -70,6 +82,12 @@ func TestRealOwnedConfiguredAPIWritesRichContentAndConservesQueue(t *testing.T) 
 }
 
 func TestRealOwnedConfiguredAPIFailurePolicyAndTotalGapProtectExistingJobs(t *testing.T) {
+	realAPIFailureTransportCases(t, false)
+}
+func TestRealProxyConfiguredAPIFailurePolicyAndTotalGapProtectExistingJobs(t *testing.T) {
+	realAPIFailureTransportCases(t, true)
+}
+func realAPIFailureTransportCases(t *testing.T, proxy bool) {
 	for _, mode := range []string{"later503", "laterMalformed", "laterReserved", "probeReserved", "totalGap", "cap", "first404"} {
 		t.Run(mode, func(t *testing.T) {
 			endpoint := "https://example.com/api?page=1"
@@ -79,6 +97,9 @@ func TestRealOwnedConfiguredAPIFailurePolicyAndTotalGapProtectExistingJobs(t *te
 			metadata := map[string]any{"api_url": endpoint, "json_path": "jobs", "url_field": "url", "fields": map[string]any{"title": "name"}, "scraper_type": "skip", "transport_attempts": 1, "transient_403": true, "pagination": map[string]any{"param_name": "page", "start_value": 1, "max_pages": 2}}
 			if mode == "cap" {
 				metadata["max_items"] = 1
+			}
+			if proxy {
+				metadata["proxy"] = true
 			}
 			raw, _ := json.Marshal(metadata)
 			f := privateRichPipelineFixture(t, "api_sniffer", string(raw))
@@ -112,6 +133,9 @@ func TestRealOwnedConfiguredAPIFailurePolicyAndTotalGapProtectExistingJobs(t *te
 				}
 				fmt.Fprintf(w, `{"total":%d,"jobs":[{"url":%q,"name":"Engineer"}]}`, total, fmt.Sprintf("https://example.com/job/%s/%d", f.company, calls))
 			}))
+			if proxy {
+				client = credentialedProxyFixture(t, client)
+			}
 			result, err := RunGreenhouseClaim(ctx, f.a, claim, client, &pipelinePreparer{}, circuits)
 			if err != nil || result == nil || !result.Settled {
 				t.Fatalf("API outcome not settled: %+v %v", result, err)

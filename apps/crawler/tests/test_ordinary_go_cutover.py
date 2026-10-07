@@ -150,7 +150,7 @@ def invoke(host: tuple[Path, Path, dict[str, str]], *args: str) -> subprocess.Co
     return subprocess.run([BASH, str(path), *args], env=env, capture_output=True, text=True)
 
 
-def test_native_proxy_profiles_keep_endpoint_scope_without_operator_api_key(host) -> None:
+def test_native_proxy_profiles_use_compose_dotenv_pool_without_operator_api_key(host) -> None:
     path, deploy, env = host
     pool = '["http://synthetic:private@p.webshare.io:8080"]'
     with (deploy / ".env").open("a") as output:
@@ -159,13 +159,11 @@ def test_native_proxy_profiles_keep_endpoint_scope_without_operator_api_key(host
     script = path.read_text()
     script = script.replace(
         "docker() {\n",
-        "docker() {\n"
-        '  [[ "${WEBSHARE_PROXY_URLS:-}" == "$TEST_EXPECTED_PROXY_POOL" && '
-        "! -v WEBSHARE_API_KEY ]] || return 96\n",
+        "docker() {\n  [[ ! -v WEBSHARE_PROXY_URLS && ! -v WEBSHARE_API_KEY ]] || return 96\n",
         1,
     )
     path.write_text(script)
-    env["TEST_EXPECTED_PROXY_POOL"] = pool
+    assert f"WEBSHARE_PROXY_URLS='{pool}'" in (deploy / ".env").read_text()
     result = invoke(host, "activate", PLAN, PROJECTION)
     assert result.returncode == 0, result.stderr
 

@@ -10,6 +10,11 @@ import (
 // Phenom uses only these inventory options. Legacy canvas options and detail
 // configuration remain in the immutable binding, without supplying requests.
 func PhenomMonitorConfig(config map[string]string) (string, []string, string, error) {
+	parsed, parseErr := httpMonitorParsingConfig(config)
+	if parseErr != nil {
+		return "", nil, "", parseErr
+	}
+	config = parsed
 	fail := func() (string, []string, string, error) { return "", nil, "", ErrUnsupportedProfile }
 	md, err := profileMetadataFields(config["metadata"], nil)
 	if err != nil {
@@ -29,8 +34,8 @@ func PhenomMonitorConfig(config map[string]string) (string, []string, string, er
 	if err != nil || u.Scheme != "https" || u.Host != board.Host || u.User != nil || u.Opaque != "" || u.Fragment != "" || len(root) > 8192 {
 		return fail()
 	}
-	// A direct profile cannot replace boards whose current transport is proxy
-	// backed. They retain their current owner until native proxy parity is proven.
+	// The parser receives the separately compiled HTTP transport choice.
+	// Rendering and TLS overrides remain outside this sitemap contract.
 	for _, key := range []string{"proxy", "render", "skip_ssl"} {
 		if raw := md[key]; raw != nil && string(raw) != "false" && string(raw) != "null" && string(raw) != `""` {
 			return fail()

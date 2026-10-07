@@ -19,6 +19,11 @@ func AlmaMonitorOptions(config map[string]string) (api.AlmaOptions, error) {
 	return api.AlmaOptionsFromMetadata(config["board_url"], config["metadata"])
 }
 func EightfoldMonitorOptions(config map[string]string) (api.EightfoldOptions, error) {
+	parsed, parseErr := httpMonitorParsingConfig(config)
+	if parseErr != nil {
+		return api.EightfoldOptions{}, parseErr
+	}
+	config = parsed
 	if config["crawler_type"] != "eightfold" || config["monitor_needs_browser"] != "0" {
 		return api.EightfoldOptions{}, ErrUnsupportedProfile
 	}
@@ -80,7 +85,7 @@ func ProviderBatchMonitorResourceMatches(p GreenhouseMonitorProfile, config map[
 		return e == nil && p.Profile == "almacareer.graphql-items/v1" && p.Endpoint == o.RootURL() && o.ResourceMatches(resource)
 	case "eightfold":
 		o, e := EightfoldMonitorOptions(config)
-		return e == nil && p.Profile == "eightfold.pcsx-sitemap/v1" && p.Endpoint == o.SitemapURL && o.ResourceMatches(resource)
+		return e == nil && (p.Profile == "eightfold.pcsx-sitemap/v1" || p.Profile == "eightfold.proxy-pcsx-sitemap/v1") && p.Endpoint == o.SitemapURL && o.ResourceMatches(resource)
 	}
 	return false
 }

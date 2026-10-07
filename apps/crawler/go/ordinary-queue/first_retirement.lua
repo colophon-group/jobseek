@@ -73,7 +73,7 @@ local function prepare_first_retirement(plan, raw, exists, adopting)
         end
         if fields == 0 or redis.call("HLEN", board_key) ~= fields then return nil end
         if row.metadata ~= nil then
-            if kind ~= "monitor" or worker ~= "simple" or member.profile ~= "eightfold.pcsx-sitemap/v1"
+            if kind ~= "monitor" or worker ~= "simple" or (member.profile ~= "eightfold.pcsx-sitemap/v1" and member.profile ~= "eightfold.proxy-pcsx-sitemap/v1")
                 or row.config.crawler_type ~= "eightfold" or type(row.metadata) ~= "string"
                 or #row.metadata > 1048576 or string.sub(row.metadata,1,1) ~= "{" then return nil end
             local ok, decoded = pcall(cjson.decode, row.metadata)

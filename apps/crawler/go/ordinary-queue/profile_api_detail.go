@@ -28,10 +28,11 @@ const paycomDetailProfile = "paycom.public-detail/v1"
 const ripplingDetailProfile = "rippling.v1-detail/v1"
 const mokahrDetailProfile = "mokahr.encrypted-detail/v1"
 const eightfoldDetailProfile = "eightfold.jsonld-api-detail/v1"
+const eightfoldProxyDetailProfile = "eightfold.proxy-jsonld-api-detail/v1"
 
 func independentDetailProfile(profile string) bool {
 	switch profile {
-	case adpDetailProfile, paylocityDetailProfile, paylocityProxyDetailProfile, paycomDetailProfile, ripplingDetailProfile, mokahrDetailProfile, eightfoldDetailProfile, domRenderedDetailProfile, jsonldRenderedDetailProfile, embeddedRenderedDetailProfile, domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, joinDetailProfile, oracleDetailProfile, embeddedDetailProfile, httpAPIDetailProfile:
+	case adpDetailProfile, paylocityDetailProfile, paylocityProxyDetailProfile, paycomDetailProfile, ripplingDetailProfile, mokahrDetailProfile, eightfoldDetailProfile, eightfoldProxyDetailProfile, domProxyDetailProfile, jsonldProxyDetailProfile, httpAPIProxyDetailProfile, domRenderedDetailProfile, jsonldRenderedDetailProfile, embeddedRenderedDetailProfile, domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, joinDetailProfile, oracleDetailProfile, embeddedDetailProfile, httpAPIDetailProfile:
 		return true
 	}
 	return false
@@ -115,7 +116,7 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 		}
 	}
 	for _, key := range []string{"proxy", "render"} {
-		if scraper == "paylocity" && key == "proxy" && string(options[key]) == "true" {
+		if (scraper == "paylocity" || scraper == "eightfold") && key == "proxy" && string(options[key]) == "true" {
 			continue
 		}
 		if raw, ok := options[key]; ok && string(raw) != "false" && string(raw) != "null" {
@@ -205,6 +206,9 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 			}
 			jsonldOptions[key] = value
 		}
+		if string(options["proxy"]) == "true" {
+			jsonldOptions["proxy"] = false
+		}
 		if jsonld.ValidateConfig(jsonldOptions) != nil {
 			return fail()
 		}
@@ -219,6 +223,9 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 			return fail()
 		}
 		endpoint, profile = route.APIURL, eightfoldDetailProfile
+		if string(options["proxy"]) == "true" {
+			profile = eightfoldProxyDetailProfile
+		}
 		enrichmentFields, err = providerBatchEnrichment(config)
 	} else if scraper == "smartrecruiters" {
 		_, endpoint, err = smartrecruiters.DetailEndpoint(source)
@@ -322,7 +329,7 @@ func inspectAPIDetailOwnership(boardID string, config map[string]string) (Workda
 		}
 		if source, e := url.Parse(config["board_url"]); e == nil && source.Scheme == "https" && source.Host != "" {
 			candidate := "https://" + source.Host + "/careers/job/1?domain=" + url.QueryEscape(source.Hostname())
-			if p, e := InspectAPIDetail(boardID, config, candidate, Simple); e == nil && p.Profile == eightfoldDetailProfile {
+			if p, e := InspectAPIDetail(boardID, config, candidate, Simple); e == nil && (p.Profile == eightfoldDetailProfile || p.Profile == eightfoldProxyDetailProfile) {
 				p.Domain = "*"
 				return p, nil
 			}

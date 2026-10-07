@@ -19,7 +19,7 @@ func firstRetirementDetailHashMatches(binding ownershipDetail, expected string, 
 	if binding.Profile == embeddedDetailProfile && binding.Config["crawler_type"] == "ukg" && canonical["crawler_type"] == "ukg" {
 		return firstUKGRetirementDetailHashMatches(binding, expected, current, canonical)
 	}
-	if binding.Profile != domDetailProfile || binding.Config["crawler_type"] != "avature" || canonical["crawler_type"] != "avature" {
+	if (binding.Profile != domDetailProfile && binding.Profile != domProxyDetailProfile) || binding.Config["crawler_type"] != "avature" || canonical["crawler_type"] != "avature" {
 		return false
 	}
 	previous, err := profileMetadataFields(binding.Config["metadata"], nil)

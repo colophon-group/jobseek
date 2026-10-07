@@ -14,6 +14,7 @@ import (
 )
 
 const httpAPIDetailProfile = "api_sniffer.http-detail/v1"
+const httpAPIProxyDetailProfile = "api_sniffer.proxy-http-detail/v1"
 
 // The canonical board still owns each actual detail URL. Wildcard admission
 // never supplies a request endpoint and does not bypass the posting/cache fence.
@@ -70,6 +71,7 @@ func inspectHTTPAPIDetail(boardID string, config map[string]string, source strin
 			options[k] = decoded
 		}
 	}
+	options, proxy := httpDetailParsingOptions(options)
 	if apisniffer.ValidateHTTPDetail(options) != nil {
 		return fail()
 	}
@@ -99,7 +101,11 @@ func inspectHTTPAPIDetail(boardID string, config map[string]string, source strin
 		return fail()
 	}
 	digest := sha256.Sum256(body)
-	return WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: endpoint, Domain: strings.ToLower(u.Hostname()), Profile: httpAPIDetailProfile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), HTTPAPIConfig: options, EnrichmentFields: enrichment}, nil
+	profile := httpAPIDetailProfile
+	if proxy {
+		profile = httpAPIProxyDetailProfile
+	}
+	return WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: endpoint, Domain: strings.ToLower(u.Hostname()), Profile: profile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), HTTPAPIConfig: options, EnrichmentFields: enrichment}, nil
 }
 
 func InspectHTTPAPIDetail(boardID string, config map[string]string, source string, worker WorkerType) (WorkdayDetailProfile, error) {

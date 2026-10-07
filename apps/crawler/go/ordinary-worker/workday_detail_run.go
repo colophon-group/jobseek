@@ -162,7 +162,7 @@ func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Cla
 		observed := observation.Snapshot()
 		hostReachable = observed.Responses > 0
 		hostFailure = observed.LastStatus == 401 || observed.LastStatus == 403 || observed.LastStatus == 429 || observed.LastStatus >= 500
-	} else if profile.Profile == "jsonld.direct-detail/v1" || profile.Profile == "dom.direct-detail/v1" || profile.Profile == "embedded.direct-detail/v1" {
+	} else if profile.Profile == "jsonld.direct-detail/v1" || profile.Profile == "jsonld.proxy-detail/v1" || profile.Profile == "dom.direct-detail/v1" || profile.Profile == "dom.proxy-detail/v1" || profile.Profile == "embedded.direct-detail/v1" {
 		fetched, failure := fetchDirectDetail(ctx, http, profile)
 		err = failure
 		hostReachable = fetched.Responses > 0
@@ -182,7 +182,7 @@ func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Cla
 		} else if err != nil && fetched.ErrorKind == "status" {
 			err = &executor.NavigationHTTPError{RequestedURL: profile.SourceURL, ResponseURL: fetched.FinalURL, Status: uint32(fetched.Status)}
 		}
-	} else if profile.Profile == "adp.public-detail/v1" || (profile.Profile == "paylocity.html-detail/v1" || profile.Profile == "paylocity.proxy-html-detail/v1") || profile.Profile == "paycom.public-detail/v1" || profile.Profile == "rippling.v1-detail/v1" || profile.Profile == "mokahr.encrypted-detail/v1" || profile.Profile == "eightfold.jsonld-api-detail/v1" || profile.Profile == "smartrecruiters.api-detail/v1" || profile.Profile == "workable.api-detail/v1" || profile.Profile == "join.nextdata-detail/v1" || profile.Profile == "oracle_hcm.api-detail/v1" || profile.Profile == "api_sniffer.http-detail/v1" {
+	} else if profile.Profile == "adp.public-detail/v1" || (profile.Profile == "paylocity.html-detail/v1" || profile.Profile == "paylocity.proxy-html-detail/v1") || profile.Profile == "paycom.public-detail/v1" || profile.Profile == "rippling.v1-detail/v1" || profile.Profile == "mokahr.encrypted-detail/v1" || (profile.Profile == "eightfold.jsonld-api-detail/v1" || profile.Profile == "eightfold.proxy-jsonld-api-detail/v1") || profile.Profile == "smartrecruiters.api-detail/v1" || profile.Profile == "workable.api-detail/v1" || profile.Profile == "join.nextdata-detail/v1" || profile.Profile == "oracle_hcm.api-detail/v1" || (profile.Profile == "api_sniffer.http-detail/v1" || profile.Profile == "api_sniffer.proxy-http-detail/v1") {
 		content, reservation, err = fetchAPIDetail(ctx, http, profile)
 		if reservation != nil && reservation.PolicyURL != nil && (len(*reservation.PolicyURL) > 8192 || !utf8.ValidString(*reservation.PolicyURL) || strings.ContainsRune(*reservation.PolicyURL, 0)) {
 			reservation.PolicyURL = nil
@@ -255,7 +255,7 @@ func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Cla
 }
 
 func fetchDirectDetail(ctx context.Context, verified *VerifiedDirectHTTP, profile queue.WorkdayDetailProfile) (jsonld.FetchResult, error) {
-	if verified == nil || verified.client == nil {
+	if verified == nil || verified.client == nil || verified.proxyRequired != queue.ProfileRequiresProxy(profile.Profile) {
 		return jsonld.FetchResult{}, queue.ErrConfiguration
 	}
 	client := *verified.client
@@ -268,7 +268,7 @@ func fetchDirectDetail(ctx context.Context, verified *VerifiedDirectHTTP, profil
 	if profile.Profile == "embedded.direct-detail/v1" {
 		return fetchEmbeddedDetail(ctx, &client, profile)
 	}
-	if profile.Profile == "dom.direct-detail/v1" {
+	if profile.Profile == "dom.direct-detail/v1" || profile.Profile == "dom.proxy-detail/v1" {
 		return dom.FetchDetailWithClient(ctx, profile.SourceURL, profile.DOMConfig, &client)
 	}
 	return jsonld.FetchDetailWithClient(ctx, jsonld.Request{URL: profile.SourceURL, Config: profile.JSONLDConfig}, &client)
