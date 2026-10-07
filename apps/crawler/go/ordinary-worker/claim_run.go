@@ -278,6 +278,10 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			}
 			return nil
 		}, renderedPage)
+	} else if profile.Provider == "manatal" {
+		discovery, fetchErr = discoverManatalInventory(ctx, http.client, profile, task.Config)
+	} else if profile.Provider == "hrmos" {
+		discovery, fetchErr = discoverHRMOSInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "adp" {
 		discovery, fetchErr = discoverADPInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "dayforce" {

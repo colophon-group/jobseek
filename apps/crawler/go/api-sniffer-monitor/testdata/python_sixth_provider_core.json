@@ -1,0 +1,385 @@
+{
+  "manatal": [
+    {
+      "row": {
+        "hash": "one",
+        "id": 12,
+        "position_name": "Engineer",
+        "description": "<p>Build</p>",
+        "location_display": "  Zürich  "
+      },
+      "expected": {
+        "url": "https://www.careers-page.com/tenant/job/one",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "metadata": {
+          "id": 12
+        }
+      }
+    },
+    {
+      "row": {
+        "hash": "two",
+        "city": " Zürich ",
+        "state": "ZH",
+        "country": "Switzerland"
+      },
+      "expected": {
+        "url": "https://www.careers-page.com/tenant/job/two",
+        "title": null,
+        "description": null,
+        "locations": [
+          "Zürich, ZH, Switzerland"
+        ],
+        "metadata": null
+      }
+    },
+    {
+      "row": {
+        "hash": "three",
+        "id": 0,
+        "city": 0,
+        "state": false,
+        "country": 12
+      },
+      "expected": {
+        "url": "https://www.careers-page.com/tenant/job/three",
+        "title": null,
+        "description": null,
+        "locations": [
+          "12"
+        ],
+        "metadata": {
+          "id": 0
+        }
+      }
+    },
+    {
+      "row": {
+        "hash": "four",
+        "location_display": " ",
+        "city": " "
+      },
+      "expected": {
+        "url": "https://www.careers-page.com/tenant/job/four",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "metadata": null
+      }
+    },
+    {
+      "row": {
+        "hash": 42,
+        "position_name": [
+          "one",
+          "two"
+        ]
+      },
+      "expected": {
+        "url": "https://www.careers-page.com/tenant/job/42",
+        "title": [
+          "one",
+          "two"
+        ],
+        "description": null,
+        "locations": null,
+        "metadata": null
+      }
+    },
+    {
+      "row": {
+        "hash": "five",
+        "id": false,
+        "position_name": 0,
+        "description": false
+      },
+      "expected": {
+        "url": "https://www.careers-page.com/tenant/job/five",
+        "title": 0,
+        "description": false,
+        "locations": null,
+        "metadata": {
+          "id": false
+        }
+      }
+    },
+    {
+      "row": {
+        "hash": ""
+      },
+      "expected": null
+    },
+    {
+      "row": {
+        "hash": null
+      },
+      "expected": null
+    },
+    {
+      "row": {
+        "id": 1
+      },
+      "expected": null
+    }
+  ],
+  "hrmos": [
+    {
+      "body": "<div id=\"jsi-joblist\">全 2 件中 2 件</div><a href=\"/pages/tenant/jobs/A_1?source=a\">one</a><a href=\"https://hrmos.co/pages/tenant/jobs/B-2/#x\">two</a>",
+      "expected": {
+        "empty": false,
+        "urls": [
+          "https://hrmos.co/pages/tenant/jobs/A_1",
+          "https://hrmos.co/pages/tenant/jobs/B-2"
+        ],
+        "total": 2,
+        "displayed": 2,
+        "current": 0,
+        "linked_max": 1
+      }
+    },
+    {
+      "body": "<div id=\"jsi-joblist\">全 1,200 件中 100 件</div><span class=\"current\">2</span><a href=\"?page=12\">last</a><a href=\"/pages/tenant/jobs/One\">one</a>",
+      "expected": {
+        "empty": false,
+        "urls": [
+          "https://hrmos.co/pages/tenant/jobs/One"
+        ],
+        "total": 1200,
+        "displayed": 100,
+        "current": 2,
+        "linked_max": 12
+      }
+    },
+    {
+      "body": "<div id=\"jsi-joblist\">全 1 件中 1 件</div><a href=\"/pages/TENANT/jobs/One\">one</a><a href=\"/pages/other/jobs/Two\">foreign</a><a href=\"/pages/tenant/jobs/One?q=2\">duplicate</a>",
+      "expected": {
+        "empty": false,
+        "urls": [
+          "https://hrmos.co/pages/tenant/jobs/One"
+        ],
+        "total": 1,
+        "displayed": 1,
+        "current": 0,
+        "linked_max": 1
+      }
+    },
+    {
+      "body": "<div id=\"jsi-joblist\">全 0 件中 0 件</div>",
+      "expected": {
+        "empty": false,
+        "urls": [],
+        "total": 0,
+        "displayed": 0,
+        "current": 0,
+        "linked_max": 1
+      }
+    },
+    {
+      "body": "<div class=\"sg-unavailable-notifier other\">none</div>",
+      "expected": {
+        "empty": true,
+        "urls": []
+      }
+    },
+    {
+      "body": "<div id=\"jsi-joblist\">全 0 件中 0 件</div><div class=\"sg-unavailable-notifier\">none</div>",
+      "expected": {
+        "empty": false,
+        "urls": [],
+        "total": 0,
+        "displayed": 0,
+        "current": 0,
+        "linked_max": 1
+      }
+    },
+    {
+      "body": "<div id=\"jsi-joblist\">missing count</div>",
+      "expected": {
+        "error": true
+      }
+    }
+  ],
+  "inventories": [
+    {
+      "provider": "manatal",
+      "scenario": "complete",
+      "pages": {
+        "https://www.careers-page.com/api/v1.0/c/tenant/jobs/?page_size=50&page=1&ordering=-is_pinned_in_career_page%2C-last_published_at": "{\"count\": 2, \"results\": [{\"hash\": \"one\", \"position_name\": \"one\"}], \"next\": true}",
+        "https://www.careers-page.com/api/v1.0/c/tenant/jobs/?page_size=50&page=2&ordering=-is_pinned_in_career_page%2C-last_published_at": "{\"count\": 2, \"results\": [{\"hash\": \"two\", \"position_name\": \"two\"}], \"next\": false}"
+      },
+      "requests": [
+        "https://www.careers-page.com/api/v1.0/c/tenant/jobs/?page_size=50&page=1&ordering=-is_pinned_in_career_page%2C-last_published_at",
+        "https://www.careers-page.com/api/v1.0/c/tenant/jobs/?page_size=50&page=2&ordering=-is_pinned_in_career_page%2C-last_published_at"
+      ],
+      "expected": {
+        "error": false,
+        "truncated": false,
+        "urls": [
+          "https://www.careers-page.com/tenant/job/one",
+          "https://www.careers-page.com/tenant/job/two"
+        ]
+      }
+    },
+    {
+      "provider": "manatal",
+      "scenario": "changed_count",
+      "pages": {
+        "https://www.careers-page.com/api/v1.0/c/tenant/jobs/?page_size=50&page=1&ordering=-is_pinned_in_career_page%2C-last_published_at": "{\"count\": 2, \"results\": [{\"hash\": \"one\", \"position_name\": \"one\"}], \"next\": true}",
+        "https://www.careers-page.com/api/v1.0/c/tenant/jobs/?page_size=50&page=2&ordering=-is_pinned_in_career_page%2C-last_published_at": "{\"count\": 3, \"results\": [{\"hash\": \"two\", \"position_name\": \"two\"}], \"next\": false}"
+      },
+      "requests": [
+        "https://www.careers-page.com/api/v1.0/c/tenant/jobs/?page_size=50&page=1&ordering=-is_pinned_in_career_page%2C-last_published_at",
+        "https://www.careers-page.com/api/v1.0/c/tenant/jobs/?page_size=50&page=2&ordering=-is_pinned_in_career_page%2C-last_published_at"
+      ],
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "provider": "manatal",
+      "scenario": "duplicate",
+      "pages": {
+        "https://www.careers-page.com/api/v1.0/c/tenant/jobs/?page_size=50&page=1&ordering=-is_pinned_in_career_page%2C-last_published_at": "{\"count\": 2, \"results\": [{\"hash\": \"one\", \"position_name\": \"one\"}], \"next\": true}",
+        "https://www.careers-page.com/api/v1.0/c/tenant/jobs/?page_size=50&page=2&ordering=-is_pinned_in_career_page%2C-last_published_at": "{\"count\": 2, \"results\": [{\"hash\": \"one\", \"position_name\": \"one\"}], \"next\": false}"
+      },
+      "requests": [
+        "https://www.careers-page.com/api/v1.0/c/tenant/jobs/?page_size=50&page=1&ordering=-is_pinned_in_career_page%2C-last_published_at",
+        "https://www.careers-page.com/api/v1.0/c/tenant/jobs/?page_size=50&page=2&ordering=-is_pinned_in_career_page%2C-last_published_at"
+      ],
+      "expected": {
+        "error": false,
+        "truncated": true,
+        "urls": [
+          "https://www.careers-page.com/tenant/job/one"
+        ]
+      }
+    },
+    {
+      "provider": "manatal",
+      "scenario": "incomplete",
+      "pages": {
+        "https://www.careers-page.com/api/v1.0/c/tenant/jobs/?page_size=50&page=1&ordering=-is_pinned_in_career_page%2C-last_published_at": "{\"count\": 2, \"results\": [{\"hash\": \"one\", \"position_name\": \"one\"}], \"next\": true}",
+        "https://www.careers-page.com/api/v1.0/c/tenant/jobs/?page_size=50&page=2&ordering=-is_pinned_in_career_page%2C-last_published_at": "{\"count\": 2, \"results\": [], \"next\": false}"
+      },
+      "requests": [
+        "https://www.careers-page.com/api/v1.0/c/tenant/jobs/?page_size=50&page=1&ordering=-is_pinned_in_career_page%2C-last_published_at",
+        "https://www.careers-page.com/api/v1.0/c/tenant/jobs/?page_size=50&page=2&ordering=-is_pinned_in_career_page%2C-last_published_at"
+      ],
+      "expected": {
+        "error": false,
+        "truncated": true,
+        "urls": [
+          "https://www.careers-page.com/tenant/job/one"
+        ]
+      }
+    },
+    {
+      "provider": "manatal",
+      "scenario": "empty",
+      "pages": {
+        "https://www.careers-page.com/api/v1.0/c/tenant/jobs/?page_size=50&page=1&ordering=-is_pinned_in_career_page%2C-last_published_at": "{\"count\": 0, \"results\": [], \"next\": false}"
+      },
+      "requests": [
+        "https://www.careers-page.com/api/v1.0/c/tenant/jobs/?page_size=50&page=1&ordering=-is_pinned_in_career_page%2C-last_published_at"
+      ],
+      "expected": {
+        "error": false,
+        "truncated": false,
+        "urls": []
+      }
+    },
+    {
+      "provider": "hrmos",
+      "scenario": "complete",
+      "pages": {
+        "https://hrmos.co/pages/tenant/jobs": "<div id=\"jsi-joblist\">全 2 件中 1 件</div><span class=\"current\">1</span><a href=\"/pages/tenant/jobs/one\">one</a>",
+        "https://hrmos.co/pages/tenant/jobs?page=2": "<div id=\"jsi-joblist\">全 2 件中 1 件</div><span class=\"current\">2</span><a href=\"/pages/tenant/jobs/two\">one</a>"
+      },
+      "requests": [
+        "https://hrmos.co/pages/tenant/jobs",
+        "https://hrmos.co/pages/tenant/jobs?page=2"
+      ],
+      "expected": {
+        "error": false,
+        "truncated": false,
+        "urls": [
+          "https://hrmos.co/pages/tenant/jobs/one",
+          "https://hrmos.co/pages/tenant/jobs/two"
+        ]
+      }
+    },
+    {
+      "provider": "hrmos",
+      "scenario": "changed_count",
+      "pages": {
+        "https://hrmos.co/pages/tenant/jobs": "<div id=\"jsi-joblist\">全 2 件中 1 件</div><span class=\"current\">1</span><a href=\"/pages/tenant/jobs/one\">one</a>",
+        "https://hrmos.co/pages/tenant/jobs?page=2": "<div id=\"jsi-joblist\">全 3 件中 1 件</div><span class=\"current\">2</span><a href=\"/pages/tenant/jobs/two\">one</a>"
+      },
+      "requests": [
+        "https://hrmos.co/pages/tenant/jobs",
+        "https://hrmos.co/pages/tenant/jobs?page=2"
+      ],
+      "expected": {
+        "error": false,
+        "truncated": true,
+        "urls": [
+          "https://hrmos.co/pages/tenant/jobs/one",
+          "https://hrmos.co/pages/tenant/jobs/two"
+        ]
+      }
+    },
+    {
+      "provider": "hrmos",
+      "scenario": "duplicate",
+      "pages": {
+        "https://hrmos.co/pages/tenant/jobs": "<div id=\"jsi-joblist\">全 2 件中 1 件</div><span class=\"current\">1</span><a href=\"/pages/tenant/jobs/one\">one</a>",
+        "https://hrmos.co/pages/tenant/jobs?page=2": "<div id=\"jsi-joblist\">全 2 件中 1 件</div><span class=\"current\">2</span><a href=\"/pages/tenant/jobs/one\">one</a>"
+      },
+      "requests": [
+        "https://hrmos.co/pages/tenant/jobs",
+        "https://hrmos.co/pages/tenant/jobs?page=2"
+      ],
+      "expected": {
+        "error": false,
+        "truncated": true,
+        "urls": [
+          "https://hrmos.co/pages/tenant/jobs/one"
+        ]
+      }
+    },
+    {
+      "provider": "hrmos",
+      "scenario": "incomplete",
+      "pages": {
+        "https://hrmos.co/pages/tenant/jobs": "<div id=\"jsi-joblist\">全 2 件中 1 件</div><span class=\"current\">1</span><a href=\"/pages/tenant/jobs/one\">one</a>",
+        "https://hrmos.co/pages/tenant/jobs?page=2": "<div id=\"jsi-joblist\">全 2 件中 1 件</div><span class=\"current\">2</span>"
+      },
+      "requests": [
+        "https://hrmos.co/pages/tenant/jobs",
+        "https://hrmos.co/pages/tenant/jobs?page=2"
+      ],
+      "expected": {
+        "error": true
+      }
+    },
+    {
+      "provider": "hrmos",
+      "scenario": "empty",
+      "pages": {
+        "https://hrmos.co/pages/tenant/jobs": "<div class=\"sg-unavailable-notifier\">none</div>"
+      },
+      "requests": [
+        "https://hrmos.co/pages/tenant/jobs"
+      ],
+      "expected": {
+        "error": false,
+        "truncated": false,
+        "urls": []
+      }
+    }
+  ]
+}
