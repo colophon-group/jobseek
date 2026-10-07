@@ -12,7 +12,7 @@ import (
 )
 
 func TestRealFirstGroupedRSSProviderColdRetirement(t *testing.T) {
-	for _, preset := range []string{"governmentjobs", "zoho_recruit", "hr_manager", "dom_rows", "dom_proxy_rows", "dom_rendered_rows"} {
+	for _, preset := range []string{"governmentjobs", "zoho_recruit", "hr_manager", "dom_rows", "dom_proxy_rows", "dom_rendered_rows", "generic_policy", "successfactors_policy", "teamtailor_policy", "dom_policy_rows", "dom_policy_urls"} {
 		provider := "rss"
 		if strings.HasPrefix(preset, "dom_") {
 			provider = "dom"
@@ -39,6 +39,24 @@ func TestRealFirstGroupedRSSProviderColdRetirement(t *testing.T) {
 				if strings.HasPrefix(preset, "dom_") {
 					boardURL = "https://example.com/fixture"
 					metadata = `{"rich_rows":{"row_selector":"article","link_selector":"a","description_selector":".description"},"scraper_type":"skip"}`
+				}
+				policy := strings.HasSuffix(preset, "_policy") || strings.HasPrefix(preset, "dom_policy_")
+				if policy {
+					boardURL = "https://example.com/fixture"
+					prefix := `"preset":"generic","feed_url":"https://example.com/feed"`
+					if preset == "successfactors_policy" {
+						prefix = `"preset":"successfactors","feed_url":"https://example.com/googlefeed.xml"`
+					}
+					if preset == "teamtailor_policy" {
+						prefix = `"preset":"teamtailor","feed_url":"https://example.com/jobs.rss"`
+					}
+					if preset == "dom_policy_rows" {
+						prefix = `"rich_rows":{"row_selector":"article","link_selector":"a"}`
+					}
+					if preset == "dom_policy_urls" {
+						prefix = `"link_selector":"a.job"`
+					}
+					metadata = `{` + prefix + `,"scraper_type":"skip","url_allowlist":"https://example\\.com/jobs/[0-9]+","job_filter":{"field":"title","include":"Engineer","exclude":"Intern","require_classification":true}}`
 				}
 				if preset == "dom_proxy_rows" {
 					metadata = strings.Replace(metadata, `{"rich_rows":`, `{"proxy":true,"rich_rows":`, 1)
@@ -92,7 +110,10 @@ func TestRealFirstGroupedRSSProviderColdRetirement(t *testing.T) {
 				}
 				if mode == "changed-token" {
 					changed := strings.ReplaceAll(metadata, "fixture", "changed")
-					if strings.HasPrefix(preset, "dom_") {
+					if policy {
+						changed = strings.ReplaceAll(metadata, "Engineer", "Designer")
+					}
+					if strings.HasPrefix(preset, "dom_") && !policy {
 						changed = strings.ReplaceAll(metadata, "article", "section")
 					}
 					if _, err := f.observer.Exec(ctx, "UPDATE job_board SET metadata=$2::jsonb WHERE id=$1::uuid", f.task.ID, changed); err != nil {

@@ -1,0 +1,4865 @@
+{
+  "cases": [
+    {
+      "name": "provider-accepted",
+      "config": {
+        "url_allowlist": "https://example\\.com/jobs/\\d+"
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        }
+      ],
+      "error": false,
+      "native_refused": false,
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Locations": null,
+          "Metadata": null
+        }
+      ],
+      "security_rejected": 0
+    },
+    {
+      "name": "provider-rejected",
+      "config": {
+        "url_allowlist": "https://example\\.com/jobs/\\d+"
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/other",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        }
+      ],
+      "error": false,
+      "native_refused": false,
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Locations": null,
+          "Metadata": null
+        }
+      ],
+      "security_rejected": 1
+    },
+    {
+      "name": "provider-all-rejected",
+      "config": {
+        "url_allowlist": "https://elsewhere\\.com/.*"
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        }
+      ],
+      "error": false,
+      "native_refused": false,
+      "expected": [],
+      "security_rejected": 1
+    },
+    {
+      "name": "provider-fullmatch-alternative",
+      "config": {
+        "url_allowlist": "https://example\\.com/jobs/(a|ab)"
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/ab",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        }
+      ],
+      "error": false,
+      "native_refused": false,
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/ab",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Locations": null,
+          "Metadata": null
+        }
+      ],
+      "security_rejected": 0
+    },
+    {
+      "name": "provider-fullmatch-unicode",
+      "config": {
+        "url_allowlist": "https://example\\.com/jobs/\\w+"
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/工程師",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        }
+      ],
+      "error": false,
+      "native_refused": false,
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/工程師",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Locations": null,
+          "Metadata": null
+        }
+      ],
+      "security_rejected": 0
+    },
+    {
+      "name": "allowlist-before-transform",
+      "config": {
+        "url_allowlist": "https://example\\.com/jobs/\\d+",
+        "url_transform": {
+          "find": "example.com",
+          "replace": "careers.example.com"
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        }
+      ],
+      "error": false,
+      "native_refused": false,
+      "expected": [
+        {
+          "URL": "https://careers.example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Locations": null,
+          "Metadata": null
+        }
+      ],
+      "security_rejected": 0
+    },
+    {
+      "name": "url-filter-before-boundary",
+      "config": {
+        "url_filter": "123",
+        "url_allowlist": "https://example\\.com/jobs/123"
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/outside",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        }
+      ],
+      "error": false,
+      "native_refused": false,
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Locations": null,
+          "Metadata": null
+        }
+      ],
+      "security_rejected": 0
+    },
+    {
+      "name": "job-filter-before-boundary",
+      "config": {
+        "job_filter": {
+          "field": "title",
+          "exclude": "Intern"
+        },
+        "url_allowlist": "https://example\\.com/jobs/123"
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/outside",
+          "Title": "Intern",
+          "Description": "<p>Build.</p>"
+        }
+      ],
+      "error": false,
+      "native_refused": false,
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Locations": null,
+          "Metadata": null
+        }
+      ],
+      "security_rejected": 0
+    },
+    {
+      "name": "title-filter",
+      "config": {
+        "job_filter": {
+          "field": "title",
+          "include": "Engineer"
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/2",
+          "Title": "Designer",
+          "Description": "<p>Build.</p>"
+        }
+      ],
+      "error": false,
+      "native_refused": false,
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Locations": null,
+          "Metadata": null
+        }
+      ],
+      "security_rejected": 0
+    },
+    {
+      "name": "description-filter",
+      "config": {
+        "job_filter": {
+          "field": "description",
+          "include": "Build"
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        }
+      ],
+      "error": false,
+      "native_refused": false,
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Locations": null,
+          "Metadata": null
+        }
+      ],
+      "security_rejected": 0
+    },
+    {
+      "name": "location-filter",
+      "config": {
+        "job_filter": {
+          "field": "locations",
+          "include": "Zurich\nTokyo"
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Locations": [
+            "Zurich",
+            "Tokyo"
+          ]
+        }
+      ],
+      "error": false,
+      "native_refused": false,
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Locations": [
+            "Zurich",
+            "Tokyo"
+          ],
+          "Metadata": null
+        }
+      ],
+      "security_rejected": 0
+    },
+    {
+      "name": "default-text-filter",
+      "config": {
+        "job_filter": "Platform"
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Metadata": {
+            "team": "Platform"
+          }
+        }
+      ],
+      "error": false,
+      "native_refused": false,
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Locations": null,
+          "Metadata": {
+            "team": "Platform"
+          }
+        }
+      ],
+      "security_rejected": 0
+    },
+    {
+      "name": "metadata-spaces-unicode",
+      "config": {
+        "job_filter": {
+          "field": "metadata",
+          "include": "\"a\": \"東京\", \"z\": \"&<>\""
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Metadata": {
+            "z": "&<>",
+            "a": "東京"
+          }
+        }
+      ],
+      "error": false,
+      "native_refused": false,
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Locations": null,
+          "Metadata": {
+            "z": "&<>",
+            "a": "東京"
+          }
+        }
+      ],
+      "security_rejected": 0
+    },
+    {
+      "name": "metadata-float-kind",
+      "config": {
+        "job_filter": {
+          "field": "metadata",
+          "include": "\"a\": 1\\.0, \"b\": 1e\\+20, \"c\": 1e-07, \"d\": 2"
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Metadata": {
+            "a": 1.0,
+            "b": 1e+20,
+            "c": 1e-07,
+            "d": 2
+          }
+        }
+      ],
+      "error": false,
+      "native_refused": false,
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Locations": null,
+          "Metadata": {
+            "a": 1.0,
+            "b": 1e+20,
+            "c": 1e-07,
+            "d": 2
+          }
+        }
+      ],
+      "security_rejected": 0
+    },
+    {
+      "name": "metadata-line-separator",
+      "config": {
+        "job_filter": {
+          "field": "metadata",
+          "include": "東京 世界"
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Metadata": {
+            "a": "東京 世界"
+          }
+        }
+      ],
+      "error": false,
+      "native_refused": false,
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Locations": null,
+          "Metadata": {
+            "a": "東京 世界"
+          }
+        }
+      ],
+      "security_rejected": 0
+    },
+    {
+      "name": "metadata-key-string",
+      "config": {
+        "job_filter": {
+          "field": "metadata.team",
+          "include": "Platform"
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Metadata": {
+            "team": "Platform"
+          }
+        }
+      ],
+      "error": false,
+      "native_refused": false,
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Locations": null,
+          "Metadata": {
+            "team": "Platform"
+          }
+        }
+      ],
+      "security_rejected": 0
+    },
+    {
+      "name": "metadata-key-array",
+      "config": {
+        "job_filter": {
+          "field": "metadata.places",
+          "include": "\\[\"Zurich\", \"東京\"\\]"
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Metadata": {
+            "places": [
+              "Zurich",
+              "東京"
+            ]
+          }
+        }
+      ],
+      "error": false,
+      "native_refused": false,
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Locations": null,
+          "Metadata": {
+            "places": [
+              "Zurich",
+              "東京"
+            ]
+          }
+        }
+      ],
+      "security_rejected": 0
+    },
+    {
+      "name": "metadata-dotted-literal-key",
+      "config": {
+        "job_filter": {
+          "field": "metadata.x.y",
+          "include": "keep"
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Metadata": {
+            "x.y": "keep"
+          }
+        }
+      ],
+      "error": false,
+      "native_refused": false,
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Locations": null,
+          "Metadata": {
+            "x.y": "keep"
+          }
+        }
+      ],
+      "security_rejected": 0
+    },
+    {
+      "name": "metadata-missing-key",
+      "config": {
+        "job_filter": {
+          "field": "metadata.absent",
+          "include": "keep"
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        }
+      ],
+      "error": false,
+      "native_refused": false,
+      "expected": [],
+      "security_rejected": 0
+    },
+    {
+      "name": "raw-duplicate-last-content",
+      "config": {
+        "job_filter": {
+          "field": "title",
+          "include": "Engineer"
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Designer",
+          "Description": "<p>Build.</p>"
+        }
+      ],
+      "error": false,
+      "native_refused": false,
+      "expected": [],
+      "security_rejected": 0
+    },
+    {
+      "name": "required-classification",
+      "config": {
+        "job_filter": {
+          "field": "title",
+          "include": "Engineer",
+          "exclude": "Intern",
+          "require_classification": true
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/2",
+          "Title": "Intern",
+          "Description": "<p>Build.</p>"
+        }
+      ],
+      "error": false,
+      "native_refused": false,
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Locations": null,
+          "Metadata": null
+        }
+      ],
+      "security_rejected": 0
+    },
+    {
+      "name": "both-classifications-refused",
+      "config": {
+        "job_filter": {
+          "include": "Build",
+          "exclude": "Build",
+          "require_classification": true
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        }
+      ],
+      "error": true,
+      "native_refused": false,
+      "expected": [],
+      "security_rejected": 0
+    },
+    {
+      "name": "neither-classification-refused",
+      "config": {
+        "job_filter": {
+          "include": "Keep",
+          "exclude": "Reject",
+          "require_classification": true
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        }
+      ],
+      "error": true,
+      "native_refused": false,
+      "expected": [],
+      "security_rejected": 0
+    },
+    {
+      "name": "hybrid-url-only-preserved",
+      "config": {
+        "job_filter": {
+          "field": "title",
+          "include": "Engineer",
+          "exclude": "Intern",
+          "require_classification": true
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/unclassified",
+          "URLOnly": true
+        }
+      ],
+      "error": false,
+      "native_refused": false,
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>",
+          "Locations": null,
+          "Metadata": null
+        },
+        {
+          "URL": "https://example.com/jobs/unclassified",
+          "URLOnly": true
+        }
+      ],
+      "security_rejected": 0
+    },
+    {
+      "name": "empty-allowlist-not-owned",
+      "config": {
+        "url_allowlist": ""
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        }
+      ],
+      "error": false,
+      "native_refused": true,
+      "expected": [],
+      "security_rejected": 1
+    },
+    {
+      "name": "invalid-allowlist-not-owned",
+      "config": {
+        "url_allowlist": "["
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        }
+      ],
+      "error": false,
+      "native_refused": true,
+      "expected": [],
+      "security_rejected": 1
+    }
+  ],
+  "stream_cases": [
+    {
+      "name": "accepted",
+      "config": {
+        "preset": "generic",
+        "feed_url": "https://example.com/feed",
+        "scraper_type": "skip",
+        "url_allowlist": "https://example\\.com/jobs/\\d+",
+        "job_filter": {
+          "field": "title",
+          "include": "Engineer",
+          "exclude": "Intern",
+          "require_classification": true
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/0",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/1",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/2",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/3",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/4",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/5",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/6",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/7",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/8",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/9",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/10",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/11",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/12",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/13",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/14",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/15",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/16",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/17",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/18",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/19",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/20",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/21",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/22",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/23",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/24",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/25",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/26",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/27",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/28",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/29",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/30",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/31",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/32",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/33",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/34",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/35",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/36",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/37",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/38",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/39",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/40",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/41",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/42",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/43",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/44",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/45",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/46",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/47",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/48",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/49",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/50",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/51",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/52",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/53",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/54",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/55",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/56",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/57",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/58",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/59",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/60",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/61",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/62",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/63",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/64",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/65",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/66",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/67",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/68",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/69",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/70",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/71",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/72",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/73",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/74",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/75",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/76",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/77",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/78",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/79",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/80",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/81",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/82",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/83",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/84",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/85",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/86",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/87",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/88",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/89",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/90",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/91",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/92",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/93",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/94",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/95",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/96",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/97",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/98",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/99",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/100",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/101",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/102",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/103",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/104",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/105",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/106",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/107",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/108",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/109",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/110",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/111",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/112",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/113",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/114",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/115",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/116",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/117",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/118",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/119",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/120",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/121",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/122",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/124",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/125",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/126",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/127",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/128",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/129",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/130",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/131",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/132",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/133",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/134",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/135",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/136",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/137",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/138",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/139",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/140",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/141",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/142",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/143",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/144",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/145",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/146",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/147",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/148",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/149",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/150",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/151",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/152",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/153",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/154",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/155",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/156",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/157",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/158",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/159",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/160",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/161",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/162",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/163",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/164",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/165",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/166",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/167",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/168",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/169",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/170",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/171",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/172",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/173",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/174",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/175",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/176",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/177",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/178",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/179",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/180",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/181",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/182",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/183",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/184",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/185",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/186",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/187",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/188",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/189",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/190",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/191",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/192",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/193",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/194",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/195",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/196",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/197",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/198",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/199",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/200",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        }
+      ],
+      "batch_sizes": [
+        200,
+        1
+      ],
+      "security_rejected": 0,
+      "error": false
+    },
+    {
+      "name": "late-classification",
+      "config": {
+        "preset": "generic",
+        "feed_url": "https://example.com/feed",
+        "scraper_type": "skip",
+        "url_allowlist": "https://example\\.com/jobs/\\d+",
+        "job_filter": {
+          "field": "title",
+          "include": "Engineer",
+          "exclude": "Intern",
+          "require_classification": true
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/0",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/1",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/2",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/3",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/4",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/5",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/6",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/7",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/8",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/9",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/10",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/11",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/12",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/13",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/14",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/15",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/16",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/17",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/18",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/19",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/20",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/21",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/22",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/23",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/24",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/25",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/26",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/27",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/28",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/29",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/30",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/31",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/32",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/33",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/34",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/35",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/36",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/37",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/38",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/39",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/40",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/41",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/42",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/43",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/44",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/45",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/46",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/47",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/48",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/49",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/50",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/51",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/52",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/53",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/54",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/55",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/56",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/57",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/58",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/59",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/60",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/61",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/62",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/63",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/64",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/65",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/66",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/67",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/68",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/69",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/70",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/71",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/72",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/73",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/74",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/75",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/76",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/77",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/78",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/79",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/80",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/81",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/82",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/83",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/84",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/85",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/86",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/87",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/88",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/89",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/90",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/91",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/92",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/93",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/94",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/95",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/96",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/97",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/98",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/99",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/100",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/101",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/102",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/103",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/104",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/105",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/106",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/107",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/108",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/109",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/110",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/111",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/112",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/113",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/114",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/115",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/116",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/117",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/118",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/119",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/120",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/121",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/122",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/124",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/125",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/126",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/127",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/128",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/129",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/130",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/131",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/132",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/133",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/134",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/135",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/136",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/137",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/138",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/139",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/140",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/141",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/142",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/143",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/144",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/145",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/146",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/147",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/148",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/149",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/150",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/151",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/152",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/153",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/154",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/155",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/156",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/157",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/158",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/159",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/160",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/161",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/162",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/163",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/164",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/165",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/166",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/167",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/168",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/169",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/170",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/171",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/172",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/173",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/174",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/175",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/176",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/177",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/178",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/179",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/180",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/181",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/182",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/183",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/184",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/185",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/186",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/187",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/188",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/189",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/190",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/191",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/192",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/193",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/194",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/195",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/196",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/197",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/198",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/199",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/200",
+          "Title": "Other",
+          "Description": "<p>Build.</p>"
+        }
+      ],
+      "batch_sizes": [
+        200
+      ],
+      "security_rejected": 0,
+      "error": true
+    },
+    {
+      "name": "boundary-tail",
+      "config": {
+        "preset": "generic",
+        "feed_url": "https://example.com/feed",
+        "scraper_type": "skip",
+        "url_allowlist": "https://example\\.com/jobs/\\d+",
+        "job_filter": {
+          "field": "title",
+          "include": "Engineer",
+          "exclude": "Intern",
+          "require_classification": true
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/0",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/1",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/2",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/3",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/4",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/5",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/6",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/7",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/8",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/9",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/10",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/11",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/12",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/13",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/14",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/15",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/16",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/17",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/18",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/19",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/20",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/21",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/22",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/23",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/24",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/25",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/26",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/27",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/28",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/29",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/30",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/31",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/32",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/33",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/34",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/35",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/36",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/37",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/38",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/39",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/40",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/41",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/42",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/43",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/44",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/45",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/46",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/47",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/48",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/49",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/50",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/51",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/52",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/53",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/54",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/55",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/56",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/57",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/58",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/59",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/60",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/61",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/62",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/63",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/64",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/65",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/66",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/67",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/68",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/69",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/70",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/71",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/72",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/73",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/74",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/75",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/76",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/77",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/78",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/79",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/80",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/81",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/82",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/83",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/84",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/85",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/86",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/87",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/88",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/89",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/90",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/91",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/92",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/93",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/94",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/95",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/96",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/97",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/98",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/99",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/100",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/101",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/102",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/103",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/104",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/105",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/106",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/107",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/108",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/109",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/110",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/111",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/112",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/113",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/114",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/115",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/116",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/117",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/118",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/119",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/120",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/121",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/122",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/124",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/125",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/126",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/127",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/128",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/129",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/130",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/131",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/132",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/133",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/134",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/135",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/136",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/137",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/138",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/139",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/140",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/141",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/142",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/143",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/144",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/145",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/146",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/147",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/148",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/149",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/150",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/151",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/152",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/153",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/154",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/155",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/156",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/157",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/158",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/159",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/160",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/161",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/162",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/163",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/164",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/165",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/166",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/167",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/168",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/169",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/170",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/171",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/172",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/173",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/174",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/175",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/176",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/177",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/178",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/179",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/180",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/181",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/182",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/183",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/184",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/185",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/186",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/187",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/188",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/189",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/190",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/191",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/192",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/193",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/194",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/195",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/196",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/197",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/198",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/199",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://foreign.example/jobs/200",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        }
+      ],
+      "batch_sizes": [
+        200,
+        0
+      ],
+      "security_rejected": 1,
+      "error": false
+    },
+    {
+      "name": "boundary-first-batch",
+      "config": {
+        "preset": "generic",
+        "feed_url": "https://example.com/feed",
+        "scraper_type": "skip",
+        "url_allowlist": "https://example\\.com/jobs/\\d+",
+        "job_filter": {
+          "field": "title",
+          "include": "Engineer",
+          "exclude": "Intern",
+          "require_classification": true
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/jobs/0",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/1",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/2",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/3",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/4",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/5",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/6",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://foreign.example/jobs/200",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/8",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/9",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/10",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/11",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/12",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/13",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/14",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/15",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/16",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/17",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/18",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/19",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/20",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/21",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/22",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/23",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/24",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/25",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/26",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/27",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/28",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/29",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/30",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/31",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/32",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/33",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/34",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/35",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/36",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/37",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/38",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/39",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/40",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/41",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/42",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/43",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/44",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/45",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/46",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/47",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/48",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/49",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/50",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/51",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/52",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/53",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/54",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/55",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/56",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/57",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/58",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/59",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/60",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/61",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/62",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/63",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/64",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/65",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/66",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/67",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/68",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/69",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/70",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/71",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/72",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/73",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/74",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/75",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/76",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/77",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/78",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/79",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/80",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/81",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/82",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/83",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/84",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/85",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/86",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/87",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/88",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/89",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/90",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/91",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/92",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/93",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/94",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/95",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/96",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/97",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/98",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/99",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/100",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/101",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/102",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/103",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/104",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/105",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/106",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/107",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/108",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/109",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/110",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/111",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/112",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/113",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/114",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/115",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/116",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/117",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/118",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/119",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/120",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/121",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/122",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/124",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/125",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/126",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/127",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/128",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/129",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/130",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/131",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/132",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/133",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/134",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/135",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/136",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/137",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/138",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/139",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/140",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/141",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/142",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/143",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/144",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/145",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/146",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/147",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/148",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/149",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/150",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/151",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/152",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/153",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/154",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/155",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/156",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/157",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/158",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/159",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/160",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/161",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/162",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/163",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/164",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/165",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/166",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/167",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/168",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/169",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/170",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/171",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/172",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/173",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/174",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/175",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/176",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/177",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/178",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/179",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/180",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/181",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/182",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/183",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/184",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/185",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/186",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/187",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/188",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/189",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/190",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/191",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/192",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/193",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/194",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/195",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/196",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/197",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/198",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/199",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        },
+        {
+          "URL": "https://example.com/jobs/200",
+          "Title": "Engineer",
+          "Description": "<p>Build.</p>"
+        }
+      ],
+      "batch_sizes": [
+        199,
+        1
+      ],
+      "security_rejected": 1,
+      "error": false
+    }
+  ]
+}

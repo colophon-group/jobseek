@@ -5,6 +5,34 @@
 The full migration goal is **active and incomplete**. Ship multiple provider
 and variant types per release, sharing reference verification, CI and cutover.
 
+### Grouped shared policy candidate960 — October7
+
+Candidate960 ports shared rich-job filters and provider URL allowlists across
+Generic RSS, SuccessFactors RSS, Teamtailor RSS, DOM rich rows and DOM URL-only
+monitors. Twenty-six actual Python policy references (including two malformed
+allowlists refused before ownership), four actual Python RSS stream references,
+26 PostgreSQL/Redis cases and33 cold-retirement cases pass. The native path
+preserves raw duplicate ordering, filter order, Python metadata text, allowlist
+fullmatch, accepted writes on boundary rejection, and the original200-job RSS
+batch prefix when a later classification fails. Failed cycles cannot finalize
+empty/missing/gone processing; URL-only jobs retain independent detail work.
+
+An offline comparison of21 policy-bearing boards in the unchanged source957
+canonical snapshot admits eight configurations across these five families;
+parent959 admitted none. Thirteen still require other options. This snapshot
+proves eligibility only. Full worker/queue suites, immutable-image CI, fresh
+canonical admission and actual production ownership remain required. See the
+[portable candidate evidence](evidence/go-native-shared-feed-policy-candidate-2026-10-07.json).
+
+PR #10347 is published at `42feb0eb32f8ab29d698d3169e4e6b8e58bad4c1` for the
+completed DOM rich-row and HR Manager batch. Its full local worker/queue suites
+passed in499.379/282.912 seconds. Original CI is running; the amd64 Lightpanda
+pilot failed on a public Go module-proxy download and only that failed job was
+rerun. PR #10346 is merged at `82c73de3ea432634c5e365c5f57dfc02873a4bf6`;
+its original immutable release build passed and full deployment37564684440 is
+running. Source958 production success and ownership are not yet claimed.
+Lightpanda remains pinned to the latest verified stable release1.0.0.
+
 ### Delivery update — 03:04 UTC October7
 
 [PR #10346](https://github.com/colophon-group/jobseek/pull/10346) merged as

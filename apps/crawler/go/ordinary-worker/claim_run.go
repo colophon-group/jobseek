@@ -472,6 +472,29 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		}
 		return finishSuccess(terminal)
 	}
+	if profile.Provider == "rss" || profile.Provider == "dom" {
+		rules, err := queue.FeedMonitorURLRules(task.Config)
+		if err != nil {
+			return failure("configuration", err)
+		}
+		if rules.RequiresRawInventory() {
+			processed, summary, rejected, err := writeFeedPolicyInventory(ctx, cycle, preparer, task.Config, discovery)
+			if processed != nil {
+				result.Batches = processed.Batches
+			}
+			if err != nil {
+				return failure("processing", err)
+			}
+			if rejected > 0 {
+				return failure("provider_boundary", queue.ErrProviderBoundary)
+			}
+			terminal, err := cycle.FinishSuccess(ctx, summary)
+			if err != nil {
+				return failure("lifecycle", err)
+			}
+			return finishSuccess(terminal)
+		}
+	}
 	if profile.Provider == "rss" || profile.Provider == "sitemap" || profile.Provider == "eightfold" || profile.Provider == "dom" {
 		discovery.Jobs, err = applyFeedMonitorURLs(ctx, task.Config, discovery.Jobs)
 		if err != nil {

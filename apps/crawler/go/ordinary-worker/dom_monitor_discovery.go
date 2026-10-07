@@ -212,7 +212,7 @@ func parseDOMInventory(ctx context.Context, result RichDiscovery, profile queue.
 		ordered = ordered[:50_000]
 	}
 	for _, raw := range ordered {
-		result.Jobs = append(result.Jobs, RichMonitorJob{URL: raw})
+		result.Jobs = append(result.Jobs, RichMonitorJob{URL: raw, URLOnly: true})
 	}
 	return result, nil
 }
@@ -252,7 +252,7 @@ func discoverDOMInventory(ctx context.Context, client *http.Client, profile queu
 		added := 0
 		for _, job := range in {
 			identity, keep, err := job.URL, true, error(nil)
-			if c.RichRows == nil {
+			if c.RichRows == nil && !rules.RequiresRawInventory() {
 				identity, keep, err = rules.Apply(job.URL)
 			}
 			if err != nil {
