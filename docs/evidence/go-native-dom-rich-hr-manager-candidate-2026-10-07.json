@@ -15,7 +15,7 @@
     "full_dom_module_race": "passed",
     "focused_worker_race": "passed",
     "focused_queue_race": "passed",
-    "full_worker_queue_suites": "worker passed; full queue re-run pending after test fixture fix",
+    "full_worker_queue_suites": "passed; worker runtime unchanged across queue-test fixture fix and exact-tree rebase",
     "immutable_image_ci": "pending",
     "full_worker_race": {
       "state": "passed",
@@ -34,6 +34,17 @@
       "index_assertion_retained": "idx_jp_board_id_cursor directly without sort",
       "repetitions_passed": 5,
       "seconds": 2.493
+    },
+    "full_queue_race": {
+      "state": "passed",
+      "seconds": 282.912,
+      "head": "cab5d4f81cbc2b3e4d7846759944fc5fa1195397"
+    },
+    "exact_tree_rebase": {
+      "previous_head": "cab5d4f81cbc2b3e4d7846759944fc5fa1195397",
+      "rebased_head": "240ac73ff1162d6f4f648598101fbf3d466f7633",
+      "tree": "bba73aed05e7460f7a3a8e934318b051ce340ca6",
+      "equal": true
     }
   },
   "offline_canonical_screen": {
@@ -56,5 +67,6 @@
     "latest_stable_verified": "1.0.0",
     "official_release": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
     "existing_renderer_pin_retained": true
-  }
+  },
+  "base_merged_source": "82c73de3ea432634c5e365c5f57dfc02873a4bf6"
 }

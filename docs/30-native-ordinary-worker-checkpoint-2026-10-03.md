@@ -5,6 +5,27 @@
 The full migration goal is **active and incomplete**. Ship multiple provider
 and variant types per release, sharing reference verification, CI and cutover.
 
+### Delivery update — 03:04 UTC October7
+
+[PR #10346](https://github.com/colophon-group/jobseek/pull/10346) merged as
+`82c73de3ea432634c5e365c5f57dfc02873a4bf6` after fresh exact-head/base/draft/
+operator/hold/required-check authority and cold208 readback. Its parent is the
+expected source957 revision and its tree exactly equals reviewed head0a4bc8e.
+The original [immutable deployment37564684440](https://github.com/colophon-group/jobseek/actions/runs/37564684440)
+is live; preflight passed and build/company-OG jobs are running. Production is
+not yet claimed to be source958. Retain original run identity, prove the full
+rollout and exact images, then independent cold readback and fresh B0/ordinary
+source/receipt-bound staging, activation and natural canonical/queue proof.
+
+Candidate959's full worker race suite passed in499.379 seconds; the full queue
+suite now passes in282.912 seconds with its scoped cursor assertion retained.
+The index-test fixture change affects no production runtime code. Candidate959
+is rebased onto merged958 with an identical tree to its full-suite source. Its
+shared transport/parser/persistence/cold tests and Python ownership proof are
+complete locally; publish this grouped DOM/HR Manager PR and require fresh
+immutable-image/native CI and Crawler Deploy Gate before delivery. Keep the
+production ownership cutover separate from this local candidate evidence.
+
 ### Full-suite follow-up — 02:51 UTC October7
 
 Candidate959's full worker race suite passed in499.379 seconds at
