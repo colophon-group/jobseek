@@ -77,6 +77,7 @@ type Task struct {
 	Navigation        *navigationOptions
 	Dayforce          *dayforceTask
 	Feed              *feedTask
+	APIReplay         *apiReplayTask
 	ResponseBodyLimit uint64
 }
 
@@ -89,14 +90,15 @@ type TaskEvaluation struct {
 
 // Result contains only data from the top-level document.
 type Result struct {
-	feedSessionSettled bool
-	ResourcePolicy     *runtimev1.ResourcePolicySignals `json:"-"`
-	Status             int                              `json:"status"`
-	FinalURL           string                           `json:"final_url"`
-	HTML               string                           `json:"html"`
-	HTMLPresent        bool                             `json:"-"`
-	ResponseBody       []byte                           `json:"-"`
-	Expression         json.RawMessage                  `json:"expression"`
+	feedSessionSettled      bool
+	apiReplaySessionSettled bool
+	ResourcePolicy          *runtimev1.ResourcePolicySignals `json:"-"`
+	Status                  int                              `json:"status"`
+	FinalURL                string                           `json:"final_url"`
+	HTML                    string                           `json:"html"`
+	HTMLPresent             bool                             `json:"-"`
+	ResponseBody            []byte                           `json:"-"`
+	Expression              json.RawMessage                  `json:"expression"`
 }
 
 type managedProcess interface {
@@ -260,6 +262,9 @@ func executeTask(ctx context.Context, deps dependencies, process managedProcess,
 }
 
 func validateTask(task Task) error {
+	if task.APIReplay != nil && (task.APIReplay.boardURL != task.URL || task.APIReplay.converse == nil || task.Dayforce != nil || task.Feed != nil || task.Evaluation != nil || task.ResponseBodyLimit != 0 || task.Navigation == nil || task.APIReplay.options.Inventory.Endpoint == "") {
+		return errReplayCapture
+	}
 	if task.Feed != nil && (!task.Feed.request.Valid() || task.Feed.converse == nil || task.Feed.request.FeedURL != task.URL || task.Dayforce != nil || task.Evaluation != nil || task.ResponseBodyLimit != 2_000_000) {
 		return errors.New("invalid feed session task")
 	}
@@ -320,6 +325,12 @@ func validateCDPEndpoint(raw string, expectedPort int) error {
 }
 
 func validateResult(task Task, result Result) error {
+	if task.APIReplay != nil {
+		if !result.apiReplaySessionSettled {
+			return errReplayCapture
+		}
+		return nil
+	}
 	if task.Feed != nil {
 		if !result.feedSessionSettled {
 			return errors.New("feed session unfinished")
@@ -342,7 +353,7 @@ func validateResult(task Task, result Result) error {
 		return errors.New("main-document outerHTML is missing")
 	}
 	htmlLimit := maxHTMLBytes
-	if task.Dayforce != nil {
+	if task.Dayforce != nil || task.APIReplay != nil {
 		htmlLimit = 1_000_000 - 1
 	}
 	if len(result.HTML) > htmlLimit {
@@ -878,6 +889,16 @@ func executeOnTarget(ctx, target context.Context, task Task) (Result, error) {
 		return Result{}, fmt.Errorf("initialize fresh target: %w", err)
 	}
 	var dayforceCapture *dayforceSearchCapture
+	var apiCapture *replayCapture
+	if task.APIReplay != nil {
+		var err error
+		apiCapture, err = newReplayCapture(task.APIReplay.options)
+		if err != nil {
+			return Result{}, err
+		}
+		defer apiCapture.erase()
+		chromedp.ListenTarget(targetCtx, apiCapture.observe)
+	}
 	if task.Dayforce != nil {
 		var err error
 		dayforceCapture, err = newDayforceSearchCapture(mainFrame, task.Dayforce.request.SearchURL())
@@ -995,6 +1016,14 @@ func executeOnTarget(ctx, target context.Context, task Task) (Result, error) {
 		if err := executeDayforceConversation(targetCtx, task.Dayforce, dayforceCapture, int(mainStatus), finalURL, html, capturedResponse.resourcePolicy); err != nil {
 			return Result{}, err
 		}
+	}
+	if task.APIReplay != nil {
+		if err := executeAPIReplayConversation(targetCtx, task.APIReplay, apiCapture, int(mainStatus), finalURL, html, capturedResponse.resourcePolicy); err != nil {
+			return Result{}, err
+		}
+		// The bootstrap HTML may contain credentials. Only the conversation's
+		// checked API documents can cross its eventual service protocol.
+		return Result{apiReplaySessionSettled: true}, nil
 	}
 
 	var expression json.RawMessage

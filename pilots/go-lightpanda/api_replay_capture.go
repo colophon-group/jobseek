@@ -100,8 +100,12 @@ func (c *replayCapture) observe(event any) {
 			c.failure = errReplayCapture
 			return
 		}
+		if replayReflectsCredentials(pending.headers, "", signals.TdmReservationHeader, signals.TdmPolicyHeader) {
+			c.failure = errReplayCapture
+			return
+		}
 		// Publisher denial is terminal and never falls through to another replay.
-		if err := policy.Check(signals, "", pending.source); err != nil {
+		if err := policy.Check(signals, "", c.endpoint.String()); err != nil {
 			c.failure = err
 			return
 		}
@@ -169,7 +173,15 @@ func (c *replayCapture) exchanges(ctx context.Context, read func(context.Context
 			if len(body) > replayCaptureBodyLimit || bytes > 16*replayCaptureBodyLimit {
 				return nil, errResourceLimit
 			}
-			if e = policy.Check(pending.signals, string(body), pending.source); e != nil {
+			var reservation, policyURL *string
+			if pending.signals != nil {
+				reservation = pending.signals.TdmReservationHeader
+				policyURL = pending.signals.TdmPolicyHeader
+			}
+			if replayReflectsCredentials(pending.headers, string(body), reservation, policyURL) {
+				return nil, errReplayCapture
+			}
+			if e = policy.Check(pending.signals, string(body), c.endpoint.String()); e != nil {
 				return nil, e
 			}
 			exchange, e := api.NewBrowserReplayExchange(pending.source, pending.method, pending.headers, body)

@@ -1,14 +1,54 @@
 package apisniffer
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 )
+
+func TestBrowserReplayTraversalUsesOneFirstPageAndRealBrowserBudget(t *testing.T) {
+	for _, c := range []struct {
+		name        string
+		http        bool
+		total, want int
+		truncated   bool
+	}{
+		{"browser-default", false, 0, 50, false},
+		{"http-default", true, 0, 200, false},
+		{"known-total-expansion", false, 75, 75, false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			o, err := BrowserReplayOptionsFromMetadata("https://example.com/careers", `{"browser":true,"api_url":"https://example.com/api","json_path":"jobs","url_template":"https://example.com/jobs/{id}","fields":{"title":"title"},"pagination":{"param_name":"page","style":"page","start_value":1,"increment":1}}`)
+			if err != nil {
+				t.Fatal(err)
+			}
+			calls := 0
+			inventory, err := DiscoverBrowserReplay(context.Background(), o, func(_ context.Context, r Request) (*Document, error) {
+				calls++
+				if calls == 1 && r.URL != o.Inventory.Endpoint {
+					t.Fatal("initial request changed")
+				}
+				total := ""
+				if c.total > 0 {
+					total = `"total":` + strconv.Itoa(c.total) + `,`
+				}
+				return Decode([]byte(`{` + total + `"jobs":[{"id":"` + strconv.Itoa(calls) + `"}]}`))
+			}, func(base, path string) (string, error) { return path, nil }, c.http)
+			if err != nil || calls != c.want || len(inventory.Jobs) != c.want || inventory.Truncated != c.truncated {
+				t.Fatal("browser traversal budget differs", err, calls, len(inventory.Jobs), inventory.Truncated)
+			}
+			if o.Inventory.Pagination.MaxPages != 200 {
+				t.Fatal("shared inventory options were mutated")
+			}
+		})
+	}
+}
 
 func TestBrowserReplayPreservesInventoryAndNavigationControls(t *testing.T) {
 	raw := `{"browser":true,"api_url":"https://example.com/api","method":"POST","json_path":"jobs","url_template":"https://example.com/jobs/{id}","fields":{"title":"title"},"post_data":{"z":1,"a":2},"wait":"networkidle","timeout":12000,"settle":0.25}`

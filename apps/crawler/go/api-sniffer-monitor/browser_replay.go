@@ -1,12 +1,45 @@
 package apisniffer
 
 import (
+	"context"
 	"encoding/json"
 	"math"
 	"net/http"
 	"net/url"
 	"strings"
 )
+
+// DiscoverBrowserReplay keeps the established parser and pagination traversal.
+// Read the initial document once, set Python's browser/HTTP page budget from
+// that document, then seed Discover so capture reuse does not issue a replay.
+func DiscoverBrowserReplay(ctx context.Context, o BrowserReplayOptions, fetch Fetch, join JoinURL, httpFallback bool) (Inventory, error) {
+	if fetch == nil || join == nil {
+		return Inventory{}, ErrOptions
+	}
+	firstRequest := Request{Method: o.Inventory.Method, URL: o.Inventory.Endpoint, Body: o.Inventory.Body, Headers: o.Inventory.Headers.Clone()}
+	first, err := fetch(ctx, firstRequest)
+	if err != nil {
+		return Inventory{}, err
+	}
+	limit, err := o.PaginationLimit(first, httpFallback)
+	if err != nil {
+		return Inventory{}, err
+	}
+	inventory := o.Inventory
+	if inventory.Pagination != nil {
+		pagination := *inventory.Pagination
+		pagination.MaxPages = limit
+		inventory.Pagination = &pagination
+	}
+	initial := true
+	return Discover(ctx, inventory, func(call context.Context, request Request) (*Document, error) {
+		if initial {
+			initial = false
+			return first, nil
+		}
+		return fetch(call, request)
+	}, join)
+}
 
 // BrowserReplayOptions retains the existing inventory parser and page requests.
 // Admission must also require the affine capture/fetch controller; these options
