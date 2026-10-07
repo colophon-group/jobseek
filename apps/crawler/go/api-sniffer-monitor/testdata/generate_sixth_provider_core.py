@@ -86,7 +86,14 @@ for page in pages:
 async def inventories():
     out = []
     for provider in ("manatal", "hrmos"):
-        for scenario in ("complete", "changed_count", "duplicate", "incomplete", "empty"):
+        for scenario in (
+            "complete",
+            "changed_count",
+            "duplicate",
+            "incomplete",
+            "empty",
+            "wrong_current",
+        ):
             source = (
                 "https://www.careers-page.com/tenant"
                 if provider == "manatal"
@@ -119,7 +126,7 @@ async def inventories():
                 else:
                     body = (
                         f'<div id="jsi-joblist">全 {total} 件中 1 件</div>'
-                        f'<span class="current">{page}</span>'
+                        f'<span class="current">{0 if scenario == "wrong_current" else page}</span>'
                     )
                     if scenario != "incomplete" or page == 1:
                         body += f'<a href="/pages/tenant/jobs/{ident}">one</a>'

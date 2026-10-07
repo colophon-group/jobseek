@@ -17,6 +17,7 @@ type HRMOSPage struct {
 	URLs                                 []string
 	Total, Displayed, Current, LinkedMax int
 	Empty, AtCap                         bool
+	CurrentPresent                       bool
 }
 
 var hrmosTenant = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,62}$`)
@@ -97,6 +98,7 @@ func ParseHRMOSPage(body string, o HRMOSOptions, join JoinURL) (HRMOSPage, error
 		return p, ErrInventory
 	}
 	if current := hrmosCurrent.FindStringSubmatch(body); current != nil {
+		p.CurrentPresent = true
 		p.Current, e = strconv.Atoi(current[1])
 		if e != nil {
 			return p, ErrInventory
@@ -157,7 +159,7 @@ func DiscoverHRMOS(ctx context.Context, o HRMOSOptions, fetch func(context.Conte
 	if p.Empty {
 		return []string{}, false, nil
 	}
-	if p.Current != 0 && p.Current != 1 || p.Total > 0 && p.Displayed == 0 {
+	if p.CurrentPresent && p.Current != 1 || p.Total > 0 && p.Displayed == 0 {
 		return nil, false, ErrInventory
 	}
 	pages := max(1, p.LinkedMax, (max(p.Total, 1)-1)/max(p.Displayed, 1)+1)
@@ -179,7 +181,7 @@ func DiscoverHRMOS(ctx context.Context, o HRMOSOptions, fetch func(context.Conte
 				return nil, false, e
 			}
 		}
-		if p.Empty || p.Current != 0 && p.Current != page || page > 1 && len(p.URLs) == 0 {
+		if p.Empty || p.CurrentPresent && p.Current != page || page > 1 && len(p.URLs) == 0 {
 			return nil, false, ErrInventory
 		}
 		if p.Total != expected || p.Displayed != len(p.URLs) || p.AtCap {

@@ -40,11 +40,11 @@ source and immutable image digests; see the
 Source960 ordinary retirement, supported B0 rollback and exact selector clear
 succeeded. Independent cold212 readback verifies restored base writers,
 cleared ownership, zero current fences and no orphan historical receipts.
-Historical audit receipts remain. First source962 post-deployment readback
-verified source/images and base writers, then stopped on the normal
-cross-store reconciliation oneoff started by deployment. Let that job finish
-under the shared mutation lock, then repeat the independent cold readback.
-Fresh962 B0 and ordinary admission/activation remain pending; no previous
+Historical audit receipts remain. After normal cross-store reconciliation completed, source962 independent cold
+readback passed at09:34 UTC: exact release/images, seven restart-armed base
+processes, six healthy endpoints and cleared ownership at212. Supported selector
+stage succeeded and original B0 activation is running. Fresh962 canonical/cache
+and scheduled-route admission plus ordinary activation remain pending; no previous
 receipt, cohort or ownership plan grants reuse.
 
 Offline source962 screening of the last source960 capture qualifies7,212
@@ -57,8 +57,8 @@ resource/cost proof and complete Python retirement remain unfinished.
 
 ## Continue delivery
 
-1. Finish source962 independent cold readback after normal reconciliation.
-   Stage/activate supported B0, capture fresh source/receipt-bound canonical and
+1. Finish the running supported source962 B0 activation and verify its receipt.
+   Capture fresh source/receipt-bound canonical and
    cached configurations plus every scheduled detail route, then stage/activate
    ordinary ownership. Verify real scheduled completions, canonical fields,
    descriptions, publisher outcomes, SQL/Redis deadlines, health and freshness
@@ -66,7 +66,7 @@ resource/cost proof and complete Python retirement remain unfinished.
 2. Deliver the next compatible provider batch together. Candidate963 adds
    Manatal rich pagination and HRMOS URL-only listing/count pagination through
    the existing native worker and canonical processors:11 registry configs,
-   ten enabled boards in the previous census. Actual Python parsing/traversal,
+   11 enabled boards in the protected census. Actual Python parsing/traversal,
    canonicalPG/Redis publisher/settlement and cold-retirement checks pass; full
    suites and CI remain. Continue the large shared browser paths together:
    DOM239, API sniffer149 and Inline8 in the current offline screening.

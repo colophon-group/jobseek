@@ -25,7 +25,7 @@ func TestSixthProviderInventoriesMatchActualPython(t *testing.T) {
 			}
 		}
 	}
-	if json.Unmarshal(raw, &data) != nil || len(data.Inventories) != 10 {
+	if json.Unmarshal(raw, &data) != nil || len(data.Inventories) != 12 {
 		t.Fatal("Python inventory corpus unavailable")
 	}
 	normalize := func(source string) string {

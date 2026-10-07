@@ -35,11 +35,12 @@
     "independent_cold": "pass"
   },
   "source962_activation": {
-    "B0": false,
+    "B0": "supported selector stage succeeded; original B0 activation running",
     "ordinary": false,
-    "cold_readback": "pending normal cross-store reconciliation completion; initial guard stopped on recognized source962 administrative oneoff",
+    "cold_readback": "PASS at2026-10-07T09:34:31Z after normal reconciliation completed: exact release/images, seven restart-armed base processes, six healthy endpoints, epoch212, no ownership/current fences/native tokens/live oneoffs or orphan historical receipts",
     "fresh_admission": "pending",
-    "production_counts": null
+    "production_counts": null,
+    "active_release": "release-d2fa77713308f17eeb38fb06de060dc6b67dc595.sM5hbp"
   },
   "offline_eligibility": {
     "compiled_profiles": 103,

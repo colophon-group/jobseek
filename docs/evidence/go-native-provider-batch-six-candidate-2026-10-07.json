@@ -13,18 +13,18 @@
   },
   "previous_enabled_census": {
     "manatal": 5,
-    "hrmos": 5
+    "hrmos": 6
   },
   "verification": {
     "actual_python_parsing_cases": 16,
-    "actual_python_inventory_traversals": 10,
-    "native_worker_reference_http_cases": 10,
-    "canonical_postgresql_redis_cases": 10,
+    "actual_python_inventory_traversals": 12,
+    "native_worker_reference_http_cases": 12,
+    "canonical_postgresql_redis_cases": 12,
     "canonical_publisher_reservation_cases": 4,
     "cold_retirement_cases": 6,
     "full_api_module_race": "pass",
     "worker_vet": "pass",
-    "full_worker_queue_suites": "pending",
+    "full_worker_queue_suites": "initial at3e3ca31f8 failed because local PostgreSQL fixture was stopped; fixture restored; fresh corrected-head rerun pending",
     "required_ci": "pending",
     "crawler_deploy_gate": "pending"
   },
@@ -36,5 +36,14 @@
     "Merge and immutable rollout",
     "Fresh canonical/cache/actual detail route admission",
     "Scheduled production proof and full runtime retirement"
-  ]
+  ],
+  "offline_eligibility": {
+    "eligible_monitor_boards": 7223,
+    "new_since962": 11,
+    "remaining_monitors": 659,
+    "canonical_cache_projection_mismatches": 0,
+    "cached_unsupported": 0,
+    "capture_source_revision": "acb4bb9e7627c541f7ff0aba4bb0c1ca4995f48b",
+    "authority": "Offline configuration screening only; fresh production admission required"
+  }
 }

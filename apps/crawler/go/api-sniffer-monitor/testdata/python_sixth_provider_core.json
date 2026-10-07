@@ -293,6 +293,26 @@
       }
     },
     {
+      "provider": "manatal",
+      "scenario": "wrong_current",
+      "pages": {
+        "https://www.careers-page.com/api/v1.0/c/tenant/jobs/?page_size=50&page=1&ordering=-is_pinned_in_career_page%2C-last_published_at": "{\"count\": 2, \"results\": [{\"hash\": \"one\", \"position_name\": \"one\"}], \"next\": true}",
+        "https://www.careers-page.com/api/v1.0/c/tenant/jobs/?page_size=50&page=2&ordering=-is_pinned_in_career_page%2C-last_published_at": "{\"count\": 2, \"results\": [{\"hash\": \"two\", \"position_name\": \"two\"}], \"next\": false}"
+      },
+      "requests": [
+        "https://www.careers-page.com/api/v1.0/c/tenant/jobs/?page_size=50&page=1&ordering=-is_pinned_in_career_page%2C-last_published_at",
+        "https://www.careers-page.com/api/v1.0/c/tenant/jobs/?page_size=50&page=2&ordering=-is_pinned_in_career_page%2C-last_published_at"
+      ],
+      "expected": {
+        "error": false,
+        "truncated": false,
+        "urls": [
+          "https://www.careers-page.com/tenant/job/one",
+          "https://www.careers-page.com/tenant/job/two"
+        ]
+      }
+    },
+    {
       "provider": "hrmos",
       "scenario": "complete",
       "pages": {
@@ -379,6 +399,19 @@
         "error": false,
         "truncated": false,
         "urls": []
+      }
+    },
+    {
+      "provider": "hrmos",
+      "scenario": "wrong_current",
+      "pages": {
+        "https://hrmos.co/pages/tenant/jobs": "<div id=\"jsi-joblist\">全 2 件中 1 件</div><span class=\"current\">0</span><a href=\"/pages/tenant/jobs/one\">one</a>"
+      },
+      "requests": [
+        "https://hrmos.co/pages/tenant/jobs"
+      ],
+      "expected": {
+        "error": true
       }
     }
   ]
