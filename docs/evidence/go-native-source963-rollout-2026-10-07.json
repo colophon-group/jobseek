@@ -163,10 +163,10 @@
     "Production Python, Playwright and Chromium retirement"
   ],
   "latest_serving_observation": {
-    "observed_at_utc": "2026-10-07T16:31:17.081573+00:00",
+    "observed_at_utc": "2026-10-07T17:04:57.183368+00:00",
     "routing_epoch": 215,
-    "completed_monitor_attempts": 453,
-    "completed_detail_attempts": 170,
+    "completed_monitor_attempts": 1012,
+    "completed_detail_attempts": 190,
     "health_status": {
       "worker-1": 200,
       "worker-2": 200,
@@ -179,7 +179,8 @@
     },
     "running_restart_armed_services": 10,
     "new_provider_completions_observed": false,
-    "freshness_conservation_complete": false
+    "freshness_conservation_complete": false,
+    "completed_profiles_count": 32
   },
   "runtime_restart_review": {
     "source_revision": "3905501bcf9b769422f72aefa167388c17d20b2c",

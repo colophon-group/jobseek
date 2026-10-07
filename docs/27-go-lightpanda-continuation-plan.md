@@ -59,8 +59,8 @@ and projection `908296bf1504ad0f751f61432cd5839b4bb7e0bd`.
 observation was interrupted after SQL ownership committed. Fresh host/SQL reads
 showed no live operation, the exact pending receipt and the active intended plan.
 The supported same-plan retry restored all ten services and restart policies.
-The 16:31 UTC observation verifies eight health endpoints and 453 monitor /
-170 detail completions. A read-only runtime inspection observed one native
+The 17:04 UTC observation verifies eight health endpoints and 1,012 monitor /
+190 detail completions across 32 profiles. A read-only runtime inspection observed one native
 container restart at 16:21 UTC; its cause remains unproved. New-provider completions remain pending. Queue claim errors and
 unacknowledged attempts require conservation/freshness review; health alone does
 not prove them. See the [source 963 rollout](evidence/go-native-source963-rollout-2026-10-07.json).
@@ -91,13 +91,24 @@ retirement remain unproved.
    at `0b64c8b047a45a504dc1a21b32249b5243eae759` passed actual Lightpanda 1.0.0
    service/client capture, cookie/CSRF, pagination, later-page publisher denial
    and cleanup on [both architectures](https://github.com/colophon-group/jobseek/actions/runs/37653235733).
-   The retained configuration screen admits 33 more API browser boards (7,273
-   total / 609 remaining **candidate only**); production remains 7,240 / 642.
-   Required PR checks, fresh staging and deployment remain pending. See the
+   The grouped retained-configuration screen admits 55 additional boards: 33
+   API browser, 20 DOM and 2 Inline (7,295 total / 587 remaining **candidate
+   only**); production remains 7,240 / 642.
+   [PR #10350](https://github.com/colophon-group/jobseek/pull/10350) contains the
+   grouped candidate at `0dec76982ac1163851a0f5e0da7ae38dcb3fb8c1`. Its real
+   Lightpanda 1.0.0 API and action service/client fixtures passed on both Linux
+   architectures in [run 37656522604](https://github.com/colophon-group/jobseek/actions/runs/37656522604).
+   Final full local suites and current required PR checks are merge prerequisites;
+   fresh staging and supported deployment remain pending. See the
    [native API browser candidate proof](evidence/go-api-browser-native-candidate-2026-10-07.json).
-   Group DOM/Inline action pipelines in the same useful release; 73 remaining DOM configurations and 3 Inline
-   configurations contain actions. Verify actual Lightpanda 1.0.0 navigation,
-   clicks, waits/evaluation, required failures, pagination and publisher policy.
+   The same release now carries DOM/Inline wait/evaluate pipelines, including
+   sequential order, asynchronous function/Promise execution, optional and
+   required failure, deadline/cancellation, whole-document recapture, publisher
+   checks before further actions and cleanup before output. Remaining click,
+   wait_for, repeat, overlay and pagination contracts still need verified
+   Lightpanda behavior. The grouped candidate leaves DOM 219, API sniffer 116
+   and Inline 6 in this retained census. See the
+   [grouped candidate proof](evidence/go-grouped-browser-native-candidate-2026-10-07.json).
    Preserve configured resource policy, proxy and browser identity requirements.
    Add remaining compatible HTTP/API provider families in groups; do not ship
    one small type per migration iteration. Recruiterbox's dedicated detail
