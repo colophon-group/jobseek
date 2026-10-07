@@ -19,6 +19,8 @@ import (
 )
 
 type RichDiscovery struct {
+	// FeedItems counts original XML items, including ones without a job URL.
+	FeedItems           int
 	VerifiedEmptyReason string
 	Jobs                []RichMonitorJob
 	Truncated           bool

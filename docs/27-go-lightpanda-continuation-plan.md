@@ -18,44 +18,49 @@ not complete migration.
 
 ## Latest checkpoint — 2026-10-07
 
-Release **0.13.958**, source `82c73de3ea432634c5e365c5f57dfc02873a4bf6`,
-completed original [deployment and promotion37564684440](https://github.com/colophon-group/jobseek/actions/runs/37564684440).
-Independent readback verified exact slim/browser digests, seven restart-armed
-base processes, six healthy endpoints and cold epoch208. Supported B0 activation
-and independent source/receipt/health readback then passed at epoch209. Ordinary
-Go staging is running; this checkpoint does not claim ordinary serving yet.
+Combined release **0.13.960** merged in [PR #10347](https://github.com/colophon-group/jobseek/pull/10347)
+as source `acb4bb9e7627c541f7ff0aba4bb0c1ca4995f48b`. Its90 profiles add DOM rich
+rows over direct/proxy/Lightpanda paths, HR Manager RSS and shared filters across
+Generic RSS, SuccessFactors, Teamtailor and DOM. Required CI, installed contracts,
+pilot and Crawler Deploy Gate passed; merge tree equals the reviewed tree.
+Original [immutable deployment37570306419](https://github.com/colophon-group/jobseek/actions/runs/37570306419)
+is in progress. Both images built; deployment and promotion must finish before
+source960 ownership is authorized.
 
-Fresh source-bound admission covers7,159 monitor boards and2,617 detail boards,
-with1,468,186 of1,493,765 scheduled detail postings. Forty detail boards retain
-legacy authority because route/cache reconciliation failed. Preserve their
-current owner and every enabled board while completing remaining coverage.
+Supported source958 ordinary retirement, B0 rollback and selector clear finished.
+Independent cold210 readback verifies the healthy exact-source958 base fleet,
+cleared ownership and14 retained historical audit receipts. The previous958
+ordinary plan is retired. Its last serving proof reached178 monitor and2 detail
+completions across11 profiles, with one posting-write deadline diagnostic.
+Its7,159 monitor boards and2,617 detail boards are historical cohort counts;
+fresh source960 admission and actual posting routes remain required.
 
-[PR #10347](https://github.com/colophon-group/jobseek/pull/10347) combines DOM
-rich rows over direct/proxy/Lightpanda paths, HR Manager RSS, and shared rich-job
-filters/provider allowlists across Generic RSS, SuccessFactors, Teamtailor,
-rich DOM and URL-only DOM. Release0.13.960 has90 compiled profiles. Full worker
-and queue race suites pass502.851/301.919 seconds against the identical crawler
-tree. Fresh required/native/installed CI remains necessary. Keep these changes
-in one delivery to share CI, deployment, census and cutover.
+Candidate961 groups SuccessFactors legacy XML and structured Generic RSS
+summaries (94 compiled profiles), faithful200-job stream prefixes, validated
+Generic/WordPress pagination and raw browser response capture. Actual Python
+references cover24 items,7 identities,9 failure streams,16 pagination configs
+and13 cross-page traversal cases.18 canonical PostgreSQL/Redis worker cases and
+39 cold cases pass. Raw XML/CDATA capture passed the existing installed
+[Lightpanda pilot37571180241](https://github.com/colophon-group/jobseek/actions/runs/37571180241)
+on amd64 and arm64. Affine/proxy pagination transport, remaining RSS properties,
+full suites and deployment/adoption still remain.
 
-Self-hosted Lightpanda is pinned to the latest verified stable **1.0.0**.
-The next grouped RSS batch has legacy XML and structured-summary parser cores
-with31 actual Python reference cases; configured transports, pagination,
-WordPress feeds, detail properties, canonical writes and cold proof remain.
-
-See the [current worker checkpoint](30-native-ordinary-worker-checkpoint-2026-10-03.md)
-and [combined filtering evidence](evidence/go-native-shared-feed-policy-candidate-2026-10-07.json).
+Self-hosted Lightpanda uses the latest verified stable **1.0.0**, published
+October2. Keep its verified immutable pin; recheck official releases when upgrading.
+See the [worker checkpoint](30-native-ordinary-worker-checkpoint-2026-10-03.md)
+and [grouped RSS evidence](evidence/go-native-rss-variant-core-candidate-2026-10-07.json).
 
 ## Continue delivery
 
-1. Finish source958 ordinary staging/activation and observe real scheduled
-   monitor/detail completions across admitted profiles. Verify canonical fields,
-   SQL/Redis deadlines, descriptions/uploads, publisher outcomes and health.
-   Use supported pending recovery/reversal if activation fails.
-2. Deliver the combined0.13.960 PR after exact-head CI and merge authority.
-   Continue grouped remaining RSS variants and DOM pagination/empty-state/portal
-   options, then remaining monitor/detail/browser types. Use fresh canonical
-   admission to choose useful batches and measure actual native coverage.
+1. Finish the original source960 deployment/promotion. Independently verify
+   cold source/images, activate supported B0, capture a fresh source/receipt
+   census and actual posting routes, and activate a new ordinary plan. Observe
+   normal scheduled work, canonical fields, SQL/Redis deadlines, descriptions,
+   publisher outcomes and health. Use supported recovery if activation fails.
+2. Finish the grouped961 RSS batch with affine paginated transport and remaining
+   enabled variants, then full suites, CI and source-bound rollout. Continue
+   remaining DOM actions/pagination/empty-state/portal and monitor/detail/browser
+   coverage in groups selected from the fresh canonical census.
 3. Replace mandatory Python consumers in compatible groups: worker/browser
    `crawler run`/`run-browser`; deployment `crawler sync` and schema preparation;
    activation/epoch/reaper and maintenance commands. Reuse the existing Go queue,

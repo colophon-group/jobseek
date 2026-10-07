@@ -158,13 +158,20 @@ func parseSFLegacyXML(raw []byte, origin, company string) (result RichDiscovery,
 	}
 }
 
-func parseGenericStructuredSummary(raw []byte) (result RichDiscovery, err error) {
-	out, parseErr := parseRSSProviderPrefix(raw, "generic", true)
+func parseGenericStructuredSummary(raw []byte) (RichDiscovery, error) {
+	return parseGenericSummaryPage(raw, true)
+}
+
+func parseGenericSummaryPage(raw []byte, round bool) (result RichDiscovery, err error) {
+	out, parseErr := parseRSSProviderPage(raw, "generic", true, round)
 	converted := 0
 	defer func() {
 		if err != nil {
 			out.Jobs = out.Jobs[:converted]
-			result, err = rssValidatedPrefix(out, err)
+			result = out
+			if round {
+				result, err = rssValidatedPrefix(out, err)
+			}
 		}
 	}()
 	if parseErr != nil && len(out.Jobs) == 0 {

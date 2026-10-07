@@ -5,7 +5,7 @@
 The full migration goal is **active and incomplete**. Ship multiple provider
 and variant types per release, sharing reference verification, CI and cutover.
 
-### Current rollout and RSS batch — 04:35 UTC October7
+### Current rollout and RSS batch — 04:23 UTC October7
 
 Combined release960 merged in PR10347 as source
 `acb4bb9e7627c541f7ff0aba4bb0c1ca4995f48b`; its merge tree equals the reviewed
@@ -25,7 +25,11 @@ fits the existing wire frame. Capture preserves original XML bytes/CDATA and
 correlated policy signals; requests for other resources/actions remain refused.
 The existing installed Linux readiness suite now exercises raw RSS capture,
 redirect correlation and resource limits; that actual-browser proof remains
-pending. Affine pagination/proxy feeds and SuccessFactors properties still need
+passed on amd64 and arm64 in original pilot37571180241 at75e33b065.
+Thirteen actual Python traversal references additionally pass in2.178s, including
+original200-job prefixes spanning pages, repeated pages, limits and skipped items.
+The traversal core does not grant pagination ownership; transport/persistence
+integration remains required. Affine pagination/proxy feeds and SuccessFactors properties still need
 integration before this grouped release is ready for adoption.
 
 ### Next grouped RSS integration candidate961 — October7

@@ -46,11 +46,18 @@ func parseRSSProvider(raw []byte, preset string) (RichDiscovery, error) {
 	return parseRSSProviderPrefix(raw, preset, false)
 }
 
-func parseRSSProviderPrefix(raw []byte, preset string, preserve bool) (out RichDiscovery, err error) {
+func parseRSSProviderPrefix(raw []byte, preset string, preserve bool) (RichDiscovery, error) {
+	return parseRSSProviderPage(raw, preset, preserve, true)
+}
+
+func parseRSSProviderPage(raw []byte, preset string, preserve, round bool) (out RichDiscovery, err error) {
 	result := RichDiscovery{Jobs: []RichMonitorJob{}}
 	defer func() {
 		if preserve && err != nil {
-			out, err = rssValidatedPrefix(result, err)
+			out = result
+			if round {
+				out, err = rssValidatedPrefix(result, err)
+			}
 		}
 	}()
 	head := strings.TrimLeft(string(raw), "\ufeff \t\r\n")
@@ -93,6 +100,7 @@ func parseRSSProviderPrefix(raw []byte, preset string, preserve bool) (out RichD
 		if !ok || start.Name.Local != "item" {
 			continue
 		}
+		result.FeedItems++
 		fields := map[string]string{}
 		for {
 			token, err = d.Token()

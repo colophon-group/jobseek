@@ -41,12 +41,17 @@
   "historical_rendered_row_new_epoch_cases": 2,
   "historical_receipt_race_seconds": 2.964,
   "raw_browser_response_capture": {
-    "state": "implemented; installed Linux XML/CDATA proof pending",
+    "state": "installed Linux XML/CDATA proof passed on amd64 and arm64",
     "max_bytes": 2000000,
     "shared_contract": "existing response-body capture plan and chunk manifest",
     "adapter_race_seconds": 1.339,
     "renderer_full_race_seconds": 8.486,
     "maximum_capture_fits_existing_frame": true,
-    "new_epoch_receipts_preserved": true
-  }
+    "new_epoch_receipts_preserved": true,
+    "original_ci_run": 37571180241,
+    "exact_tested_head": "75e33b0653aace6cd1229133682a95d11e3cd8bb"
+  },
+  "python_paged_stream_cases": 13,
+  "paged_stream_race_seconds": 2.178,
+  "pagination_transport_admitted": false
 }
