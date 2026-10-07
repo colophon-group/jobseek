@@ -108,6 +108,13 @@ func discoverInlineInventoryAt(ctx context.Context, verified *http.Client, p que
 	if lastError != nil {
 		return result, lastError
 	}
+	return parseInlineInventoryDocument(ctx, result, o, source, now)
+}
+
+func parseInlineInventoryDocument(ctx context.Context, result RichDiscovery, o api.InlineMonitorOptions, source string, now time.Time) (RichDiscovery, error) {
+	if o.Contains != "" && !strings.Contains(source, o.Contains) {
+		return result, api.ErrInventory
+	}
 	classification, err := dom.ClassifyDocument(source, dom.Object{}, o.BoardURL)
 	if err != nil {
 		return result, err

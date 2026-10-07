@@ -8,6 +8,7 @@ import (
 	htmltext "html"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/andybalholm/cascadia"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
@@ -34,6 +35,9 @@ func (r *NativeRenderedDetails) FetchMonitor(ctx context.Context, profile queue.
 		return r.fetchRSS(ctx, profile, config)
 	}
 	_, options, err := queue.RenderedDOMMonitorOptions(config)
+	if profile.Provider == "inline" {
+		_, options, err = queue.RenderedInlineMonitorOptions(config)
+	}
 	if err != nil {
 		return result, err
 	}
@@ -233,6 +237,13 @@ func parseHeldRenderedMonitor(ctx context.Context, profile queue.GreenhouseMonit
 	}
 	if err != nil {
 		return result, err
+	}
+	if profile.Provider == "inline" {
+		o, _, err := queue.RenderedInlineMonitorOptions(config)
+		if err != nil {
+			return result, err
+		}
+		return parseInlineInventoryDocument(ctx, result, o, source, time.Now())
 	}
 	listing, _, err := queue.RenderedDOMMonitorOptions(config)
 	if err != nil {

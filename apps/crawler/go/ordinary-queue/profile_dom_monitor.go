@@ -40,7 +40,7 @@ func directDOMMonitorOptions(config map[string]string) (dom.ListingConfig, error
 		return dom.ListingConfig{}, ErrUnsupportedProfile
 	}
 	options := dom.Object{}
-	keys := []string{"url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "url_transform"}
+	keys := []string{"empty_selector", "empty_text", "url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "url_transform"}
 	for _, key := range keys {
 		if raw, ok := md[key]; ok {
 			if (key == "url_filter" || key == "request_headers") && strings.HasPrefix(strings.TrimSpace(string(raw)), "{") {

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "candidate_version": "0.13.962",
+  "scope": "offline compiler screening of source960 snapshot; fresh deployed-source admission and activation still required",
+  "compiled_profiles": 103,
+  "monitor_boards": 7212,
+  "new_profiles": {
+    "dom.direct-urls/v1": 13,
+    "dom.rendered-urls/v1": 1,
+    "inline.rendered-items/v1": 11,
+    "rss.successfactors-legacy-xml-skip/v1": 1
+  },
+  "remaining_monitors": 670,
+  "cache_mismatches": 0,
+  "rendered_inline_canonical_cases": 8,
+  "rendered_inline_race_seconds": 3.605,
+  "python_empty_state_cases": 12,
+  "dom_core_full_race_seconds": 2.656,
+  "python_ownership_projection_cases": 13,
+  "dom_canonical_and_inline_cold_cases": "prepared; not yet executed while separate required PG suite runs",
+  "production_adopted": false,
+  "full_migration_complete": false
+}

@@ -107,3 +107,16 @@ Earlier production observations remain in
 [v0.13.913 evidence](evidence/go-native-family913-production-2026-10-03.json)
 and Git history. Follow [ADR 006](adr/006-crawler-deploy-quiescence-and-rollback.md)
 and [Hetzner maintenance](16-hetzner-maintenance.md) for deployment and recovery.
+
+## Next grouped browser coverage candidate
+
+Candidate962 adds rendered Inline document inventories through the existing
+native navigation/parser and explicit DOM empty-state verification for direct
+and rendered single-page listings. Offline screening of the source960 snapshot
+qualifies25 additional boards (11 Inline,14 DOM) beyond the RSS candidate,
+reducing the configuration backlog to670. This is admission screening, not
+serving ownership. Eight Inline canonicalPG/Redis cases and12 actual Python
+empty-state comparisons pass. DOM canonical and new Inline cold cases are
+prepared; they remain unproved until executed. Combine compatible coverage
+into a useful rollout before another single-board cutover. See the
+[browser candidate evidence](evidence/go-native-browser-coverage-candidate-2026-10-07.json).

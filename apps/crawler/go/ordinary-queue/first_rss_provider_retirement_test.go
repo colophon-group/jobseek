@@ -12,13 +12,16 @@ import (
 )
 
 func TestRealFirstGroupedRSSProviderColdRetirement(t *testing.T) {
-	for _, preset := range []string{"governmentjobs", "zoho_recruit", "hr_manager", "dom_rows", "dom_proxy_rows", "dom_rendered_rows", "generic_policy", "successfactors_policy", "teamtailor_policy", "dom_policy_rows", "dom_policy_urls", "sf_legacy_xml", "generic_summary", "generic_pages", "wp_pages", "generic_rendered_pages", "summary_rendered_pages", "wp_rendered_pages"} {
+	for _, preset := range []string{"governmentjobs", "zoho_recruit", "hr_manager", "dom_rows", "dom_proxy_rows", "dom_rendered_rows", "generic_policy", "successfactors_policy", "teamtailor_policy", "dom_policy_rows", "dom_policy_urls", "sf_legacy_xml", "generic_summary", "generic_pages", "wp_pages", "generic_rendered_pages", "summary_rendered_pages", "wp_rendered_pages", "inline_rendered"} {
 		provider := "rss"
 		if strings.HasPrefix(preset, "dom_") {
 			provider = "dom"
 		}
+		if preset == "inline_rendered" {
+			provider = "inline"
+		}
 		worker := Simple
-		if preset == "dom_rendered_rows" || strings.Contains(preset, "_rendered_pages") {
+		if preset == "inline_rendered" || preset == "dom_rendered_rows" || strings.Contains(preset, "_rendered_pages") {
 			worker = Browser
 		}
 		for _, mode := range []string{"interrupted", "committed-before-ack", "changed-token"} {
@@ -28,6 +31,10 @@ func TestRealFirstGroupedRSSProviderColdRetirement(t *testing.T) {
 				f := p.f
 				metadata := `{"preset":"governmentjobs","agency":"fixture","scraper_type":"skip"}`
 				boardURL := "https://www.governmentjobs.com/careers/fixture"
+				if preset == "inline_rendered" {
+					boardURL = "https://example.com/fixture"
+					metadata = `{"render":true,"steps":[{"tag":"h2","field":"title"}],"scraper_type":"skip"}`
+				}
 				if preset == "zoho_recruit" {
 					boardURL = "https://fixture.zohorecruit.eu/jobs/Careers"
 					metadata = `{"preset":"zoho_recruit","tenant":"fixture.eu","feed_url":"https://fixture.zohorecruit.eu/jobs/Careers/rss","scraper_type":"skip"}`
@@ -131,6 +138,9 @@ func TestRealFirstGroupedRSSProviderColdRetirement(t *testing.T) {
 				}
 				if mode == "changed-token" {
 					changed := strings.ReplaceAll(metadata, "fixture", "changed")
+					if preset == "inline_rendered" {
+						changed = strings.ReplaceAll(metadata, "h2", "h3")
+					}
 					if policy {
 						changed = strings.ReplaceAll(metadata, "Engineer", "Designer")
 					}

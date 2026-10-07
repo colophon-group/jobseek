@@ -96,6 +96,7 @@ def ownership_projection(payload: str) -> str:
                 in {
                     "dom.rendered-urls/v1",
                     "dom.rendered-rows/v1",
+                    "inline.rendered-items/v1",
                     "rss.rendered-generic-skip/v1",
                     "rss.rendered-generic-items/v1",
                     "rss.rendered-generic-summary-skip/v1",

@@ -314,7 +314,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		discovery, fetchErr = discoverAlmaInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "eightfold" {
 		discovery, fetchErr = discoverEightfoldInventory(ctx, http.client, profile, task.Config)
-	} else if profile.Provider == "inline" {
+	} else if profile.Provider == "inline" && task.Worker == queue.Simple {
 		discovery, fetchErr = discoverInlineInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "beisen" {
 		discovery, fetchErr = discoverBeisenInventory(ctx, http.client, profile, task.Config)
