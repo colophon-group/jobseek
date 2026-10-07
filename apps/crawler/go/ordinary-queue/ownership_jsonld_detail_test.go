@@ -21,9 +21,21 @@ func TestRealJSONLDDetailCursorUsesBoundedUUIDIndexTraversal(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer tx.Rollback(ctx)
-	// A tiny fixture may prefer a single-column index plus a one-row sort.
-	// Discourage both sorting and sequential scans to prove the actual query
-	// can use the migrated UUID keyset directly. The text alias cannot do so.
+	// An otherwise empty database makes scanning the whole primary key as cheap
+	// as selecting the board. Populate a competing board inside this rolled-back
+	// transaction so the plan must demonstrate a genuinely scoped keyset.
+	if _, err := tx.Exec(ctx, `INSERT INTO job_posting(id,company_id,board_id,source_url,titles,locales,last_seen_at,next_scrape_at)
+ SELECT md5($2::text || ':' || n::text)::uuid,$1::uuid,$2::uuid,
+ 'https://example.com/cursor-noise/' || $2::text || '/' || n::text,
+ ARRAY['Other board posting'],ARRAY['en'],now(),now()
+ FROM generate_series(1,2048) n`, p.f.company, p.plan.document.Members[0].BoardID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, "ANALYZE public.job_posting"); err != nil {
+		t.Fatal(err)
+	}
+	// Prove that the actual query can use the migrated UUID keyset directly.
+	// Ordering by its text alias would still require a sort.
 	if _, err := tx.Exec(ctx, "SET LOCAL enable_seqscan=off"); err != nil {
 		t.Fatal(err)
 	}

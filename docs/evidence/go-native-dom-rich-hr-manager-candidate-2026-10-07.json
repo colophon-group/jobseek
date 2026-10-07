@@ -15,8 +15,26 @@
     "full_dom_module_race": "passed",
     "focused_worker_race": "passed",
     "focused_queue_race": "passed",
-    "full_worker_queue_suites": "pending",
-    "immutable_image_ci": "pending"
+    "full_worker_queue_suites": "worker passed; full queue re-run pending after test fixture fix",
+    "immutable_image_ci": "pending",
+    "full_worker_race": {
+      "state": "passed",
+      "seconds": 499.379,
+      "head": "57a457cc6cd07bfaebd275ffde21db475a5d10a7"
+    },
+    "full_queue_initial_race": {
+      "state": "failed",
+      "seconds": 279.219,
+      "reason": "existing tiny-fixture cursor assertion selected job_posting_pkey instead of idx_jp_board_id_cursor"
+    },
+    "cursor_fixture_follow_up": {
+      "production_runtime_changes": false,
+      "competing_board_rows": 2048,
+      "rolled_back": true,
+      "index_assertion_retained": "idx_jp_board_id_cursor directly without sort",
+      "repetitions_passed": 5,
+      "seconds": 2.493
+    }
   },
   "offline_canonical_screen": {
     "source_revision": "60d0de8bebfbd25486791cb741d3b5ce814dfbce",

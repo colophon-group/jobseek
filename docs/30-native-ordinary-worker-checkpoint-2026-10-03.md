@@ -5,6 +5,19 @@
 The full migration goal is **active and incomplete**. Ship multiple provider
 and variant types per release, sharing reference verification, CI and cutover.
 
+### Full-suite follow-up — 02:51 UTC October7
+
+Candidate959's full worker race suite passed in499.379 seconds at
+`57a457cc6cd07bfaebd275ffde21db475a5d10a7`. Its full queue suite found one
+existing cursor-plan assertion failure: the tiny private database chose the
+primary-key index rather than `idx_jp_board_id_cursor`. The test now seeds2048
+competing-board rows inside a rolled-back transaction and analyzes that private
+fixture. It still requires the exact scoped UUID index with no sort; five
+repetitions pass in2.493 seconds. No production runtime code changed in this
+follow-up. Re-run the full queue suite and retain its original failed evidence.
+Candidate958's original browser-image CI build is still live; do not merge it
+until Required CI is terminal green and fresh final merge authority is checked.
+
 ### Grouped candidate959 implementation — 02:36 UTC October7
 
 Candidate959 now integrates DOM rich rows across direct HTTP, credentialed proxy
