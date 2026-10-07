@@ -1,25 +1,29 @@
 {
   "schema": 1,
   "candidate_version": "0.13.961",
-  "stage": "native direct-fetch integration candidate",
+  "stage": "grouped direct and rendered feed transport candidate",
   "python_item_cases": 24,
   "python_identity_cases": 7,
   "focused_race_seconds": 1.79,
   "families": [
     "SuccessFactors legacy XML",
-    "Generic RSS structured summary"
+    "Generic RSS structured summary",
+    "Generic paginated RSS",
+    "WordPress Job Manager RSS",
+    "Rendered generic and structured-summary RSS",
+    "Rendered WordPress RSS"
   ],
   "core_reference": "apps/crawler/go/ordinary-worker/testdata/python_rss_variants.json",
   "remaining": [
-    "bounded generic/WordPress pagination",
-    "SuccessFactors detail properties",
-    "rendered feed path",
-    "full suites and exact-source installed CI",
-    "production ownership and natural proof"
+    "SuccessFactors detail properties and invite identity",
+    "Remaining static DWR/RMK RSS variants",
+    "Trusted proxy feed transport",
+    "Fresh full suites and exact-source installed CI",
+    "Production rollout, ownership and natural proof"
   ],
   "production_adopted": false,
   "full_migration_complete": false,
-  "compiled_profiles": 94,
+  "compiled_profiles": 102,
   "canonical_pg_redis_cases": 18,
   "canonical_seconds": 9.702,
   "canonical_fields": [
@@ -40,7 +44,7 @@
     "queue_race_seconds": 302.496,
     "require_postgres": true,
     "require_redis": true,
-    "status": "passed; pagination traversal remains unadmitted until transport integration"
+    "status": "historical passed at da4aea356; current expanded transport requires fresh full suites"
   },
   "actual_python_stream_cases": 9,
   "stream_reference_race_seconds": 1.989,
@@ -60,5 +64,17 @@
   },
   "python_paged_stream_cases": 13,
   "paged_stream_race_seconds": 2.178,
-  "pagination_transport_admitted": false
+  "pagination_transport_admitted": true,
+  "canonical_pagination_cases": 28,
+  "canonical_pagination_race_seconds": 12.874,
+  "new_cold_pagination_cases": 15,
+  "new_cold_pagination_race_seconds": 13.284,
+  "python_browser_projection_cases": 12,
+  "affine_feed_session": {
+    "state": "local pinned-TLS cleanup/disconnect tests passed; installed Linux affinity proof pending",
+    "protocol": "jobseek.lightpanda.feed-session/v1",
+    "raw_body_limit": 2000000,
+    "duration_ms": 600000,
+    "no_proxy_admission": true
+  }
 }

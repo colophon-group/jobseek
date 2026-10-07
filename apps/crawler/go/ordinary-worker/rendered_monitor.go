@@ -30,6 +30,9 @@ func (r *NativeRenderedDetails) FetchMonitor(ctx context.Context, profile queue.
 	if r == nil || r.client == nil || queue.MonitorWorker(profile) != queue.Browser {
 		return result, queue.ErrConfiguration
 	}
+	if queue.RSSRenderedProfile(profile.Profile) {
+		return r.fetchRSS(ctx, profile, config)
+	}
 	_, options, err := queue.RenderedDOMMonitorOptions(config)
 	if err != nil {
 		return result, err

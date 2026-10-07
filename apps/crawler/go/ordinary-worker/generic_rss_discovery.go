@@ -148,10 +148,23 @@ type genericFeedResource string
 func (f genericFeedResource) ResourceMatches(raw string) bool { return raw == string(f) }
 
 func discoverGenericRSS(ctx context.Context, client *http.Client, profile queue.GreenhouseMonitorProfile) (RichDiscovery, error) {
+	if profile.RSSPagination != nil {
+		return collectRSSPages(ctx, profile.Endpoint, profile.RSSPagination, false, func(ctx context.Context, endpoint string) (RichDiscovery, error) {
+			page := profile
+			page.Endpoint = endpoint
+			return discoverGenericRSSPage(ctx, client, page, true)
+		})
+	}
+	return discoverGenericRSSPage(ctx, client, profile, false)
+}
+func discoverGenericRSSPage(ctx context.Context, client *http.Client, profile queue.GreenhouseMonitorProfile, keepTail bool) (RichDiscovery, error) {
 	result := RichDiscovery{Jobs: []RichMonitorJob{}}
 	for attempt := 0; attempt < 3; attempt++ {
 		body, observed, err := fetchProviderStatusResource(ctx, client, genericFeedResource(profile.Endpoint), profile.Endpoint, nil, nil, 32<<20, nil)
 		result.Response = observed
+		if err == nil && observed != nil && observed.status != 200 {
+			return result, &DiscoveryError{Kind: "http_status", Status: observed.status}
+		}
 		if err == nil {
 			preset := "generic"
 			if strings.HasPrefix(profile.Profile, "rss.hr_manager-") {
@@ -167,7 +180,7 @@ func discoverGenericRSS(ctx context.Context, client *http.Client, profile queue.
 			var e error
 			switch {
 			case strings.HasPrefix(profile.Profile, "rss.generic-summary-"):
-				parsed, e = parseGenericStructuredSummary(body)
+				parsed, e = parseGenericSummaryPage(body, !keepTail)
 			case strings.HasPrefix(profile.Profile, "rss.successfactors-legacy-xml-"):
 				origin, company, err := queue.SuccessFactorsLegacyXMLIdentity(profile.Endpoint)
 				if err != nil {
@@ -175,7 +188,11 @@ func discoverGenericRSS(ctx context.Context, client *http.Client, profile queue.
 				}
 				parsed, e = parseSFLegacyXML(body, origin, company)
 			default:
-				parsed, e = parseRSSProvider(body, preset)
+				if keepTail {
+					parsed, e = parseRSSProviderPage(body, preset, true, false)
+				} else {
+					parsed, e = parseRSSProvider(body, preset)
+				}
 			}
 			parsed.Response = observed
 			return parsed, e

@@ -12,13 +12,13 @@ import (
 )
 
 func TestRealFirstGroupedRSSProviderColdRetirement(t *testing.T) {
-	for _, preset := range []string{"governmentjobs", "zoho_recruit", "hr_manager", "dom_rows", "dom_proxy_rows", "dom_rendered_rows", "generic_policy", "successfactors_policy", "teamtailor_policy", "dom_policy_rows", "dom_policy_urls", "sf_legacy_xml", "generic_summary"} {
+	for _, preset := range []string{"governmentjobs", "zoho_recruit", "hr_manager", "dom_rows", "dom_proxy_rows", "dom_rendered_rows", "generic_policy", "successfactors_policy", "teamtailor_policy", "dom_policy_rows", "dom_policy_urls", "sf_legacy_xml", "generic_summary", "generic_pages", "wp_pages", "generic_rendered_pages", "summary_rendered_pages", "wp_rendered_pages"} {
 		provider := "rss"
 		if strings.HasPrefix(preset, "dom_") {
 			provider = "dom"
 		}
 		worker := Simple
-		if preset == "dom_rendered_rows" {
+		if preset == "dom_rendered_rows" || strings.Contains(preset, "_rendered_pages") {
 			worker = Browser
 		}
 		for _, mode := range []string{"interrupted", "committed-before-ack", "changed-token"} {
@@ -43,6 +43,19 @@ func TestRealFirstGroupedRSSProviderColdRetirement(t *testing.T) {
 				if preset == "generic_summary" {
 					boardURL = "https://example.com/fixture"
 					metadata = `{"preset":"generic","description_mode":"title_employment_location","feed_url":"https://example.com/fixture/feed","scraper_type":"skip"}`
+				}
+				if strings.HasSuffix(preset, "_pages") {
+					boardURL = "https://example.com/fixture"
+					metadata = `{"preset":"generic","feed_url":"https://example.com/fixture/feed","scraper_type":"skip","pagination":{"param_name":"page","page_size":10,"max_pages":3}}`
+					if strings.HasPrefix(preset, "wp_") {
+						metadata = `{"preset":"wp_job_manager","feed_url":"https://example.com/fixture/feed","scraper_type":"skip"}`
+					}
+					if preset == "summary_rendered_pages" {
+						metadata = strings.Replace(metadata, `{"preset":`, `{"description_mode":"title_employment_location","preset":`, 1)
+					}
+					if worker == Browser {
+						metadata = strings.Replace(metadata, `{"`, `{"render":true,"`, 1)
+					}
 				}
 				if strings.HasPrefix(preset, "dom_") {
 					boardURL = "https://example.com/fixture"

@@ -3,49 +3,12 @@ package worker
 import (
 	"context"
 	"errors"
+	feedsession "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/feedsession"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
-	"net/url"
-	"strconv"
-	"strings"
 )
 
-// RSS uses Python parse_qs/urlencode: retain the first nonempty value and
-// original key order, replacing the page parameter in its existing position.
 func rssPageURL(feed string, page int, param string) (string, error) {
-	u, err := url.Parse(feed)
-	if err != nil {
-		return "", err
-	}
-	keys := []string{}
-	values := map[string]string{}
-	for _, entry := range strings.Split(u.RawQuery, "&") {
-		key, value, ok := strings.Cut(entry, "=")
-		if !ok || value == "" {
-			continue
-		}
-		key, err = url.QueryUnescape(key)
-		if err != nil {
-			return "", err
-		}
-		value, err = url.QueryUnescape(value)
-		if err != nil {
-			return "", err
-		}
-		if _, exists := values[key]; !exists {
-			keys = append(keys, key)
-			values[key] = value
-		}
-	}
-	if _, exists := values[param]; !exists {
-		keys = append(keys, param)
-	}
-	values[param] = strconv.Itoa(page)
-	encoded := make([]string, 0, len(keys))
-	for _, key := range keys {
-		encoded = append(encoded, url.QueryEscape(key)+"="+url.QueryEscape(values[key]))
-	}
-	u.RawQuery = strings.Join(encoded, "&")
-	return u.String(), nil
+	return feedsession.PageURL(feed, page, param)
 }
 
 type rssPageFetcher func(context.Context, string) (RichDiscovery, error)

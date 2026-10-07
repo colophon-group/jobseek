@@ -20,7 +20,7 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 	} else {
 		preset = "generic"
 	}
-	if preset != "teamtailor" && preset != "successfactors" && preset != "generic" && preset != "governmentjobs" && preset != "zoho_recruit" && preset != "hr_manager" {
+	if preset != "teamtailor" && preset != "successfactors" && preset != "generic" && preset != "governmentjobs" && preset != "zoho_recruit" && preset != "hr_manager" && preset != "wp_job_manager" {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
 	if raw, ok := md["variant"]; ok && json.Unmarshal(raw, &variant) != nil {
@@ -61,6 +61,9 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 		}
 		path := "/jobs.rss"
+		if preset == "wp_job_manager" {
+			path = "/?feed=job_feed"
+		}
 		if preset == "successfactors" {
 			path = "/googlefeed.xml"
 		}
@@ -70,7 +73,7 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 	if err != nil || len(feed) > 8192 || u.Scheme != "https" || u.Hostname() == "" || u.Host != u.Hostname() || u.User != nil || u.Opaque != "" || u.Fragment != "" || strings.ContainsAny(feed, "\x00\r\n") {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
-	validFeed := preset == "generic" || preset == "zoho_recruit" || preset == "governmentjobs" || preset == "hr_manager" || u.RawQuery == "" && strings.HasSuffix(u.Path, "/jobs.rss")
+	validFeed := preset == "wp_job_manager" || preset == "generic" || preset == "zoho_recruit" || preset == "governmentjobs" || preset == "hr_manager" || u.RawQuery == "" && strings.HasSuffix(u.Path, "/jobs.rss")
 	if preset == "successfactors" {
 		validFeed = u.RawQuery == "" && strings.EqualFold(strings.TrimRight(u.Path, "/"), "/googlefeed.xml") || u.Path == "/services/rss/category/" && rssCategoryQuery.MatchString(u.RawQuery)
 		if variant == "legacy_xml" {
@@ -104,6 +107,13 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 		}
 		profilePreset = "generic-summary"
 	}
+	_, pagination, options, err := RSSOptions(config)
+	if err != nil {
+		return GreenhouseMonitorProfile{}, err
+	}
+	if options["render"] == true {
+		profilePreset = "rendered-" + profilePreset
+	}
 	name := "rss." + profilePreset + "-skip/v1"
 	if feedHasDetailAssignment(md) {
 		name = "rss." + profilePreset + "-items/v1"
@@ -116,6 +126,7 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 	if err != nil {
 		return GreenhouseMonitorProfile{}, err
 	}
+	profile.RSSPagination = pagination
 	return profile, nil
 }
 

@@ -76,6 +76,7 @@ type Task struct {
 	Evaluation        *TaskEvaluation
 	Navigation        *navigationOptions
 	Dayforce          *dayforceTask
+	Feed              *feedTask
 	ResponseBodyLimit uint64
 }
 
@@ -88,13 +89,14 @@ type TaskEvaluation struct {
 
 // Result contains only data from the top-level document.
 type Result struct {
-	ResourcePolicy *runtimev1.ResourcePolicySignals `json:"-"`
-	Status         int                              `json:"status"`
-	FinalURL       string                           `json:"final_url"`
-	HTML           string                           `json:"html"`
-	HTMLPresent    bool                             `json:"-"`
-	ResponseBody   []byte                           `json:"-"`
-	Expression     json.RawMessage                  `json:"expression"`
+	feedSessionSettled bool
+	ResourcePolicy     *runtimev1.ResourcePolicySignals `json:"-"`
+	Status             int                              `json:"status"`
+	FinalURL           string                           `json:"final_url"`
+	HTML               string                           `json:"html"`
+	HTMLPresent        bool                             `json:"-"`
+	ResponseBody       []byte                           `json:"-"`
+	Expression         json.RawMessage                  `json:"expression"`
 }
 
 type managedProcess interface {
@@ -258,6 +260,9 @@ func executeTask(ctx context.Context, deps dependencies, process managedProcess,
 }
 
 func validateTask(task Task) error {
+	if task.Feed != nil && (!task.Feed.request.Valid() || task.Feed.converse == nil || task.Feed.request.FeedURL != task.URL || task.Dayforce != nil || task.Evaluation != nil || task.ResponseBodyLimit != 2_000_000) {
+		return errors.New("invalid feed session task")
+	}
 	if task.ResponseBodyLimit > 2_000_000 || (task.ResponseBodyLimit != 0 && (task.Dayforce != nil || task.Evaluation != nil)) {
 		return errors.New("invalid main-document response capture")
 	}
@@ -315,6 +320,12 @@ func validateCDPEndpoint(raw string, expectedPort int) error {
 }
 
 func validateResult(task Task, result Result) error {
+	if task.Feed != nil {
+		if !result.feedSessionSettled {
+			return errors.New("feed session unfinished")
+		}
+		return nil
+	}
 	if task.ResponseBodyLimit == 0 && result.ResponseBody != nil || task.ResponseBodyLimit != 0 && result.ResponseBody == nil {
 		return errors.New("main-document response capture presence mismatch")
 	}
@@ -823,6 +834,24 @@ func (chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (
 	}
 	targetCtx, cancelTarget := chromedp.NewContext(allocatorCtx, targetOptions...)
 	defer cancelTarget()
+
+	if task.Feed != nil {
+		return task.Feed.converse(ctx, func(pageCtx context.Context, endpoint string) (Result, error) {
+			step := task
+			step.Feed = nil
+			step.URL = endpoint
+			return executeOnTarget(pageCtx, targetCtx, step)
+		})
+	}
+	return executeOnTarget(ctx, targetCtx, task)
+}
+
+func executeOnTarget(ctx, target context.Context, task Task) (Result, error) {
+	targetCtx, cancel := context.WithCancel(target)
+	defer cancel()
+	if ctx.Err() != nil {
+		return Result{}, ctx.Err()
+	}
 
 	var mainFrame cdp.FrameID
 	var latestResponse mainDocumentResponse

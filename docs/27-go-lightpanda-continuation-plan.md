@@ -43,15 +43,17 @@ plan/projection is active; the initial canonical readback passed. Every-profile
 freshness and whole-lane attributable cost still need observation.
 
 Candidate961 groups SuccessFactors legacy XML and structured Generic RSS
-summaries (94 compiled profiles), faithful200-job stream prefixes, validated
+summaries (102 compiled profiles), faithful200-job stream prefixes, validated
 Generic/WordPress pagination and raw browser response capture. Actual Python
 references cover24 items,7 identities,9 failure streams,16 pagination configs
 and13 cross-page traversal cases.18 canonical PostgreSQL/Redis worker cases and
 39 cold cases pass. Raw XML/CDATA capture passed the existing installed
 [Lightpanda pilot37571180241](https://github.com/colophon-group/jobseek/actions/runs/37571180241)
 on amd64 and arm64. Full worker and queue race suites passed503.995/302.496 seconds at da4aea356.
-Affine/proxy pagination transport, remaining RSS properties, fresh CI and
-deployment/adoption still remain.
+Direct and affine rendered pagination now passes28 canonical PostgreSQL/Redis
+cases and15 additional cold-retirement cases. Browser ownership projection
+passes12 Python cases. Installed Linux cookie affinity, current full suites,
+proxy transport, remaining RSS properties and deployment/adoption still remain.
 
 Self-hosted Lightpanda uses the latest verified stable **1.0.0**, published
 October2. Keep its verified immutable pin; recheck official releases when upgrading.

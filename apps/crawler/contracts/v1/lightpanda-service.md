@@ -111,6 +111,27 @@ It does not implement generic `ExecutionFrame` resumption or an origin ledger.
 
 ## B0/B1 one-shot wire order
 
+The ordinary Go worker also uses `jobseek.lightpanda.feed-session/v1` on the
+same pinned connection and C4 reservation. Its strict typed request binds one
+HTTPS feed, configuration fingerprint, pagination parameter/sequence, readiness
+and navigation budget. It accepts no scripts, headers or proxy credentials.
+One fresh Lightpanda process and target retain cookies across feed pages.
+Each sequenced page returns the exact bounded final main-document bytes and
+publisher signals, including XML and CDATA. Page results remain provisional;
+successful finish is returned only after target/process disposal. Disconnect
+cancels active navigation. The client requires the matching final sequence and
+EOF before granting a complete inventory to the native worker.
+
+Requests are at most16 KiB, commands1 KiB, raw bodies2,000,000 bytes and result
+frames2 MiB. The session ceiling is600 seconds. The existing deny policy, mTLS
+identity, C4 capacity and memory limits apply. Generic pagination is bounded by
+its compiled options; the default WordPress traversal also respects the native
+50,000-job bound. Failed browser attempts discard the whole inventory, while
+direct HTTP feed streams preserve previously accepted complete200-job batches.
+Publisher reservations and failed/repeated/limited pages never finalize absence.
+Proxy feed configurations remain unadmitted until trusted transport and installed
+proof are available. This conversation does not implement generic resumption.
+
 Each connection has this exact order:
 
 1. The server sends one canonical unsigned-varint frame containing strict JSON:

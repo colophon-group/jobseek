@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	feed "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/feedsession"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/lightpandaadapter"
 )
@@ -128,6 +129,43 @@ func TestLightpandaNavigationReadinessIntegration(t *testing.T) {
 			if result.GetError() == nil || result.GetError().Error.Code != runtimev1.ErrorCode_ERROR_CODE_RESOURCE_LIMIT {
 				t.Fatal("capture ceiling did not refuse", result)
 			}
+		}
+	})
+
+	t.Run("affine-raw-feed-retains-cookies-and-disposes-listeners", func(t *testing.T) {
+		var hits atomic.Int64
+		affine := newTestLoopbackServer(t, "127.0.0.2", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			hits.Add(1)
+			if r.URL.Query().Get("page") == "1" {
+				http.SetCookie(w, &http.Cookie{Name: "feed-session", Value: "held", Path: "/"})
+			} else {
+				cookie, e := r.Cookie("feed-session")
+				if e != nil || cookie.Value != "held" {
+					t.Error("second page lost affine cookie")
+					w.WriteHeader(403)
+					return
+				}
+			}
+			w.Header().Set("Content-Type", "application/rss+xml; charset=utf-8")
+			_, _ = io.WriteString(w, feedXML)
+		}))
+		request := feed.Request{Protocol: feed.Protocol, RequestID: strings.Repeat("a", 64), ConfigFingerprint: strings.Repeat("b", 64), FeedURL: "https://fixture.example/feed", PageParameter: "page", Start: 1, Increment: 1, MaxPages: 2, Wait: "domcontentloaded", NavigationTimeoutMS: 10000, TimeoutMS: 30000}
+		task := Task{URL: request.FeedURL, ResponseBodyLimit: feed.BodyLimit, Navigation: &navigationOptions{wait: runtimev1.WaitCondition_WAIT_CONDITION_DOM_CONTENT_LOADED, timeout: 10 * time.Second}, Feed: &feedTask{request: request, converse: func(ctx context.Context, fetch feedPageFetch) (Result, error) {
+			for _, page := range []string{"1", "2"} {
+				result, e := fetch(ctx, affine.URL+"/feed?page="+page)
+				if e != nil {
+					return Result{}, e
+				}
+				if result.Status != 200 || !bytes.Equal(result.ResponseBody, []byte(feedXML)) {
+					t.Error("affine raw XML differs")
+					return Result{}, feed.ErrProtocol
+				}
+			}
+			return Result{feedSessionSettled: true}, nil
+		}}}
+		result, e := fixtureRunner(context.Background(), Config{Binary: binary, TaskTimeout: 30 * time.Second, EgressPolicy: defaultEgressPolicy()}, task)
+		if e != nil || !result.feedSessionSettled || hits.Load() != 2 {
+			t.Fatal("affine feed failed after cleanup", e, hits.Load())
 		}
 	})
 	for _, wait := range []runtimev1.WaitCondition{1, 2, 3, 4} {

@@ -84,7 +84,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 	case "rss":
 		allowed["preset"], allowed["feed_url"] = true, true
 		allowed["variant"], allowed["agency"], allowed["tenant"], allowed["customer"] = true, true, true, true
-		for _, key := range []string{"url", "url_filter", "url_allowlist", "url_transform", "job_filter", "description_mode", "company"} {
+		for _, key := range []string{"url", "url_filter", "url_allowlist", "url_transform", "job_filter", "description_mode", "company", "pagination", "render", "wait", "wait_fallback", "timeout", "browser_backend", "routing_revision", "proxy"} {
 			allowed[key] = true
 		}
 	case "workday":
