@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "candidate_version": "0.13.961",
-  "stage": "parser core only",
+  "stage": "native direct-fetch integration candidate",
   "python_item_cases": 24,
   "python_identity_cases": 7,
   "focused_race_seconds": 1.79,
@@ -11,14 +11,29 @@
   ],
   "core_reference": "apps/crawler/go/ordinary-worker/testdata/python_rss_variants.json",
   "remaining": [
-    "native profile and configured transport integration",
+    "late malformed/parser stream prefix parity",
     "bounded generic/WordPress pagination",
     "SuccessFactors detail properties",
     "rendered feed path",
-    "canonical and cold verification",
     "full suites and exact-source installed CI",
     "production ownership and natural proof"
   ],
   "production_adopted": false,
-  "full_migration_complete": false
+  "full_migration_complete": false,
+  "compiled_profiles": 94,
+  "canonical_pg_redis_cases": 12,
+  "canonical_seconds": 4.478,
+  "canonical_fields": [
+    "title",
+    "locations",
+    "structured summary employment",
+    "XML remote policy",
+    "descriptions and pending R2 upload",
+    "no terminal missing effects on failed inventory"
+  ],
+  "grouped_cold_cases": 39,
+  "cold_seconds": 31.351,
+  "profile_race_seconds": 1.421,
+  "streamed_prefix_failure_parity": "pending for new parser/body failures after complete 200-job batches",
+  "full_suites": "pending"
 }

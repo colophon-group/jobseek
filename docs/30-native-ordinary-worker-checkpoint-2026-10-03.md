@@ -5,17 +5,21 @@
 The full migration goal is **active and incomplete**. Ship multiple provider
 and variant types per release, sharing reference verification, CI and cutover.
 
-### Next grouped RSS parser core candidate961 — October7
+### Next grouped RSS integration candidate961 — October7
 
-The next grouped batch has native SuccessFactors legacy XML and Generic RSS
-structured-summary parser cores. Twenty-four actual Python item cases and seven
-strict feed-identity cases pass under the race detector in1.790 seconds. They
-cover leading XML text, duplicate/namespaced children, locations and remote type,
-Unicode IDs, tenant query identity, summary title/location/employment fields and
-malformed inventories. No native ownership profile or discovery route is added
-by this core checkpoint. Complete configured fetch/pagination/browser paths,
-canonical writes, cold reversal and installed-image verification before adoption.
-Keep WordPress RSS and remaining SuccessFactors detail properties in this batch.
+The next batch now connects SuccessFactors legacy XML and Generic RSS structured
+summaries to native direct discovery with four additional profiles (94 compiled).
+Twenty-four actual Python item cases plus seven strict feed-identity cases pass;
+12 PostgreSQL/Redis worker cases pass in4.478 seconds, and39 grouped provider
+cold cases pass in31.351 seconds. Tests verify title, location, employment,
+remote policy, descriptions/upload state, failed-inventory absence handling and
+queue deadlines. Exact tenant/company and parser options bind ownership.
+
+This candidate is not published or adopted. Verify accepted stream prefixes
+when later parser/body failures occur after complete200-job batches, complete
+bounded generic/WordPress pagination, SuccessFactors properties and rendered
+feed paths, then full suites and installed CI. Keep these variants grouped in
+the same delivery. Current evidence is focused candidate proof.
 
 ### Combined delivery update — 03:32 UTC October7
 

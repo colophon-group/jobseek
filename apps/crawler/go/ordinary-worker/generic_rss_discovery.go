@@ -146,7 +146,20 @@ func discoverGenericRSS(ctx context.Context, client *http.Client, profile queue.
 			if strings.HasPrefix(profile.Profile, "rss.zoho_recruit-") {
 				preset = "zoho_recruit"
 			}
-			parsed, e := parseRSSProvider(body, preset)
+			var parsed RichDiscovery
+			var e error
+			switch {
+			case strings.HasPrefix(profile.Profile, "rss.generic-summary-"):
+				parsed, e = parseGenericStructuredSummary(body)
+			case strings.HasPrefix(profile.Profile, "rss.successfactors-legacy-xml-"):
+				origin, company, err := queue.SuccessFactorsLegacyXMLIdentity(profile.Endpoint)
+				if err != nil {
+					return result, err
+				}
+				parsed, e = parseSFLegacyXML(body, origin, company)
+			default:
+				parsed, e = parseRSSProvider(body, preset)
+			}
 			parsed.Response = observed
 			return parsed, e
 		}

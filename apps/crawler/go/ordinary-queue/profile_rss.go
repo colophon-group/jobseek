@@ -26,7 +26,7 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 	if raw, ok := md["variant"]; ok && json.Unmarshal(raw, &variant) != nil {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
-	if preset != "successfactors" && variant != "" || preset == "successfactors" && variant != "" && variant != "feed" {
+	if preset != "successfactors" && variant != "" || preset == "successfactors" && variant != "" && variant != "feed" && variant != "legacy_xml" {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
 	if raw, ok := md["feed_url"]; ok && json.Unmarshal(raw, &feed) != nil {
@@ -73,6 +73,16 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 	validFeed := preset == "generic" || preset == "zoho_recruit" || preset == "governmentjobs" || preset == "hr_manager" || u.RawQuery == "" && strings.HasSuffix(u.Path, "/jobs.rss")
 	if preset == "successfactors" {
 		validFeed = u.RawQuery == "" && strings.EqualFold(strings.TrimRight(u.Path, "/"), "/googlefeed.xml") || u.Path == "/services/rss/category/" && rssCategoryQuery.MatchString(u.RawQuery)
+		if variant == "legacy_xml" {
+			_, company, err := SuccessFactorsLegacyXMLIdentity(feed)
+			validFeed = err == nil
+			if raw, exists := md["company"]; exists && string(raw) != "null" {
+				var configured string
+				if json.Unmarshal(raw, &configured) != nil || strings.TrimSpace(configured) != company {
+					validFeed = false
+				}
+			}
+		}
 	}
 	if !validFeed {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
@@ -83,9 +93,20 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 	if _, err := FeedMonitorURLRules(config); err != nil {
 		return GreenhouseMonitorProfile{}, err
 	}
-	name := "rss." + preset + "-skip/v1"
+	profilePreset := preset
+	if variant == "legacy_xml" {
+		profilePreset = "successfactors-legacy-xml"
+	}
+	if raw, ok := md["description_mode"]; ok && string(raw) != "null" {
+		var mode string
+		if preset != "generic" || json.Unmarshal(raw, &mode) != nil || mode != "title_employment_location" {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		profilePreset = "generic-summary"
+	}
+	name := "rss." + profilePreset + "-skip/v1"
 	if feedHasDetailAssignment(md) {
-		name = "rss." + preset + "-items/v1"
+		name = "rss." + profilePreset + "-items/v1"
 	}
 	token := "feed"
 	if preset == "hr_manager" {

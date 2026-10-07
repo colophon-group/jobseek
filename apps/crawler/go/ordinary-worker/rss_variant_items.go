@@ -7,29 +7,16 @@ import (
 	"html"
 	"io"
 	"net/url"
-	"regexp"
 	"strings"
 	"unicode"
 
 	enrichment "github.com/colophon-group/jobseek/apps/crawler/go/job-enrichment"
+	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
+	"golang.org/x/net/html/charset"
 )
 
-var sfXMLCompany = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
-
 func sfLegacyXMLIdentity(source string) (string, string, error) {
-	u, err := url.Parse(source)
-	if err != nil || !strings.EqualFold(u.Scheme, "https") || u.Hostname() == "" || u.User != nil || u.Fragment != "" || u.Port() != "" && u.Port() != "443" || !strings.EqualFold(strings.TrimRight(u.EscapedPath(), "/"), "/career") {
-		return "", "", errors.New("invalid SuccessFactors XML origin")
-	}
-	q, err := url.ParseQuery(u.RawQuery)
-	if err != nil || len(q) != 3 || len(q["company"]) != 1 || len(q["career_ns"]) != 1 || len(q["resultType"]) != 1 || q.Get("career_ns") != "job_listing_summary" || q.Get("resultType") != "XML" {
-		return "", "", errors.New("invalid SuccessFactors XML tenant")
-	}
-	company := strings.TrimSpace(q.Get("company"))
-	if !sfXMLCompany.MatchString(company) {
-		return "", "", errors.New("invalid SuccessFactors XML company")
-	}
-	return "https://" + strings.ToLower(u.Hostname()), company, nil
+	return queue.SuccessFactorsLegacyXMLIdentity(source)
 }
 
 // Preserve ElementTree's direct-child lookup and leading text. Namespaced
@@ -76,7 +63,12 @@ func readRSSXMLValue(d *xml.Decoder, start xml.StartElement) (rssXMLValue, error
 
 func parseSFLegacyXML(raw []byte, origin, company string) (RichDiscovery, error) {
 	out := RichDiscovery{Jobs: []RichMonitorJob{}}
+	head := strings.ToLower(strings.TrimLeft(string(raw), "\ufeff \t\r\n"))
+	if !strings.HasPrefix(head, "<?xml") && !strings.HasPrefix(head, "<rss") && !strings.HasPrefix(head, "<feed") {
+		return RichDiscovery{}, errors.New("legacy XML non-feed response")
+	}
 	d := xml.NewDecoder(bytes.NewReader(raw))
+	d.CharsetReader = charset.NewReaderLabel
 	depth, roots := 0, 0
 	for {
 		token, err := d.Token()

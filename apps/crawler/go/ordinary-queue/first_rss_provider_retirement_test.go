@@ -12,7 +12,7 @@ import (
 )
 
 func TestRealFirstGroupedRSSProviderColdRetirement(t *testing.T) {
-	for _, preset := range []string{"governmentjobs", "zoho_recruit", "hr_manager", "dom_rows", "dom_proxy_rows", "dom_rendered_rows", "generic_policy", "successfactors_policy", "teamtailor_policy", "dom_policy_rows", "dom_policy_urls"} {
+	for _, preset := range []string{"governmentjobs", "zoho_recruit", "hr_manager", "dom_rows", "dom_proxy_rows", "dom_rendered_rows", "generic_policy", "successfactors_policy", "teamtailor_policy", "dom_policy_rows", "dom_policy_urls", "sf_legacy_xml", "generic_summary"} {
 		provider := "rss"
 		if strings.HasPrefix(preset, "dom_") {
 			provider = "dom"
@@ -35,6 +35,14 @@ func TestRealFirstGroupedRSSProviderColdRetirement(t *testing.T) {
 				if preset == "hr_manager" {
 					boardURL = "https://candidate.hr-manager.net/vacancies/list.aspx?customer=fixture"
 					metadata = `{"preset":"hr_manager","customer":"fixture","scraper_type":"skip"}`
+				}
+				if preset == "sf_legacy_xml" {
+					boardURL = "https://career.example.com/career?company=fixture"
+					metadata = `{"preset":"successfactors","variant":"legacy_xml","company":"fixture","feed_url":"https://career.example.com/career?company=fixture&career_ns=job_listing_summary&resultType=XML","scraper_type":"skip"}`
+				}
+				if preset == "generic_summary" {
+					boardURL = "https://example.com/fixture"
+					metadata = `{"preset":"generic","description_mode":"title_employment_location","feed_url":"https://example.com/fixture/feed","scraper_type":"skip"}`
 				}
 				if strings.HasPrefix(preset, "dom_") {
 					boardURL = "https://example.com/fixture"
