@@ -56,15 +56,25 @@ registry configurations. Seventeen actual Python field cases, native HTTP/policy
 fixtures, six real PostgreSQL/Redis write/policy scenarios and nine cold-retirement
 scenarios passed. Required CI, actual Crawler Deploy Gate status and installed
 image checks passed at reviewed head `710c7223be6b88560072d9c2d9ed8a8e3c901e36`.
-The ten boards are **not yet native-owned**. Broader native ownership will stay
-inactive through the shared-action/detail-lock correction in
-[PR #10354](https://github.com/colophon-group/jobseek/pull/10354), then the combined
-profiles will receive fresh source-bound admission and one supported activation.
+The ten boards are **not yet native-owned**. The shared-action/detail-lock
+correction in [PR #10354](https://github.com/colophon-group/jobseek/pull/10354)
+merged as source967 `0f25771595d3caceab3e6c403f9cd66bdbd5d763` after final-head
+Required CI and actual Crawler Deploy Gate passed. Its original
+[crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37700033018)
+is in progress; the matching
+[renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37700256417)
+has succeeded at this checkpoint. Broader native ownership stays inactive
+until promotion and independent verification, then the combined profiles receive
+fresh source-bound admission and one supported activation.
 This avoids another activation of the reproduced lock-upgrade defect.
 
-The following grouped work has begun on shared DOM/Inline element and overlay
+The merged correction adds shared DOM/Inline element and overlay
 removal actions, retaining Python defaults, selector semantics, failure policy,
-source binding and publisher checks. Focused contract/worker/pilot tests pass.
+source binding and publisher checks. Full real PostgreSQL/Redis queue and worker
+race suites passed (351.501s and
+536.774s); actual pinned Lightpanda 1.0.0 service fixtures passed on both
+architectures, as did installed image parity. The separate ARM64 candidate/control
+measurement also passed. Fleet-wide service cost remains unproved.
 The retained census qualifies six additional DOM configurations; the candidate also repairs a reproduced shared-board lock upgrade deadlock
 affecting native detail profiles. Two real PostgreSQL detail validations failed
 as unacknowledged before the correction; the corrected concurrent regression,
@@ -75,11 +85,10 @@ Actual production error reduction remains unproved until deployed and observed.
 
 ## Continue delivery
 
-1. Complete the shared DOM/Inline actions and reproduced detail-lock correction
-   in PR #10354 through actual pinned Lightpanda integration, real database/queue
-   checks and final-head required CI/installed identity/Crawler Deploy Gate.
-   Keep broader ownership inactive while the healthy source966 base serves.
-   Merge/deploy the correction with the supported immutable full-stack workflow.
+1. Finish the original immutable source967 full-stack and matching renderer
+   rollouts after merged PR #10354, then independently verify the promoted
+   source/images and cold epoch220. The correction has passed the required
+   checks; keep broader ownership inactive through promotion.
 2. After exact-source promotion, activate/read back B0, then capture fresh
    canonical configurations, cache and actual posting routes. Stage and activate
    the resulting source/epoch-bound ordinary plan. Independently verify all
@@ -87,7 +96,10 @@ Actual production error reduction remains unproved until deployed and observed.
    canonical content, publisher outcomes, freshness and queue conservation.
    Diagnose the high detail unacknowledged and claim-error counts through safe
    phase diagnostics; retain attempts and supported recovery authority.
-3. Continue useful groups across remaining provider and shared browser contracts.
+3. Finish the next eArcu/CVWarehouse/Woowa group through full native suites,
+   required CI, installed image identity and supported deployment. It covers
+   all eight registry configurations, including both required eArcu proxies.
+   Continue useful groups across remaining provider and shared browser contracts.
    The captured census includes DOM 219, API sniffer 116, RSS 17 and Sitemap 11.
    Shared DOM/Inline actions can qualify multiple types together; test actual
    Lightpanda behavior and preserve configured resource, proxy and browser
@@ -110,6 +122,37 @@ Maintain separate implementation, admission, ownership and natural-serving
 status. Batch multiple compatible types per iteration. Add infrastructure or
 fixtures for an observed failure or a changed contract. Keep the full delivery
 goal active until all completion evidence and production retirement are done.
+
+## Next grouped candidate — eArcu, CVWarehouse and Woowa
+
+Candidate **0.13.968** adds four immutable profiles (115 total), covering eArcu's
+three boards, CVWarehouse's two boards and all three Woowa variants. Both Aldi
+eArcu boards retain required proxy authority and actual credentialed CONNECT;
+no automatic direct fallback is introduced. This candidate is not yet deployed,
+admitted or native-owned.
+
+The port preserves eArcu live-only XML, bounded autodetection, retries and strict
+same-portal vacancy URLs; CVWarehouse's largest advertised section, configured
+locale first, localized job-ID deduplication and advertised-count validation;
+and Woowa's stable pagination totals, detail identities, concurrency limit,
+50,000-job truncation and provider source identities. Publisher reservations and
+failed later pages/details cannot publish a successful partial inventory.
+
+Twenty-seven actual Python field cases and all eight CSV queue admissions pass.
+Focused complete-inventory, policy, retry and redirect fixtures pass. Eighteen
+real PostgreSQL/Redis write/reservation/partial-failure scenarios passed, including
+proxy execution; twelve real cold-retirement scenarios passed. The full queue
+race run (360.334s) found one outdated registry expectation, corrected to require
+explicit eArcu proxy authority; the focused registry/admission race retest passed
+(1.627s). The full worker race suite and final-head CI remain pending.
+
+Database verification caught and corrected two integration defects before
+release: Woowa identities need provider-bound validation in the existing identity
+writer; CVWarehouse root adverts (`https://tenant.cvw.io/?job=12`) were dropped
+by the generic bare-host rule. The latter is an intentional correction to the
+current Python worker's filtering: only HTTPS CVWarehouse root URLs with exactly
+one numeric `job` query qualify. Generic root/navigation filtering remains.
+Public-feed and normal-schedule production results are still required.
 
 ## Operational handoff
 

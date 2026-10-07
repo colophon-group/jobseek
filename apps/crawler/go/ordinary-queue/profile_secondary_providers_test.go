@@ -51,7 +51,11 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 		config["crawler_type"], config["board_url"], config["metadata"] = provider, row[headers["board_url"]], string(encoded)
 		profile, e := InspectRichMonitor(profileBoardID, config)
 		if metadata["proxy"] == true {
-			if e == nil {
+			if provider == "earcu" {
+				if e != nil || profile.Profile != "earcu.proxy-feed-items/v1" || !ProfileRequiresProxy(profile.Profile) {
+					t.Fatal("required eArcu proxy authority lost")
+				}
+			} else if e == nil {
 				t.Fatal("configured proxy acquired direct monitor authority")
 			}
 			counts[provider+"_proxy_preserved"]++

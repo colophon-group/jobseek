@@ -1,0 +1,1028 @@
+{
+  "cases": [
+    {
+      "provider": "earcu",
+      "name": "rich",
+      "input": "<positions><position><DescriptionURL>/jobs/vacancy/12</DescriptionURL>\n<JobTitle> Engineer </JobTitle><Description><![CDATA[<p>Build &amp; ship</p>]]></Description>\n<Locations><Location> Zürich </Location><Location> </Location></Locations>\n<LastPublishedDate>2026-10-08</LastPublishedDate><VacancyRef>REF</VacancyRef>\n<JobFunction>Platform</JobFunction><Brand>Example</Brand>\n<DisplaySalaryDescription>CHF 100000</DisplaySalaryDescription></position></positions>",
+      "source": "https://jobs.example.com/jobs/allvacancies/",
+      "expected": [
+        {
+          "url": "https://jobs.example.com/jobs/vacancy/12",
+          "title": "Engineer",
+          "description": "<p>Build &amp; ship</p>",
+          "locations": [
+            "Zürich"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "language": null,
+          "extras": null,
+          "metadata": {
+            "reference": "REF",
+            "job_function": "Platform",
+            "brand": "Example",
+            "salary_description": "CHF 100000"
+          },
+          "source_identity": null
+        }
+      ],
+      "error": false
+    },
+    {
+      "provider": "earcu",
+      "name": "empty",
+      "input": "<positions/><!--footer-->",
+      "source": "https://jobs.example.com/jobs/allvacancies/",
+      "expected": [],
+      "error": false
+    },
+    {
+      "provider": "earcu",
+      "name": "unsafe-url",
+      "input": "<positions><position><DescriptionURL>https://other.example/vacancy/12</DescriptionURL>\n<JobTitle> Engineer </JobTitle><Description><![CDATA[<p>Build &amp; ship</p>]]></Description>\n<Locations><Location> Zürich </Location><Location> </Location></Locations>\n<LastPublishedDate>2026-10-08</LastPublishedDate><VacancyRef>REF</VacancyRef>\n<JobFunction>Platform</JobFunction><Brand>Example</Brand>\n<DisplaySalaryDescription>CHF 100000</DisplaySalaryDescription></position></positions>",
+      "source": "https://jobs.example.com/jobs/allvacancies/",
+      "expected": null,
+      "error": true
+    },
+    {
+      "provider": "earcu",
+      "name": "missing-title",
+      "input": "<positions><position><DescriptionURL>/jobs/vacancy/12</DescriptionURL>\n<JobTitle> </JobTitle><Description><![CDATA[<p>Build &amp; ship</p>]]></Description>\n<Locations><Location> Zürich </Location><Location> </Location></Locations>\n<LastPublishedDate>2026-10-08</LastPublishedDate><VacancyRef>REF</VacancyRef>\n<JobFunction>Platform</JobFunction><Brand>Example</Brand>\n<DisplaySalaryDescription>CHF 100000</DisplaySalaryDescription></position></positions>",
+      "source": "https://jobs.example.com/jobs/allvacancies/",
+      "expected": null,
+      "error": true
+    },
+    {
+      "provider": "earcu",
+      "name": "duplicate",
+      "input": "<positions><position><DescriptionURL>/jobs/vacancy/12</DescriptionURL>\n<JobTitle> Engineer </JobTitle><Description><![CDATA[<p>Build &amp; ship</p>]]></Description>\n<Locations><Location> Zürich </Location><Location> </Location></Locations>\n<LastPublishedDate>2026-10-08</LastPublishedDate><VacancyRef>REF</VacancyRef>\n<JobFunction>Platform</JobFunction><Brand>Example</Brand>\n<DisplaySalaryDescription>CHF 100000</DisplaySalaryDescription></position><position><DescriptionURL>/jobs/vacancy/12</DescriptionURL>\n<JobTitle> Engineer </JobTitle><Description><![CDATA[<p>Build &amp; ship</p>]]></Description>\n<Locations><Location> Zürich </Location><Location> </Location></Locations>\n<LastPublishedDate>2026-10-08</LastPublishedDate><VacancyRef>REF</VacancyRef>\n<JobFunction>Platform</JobFunction><Brand>Example</Brand>\n<DisplaySalaryDescription>CHF 100000</DisplaySalaryDescription></position></positions>",
+      "source": "https://jobs.example.com/jobs/allvacancies/",
+      "expected": null,
+      "error": true
+    },
+    {
+      "provider": "earcu",
+      "name": "wrong-root",
+      "input": "<html/>",
+      "source": "https://jobs.example.com/jobs/allvacancies/",
+      "expected": null,
+      "error": true
+    },
+    {
+      "provider": "earcu",
+      "name": "entities",
+      "input": "<!DOCTYPE positions [<!ENTITY private \"private\">]><positions/>",
+      "source": "https://jobs.example.com/jobs/allvacancies/",
+      "expected": null,
+      "error": true
+    },
+    {
+      "provider": "cvwarehouse",
+      "name": "rich",
+      "input": "<div data-item-collection\n data-filter-workschedule='[\"Full time\", false, 3.0, {\"kind\":\"temp\"}]'\n data-filter-worktype=\"Stagiair\" data-filter-attribute='[\"Example\"]'>\n<a data-jobid=\"12\" href=\"/?job=12&amp;lang=nl-BE&amp;section=12345678-1234-1234&amp;q=title\">Job</a>\n<span class=\"workType\"><i class=\"lni-laptop\"></i>Hybrid</span></div>\n<section data-jobdetail-job-id=\"12\"><h2 class=\"job-title\">Engineer</h2>\n<div class=\"additional-data\"><span class=\"location\">Brussels</span></div>\n<div class=\"jobDescriptionText\"><p>Build &amp; ship</p></div></section>",
+      "source": "https://tenant.cvw.io/?section=12345678-1234-1234&lang=nl-BE",
+      "expected": [
+        {
+          "url": "https://tenant.cvw.io/?job=12",
+          "title": "Engineer",
+          "description": "<p>Build &amp; ship</p>",
+          "locations": [
+            "Brussels"
+          ],
+          "employment_type": "internship",
+          "job_location_type": "Hybrid",
+          "date_posted": null,
+          "language": "nl",
+          "extras": null,
+          "metadata": {
+            "job_id": "12",
+            "work_type": "Stagiair",
+            "work_schedule": [
+              "Full time",
+              "False",
+              "3.0",
+              "{'kind': 'temp'}"
+            ],
+            "brand": [
+              "Example"
+            ]
+          },
+          "source_identity": null
+        }
+      ],
+      "error": false
+    },
+    {
+      "provider": "cvwarehouse",
+      "name": "empty",
+      "input": "<html/>",
+      "source": "https://tenant.cvw.io/?section=12345678-1234-1234&lang=nl-BE",
+      "expected": [],
+      "error": false
+    },
+    {
+      "provider": "cvwarehouse",
+      "name": "duplicate",
+      "input": "<div data-item-collection\n data-filter-workschedule='[\"Full time\", false, 3.0, {\"kind\":\"temp\"}]'\n data-filter-worktype=\"Stagiair\" data-filter-attribute='[\"Example\"]'>\n<a data-jobid=\"12\" href=\"/?job=12&amp;lang=nl-BE&amp;section=12345678-1234-1234&amp;q=title\">Job</a>\n<span class=\"workType\"><i class=\"lni-laptop\"></i>Hybrid</span></div>\n<section data-jobdetail-job-id=\"12\"><h2 class=\"job-title\">Engineer</h2>\n<div class=\"additional-data\"><span class=\"location\">Brussels</span></div>\n<div class=\"jobDescriptionText\"><p>Build &amp; ship</p></div></section><div data-item-collection\n data-filter-workschedule='[\"Full time\", false, 3.0, {\"kind\":\"temp\"}]'\n data-filter-worktype=\"Stagiair\" data-filter-attribute='[\"Example\"]'>\n<a data-jobid=\"12\" href=\"/?job=12&amp;lang=nl-BE&amp;section=12345678-1234-1234&amp;q=title\">Job</a>\n<span class=\"workType\"><i class=\"lni-laptop\"></i>Hybrid</span></div>\n<section data-jobdetail-job-id=\"12\"><h2 class=\"job-title\">Engineer</h2>\n<div class=\"additional-data\"><span class=\"location\">Brussels</span></div>\n<div class=\"jobDescriptionText\"><p>Build &amp; ship</p></div></section>",
+      "source": "https://tenant.cvw.io/?section=12345678-1234-1234&lang=nl-BE",
+      "expected": [
+        {
+          "url": "https://tenant.cvw.io/?job=12",
+          "title": "Engineer",
+          "description": "<p>Build &amp; ship</p>",
+          "locations": [
+            "Brussels"
+          ],
+          "employment_type": "internship",
+          "job_location_type": "Hybrid",
+          "date_posted": null,
+          "language": "nl",
+          "extras": null,
+          "metadata": {
+            "job_id": "12",
+            "work_type": "Stagiair",
+            "work_schedule": [
+              "Full time",
+              "False",
+              "3.0",
+              "{'kind': 'temp'}"
+            ],
+            "brand": [
+              "Example"
+            ]
+          },
+          "source_identity": null
+        }
+      ],
+      "error": false
+    },
+    {
+      "provider": "cvwarehouse",
+      "name": "missing-description",
+      "input": "<div data-item-collection\n data-filter-workschedule='[\"Full time\", false, 3.0, {\"kind\":\"temp\"}]'\n data-filter-worktype=\"Stagiair\" data-filter-attribute='[\"Example\"]'>\n<a data-jobid=\"12\" href=\"/?job=12&amp;lang=nl-BE&amp;section=12345678-1234-1234&amp;q=title\">Job</a>\n<span class=\"workType\"><i class=\"lni-laptop\"></i>Hybrid</span></div>\n<section data-jobdetail-job-id=\"12\"><h2 class=\"job-title\">Engineer</h2>\n<div class=\"additional-data\"><span class=\"location\">Brussels</span></div>\n<div class=\"jobDescriptionText\"></div></section>",
+      "source": "https://tenant.cvw.io/?section=12345678-1234-1234&lang=nl-BE",
+      "expected": null,
+      "error": true
+    },
+    {
+      "provider": "cvwarehouse",
+      "name": "unsafe-job",
+      "input": "<div data-item-collection\n data-filter-workschedule='[\"Full time\", false, 3.0, {\"kind\":\"temp\"}]'\n data-filter-worktype=\"Stagiair\" data-filter-attribute='[\"Example\"]'>\n<a data-jobid=\"12\" href=\"https://other.example/?job=12&amp;lang=nl-BE&amp;section=12345678-1234-1234&amp;q=title\">Job</a>\n<span class=\"workType\"><i class=\"lni-laptop\"></i>Hybrid</span></div>\n<section data-jobdetail-job-id=\"12\"><h2 class=\"job-title\">Engineer</h2>\n<div class=\"additional-data\"><span class=\"location\">Brussels</span></div>\n<div class=\"jobDescriptionText\"><p>Build &amp; ship</p></div></section>",
+      "source": "https://tenant.cvw.io/?section=12345678-1234-1234&lang=nl-BE",
+      "expected": null,
+      "error": true
+    },
+    {
+      "provider": "woowa",
+      "name": "brothers-rich",
+      "input": {
+        "listing": {
+          "recruitNumber": "R-1",
+          "recruitName": " Listing title ",
+          "description": "Seoul"
+        },
+        "detail": {
+          "recruitNumber": "R-1",
+          "recruitName": " Engineer's & \"role\" ",
+          "recruitContents": "<p>근무 지역: 서울 / 부산 역할 Build</p>",
+          "employmentType": {
+            "recruitItemCode": "BA002003"
+          },
+          "recruitOpenDate": "2026-10-08T12:00:00",
+          "recruitEndDate": "2999-01-01",
+          "recruitCorporationNumber": 0,
+          "careerType": {
+            "code": "new"
+          },
+          "jobGroup": "Platform",
+          "desiredBranches": [
+            {
+              "recruitItemName": "Branch",
+              "recruitItemRemark": "addr=Gangnam"
+            }
+          ],
+          "applicantCheckList": [
+            {
+              "recruitItemName": " Check's ",
+              "recruitItemRemark": " A&B "
+            }
+          ]
+        }
+      },
+      "source": "https://career.woowahan.com/",
+      "expected": [
+        {
+          "url": "https://career.woowahan.com/recruitment/R-1/detail",
+          "title": "Engineer's & \"role\"",
+          "description": "<p>근무 지역: 서울 / 부산 역할 Build</p>",
+          "locations": [
+            "Seoul, South Korea",
+            "Busan, South Korea"
+          ],
+          "employment_type": "internship",
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "language": "ko",
+          "extras": null,
+          "metadata": {
+            "recruit_number": "R-1",
+            "corporation": 0,
+            "career_type": {
+              "code": "new"
+            },
+            "job_group": "Platform"
+          },
+          "source_identity": "woowa:brothers:R-1"
+        }
+      ],
+      "error": false
+    },
+    {
+      "provider": "woowa",
+      "name": "brothers-fallback-title",
+      "input": {
+        "listing": {
+          "recruitNumber": "R-1",
+          "recruitName": " Listing title ",
+          "description": "Seoul"
+        },
+        "detail": {
+          "recruitNumber": "R-1",
+          "recruitName": null,
+          "recruitContents": "<p>근무 지역: 서울 / 부산 역할 Build</p>",
+          "employmentType": {
+            "recruitItemCode": "BA002003"
+          },
+          "recruitOpenDate": "2026-10-08T12:00:00",
+          "recruitEndDate": "2999-01-01",
+          "recruitCorporationNumber": 0,
+          "careerType": {
+            "code": "new"
+          },
+          "jobGroup": "Platform",
+          "desiredBranches": [
+            {
+              "recruitItemName": "Branch",
+              "recruitItemRemark": "addr=Gangnam"
+            }
+          ],
+          "applicantCheckList": [
+            {
+              "recruitItemName": " Check's ",
+              "recruitItemRemark": " A&B "
+            }
+          ]
+        }
+      },
+      "source": "https://career.woowahan.com/",
+      "expected": [
+        {
+          "url": "https://career.woowahan.com/recruitment/R-1/detail",
+          "title": "Listing title",
+          "description": "<p>근무 지역: 서울 / 부산 역할 Build</p>",
+          "locations": [
+            "Seoul, South Korea",
+            "Busan, South Korea"
+          ],
+          "employment_type": "internship",
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "language": "ko",
+          "extras": null,
+          "metadata": {
+            "recruit_number": "R-1",
+            "corporation": 0,
+            "career_type": {
+              "code": "new"
+            },
+            "job_group": "Platform"
+          },
+          "source_identity": "woowa:brothers:R-1"
+        }
+      ],
+      "error": false
+    },
+    {
+      "provider": "woowa",
+      "name": "brothers-sentinel-date",
+      "input": {
+        "listing": {
+          "recruitNumber": "R-1",
+          "recruitName": " Listing title ",
+          "description": "Seoul"
+        },
+        "detail": {
+          "recruitNumber": "R-1",
+          "recruitName": " Engineer's & \"role\" ",
+          "recruitContents": "<p>근무 지역: 서울 / 부산 역할 Build</p>",
+          "employmentType": {
+            "recruitItemCode": "BA002003"
+          },
+          "recruitOpenDate": "9999-12-31",
+          "recruitEndDate": "2999-01-01",
+          "recruitCorporationNumber": 0,
+          "careerType": {
+            "code": "new"
+          },
+          "jobGroup": "Platform",
+          "desiredBranches": [
+            {
+              "recruitItemName": "Branch",
+              "recruitItemRemark": "addr=Gangnam"
+            }
+          ],
+          "applicantCheckList": [
+            {
+              "recruitItemName": " Check's ",
+              "recruitItemRemark": " A&B "
+            }
+          ]
+        }
+      },
+      "source": "https://career.woowahan.com/",
+      "expected": [
+        {
+          "url": "https://career.woowahan.com/recruitment/R-1/detail",
+          "title": "Engineer's & \"role\"",
+          "description": "<p>근무 지역: 서울 / 부산 역할 Build</p>",
+          "locations": [
+            "Seoul, South Korea",
+            "Busan, South Korea"
+          ],
+          "employment_type": "internship",
+          "job_location_type": null,
+          "date_posted": null,
+          "language": "ko",
+          "extras": null,
+          "metadata": {
+            "recruit_number": "R-1",
+            "corporation": 0,
+            "career_type": {
+              "code": "new"
+            },
+            "job_group": "Platform"
+          },
+          "source_identity": "woowa:brothers:R-1"
+        }
+      ],
+      "error": false
+    },
+    {
+      "provider": "woowa",
+      "name": "brothers-bad-date",
+      "input": {
+        "listing": {
+          "recruitNumber": "R-1",
+          "recruitName": " Listing title ",
+          "description": "Seoul"
+        },
+        "detail": {
+          "recruitNumber": "R-1",
+          "recruitName": " Engineer's & \"role\" ",
+          "recruitContents": "<p>근무 지역: 서울 / 부산 역할 Build</p>",
+          "employmentType": {
+            "recruitItemCode": "BA002003"
+          },
+          "recruitOpenDate": "2026-10-08T12:00:00",
+          "recruitEndDate": "2026-02-30",
+          "recruitCorporationNumber": 0,
+          "careerType": {
+            "code": "new"
+          },
+          "jobGroup": "Platform",
+          "desiredBranches": [
+            {
+              "recruitItemName": "Branch",
+              "recruitItemRemark": "addr=Gangnam"
+            }
+          ],
+          "applicantCheckList": [
+            {
+              "recruitItemName": " Check's ",
+              "recruitItemRemark": " A&B "
+            }
+          ]
+        }
+      },
+      "source": "https://career.woowahan.com/",
+      "expected": null,
+      "error": true
+    },
+    {
+      "provider": "woowa",
+      "name": "brothers-missing-description",
+      "input": {
+        "listing": {
+          "recruitNumber": "R-1",
+          "recruitName": " Listing title ",
+          "description": "Seoul"
+        },
+        "detail": {
+          "recruitNumber": "R-1",
+          "recruitName": " Engineer's & \"role\" ",
+          "recruitContents": "",
+          "employmentType": {
+            "recruitItemCode": "BA002003"
+          },
+          "recruitOpenDate": "2026-10-08T12:00:00",
+          "recruitEndDate": "2999-01-01",
+          "recruitCorporationNumber": 0,
+          "careerType": {
+            "code": "new"
+          },
+          "jobGroup": "Platform",
+          "desiredBranches": [
+            {
+              "recruitItemName": "Branch",
+              "recruitItemRemark": "addr=Gangnam"
+            }
+          ],
+          "applicantCheckList": [
+            {
+              "recruitItemName": " Check's ",
+              "recruitItemRemark": " A&B "
+            }
+          ]
+        }
+      },
+      "source": "https://career.woowahan.com/",
+      "expected": null,
+      "error": true
+    },
+    {
+      "provider": "woowa",
+      "name": "youths-rich",
+      "input": {
+        "listing": {
+          "recruitNumber": "R-1",
+          "recruitName": " Listing title ",
+          "description": "Seoul"
+        },
+        "detail": {
+          "recruitNumber": "R-1",
+          "recruitName": " Engineer's & \"role\" ",
+          "recruitContents": "<p>근무 지역: 서울 / 부산 역할 Build</p>",
+          "employmentType": {
+            "recruitItemCode": "BA002003"
+          },
+          "recruitOpenDate": "2026-10-08T12:00:00",
+          "recruitEndDate": "2999-01-01",
+          "recruitCorporationNumber": 0,
+          "careerType": {
+            "code": "new"
+          },
+          "jobGroup": "Platform",
+          "desiredBranches": [
+            {
+              "recruitItemName": "Branch",
+              "recruitItemRemark": "addr=Gangnam"
+            }
+          ],
+          "applicantCheckList": [
+            {
+              "recruitItemName": " Check's ",
+              "recruitItemRemark": " A&B "
+            }
+          ]
+        }
+      },
+      "source": "https://career.woowayouths.com/",
+      "expected": [
+        {
+          "url": "https://career.woowayouths.com/recruitment/R-1/detail",
+          "title": "Engineer's & \"role\"",
+          "description": "<p>근무 지역: 서울 / 부산 역할 Build</p>",
+          "locations": [
+            "Seoul, South Korea",
+            "Busan, South Korea"
+          ],
+          "employment_type": "internship",
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "language": "ko",
+          "extras": null,
+          "metadata": {
+            "recruit_number": "R-1",
+            "corporation": 0,
+            "career_type": {
+              "code": "new"
+            },
+            "job_group": "Platform"
+          },
+          "source_identity": "woowa:youths:R-1"
+        }
+      ],
+      "error": false
+    },
+    {
+      "provider": "woowa",
+      "name": "youths-fallback-title",
+      "input": {
+        "listing": {
+          "recruitNumber": "R-1",
+          "recruitName": " Listing title ",
+          "description": "Seoul"
+        },
+        "detail": {
+          "recruitNumber": "R-1",
+          "recruitName": null,
+          "recruitContents": "<p>근무 지역: 서울 / 부산 역할 Build</p>",
+          "employmentType": {
+            "recruitItemCode": "BA002003"
+          },
+          "recruitOpenDate": "2026-10-08T12:00:00",
+          "recruitEndDate": "2999-01-01",
+          "recruitCorporationNumber": 0,
+          "careerType": {
+            "code": "new"
+          },
+          "jobGroup": "Platform",
+          "desiredBranches": [
+            {
+              "recruitItemName": "Branch",
+              "recruitItemRemark": "addr=Gangnam"
+            }
+          ],
+          "applicantCheckList": [
+            {
+              "recruitItemName": " Check's ",
+              "recruitItemRemark": " A&B "
+            }
+          ]
+        }
+      },
+      "source": "https://career.woowayouths.com/",
+      "expected": [
+        {
+          "url": "https://career.woowayouths.com/recruitment/R-1/detail",
+          "title": "Listing title",
+          "description": "<p>근무 지역: 서울 / 부산 역할 Build</p>",
+          "locations": [
+            "Seoul, South Korea",
+            "Busan, South Korea"
+          ],
+          "employment_type": "internship",
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "language": "ko",
+          "extras": null,
+          "metadata": {
+            "recruit_number": "R-1",
+            "corporation": 0,
+            "career_type": {
+              "code": "new"
+            },
+            "job_group": "Platform"
+          },
+          "source_identity": "woowa:youths:R-1"
+        }
+      ],
+      "error": false
+    },
+    {
+      "provider": "woowa",
+      "name": "youths-sentinel-date",
+      "input": {
+        "listing": {
+          "recruitNumber": "R-1",
+          "recruitName": " Listing title ",
+          "description": "Seoul"
+        },
+        "detail": {
+          "recruitNumber": "R-1",
+          "recruitName": " Engineer's & \"role\" ",
+          "recruitContents": "<p>근무 지역: 서울 / 부산 역할 Build</p>",
+          "employmentType": {
+            "recruitItemCode": "BA002003"
+          },
+          "recruitOpenDate": "9999-12-31",
+          "recruitEndDate": "2999-01-01",
+          "recruitCorporationNumber": 0,
+          "careerType": {
+            "code": "new"
+          },
+          "jobGroup": "Platform",
+          "desiredBranches": [
+            {
+              "recruitItemName": "Branch",
+              "recruitItemRemark": "addr=Gangnam"
+            }
+          ],
+          "applicantCheckList": [
+            {
+              "recruitItemName": " Check's ",
+              "recruitItemRemark": " A&B "
+            }
+          ]
+        }
+      },
+      "source": "https://career.woowayouths.com/",
+      "expected": [
+        {
+          "url": "https://career.woowayouths.com/recruitment/R-1/detail",
+          "title": "Engineer's & \"role\"",
+          "description": "<p>근무 지역: 서울 / 부산 역할 Build</p>",
+          "locations": [
+            "Seoul, South Korea",
+            "Busan, South Korea"
+          ],
+          "employment_type": "internship",
+          "job_location_type": null,
+          "date_posted": null,
+          "language": "ko",
+          "extras": null,
+          "metadata": {
+            "recruit_number": "R-1",
+            "corporation": 0,
+            "career_type": {
+              "code": "new"
+            },
+            "job_group": "Platform"
+          },
+          "source_identity": "woowa:youths:R-1"
+        }
+      ],
+      "error": false
+    },
+    {
+      "provider": "woowa",
+      "name": "youths-bad-date",
+      "input": {
+        "listing": {
+          "recruitNumber": "R-1",
+          "recruitName": " Listing title ",
+          "description": "Seoul"
+        },
+        "detail": {
+          "recruitNumber": "R-1",
+          "recruitName": " Engineer's & \"role\" ",
+          "recruitContents": "<p>근무 지역: 서울 / 부산 역할 Build</p>",
+          "employmentType": {
+            "recruitItemCode": "BA002003"
+          },
+          "recruitOpenDate": "2026-10-08T12:00:00",
+          "recruitEndDate": "2026-02-30",
+          "recruitCorporationNumber": 0,
+          "careerType": {
+            "code": "new"
+          },
+          "jobGroup": "Platform",
+          "desiredBranches": [
+            {
+              "recruitItemName": "Branch",
+              "recruitItemRemark": "addr=Gangnam"
+            }
+          ],
+          "applicantCheckList": [
+            {
+              "recruitItemName": " Check's ",
+              "recruitItemRemark": " A&B "
+            }
+          ]
+        }
+      },
+      "source": "https://career.woowayouths.com/",
+      "expected": null,
+      "error": true
+    },
+    {
+      "provider": "woowa",
+      "name": "youths-missing-description",
+      "input": {
+        "listing": {
+          "recruitNumber": "R-1",
+          "recruitName": " Listing title ",
+          "description": "Seoul"
+        },
+        "detail": {
+          "recruitNumber": "R-1",
+          "recruitName": " Engineer's & \"role\" ",
+          "recruitContents": "",
+          "employmentType": {
+            "recruitItemCode": "BA002003"
+          },
+          "recruitOpenDate": "2026-10-08T12:00:00",
+          "recruitEndDate": "2999-01-01",
+          "recruitCorporationNumber": 0,
+          "careerType": {
+            "code": "new"
+          },
+          "jobGroup": "Platform",
+          "desiredBranches": [
+            {
+              "recruitItemName": "Branch",
+              "recruitItemRemark": "addr=Gangnam"
+            }
+          ],
+          "applicantCheckList": [
+            {
+              "recruitItemName": " Check's ",
+              "recruitItemRemark": " A&B "
+            }
+          ]
+        }
+      },
+      "source": "https://career.woowayouths.com/",
+      "expected": null,
+      "error": true
+    },
+    {
+      "provider": "woowa",
+      "name": "bmart-rich",
+      "input": {
+        "listing": {
+          "recruitNumber": "R-1",
+          "recruitName": " Listing title ",
+          "description": "Seoul"
+        },
+        "detail": {
+          "recruitNumber": "R-1",
+          "recruitName": " Engineer's & \"role\" ",
+          "recruitContents": "<p>근무 지역: 서울 / 부산 역할 Build</p>",
+          "employmentType": {
+            "recruitItemCode": "BA002003"
+          },
+          "recruitOpenDate": "2026-10-08T12:00:00",
+          "recruitEndDate": "2999-01-01",
+          "recruitCorporationNumber": 0,
+          "careerType": {
+            "code": "new"
+          },
+          "jobGroup": "Platform",
+          "desiredBranches": [
+            {
+              "recruitItemName": "Branch",
+              "recruitItemRemark": "addr=Gangnam"
+            }
+          ],
+          "applicantCheckList": [
+            {
+              "recruitItemName": " Check's ",
+              "recruitItemRemark": " A&B "
+            }
+          ]
+        }
+      },
+      "source": "https://bmart-career.woowayouths.com/",
+      "expected": [
+        {
+          "url": "https://bmart-career.woowayouths.com/recruitment/detail/R-1",
+          "title": "Engineer's & \"role\"",
+          "description": "<h3> Engineer&#x27;s &amp; &quot;role&quot; </h3><p>Work location: Gangnam, South Korea</p><p>Employment type: internship</p><h3>Applicant information</h3><ul><li>Check&#x27;s A&amp;B</li></ul>",
+          "locations": [
+            "Gangnam, South Korea"
+          ],
+          "employment_type": "internship",
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "language": "ko",
+          "extras": null,
+          "metadata": {
+            "recruit_number": "R-1",
+            "corporation": 0,
+            "career_type": {
+              "code": "new"
+            },
+            "job_group": "Platform"
+          },
+          "source_identity": "woowa:bmart:R-1"
+        }
+      ],
+      "error": false
+    },
+    {
+      "provider": "woowa",
+      "name": "bmart-fallback-title",
+      "input": {
+        "listing": {
+          "recruitNumber": "R-1",
+          "recruitName": " Listing title ",
+          "description": "Seoul"
+        },
+        "detail": {
+          "recruitNumber": "R-1",
+          "recruitName": null,
+          "recruitContents": "<p>근무 지역: 서울 / 부산 역할 Build</p>",
+          "employmentType": {
+            "recruitItemCode": "BA002003"
+          },
+          "recruitOpenDate": "2026-10-08T12:00:00",
+          "recruitEndDate": "2999-01-01",
+          "recruitCorporationNumber": 0,
+          "careerType": {
+            "code": "new"
+          },
+          "jobGroup": "Platform",
+          "desiredBranches": [
+            {
+              "recruitItemName": "Branch",
+              "recruitItemRemark": "addr=Gangnam"
+            }
+          ],
+          "applicantCheckList": [
+            {
+              "recruitItemName": " Check's ",
+              "recruitItemRemark": " A&B "
+            }
+          ]
+        }
+      },
+      "source": "https://bmart-career.woowayouths.com/",
+      "expected": [
+        {
+          "url": "https://bmart-career.woowayouths.com/recruitment/detail/R-1",
+          "title": "Listing title",
+          "description": "<h3> Listing title </h3><p>Work location: Gangnam, South Korea</p><p>Employment type: internship</p><h3>Applicant information</h3><ul><li>Check&#x27;s A&amp;B</li></ul>",
+          "locations": [
+            "Gangnam, South Korea"
+          ],
+          "employment_type": "internship",
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "language": "ko",
+          "extras": null,
+          "metadata": {
+            "recruit_number": "R-1",
+            "corporation": 0,
+            "career_type": {
+              "code": "new"
+            },
+            "job_group": "Platform"
+          },
+          "source_identity": "woowa:bmart:R-1"
+        }
+      ],
+      "error": false
+    },
+    {
+      "provider": "woowa",
+      "name": "bmart-sentinel-date",
+      "input": {
+        "listing": {
+          "recruitNumber": "R-1",
+          "recruitName": " Listing title ",
+          "description": "Seoul"
+        },
+        "detail": {
+          "recruitNumber": "R-1",
+          "recruitName": " Engineer's & \"role\" ",
+          "recruitContents": "<p>근무 지역: 서울 / 부산 역할 Build</p>",
+          "employmentType": {
+            "recruitItemCode": "BA002003"
+          },
+          "recruitOpenDate": "9999-12-31",
+          "recruitEndDate": "2999-01-01",
+          "recruitCorporationNumber": 0,
+          "careerType": {
+            "code": "new"
+          },
+          "jobGroup": "Platform",
+          "desiredBranches": [
+            {
+              "recruitItemName": "Branch",
+              "recruitItemRemark": "addr=Gangnam"
+            }
+          ],
+          "applicantCheckList": [
+            {
+              "recruitItemName": " Check's ",
+              "recruitItemRemark": " A&B "
+            }
+          ]
+        }
+      },
+      "source": "https://bmart-career.woowayouths.com/",
+      "expected": [
+        {
+          "url": "https://bmart-career.woowayouths.com/recruitment/detail/R-1",
+          "title": "Engineer's & \"role\"",
+          "description": "<h3> Engineer&#x27;s &amp; &quot;role&quot; </h3><p>Work location: Gangnam, South Korea</p><p>Employment type: internship</p><h3>Applicant information</h3><ul><li>Check&#x27;s A&amp;B</li></ul>",
+          "locations": [
+            "Gangnam, South Korea"
+          ],
+          "employment_type": "internship",
+          "job_location_type": null,
+          "date_posted": null,
+          "language": "ko",
+          "extras": null,
+          "metadata": {
+            "recruit_number": "R-1",
+            "corporation": 0,
+            "career_type": {
+              "code": "new"
+            },
+            "job_group": "Platform"
+          },
+          "source_identity": "woowa:bmart:R-1"
+        }
+      ],
+      "error": false
+    },
+    {
+      "provider": "woowa",
+      "name": "bmart-bad-date",
+      "input": {
+        "listing": {
+          "recruitNumber": "R-1",
+          "recruitName": " Listing title ",
+          "description": "Seoul"
+        },
+        "detail": {
+          "recruitNumber": "R-1",
+          "recruitName": " Engineer's & \"role\" ",
+          "recruitContents": "<p>근무 지역: 서울 / 부산 역할 Build</p>",
+          "employmentType": {
+            "recruitItemCode": "BA002003"
+          },
+          "recruitOpenDate": "2026-10-08T12:00:00",
+          "recruitEndDate": "2026-02-30",
+          "recruitCorporationNumber": 0,
+          "careerType": {
+            "code": "new"
+          },
+          "jobGroup": "Platform",
+          "desiredBranches": [
+            {
+              "recruitItemName": "Branch",
+              "recruitItemRemark": "addr=Gangnam"
+            }
+          ],
+          "applicantCheckList": [
+            {
+              "recruitItemName": " Check's ",
+              "recruitItemRemark": " A&B "
+            }
+          ]
+        }
+      },
+      "source": "https://bmart-career.woowayouths.com/",
+      "expected": null,
+      "error": true
+    },
+    {
+      "provider": "woowa",
+      "name": "bmart-missing-description",
+      "input": {
+        "listing": {
+          "recruitNumber": "R-1",
+          "recruitName": " Listing title ",
+          "description": "Seoul"
+        },
+        "detail": {
+          "recruitNumber": "R-1",
+          "recruitName": " Engineer's & \"role\" ",
+          "recruitContents": "",
+          "employmentType": {
+            "recruitItemCode": "BA002003"
+          },
+          "recruitOpenDate": "2026-10-08T12:00:00",
+          "recruitEndDate": "2999-01-01",
+          "recruitCorporationNumber": 0,
+          "careerType": {
+            "code": "new"
+          },
+          "jobGroup": "Platform",
+          "desiredBranches": [
+            {
+              "recruitItemName": "Branch",
+              "recruitItemRemark": "addr=Gangnam"
+            }
+          ],
+          "applicantCheckList": [
+            {
+              "recruitItemName": " Check's ",
+              "recruitItemRemark": " A&B "
+            }
+          ]
+        }
+      },
+      "source": "https://bmart-career.woowayouths.com/",
+      "expected": [
+        {
+          "url": "https://bmart-career.woowayouths.com/recruitment/detail/R-1",
+          "title": "Engineer's & \"role\"",
+          "description": "<h3> Engineer&#x27;s &amp; &quot;role&quot; </h3><p>Work location: Gangnam, South Korea</p><p>Employment type: internship</p><h3>Applicant information</h3><ul><li>Check&#x27;s A&amp;B</li></ul>",
+          "locations": [
+            "Gangnam, South Korea"
+          ],
+          "employment_type": "internship",
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "language": "ko",
+          "extras": null,
+          "metadata": {
+            "recruit_number": "R-1",
+            "corporation": 0,
+            "career_type": {
+              "code": "new"
+            },
+            "job_group": "Platform"
+          },
+          "source_identity": "woowa:bmart:R-1"
+        }
+      ],
+      "error": false
+    }
+  ]
+}
