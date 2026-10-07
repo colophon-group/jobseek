@@ -59,9 +59,9 @@ and projection `908296bf1504ad0f751f61432cd5839b4bb7e0bd`.
 observation was interrupted after SQL ownership committed. Fresh host/SQL reads
 showed no live operation, the exact pending receipt and the active intended plan.
 The supported same-plan retry restored all ten services and restart policies.
-The 15:52 UTC observation verifies eight health endpoints, 87 monitor and 19
-detail completions across 14 profiles, with 26 canonical monitor and 19 detail
-sample rows. New-provider completions remain pending. Queue claim errors and
+The 16:31 UTC observation verifies eight health endpoints and 453 monitor /
+170 detail completions. A read-only runtime inspection observed one native
+container restart at 16:21 UTC; its cause remains unproved. New-provider completions remain pending. Queue claim errors and
 unacknowledged attempts require conservation/freshness review; health alone does
 not prove them. See the [source 963 rollout](evidence/go-native-source963-rollout-2026-10-07.json).
 
@@ -83,16 +83,18 @@ retirement remain unproved.
 2. Deliver the large shared browser paths together: DOM 239, API sniffer 149 and
    Inline 8 in the fresh remaining census. Initial API replay options screen 33
    configurations among 69 explicitly browser-backed API configurations.
-   Capture selection, private credential refresh, a single-target conversation,
-   target-local browser fetch and Python's browser default of 50 pages and HTTP
-   default of 200 pages have local implementations and
-   passing local tests, including the existing inventory traversal and cleanup;
-   **these components grant no runtime admission**. The actual HTTPS/cookie/CSRF
-   capture, pagination and later-page publisher-denial fixtures passed on
-   Lightpanda 1.0.0 in [both Linux architecture CI jobs](https://github.com/colophon-group/jobseek/actions/runs/37648160771)
-   at `ce8c14bb8e04f4c915a4903ff9492e07b2254452`; see the
-   [candidate proof](evidence/go-api-replay-lightpanda100-candidate-2026-10-07.json).
-   Finish HTTP fallback and the service/worker protocol before admitting the profile.
+   The API browser profile now includes private capture/credential refresh,
+   single-target browser fetch, bounded trusted HTTP fallback, Python's browser
+   50-page and HTTP 200-page defaults, mTLS service/client and native persistence.
+   Full worker and queue race suites passed in 548.462 and 342.580 seconds at
+   `cc5e3275bd291bdb84beb97e5831c4096af04eaa`. A Docker-context COPY correction
+   at `0b64c8b047a45a504dc1a21b32249b5243eae759` passed actual Lightpanda 1.0.0
+   service/client capture, cookie/CSRF, pagination, later-page publisher denial
+   and cleanup on [both architectures](https://github.com/colophon-group/jobseek/actions/runs/37653235733).
+   The retained configuration screen admits 33 more API browser boards (7,273
+   total / 609 remaining **candidate only**); production remains 7,240 / 642.
+   Required PR checks, fresh staging and deployment remain pending. See the
+   [native API browser candidate proof](evidence/go-api-browser-native-candidate-2026-10-07.json).
    Group DOM/Inline action pipelines in the same useful release; 73 remaining DOM configurations and 3 Inline
    configurations contain actions. Verify actual Lightpanda 1.0.0 navigation,
    clicks, waits/evaluation, required failures, pagination and publisher policy.

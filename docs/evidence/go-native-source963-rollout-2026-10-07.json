@@ -161,5 +161,32 @@
     "Remaining enabled monitor/detail/browser coverage and mandatory runtime/deployment/maintenance consumers",
     "Comparable whole-service CPU/RAM/density/attributable cost and rollback observation window",
     "Production Python, Playwright and Chromium retirement"
-  ]
+  ],
+  "latest_serving_observation": {
+    "observed_at_utc": "2026-10-07T16:31:17.081573+00:00",
+    "routing_epoch": 215,
+    "completed_monitor_attempts": 453,
+    "completed_detail_attempts": 170,
+    "health_status": {
+      "worker-1": 200,
+      "worker-2": 200,
+      "worker-3": 200,
+      "browser-1": 200,
+      "drain": 200,
+      "exporter": 200,
+      "lightpanda-claimant": 204,
+      "ordinary-go": 204
+    },
+    "running_restart_armed_services": 10,
+    "new_provider_completions_observed": false,
+    "freshness_conservation_complete": false
+  },
+  "runtime_restart_review": {
+    "source_revision": "3905501bcf9b769422f72aefa167388c17d20b2c",
+    "native_restart_count": 1,
+    "latest_native_started_at": "2026-10-07T16:21:51.907913827Z",
+    "observed_at": "2026-10-07T16:34:17.833185+00:00",
+    "restart_cause": "not proved; no coded diagnostic and bounded historical Docker event query returned no retained events",
+    "freshness_conservation_complete": false
+  }
 }

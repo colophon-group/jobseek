@@ -1,0 +1,64 @@
+{
+  "schema": "jobseek.native-api-browser-candidate/v1",
+  "implementation_revision": "cc5e3275bd291bdb84beb97e5831c4096af04eaa",
+  "renderer_build_fix_revision": "0b64c8b047a45a504dc1a21b32249b5243eae759",
+  "version": "0.13.964",
+  "compiled_profiles": 108,
+  "production_admitted": false,
+  "offline_screen": {
+    "capture_source_revision": "3905501bcf9b769422f72aefa167388c17d20b2c",
+    "capture_observed_at": "2026-10-07T13:29:44.391862+00:00",
+    "capture_sha256": "9dba791f12c3216fcf3eb7dc3b6adfb43c936215d51322933471dfa7e07af582",
+    "eligible_monitor_boards": 7273,
+    "new_api_browser_configurations": 33,
+    "remaining_monitors": 609,
+    "canonical_cache_projection_mismatches": 0,
+    "cached_unsupported": 0,
+    "authority": "Candidate only over retained source963 configuration capture; original fresh source/epoch staging and activation still required"
+  },
+  "verification": {
+    "local_api_parser_race": "PASS 3.080s including existing Python oracle",
+    "worker_url_and_api_race": "PASS 1.815s",
+    "real_postgres_redis_browser_api_persistence": "PASS five cases: rich, truncated, publisher, failed, wrong_binding; required PG/Redis fixtures enabled",
+    "real_postgres_redis_cold_retirement": "PASS interrupted, committed-before-ack, changed-token",
+    "pilot_race": "PASS 8.647s before final service collection guard; focused guard suite PASS 1.382s",
+    "full_worker_queue_suites": {
+      "status": "terminal PASS",
+      "source_revision": "cc5e3275bd291bdb84beb97e5831c4096af04eaa",
+      "worker": {
+        "status": "PASS",
+        "elapsed_seconds": 548.462
+      },
+      "queue": {
+        "status": "PASS",
+        "elapsed_seconds": 342.58
+      },
+      "proof": "native964-full-suites-atcc5e3275b-2026-10-07.json"
+    },
+    "original_renderer_ci": {
+      "run": 37652685587,
+      "status": "FAILED before real-binary tests; missing explicit API protocol COPY corrected"
+    },
+    "renderer_ci_after_copy_fix": {
+      "run": 37653235733,
+      "source_revision": "0b64c8b047a45a504dc1a21b32249b5243eae759",
+      "status": "terminal SUCCESS on AMD64 and ARM64",
+      "original_log_proof": "api-replay-0b64c8b04-service-client-real-ci-2026-10-07.json",
+      "url": "https://github.com/colophon-group/jobseek/actions/runs/37653235733"
+    }
+  },
+  "remaining_for_grouped_release": [
+    "Complete DOM and Inline action pipelines in the same release",
+    "Fresh source/epoch-bound admission, canonical persistence and production serving observations",
+    "Queue conservation and natural freshness review, including source963 native restart cause"
+  ],
+  "production_runtime_review": {
+    "source_revision": "3905501bcf9b769422f72aefa167388c17d20b2c",
+    "native_restart_count": 1,
+    "latest_native_started_at": "2026-10-07T16:21:51.907913827Z",
+    "observed_at": "2026-10-07T16:34:17.833185+00:00",
+    "restart_cause": "not proved; no coded diagnostic and bounded historical Docker event query returned no retained events",
+    "freshness_conservation_complete": false
+  },
+  "updated_at_utc": "2026-10-07T16:54:02.624753+00:00"
+}
