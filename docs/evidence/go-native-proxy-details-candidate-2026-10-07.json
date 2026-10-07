@@ -18,17 +18,22 @@
     "avature_proxy_cold_race_seconds": 3.223,
     "vet_and_module_tidiness": "passed",
     "full_queue_race": "pending",
-    "full_worker_race": "pending",
+    "full_worker_race": "478.165s completed with one obsolete Paylocity/JSON-LD proxy refusal assertion; all other cases completed without failure. Assertion corrected; final-head CI required.",
     "required_and_installed_image_CI": "pending",
     "independent_runtime_transport_race_seconds": 1.782,
-    "runtime_and_cutover_python_contracts": "60 passed,6 environment skips; corrected wrapper17 passed8.81s"
+    "runtime_and_cutover_python_contracts": "60 passed,6 environment skips; corrected wrapper17 passed8.81s",
+    "corrected_paylocity_and_independent_runtime_race_seconds": 1.757
   },
   "production": {
     "source": "d123d6fcfc14ef2b38c81d1722a53f83ce7b93b2",
     "version": "0.13.955",
-    "B0": "active cdom; independently verified epoch205",
-    "ordinary": "cold; fresh source-bound admission required",
-    "lightpanda": "1.0.0"
+    "B0": "cold; original source955 supported reversal and selector clear independently verified at epoch206",
+    "ordinary": "cold; source955 stage refused Compose mismatch before mutation",
+    "lightpanda": "1.0.0",
+    "independent_cold_readback_utc": "2026-10-07T00:15:34.416898+00:00",
+    "native_stopped": "producer/executor stopped with exit0 and exact original supported policies; ordinary actor absent",
+    "owners_and_native_tokens": "absent",
+    "restored_base_writers": 7
   },
   "full_migration_complete": false,
   "configuration_screen": {

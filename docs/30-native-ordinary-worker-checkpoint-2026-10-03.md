@@ -10,12 +10,15 @@ Production **0.13.955** is now independently verified from merged source
 ported ADP, Paylocity, Cornerstone and Dayforce together. Original crawler
 [37545348696](https://github.com/colophon-group/jobseek/actions/runs/37545348696)
 and renderer [37545455840](https://github.com/colophon-group/jobseek/actions/runs/37545455840)
-both completed successfully. Read-only production observation at 23:34 UTC
-October 6 verified both exact digest-pinned crawler images, six healthy services,
-seven restart-armed base processes, epoch 204, cleared native selectors and absent
-B0/ordinary ownership, projection and native tokens. The prior 954 ordinary plan
-is retired; historical audit receipts remain intact. Go code being deployed does
-not yet mean native production ownership has been activated.
+both completed successfully. The original B0 activation reached epoch205, then
+ordinary staging refused a proven Compose proxy-pool rendering mismatch before
+ownership changed. Supported B0 reversal and selector clear completed. Independent
+readback at **00:15 UTC October7** verifies epoch206, both exact digest-pinned
+crawler images, six healthy services, seven restart-armed base processes, cleared
+selectors and absent B0/ordinary ownership, projection and native tokens. Stopped
+B0 producer/executor exited0 under their exact original supported policies; the
+ordinary actor is absent. Historical audit receipts remain intact. Candidate957
+corrects the Compose mismatch for a fresh immutable rollout.
 
 The selected standalone renderer was independently verified at 23:21 UTC against
 its original release generation, immutable image, network policy, PKI, isolation

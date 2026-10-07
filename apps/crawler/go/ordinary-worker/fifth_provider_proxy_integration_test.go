@@ -113,7 +113,8 @@ func TestPaylocityRuntimeKeepsIndependentMonitorAndScraperTransport(t *testing.T
 		{queue.Scrape, `{"proxy":true,"scraper_config":{"proxy":false}}`, false},
 		{queue.Monitor, `{"proxy":false,"scraper_config":{"proxy":true}}`, false},
 		{queue.Scrape, `{"proxy":false,"scraper_config":{"proxy":true}}`, true},
-		{queue.Scrape, `{"scraper_type":"json-ld","proxy":true,"scraper_config":{"proxy":true}}`, false},
+		{queue.Scrape, `{"scraper_type":"json-ld","proxy":true,"scraper_config":{"proxy":true}}`, true},
+		{queue.Scrape, `{"scraper_type":"json-ld","proxy":true,"scraper_config":{"proxy":false}}`, false},
 	} {
 		if got := runtimeUsesProxy(queue.Task{Kind: c.kind, Config: map[string]string{"crawler_type": "paylocity", "metadata": c.metadata}}); got != c.want {
 			t.Fatal("monitor proxy setting changed independent scraper egress")
