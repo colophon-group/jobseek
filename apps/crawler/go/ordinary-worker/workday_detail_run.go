@@ -6,6 +6,7 @@ import (
 	"errors"
 	dom "github.com/colophon-group/jobseek/apps/crawler/go/dom-detail"
 	jsonld "github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail"
+	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"strings"
@@ -75,6 +76,9 @@ func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Cla
 			return result, claimRunError("detail_execution", cause)
 		}
 		var run *queue.GreenhouseHostRun
+		if cause != nil {
+			log.Print(claimRunError("detail_failure", cause))
+		}
 		if cause != nil && reservation == nil && hostFailure && preflight != nil {
 			run = preflight.Run
 		}

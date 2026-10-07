@@ -149,6 +149,7 @@ func runWorkerLoop(stop context.Context, c RuntimeConfig, s runtimeServices, m *
 						return
 					}
 					m.claimError()
+					log.Print(claimRunError("claim", err))
 					if errors.Is(err, queue.ErrAuthorityLost) || errors.Is(err, queue.ErrConfiguration) || errors.Is(err, queue.ErrUnsupportedProfile) {
 						failures <- claimRunError("claim", err)
 						return
@@ -173,6 +174,9 @@ func runWorkerLoop(stop context.Context, c RuntimeConfig, s runtimeServices, m *
 					unsafeTask.Store(true)
 				}
 				m.record(result, err, time.Since(started))
+				if err != nil {
+					logRuntimeTaskError(err)
+				}
 				m.active.Add(-1)
 				m.progress(id)
 				if err != nil && (errors.Is(err, queue.ErrAuthorityLost) || errors.Is(err, queue.ErrConfiguration) || errors.Is(err, queue.ErrUnsupportedProfile) || errors.Is(err, ErrDrainTimeout)) {
@@ -234,6 +238,16 @@ wait:
 	case <-timer.C:
 		return ErrDrainTimeout
 	}
+}
+
+// Nonfatal failures retain their attempts for recovery. Emit only the existing
+// bounded phase/class diagnostic; never log an upstream or database message.
+func logRuntimeTaskError(err error) {
+	var diagnostic *ClaimRunError
+	if !errors.As(err, &diagnostic) {
+		diagnostic = claimRunError("task", err).(*ClaimRunError)
+	}
+	log.Print(diagnostic.Error())
 }
 func waitRuntime(ctx context.Context, d time.Duration) bool {
 	timer := time.NewTimer(d)

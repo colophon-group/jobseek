@@ -199,7 +199,12 @@ revalidates navigation through its render-only adapter and attaches actions
 only after that preflight. Evaluation plans, captures and unrelated runtime
 capabilities remain rejected by this path.
 
-The admitted actions are `wait` and `evaluate`. Python defaults are preserved:
+The admitted actions are `wait`, `evaluate`, `remove` and `dismiss_overlays`.
+Removal uses `querySelectorAll(...).forEach(el => el.remove())`, preserving the
+Python action's all-match behavior, including a successful empty match. Overlay
+removal uses the same eight cookie/consent selectors. Selector text is JSON
+encoded before evaluation; invalid selectors follow the existing optional or
+required failure policy. Python defaults are preserved:
 1,000 ms for a wait, ten seconds per action, optional failure unless
 `required: true`. Evaluation invokes a function expression and awaits its
 Promise, discarding the returned value. Required failure rejects the entire

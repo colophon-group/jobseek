@@ -20,7 +20,7 @@ import (
 
 func TestLightpandaDocumentActionsIntegration(t *testing.T) {
 	binary := integrationBinary(t)
-	for _, mode := range []string{"sequential-async-optional", "required-failure", "publisher-before-actions", "publisher-after-action"} {
+	for _, mode := range []string{"sequential-async-optional", "required-failure", "publisher-before-actions", "publisher-after-action", "removal", "removal-optional", "removal-required"} {
 		t.Run(mode, func(t *testing.T) {
 			certificate, ca := dayforceOriginTLS(t)
 			origin := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -28,7 +28,7 @@ func TestLightpandaDocumentActionsIntegration(t *testing.T) {
 					w.Header().Set("Tdm-Reservation", "1")
 				}
 				w.Header().Set("Content-Type", "text/html")
-				_, _ = io.WriteString(w, `<!doctype html><html><body><h2>Initial</h2></body></html>`)
+				_, _ = io.WriteString(w, `<!doctype html><html><body><h2>Initial</h2><aside id="cookie-consent">Consent overlay</aside><article class="obsolete">Obsolete Engineer</article><article>Kept Engineer</article></body></html>`)
 			}))
 			listener, err := net.Listen("tcp4", "127.0.0.2:0")
 			if err != nil {
@@ -66,6 +66,12 @@ func TestLightpandaDocumentActionsIntegration(t *testing.T) {
 			if mode == "publisher-after-action" {
 				pipeline = []actions.Action{{Kind: "evaluate", Script: `() => { const m=document.createElement('meta');m.name='tdm-reservation';m.content='1';document.head.appendChild(m); }`, TimeoutMS: 1000, Required: true}, {Kind: "evaluate", Script: `() => document.body.innerHTML += 'SHOULD_NOT_RUN'`, TimeoutMS: 1000, Required: true}}
 			}
+			if strings.HasPrefix(mode, "removal") {
+				pipeline = []actions.Action{{Kind: "remove", Selector: ".obsolete", TimeoutMS: 1000, Required: true}, {Kind: "dismiss_overlays", TimeoutMS: 1000, Required: true}}
+				if mode != "removal" {
+					pipeline = append([]actions.Action{{Kind: "remove", Selector: "[", TimeoutMS: 500, Required: mode == "removal-required"}}, pipeline...)
+				}
+			}
 			payload, err := proto.Marshal(input)
 			if err != nil {
 				t.Fatal(err)
@@ -82,7 +88,7 @@ func TestLightpandaDocumentActionsIntegration(t *testing.T) {
 			if proto.Unmarshal(response.Result, result) != nil {
 				t.Fatal("invalid typed result")
 			}
-			if mode == "required-failure" {
+			if mode == "required-failure" || mode == "removal-required" {
 				if result.GetError() == nil || result.GetSuccess() != nil {
 					t.Fatal("required failure published partial document")
 				}
@@ -105,6 +111,9 @@ func TestLightpandaDocumentActionsIntegration(t *testing.T) {
 			}
 			if mode == "publisher-after-action" && (!strings.Contains(html.String(), "tdm-reservation") || strings.Contains(html.String(), "SHOULD_NOT_RUN")) {
 				t.Fatal("later policy did not stop pipeline")
+			}
+			if strings.HasPrefix(mode, "removal") && (!strings.Contains(html.String(), "Kept Engineer") || strings.Contains(html.String(), "Obsolete Engineer") || strings.Contains(html.String(), "Consent overlay")) {
+				t.Fatal("removal changed inventory incorrectly")
 			}
 			if strings.Contains(html.String(), "private optional exception") {
 				t.Fatal("exception leaked into document")
