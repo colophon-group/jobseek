@@ -13,6 +13,7 @@ COPY --from=contracts v1/lightpandaadapter/ /workspace/apps/crawler/contracts/v1
 COPY --from=contracts v1/resourcepolicy/ /workspace/apps/crawler/contracts/v1/resourcepolicy/
 COPY --from=contracts v1/dayforcesession/ /workspace/apps/crawler/contracts/v1/dayforcesession/
 COPY --from=contracts v1/feedsession/ /workspace/apps/crawler/contracts/v1/feedsession/
+COPY --from=contracts v1/apireplay/ /workspace/apps/crawler/contracts/v1/apireplay/
 COPY --from=contracts v1/lightpandaclient/ /workspace/apps/crawler/contracts/v1/lightpandaclient/
 COPY --from=contracts v1/b0task/ /workspace/apps/crawler/contracts/v1/b0task/
 COPY --from=api-sniffer-monitor go.mod go.sum *.go adp_employment_types.json adp_salary_units.json /workspace/apps/crawler/go/api-sniffer-monitor/
