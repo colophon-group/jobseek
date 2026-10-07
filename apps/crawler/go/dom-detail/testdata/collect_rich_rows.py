@@ -142,6 +142,10 @@ case("unknown-key", {"unimplemented": True})
 case("missing-title", source=ROW.replace("Senior Engineer 東京", ""))
 case("missing-link", source=ROW.replace('href="/jobs/123"', ""))
 
+for key in ["link_attr", "location_selector_mode", "location_separator", "duplicate_url_policy"]:
+    case("null-" + key, {key: None})
+case("ordered-title-replacements", {"title_replacements": {"Senior": "Lead", "Lead": "Staff"}})
+
 Path(__file__).with_name("python_rich_rows.json").write_text(
     json.dumps({"cases": CASES}, ensure_ascii=False, indent=2) + "\n"
 )

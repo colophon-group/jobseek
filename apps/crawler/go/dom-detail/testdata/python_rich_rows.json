@@ -1021,6 +1021,95 @@
       "allow_empty": false,
       "jobs": [],
       "error": true
+    },
+    {
+      "name": "null-link_attr",
+      "options": {
+        "row_selector": ".job",
+        "link_selector": "a",
+        "link_attr": null
+      },
+      "source": "<article class=\"job\"><a href=\"/jobs/123\"><h2>Senior Engineer 東京</h2></a><span class=\"city\">Zurich</span><span class=\"country\">Switzerland</span><span class=\"team\">Platform</span><div class=\"description\"><p>Build &amp; learn.</p></div></article>",
+      "base_url": "https://example.com/careers",
+      "include": null,
+      "allow_empty": false,
+      "jobs": [],
+      "error": true
+    },
+    {
+      "name": "null-location_selector_mode",
+      "options": {
+        "row_selector": ".job",
+        "link_selector": "a",
+        "location_selector_mode": null
+      },
+      "source": "<article class=\"job\"><a href=\"/jobs/123\"><h2>Senior Engineer 東京</h2></a><span class=\"city\">Zurich</span><span class=\"country\">Switzerland</span><span class=\"team\">Platform</span><div class=\"description\"><p>Build &amp; learn.</p></div></article>",
+      "base_url": "https://example.com/careers",
+      "include": null,
+      "allow_empty": false,
+      "jobs": [],
+      "error": true
+    },
+    {
+      "name": "null-location_separator",
+      "options": {
+        "row_selector": ".job",
+        "link_selector": "a",
+        "location_separator": null
+      },
+      "source": "<article class=\"job\"><a href=\"/jobs/123\"><h2>Senior Engineer 東京</h2></a><span class=\"city\">Zurich</span><span class=\"country\">Switzerland</span><span class=\"team\">Platform</span><div class=\"description\"><p>Build &amp; learn.</p></div></article>",
+      "base_url": "https://example.com/careers",
+      "include": null,
+      "allow_empty": false,
+      "jobs": [],
+      "error": true
+    },
+    {
+      "name": "null-duplicate_url_policy",
+      "options": {
+        "row_selector": ".job",
+        "link_selector": "a",
+        "duplicate_url_policy": null
+      },
+      "source": "<article class=\"job\"><a href=\"/jobs/123\"><h2>Senior Engineer 東京</h2></a><span class=\"city\">Zurich</span><span class=\"country\">Switzerland</span><span class=\"team\">Platform</span><div class=\"description\"><p>Build &amp; learn.</p></div></article>",
+      "base_url": "https://example.com/careers",
+      "include": null,
+      "allow_empty": false,
+      "jobs": [],
+      "error": true
+    },
+    {
+      "name": "ordered-title-replacements",
+      "options": {
+        "row_selector": ".job",
+        "link_selector": "a",
+        "title_replacements": {
+          "Senior": "Lead",
+          "Lead": "Staff"
+        }
+      },
+      "source": "<article class=\"job\"><a href=\"/jobs/123\"><h2>Senior Engineer 東京</h2></a><span class=\"city\">Zurich</span><span class=\"country\">Switzerland</span><span class=\"team\">Platform</span><div class=\"description\"><p>Build &amp; learn.</p></div></article>",
+      "base_url": "https://example.com/careers",
+      "include": null,
+      "allow_empty": false,
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/123",
+          "title": "Staff Engineer 東京",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "error": false
     }
   ]
 }
