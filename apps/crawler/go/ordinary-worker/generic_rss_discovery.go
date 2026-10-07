@@ -7,7 +7,6 @@ import (
 	"errors"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	"golang.org/x/net/html/charset"
-	"html"
 	"io"
 	"net/http"
 	"strings"
@@ -40,6 +39,10 @@ func genericFeedText(d *xml.Decoder, start xml.StartElement) (string, error) {
 }
 
 func parseGenericRSS(raw []byte) (RichDiscovery, error) {
+	return parseRSSProvider(raw, "generic")
+}
+
+func parseRSSProvider(raw []byte, preset string) (RichDiscovery, error) {
 	result := RichDiscovery{Jobs: []RichMonitorJob{}}
 	head := strings.TrimLeft(string(raw), "\ufeff \t\r\n")
 	lower := strings.ToLower(head)
@@ -95,10 +98,12 @@ func parseGenericRSS(raw []byte) (RichDiscovery, error) {
 				if err != nil {
 					return RichDiscovery{}, err
 				}
-				if child.Name.Space == "" {
-					if _, exists := fields[child.Name.Local]; !exists {
-						fields[child.Name.Local] = value
-					}
+				key := child.Name.Local
+				if child.Name.Space != "" {
+					key = child.Name.Space + "\x00" + key
+				}
+				if _, exists := fields[key]; !exists {
+					fields[key] = value
 				}
 			}
 		}
@@ -106,26 +111,9 @@ func parseGenericRSS(raw []byte) (RichDiscovery, error) {
 		if fields["link"] == "" {
 			continue
 		}
-		optional := func(s string) *string {
-			if s == "" {
-				return nil
-			}
-			return &s
-		}
-		job := RichMonitorJob{URL: fields["link"], Title: optional(fields["title"]), Description: optional(html.UnescapeString(fields["description"])), DatePosted: optional(fields["pubDate"])}
-		location := fields["location"]
-		if location == "" {
-			location = fields["Location"]
-		}
-		if location != "" {
-			job.Locations = []string{location}
-		}
-		id := fields["guid"]
-		if id == "" {
-			id = fields["JobID"]
-		}
-		if id != "" {
-			job.Metadata = map[string]any{"id": id}
+		job, err := rssProviderJob(fields, preset)
+		if err != nil {
+			return RichDiscovery{}, err
 		}
 		result.Jobs = append(result.Jobs, job)
 		if len(result.Jobs) == 50000 {
@@ -145,7 +133,14 @@ func discoverGenericRSS(ctx context.Context, client *http.Client, profile queue.
 		body, observed, err := fetchProviderStatusResource(ctx, client, genericFeedResource(profile.Endpoint), profile.Endpoint, nil, nil, 32<<20, nil)
 		result.Response = observed
 		if err == nil {
-			parsed, e := parseGenericRSS(body)
+			preset := "generic"
+			if strings.HasPrefix(profile.Profile, "rss.governmentjobs-") {
+				preset = "governmentjobs"
+			}
+			if strings.HasPrefix(profile.Profile, "rss.zoho_recruit-") {
+				preset = "zoho_recruit"
+			}
+			parsed, e := parseRSSProvider(body, preset)
 			parsed.Response = observed
 			return parsed, e
 		}

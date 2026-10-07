@@ -95,6 +95,7 @@ def ownership_projection(payload: str) -> str:
                 if m["profile"]
                 in {
                     "dom.rendered-urls/v1",
+                    "dayforce.session-search/v1",
                     "nextdata.rendered-items/v1",
                     "nextdata.rendered-urls/v1",
                 }
@@ -148,6 +149,15 @@ def ownership_projection(payload: str) -> str:
                     "api_sniffer.http-detail/v1",
                     "mokahr.encrypted-detail/v1",
                     "eightfold.jsonld-api-detail/v1",
+                    "adp.public-detail/v1",
+                    "paylocity.html-detail/v1",
+                    "paycom.public-detail/v1",
+                    "rippling.v1-detail/v1",
+                    "paylocity.proxy-html-detail/v1",
+                    "eightfold.proxy-jsonld-api-detail/v1",
+                    "dom.proxy-detail/v1",
+                    "jsonld.proxy-detail/v1",
+                    "api_sniffer.proxy-http-detail/v1",
                 )
                 or (d["profile"] == "workday.cxs-detail/v1" and d["board_id"] not in members)
                 or (

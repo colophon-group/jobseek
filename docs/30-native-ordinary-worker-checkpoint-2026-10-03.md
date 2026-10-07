@@ -5,110 +5,102 @@
 The full migration goal is **active and incomplete**. Ship multiple provider
 and variant types per release, sharing reference verification, CI and cutover.
 
-Production **0.13.955** is now independently verified from merged source
-`d123d6fcfc14ef2b38c81d1722a53f83ce7b93b2`, after [PR #10343](https://github.com/colophon-group/jobseek/pull/10343)
-ported ADP, Paylocity, Cornerstone and Dayforce together. Original crawler
-[37545348696](https://github.com/colophon-group/jobseek/actions/runs/37545348696)
-and renderer [37545455840](https://github.com/colophon-group/jobseek/actions/runs/37545455840)
-both completed successfully. The original B0 activation reached epoch205, then
-ordinary staging refused a proven Compose proxy-pool rendering mismatch before
-ownership changed. Supported B0 reversal and selector clear completed. Independent
-readback at **00:15 UTC October7** verifies epoch206, both exact digest-pinned
-crawler images, six healthy services, seven restart-armed base processes, cleared
-selectors and absent B0/ordinary ownership, projection and native tokens. Stopped
-B0 producer/executor exited0 under their exact original supported policies; the
-ordinary actor is absent. Historical audit receipts remain intact. Candidate957
-corrects the Compose mismatch for a fresh immutable rollout.
+Production **0.13.957** is deployed from merged source
+`60d0de8bebfbd25486791cb741d3b5ce814dfbce` through the successful original
+[deployment 37553965143](https://github.com/colophon-group/jobseek/actions/runs/37553965143).
+[PR #10345](https://github.com/colophon-group/jobseek/pull/10345) delivered ten
+profiles together: proxy monitors for DOM, API-sniffer, Inline, Sitemap,
+Eightfold and Phenom; proxy details for Eightfold, DOM, JSON-LD and API-sniffer.
+It also fixed the ordinary wrapper's proxy-pool rendering to match the supported
+B0 workflow. Both required checks and installed-image parity passed against the
+exact reviewed head. Superseded [PR #10344](https://github.com/colophon-group/jobseek/pull/10344)
+is closed. There are now 81 installed profiles.
 
-The selected standalone renderer was independently verified at 23:21 UTC against
-its original release generation, immutable image, network policy, PKI, isolation
-and actual ARM64 Lightpanda **1.0.0** binary hash. The official non-prerelease
-release list was rechecked October 7; 1.0.0 remains the latest stable release.
+The original supported B0 activation and independent readback succeeded at
+**epoch 207**, with exact source/image identities and seven healthy endpoints.
+The first readback had no completed B0 executions; natural processing remains
+unproven by that observation.
+
+Fresh, read-only source-bound admission reconciled **1,496,554** scheduled
+postings against their actual routes. It admits **7,157 monitor boards** and
+**2,617 detail boards**, covering **1,470,928 scheduled postings**. Three fixed
+B0 boards are excluded from ordinary ownership. Thirty-nine detail boards with
+cache/lane discrepancies and one with an unsupported actual route retain their
+existing owner. Canonical configuration hashes were not changed.
+
+Original installed ordinary staging succeeded with plan
+`09e0ed5e284cd3ae9b3f416005b5a4112dd9caa9b59df02ed9e4068f679314bd`
+and projection `e6ebdeb0328ff6bd72e702b68e4f989cc193d48c`, bound to source957
+and epoch207. Activation committed ownership, then the full-stack readiness check
+caught worker-1 exiting1 without OOM. Supported containment and pending recovery
+completed. Independent readback at **01:34:22 UTC October7** verifies nine
+source/image-bound restart-armed processes, seven healthy endpoints, B0 active207,
+ordinary receipts/selector/projection absent, zero native tokens and current write
+fences, and the exact plan retired. Do not retry this retired identity.
+
+Captured original worker traceback and an offline replay of its immutable8.9 MB
+plan identify a stale Python ownership verifier: it rejects10 Dayforce browser
+monitor members and103 detail members across eight deployed profile families.
+Candidate958 adds the missing browser and all nine compiled detail variants;
+its replay produces **the exact original Go projection SHA1**. The legacy verifier
+still enforces source, epoch, plan, worker, canonical config and exclusive detail
+boundaries. The native actor's later retained `locations` startup label occurred
+during containment and does not establish an independent taxonomy failure.
+
+Candidate **0.13.958** groups this concrete cutover correction with
+**Governmentjobs + Zoho Recruit RSS**: four new compiled monitor profiles,
+85 installed capabilities. Sixteen actual Python parser cases cover descriptions,
+locations, employment type, metadata and source identity. Twenty-four real
+PostgreSQL/Redis cases cover three detail assignments, malformed XML,404,
+publisher reservation, canonical fields, deadlines and queue settlement. Six
+cold-reversal cases preserve canonical state and ownership refusal. Full Nextdata
+identity regression and native executable startup pass; Python ownership tests
+pass41 with six environment-dependent skips. Full suites, required CI and
+installed-image parity remain required before delivery.
+
+The selected standalone renderer was independently verified against its original
+release generation, immutable image, network policy, PKI, isolation and actual
+ARM64 Lightpanda **1.0.0** binary hash. The official non-prerelease release list
+was rechecked October7; [1.0.0](https://github.com/lightpanda-io/browser/releases/tag/1.0.0)
+remains the latest stable release.
+
+Source957 verification includes 36 focused canonical detail cases using the
+credentialed CONNECT fixture for network requests, PostgreSQL/Redis effects,
+content fields, publisher policy, retries, redirects, deadlines and interrupted
+claims. Independent ownership and cold reversal passed for all three generic
+proxy detail families, including Avature learned-portal reversal. Full worker
+and queue race suites passed in 479.394 and 264.916 seconds; installed-image
+parity verifies all81 profiles. Refusal cases make no network requests; explicit
+sealed-transport cases use mocks.
 
 Original [B0 whole-lane benchmark 37542921649](https://github.com/colophon-group/jobseek/actions/runs/37542921649)
-completed all 16 synthetic trials with exact canonical output, queue accounting
-and cleanup. Its CI merge source `cfb2b44e388c790485e815a6924b0e1dd1606e7d`
-has the same tree `46a20c8646d26cf7e66b0cdccb116b9b58c56c9a` as the reviewed
-head and deployed squash. At concurrency four, synchronized whole-lane peak RAM
-was 11.65–12.28% of the Python control, lifetime CPU 4.63–4.67s versus
+completed all16 synthetic trials with exact canonical output, queue accounting
+and cleanup. At concurrency four, synchronized whole-lane peak RAM was
+11.65–12.28% of the Python control, lifetime CPU 4.63–4.67s versus
 10.36–10.88s, and fixture density 12.86–13.49 times the control. This proves the
-bounded B0 fixture; full ordinary production workload cost remains to be measured.
+bounded B0 fixture; full ordinary production workload cost remains unproven.
 
-The next grouped candidate **0.13.956** extends the existing protected proxy
-transport across **DOM + API-sniffer + Inline + Sitemap + Eightfold + Phenom**,
-and Eightfold's independently configured detail scraper. Seven new compiled
-profiles bring the installed capability list to 78. Original configuration hashes,
-TLS/public-origin checks, publisher-policy attribution, bounded pooling/retries,
-independent detail choices and cold reversal remain required. HTTP proxy support
-does not admit browser proxy configurations or unrelated unported options.
+Continue in these grouped deliveries:
 
-Against the retained source954 canonical capture, actual candidate code admits
-27 additional monitor configurations: six DOM, two Inline, three Sitemap, nine
-Eightfold and seven Phenom. It raises historical monitor eligibility from 7133 to
-7160 of 7885, without changing those configurations. This is historical local
-eligibility, not current ownership or complete detail coverage. The current CSV
-also verifies all nine Eightfold proxy monitor/detail assignments; remaining
-DOM/JSON-LD proxy detail variants still need implementation before their boards
-can enter a complete native cohort.
+1. Deliver candidate958 through exact-head required CI and immutable deployment.
+   Retire supported B0 ownership before rollout, capture a fresh source/receipt-bound
+   cohort, then stage/activate a new plan and independently prove fleet, ownership,
+   canonical fields, publisher policy, freshness and queue behavior.
+2. Continue grouped DOM rich rows and remaining RSS provider, URL and transport
+   variants. Current configuration evidence identifies28 rich-row DOM configurations
+   and26 RSS configurations before the two provider additions in958.
+3. Port remaining browser actions/capture, API pagination/enrichment and provider
+   families in batches selected from fresh canonical configuration census. Preserve
+   every enabled board and independent detail configuration.
+4. Complete native scheduling, persistence, runtime maintenance and deployment
+   consumers; measure comparable whole-lane CPU/RAM/density/attributable cost.
+5. Establish replacement authority, supported quiesced cutover/cold reversal and
+   rollback window; retire production Python, Playwright, Chromium and legacy
+   runtime assets while retaining useful isolated offline Python tooling.
 
-Continue with source-bound fresh cohort admission and supported activation,
-using the deployed failure diagnostics to establish any startup cause. Preserve
-cold reversal before another rollout. Port browser actions/capture and richer
-feeds in grouped batches, then remaining provider families, runtime consumers,
-full ordinary resource/cost proof and production Python retirement. Do not retry
-the retired source954 ownership identity.
-
-
-The original source955 supported B0 cutover subsequently completed successfully.
-Independent readback verified **cdom active at epoch 205**, exact source/image
-identities and all seven health endpoints. The first observation had 24 queued
-B0 tasks and no completed executions; it does not establish natural canonical
-processing yet. The reconciliation one-off finished naturally before cutover.
-Fresh source955 canonical configuration and actual scheduled-route admission
-must precede ordinary ownership. Never reuse the retired source954 plan.
-
-[PR #10344](https://github.com/colophon-group/jobseek/pull/10344) carries the
-six proxy monitor families and Eightfold details. Its obsolete DOM proxy refusal
-assertion was corrected at `2d2d7841f9bdf079e588e6836be30d5d79a70a0d`.
-Full worker race passed in 478.461 seconds; corrected-head required and
-installed-image CI remain pending.
-
-Candidate **0.13.957** ports **DOM + JSON-LD + API-sniffer proxy details**
-together, adding three independently compiled detail profiles (81 total).
-Original canonical metadata and configuration hashes remain bound to ownership;
-transport fields are removed only from a copy passed to content parsers. Detail
-proxy selection stays independent of monitor proxy choice. Browser proxy
-configurations and unrelated unsupported content options still refuse admission.
-
-Thirty-six focused canonical detail cases passed with the existing credentialed
-CONNECT fixture for network requests, including PostgreSQL/Redis effects,
-content fields, publisher policy, retries, redirects, deadlines and interrupted
-claims. Refusal cases make no network requests; explicit sealed-transport cases
-use mocks. Independent ownership and cold reversal passed for all three detail
-families, including six Avature learned-portal reversal cases on the proxy path.
-Fresh source955 configuration screening finds 25 DOM and 19 JSON-LD proxy
-detail assignments admitted by this batch. Together with the preceding nine
-Eightfold proxy details, candidate detail configuration eligibility rises from
-2604 to 2657 on unchanged canonical/cache configurations, with zero mismatches.
-This screening does not grant production ownership or reconcile posting routes.
-Full regression and installed-image CI remain required before delivery. See
-[portable candidate evidence](evidence/go-native-proxy-details-candidate-2026-10-07.json).
-
-
-The source955 ordinary staging attempt refused **B0 Compose contract drift**
-before ownership changed. Read-only production rendering identified the exact
-cause: B0 lets Compose decode the escaped proxy pool directly from `.env`, while
-the ordinary wrapper exported Bash's decoded value. Removing only that environment
-override reproduced the active receipt's exact Compose digest. Candidate957 makes
-ordinary cutover use the same protected `.env` parsing and keeps the operator API
-key out of runtime/admin environments. No live wrapper, receipt, config or
-ownership was patched. A fresh immutable rollout and new source-bound admission
-are required. This finding does not establish the cause of source954's earlier
-readiness failure.
-
-[PR #10345](https://github.com/colophon-group/jobseek/pull/10345) consolidates
-six proxy monitor and four proxy detail families into one release, including this
-cutover correction. Supersede #10344 only after the combined candidate is verified.
+Private raw census, exact image receipts and operational logs are protected host
+or local evidence. Keep portable checkpoints free of credentials and raw metadata.
+Full migration completion requires all steps above, beyond compiled eligibility.
 
 ### Prior releases and evidence
 

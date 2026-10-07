@@ -83,7 +83,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		allowed["slug"], allowed["language"], allowed["backfill_languages"] = true, true, true
 	case "rss":
 		allowed["preset"], allowed["feed_url"] = true, true
-		allowed["variant"] = true
+		allowed["variant"], allowed["agency"], allowed["tenant"] = true, true, true
 		for _, key := range []string{"url", "url_filter", "url_allowlist", "url_transform"} {
 			allowed[key] = true
 		}

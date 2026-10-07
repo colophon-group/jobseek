@@ -137,6 +137,8 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		}
 		identityConfig = o.Identity
 	}
+	zohoIdentity := profile.Profile == "rss.zoho_recruit-skip/v1" || profile.Profile == "rss.zoho_recruit-items/v1"
+	identityEnabled := identityConfig != nil || zohoIdentity
 	identities := []string{}
 	explicit := []bool{}
 	identityByURL := map[string]string{}
@@ -152,15 +154,15 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		if posting.URL == "" || strings.ContainsRune(posting.URL, 0) || posting.Content == nil || posting.Content.Enrich || posting.Content.Fields.Titles == nil || len(posting.Content.Fields.Locales) == 0 || byURL[posting.URL] != nil {
 			return nil, ErrConfiguration
 		}
-		if identityConfig == nil && posting.SourceIdentity != "" || identityConfig != nil && !identityConfig.Valid(posting.SourceIdentity) {
+		if !identityEnabled && posting.SourceIdentity != "" || identityConfig != nil && !identityConfig.Valid(posting.SourceIdentity) || zohoIdentity && !validZohoRSSIdentity(posting.URL, posting.SourceIdentity) {
 			return nil, ErrConfiguration
 		}
 		identity := posting.URL
-		if identityConfig != nil {
+		if identityEnabled && posting.SourceIdentity != "" {
 			identity = posting.SourceIdentity
 		}
 		identities = append(identities, identity)
-		explicit = append(explicit, identityConfig != nil)
+		explicit = append(explicit, identityEnabled && posting.SourceIdentity != "")
 		identityByURL[posting.URL] = identity
 		urls = append(urls, posting.URL)
 		byURL[posting.URL] = posting.Content
@@ -185,7 +187,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 			}
 			var rows pgx.Rows
 			var err error
-			if identityConfig != nil {
+			if identityEnabled {
 				var reason, identity, source string
 				err = tx.QueryRow(ctx, richMonitorIdentityValidateSQL, identities, urls, explicit, profile.CompanyID).Scan(&reason, &identity, &source)
 				if err == nil {
@@ -214,7 +216,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 				var needsScrape bool
 				var identity string
 				var err error
-				if identityConfig != nil {
+				if identityEnabled {
 					err = rows.Scan(&action, &id, &identity, &url, &descriptionHash, &needsScrape)
 				} else {
 					err = rows.Scan(&action, &id, &url, &descriptionHash, &needsScrape)
@@ -223,7 +225,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 					rows.Close()
 					return err
 				}
-				if byURL[url] == nil || seen[url] || needsScrape && len(enrich) == 0 || identityConfig != nil && identityByURL[url] != identity {
+				if byURL[url] == nil || seen[url] || needsScrape && len(enrich) == 0 || identityEnabled && identityByURL[url] != identity {
 					rows.Close()
 					return errors.New("rich monitor classification lost input identity")
 				}
@@ -260,7 +262,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 						fields.ExperienceMin, fields.ExperienceMax, fields.TechnologyIDs,
 						fields.OccupationID, fields.SeniorityID}
 					var err error
-					if identityConfig != nil {
+					if identityEnabled {
 						insert = richMonitorIdentityInsertSQL
 						if len(enrich) > 0 {
 							insert = richMonitorIdentityEnrichInsertSQL
@@ -307,7 +309,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 							return err
 						}
 					}
-					if len(enrich) > 0 && (row.needsScrape || row.action != "touched" || identityConfig != nil) {
+					if len(enrich) > 0 && (row.needsScrape || row.action != "touched" || identityEnabled) {
 						detailIDs = append(detailIDs, row.id)
 					}
 					switch row.action {
