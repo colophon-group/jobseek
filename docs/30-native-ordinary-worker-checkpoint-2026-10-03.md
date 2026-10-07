@@ -5,6 +5,26 @@
 The full migration goal is **active and incomplete**. Ship multiple provider
 and variant types per release, sharing reference verification, CI and cutover.
 
+### Source960 serving checkpoint — 04:55 UTC October7
+
+Original supported ordinary activation succeeded at211. Independent source/image/
+B0-receipt/plan readback verifies eight healthy endpoints and ten restart-armed
+services. Fresh serving authority covers7,186 monitors,2,616 detail boards and
+1,463,861 scheduled detail postings. Normal scheduled work completed four
+monitors and four details across four profiles; eight monitor and four detail
+canonical samples passed, with no bounded processing diagnostics. This initial
+readback does not prove every-profile freshness or complete-lane costs.
+See [source960 production evidence](evidence/go-native-source960-production-2026-10-07.json).
+
+The next grouped961 branch is committed/pushed with94 profiles and the identical
+runtime trees proved by full worker503.995s/queue302.496s race tests and the
+installed Lightpanda capture proof on both Linux architectures. Finish remaining
+RSS transport/properties/identity/legacy variants before publication/adoption;
+then batch the shared DOM/API sniffer/Inline browser paths identified in the
+fresh696-monitor census. Full migration and Python retirement remain unfinished.
+
+### Earlier delivery entries — retained chronology
+
 ### Source960 admission and grouped961 verification — October7
 
 Original release960 deployment37570306419 and promotion succeeded. Independent

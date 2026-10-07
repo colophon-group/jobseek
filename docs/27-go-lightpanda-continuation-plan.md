@@ -26,8 +26,9 @@ pilot and Crawler Deploy Gate passed; merge tree equals the reviewed tree.
 Original [immutable deployment37570306419](https://github.com/colophon-group/jobseek/actions/runs/37570306419)
 completed successfully including promotion. Independent cold210 verification
 proves exact source/images and healthy base services. Supported B0 activation
-and source-bound receipt/health readback passed at211. Ordinary activation is
-running with the exact freshly staged plan; serving proof remains required.
+and ordinary activation succeeded at211. Independent04:55 UTC readback verifies
+eight healthy endpoints, ten restart-armed services, exact ownership and
+initial four monitor/four detail completions across four profiles.
 
 Supported source958 ordinary retirement, B0 rollback and selector clear finished.
 Independent cold210 readback verifies the healthy exact-source958 base fleet,
@@ -38,7 +39,8 @@ Its7,159 monitor boards and2,617 detail boards are historical cohort counts;
 Fresh source960 admission now qualifies7,186 monitors and2,616 detail boards,
 including1,463,861 of1,491,009 scheduled postings. Forty-one detail boards retain
 legacy authority after actual route/cache reconciliation. The exact new ordinary
-plan/projection is staged; activation and natural serving proof remain pending.
+plan/projection is active; the initial canonical readback passed. Every-profile
+freshness and whole-lane attributable cost still need observation.
 
 Candidate961 groups SuccessFactors legacy XML and structured Generic RSS
 summaries (94 compiled profiles), faithful200-job stream prefixes, validated
@@ -58,11 +60,11 @@ and [grouped RSS evidence](evidence/go-native-rss-variant-core-candidate-2026-10
 
 ## Continue delivery
 
-1. Finish original source960 ordinary activation with its exact staged plan and
-   projection; the supported wrapper waits for natural legacy lease expiry.
-   Independently verify its active source/images/epoch/B0 receipt and observe
-   normal scheduled work, canonical fields, SQL/Redis deadlines, descriptions,
-   publisher outcomes and health. Use supported recovery if activation fails.
+1. Continue source960 normal scheduled work observation after successful
+   deployment and B0/ordinary activation. Verify admitted-profile freshness,
+   canonical fields, SQL/Redis deadlines, descriptions, publisher outcomes and
+   health against the exact source/images/epoch/receipts. Initial serving proof
+   is recorded in the [production evidence](evidence/go-native-source960-production-2026-10-07.json).
 2. Finish the grouped961 RSS batch with affine paginated transport and remaining
    enabled variants, then full suites, CI and source-bound rollout. Continue
    the large shared browser paths together:253 remaining DOM,149 API sniffer
