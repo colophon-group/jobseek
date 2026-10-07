@@ -45,7 +45,7 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 			options[key] = v
 		}
 	}
-	if err := validateRenderedNavigation(options); err != nil {
+	if err := validateRenderedNavigation(options, true); err != nil {
 		return fail()
 	}
 	cloneMD := make(map[string]json.RawMessage, len(md))

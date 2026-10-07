@@ -10,13 +10,16 @@ import (
 	"crypto/x509/pkix"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
+	actions "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/documentactions"
 	"io"
 	"math/big"
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -136,6 +139,31 @@ func fixture(t *testing.T, mode string) (*Client, <-chan struct{}) {
 		}
 		payload, e := framing.ReadRecord(conn, inputFrameLimit)
 		if e != nil {
+			return
+		}
+		if strings.HasPrefix(mode, "document_") {
+			var request actions.Request
+			if actions.Decode(payload, actions.RequestLimit, &request) != nil || !request.Valid() {
+				return
+			}
+			var zero [1]byte
+			if _, e := io.ReadFull(conn, zero[:]); e != nil || zero[0] != 0 {
+				return
+			}
+			if mode == "document_cancel" {
+				conn.Read(zero[:])
+				return
+			}
+			response := actions.Response{Protocol: actions.Protocol, RequestID: request.RequestID, ConfigFingerprint: request.ConfigFingerprint, Result: []byte{1}}
+			if mode == "document_binding" {
+				response.ConfigFingerprint = strings.Repeat("c", 64)
+			}
+			body, _ := json.Marshal(response)
+			record, _ := framing.EncodeRecord(body, actions.ResponseLimit)
+			if mode == "document_trailing" {
+				record = append(record, 1)
+			}
+			WriteAll(conn, record)
 			return
 		}
 		var input runtimev1.BrowserExecutionInput

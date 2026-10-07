@@ -41,9 +41,12 @@ func TestRenderedListingExcludesTemplateContentsAndForeignBase(t *testing.T) {
 }
 
 func TestRealRenderedMonitorInventoryPolicyFailureAndSettlement(t *testing.T) {
-	for _, mode := range []string{"success", "browser-details", "503", "empty", "gone404", "gone410", "header", "meta", "challenge", "malformed", "cancelled"} {
+	for _, mode := range []string{"success", "actions", "browser-details", "503", "empty", "gone404", "gone410", "header", "meta", "challenge", "malformed", "cancelled"} {
 		t.Run(mode, func(t *testing.T) {
 			metadata := `{"render":true,"url_filter":{"include":"/jobs/","exclude":"intern"},"scraper_type":"json-ld"}`
+			if mode == "actions" {
+				metadata = strings.Replace(metadata, `{"render":true,`, `{"render":true,"actions":[{"action":"wait","ms":0},{"action":"evaluate","script":"() => window.ready = true","required":true}],`, 1)
+			}
 			detailWorker := queue.Simple
 			if mode == "browser-details" {
 				detailWorker = queue.Browser
@@ -109,7 +112,7 @@ func TestRealRenderedMonitorInventoryPolicyFailureAndSettlement(t *testing.T) {
 			var missing, count, failures int
 			f.pg.QueryRow(ctx, "SELECT is_active,missing_count FROM job_posting WHERE id=$1::uuid", f.original).Scan(&active, &missing)
 			f.pg.QueryRow(ctx, "SELECT tdm_reserved,consecutive_failures,(SELECT count(*) FROM job_posting WHERE board_id=$1::uuid) FROM job_board WHERE id=$1::uuid", f.board).Scan(&reserved, &failures, &count)
-			if mode == "success" || mode == "browser-details" {
+			if mode == "success" || mode == "actions" || mode == "browser-details" {
 				if r.Batches.Inserted != 1 || active || missing != 4 || count != 2 || failures != 0 {
 					t.Fatal("inventory lost", r)
 				}

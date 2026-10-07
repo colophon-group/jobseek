@@ -25,6 +25,7 @@ import (
 
 	replay "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/apireplay"
 	df "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/dayforcesession"
+	actions "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/documentactions"
 	feed "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/feedsession"
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/framing"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
@@ -47,8 +48,8 @@ const (
 	maxPEMFileBytes               = int64(128 * 1024)
 	serviceHandshakeTimeout       = 10 * time.Second
 	serviceConnectionTimeout      = 135 * time.Second
-	// Initial idle/read bound plus the longest fully validated DOM execution.
-	serviceMaxConnectionTimeout = 405 * time.Second
+	// Initial idle/read bound, longest API conversation and cleanup/write bound.
+	serviceMaxConnectionTimeout = 750 * time.Second
 	defaultMemoryMaxPath        = "/sys/fs/cgroup/memory.max"
 	defaultMemorySwapMaxPath    = "/sys/fs/cgroup/memory.swap.max"
 )
@@ -465,6 +466,11 @@ func (service *runtimeV1Service) handleConnection(
 		return
 	}
 	if bytes.HasPrefix(bytes.TrimSpace(payload), []byte("{")) {
+		var documentRequest actions.Request
+		if actions.Decode(payload, actions.RequestLimit, &documentRequest) == nil && documentRequest.Valid() {
+			service.handleDocumentActions(connectionContext, tlsConnection, reader, documentRequest)
+			return
+		}
 		var apiRequest replay.Request
 		if replay.Decode(payload, replay.RequestLimit, &apiRequest) == nil && apiRequest.Valid() {
 			service.handleAPIReplay(connectionContext, tlsConnection, reader, apiRequest)

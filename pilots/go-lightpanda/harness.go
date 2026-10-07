@@ -22,8 +22,10 @@ import (
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
+	actions "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/documentactions"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	resourcepolicy "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/resourcepolicy"
+	policy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 )
 
 const (
@@ -69,10 +71,11 @@ var (
 	}{reserved: make(map[int]struct{})}
 )
 
-// Task is intentionally small: the pilot navigates once and optionally
-// evaluates one synchronous JavaScript expression.
+// Task navigates one fresh target, then runs a bounded action pipeline, one
+// expression, or a provider conversation. These execution modes are exclusive.
 type Task struct {
 	URL               string
+	Actions           []actions.Action
 	Evaluation        *TaskEvaluation
 	Navigation        *navigationOptions
 	Dayforce          *dayforceTask
@@ -262,6 +265,9 @@ func executeTask(ctx context.Context, deps dependencies, process managedProcess,
 }
 
 func validateTask(task Task) error {
+	if len(task.Actions) > 0 && (!actions.Valid(task.Actions) || task.Evaluation != nil || task.APIReplay != nil || task.Feed != nil || task.Dayforce != nil || task.ResponseBodyLimit != 0) {
+		return actions.ErrActions
+	}
 	if task.APIReplay != nil && (task.APIReplay.boardURL != task.URL || task.APIReplay.converse == nil || task.Dayforce != nil || task.Feed != nil || task.Evaluation != nil || task.ResponseBodyLimit != 0 || task.Navigation == nil || task.APIReplay.options.Inventory.Endpoint == "") {
 		return errReplayCapture
 	}
@@ -968,8 +974,7 @@ func executeOnTarget(ctx, target context.Context, task Task) (Result, error) {
 	if task.ResponseBodyLimit == 0 {
 		captureDocument = append(captureDocument, chromedp.WaitReady("html", chromedp.ByQuery), chromedp.OuterHTML("html", &html, chromedp.ByQuery))
 	}
-	if err := chromedp.Run(targetCtx,
-		navigate,
+	snapshotDocument := chromedp.Tasks{
 		captureDocument,
 		chromedp.Location(&finalURL),
 		chromedp.ActionFunc(func(actionCtx context.Context) error {
@@ -986,8 +991,34 @@ func executeOnTarget(ctx, target context.Context, task Task) (Result, error) {
 			}
 			return nil
 		}),
-	); err != nil {
+	}
+	if err := chromedp.Run(targetCtx, navigate, snapshotDocument); err != nil {
 		return Result{}, err
+	}
+	if len(task.Actions) > 0 {
+		check := func() (bool, error) {
+			if err := chromedp.Run(targetCtx, snapshotDocument); err != nil {
+				return false, err
+			}
+			responseMu.Lock()
+			current := latestResponse
+			responseMu.Unlock()
+			if current.policyInvalid {
+				return false, policy.ErrSignals
+			}
+			if _, err := correlateMainDocumentSnapshot(current, capturedFrame, finalURL); err != nil {
+				return false, err
+			}
+			err := policy.Check(current.resourcePolicy, html, finalURL)
+			var reserved *policy.Reservation
+			if errors.As(err, &reserved) {
+				return true, nil
+			}
+			return false, err
+		}
+		if err := runDocumentActions(targetCtx, task.Actions, executeDocumentAction, check); err != nil {
+			return Result{}, err
+		}
 	}
 
 	// Freeze the navigation result before evaluating caller JavaScript. Even a
