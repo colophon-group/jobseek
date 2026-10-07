@@ -1,0 +1,526 @@
+{
+  "cases": [
+    {
+      "name": "legacy-full",
+      "kind": "legacy_xml",
+      "body": "<?xml version=\"1.0\"?><Jobs><Job><ReqId>123</ReqId><JobTitle>Café &amp; 東京</JobTitle><Job-Description><![CDATA[<p>Build &amp; learn.</p>]]></Job-Description><filter8><value>Zürich</value></filter8><filter7><value>CH</value></filter7><filter6><value>Basel</value></filter6><filter4><value>Remote</value></filter4><filter1><value>Engineering</value></filter1><filter2><value>10%</value></filter2><filter3><value>Senior</value></filter3><mfield2><value>CH &amp; DE</value></mfield2></Job></Jobs>",
+      "jobs": [
+        {
+          "url": "https://career.example.com/sfcareer/jobreqcareer?jobId=123&company=Fixture_Company",
+          "title": "Café & 東京",
+          "description": "<p>Build &amp; learn.</p>",
+          "locations": [
+            "Zürich, CH"
+          ],
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123",
+            "category": "Engineering",
+            "travel_required": "10%",
+            "experience_level": "Senior",
+            "site": "Basel",
+            "approved_work_states": "CH & DE"
+          },
+          "source_identity": null
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "legacy-minimal",
+      "kind": "legacy_xml",
+      "body": "<?xml version=\"1.0\"?><Jobs><Job><ReqId>123</ReqId><JobTitle>Engineer</JobTitle></Job></Jobs>",
+      "jobs": [
+        {
+          "url": "https://career.example.com/sfcareer/jobreqcareer?jobId=123&company=Fixture_Company",
+          "title": "Engineer",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123"
+          },
+          "source_identity": null
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "legacy-missing_id",
+      "kind": "legacy_xml",
+      "body": "<?xml version=\"1.0\"?><Jobs><Job><JobTitle>Café &amp; 東京</JobTitle><Job-Description><![CDATA[<p>Build &amp; learn.</p>]]></Job-Description><filter8><value>Zürich</value></filter8><filter7><value>CH</value></filter7><filter6><value>Basel</value></filter6><filter4><value>Remote</value></filter4><filter1><value>Engineering</value></filter1><filter2><value>10%</value></filter2><filter3><value>Senior</value></filter3><mfield2><value>CH &amp; DE</value></mfield2></Job></Jobs>",
+      "jobs": [],
+      "error": false
+    },
+    {
+      "name": "legacy-missing_title",
+      "kind": "legacy_xml",
+      "body": "<?xml version=\"1.0\"?><Jobs><Job><ReqId>123</ReqId><Job-Description><![CDATA[<p>Build &amp; learn.</p>]]></Job-Description><filter8><value>Zürich</value></filter8><filter7><value>CH</value></filter7><filter6><value>Basel</value></filter6><filter4><value>Remote</value></filter4><filter1><value>Engineering</value></filter1><filter2><value>10%</value></filter2><filter3><value>Senior</value></filter3><mfield2><value>CH &amp; DE</value></mfield2></Job></Jobs>",
+      "jobs": [],
+      "error": false
+    },
+    {
+      "name": "legacy-nondigit",
+      "kind": "legacy_xml",
+      "body": "<?xml version=\"1.0\"?><Jobs><Job><ReqId>12x</ReqId><JobTitle>Café &amp; 東京</JobTitle><Job-Description><![CDATA[<p>Build &amp; learn.</p>]]></Job-Description><filter8><value>Zürich</value></filter8><filter7><value>CH</value></filter7><filter6><value>Basel</value></filter6><filter4><value>Remote</value></filter4><filter1><value>Engineering</value></filter1><filter2><value>10%</value></filter2><filter3><value>Senior</value></filter3><mfield2><value>CH &amp; DE</value></mfield2></Job></Jobs>",
+      "jobs": [],
+      "error": false
+    },
+    {
+      "name": "legacy-unicode_id",
+      "kind": "legacy_xml",
+      "body": "<?xml version=\"1.0\"?><Jobs><Job><ReqId>１２٣</ReqId><JobTitle>Café &amp; 東京</JobTitle><Job-Description><![CDATA[<p>Build &amp; learn.</p>]]></Job-Description><filter8><value>Zürich</value></filter8><filter7><value>CH</value></filter7><filter6><value>Basel</value></filter6><filter4><value>Remote</value></filter4><filter1><value>Engineering</value></filter1><filter2><value>10%</value></filter2><filter3><value>Senior</value></filter3><mfield2><value>CH &amp; DE</value></mfield2></Job></Jobs>",
+      "jobs": [
+        {
+          "url": "https://career.example.com/sfcareer/jobreqcareer?jobId=%EF%BC%91%EF%BC%92%D9%A3&company=Fixture_Company",
+          "title": "Café & 東京",
+          "description": "<p>Build &amp; learn.</p>",
+          "locations": [
+            "Zürich, CH"
+          ],
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "１２٣",
+            "category": "Engineering",
+            "travel_required": "10%",
+            "experience_level": "Senior",
+            "site": "Basel",
+            "approved_work_states": "CH & DE"
+          },
+          "source_identity": null
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "legacy-superscript_id",
+      "kind": "legacy_xml",
+      "body": "<?xml version=\"1.0\"?><Jobs><Job><ReqId>²³</ReqId><JobTitle>Café &amp; 東京</JobTitle><Job-Description><![CDATA[<p>Build &amp; learn.</p>]]></Job-Description><filter8><value>Zürich</value></filter8><filter7><value>CH</value></filter7><filter6><value>Basel</value></filter6><filter4><value>Remote</value></filter4><filter1><value>Engineering</value></filter1><filter2><value>10%</value></filter2><filter3><value>Senior</value></filter3><mfield2><value>CH &amp; DE</value></mfield2></Job></Jobs>",
+      "jobs": [
+        {
+          "url": "https://career.example.com/sfcareer/jobreqcareer?jobId=%C2%B2%C2%B3&company=Fixture_Company",
+          "title": "Café & 東京",
+          "description": "<p>Build &amp; learn.</p>",
+          "locations": [
+            "Zürich, CH"
+          ],
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "²³",
+            "category": "Engineering",
+            "travel_required": "10%",
+            "experience_level": "Senior",
+            "site": "Basel",
+            "approved_work_states": "CH & DE"
+          },
+          "source_identity": null
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "legacy-nested_title",
+      "kind": "legacy_xml",
+      "body": "<?xml version=\"1.0\"?><Jobs><Job><ReqId>123</ReqId><JobTitle>Leading <b>nested</b> tail</JobTitle><Job-Description><![CDATA[<p>Build &amp; learn.</p>]]></Job-Description><filter8><value>Zürich</value></filter8><filter7><value>CH</value></filter7><filter6><value>Basel</value></filter6><filter4><value>Remote</value></filter4><filter1><value>Engineering</value></filter1><filter2><value>10%</value></filter2><filter3><value>Senior</value></filter3><mfield2><value>CH &amp; DE</value></mfield2></Job></Jobs>",
+      "jobs": [
+        {
+          "url": "https://career.example.com/sfcareer/jobreqcareer?jobId=123&company=Fixture_Company",
+          "title": "Leading",
+          "description": "<p>Build &amp; learn.</p>",
+          "locations": [
+            "Zürich, CH"
+          ],
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123",
+            "category": "Engineering",
+            "travel_required": "10%",
+            "experience_level": "Senior",
+            "site": "Basel",
+            "approved_work_states": "CH & DE"
+          },
+          "source_identity": null
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "legacy-duplicate",
+      "kind": "legacy_xml",
+      "body": "<?xml version=\"1.0\"?><Jobs><Job><ReqId>123</ReqId><JobTitle>Café &amp; 東京</JobTitle><Job-Description><![CDATA[<p>Build &amp; learn.</p>]]></Job-Description><filter8><value>Zürich</value></filter8><filter7><value>CH</value></filter7><filter6><value>Basel</value></filter6><filter4><value>Remote</value></filter4><filter1><value>Engineering</value></filter1><filter2><value>10%</value></filter2><filter3><value>Senior</value></filter3><mfield2><value>CH &amp; DE</value></mfield2><JobTitle>Second</JobTitle><filter8><value>Other</value></filter8></Job></Jobs>",
+      "jobs": [
+        {
+          "url": "https://career.example.com/sfcareer/jobreqcareer?jobId=123&company=Fixture_Company",
+          "title": "Café & 東京",
+          "description": "<p>Build &amp; learn.</p>",
+          "locations": [
+            "Zürich, CH"
+          ],
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123",
+            "category": "Engineering",
+            "travel_required": "10%",
+            "experience_level": "Senior",
+            "site": "Basel",
+            "approved_work_states": "CH & DE"
+          },
+          "source_identity": null
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "legacy-wrong_namespace",
+      "kind": "legacy_xml",
+      "body": "<?xml version=\"1.0\"?><Jobs><Job xmlns=\"https://foreign.example/\"><ReqId>123</ReqId><JobTitle>Café &amp; 東京</JobTitle><Job-Description><![CDATA[<p>Build &amp; learn.</p>]]></Job-Description><filter8><value>Zürich</value></filter8><filter7><value>CH</value></filter7><filter6><value>Basel</value></filter6><filter4><value>Remote</value></filter4><filter1><value>Engineering</value></filter1><filter2><value>10%</value></filter2><filter3><value>Senior</value></filter3><mfield2><value>CH &amp; DE</value></mfield2></Job></Jobs>",
+      "jobs": [],
+      "error": false
+    },
+    {
+      "name": "legacy-fallback_site",
+      "kind": "legacy_xml",
+      "body": "<?xml version=\"1.0\"?><Jobs><Job><ReqId>123</ReqId><JobTitle>Café &amp; 東京</JobTitle><Job-Description><![CDATA[<p>Build &amp; learn.</p>]]></Job-Description><filter6><value>Basel</value></filter6><filter4><value>Remote</value></filter4><filter1><value>Engineering</value></filter1><filter2><value>10%</value></filter2><filter3><value>Senior</value></filter3><mfield2><value>CH &amp; DE</value></mfield2></Job></Jobs>",
+      "jobs": [
+        {
+          "url": "https://career.example.com/sfcareer/jobreqcareer?jobId=123&company=Fixture_Company",
+          "title": "Café & 東京",
+          "description": "<p>Build &amp; learn.</p>",
+          "locations": [
+            "Basel"
+          ],
+          "employment_type": null,
+          "job_location_type": "remote",
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123",
+            "category": "Engineering",
+            "travel_required": "10%",
+            "experience_level": "Senior",
+            "site": "Basel",
+            "approved_work_states": "CH & DE"
+          },
+          "source_identity": null
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "legacy-unknown_location_type",
+      "kind": "legacy_xml",
+      "body": "<?xml version=\"1.0\"?><Jobs><Job><ReqId>123</ReqId><JobTitle>Café &amp; 東京</JobTitle><Job-Description><![CDATA[<p>Build &amp; learn.</p>]]></Job-Description><filter8><value>Zürich</value></filter8><filter7><value>CH</value></filter7><filter6><value>Basel</value></filter6><filter4><value>Unexpected</value></filter4><filter1><value>Engineering</value></filter1><filter2><value>10%</value></filter2><filter3><value>Senior</value></filter3><mfield2><value>CH &amp; DE</value></mfield2></Job></Jobs>",
+      "jobs": [
+        {
+          "url": "https://career.example.com/sfcareer/jobreqcareer?jobId=123&company=Fixture_Company",
+          "title": "Café & 東京",
+          "description": "<p>Build &amp; learn.</p>",
+          "locations": [
+            "Zürich, CH"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123",
+            "category": "Engineering",
+            "travel_required": "10%",
+            "experience_level": "Senior",
+            "site": "Basel",
+            "approved_work_states": "CH & DE"
+          },
+          "source_identity": null
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "legacy-qualified_location_type",
+      "kind": "legacy_xml",
+      "body": "<?xml version=\"1.0\"?><Jobs><Job><ReqId>123</ReqId><JobTitle>Café &amp; 東京</JobTitle><Job-Description><![CDATA[<p>Build &amp; learn.</p>]]></Job-Description><filter8><value>Zürich</value></filter8><filter7><value>CH</value></filter7><filter6><value>Basel</value></filter6><filter4><value>Onsite (5 Days per Week)</value></filter4><filter1><value>Engineering</value></filter1><filter2><value>10%</value></filter2><filter3><value>Senior</value></filter3><mfield2><value>CH &amp; DE</value></mfield2></Job></Jobs>",
+      "jobs": [
+        {
+          "url": "https://career.example.com/sfcareer/jobreqcareer?jobId=123&company=Fixture_Company",
+          "title": "Café & 東京",
+          "description": "<p>Build &amp; learn.</p>",
+          "locations": [
+            "Zürich, CH"
+          ],
+          "employment_type": null,
+          "job_location_type": "onsite",
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123",
+            "category": "Engineering",
+            "travel_required": "10%",
+            "experience_level": "Senior",
+            "site": "Basel",
+            "approved_work_states": "CH & DE"
+          },
+          "source_identity": null
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "legacy-invalid_xml",
+      "kind": "legacy_xml",
+      "body": "<?xml version=\"1.0\"?><Jobs><Job><ReqId>123</ReqId><JobTitle>Café &amp; 東京</JobTitle><Job-Description><![CDATA[<p>Build &amp; learn.</p>]]></Job-Description><filter8><value>Zürich</value></filter8><filter7><value>CH</value></filter7><filter6><value>Basel</value></filter6><filter4><value>Remote</value></filter4><filter1><value>Engineering</value></filter1><filter2><value>10%</value></filter2><filter3><value>Senior</value></filter3><mfield2><value>CH &amp; DE</value></mfield2></Job></Jobs><broken",
+      "jobs": [],
+      "error": true
+    },
+    {
+      "name": "summary-full",
+      "kind": "summary",
+      "body": "<rss><channel><item><title>Engineer</title><description>Engineer | Full Time | Zürich</description><link>https://example.com/jobs/123</link><guid>123</guid><Location>Original</Location></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/123",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Zürich"
+          ],
+          "employment_type": "Full Time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123"
+          },
+          "source_identity": null
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "summary-location_only",
+      "kind": "summary",
+      "body": "<rss><channel><item><title>Engineer</title><description>Engineer | Basel</description><link>https://example.com/jobs/123</link><guid>123</guid><Location>Original</Location></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/123",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "Basel"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123"
+          },
+          "source_identity": null
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "summary-whitespace",
+      "kind": "summary",
+      "body": "<rss><channel><item><title>  Engineer\n II </title><description> Engineer  II | Full\n Time | Zürich  CH </description><link>https://example.com/jobs/123</link><guid>123</guid><Location>Original</Location></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/123",
+          "title": "Engineer II",
+          "description": null,
+          "locations": [
+            "Zürich CH"
+          ],
+          "employment_type": "Full Time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123"
+          },
+          "source_identity": null
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "summary-entities",
+      "kind": "summary",
+      "body": "<rss><channel><item><title>Caf&amp;eacute;</title><description>Caf&amp;eacute; | Zürich &amp;amp; CH</description><link>https://example.com/jobs/123</link><guid>123</guid><Location>Original</Location></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/123",
+          "title": "Café",
+          "description": null,
+          "locations": [
+            "Zürich & CH"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123"
+          },
+          "source_identity": null
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "summary-missing_title",
+      "kind": "summary",
+      "body": "<rss><channel><item><title></title><description>Engineer | Zürich</description><link>https://example.com/jobs/123</link><guid>123</guid><Location>Original</Location></item></channel></rss>",
+      "jobs": [],
+      "error": true
+    },
+    {
+      "name": "summary-wrong_prefix",
+      "kind": "summary",
+      "body": "<rss><channel><item><title>Engineer</title><description>Designer | Zürich</description><link>https://example.com/jobs/123</link><guid>123</guid><Location>Original</Location></item></channel></rss>",
+      "jobs": [],
+      "error": true
+    },
+    {
+      "name": "summary-empty_location",
+      "kind": "summary",
+      "body": "<rss><channel><item><title>Engineer</title><description>Engineer | </description><link>https://example.com/jobs/123</link><guid>123</guid><Location>Original</Location></item></channel></rss>",
+      "jobs": [],
+      "error": true
+    },
+    {
+      "name": "summary-three_fields",
+      "kind": "summary",
+      "body": "<rss><channel><item><title>Engineer</title><description>Engineer | Full Time | Zürich | CH</description><link>https://example.com/jobs/123</link><guid>123</guid><Location>Original</Location></item></channel></rss>",
+      "jobs": [],
+      "error": true
+    },
+    {
+      "name": "summary-empty_type",
+      "kind": "summary",
+      "body": "<rss><channel><item><title>Engineer</title><description>Engineer |  | Zürich</description><link>https://example.com/jobs/123</link><guid>123</guid><Location>Original</Location></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/123",
+          "title": "Engineer",
+          "description": null,
+          "locations": [
+            "| Zürich"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123"
+          },
+          "source_identity": null
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "summary-missing_link",
+      "kind": "summary",
+      "body": "<rss><channel><item><title>Engineer</title><description>Engineer | Zürich</description><guid>123</guid><Location>Original</Location></item></channel></rss>",
+      "jobs": [],
+      "error": false
+    }
+  ],
+  "identities": [
+    {
+      "source": "https://Career.example.com/career?company=Fixture&career_ns=job_listing_summary&resultType=XML",
+      "expected": [
+        "https://career.example.com",
+        "Fixture"
+      ]
+    },
+    {
+      "source": "https://Career.example.com/career?company=%20Fixture%20&career_ns=job_listing_summary&resultType=XML",
+      "expected": [
+        "https://career.example.com",
+        "Fixture"
+      ]
+    },
+    {
+      "source": "https://Career.example.com/career?company=Fixture&company=Other&career_ns=job_listing_summary&resultType=XML",
+      "expected": null
+    },
+    {
+      "source": "https://Career.example.com/career?company=Fixture&career_ns=wrong&resultType=XML",
+      "expected": null
+    },
+    {
+      "source": "https://Career.example.com/career?company=Fixture&career_ns=job_listing_summary&resultType=xml",
+      "expected": null
+    },
+    {
+      "source": "https://Career.example.com/career?company=Fixture&career_ns=job_listing_summary&resultType=XML&extra=1",
+      "expected": null
+    },
+    {
+      "source": "https://Career.example.com/career?company=a.b&career_ns=job_listing_summary&resultType=XML",
+      "expected": null
+    }
+  ]
+}

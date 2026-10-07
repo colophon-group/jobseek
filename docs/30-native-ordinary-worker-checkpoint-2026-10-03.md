@@ -5,6 +5,18 @@
 The full migration goal is **active and incomplete**. Ship multiple provider
 and variant types per release, sharing reference verification, CI and cutover.
 
+### Next grouped RSS parser core candidate961 — October7
+
+The next grouped batch has native SuccessFactors legacy XML and Generic RSS
+structured-summary parser cores. Twenty-four actual Python item cases and seven
+strict feed-identity cases pass under the race detector in1.790 seconds. They
+cover leading XML text, duplicate/namespaced children, locations and remote type,
+Unicode IDs, tenant query identity, summary title/location/employment fields and
+malformed inventories. No native ownership profile or discovery route is added
+by this core checkpoint. Complete configured fetch/pagination/browser paths,
+canonical writes, cold reversal and installed-image verification before adoption.
+Keep WordPress RSS and remaining SuccessFactors detail properties in this batch.
+
 ### Combined delivery update — 03:32 UTC October7
 
 PR #10347 now groups DOM direct/proxy/Lightpanda rich rows, HR Manager RSS and

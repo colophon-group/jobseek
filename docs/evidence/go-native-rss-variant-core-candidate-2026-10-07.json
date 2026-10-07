@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "candidate_version": "0.13.961",
+  "stage": "parser core only",
+  "python_item_cases": 24,
+  "python_identity_cases": 7,
+  "focused_race_seconds": 1.79,
+  "families": [
+    "SuccessFactors legacy XML",
+    "Generic RSS structured summary"
+  ],
+  "core_reference": "apps/crawler/go/ordinary-worker/testdata/python_rss_variants.json",
+  "remaining": [
+    "native profile and configured transport integration",
+    "bounded generic/WordPress pagination",
+    "SuccessFactors detail properties",
+    "rendered feed path",
+    "canonical and cold verification",
+    "full suites and exact-source installed CI",
+    "production ownership and natural proof"
+  ],
+  "production_adopted": false,
+  "full_migration_complete": false
+}
