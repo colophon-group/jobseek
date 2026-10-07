@@ -60,12 +60,22 @@
   },
   "format_dependency_checks": "module tidy diff, ruff check/format, git diff check passed",
   "remaining": [
-    "full worker and queue race suites",
     "immutable image CI and deployment gate",
     "exact source merge and full deployment",
     "fresh canonical admission and supported ownership cutover",
     "natural canonical and queue verification"
   ],
   "production_adopted": false,
-  "full_migration_complete": false
+  "full_migration_complete": false,
+  "full_suites": {
+    "source_head": "0444d5c2a3b02de7d074b1168bf500c7cd9aeaff",
+    "worker_seconds": 502.851,
+    "queue_seconds": 301.919,
+    "race": true,
+    "required_postgresql": true,
+    "required_redis": true,
+    "clean_source_unchanged": true,
+    "combined_pr_runtime_tree_equal": true,
+    "crawler_tree": "a5be284ce621ec95577563af73133ebeffa8d978"
+  }
 }

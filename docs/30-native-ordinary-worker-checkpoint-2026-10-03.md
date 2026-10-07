@@ -5,6 +5,26 @@
 The full migration goal is **active and incomplete**. Ship multiple provider
 and variant types per release, sharing reference verification, CI and cutover.
 
+### Combined delivery update — 03:32 UTC October7
+
+PR #10347 now groups DOM direct/proxy/Lightpanda rich rows, HR Manager RSS and
+shared filters for Generic RSS, SuccessFactors, Teamtailor, rich DOM and URL-only
+DOM in release0.13.960. The complete worker/queue race suites passed at clean
+`0444d5c2a3b02de7d074b1168bf500c7cd9aeaff` in502.851/301.919 seconds.
+The combined crawler tree is identical; CI additionally uses a bounded20-minute
+suite deadline after the slower runner hit Go's ten-minute default. Fresh exact-
+head required, native and installed-image checks remain required. One combined
+PR and deployment replaces separate959/960 deliveries.
+
+Original release958 deployment37564684440 and promotion succeeded. Independent
+readback verified exact image digests, full base health and cold208; supported
+B0 activation then succeeded and source/receipt-bound readback passed at209.
+Fresh admission reconciles1,493,765 scheduled postings and admits7,159 monitor
+boards and2,617 detail boards with1,468,186 scheduled owned postings. Forty
+detail boards retain their legacy owner because actual routes/cache did not
+match. Ordinary staging is running; actual ordinary serving/natural processing
+is not yet claimed by this checkpoint. Lightpanda remains pinned to1.0.0.
+
 ### Grouped shared policy candidate960 — October7
 
 Candidate960 ports shared rich-job filters and provider URL allowlists across
