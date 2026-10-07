@@ -55,6 +55,42 @@ feeds in grouped batches, then remaining provider families, runtime consumers,
 full ordinary resource/cost proof and production Python retirement. Do not retry
 the retired source954 ownership identity.
 
+
+The original source955 supported B0 cutover subsequently completed successfully.
+Independent readback verified **cdom active at epoch 205**, exact source/image
+identities and all seven health endpoints. The first observation had 24 queued
+B0 tasks and no completed executions; it does not establish natural canonical
+processing yet. The reconciliation one-off finished naturally before cutover.
+Fresh source955 canonical configuration and actual scheduled-route admission
+must precede ordinary ownership. Never reuse the retired source954 plan.
+
+[PR #10344](https://github.com/colophon-group/jobseek/pull/10344) carries the
+six proxy monitor families and Eightfold details. Its obsolete DOM proxy refusal
+assertion was corrected at `2d2d7841f9bdf079e588e6836be30d5d79a70a0d`.
+Full worker race passed in 478.461 seconds; corrected-head required and
+installed-image CI remain pending.
+
+Candidate **0.13.957** ports **DOM + JSON-LD + API-sniffer proxy details**
+together, adding three independently compiled detail profiles (81 total).
+Original canonical metadata and configuration hashes remain bound to ownership;
+transport fields are removed only from a copy passed to content parsers. Detail
+proxy selection stays independent of monitor proxy choice. Browser proxy
+configurations and unrelated unsupported content options still refuse admission.
+
+Thirty-six focused canonical detail cases passed with the existing credentialed
+CONNECT fixture for network requests, including PostgreSQL/Redis effects,
+content fields, publisher policy, retries, redirects, deadlines and interrupted
+claims. Refusal cases make no network requests; explicit sealed-transport cases
+use mocks. Independent ownership and cold reversal passed for all three detail
+families, including six Avature learned-portal reversal cases on the proxy path.
+Fresh source955 configuration screening finds 25 DOM and 19 JSON-LD proxy
+detail assignments admitted by this batch. Together with the preceding nine
+Eightfold proxy details, candidate detail configuration eligibility rises from
+2604 to 2657 on unchanged canonical/cache configurations, with zero mismatches.
+This screening does not grant production ownership or reconcile posting routes.
+Full regression and installed-image CI remain required before delivery. See
+[portable candidate evidence](evidence/go-native-proxy-details-candidate-2026-10-07.json).
+
 ### Prior releases and evidence
 
 Production **0.13.949** was deployed from

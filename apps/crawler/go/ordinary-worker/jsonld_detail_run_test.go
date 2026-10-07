@@ -12,8 +12,9 @@ import (
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 )
 
-func jsonldOwnedFixture(t *testing.T) (nativePipelineFixture, *queue.Authority, *queue.Claim) {
-	return independentDetailOwnedFixture(t, `{"scraper_type":"json-ld","selector":"a.job","render":true,"scraper_config":{"defaults":{"language":"en"}}}`, "")
+func jsonldOwnedFixture(t *testing.T, proxyFlags ...bool) (nativePipelineFixture, *queue.Authority, *queue.Claim) {
+	proxy := len(proxyFlags) > 0 && proxyFlags[0]
+	return independentDetailOwnedFixture(t, proxyDetailFixtureMetadata(t, `{"scraper_type":"json-ld","selector":"a.job","render":true,"scraper_config":{"defaults":{"language":"en"}}}`, proxy), "")
 }
 
 func independentDetailOwnedFixture(t *testing.T, metadata, source string, workers ...queue.WorkerType) (nativePipelineFixture, *queue.Authority, *queue.Claim) {
@@ -85,7 +86,13 @@ func independentDetailOwnedFixture(t *testing.T, metadata, source string, worker
 const nativeJSONLDHTML = `<html><head><script type="application/ld+json">{"@context":"https://schema.org","@type":"JobPosting","title":"Senior Software Engineer","description":"<p>Python. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>","employmentType":"FULL_TIME","jobLocation":{"@type":"Place","address":{"addressLocality":"Zurich"}}}</script></head></html>`
 
 func TestRealJSONLDDetailUsesVerifiedHTTPSharedEnrichmentAndCanonicalSettlement(t *testing.T) {
-	f, a, claim := jsonldOwnedFixture(t)
+	realJSONLDDetailTransportSuccess(t, false)
+}
+func TestRealProxyJSONLDDetailUsesVerifiedHTTPSharedEnrichmentAndCanonicalSettlement(t *testing.T) {
+	realJSONLDDetailTransportSuccess(t, true)
+}
+func realJSONLDDetailTransportSuccess(t *testing.T, proxy bool) {
+	f, a, claim := jsonldOwnedFixture(t, proxy)
 	ctx := context.Background()
 	calls := 0
 	client := richPipelineHTTP(t, func(w http.ResponseWriter, r *http.Request) {
@@ -99,6 +106,9 @@ func TestRealJSONLDDetailUsesVerifiedHTTPSharedEnrichmentAndCanonicalSettlement(
 	circuits, err := queue.NewHostCircuits(f.client, queue.DefaultHostCircuitSettings())
 	if err != nil {
 		t.Fatal(err)
+	}
+	if proxy {
+		client = credentialedProxyFixture(t, client)
 	}
 	result, err := RunDetail(ctx, a, claim, client, richPipelinePreparer(t, f).Processor, circuits)
 	if err != nil || !result.Settled || result.Cycle.Status != "succeeded" || calls != 1 || result.HTTP.Requests != 1 || result.HTTP.Responses != 1 || result.TaskKind != queue.Scrape {
@@ -123,9 +133,15 @@ func TestRealJSONLDDetailUsesVerifiedHTTPSharedEnrichmentAndCanonicalSettlement(
 }
 
 func TestRealJSONLDDetailPreservesOptOutFailureAndFreshCanonicalPolicy(t *testing.T) {
+	realJSONLDDetailTransportPolicy(t, false)
+}
+func TestRealProxyJSONLDDetailPreservesOptOutFailureAndFreshCanonicalPolicy(t *testing.T) {
+	realJSONLDDetailTransportPolicy(t, true)
+}
+func realJSONLDDetailTransportPolicy(t *testing.T, proxy bool) {
 	for _, mode := range []string{"header-reserved", "meta-reserved", "inactive-header-reserved", "existing-reserved", "fresh-reserved", "404-gone", "503-transient", "empty", "transport"} {
 		t.Run(mode, func(t *testing.T) {
-			f, a, claim := jsonldOwnedFixture(t)
+			f, a, claim := jsonldOwnedFixture(t, proxy)
 			ctx := context.Background()
 			calls := 0
 			if mode == "existing-reserved" {
@@ -168,6 +184,13 @@ func TestRealJSONLDDetailPreservesOptOutFailureAndFreshCanonicalPolicy(t *testin
 			circuits, err := queue.NewHostCircuits(f.client, queue.DefaultHostCircuitSettings())
 			if err != nil {
 				t.Fatal(err)
+			}
+			if proxy {
+				if mode == "transport" {
+					client.proxyRequired = true
+				} else {
+					client = credentialedProxyFixture(t, client)
+				}
 			}
 			result, err := RunDetail(ctx, a, claim, client, richPipelinePreparer(t, f).Processor, circuits)
 			if err != nil || result == nil || !result.Settled {

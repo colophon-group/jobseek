@@ -12,12 +12,21 @@ import (
 )
 
 func TestRealFirstRetirementAfterLegacyAvaturePortalDiscovery(t *testing.T) {
+	realAvatureRetirementTransportCases(t, false)
+}
+func TestRealFirstProxyRetirementAfterLegacyAvaturePortalDiscovery(t *testing.T) {
+	realAvatureRetirementTransportCases(t, true)
+}
+func realAvatureRetirementTransportCases(t *testing.T, proxy bool) {
 	for _, mode := range []string{"learned-portal", "changed-parser", "changed-listing", "cache-only", "invalid-portal", "configured-portal-changed"} {
 		t.Run(mode, func(t *testing.T) {
 			ctx := context.Background()
 			metadata := `{"scraper_type":"dom","scraper_config":{"steps":[{"tag":"h1","field":"title"}]},"listing_url":"https://careers.example.com/jobs"}`
 			if mode == "configured-portal-changed" {
 				metadata = strings.TrimSuffix(metadata, "}") + `,"portal_id":"22"}`
+			}
+			if proxy {
+				metadata = proxyDetailMetadata(t, metadata, true)
 			}
 			p := firstIndependentDetailFixture(t, metadata, "https://jobs.example.net/job/42", "jobs.example.net")
 			board := p.plan.document.Details[0].BoardID

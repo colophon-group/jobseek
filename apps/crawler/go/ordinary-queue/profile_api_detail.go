@@ -32,7 +32,7 @@ const eightfoldProxyDetailProfile = "eightfold.proxy-jsonld-api-detail/v1"
 
 func independentDetailProfile(profile string) bool {
 	switch profile {
-	case adpDetailProfile, paylocityDetailProfile, paylocityProxyDetailProfile, paycomDetailProfile, ripplingDetailProfile, mokahrDetailProfile, eightfoldDetailProfile, eightfoldProxyDetailProfile, domRenderedDetailProfile, jsonldRenderedDetailProfile, embeddedRenderedDetailProfile, domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, joinDetailProfile, oracleDetailProfile, embeddedDetailProfile, httpAPIDetailProfile:
+	case adpDetailProfile, paylocityDetailProfile, paylocityProxyDetailProfile, paycomDetailProfile, ripplingDetailProfile, mokahrDetailProfile, eightfoldDetailProfile, eightfoldProxyDetailProfile, domProxyDetailProfile, jsonldProxyDetailProfile, httpAPIProxyDetailProfile, domRenderedDetailProfile, jsonldRenderedDetailProfile, embeddedRenderedDetailProfile, domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, joinDetailProfile, oracleDetailProfile, embeddedDetailProfile, httpAPIDetailProfile:
 		return true
 	}
 	return false

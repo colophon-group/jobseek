@@ -16,6 +16,12 @@ import (
 )
 
 func TestRealHTTPAPIDetailPreservesRequestsCanonicalWritesPolicyAndRetry(t *testing.T) {
+	realHTTPAPIDetailTransportCases(t, false)
+}
+func TestRealProxyHTTPAPIDetailPreservesRequestsCanonicalWritesPolicyAndRetry(t *testing.T) {
+	realHTTPAPIDetailTransportCases(t, true)
+}
+func realHTTPAPIDetailTransportCases(t *testing.T, proxy bool) {
 	for _, mode := range []string{"full", "auth", "description", "redirect", "404", "410", "503", "403", "malformed", "empty", "auth_missing", "auth_reserved", "header_reserved", "503_reserved"} {
 		t.Run(mode, func(t *testing.T) {
 			options := `{"api_url":"https://api.example.net/detail/{item_id}","method":"POST","post_body":"{\"id\":\"{item_id}\"}","url_pattern":"[?&]itemId=(?P<item_id>[^&#]+)","json_path":"job","fields":{"title":"title","description":"description","locations":"locations","employment_type":"employment","responsibilities":"responsibilities","base_salary":"salary"}}`
@@ -26,7 +32,7 @@ func TestRealHTTPAPIDetailPreservesRequestsCanonicalWritesPolicyAndRetry(t *test
 			if mode == "description" {
 				options = strings.TrimSuffix(options, "}") + `,"enrich":["description","date_posted","job_location_type"]}`
 			}
-			f, a, claim := independentDetailOwnedFixture(t, `{"scraper_type":"api_sniffer","scraper_config":`+options+`}`, "https://careers.example.net/job?itemId=123")
+			f, a, claim := independentDetailOwnedFixture(t, proxyDetailFixtureMetadata(t, `{"scraper_type":"api_sniffer","scraper_config":`+options+`}`, proxy), "https://careers.example.net/job?itemId=123")
 			ctx := context.Background()
 			if _, err := f.pg.Exec(ctx, "UPDATE job_posting SET titles=ARRAY['Monitor title'],employment_type='part_time',location_ids=ARRAY[2] WHERE id=$1::uuid", f.original); err != nil {
 				t.Fatal(err)
@@ -92,6 +98,9 @@ func TestRealHTTPAPIDetailPreservesRequestsCanonicalWritesPolicyAndRetry(t *test
 			circuits, err := queue.NewHostCircuits(f.client, queue.DefaultHostCircuitSettings())
 			if err != nil {
 				t.Fatal(err)
+			}
+			if proxy {
+				client = credentialedProxyFixture(t, client)
 			}
 			result, err := RunDetail(ctx, a, claim, client, richPipelinePreparer(t, f).Processor, circuits)
 			status, callsWant, reserved := "succeeded", 1, false

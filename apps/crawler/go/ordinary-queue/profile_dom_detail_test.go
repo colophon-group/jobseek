@@ -50,7 +50,7 @@ func TestDOMDetailRefusesUnimplementedTransportAndPipeline(t *testing.T) {
 	for name, change := range map[string]func(map[string]string){
 		"browser": func(c map[string]string) { c["scraper_needs_browser"] = "1" },
 		"proxy": func(c map[string]string) {
-			c["metadata"] = `{"scraper_type":"dom","scraper_config":{"proxy":true}}`
+			c["metadata"] = `{"scraper_type":"dom","scraper_config":{"proxy":"enabled"}}`
 		},
 		"render": func(c map[string]string) {
 			c["metadata"] = `{"scraper_type":"dom","scraper_config":{"render":true}}`

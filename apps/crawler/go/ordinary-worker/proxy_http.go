@@ -45,7 +45,7 @@ func runtimeUsesProxy(task queue.Task) bool {
 		scraper = s
 	}
 	options, _ := md["scraper_config"].(map[string]any)
-	return (scraper == "paylocity" || scraper == "eightfold") && options["proxy"] == true
+	return (scraper == "paylocity" || scraper == "eightfold" || scraper == "dom" || scraper == "json-ld" || scraper == "api_sniffer") && options["proxy"] == true
 }
 
 // All endpoint authority comes from protected startup settings. Configs and

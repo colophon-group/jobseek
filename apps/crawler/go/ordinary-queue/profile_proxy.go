@@ -44,7 +44,7 @@ func httpMonitorParsingConfig(config map[string]string) (map[string]string, erro
 // Transport choice is compiled into immutable profile identities; neither a
 // generic caller flag nor a runtime selector grants proxy write authority.
 func ProfileRequiresProxy(profile string) bool {
-	if profile == "paylocity.proxy-embedded-items/v1" || profile == paylocityProxyDetailProfile || profile == eightfoldProxyDetailProfile {
+	if profile == "paylocity.proxy-embedded-items/v1" || profile == paylocityProxyDetailProfile || profile == eightfoldProxyDetailProfile || profile == domProxyDetailProfile || profile == jsonldProxyDetailProfile || profile == httpAPIProxyDetailProfile {
 		return true
 	}
 	for _, proxy := range httpMonitorProxyProfiles {
@@ -70,4 +70,18 @@ func (a *Authority) RequiresProxyHTTP() bool {
 		}
 	}
 	return false
+}
+
+// Content parsers remain transport-free. The original canonical metadata still
+// binds ownership; only a supported detail inspector may compile proxy authority.
+func httpDetailParsingOptions(options map[string]any) (map[string]any, bool) {
+	if options["proxy"] != true && options["proxy"] != false {
+		return options, false
+	}
+	parsed := make(map[string]any, len(options))
+	for key, value := range options {
+		parsed[key] = value
+	}
+	delete(parsed, "proxy")
+	return parsed, options["proxy"] == true
 }

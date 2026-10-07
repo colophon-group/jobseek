@@ -14,6 +14,7 @@ import (
 )
 
 const jsonldDetailProfile = "jsonld.direct-detail/v1"
+const jsonldProxyDetailProfile = "jsonld.proxy-detail/v1"
 
 // A JSON-LD detail board may retain a legacy monitor. Its immutable detail
 // context binds the full canonical configuration; the actual posting URL and
@@ -63,6 +64,7 @@ func InspectJSONLDDetail(boardID string, config map[string]string, source string
 			options[k] = value
 		}
 	}
+	options, proxy := httpDetailParsingOptions(options)
 	if jsonld.ValidateConfig(options) != nil {
 		return fail()
 	}
@@ -106,7 +108,11 @@ func InspectJSONLDDetail(boardID string, config map[string]string, source string
 		return fail()
 	}
 	digest := sha256.Sum256(body)
-	return WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: source, Domain: strings.ToLower(endpoint.Hostname()), Profile: jsonldDetailProfile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), JSONLDConfig: options, EnrichmentFields: enrichmentFields}, nil
+	profile := jsonldDetailProfile
+	if proxy {
+		profile = jsonldProxyDetailProfile
+	}
+	return WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: source, Domain: strings.ToLower(endpoint.Hostname()), Profile: profile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), JSONLDConfig: options, EnrichmentFields: enrichmentFields}, nil
 }
 
 func inspectDetailOwnership(boardID string, config map[string]string) (WorkdayDetailProfile, error) {

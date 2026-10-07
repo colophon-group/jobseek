@@ -39,3 +39,45 @@ func TestSharedProxyRuntimePreservesIndependentDetailsAndBrowserTransport(t *tes
 		}
 	}
 }
+
+func TestSharedProxyRuntimeSelectsIndependentDetailOptions(t *testing.T) {
+	for _, scraper := range []string{"dom", "json-ld", "api_sniffer"} {
+		for _, monitorProxy := range []bool{false, true} {
+			for _, detailProxy := range []bool{false, true} {
+				md, err := json.Marshal(map[string]any{"proxy": monitorProxy, "scraper_type": scraper, "scraper_config": map[string]any{"proxy": detailProxy}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				c := map[string]string{"crawler_type": "sitemap", "monitor_needs_browser": "0", "scraper_needs_browser": "0", "metadata": string(md)}
+				if runtimeUsesProxy(queue.Task{Kind: queue.Scrape, Config: c}) != detailProxy {
+					t.Fatal("detail transport inherited monitor setting", scraper, monitorProxy, detailProxy)
+				}
+				if runtimeUsesProxy(queue.Task{Kind: queue.Monitor, Config: c}) != monitorProxy {
+					t.Fatal("detail setting changed monitor transport", scraper, monitorProxy, detailProxy)
+				}
+			}
+		}
+	}
+}
+
+func proxyDetailFixtureMetadata(t *testing.T, raw string, proxy bool) string {
+	t.Helper()
+	if !proxy {
+		return raw
+	}
+	var md map[string]any
+	if json.Unmarshal([]byte(raw), &md) != nil {
+		t.Fatal("invalid detail fixture metadata")
+	}
+	options, _ := md["scraper_config"].(map[string]any)
+	if options == nil {
+		options = map[string]any{}
+	}
+	options["proxy"] = true
+	md["scraper_config"] = options
+	body, e := json.Marshal(md)
+	if e != nil {
+		t.Fatal(e)
+	}
+	return string(body)
+}
