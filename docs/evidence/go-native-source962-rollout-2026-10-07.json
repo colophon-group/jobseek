@@ -1,0 +1,100 @@
+{
+  "schema": "jobseek.native-migration-rollout/v1",
+  "observed_at_utc": "2026-10-07T11:45:26.765296+00:00",
+  "source_revision": "d2fa77713308f17eeb38fb06de060dc6b67dc595",
+  "version": "0.13.962",
+  "pr": 10348,
+  "reviewed_head": "66a84b66159c23a375141c26399ddc7e87fc960c",
+  "crawler_deployment": {
+    "run": 37580824070,
+    "result": "terminal success including promotion",
+    "slim_image": "ghcr.io/colophon-group/jobseek-crawler@sha256:26148434d62286c497d81173f4333751421d43d04026eb3f87c9fde22d4a916e",
+    "browser_image": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:abd283333eb876b41d8cd227d8630bb342e5427afe9e5c81469d41fc3e65e191"
+  },
+  "renderer_deployment": {
+    "run": 37581251505,
+    "result": "terminal success",
+    "image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:fd08b630ca1e48bcd0e21ddcb7dc9ebfddcdfe9de82cb917aa8184b71a31fa0e",
+    "generation": "sha-d2fa77713308f17eeb38fb06de060dc6b67dc595-r37581251505a1",
+    "lightpanda_stable": "1.0.0"
+  },
+  "reviewed_head_verification": {
+    "full_worker_race_seconds": 523.22,
+    "full_queue_race_seconds": 313.876,
+    "linux_pilot": 37578575140,
+    "linux_amd64": "pass",
+    "linux_arm64": "pass",
+    "required_ci": "pass",
+    "crawler_deploy_gate": "pass"
+  },
+  "source960_reversal": {
+    "ordinary": "supported retirement succeeded",
+    "B0": "supported rollback succeeded",
+    "selectors": "25 exact selectors cleared",
+    "independent_cold_epoch": 212,
+    "independent_cold": "pass"
+  },
+  "source962_activation": {
+    "B0": "Supported activation and independent receipt readback succeeded",
+    "ordinary": true,
+    "cold_readback": "PASS at2026-10-07T09:34:31Z after normal reconciliation completed: exact release/images, seven restart-armed base processes, six healthy endpoints, epoch212, no ownership/current fences/native tokens/live oneoffs or orphan historical receipts",
+    "fresh_admission": "Source/receipt-bound canonical/cache configuration and all scheduled detail routes reconciled",
+    "production_counts": {
+      "monitor_boards": 7212,
+      "detail_boards": 2616,
+      "scheduled_owned_postings": 1459769,
+      "retained_legacy_detail_boards": 41
+    },
+    "active_release": "release-d2fa77713308f17eeb38fb06de060dc6b67dc595.sM5hbp",
+    "routing_epoch": 213,
+    "b0_receipt_sha256": "c65d16f8c9c16f324d0d19db8d1a3ed00e59200628bdd5ad0a22440b9e930a65",
+    "ordinary_plan_sha256": "2f644942918cfba5ff5ce4bf601bde24c48319cac4120906fc8cbf1f6ebbc4d6",
+    "ordinary_projection_sha1": "56b2e59949dd0af516a61887944164b57987ee2d"
+  },
+  "offline_eligibility": {
+    "compiled_profiles": 103,
+    "monitor_boards": 7212,
+    "new_monitors": 26,
+    "remaining_monitors": 670,
+    "authority": "screening only against previous source960 capture"
+  },
+  "full_migration_complete": false,
+  "deployment_snapshot_observed_at_utc": "2026-10-07T06:46:32.677281+00:00",
+  "serving_observation": {
+    "observed_at_utc": "2026-10-07T11:45:26.765296+00:00",
+    "source_revision": "d2fa77713308f17eeb38fb06de060dc6b67dc595",
+    "routing_epoch": "213",
+    "healthy_endpoints": 8,
+    "completed_monitor_attempts": 1401,
+    "completed_detail_attempts": 437,
+    "completed_profiles": [
+      "ashby.token-skip/v1",
+      "beisen.portal-items/v1",
+      "dayforce.session-search/v1",
+      "dom.direct-urls/v1",
+      "dom.rendered-urls/v1",
+      "greenhouse.token-skip/v1",
+      "inline.rendered-items/v1",
+      "join.nextdata-urls/v1",
+      "nextdata.rendered-items/v1",
+      "nextdata.rendered-urls/v1",
+      "oracle_hcm.finder-items/v1",
+      "personio.xml-skip/v1",
+      "pinpoint.slug-skip/v1",
+      "rss.teamtailor-skip/v1",
+      "smartrecruiters.api-urls/v1",
+      "workable.api-urls/v1",
+      "workday.cxs-urls/v1",
+      "dom.direct-detail/v1",
+      "dom.rendered-detail/v1",
+      "jsonld.direct-detail/v1",
+      "jsonld.rendered-detail/v1",
+      "oracle_hcm.api-detail/v1",
+      "workday.cxs-detail/v1"
+    ],
+    "canonical_samples": 29,
+    "processing_diagnostics": 0,
+    "protected_proof": "native-source962-natural-followup2-2026-10-07.json",
+    "scope": "Naturally scheduled serving observation; every-profile freshness, whole-lane costs and complete Python retirement remain unfinished"
+  }
+}

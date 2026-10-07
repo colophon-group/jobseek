@@ -26,7 +26,7 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 	counts := map[string]int{}
 	for _, row := range rows[1:] {
 		provider := row[headers["monitor_type"]]
-		if provider == "dayforce" || provider == "adp" || provider == "cornerstone" || provider == "paylocity" || !SecondaryProvider(provider) || provider == "comeet" || provider == "jobvite" || provider == "paycom" || provider == "rippling" {
+		if provider == "recruiterbox" || provider == "jobs_ch" || provider == "dayforce" || provider == "adp" || provider == "cornerstone" || provider == "paylocity" || !SecondaryProvider(provider) || provider == "comeet" || provider == "jobvite" || provider == "paycom" || provider == "rippling" {
 			continue
 		}
 		metadata := map[string]any{}
@@ -67,6 +67,12 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 		}
 		var detail WorkdayDetailProfile
 		switch provider {
+		case "hrmos":
+			o, err := api.HRMOSOptionsFromMetadata(config["board_url"], config["metadata"])
+			if err != nil {
+				t.Fatal(err)
+			}
+			detail, e = InspectJSONLDDetail(profileBoardID, config, o.ListingURL(1)+"/123", Simple)
 		case "softgarden":
 			o, err := api.SoftgardenOptionsFromMetadata(config["board_url"], config["metadata"])
 			if err != nil {

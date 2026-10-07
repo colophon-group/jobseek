@@ -6,12 +6,18 @@ import (
 )
 
 func SecondaryProvider(provider string) bool {
+	if provider == "manatal" || provider == "hrmos" || provider == "recruiterbox" || provider == "jobs_ch" {
+		return true
+	}
 	return provider == "dayforce" || provider == "adp" || provider == "cornerstone" || provider == "paylocity" || provider == "paycom" || provider == "rippling" || provider == "comeet" || provider == "jobvite" || provider == "softgarden" || provider == "ukg" || provider == "bamboohr" || provider == "recruiter_co_kr"
 }
 func paycomEnrichmentFields(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true})
 }
 func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
+	if config["crawler_type"] == "manatal" || config["crawler_type"] == "hrmos" || config["crawler_type"] == "recruiterbox" || config["crawler_type"] == "jobs_ch" {
+		return monitorEnrichmentFields(config, map[string]bool{})
+	}
 	allowed := map[string]bool{"description": true}
 	if config["crawler_type"] == "adp" || config["crawler_type"] == "paylocity" {
 		return monitorEnrichmentFields(config, map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true})
@@ -40,6 +46,33 @@ func inspectSecondaryMonitor(boardID string, config map[string]string, md map[st
 	provider := config["crawler_type"]
 	var profile, endpoint string
 	switch provider {
+	case "recruiterbox":
+		o, e := api.RecruiterboxOptionsFromMetadata(config["board_url"], config["metadata"])
+		if e != nil {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		profile, endpoint = "recruiterbox.listing-urls/v1", o.PageURL(1)
+	case "jobs_ch":
+		o, e := api.JobCloudOptionsFromMetadata(config["board_url"], config["metadata"])
+		if e != nil {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		profile, endpoint = "jobs_ch.company-urls/v1", o.SearchURL(1)
+	case "manatal":
+		if e := feedRichDetailAssignment(config); e != nil {
+			return GreenhouseMonitorProfile{}, e
+		}
+		o, e := api.ManatalOptionsFromMetadata(config["board_url"], config["metadata"])
+		if e != nil {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		profile, endpoint = "manatal.career-items/v1", o.ListingURL(1)
+	case "hrmos":
+		o, e := api.HRMOSOptionsFromMetadata(config["board_url"], config["metadata"])
+		if e != nil {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		profile, endpoint = "hrmos.listing-urls/v1", o.ListingURL(1)
 	case "adp":
 		o, e := api.ADPOptionsFromMetadata(config["board_url"], config["metadata"])
 		if e != nil {
@@ -130,6 +163,18 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 		return false
 	}
 	switch p.Provider {
+	case "recruiterbox":
+		o, e := api.RecruiterboxOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && p.Profile == "recruiterbox.listing-urls/v1" && p.Endpoint == o.PageURL(1) && o.ResourceMatches(resource)
+	case "jobs_ch":
+		o, e := api.JobCloudOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && p.Profile == "jobs_ch.company-urls/v1" && p.Endpoint == o.SearchURL(1) && o.ResourceMatches(resource)
+	case "manatal":
+		o, e := api.ManatalOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && p.Profile == "manatal.career-items/v1" && p.Endpoint == o.ListingURL(1) && o.ResourceMatches(resource)
+	case "hrmos":
+		o, e := api.HRMOSOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && p.Profile == "hrmos.listing-urls/v1" && p.Endpoint == o.ListingURL(1) && o.ResourceMatches(resource)
 	case "dayforce":
 		board, _, e := api.DayforceOptionsFromMetadata(config["board_url"], config["metadata"])
 		return e == nil && p.Profile == dayforceMonitorProfile && p.Endpoint == board.ListingURL() && board.ResourceMatches(resource)
@@ -177,6 +222,16 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 }
 func SecondaryMonitorGone(config map[string]string, resource string, status int, disabled bool) bool {
 	switch config["crawler_type"] {
+	case "jobs_ch":
+		return false
+	case "recruiterbox":
+		o, e := api.RecruiterboxOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && o.ResourceMatches(resource) && (resource == o.PageURL(1) && (status == 404 || status == 410) && !disabled || status == 200 && disabled)
+	case "manatal":
+		return false
+	case "hrmos":
+		o, e := api.HRMOSOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && resource == o.ListingURL(1) && (status == 404 || status == 410) && !disabled
 	case "dayforce":
 		board, _, e := api.DayforceOptionsFromMetadata(config["board_url"], config["metadata"])
 		return e == nil && board.ResourceMatches(resource) && resource != board.SearchURL() && ((status == 404 || status == 410) && !disabled || status == 200 && disabled)

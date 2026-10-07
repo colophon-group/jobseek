@@ -1,0 +1,62 @@
+{
+  "schema": "jobseek.native-provider-batch-candidate/v1",
+  "version": "0.13.963",
+  "base_source": "d2fa77713308f17eeb38fb06de060dc6b67dc595",
+  "providers": [
+    "manatal",
+    "hrmos",
+    "recruiterbox",
+    "jobs_ch"
+  ],
+  "compiled_profiles": 107,
+  "registry_configurations": {
+    "manatal": 5,
+    "hrmos": 6,
+    "recruiterbox": 6,
+    "jobs_ch": 11
+  },
+  "verification": {
+    "actual_python_parsing_cases": 16,
+    "actual_python_inventory_traversals": 33,
+    "native_worker_reference_http_cases": 33,
+    "canonical_postgresql_redis_cases": 33,
+    "canonical_publisher_reservation_cases": 8,
+    "cold_retirement_cases": 12,
+    "full_api_module_race": "pass",
+    "worker_vet": "pass",
+    "full_worker_queue_suites": "Superseded7b467a84f passed508.132s/334.398s; final query-correction head pending",
+    "required_ci": "Superseded7b467a84f passed; final query-correction head pending",
+    "crawler_deploy_gate": "Ready PR; superseded7b467a84f passed, final query-correction head must recheck"
+  },
+  "production_ownership": false,
+  "full_migration_complete": false,
+  "remaining_contracts": [
+    "Installed source/profile identity and required checks",
+    "Full worker and queue suites",
+    "Merge and immutable rollout",
+    "Fresh canonical/cache/actual detail route admission",
+    "Scheduled production proof and full runtime retirement"
+  ],
+  "observed_at_utc": "2026-10-07T12:33:50.292059+00:00",
+  "previous_two_provider_offline_eligibility": {
+    "eligible_monitor_boards": 7223,
+    "new_since962": 11,
+    "remaining_monitors": 659,
+    "canonical_cache_projection_mismatches": 0,
+    "cached_unsupported": 0,
+    "capture_source_revision": "acb4bb9e7627c541f7ff0aba4bb0c1ca4995f48b",
+    "authority": "Offline configuration screening only; fresh production admission required"
+  },
+  "retained_legacy_detail_scope": "Recruiterbox dedicated scraper remains on legacy ownership; existing JSON-LD assignments retain native eligibility",
+  "retirement_correction": "Materialize historical membership after source962 eligibility query exceeded10s. Read-only production comparison: original timeout10.224s; replacement1.281s, same foreign=false result.",
+  "offline_eligibility": {
+    "compiler_source_revision": "7b467a84f85cf9a42bfe10a4809e7313ccb236a8",
+    "capture_source_revision": "d2fa77713308f17eeb38fb06de060dc6b67dc595",
+    "eligible_monitor_boards": 7240,
+    "new_since962": 28,
+    "remaining_monitors": 642,
+    "canonical_cache_projection_mismatches": 0,
+    "cached_unsupported": 0,
+    "authority": "Configuration screening only; final query correction does not change provider admission, fresh963 actual posting route admission required"
+  }
+}

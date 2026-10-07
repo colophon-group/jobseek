@@ -30,8 +30,8 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		for _, key := range []string{"tenant", "portal", "offset_overlap", "proxy", "render", "skip_ssl", "ssl_verify", "actions", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
 		}
-	case "adp", "cornerstone", "paylocity", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "comeet", "jobvite", "paycom", "rippling":
-		for _, key := range []string{"cid", "cc_id", "ccId", "lang", "locale", "site_id", "corp", "domain", "company_id", "company", "slug", "job_url_pattern", "host", "tenant", "board_id", "boardID", "listing_url", "description_include_regex", "include_closed", "proxy", "render", "skip_ssl", "ssl_verify", "actions", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+	case "manatal", "hrmos", "recruiterbox", "jobs_ch", "adp", "cornerstone", "paylocity", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "comeet", "jobvite", "paycom", "rippling":
+		for _, key := range []string{"cid", "cc_id", "ccId", "lang", "locale", "portal", "document_company_id", "site_id", "corp", "domain", "company_id", "company", "slug", "job_url_pattern", "host", "tenant", "board_id", "boardID", "listing_url", "description_include_regex", "include_closed", "proxy", "render", "skip_ssl", "ssl_verify", "actions", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
 		}
 	case "mokahr", "almacareer", "eightfold":

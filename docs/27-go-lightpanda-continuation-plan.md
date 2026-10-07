@@ -18,62 +18,83 @@ not complete migration.
 
 ## Latest checkpoint — 2026-10-07
 
-Combined release **0.13.960** merged in [PR #10347](https://github.com/colophon-group/jobseek/pull/10347)
-as source `acb4bb9e7627c541f7ff0aba4bb0c1ca4995f48b`. Its90 profiles add DOM rich
-rows over direct/proxy/Lightpanda paths, HR Manager RSS and shared filters across
-Generic RSS, SuccessFactors, Teamtailor and DOM. Required CI, installed contracts,
-pilot and Crawler Deploy Gate passed; merge tree equals the reviewed tree.
-Original [immutable deployment37570306419](https://github.com/colophon-group/jobseek/actions/runs/37570306419)
-completed successfully including promotion. Independent cold210 verification
-proves exact source/images and healthy base services. Supported B0 activation
-and ordinary activation succeeded at211. Independent04:55 UTC readback verifies
-eight healthy endpoints, ten restart-armed services, exact ownership and
-initial four monitor/four detail completions across four profiles.
+Combined RSS/Inline/DOM release **0.13.962** merged in
+[PR #10348](https://github.com/colophon-group/jobseek/pull/10348) at
+`d2fa77713308f17eeb38fb06de060dc6b67dc595`. Its103 compiled profiles add
+SuccessFactors legacy XML, Generic summaries, affine rendered RSS pagination,
+rendered Inline document inventories and explicit DOM empty-state proof.
+Exact reviewed-head full race suites passed: ordinary-worker523.220 seconds
+and ordinary-queue313.876 seconds. Actual installed Linux raw XML/CDATA,
+cookie affinity and cleanup passed on amd64 and arm64 in
+[pilot37578575140](https://github.com/colophon-group/jobseek/actions/runs/37578575140).
+Required CI and Crawler Deploy Gate passed before the bound merge.
 
-Supported source958 ordinary retirement, B0 rollback and selector clear finished.
-Independent cold210 readback verifies the healthy exact-source958 base fleet,
-cleared ownership and14 retained historical audit receipts. The previous958
-ordinary plan is retired. Its last serving proof reached178 monitor and2 detail
-completions across11 profiles, with one posting-write deadline diagnostic.
-Its7,159 monitor boards and2,617 detail boards are historical cohort counts;
-Fresh source960 admission now qualifies7,186 monitors and2,616 detail boards,
-including1,463,861 of1,491,009 scheduled postings. Forty-one detail boards retain
-legacy authority after actual route/cache reconciliation. The exact new ordinary
-plan/projection is active; the initial canonical readback passed. Every-profile
-freshness and whole-lane attributable cost still need observation.
+Original [crawler deployment37580824070](https://github.com/colophon-group/jobseek/actions/runs/37580824070)
+and [renderer deployment37581251505](https://github.com/colophon-group/jobseek/actions/runs/37581251505)
+completed successfully, including crawler promotion. The renderer release
+contains the new feed-session protocol and retains the latest verified stable
+**Lightpanda1.0.0**, published October2. Both releases are bound to the merged
+source and immutable image digests; see the
+[rollout evidence](evidence/go-native-source962-rollout-2026-10-07.json).
 
-Candidate961 groups SuccessFactors legacy XML and structured Generic RSS
-summaries (102 compiled profiles), faithful200-job stream prefixes, validated
-Generic/WordPress pagination and raw browser response capture. Actual Python
-references cover24 items,7 identities,9 failure streams,16 pagination configs
-and13 cross-page traversal cases.18 canonical PostgreSQL/Redis worker cases and
-39 cold cases pass. Raw XML/CDATA capture passed the existing installed
-[Lightpanda pilot37571180241](https://github.com/colophon-group/jobseek/actions/runs/37571180241)
-on amd64 and arm64. Full worker and queue race suites passed503.995/302.496 seconds at da4aea356.
-Direct and affine rendered pagination now passes28 canonical PostgreSQL/Redis
-cases and15 additional cold-retirement cases. Browser ownership projection
-passes12 Python cases. Installed Linux cookie affinity and disposal passed on both architectures in
-[original pilot37576862528](https://github.com/colophon-group/jobseek/actions/runs/37576862528). Current full suites,
-proxy transport, remaining RSS properties and deployment/adoption still remain.
+Source960 ordinary retirement, supported B0 rollback and exact selector clear
+succeeded. Independent cold212 readback verifies restored base writers,
+cleared ownership, zero current fences and no orphan historical receipts.
+Historical audit receipts remain. After normal cross-store reconciliation completed, source962 independent cold
+readback passed at09:34 UTC: exact release/images, seven restart-armed base
+processes, six healthy endpoints and cleared ownership at212. Supported selector
+stage, B0 activation and independent receipt readback succeeded. Fresh source962
+canonical/cache configuration and all scheduled detail routes were reconciled;
+ordinary ownership is active at epoch213 for7,212 monitor boards and2,616 detail
+boards, including1,459,769 scheduled postings.41 detail boards retain legacy
+ownership because cached or actual posting routes did not qualify.
 
-Self-hosted Lightpanda uses the latest verified stable **1.0.0**, published
-October2. Keep its verified immutable pin; recheck official releases when upgrading.
-See the [worker checkpoint](30-native-ordinary-worker-checkpoint-2026-10-03.md)
-and [grouped RSS evidence](evidence/go-native-rss-variant-core-candidate-2026-10-07.json).
+Offline source962 screening of the last source960 capture qualifies7,212
+monitors,26 more than960, leaving670 monitors across the retained provider
+backlog. These are configuration screening counts; fresh source962 production
+admission must reconcile canonical/cache state and actual scheduled detail
+routes. Source960 previously owned7,186 monitors and2,616 detail boards,
+including1,463,861 scheduled postings. Every-profile freshness, whole-lane
+resource/cost proof and complete Python retirement remain unfinished. At11:45 UTC,
+independent source/image/receipt-bound observation verified1,401 naturally scheduled
+monitor completions and437 detail completions across23 profiles,29 canonical
+samples, eight healthy endpoints and no processing diagnostics. Rendered Inline
+has real completions. This observation does not prove every-profile freshness.
+
+At12:19 UTC, supported source962 retirement failed at eligibility observation.
+The original wrapper retained its retiring identity and contained all writers.
+A read-only comparison at12:29 UTC reproduced the original query's10-second
+timeout; materializing historical plan membership completed in1.281 seconds
+with the same ownership decision. The correction preserves all authority
+predicates and timeout budgets. See the [retirement evidence](evidence/go-native-retirement-eligibility-2026-10-07.json).
+Candidate963 includes this correction and needs final-head checks, a verified
+immutable compatible administrator, supported source962 retirement/reversal,
+and independent cold214 readback before its normal runtime promotion.
 
 ## Continue delivery
 
-1. Continue source960 normal scheduled work observation after successful
-   deployment and B0/ordinary activation. Verify admitted-profile freshness,
-   canonical fields, SQL/Redis deadlines, descriptions, publisher outcomes and
-   health against the exact source/images/epoch/receipts. Initial serving proof
-   is recorded in the [production evidence](evidence/go-native-source960-production-2026-10-07.json).
-2. Finish the grouped961 RSS batch with affine paginated transport and remaining
-   enabled variants, then full suites, CI and source-bound rollout. Continue
-   the large shared browser paths together:253 remaining DOM,149 API sniffer
-   and19 Inline monitors. Group remaining smaller provider types by shared
-   HTTP/API transport and processor needs. The [fresh remaining census](evidence/go-native-enabled-remaining-source960-2026-10-07.json)
-   lists696 remaining monitors across75 types; preserve all of them.
+1. Finish verified compatible-admin recovery of the contained source962
+   retirement through the original wrapper, then B0 rollback, selector clear and
+   independent cold214 readback. Preserve its exact pending identity and all
+   historical receipts. Resume original immutable963 deployment and fresh
+   source/receipt-bound actual posting admission and ownership. Observe
+   scheduled completions, canonical fields,
+   descriptions, publisher outcomes, SQL/Redis deadlines, health and freshness
+   against the exact source/images/epoch/receipts.
+2. Deliver the next compatible provider batch together. Candidate963 adds
+   Manatal rich pagination, HRMOS and Recruiterbox URL-only listings, and
+   jobs.ch/jobup employer-scoped API pagination through the existing native
+   worker and canonical processors:28 registry configurations.33 actual Python
+   traversal references, canonicalPG/Redis publisher/settlement checks and12
+   cold-retirement cases pass. Full worker/queue race suites passed at7b467a84f
+   in508.132/334.398 seconds; final query-correction head must revalidate. Continue
+   the large shared browser paths together:
+   DOM239, API sniffer149 and Inline8 in the current offline screening.
+   API-sniffer replay must retain captured response selection, auth refresh,
+   browser cookies, HTTP fallback and bounded pagination. Group remaining
+   small providers with compatible HTTP/API work. Recruiterbox's dedicated
+   detail scraper remains a separate legacy contract; JSON-LD assignments
+   already retain native detail eligibility.
 3. Replace mandatory Python consumers in compatible groups: worker/browser
    `crawler run`/`run-browser`; deployment `crawler sync` and schema preparation;
    activation/epoch/reaper and maintenance commands. Reuse the existing Go queue,
@@ -109,15 +130,18 @@ Earlier production observations remain in
 and Git history. Follow [ADR 006](adr/006-crawler-deploy-quiescence-and-rollback.md)
 and [Hetzner maintenance](16-hetzner-maintenance.md) for deployment and recovery.
 
-## Next grouped browser coverage candidate
+## Next grouped provider candidate
 
-Candidate962 adds rendered Inline document inventories through the existing
-native navigation/parser and explicit DOM empty-state verification for direct
-and rendered single-page listings. Offline screening of the source960 snapshot
-qualifies25 additional boards (11 Inline,14 DOM) beyond the RSS candidate,
-reducing the configuration backlog to670. This is admission screening, not
-serving ownership. Eight Inline canonicalPG/Redis cases and12 actual Python
-empty-state comparisons pass. The46 canonical worker cases and3 new Inline cold cases pass18.617/4.289 seconds.
-Combined full suites, fresh installed CI and production adoption still remain. Combine compatible coverage
-into a useful rollout before another single-board cutover. See the
-[browser candidate evidence](evidence/go-native-browser-coverage-candidate-2026-10-07.json).
+Candidate **0.13.963** compiles107 profiles with Manatal, HRMOS, Recruiterbox and
+jobs.ch/jobup. It preserves
+Manatal's advertised-count/no-progress rules and rich fields; HRMOS canonical
+URLs, listing markers, explicit emptiness, totals and current-page checks;
+Recruiterbox authoritative totals, partial-inventory protection and inactive
+account evidence; JobCloud company aliases, portal/localized identities and
+exact pagination completeness;
+source-bound publisher observations and whole-inventory failure; and supported
+cold retirement after interrupted writes or acknowledgment loss. The existing
+queue, processors, persistence and maintenance paths remain the execution
+contracts. See the [candidate evidence](evidence/go-native-provider-batch-six-candidate-2026-10-07.json).
+Production ownership awaits required checks, merge, immutable rollout and fresh
+admission. Preserve every remaining board until its replacement contract passes.
