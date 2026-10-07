@@ -34,7 +34,14 @@
   "cold_seconds": 31.351,
   "profile_race_seconds": 1.421,
   "streamed_prefix_failure_parity": "passed for malformed small/large XML, trailing data and late structured-summary parser error; exact original200-job committed prefix",
-  "full_suites": "pending",
+  "full_suites": {
+    "source_head": "da4aea356f7442bc1053ceba53abd74b493824ad",
+    "worker_race_seconds": 503.995,
+    "queue_race_seconds": 302.496,
+    "require_postgres": true,
+    "require_redis": true,
+    "status": "passed; pagination traversal remains unadmitted until transport integration"
+  },
   "actual_python_stream_cases": 9,
   "stream_reference_race_seconds": 1.989,
   "python_pagination_config_cases": 16,

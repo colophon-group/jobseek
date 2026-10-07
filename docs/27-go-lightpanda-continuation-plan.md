@@ -24,8 +24,10 @@ rows over direct/proxy/Lightpanda paths, HR Manager RSS and shared filters acros
 Generic RSS, SuccessFactors, Teamtailor and DOM. Required CI, installed contracts,
 pilot and Crawler Deploy Gate passed; merge tree equals the reviewed tree.
 Original [immutable deployment37570306419](https://github.com/colophon-group/jobseek/actions/runs/37570306419)
-is in progress. Both images built; deployment and promotion must finish before
-source960 ownership is authorized.
+completed successfully including promotion. Independent cold210 verification
+proves exact source/images and healthy base services. Supported B0 activation
+and source-bound receipt/health readback passed at211. Ordinary activation is
+running with the exact freshly staged plan; serving proof remains required.
 
 Supported source958 ordinary retirement, B0 rollback and selector clear finished.
 Independent cold210 readback verifies the healthy exact-source958 base fleet,
@@ -33,7 +35,10 @@ cleared ownership and14 retained historical audit receipts. The previous958
 ordinary plan is retired. Its last serving proof reached178 monitor and2 detail
 completions across11 profiles, with one posting-write deadline diagnostic.
 Its7,159 monitor boards and2,617 detail boards are historical cohort counts;
-fresh source960 admission and actual posting routes remain required.
+Fresh source960 admission now qualifies7,186 monitors and2,616 detail boards,
+including1,463,861 of1,491,009 scheduled postings. Forty-one detail boards retain
+legacy authority after actual route/cache reconciliation. The exact new ordinary
+plan/projection is staged; activation and natural serving proof remain pending.
 
 Candidate961 groups SuccessFactors legacy XML and structured Generic RSS
 summaries (94 compiled profiles), faithful200-job stream prefixes, validated
@@ -42,8 +47,9 @@ references cover24 items,7 identities,9 failure streams,16 pagination configs
 and13 cross-page traversal cases.18 canonical PostgreSQL/Redis worker cases and
 39 cold cases pass. Raw XML/CDATA capture passed the existing installed
 [Lightpanda pilot37571180241](https://github.com/colophon-group/jobseek/actions/runs/37571180241)
-on amd64 and arm64. Affine/proxy pagination transport, remaining RSS properties,
-full suites and deployment/adoption still remain.
+on amd64 and arm64. Full worker and queue race suites passed503.995/302.496 seconds at da4aea356.
+Affine/proxy pagination transport, remaining RSS properties, fresh CI and
+deployment/adoption still remain.
 
 Self-hosted Lightpanda uses the latest verified stable **1.0.0**, published
 October2. Keep its verified immutable pin; recheck official releases when upgrading.
@@ -52,15 +58,17 @@ and [grouped RSS evidence](evidence/go-native-rss-variant-core-candidate-2026-10
 
 ## Continue delivery
 
-1. Finish the original source960 deployment/promotion. Independently verify
-   cold source/images, activate supported B0, capture a fresh source/receipt
-   census and actual posting routes, and activate a new ordinary plan. Observe
+1. Finish original source960 ordinary activation with its exact staged plan and
+   projection; the supported wrapper waits for natural legacy lease expiry.
+   Independently verify its active source/images/epoch/B0 receipt and observe
    normal scheduled work, canonical fields, SQL/Redis deadlines, descriptions,
    publisher outcomes and health. Use supported recovery if activation fails.
 2. Finish the grouped961 RSS batch with affine paginated transport and remaining
    enabled variants, then full suites, CI and source-bound rollout. Continue
-   remaining DOM actions/pagination/empty-state/portal and monitor/detail/browser
-   coverage in groups selected from the fresh canonical census.
+   the large shared browser paths together:253 remaining DOM,149 API sniffer
+   and19 Inline monitors. Group remaining smaller provider types by shared
+   HTTP/API transport and processor needs. The [fresh remaining census](evidence/go-native-enabled-remaining-source960-2026-10-07.json)
+   lists696 remaining monitors across75 types; preserve all of them.
 3. Replace mandatory Python consumers in compatible groups: worker/browser
    `crawler run`/`run-browser`; deployment `crawler sync` and schema preparation;
    activation/epoch/reaper and maintenance commands. Reuse the existing Go queue,

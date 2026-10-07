@@ -5,6 +5,26 @@
 The full migration goal is **active and incomplete**. Ship multiple provider
 and variant types per release, sharing reference verification, CI and cutover.
 
+### Source960 admission and grouped961 verification — October7
+
+Original release960 deployment37570306419 and promotion succeeded. Independent
+cold210 readback verified exact images and a healthy armed base fleet. Supported
+B0 activation/readback passed at211; fresh admission now qualifies7,186 monitors
+and2,616 detail boards with1,463,861 of1,491,009 scheduled detail postings.
+Forty-one detail boards retain legacy authority after route/cache checks.
+New ordinary plan9954e179ec27e96a8076997e833e07ed537ef904cb9c5f974f5667cfd2b689a0,
+projection21266722eeeb059d58dd7e429aacd59e2bf4123b is staged. Original activation
+is waiting for six legacy SQL board leases, last expiring04:52:45 UTC; no SQL
+blockers were observed. Do not claim ordinary serving until activation/readback.
+
+At committed961 checkpoint da4aea356, complete worker/queue race suites passed
+503.995/302.496 seconds with required PostgreSQL/Redis. The installed renderer
+raw-response proof passed on both Linux architectures at75e33b065; renderer and
+adapter code is unchanged in da4aea356. The pending transport/property work
+still prevents adoption of the remaining RSS variants. The new remaining
+census identifies696 monitors across75 types, including253 DOM,149 API sniffer
+and19 Inline. Target their shared browser paths in a large subsequent group.
+
 ### Current rollout and RSS batch — 04:23 UTC October7
 
 Combined release960 merged in PR10347 as source
