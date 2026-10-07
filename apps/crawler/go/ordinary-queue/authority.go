@@ -314,7 +314,14 @@ func (a *Authority) Claim(ctx context.Context, worker WorkerType) (*Claim, error
 		// Keep board deletion/configuration updates outside this transaction; detail
 		// identity is separately checked against its authoritative board mapping.
 		var board string
-		if err := tx.QueryRow(ctx, "SELECT id::text FROM public.job_board WHERE id=$1::uuid FOR UPDATE", claim.boardID).Scan(&board); err != nil {
+		// Detail writes lock their posting/fence, while the shared board lock
+		// prevents configuration or publisher policy changing mid-transaction.
+		// Upgrading it would deadlock concurrent details after ownership observation.
+		boardQuery := "SELECT id::text FROM public.job_board WHERE id=$1::uuid FOR UPDATE"
+		if claim.task.Kind == Scrape {
+			boardQuery = "SELECT id::text FROM public.job_board WHERE id=$1::uuid FOR SHARE"
+		}
+		if err := tx.QueryRow(ctx, boardQuery, claim.boardID).Scan(&board); err != nil {
 			return err
 		}
 		if task.Kind == Scrape {
@@ -372,7 +379,14 @@ func (a *Authority) Claim(ctx context.Context, worker WorkerType) (*Claim, error
 func (a *Authority) require(ctx context.Context, tx pgx.Tx, claim *Claim, state string) (*time.Time, error) {
 	var due *time.Time
 	var board string
-	if err := tx.QueryRow(ctx, "SELECT id::text FROM public.job_board WHERE id=$1::uuid FOR UPDATE", claim.boardID).Scan(&board); err != nil {
+	// Detail writes lock their posting/fence, while the shared board lock
+	// prevents configuration or publisher policy changing mid-transaction.
+	// Upgrading it would deadlock concurrent details after ownership observation.
+	boardQuery := "SELECT id::text FROM public.job_board WHERE id=$1::uuid FOR UPDATE"
+	if claim.task.Kind == Scrape {
+		boardQuery = "SELECT id::text FROM public.job_board WHERE id=$1::uuid FOR SHARE"
+	}
+	if err := tx.QueryRow(ctx, boardQuery, claim.boardID).Scan(&board); err != nil {
 		return nil, err
 	}
 	if claim.task.Kind == Scrape {

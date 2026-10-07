@@ -1,0 +1,33 @@
+{
+  "schema": "jobseek.go-migration.candidate/v1",
+  "runtime_version": "0.13.967",
+  "status": "candidate; not deployed or production-owned",
+  "prior_serving_source": "0a6ddda170478cc6b6469615e086734940cf5fbf",
+  "observed_prior_metrics": {
+    "claim_errors": 77,
+    "detail_unacknowledged": 183
+  },
+  "shared_actions": {
+    "types": [
+      "dom",
+      "inline"
+    ],
+    "added": [
+      "remove",
+      "dismiss_overlays"
+    ],
+    "python_selector_ast_parity": "PASS",
+    "retained_source965_admission_delta": {
+      "dom": 6
+    },
+    "actual_lightpanda_service_fixtures": "removal, optional invalid selector continuation, required refusal; checksum-pinned1.0.0 CI both architectures required"
+  },
+  "detail_lock_correction": {
+    "before": "Two independently observed detail attempts upgrade FOR SHARE board locks to FOR UPDATE; real PostgreSQL regression failed as unacknowledged before fetch.",
+    "after": "Details retain FOR SHARE board configuration/policy protection and FOR UPDATE posting/fence authority. Monitor board writes retain exclusive locks.",
+    "focused_real_pg_redis_race": "PASS concurrent regression, canonical/publisher mutable-state refusal, original queue settlement and rendered cold-retirement scenarios;3.955seconds",
+    "production_error_reduction": "pending; not every unacknowledged attempt is attributed to this reproduced defect"
+  },
+  "full_native_queue_verification": "PASS: full native queue race suite required real local PostgreSQL/Redis;351.501seconds",
+  "completion": "full migration incomplete; ordinary freshness/conservation, remaining profiles/runtime consumers, whole-service cost and retirement gates remain"
+}

@@ -18,18 +18,24 @@ not complete migration.
 
 ## Latest checkpoint — 2026-10-08
 
-The last independently verified production release is **0.13.965**, source
-`0a6ddda170478cc6b6469615e086734940cf5fbf`, delivered through
-[PR #10351](https://github.com/colophon-group/jobseek/pull/10351).
-The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37686292179)
-and [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37686710589)
-succeeded. **Lightpanda 1.0.0** is the newest stable release, reverified from the
-official release list October 8. Its image remains digest-pinned, with CORS enabled.
+Production runs **0.13.966**, source
+`c3ca78862534353152294fa94e2e6ce5600c531f`, delivered through the grouped
+[Deel/HiBob/TRAFFIT PR #10352](https://github.com/colophon-group/jobseek/pull/10352).
+The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37693870016)
+succeeded on its deploy-only second attempt with the original immutable images.
+Its first attempt correctly refused to deploy while the outgoing B0 owner existed.
+The matching-source [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37695407644)
+also succeeded. Independent cold verification passed at epoch **220**, with all
+seven base services running and restart-armed, six HTTP endpoints healthy, no
+native ownership/tokens, and preserved historical receipts.
+**Lightpanda 1.0.0** remains the newest stable release, reverified October 8,
+digest-pinned with CORS enabled.
 
-Source965 repaired the legacy ownership reader's API-browser classification and
-replaced the deployment proxy preflight with the installed Go executable. B0 and
-broader Go ownership activated at epoch **219**, with independently verified
-identities, all eight health endpoints and ten running, restart-armed services.
+The last broader native serving proof is source965 at epoch **219**, following
+[PR #10351](https://github.com/colophon-group/jobseek/pull/10351).
+It repaired the legacy ownership reader's API-browser classification and replaced
+the deployment proxy preflight with the installed Go executable. All eight health
+endpoints and ten running, restart-armed services passed before supported retirement.
 Fresh source965 admission covered **7,295 monitor boards**, **2,616 detail boards**
 and **1,482,240 scheduled postings**, with zero monitor configuration/cache
 mismatches. Forty cached detail incompatibilities and one actual Eightfold route
@@ -45,32 +51,35 @@ errors and 183 unacknowledged detail attempts**. Bounded read-only SQL observati
 showed retained active detail fences and matching completed detail deadlines.
 These failures remain open migration work; service health is not settlement proof.
 
-The next three-provider release **0.13.966** is merged as
-`c3ca78862534353152294fa94e2e6ce5600c531f` in
-[PR #10352](https://github.com/colophon-group/jobseek/pull/10352).
-It ports **Deel, HiBob and TRAFFIT together**, covering all ten existing registry
-configurations. Seventeen actual Python field cases, native HTTP/policy fixtures,
-six real PostgreSQL/Redis write/policy scenarios and nine cold-retirement scenarios
-passed. Required CI, actual Crawler Deploy Gate status and installed-image checks
-passed at reviewed head `710c7223be6b88560072d9c2d9ed8a8e3c901e36`.
-The original [immutable rollout](https://github.com/colophon-group/jobseek/actions/runs/37693870016)
-is building. Supported outgoing source965 retirement is running and its writers
-are quiesced. Source966 promotion, fresh admission and serving are still pending.
-Do not count its ten boards as production-owned yet.
+Source966 ports **Deel, HiBob and TRAFFIT together**, covering all ten existing
+registry configurations. Seventeen actual Python field cases, native HTTP/policy
+fixtures, six real PostgreSQL/Redis write/policy scenarios and nine cold-retirement
+scenarios passed. Required CI, actual Crawler Deploy Gate status and installed
+image checks passed at reviewed head `710c7223be6b88560072d9c2d9ed8a8e3c901e36`.
+The ten boards are **not yet native-owned**. Broader native ownership will stay
+inactive through the shared-action/detail-lock correction in
+[PR #10354](https://github.com/colophon-group/jobseek/pull/10354), then the combined
+profiles will receive fresh source-bound admission and one supported activation.
+This avoids another activation of the reproduced lock-upgrade defect.
 
 The following grouped work has begun on shared DOM/Inline element and overlay
 removal actions, retaining Python defaults, selector semantics, failure policy,
 source binding and publisher checks. Focused contract/worker/pilot tests pass.
-The retained census qualifies six additional DOM configurations; more coverage
-will join this candidate before a runtime rollout. Safe error-phase diagnostics
-are included to make the existing claim/detail failures actionable.
+The retained census qualifies six additional DOM configurations; the candidate also repairs a reproduced shared-board lock upgrade deadlock
+affecting native detail profiles. Two real PostgreSQL detail validations failed
+as unacknowledged before the correction; the corrected concurrent regression,
+canonical/publisher revalidation and cold-retirement scenarios pass. Detail
+attempts keep a shared configuration/policy lock and exclusive posting/fence
+locks. Safe error-phase diagnostics are included for remaining failures.
+Actual production error reduction remains unproved until deployed and observed.
 
 ## Continue delivery
 
-1. Finish the supported source965 ordinary retirement, B0 rollback and selector
-   clear. Independently verify the cold reversal, retained historical receipts,
-   SQL/Redis ownership absence and restored base writers. Finish source966's
-   original immutable crawler/renderer rollouts, preserving exact source/digests.
+1. Complete the shared DOM/Inline actions and reproduced detail-lock correction
+   in PR #10354 through actual pinned Lightpanda integration, real database/queue
+   checks and final-head required CI/installed identity/Crawler Deploy Gate.
+   Keep broader ownership inactive while the healthy source966 base serves.
+   Merge/deploy the correction with the supported immutable full-stack workflow.
 2. After exact-source promotion, activate/read back B0, then capture fresh
    canonical configurations, cache and actual posting routes. Stage and activate
    the resulting source/epoch-bound ordinary plan. Independently verify all
