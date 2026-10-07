@@ -836,6 +836,12 @@ func (chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (
 	defer cancelTarget()
 
 	if task.Feed != nil {
+		// chromedp binds its first CDP connection to the context of its first
+		// Run. Initialize at session scope so page-listener cancellation does
+		// not close the connection needed by the next feed page.
+		if err := chromedp.Run(targetCtx); err != nil {
+			return Result{}, fmt.Errorf("initialize feed session: %w", err)
+		}
 		return task.Feed.converse(ctx, func(pageCtx context.Context, endpoint string) (Result, error) {
 			step := task
 			step.Feed = nil
