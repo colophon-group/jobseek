@@ -1,0 +1,325 @@
+[
+  {
+    "name": "positive",
+    "path": "jobs",
+    "exchanges": [
+      {
+        "url": "https://example.com/api?live=1",
+        "method": "POST",
+        "body": {
+          "jobs": [
+            {
+              "id": 1
+            }
+          ]
+        },
+        "request_headers": {
+          "Authorization": "fixture-one"
+        }
+      }
+    ],
+    "expected": {
+      "matched": true,
+      "headers": {
+        "Authorization": "fixture-one"
+      },
+      "body": {
+        "jobs": [
+          {
+            "id": 1
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "no-match",
+    "path": "jobs",
+    "exchanges": [
+      {
+        "url": "https://other.com/api",
+        "method": "POST",
+        "body": {
+          "jobs": [
+            {
+              "id": 1
+            }
+          ]
+        },
+        "request_headers": {
+          "Authorization": "fixture-one"
+        }
+      }
+    ],
+    "expected": {
+      "matched": false,
+      "headers": null,
+      "body": null
+    }
+  },
+  {
+    "name": "wrong-method",
+    "path": "jobs",
+    "exchanges": [
+      {
+        "url": "https://example.com/api?live=1",
+        "method": "GET",
+        "body": {
+          "jobs": [
+            {
+              "id": 1
+            }
+          ]
+        },
+        "request_headers": {
+          "Authorization": "fixture-one"
+        }
+      }
+    ],
+    "expected": {
+      "matched": false,
+      "headers": null,
+      "body": null
+    }
+  },
+  {
+    "name": "method-case",
+    "path": "jobs",
+    "exchanges": [
+      {
+        "url": "https://example.com/api?live=1",
+        "method": "post",
+        "body": {
+          "jobs": [
+            {
+              "id": 1
+            }
+          ]
+        },
+        "request_headers": {
+          "Authorization": "fixture-one"
+        }
+      }
+    ],
+    "expected": {
+      "matched": true,
+      "headers": {
+        "Authorization": "fixture-one"
+      },
+      "body": {
+        "jobs": [
+          {
+            "id": 1
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "host-case",
+    "path": "jobs",
+    "exchanges": [
+      {
+        "url": "https://EXAMPLE.com/api",
+        "method": "POST",
+        "body": {
+          "jobs": [
+            {
+              "id": 1
+            }
+          ]
+        },
+        "request_headers": {
+          "Authorization": "fixture-one"
+        }
+      }
+    ],
+    "expected": {
+      "matched": false,
+      "headers": null,
+      "body": null
+    }
+  },
+  {
+    "name": "encoded-path",
+    "path": "jobs",
+    "exchanges": [
+      {
+        "url": "https://example.com/%61pi",
+        "method": "POST",
+        "body": {
+          "jobs": [
+            {
+              "id": 1
+            }
+          ]
+        },
+        "request_headers": {
+          "Authorization": "fixture-one"
+        }
+      }
+    ],
+    "expected": {
+      "matched": false,
+      "headers": null,
+      "body": null
+    }
+  },
+  {
+    "name": "zero-score",
+    "path": "jobs",
+    "exchanges": [
+      {
+        "url": "https://example.com/api?live=1",
+        "method": "POST",
+        "body": {
+          "jobs": [
+            1,
+            "text",
+            null
+          ]
+        },
+        "request_headers": {
+          "Authorization": "fixture-one"
+        }
+      }
+    ],
+    "expected": {
+      "matched": true,
+      "headers": {
+        "Authorization": "fixture-one"
+      },
+      "body": null
+    }
+  },
+  {
+    "name": "dictionary",
+    "path": "jobs",
+    "exchanges": [
+      {
+        "url": "https://example.com/api?live=1",
+        "method": "POST",
+        "body": {
+          "jobs": {
+            "one": {
+              "id": 1
+            }
+          }
+        },
+        "request_headers": {
+          "Authorization": "fixture-one"
+        }
+      }
+    ],
+    "expected": {
+      "matched": true,
+      "headers": {
+        "Authorization": "fixture-one"
+      },
+      "body": {
+        "jobs": {
+          "one": {
+            "id": 1
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "root",
+    "path": "$",
+    "exchanges": [
+      {
+        "url": "https://example.com/api?live=1",
+        "method": "POST",
+        "body": {
+          "jobs": []
+        },
+        "request_headers": {
+          "Authorization": "fixture-one"
+        }
+      }
+    ],
+    "expected": {
+      "matched": true,
+      "headers": {
+        "Authorization": "fixture-one"
+      },
+      "body": {
+        "jobs": []
+      }
+    }
+  },
+  {
+    "name": "rank-and-first-tie",
+    "path": "jobs",
+    "exchanges": [
+      {
+        "url": "https://example.com/api?live=1",
+        "method": "POST",
+        "body": {
+          "jobs": [
+            {
+              "id": 1
+            }
+          ]
+        },
+        "request_headers": {
+          "Authorization": "fixture-one"
+        }
+      },
+      {
+        "url": "https://example.com/api?live=1",
+        "method": "POST",
+        "body": {
+          "jobs": [
+            {
+              "id": 1
+            },
+            {
+              "id": 2
+            },
+            3
+          ]
+        },
+        "request_headers": {
+          "Authorization": "fixture-best"
+        }
+      },
+      {
+        "url": "https://example.com/api?live=1",
+        "method": "POST",
+        "body": {
+          "jobs": [
+            {
+              "id": 3
+            },
+            {
+              "id": 4
+            }
+          ]
+        },
+        "request_headers": {
+          "Authorization": "fixture-tie"
+        }
+      }
+    ],
+    "expected": {
+      "matched": true,
+      "headers": {
+        "Authorization": "fixture-best"
+      },
+      "body": {
+        "jobs": [
+          {
+            "id": 1
+          },
+          {
+            "id": 2
+          },
+          3
+        ]
+      }
+    }
+  }
+]
