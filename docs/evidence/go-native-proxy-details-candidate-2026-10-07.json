@@ -17,12 +17,13 @@
     "avature_proxy_cold_cases": 6,
     "avature_proxy_cold_race_seconds": 3.223,
     "vet_and_module_tidiness": "passed",
-    "full_queue_race": "pending",
+    "full_queue_race": "264.881s completed with two obsolete proxy-refusal expectations (DOM secondary options and staged JSON-LD transport drift); drift still refused as authority lost. Corrected expectations; final-head full CI required.",
     "full_worker_race": "478.165s completed with one obsolete Paylocity/JSON-LD proxy refusal assertion; all other cases completed without failure. Assertion corrected; final-head CI required.",
     "required_and_installed_image_CI": "pending",
     "independent_runtime_transport_race_seconds": 1.782,
     "runtime_and_cutover_python_contracts": "60 passed,6 environment skips; corrected wrapper17 passed8.81s",
-    "corrected_paylocity_and_independent_runtime_race_seconds": 1.757
+    "corrected_paylocity_and_independent_runtime_race_seconds": 1.757,
+    "corrected_queue_contract_race_seconds": 2.536
   },
   "production": {
     "source": "d123d6fcfc14ef2b38c81d1722a53f83ce7b93b2",

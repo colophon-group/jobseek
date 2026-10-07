@@ -264,8 +264,8 @@ func TestRealJSONLDDetailStagedInspectionRechecksIndependentConfiguration(t *tes
 	if _, err := p.f.observer.Exec(ctx, `UPDATE job_board SET metadata=jsonb_set(metadata,'{scraper_config}','{"proxy":true}'::jsonb) WHERE id=$1::uuid`, board); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.f.authority.InspectStagedOwnership(ctx, p.plan.digest, p.plan.SourceRevision()); !errors.Is(err, ErrUnsupportedProfile) {
-		t.Fatal("changed independent detail context passed staged inspection", err)
+	if _, err := p.f.authority.InspectStagedOwnership(ctx, p.plan.digest, p.plan.SourceRevision()); !errors.Is(err, ErrAuthorityLost) {
+		t.Fatal("changed independent detail transport retained staged authority", err)
 	}
 	if firstFixtureState(t, p) != "staged" || p.f.client.redis.Exists(ctx, ownershipProjectionKey).Val() != 0 {
 		t.Fatal("inspection mutated ownership")
