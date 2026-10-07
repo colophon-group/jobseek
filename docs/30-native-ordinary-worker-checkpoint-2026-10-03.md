@@ -91,6 +91,22 @@ This screening does not grant production ownership or reconcile posting routes.
 Full regression and installed-image CI remain required before delivery. See
 [portable candidate evidence](evidence/go-native-proxy-details-candidate-2026-10-07.json).
 
+
+The source955 ordinary staging attempt refused **B0 Compose contract drift**
+before ownership changed. Read-only production rendering identified the exact
+cause: B0 lets Compose decode the escaped proxy pool directly from `.env`, while
+the ordinary wrapper exported Bash's decoded value. Removing only that environment
+override reproduced the active receipt's exact Compose digest. Candidate957 makes
+ordinary cutover use the same protected `.env` parsing and keeps the operator API
+key out of runtime/admin environments. No live wrapper, receipt, config or
+ownership was patched. A fresh immutable rollout and new source-bound admission
+are required. This finding does not establish the cause of source954's earlier
+readiness failure.
+
+[PR #10345](https://github.com/colophon-group/jobseek/pull/10345) consolidates
+six proxy monitor and four proxy detail families into one release, including this
+cutover correction. Supersede #10344 only after the combined candidate is verified.
+
 ### Prior releases and evidence
 
 Production **0.13.949** was deployed from

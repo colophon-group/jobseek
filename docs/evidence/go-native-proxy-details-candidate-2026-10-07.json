@@ -20,7 +20,8 @@
     "full_queue_race": "pending",
     "full_worker_race": "pending",
     "required_and_installed_image_CI": "pending",
-    "independent_runtime_transport_race_seconds": 1.782
+    "independent_runtime_transport_race_seconds": 1.782,
+    "runtime_and_cutover_python_contracts": "60 passed,6 environment skips; corrected wrapper17 passed8.81s"
   },
   "production": {
     "source": "d123d6fcfc14ef2b38c81d1722a53f83ce7b93b2",
@@ -44,5 +45,12 @@
     "new_generic_detail_gain": 44,
     "canonical_cache_mismatches": 0,
     "scope": "actual detached candidate957 code on unchanged fresh source955 canonical/cache configurations; configuration-only eligibility, not current route admission or production ownership"
+  },
+  "cutover_fix": {
+    "trigger": "source955 ordinary stage rejected B0 Compose contract drift before ownership changed",
+    "cause": "B0 wrapper unsets WEBSHARE_PROXY_URLS for Compose .env parsing; ordinary wrapper exported Bash-decoded pool, changing rendered contract",
+    "production_readonly_proof": "Only removing the sourced pool environment override reproduced the active B0 receipt Compose digest; no host configs or ownership mutated",
+    "change": "ordinary wrapper now uses Compose .env parsing consistently, while withholding operator API key from runtime/admin",
+    "activation": "fresh immutable rollout and new source/receipt-bound cohort required"
   }
 }
