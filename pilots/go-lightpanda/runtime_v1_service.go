@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	replay "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/apireplay"
 	df "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/dayforcesession"
 	feed "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/feedsession"
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/framing"
@@ -464,6 +465,11 @@ func (service *runtimeV1Service) handleConnection(
 		return
 	}
 	if bytes.HasPrefix(bytes.TrimSpace(payload), []byte("{")) {
+		var apiRequest replay.Request
+		if replay.Decode(payload, replay.RequestLimit, &apiRequest) == nil && apiRequest.Valid() {
+			service.handleAPIReplay(connectionContext, tlsConnection, reader, apiRequest)
+			return
+		}
 		var feedRequest feed.Request
 		if feed.Decode(payload, feed.RequestLimit, &feedRequest) == nil && feedRequest.Valid() {
 			service.handleFeed(connectionContext, tlsConnection, reader, feedRequest)

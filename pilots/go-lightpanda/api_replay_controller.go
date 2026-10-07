@@ -21,7 +21,8 @@ import (
 type apiReplayTask struct {
 	boardURL string
 	options  api.BrowserReplayOptions
-	converse func(context.Context, api.Fetch) error
+	converse func(context.Context, api.Fetch, bool) error
+	fallback api.Fetch
 }
 
 func readReplayResponseBody(ctx context.Context, id network.RequestID) ([]byte, error) {
@@ -37,7 +38,7 @@ func readReplayResponseBody(ctx context.Context, id network.RequestID) ([]byte, 
 	return body, err
 }
 
-func newAPIReplayTask(boardURL, metadata string, converse func(context.Context, api.Fetch) error) (Task, error) {
+func newAPIReplayTask(boardURL, metadata string, converse func(context.Context, api.Fetch, bool) error) (Task, error) {
 	o, err := api.BrowserReplayOptionsFromMetadata(boardURL, metadata)
 	if err != nil || converse == nil {
 		return Task{}, errReplayCapture
@@ -48,7 +49,7 @@ func newAPIReplayTask(boardURL, metadata string, converse func(context.Context, 
 		"load":             runtimev1.WaitCondition_WAIT_CONDITION_LOAD,
 		"networkidle":      runtimev1.WaitCondition_WAIT_CONDITION_NETWORK_IDLE,
 	}[o.Wait]
-	return Task{URL: boardURL, Navigation: &navigationOptions{wait: wait, timeout: time.Duration(o.TimeoutMS) * time.Millisecond}, APIReplay: &apiReplayTask{boardURL, o, converse}}, nil
+	return Task{URL: boardURL, Navigation: &navigationOptions{wait: wait, timeout: time.Duration(o.TimeoutMS) * time.Millisecond}, APIReplay: &apiReplayTask{boardURL: boardURL, options: o, converse: converse}}, nil
 }
 
 func executeAPIReplayConversation(ctx context.Context, task *apiReplayTask, capture *replayCapture, status int, finalURL, html string, signals *runtimev1.ResourcePolicySignals) error {
@@ -82,13 +83,13 @@ func executeAPIReplayConversation(ctx context.Context, task *apiReplayTask, capt
 			return nil, errReplayCapture
 		}
 		return fetchReplayCommand(cdp.WithExecutor(call, target.Target), task.options, request)
-	})
+	}, task.fallback)
 }
 
 // Serial commands and a closed scope prevent retained callbacks from using
 // a target after the conversation has finished. An ignored policy failure
 // still fails the entire conversation (including an optional size probe).
-func converseAPIReplay(ctx context.Context, task *apiReplayTask, headers http.Header, first *api.Document, fetch api.Fetch) error {
+func converseAPIReplay(ctx context.Context, task *apiReplayTask, headers http.Header, first *api.Document, fetch api.Fetch, fallbacks ...api.Fetch) error {
 	if task == nil || task.converse == nil || fetch == nil {
 		return errReplayCapture
 	}
@@ -101,6 +102,35 @@ func converseAPIReplay(ctx context.Context, task *apiReplayTask, headers http.He
 		open = false
 		clear(headers)
 	}()
+	usingHTTP := false
+	if first == nil {
+		request := api.Request{Method: task.options.Inventory.Method, URL: task.options.Inventory.Endpoint, Body: task.options.Inventory.Body, Headers: replayHeaders(headers)}
+		var err error
+		first, err = fetch(ctx, request)
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if replayTerminalError(err) {
+			return err
+		}
+		if err != nil || first == nil {
+			if len(fallbacks) != 1 || fallbacks[0] == nil {
+				return errReplayCapture
+			}
+			fetch = fallbacks[0]
+			usingHTTP = true
+			first, err = fetch(ctx, request)
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			if err != nil {
+				return err
+			}
+			if first == nil {
+				return errReplayCapture
+			}
+		}
+	}
 	err := task.converse(ctx, func(call context.Context, request api.Request) (*api.Document, error) {
 		mu.Lock()
 		defer mu.Unlock()
@@ -132,13 +162,12 @@ func converseAPIReplay(ctx context.Context, task *apiReplayTask, headers http.He
 		if err != nil {
 			// Public policy errors are preserved; fixed capture failures cannot
 			// expose private expressions or captured headers.
-			var reservation *policy.Reservation
-			if errors.As(err, &reservation) || errors.Is(err, policy.ErrSignals) {
+			if replayTerminalError(err) {
 				terminal = err
 			}
 		}
 		return document, err
-	})
+	}, usingHTTP)
 	mu.Lock()
 	defer mu.Unlock()
 	if terminal != nil {
@@ -148,4 +177,9 @@ func converseAPIReplay(ctx context.Context, task *apiReplayTask, headers http.He
 		return ctx.Err()
 	}
 	return err
+}
+
+func replayTerminalError(err error) bool {
+	var reservation *policy.Reservation
+	return errors.As(err, &reservation) || errors.Is(err, policy.ErrSignals) || errors.Is(err, errResourceLimit) || errors.Is(err, errReplayCredentialResponse) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
 }

@@ -12,8 +12,11 @@ import (
 )
 
 func TestRealFirstGroupedRSSProviderColdRetirement(t *testing.T) {
-	for _, preset := range []string{"governmentjobs", "zoho_recruit", "hr_manager", "dom_rows", "dom_proxy_rows", "dom_rendered_rows", "generic_policy", "successfactors_policy", "teamtailor_policy", "dom_policy_rows", "dom_policy_urls", "sf_legacy_xml", "generic_summary", "generic_pages", "wp_pages", "generic_rendered_pages", "summary_rendered_pages", "wp_rendered_pages", "inline_rendered"} {
+	for _, preset := range []string{"governmentjobs", "zoho_recruit", "hr_manager", "dom_rows", "dom_proxy_rows", "dom_rendered_rows", "generic_policy", "successfactors_policy", "teamtailor_policy", "dom_policy_rows", "dom_policy_urls", "sf_legacy_xml", "generic_summary", "generic_pages", "wp_pages", "generic_rendered_pages", "summary_rendered_pages", "wp_rendered_pages", "inline_rendered", "api_browser"} {
 		provider := "rss"
+		if preset == "api_browser" {
+			provider = "api_sniffer"
+		}
 		if strings.HasPrefix(preset, "dom_") {
 			provider = "dom"
 		}
@@ -21,7 +24,7 @@ func TestRealFirstGroupedRSSProviderColdRetirement(t *testing.T) {
 			provider = "inline"
 		}
 		worker := Simple
-		if preset == "inline_rendered" || preset == "dom_rendered_rows" || strings.Contains(preset, "_rendered_pages") {
+		if preset == "api_browser" || preset == "inline_rendered" || preset == "dom_rendered_rows" || strings.Contains(preset, "_rendered_pages") {
 			worker = Browser
 		}
 		for _, mode := range []string{"interrupted", "committed-before-ack", "changed-token"} {
@@ -31,6 +34,10 @@ func TestRealFirstGroupedRSSProviderColdRetirement(t *testing.T) {
 				f := p.f
 				metadata := `{"preset":"governmentjobs","agency":"fixture","scraper_type":"skip"}`
 				boardURL := "https://www.governmentjobs.com/careers/fixture"
+				if preset == "api_browser" {
+					boardURL = "https://example.com/fixture"
+					metadata = `{"browser":true,"api_url":"https://example.com/api/fixture","json_path":"jobs","url_field":"url","fields":{"title":"title"},"scraper_type":"skip"}`
+				}
 				if preset == "inline_rendered" {
 					boardURL = "https://example.com/fixture"
 					metadata = `{"render":true,"steps":[{"tag":"h2","field":"title"}],"scraper_type":"skip"}`

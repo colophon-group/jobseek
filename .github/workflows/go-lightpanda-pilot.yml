@@ -10,6 +10,7 @@ on:
       - "apps/crawler/contracts/v1/lightpandaadapter/**"
       - "apps/crawler/contracts/v1/dayforcesession/**"
       - "apps/crawler/contracts/v1/feedsession/**"
+      - "apps/crawler/contracts/v1/apireplay/**"
       - "apps/crawler/contracts/v1/lightpandaclient/**"
       - "apps/crawler/go/api-sniffer-monitor/**"
       - "apps/crawler/go/dom-detail/**"

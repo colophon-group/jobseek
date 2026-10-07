@@ -5,7 +5,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"errors"
+	"encoding/json"
 	"io"
 	"net"
 	"net/http"
@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
+	replay "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/apireplay"
 	api "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
-	policy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 )
 
 // Reuse the isolated HTTPS fixture transport. No production URL, proxy or
@@ -75,26 +75,36 @@ func TestLightpandaAPIReplaySessionIntegration(t *testing.T) {
 			metadata = strings.Replace(metadata, `"settle":0`, `"settle":0.25`, 1)
 			// The actual page must replace this stale configured header.
 			metadata = strings.TrimSuffix(metadata, "}") + `,"request_headers":{"X-Csrf-Token":"stale-csrf"}}`
-			var task Task
 			var inventory api.Inventory
-			task, err = newAPIReplayTask("https://jobs.dayforcehcm.com/replay-careers", metadata, func(ctx context.Context, fetch api.Fetch) error {
-				var err error
-				inventory, err = api.DiscoverBrowserReplay(ctx, task.APIReplay.options, fetch, replayControllerJoin, false)
-				return err
-			})
+			fixture := newServiceTLSFixture(t)
+			runner := func(ctx context.Context, c Config, task Task) (Result, error) {
+				c.Binary = binary
+				c.EgressPolicy = defaultEgressPolicy()
+				return runTaskWithDependencies(ctx, c, dependencies{process: dayforceFixtureStarter{binary: binary, proxy: proxy.URL, ca: ca}, ready: httpReadyWaiter{interval: defaultReadyInterval}, executor: chromedpExecutor{egressPolicy: defaultEgressPolicy()}, allocatePort: allocateLoopbackPort, releasePort: releaseLoopbackPort, portOpen: loopbackPortOpen}, task)
+			}
+			execution, err := newRuntimeV1ServiceExecution(Config{Binary: lightpandaServiceBinary, EgressPolicy: fixture.server.serviceEgressPolicy.egressPolicy}, runner)
 			if err != nil {
 				t.Fatal(err)
 			}
+			_, address, stop := startRuntimeV1ServiceTest(t, fixture, execution)
+			defer stop()
+			client := dayforceClientFixture(t, fixture, address)
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()
-			result, err := runTaskWithDependencies(ctx, Config{Binary: binary, EgressPolicy: defaultEgressPolicy(), TaskTimeout: 15 * time.Second}, dependencies{process: dayforceFixtureStarter{binary: binary, proxy: proxy.URL, ca: ca}, ready: httpReadyWaiter{interval: defaultReadyInterval}, executor: chromedpExecutor{}, allocatePort: allocateLoopbackPort, releasePort: releaseLoopbackPort, portOpen: loopbackPortOpen}, task)
+			held, err := client.Reserve(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			response, err := held.APIReplay(ctx, replay.Request{Protocol: replay.Protocol, RequestID: strings.Repeat("a", 64), ConfigFingerprint: strings.Repeat("b", 64), BoardURL: "https://jobs.dayforcehcm.com/replay-careers", Metadata: json.RawMessage(metadata), TimeoutMS: 15000})
+			if err != nil {
+				t.Fatal("real pinned API service/client failed", err)
+			}
 			if denied {
-				var reservation *policy.Reservation
-				if !errors.As(err, &reservation) || len(inventory.Jobs) != 0 {
-					t.Fatal("later denial persisted partial inventory", err)
+				if response.Outcome != "publisher_reserved" || len(response.Inventory) != 0 {
+					t.Fatal("later denial persisted partial inventory")
 				}
-			} else if err != nil || len(inventory.Jobs) != 2 || inventory.Truncated || !result.apiReplaySessionSettled || result.HTML != "" {
-				t.Fatal("real replay capture/cookie/pagination/cleanup failed", err, len(inventory.Jobs))
+			} else if response.Outcome != "success" || json.Unmarshal(response.Inventory, &inventory) != nil || len(inventory.Jobs) != 2 || inventory.Truncated || strings.Contains(string(response.Inventory), "private-fresh-csrf") || strings.Contains(string(response.Inventory), "private-cookie") {
+				t.Fatal("real replay service/capture/cookie/pagination/cleanup failed", response.Outcome, len(inventory.Jobs))
 			}
 			mu.Lock()
 			defer mu.Unlock()

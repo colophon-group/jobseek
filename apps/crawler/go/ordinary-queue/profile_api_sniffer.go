@@ -5,6 +5,15 @@ import (
 	apisniffer "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
 )
 
+const apiSnifferBrowserProfile = "api_sniffer.browser-items/v1"
+
+func APISnifferBrowserMonitorOptions(config map[string]string) (apisniffer.BrowserReplayOptions, error) {
+	if config["crawler_type"] != "api_sniffer" || config["monitor_needs_browser"] != "1" {
+		return apisniffer.BrowserReplayOptions{}, ErrUnsupportedProfile
+	}
+	return apisniffer.BrowserReplayOptionsFromMetadata(config["board_url"], config["metadata"])
+}
+
 func APISnifferMonitorOptions(config map[string]string) (apisniffer.Options, error) {
 	parsed, parseErr := httpMonitorParsingConfig(config)
 	if parseErr != nil {
@@ -20,6 +29,10 @@ func APISnifferMonitorOptions(config map[string]string) (apisniffer.Options, err
 // API monitors auto-select skip when they already expose fields. Only an
 // explicit scraper enrichment list delegates data and schedules detail work.
 func apiSnifferMonitorEnrichment(config map[string]string) ([]string, error) {
+	if config["monitor_needs_browser"] == "1" {
+		o, err := APISnifferBrowserMonitorOptions(config)
+		return o.Inventory.Enrichment, err
+	}
 	o, err := APISnifferMonitorOptions(config)
 	if err != nil {
 		return nil, err
@@ -28,6 +41,12 @@ func apiSnifferMonitorEnrichment(config map[string]string) ([]string, error) {
 }
 
 func inspectAPISnifferMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
+	if config["monitor_needs_browser"] == "1" {
+		if _, err := APISnifferBrowserMonitorOptions(config); err != nil {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		return inspectURLOnlyMonitor(boardID, config, md, "api_sniffer", apiSnifferBrowserProfile, "api_sniffer", config["board_url"])
+	}
 	o, err := APISnifferMonitorOptions(config)
 	if err != nil {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
@@ -39,6 +58,10 @@ func inspectAPISnifferMonitor(boardID string, config map[string]string, md map[s
 }
 
 func APISnifferMonitorResourceMatches(p GreenhouseMonitorProfile, config map[string]string, endpoint string) bool {
+	if p.Profile == apiSnifferBrowserProfile {
+		o, err := APISnifferBrowserMonitorOptions(config)
+		return err == nil && p.Provider == "api_sniffer" && p.Endpoint == config["board_url"] && (endpoint == p.Endpoint || o.Inventory.ResourceMatches(endpoint))
+	}
 	o, err := APISnifferMonitorOptions(config)
 	return err == nil && p.Provider == "api_sniffer" && (p.Profile == "api_sniffer.http-items/v1" || p.Profile == "api_sniffer.proxy-http-items/v1") && p.Endpoint == o.Endpoint && o.ResourceMatches(endpoint)
 }

@@ -169,7 +169,7 @@ func runTask(ctx context.Context, config Config, task Task) (Result, error) {
 			isolateChild: config.isolateChild,
 		},
 		ready:        httpReadyWaiter{interval: defaultReadyInterval},
-		executor:     chromedpExecutor{},
+		executor:     chromedpExecutor{egressPolicy: config.EgressPolicy},
 		allocatePort: allocateLoopbackPort,
 		releasePort:  releaseLoopbackPort,
 		portOpen:     loopbackPortOpen,
@@ -783,7 +783,7 @@ func fetchVersion(ctx context.Context, client *http.Client, endpoint string) (st
 	return version.WebSocketDebuggerURL, true, nil
 }
 
-type chromedpExecutor struct{}
+type chromedpExecutor struct{ egressPolicy EgressPolicy }
 
 type mainDocumentResponse struct {
 	resourcePolicy *runtimev1.ResourcePolicySignals
@@ -833,7 +833,17 @@ func comparableDocumentURL(raw string) (string, error) {
 	return parsed.String(), nil
 }
 
-func (chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (Result, error) {
+func (executor chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (Result, error) {
+	if task.APIReplay != nil && task.APIReplay.fallback == nil {
+		copyTask := *task.APIReplay
+		fetch, closeHTTP, err := newReplayHTTPFallback(copyTask.options, executor.egressPolicy)
+		if err != nil {
+			return Result{}, err
+		}
+		defer closeHTTP()
+		copyTask.fallback = fetch
+		task.APIReplay = &copyTask
+	}
 	allocatorCtx, cancelAllocator := chromedp.NewRemoteAllocator(ctx, cdpURL, chromedp.NoModifyURL)
 	defer cancelAllocator()
 	var targetOptions []chromedp.ContextOption

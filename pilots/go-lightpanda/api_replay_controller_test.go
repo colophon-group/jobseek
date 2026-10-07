@@ -30,10 +30,10 @@ func TestAPIReplayConversationUsesCaptureThenSamePrivateHeadersForPagination(t *
 	var retained api.Fetch
 	var options api.BrowserReplayOptions
 	var inventory api.Inventory
-	task, err := newAPIReplayTask("https://example.com/careers", replayControllerMetadata, func(ctx context.Context, fetch api.Fetch) error {
+	task, err := newAPIReplayTask("https://example.com/careers", replayControllerMetadata, func(ctx context.Context, fetch api.Fetch, usingHTTP bool) error {
 		retained = fetch
 		var err error
-		inventory, err = api.DiscoverBrowserReplay(ctx, options, fetch, replayControllerJoin, false)
+		inventory, err = api.DiscoverBrowserReplay(ctx, options, fetch, replayControllerJoin, usingHTTP)
 		return err
 	})
 	if err != nil || validateTask(task) != nil {
@@ -69,15 +69,18 @@ func TestAPIReplayConversationUsesCaptureThenSamePrivateHeadersForPagination(t *
 
 func TestAPIReplayConversationCannotSwallowPublisherDenialInProbe(t *testing.T) {
 	for _, denial := range []error{&policy.Reservation{URL: "https://example.com/api", Source: "header"}, policy.ErrSignals} {
-		task, err := newAPIReplayTask("https://example.com/careers", replayControllerMetadata, func(ctx context.Context, fetch api.Fetch) error {
+		called := false
+		task, err := newAPIReplayTask("https://example.com/careers", replayControllerMetadata, func(ctx context.Context, fetch api.Fetch, usingHTTP bool) error {
+			called = true
 			_, _ = fetch(ctx, api.Request{Method: "POST", URL: "https://example.com/api", Probe: true})
 			return nil // Inventory size probes may suppress fetch errors.
 		})
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = converseAPIReplay(context.Background(), task.APIReplay, http.Header{}, nil, func(context.Context, api.Request) (*api.Document, error) { return nil, denial })
-		if !errors.Is(err, denial) {
+		first, _ := api.Decode([]byte(`{"jobs":[]}`))
+		err = converseAPIReplay(context.Background(), task.APIReplay, http.Header{}, first, func(context.Context, api.Request) (*api.Document, error) { return nil, denial })
+		if !errors.Is(err, denial) || !called {
 			t.Fatal("policy denial became successful inventory", err)
 		}
 	}
@@ -85,15 +88,16 @@ func TestAPIReplayConversationCannotSwallowPublisherDenialInProbe(t *testing.T) 
 
 func TestAPIReplayConversationPanicClosesCredentialScope(t *testing.T) {
 	var retained api.Fetch
-	task, _ := newAPIReplayTask("https://example.com/careers", replayControllerMetadata, func(_ context.Context, fetch api.Fetch) error { retained = fetch; panic("fixture") })
+	task, _ := newAPIReplayTask("https://example.com/careers", replayControllerMetadata, func(_ context.Context, fetch api.Fetch, _ bool) error { retained = fetch; panic("fixture") })
 	headers := http.Header{"Authorization": {"private"}}
+	first, _ := api.Decode([]byte(`{"jobs":[]}`))
 	func() {
 		defer func() {
 			if recover() == nil {
 				t.Fatal("fixture did not panic")
 			}
 		}()
-		_ = converseAPIReplay(context.Background(), task.APIReplay, headers, nil, func(context.Context, api.Request) (*api.Document, error) {
+		_ = converseAPIReplay(context.Background(), task.APIReplay, headers, first, func(context.Context, api.Request) (*api.Document, error) {
 			t.Fatal("unexpected request")
 			return nil, nil
 		})
@@ -107,7 +111,7 @@ func TestAPIReplayConversationPanicClosesCredentialScope(t *testing.T) {
 }
 
 func TestAPIReplayTaskRequiresSettledConversationAndExclusiveTarget(t *testing.T) {
-	task, _ := newAPIReplayTask("https://example.com/careers", replayControllerMetadata, func(context.Context, api.Fetch) error { return nil })
+	task, _ := newAPIReplayTask("https://example.com/careers", replayControllerMetadata, func(context.Context, api.Fetch, bool) error { return nil })
 	if validateResult(task, Result{}) == nil || validateResult(task, Result{apiReplaySessionSettled: true}) != nil {
 		t.Fatal("unsettled target became a success")
 	}

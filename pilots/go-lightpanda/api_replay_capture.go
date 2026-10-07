@@ -15,6 +15,7 @@ import (
 )
 
 var errReplayCapture = errors.New("API browser capture failed")
+var errReplayCredentialResponse = errors.Join(errReplayCapture, errors.New("API response reflected private credentials"))
 
 const replayCaptureLimit = 32
 const replayCaptureBodyLimit = 2_000_000
@@ -97,11 +98,11 @@ func (c *replayCapture) observe(event any) {
 		}
 		signals, invalid := mainDocumentPolicySignals(e.Response.Headers)
 		if invalid {
-			c.failure = errReplayCapture
+			c.failure = policy.ErrSignals
 			return
 		}
 		if replayReflectsCredentials(pending.headers, "", signals.TdmReservationHeader, signals.TdmPolicyHeader) {
-			c.failure = errReplayCapture
+			c.failure = errReplayCredentialResponse
 			return
 		}
 		// Publisher denial is terminal and never falls through to another replay.
@@ -179,7 +180,7 @@ func (c *replayCapture) exchanges(ctx context.Context, read func(context.Context
 				policyURL = pending.signals.TdmPolicyHeader
 			}
 			if replayReflectsCredentials(pending.headers, string(body), reservation, policyURL) {
-				return nil, errReplayCapture
+				return nil, errReplayCredentialResponse
 			}
 			if e = policy.Check(pending.signals, string(body), c.endpoint.String()); e != nil {
 				return nil, e

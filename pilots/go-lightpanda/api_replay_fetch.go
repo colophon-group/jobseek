@@ -60,15 +60,21 @@ func replayFetchExpression(o api.BrowserReplayOptions, r api.Request) (string, e
 	return `(async(p)=>{const opts={method:p.method,headers:p.headers};if(p.body)opts.body=p.body;const r=await fetch(p.url,opts);const body=await r.text();if(body.length>2000000)throw new Error("API response limit");return {status:r.status,url:r.url,body,reservation:r.headers.get("tdm-reservation"),policy:r.headers.get("tdm-policy")};})(` + string(params) + `)`, nil
 }
 func replayResponseDocument(o api.BrowserReplayOptions, r api.Request, response replayFetchResponse) (*api.Document, error) {
-	if response.Status < 200 || response.Status >= 300 || !o.Inventory.ResourceMatches(response.URL) || len(response.Body) > replayCaptureBodyLimit {
+	if len(response.Body) > replayCaptureBodyLimit {
+		return nil, errResourceLimit
+	}
+	if !o.Inventory.ResourceMatches(response.URL) {
 		return nil, errReplayCapture
 	}
 	signals := &runtimev1.ResourcePolicySignals{TdmReservationHeader: response.Reservation, TdmPolicyHeader: response.Policy}
 	if replayReflectsCredentials(r.Headers, response.Body, response.Reservation, response.Policy) {
-		return nil, errReplayCapture
+		return nil, errReplayCredentialResponse
 	}
 	if e := policy.Check(signals, response.Body, response.URL); e != nil {
 		return nil, e
+	}
+	if response.Status < 200 || response.Status >= 300 {
+		return nil, errReplayCapture
 	}
 	document, e := api.Decode([]byte(response.Body))
 	if e != nil {
