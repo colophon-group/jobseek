@@ -25,6 +25,12 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 		board, metadata = "https://fixture.jobs.cz/", `{"scraper_type":"skip"}`
 	}
 	switch provider {
+	case "deel":
+		board, metadata = "https://jobs.deel.com/fixture", `{"scraper_type":"skip"}`
+	case "hibob":
+		board, metadata = "https://fixture.careers.hibob.com/", `{"scraper_type":"skip"}`
+	case "traffit":
+		board, metadata = "https://fixture.traffit.com/career/", `{"scraper_type":"skip"}`
 	case "recruiterbox":
 		board, metadata = "https://fixture.recruiterbox.com/", `{"scraper_type":"json-ld"}`
 	case "jobs_ch":
@@ -137,7 +143,7 @@ func assertEightfoldCanonicalWatermarkCached(t *testing.T, p firstOwnerFixture) 
 }
 
 func TestRealProviderBatchColdRetirementAndEightfoldWatermarkRecovery(t *testing.T) {
-	for _, provider := range []string{"manatal", "hrmos", "recruiterbox", "jobs_ch", "mokahr", "almacareer", "eightfold", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "dom", "rss", "inline", "api_sniffer", "comeet", "jobvite", "paycom", "rippling", "adp", "cornerstone", "paylocity", "paylocity/proxy", "dom/proxy", "api_sniffer/proxy", "inline/proxy", "sitemap/proxy", "eightfold/proxy", "phenom/proxy"} {
+	for _, provider := range []string{"deel", "hibob", "traffit", "manatal", "hrmos", "recruiterbox", "jobs_ch", "mokahr", "almacareer", "eightfold", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "dom", "rss", "inline", "api_sniffer", "comeet", "jobvite", "paycom", "rippling", "adp", "cornerstone", "paylocity", "paylocity/proxy", "dom/proxy", "api_sniffer/proxy", "inline/proxy", "sitemap/proxy", "eightfold/proxy", "phenom/proxy"} {
 		modes := []string{"interrupted", "committed-before-ack", "changed-setting"}
 		if strings.Split(provider, "/")[0] == "eightfold" {
 			modes = append(modes, "reaped-before-ack", "recovered-ack", "settled-cold", "save-failure", "orphan-cache")

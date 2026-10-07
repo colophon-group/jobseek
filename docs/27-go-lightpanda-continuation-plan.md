@@ -18,119 +18,92 @@ not complete migration.
 
 ## Latest checkpoint — 2026-10-07
 
-Release **0.13.963** merged in [PR #10349](https://github.com/colophon-group/jobseek/pull/10349)
-at `3905501bcf9b769422f72aefa167388c17d20b2c`. Its 107 compiled profiles add
-Manatal, HRMOS, Recruiterbox and jobs.ch/jobup: 28 enabled monitor configurations.
-The final reviewed head passed full worker and queue race suites in 499.264 and
-337.910 seconds, required CI, installed-image parity, both Linux architecture
-pilots and Crawler Deploy Gate before the exact-head merge.
+Production runs **0.13.964**, source `16ebb019d7b3dbafbf33bb829200369713a4da5c`,
+merged in [PR #10350](https://github.com/colophon-group/jobseek/pull/10350).
+The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37668416367)
+succeeded on its supported second attempt, retaining the original immutable
+image pair. The [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37671318212)
+also succeeded at that source. **Lightpanda 1.0.0** remains the latest stable
+release, verified against the official release list October 7. The renderer
+uses the pinned multi-architecture digest, with CORS enabled for CDP evaluation.
 
-Original [crawler deployment 37624980250](https://github.com/colophon-group/jobseek/actions/runs/37624980250)
-completed including promotion on its supported retry, using the original
-immutable image pair. [Renderer deployment 37627611206](https://github.com/colophon-group/jobseek/actions/runs/37627611206)
-also succeeded at the merged source with **Lightpanda 1.0.0**. The official release
-list was rechecked October 7; 1.0.0 remains the latest stable release.
+The grouped release qualifies **55 extra configurations across three types**:
+33 API browser, 20 DOM and two Inline. Fresh canonical/cache and actual scheduled
+posting admission found **7,295 monitors**, **2,616 detail boards** and
+**1,475,517 scheduled postings** eligible for native ownership. It found zero
+monitor configuration/cache mismatches. 40 cached detail incompatibilities and
+one actual Eightfold route retain legacy ownership; three exclusive B0 boards
+remain outside ordinary ownership. **587 monitor configurations remain** in the
+captured census. These are admission counts, not current Go serving counts.
 
-The prior source 962 supported retirement timed out at 12:19 UTC and contained
-all writers. The reviewed 963 fix materializes historical membership once;
-the same production ownership decision completed in 1.281 seconds instead of
-timing out after 10.224 seconds. The unchanged installed wrapper successfully
-retired the retained 962 identity with the verified immutable 963 administrator,
-restored the complete old stack and passed readiness/restart arming. Original
-B0 rollback and selector clear then succeeded. Independent cold 214 readback
-passed at 13:19 UTC; no receipts, ownership projections, claim tokens, current
-fences or orphan historical receipts remained. Historical audit evidence was
-preserved. The original 963 deployment had refused promotion at the retained
-receipt guard; retry occurred only after this supported reversal.
+Broad ordinary activation at epoch 217 committed its exact SQL plan, then
+failed legacy worker readiness: the installed Python projection reader omitted
+`api_sniffer.browser-items/v1` from its browser profile classification. The
+original wrapper contained all writers and retained its exact pending identity.
+Supported `recover-pending` retired that plan and restored the complete
+restart-armed base/B0 stack. All seven independent HTTP health probes passed;
+nine services were independently verified running. Broad ordinary ownership remains withdrawn. Before the source965 rollout,
+the original B0 rollback and exact selector clear succeeded; independent cold218
+verification is in progress. No direct SQL/Redis repairs occurred.
 
-Independent deployed 963 cold 214 readback passed at 13:26 UTC. Original B0
-activation/readback passed at 215, with healthy endpoints and real render commits.
-Fresh promoted-source canonical/cache and actual scheduled posting routes admit
-**7,240 monitors**, **2,616 detail boards** and **1,462,276 scheduled postings**.
-Zero monitor configuration/cache mismatches remain. 40 cached detail
-incompatibilities and one actual Eightfold route remain with their legacy owner.
-The three exclusive B0 boards remain outside ordinary ownership. 642 enabled
-monitors still need replacement contracts.
+[PR #10351](https://github.com/colophon-group/jobseek/pull/10351), release
+0.13.965 reviewed at `dd6f470bdb0e3fab4b6521a3e7ce3fc108b6a4b5`, repairs that reader and
+moves the remaining deployment proxy preflight into the installed Go binary.
+The old reader rejects the actual captured production plan; the patched reader
+reproduces its exact Go projection. The shared Go/Python fixture now includes
+API browser ownership. The installed-image codec and network-disabled native
+preflight checks passed at this exact head. Required CI's native and exporter jobs stalled during fixture setup before
+tests; targeted retries passed without repeating the other successful checks.
+The exact-head merge completed as `0a6ddda170478cc6b6469615e086734940cf5fbf`.
+The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37686292179)
+and matching-source [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37686710589)
+are running. **Source965 is not yet promoted at this checkpoint.**
+See the [reader correction](evidence/go-native-api-browser-legacy-reader-repair-2026-10-07.json).
 
-Original ordinary staging passed at 215 with plan
-`f5e7ffe7f51db1175228aee5f7cab022a29fcfa852d7a1880552199d847bfaf3`
-and projection `908296bf1504ad0f751f61432cd5839b4bb7e0bd`.
-**Ordinary activation and independent serving verification passed.** The original
-observation was interrupted after SQL ownership committed. Fresh host/SQL reads
-showed no live operation, the exact pending receipt and the active intended plan.
-The supported same-plan retry restored all ten services and restart policies.
-The 17:04 UTC observation verifies eight health endpoints and 1,012 monitor /
-190 detail completions across 32 profiles. A read-only runtime inspection observed one native
-container restart at 16:21 UTC; its cause remains unproved. New-provider completions remain pending. Queue claim errors and
-unacknowledged attempts require conservation/freshness review; health alone does
-not prove them. See the [source 963 rollout](evidence/go-native-source963-rollout-2026-10-07.json).
-
-Source 962's 11:45 UTC observation remains historical evidence: 1,401 monitor and
-437 detail completions across 23 profiles, 29 canonical samples, eight healthy
-endpoints and no processing diagnostics. See the
-[source 962 rollout](evidence/go-native-source962-rollout-2026-10-07.json) and
-[retirement correction](evidence/go-native-retirement-eligibility-2026-10-07.json).
-Every-profile freshness, whole-service resources/cost and complete Python
-retirement remain unproved.
+The next grouped candidate ports **Deel, HiBob and TRAFFIT together**. It covers
+all ten existing registry configurations and retains configured provider identity,
+public request headers, settings resolution, pagination and publisher policy.
+Seventeen frozen actual Python field cases and native HTTP fixtures pass.
+Six real PostgreSQL/Redis write and publisher settlement scenarios pass; nine
+cold-retirement scenarios pass across all three providers. This candidate is
+not production-owned. Required release checks and fresh production admission
+remain necessary; do not count the ten boards as delivered yet.
 
 ## Continue delivery
 
-1. Continue serving observation against source 963, its exact fresh plan,
-   projection, image pair, B0 receipt and epoch 215. Observe real scheduled monitor
-   and detail completions, canonical fields/descriptions, publisher outcomes,
-   SQL/Redis deadlines, full-stack health and freshness. Preserve pending
-   identity and containment on failure; use existing supported recovery.
-2. Deliver the large shared browser paths together: DOM 239, API sniffer 149 and
-   Inline 8 in the fresh remaining census. Initial API replay options screen 33
-   configurations among 69 explicitly browser-backed API configurations.
-   The API browser profile now includes private capture/credential refresh,
-   single-target browser fetch, bounded trusted HTTP fallback, Python's browser
-   50-page and HTTP 200-page defaults, mTLS service/client and native persistence.
-   Full worker and queue race suites passed in 548.462 and 342.580 seconds at
-   `cc5e3275bd291bdb84beb97e5831c4096af04eaa`. A Docker-context COPY correction
-   at `0b64c8b047a45a504dc1a21b32249b5243eae759` passed actual Lightpanda 1.0.0
-   service/client capture, cookie/CSRF, pagination, later-page publisher denial
-   and cleanup on [both architectures](https://github.com/colophon-group/jobseek/actions/runs/37653235733).
-   The grouped retained-configuration screen admits 55 additional boards: 33
-   API browser, 20 DOM and 2 Inline (7,295 total / 587 remaining **candidate
-   only**); production remains 7,240 / 642.
-   [PR #10350](https://github.com/colophon-group/jobseek/pull/10350) contains the
-   grouped candidate at `0dec76982ac1163851a0f5e0da7ae38dcb3fb8c1`. Its real
-   Lightpanda 1.0.0 API and action service/client fixtures passed on both Linux
-   architectures in [run 37656522604](https://github.com/colophon-group/jobseek/actions/runs/37656522604).
-   Final full local suites and current required PR checks are merge prerequisites;
-   fresh staging and supported deployment remain pending. See the
-   [native API browser candidate proof](evidence/go-api-browser-native-candidate-2026-10-07.json).
-   The same release now carries DOM/Inline wait/evaluate pipelines, including
-   sequential order, asynchronous function/Promise execution, optional and
-   required failure, deadline/cancellation, whole-document recapture, publisher
-   checks before further actions and cleanup before output. Remaining click,
-   wait_for, repeat, overlay and pagination contracts still need verified
-   Lightpanda behavior. The grouped candidate leaves DOM 219, API sniffer 116
-   and Inline 6 in this retained census. See the
-   [grouped candidate proof](evidence/go-grouped-browser-native-candidate-2026-10-07.json).
-   Preserve configured resource policy, proxy and browser identity requirements.
-   Add remaining compatible HTTP/API provider families in groups; do not ship
-   one small type per migration iteration. Recruiterbox's dedicated detail
-   scraper remains a separate contract; qualified JSON-LD assignments already
-   retain native detail ownership.
-3. Replace mandatory Python consumers in compatible groups: worker/browser
-   `crawler run`/`run-browser`; deployment `crawler sync` and schema preparation;
-   activation/epoch/reaper and maintenance commands. Reuse the existing Go queue,
-   persistence and operator contracts. Keep useful Python reference/labelling
-   tools isolated outside production crawler execution.
-4. Observe comparable whole-service CPU/RAM/density/attributable cost and
-   normal-schedule freshness/conservation. Exercise supported full cold reversal
-   and retain rollback evidence/images for the observation window.
-5. Remove production Python, Playwright, Chromium and legacy runtime-only assets
-   once all enabled profiles and mandatory consumers have replacement authority.
-   Verify the complete native image, startup, deployment and maintenance paths.
+1. Finish the original immutable source965 crawler and renderer rollouts.
+   Verify the independently observed cold218 reversal, retired ordinary plan,
+   preserved historical receipts, SQL/Redis ownership absence and restored base
+   writers. Preserve exact build/image identities and re-read deployment holds.
+   Do not retry the incompatible source964 broad plan.
+2. After exact-source promotion, activate/read back B0, then capture fresh
+   canonical configurations, cache and actual posting routes. Stage and activate
+   the resulting source/epoch-bound ordinary plan. Independently verify all
+   service identities, readiness, ownership, normal scheduled completions,
+   canonical content, publisher outcomes, freshness and queue conservation.
+3. Complete the Deel/HiBob/TRAFFIT candidate through required CI and installed
+   identity checks, merge and deploy with the same supported transitions.
+   Continue remaining providers in useful groups. The current remaining census
+   includes DOM 219, API sniffer 116, RSS 17 and Sitemap 11. Shared DOM/Inline
+   click, wait_for, repeat and pagination contracts can qualify multiple types
+   together; test actual Lightpanda behavior and preserve configured resource,
+   proxy and browser requirements. Never weaken admission to reduce the count.
+4. Replace mandatory Python runtime consumers: legacy worker/browser execution,
+   schema preparation, supervision/reaper/metrics and operational entrypoints.
+   Reuse delivered Go sync, queue, schema, reaper, drain and exporter engines;
+   verify each actual installed deployment/maintenance consumer.
+5. Prove comparable whole-service CPU/RAM/density/attributable cost, every-profile
+   normal-schedule freshness/conservation, supported complete cold reversal and
+   the rollback observation window. Synthetic B0 measurements alone are insufficient.
+6. Remove production Python, Playwright, Chromium and runtime-only assets after
+   all enabled profiles and consumers have replacement authority. Verify native
+   image/startup/deployment/maintenance end to end. Preserve useful isolated
+   offline Python tooling and every enabled board.
 
-Batch compatible implementations into useful releases. Finish each rollout with
-serving ownership and real completions before treating it as migration progress.
-Add infrastructure or fixtures only for a changed contract or observed failure.
-At each checkpoint record remaining enabled profiles and production Python
-consumers. Keep implementation, staging, serving and observation status distinct.
+Maintain separate implementation, admission, ownership and natural-serving
+status. Batch multiple compatible types per iteration. Add infrastructure or
+fixtures for an observed failure or a changed contract. Keep the full delivery
+goal active until all completion evidence and production retirement are done.
 
 ## Operational handoff
 
