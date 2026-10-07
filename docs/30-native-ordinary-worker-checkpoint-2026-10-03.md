@@ -5,6 +5,90 @@
 The full migration goal is **active and incomplete**. Ship multiple provider
 and variant types per release, sharing reference verification, CI and cutover.
 
+### Source960 serving checkpoint — 04:55 UTC October7
+
+Original supported ordinary activation succeeded at211. Independent source/image/
+B0-receipt/plan readback verifies eight healthy endpoints and ten restart-armed
+services. Fresh serving authority covers7,186 monitors,2,616 detail boards and
+1,463,861 scheduled detail postings. Normal scheduled work completed four
+monitors and four details across four profiles; eight monitor and four detail
+canonical samples passed, with no bounded processing diagnostics. This initial
+readback does not prove every-profile freshness or complete-lane costs.
+See [source960 production evidence](evidence/go-native-source960-production-2026-10-07.json).
+
+The next grouped961 branch is committed/pushed with94 profiles and the identical
+runtime trees proved by full worker503.995s/queue302.496s race tests and the
+installed Lightpanda capture proof on both Linux architectures. Finish remaining
+RSS transport/properties/identity/legacy variants before publication/adoption;
+then batch the shared DOM/API sniffer/Inline browser paths identified in the
+fresh696-monitor census. Full migration and Python retirement remain unfinished.
+
+### Earlier delivery entries — retained chronology
+
+### Source960 admission and grouped961 verification — October7
+
+Original release960 deployment37570306419 and promotion succeeded. Independent
+cold210 readback verified exact images and a healthy armed base fleet. Supported
+B0 activation/readback passed at211; fresh admission now qualifies7,186 monitors
+and2,616 detail boards with1,463,861 of1,491,009 scheduled detail postings.
+Forty-one detail boards retain legacy authority after route/cache checks.
+New ordinary plan9954e179ec27e96a8076997e833e07ed537ef904cb9c5f974f5667cfd2b689a0,
+projection21266722eeeb059d58dd7e429aacd59e2bf4123b is staged. Original activation
+is waiting for six legacy SQL board leases, last expiring04:52:45 UTC; no SQL
+blockers were observed. Do not claim ordinary serving until activation/readback.
+
+At committed961 checkpoint da4aea356, complete worker/queue race suites passed
+503.995/302.496 seconds with required PostgreSQL/Redis. The installed renderer
+raw-response proof passed on both Linux architectures at75e33b065; renderer and
+adapter code is unchanged in da4aea356. The pending transport/property work
+still prevents adoption of the remaining RSS variants. The new remaining
+census identifies696 monitors across75 types, including253 DOM,149 API sniffer
+and19 Inline. Target their shared browser paths in a large subsequent group.
+
+### Current rollout and RSS batch — 04:23 UTC October7
+
+Combined release960 merged in PR10347 as source
+`acb4bb9e7627c541f7ff0aba4bb0c1ca4995f48b`; its merge tree equals the reviewed
+head and required/installed/pilot/deploy-gate checks passed. Original immutable
+deployment37570306419 remains in progress. Supported source958 ordinary
+retirement, B0 rollback and selector clear completed; independent cold210 proof
+verifies the exact healthy base fleet and retained historical audit receipts.
+After terminal960 promotion, verify exact cold source/images, activate supported
+B0, obtain a fresh source/receipt census and actual posting routes, and activate
+a new ordinary plan. Historical958 cohort counts below do not authorize960.
+
+Candidate961 now includes16 actual Python pagination configuration references,
+real browser rich-row interrupted-history adoption/reversal proof, and raw final-
+document response capture through the existing Lightpanda contract. Local
+adapter race1.339s and full renderer race8.486s pass; maximum2,000,000-byte capture
+fits the existing wire frame. Capture preserves original XML bytes/CDATA and
+correlated policy signals; requests for other resources/actions remain refused.
+The existing installed Linux readiness suite now exercises raw RSS capture,
+redirect correlation and resource limits; that actual-browser proof remains
+passed on amd64 and arm64 in original pilot37571180241 at75e33b065.
+Thirteen actual Python traversal references additionally pass in2.178s, including
+original200-job prefixes spanning pages, repeated pages, limits and skipped items.
+The traversal core does not grant pagination ownership; transport/persistence
+integration remains required. Affine pagination/proxy feeds and SuccessFactors properties still need
+integration before this grouped release is ready for adoption.
+
+### Next grouped RSS integration candidate961 — October7
+
+The next batch now connects SuccessFactors legacy XML and Generic RSS structured
+summaries to native direct discovery with four additional profiles (94 compiled).
+Twenty-four actual Python item cases plus seven strict feed-identity cases pass;
+18 PostgreSQL/Redis worker cases pass in9.702 seconds, and39 grouped provider
+cold cases pass in31.351 seconds. Tests verify title, location, employment,
+remote policy, descriptions/upload state, failed-inventory absence handling and
+queue deadlines. Exact tenant/company and parser options bind ownership.
+
+This candidate is not published or adopted. Nine actual Python stream references now prove that malformed XML and late
+summary-parser failures preserve complete200-job batches. Native canonical tests
+retain exactly200 accepted writes without finalizing absence. Complete
+bounded generic/WordPress pagination, SuccessFactors properties and rendered
+feed paths, then full suites and installed CI. Keep these variants grouped in
+the same delivery. Current evidence is focused candidate proof.
+
 ### Combined delivery update — 03:32 UTC October7
 
 PR #10347 now groups DOM direct/proxy/Lightpanda rich rows, HR Manager RSS and

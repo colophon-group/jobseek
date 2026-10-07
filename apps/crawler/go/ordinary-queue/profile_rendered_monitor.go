@@ -9,14 +9,14 @@ import (
 const domRenderedMonitorProfile = "dom.rendered-urls/v1"
 
 func MonitorWorker(profile GreenhouseMonitorProfile) WorkerType {
-	if profile.Profile == dayforceMonitorProfile || profile.Profile == domRenderedMonitorProfile || profile.Profile == domRenderedRowsProfile || profile.Profile == "nextdata.rendered-items/v1" || profile.Profile == "nextdata.rendered-urls/v1" {
+	if profile.Profile == inlineRenderedMonitorProfile || RSSRenderedProfile(profile.Profile) || profile.Profile == dayforceMonitorProfile || profile.Profile == domRenderedMonitorProfile || profile.Profile == domRenderedRowsProfile || profile.Profile == "nextdata.rendered-items/v1" || profile.Profile == "nextdata.rendered-urls/v1" {
 		return Browser
 	}
 	return Simple
 }
 
 func monitorWorkerProfile(config map[string]string) WorkerType {
-	if (config["crawler_type"] == "dayforce" || config["crawler_type"] == "dom" || config["crawler_type"] == "nextdata") && config["monitor_needs_browser"] == "1" {
+	if (config["crawler_type"] == "inline" || config["crawler_type"] == "dayforce" || config["crawler_type"] == "dom" || config["crawler_type"] == "nextdata" || config["crawler_type"] == "rss") && config["monitor_needs_browser"] == "1" {
 		return Browser
 	}
 	return Simple

@@ -28,11 +28,14 @@ func (runner runtimeV1Runner) Run(
 ) lightpandaadapter.RunnerOutcome {
 	input := bound.Input()
 	if input == nil || input.Plan == nil || input.Plan.Navigation == nil ||
-		len(input.Plan.Evaluations) > 1 {
+		len(input.Plan.Evaluations) > 1 || len(input.Plan.Captures) > 1 {
 		return internalRunnerFailure(bound)
 	}
 
 	task := Task{URL: input.Plan.TargetUrl}
+	if len(input.Plan.Captures) == 1 {
+		task.ResponseBodyLimit = input.Plan.Captures[0].MaxBytes
+	}
 	navigation := input.Plan.Navigation
 	if navigation.WaitUntil != runtimev1.WaitCondition_WAIT_CONDITION_LOAD || navigation.Fallback != nil || navigation.TransportRetries != 0 {
 		task.Navigation = &navigationOptions{wait: navigation.WaitUntil, timeout: time.Duration(navigation.TimeoutMs) * time.Millisecond, transportRetries: navigation.TransportRetries}
@@ -126,6 +129,9 @@ func (runner runtimeV1Runner) Run(
 			EvaluationID: input.Plan.Evaluations[0].EvaluationId,
 			JSON:         append([]byte(nil), result.Expression...),
 		}}
+	}
+	if len(input.Plan.Captures) == 1 {
+		raw.Captures = []lightpandaadapter.RawCapture{{CaptureID: input.Plan.Captures[0].CaptureId, Body: result.ResponseBody}}
 	}
 	return lightpandaadapter.NewRunnerSuccess(bound, raw)
 }

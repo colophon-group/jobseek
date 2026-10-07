@@ -1,0 +1,208 @@
+{
+  "cases": [
+    {
+      "name": "generic-0",
+      "preset": "generic",
+      "metadata": {},
+      "expected": null,
+      "error": false
+    },
+    {
+      "name": "generic-1",
+      "preset": "generic",
+      "metadata": {
+        "pagination": null
+      },
+      "expected": null,
+      "error": false
+    },
+    {
+      "name": "generic-2",
+      "preset": "generic",
+      "metadata": {
+        "pagination": {
+          "param_name": "page",
+          "page_size": 20,
+          "max_pages": 1000
+        }
+      },
+      "expected": {
+        "Param": "page",
+        "Start": 1,
+        "Increment": 1,
+        "PageSize": 20,
+        "MaxPages": 1000
+      },
+      "error": false
+    },
+    {
+      "name": "wp_job_manager-3",
+      "preset": "wp_job_manager",
+      "metadata": {},
+      "expected": {
+        "Param": "paged",
+        "Start": 1,
+        "Increment": 1,
+        "PageSize": 10,
+        "MaxPages": 0
+      },
+      "error": false
+    },
+    {
+      "name": "wp_job_manager-4",
+      "preset": "wp_job_manager",
+      "metadata": {
+        "pagination": null
+      },
+      "expected": null,
+      "error": true
+    },
+    {
+      "name": "successfactors-5",
+      "preset": "successfactors",
+      "metadata": {
+        "pagination": {
+          "param_name": "page",
+          "page_size": 20,
+          "max_pages": 1000
+        }
+      },
+      "expected": null,
+      "error": true
+    },
+    {
+      "name": "generic-6",
+      "preset": "generic",
+      "metadata": {
+        "pagination": {
+          "param_name": "page",
+          "page_size": 20,
+          "max_pages": 1000,
+          "start": false
+        }
+      },
+      "expected": null,
+      "error": true
+    },
+    {
+      "name": "generic-7",
+      "preset": "generic",
+      "metadata": {
+        "pagination": {
+          "param_name": "page",
+          "page_size": 20,
+          "max_pages": 1000,
+          "start": 0
+        }
+      },
+      "expected": null,
+      "error": true
+    },
+    {
+      "name": "generic-8",
+      "preset": "generic",
+      "metadata": {
+        "pagination": {
+          "param_name": "page",
+          "page_size": 20,
+          "max_pages": 1000,
+          "increment": 1.0
+        }
+      },
+      "expected": null,
+      "error": true
+    },
+    {
+      "name": "generic-9",
+      "preset": "generic",
+      "metadata": {
+        "pagination": {
+          "param_name": "page",
+          "page_size": 20,
+          "max_pages": 1000,
+          "increment": -1
+        }
+      },
+      "expected": null,
+      "error": true
+    },
+    {
+      "name": "generic-10",
+      "preset": "generic",
+      "metadata": {
+        "pagination": {
+          "param_name": "page",
+          "page_size": 1001,
+          "max_pages": 1000
+        }
+      },
+      "expected": null,
+      "error": true
+    },
+    {
+      "name": "generic-11",
+      "preset": "generic",
+      "metadata": {
+        "pagination": {
+          "param_name": "page",
+          "page_size": 20,
+          "max_pages": 10001
+        }
+      },
+      "expected": null,
+      "error": true
+    },
+    {
+      "name": "generic-12",
+      "preset": "generic",
+      "metadata": {
+        "pagination": {
+          "param_name": "1page",
+          "page_size": 20,
+          "max_pages": 1000
+        }
+      },
+      "expected": null,
+      "error": true
+    },
+    {
+      "name": "generic-13",
+      "preset": "generic",
+      "metadata": {
+        "pagination": {
+          "param_name": "page",
+          "page_size": 20,
+          "max_pages": 1000,
+          "unknown": 1
+        }
+      },
+      "expected": null,
+      "error": true
+    },
+    {
+      "name": "generic-14",
+      "preset": "generic",
+      "metadata": {
+        "pagination": {
+          "param_name": "page",
+          "page_size": 20,
+          "max_pages": 1000,
+          "start": 10000000
+        }
+      },
+      "expected": null,
+      "error": true
+    },
+    {
+      "name": "generic-15",
+      "preset": "generic",
+      "metadata": {
+        "pagination": {
+          "param_name": "page"
+        }
+      },
+      "expected": null,
+      "error": true
+    }
+  ]
+}

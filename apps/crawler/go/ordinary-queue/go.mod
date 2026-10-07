@@ -55,6 +55,7 @@ require github.com/colophon-group/jobseek/apps/crawler/go/dom-detail v0.0.0
 replace github.com/colophon-group/jobseek/apps/crawler/go/dom-detail => ../dom-detail
 
 require (
+	github.com/colophon-group/jobseek/apps/crawler/contracts v0.0.0
 	github.com/colophon-group/jobseek/apps/crawler/go/sitemap-monitor v0.0.0
 	github.com/dlclark/regexp2/v2 v2.8.0
 )

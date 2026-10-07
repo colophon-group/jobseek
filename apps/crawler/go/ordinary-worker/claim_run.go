@@ -314,7 +314,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		discovery, fetchErr = discoverAlmaInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "eightfold" {
 		discovery, fetchErr = discoverEightfoldInventory(ctx, http.client, profile, task.Config)
-	} else if profile.Provider == "inline" {
+	} else if profile.Provider == "inline" && task.Worker == queue.Simple {
 		discovery, fetchErr = discoverInlineInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "beisen" {
 		discovery, fetchErr = discoverBeisenInventory(ctx, http.client, profile, task.Config)
@@ -381,11 +381,29 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		}
 		return finishSuccess(terminal)
 	}
+	if fetchErr != nil {
+		var prefix *rssStreamPrefixError
+		if profile.Provider == "rss" && task.Worker == queue.Simple && errors.As(fetchErr, &prefix) && len(discovery.Jobs) > 0 {
+			processed, _, rejected, err := writeFeedPolicyInventory(ctx, cycle, preparer, task.Config, discovery)
+			if processed != nil {
+				result.Batches = processed.Batches
+			}
+			if err != nil {
+				return failure("processing", err)
+			}
+			if rejected > 0 {
+				return failure("provider_boundary", queue.ErrProviderBoundary)
+			}
+		}
+	}
 	if response := discovery.Response; response != nil {
 		// These private fields come only from this sealed-client fetch. Bind the
 		// initial resource to this claim's endpoint or validated page. RSS may
 		// stop at a publisher header; incomplete inventories never reach writes.
 		matches := richResponseMatches(profile, response.endpoint)
+		if profile.Provider == "rss" {
+			matches = matches || queue.RSSMonitorResourceMatches(profile, task.Config, response.endpoint)
+		}
 		if profile.Provider == "dom" {
 			matches = queue.DOMMonitorResourceMatches(profile, task.Config, response.endpoint)
 		}
@@ -422,7 +440,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		}
 		if response.reserved {
 			initial := profile.Endpoint
-			if queue.SecondaryProvider(profile.Provider) || profile.Profile == "rss.hr_manager-skip/v1" || profile.Profile == "rss.hr_manager-items/v1" {
+			if profile.Provider == "rss" && profile.RSSPagination != nil || queue.SecondaryProvider(profile.Provider) || profile.Profile == "rss.hr_manager-skip/v1" || profile.Profile == "rss.hr_manager-items/v1" {
 				initial = response.endpoint
 			}
 			if profile.Provider == "dom" || profile.Provider == "mokahr" || profile.Provider == "almacareer" || profile.Provider == "eightfold" || profile.Provider == "inline" || profile.Provider == "beisen" || profile.Provider == "api_sniffer" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "oracle_hcm" || profile.Provider == "icims" || profile.Provider == "phenom" || profile.Provider == "nextdata" {

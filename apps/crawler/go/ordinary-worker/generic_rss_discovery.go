@@ -43,7 +43,23 @@ func parseGenericRSS(raw []byte) (RichDiscovery, error) {
 }
 
 func parseRSSProvider(raw []byte, preset string) (RichDiscovery, error) {
+	return parseRSSProviderPrefix(raw, preset, false)
+}
+
+func parseRSSProviderPrefix(raw []byte, preset string, preserve bool) (RichDiscovery, error) {
+	return parseRSSProviderPage(raw, preset, preserve, true)
+}
+
+func parseRSSProviderPage(raw []byte, preset string, preserve, round bool) (out RichDiscovery, err error) {
 	result := RichDiscovery{Jobs: []RichMonitorJob{}}
+	defer func() {
+		if preserve && err != nil {
+			out = result
+			if round {
+				out, err = rssValidatedPrefix(result, err)
+			}
+		}
+	}()
 	head := strings.TrimLeft(string(raw), "\ufeff \t\r\n")
 	lower := strings.ToLower(head)
 	if !strings.HasPrefix(lower, "<?xml") && !strings.HasPrefix(lower, "<rss") && !strings.HasPrefix(lower, "<feed") {
@@ -84,6 +100,7 @@ func parseRSSProvider(raw []byte, preset string) (RichDiscovery, error) {
 		if !ok || start.Name.Local != "item" {
 			continue
 		}
+		result.FeedItems++
 		fields := map[string]string{}
 		for {
 			token, err = d.Token()
@@ -131,10 +148,23 @@ type genericFeedResource string
 func (f genericFeedResource) ResourceMatches(raw string) bool { return raw == string(f) }
 
 func discoverGenericRSS(ctx context.Context, client *http.Client, profile queue.GreenhouseMonitorProfile) (RichDiscovery, error) {
+	if profile.RSSPagination != nil {
+		return collectRSSPages(ctx, profile.Endpoint, profile.RSSPagination, false, func(ctx context.Context, endpoint string) (RichDiscovery, error) {
+			page := profile
+			page.Endpoint = endpoint
+			return discoverGenericRSSPage(ctx, client, page, true)
+		})
+	}
+	return discoverGenericRSSPage(ctx, client, profile, false)
+}
+func discoverGenericRSSPage(ctx context.Context, client *http.Client, profile queue.GreenhouseMonitorProfile, keepTail bool) (RichDiscovery, error) {
 	result := RichDiscovery{Jobs: []RichMonitorJob{}}
 	for attempt := 0; attempt < 3; attempt++ {
 		body, observed, err := fetchProviderStatusResource(ctx, client, genericFeedResource(profile.Endpoint), profile.Endpoint, nil, nil, 32<<20, nil)
 		result.Response = observed
+		if err == nil && observed != nil && observed.status != 200 {
+			return result, &DiscoveryError{Kind: "http_status", Status: observed.status}
+		}
 		if err == nil {
 			preset := "generic"
 			if strings.HasPrefix(profile.Profile, "rss.hr_manager-") {
@@ -146,7 +176,24 @@ func discoverGenericRSS(ctx context.Context, client *http.Client, profile queue.
 			if strings.HasPrefix(profile.Profile, "rss.zoho_recruit-") {
 				preset = "zoho_recruit"
 			}
-			parsed, e := parseRSSProvider(body, preset)
+			var parsed RichDiscovery
+			var e error
+			switch {
+			case strings.HasPrefix(profile.Profile, "rss.generic-summary-"):
+				parsed, e = parseGenericSummaryPage(body, !keepTail)
+			case strings.HasPrefix(profile.Profile, "rss.successfactors-legacy-xml-"):
+				origin, company, err := queue.SuccessFactorsLegacyXMLIdentity(profile.Endpoint)
+				if err != nil {
+					return result, err
+				}
+				parsed, e = parseSFLegacyXML(body, origin, company)
+			default:
+				if keepTail {
+					parsed, e = parseRSSProviderPage(body, preset, true, false)
+				} else {
+					parsed, e = parseRSSProvider(body, preset)
+				}
+			}
 			parsed.Response = observed
 			return parsed, e
 		}

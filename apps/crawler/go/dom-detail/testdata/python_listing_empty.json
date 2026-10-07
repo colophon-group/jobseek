@@ -1,0 +1,98 @@
+[
+  {
+    "name": "nested-whitespace",
+    "source": "<div class=\"empty\"> NO <span> vacancies </span> TODAY </div>",
+    "selector": ".empty",
+    "text": "no vacancies",
+    "job_count": 0,
+    "accepted": true
+  },
+  {
+    "name": "first-marker-only",
+    "source": "<div class=\"empty\">Other</div><div class=\"empty\">No vacancies</div>",
+    "selector": ".empty",
+    "text": "No vacancies",
+    "job_count": 0,
+    "accepted": false
+  },
+  {
+    "name": "casefold",
+    "source": "<div class=\"empty\">Straße</div>",
+    "selector": ".empty",
+    "text": "STRASSE",
+    "job_count": 0,
+    "accepted": true
+  },
+  {
+    "name": "selector-only",
+    "source": "<p class=\"empty\">Nothing here</p>",
+    "selector": ".empty",
+    "text": null,
+    "job_count": 0,
+    "accepted": true
+  },
+  {
+    "name": "missing-marker",
+    "source": "<p>Nothing here</p>",
+    "selector": ".empty",
+    "text": null,
+    "job_count": 0,
+    "accepted": false
+  },
+  {
+    "name": "wrong-text",
+    "source": "<p class=\"empty\">Open jobs</p>",
+    "selector": ".empty",
+    "text": "No vacancies",
+    "job_count": 0,
+    "accepted": false
+  },
+  {
+    "name": "nonempty-fast-path",
+    "source": "<p>Open jobs</p>",
+    "selector": ".empty",
+    "text": "No vacancies",
+    "job_count": 1,
+    "accepted": true
+  },
+  {
+    "name": "self-link-is-not-job",
+    "source": "<p>Missing</p>",
+    "selector": ".empty",
+    "text": "No vacancies",
+    "job_count": 0,
+    "accepted": false
+  },
+  {
+    "name": "self-link-with-marker",
+    "source": "<p class=\"empty\">No vacancies</p>",
+    "selector": ".empty",
+    "text": "No vacancies",
+    "job_count": 0,
+    "accepted": true
+  },
+  {
+    "name": "hidden-text-is-legacy-evidence",
+    "source": "<p class=\"empty\" hidden>No vacancies</p>",
+    "selector": ".empty",
+    "text": "No vacancies",
+    "job_count": 0,
+    "accepted": true
+  },
+  {
+    "name": "mixed-text",
+    "source": "<p class=\"empty\">No<b>vacancies</b></p>",
+    "selector": ".empty",
+    "text": "No vacancies",
+    "job_count": 0,
+    "accepted": true
+  },
+  {
+    "name": "unicode-spaces",
+    "source": "<p class=\"empty\">No vacancies</p>",
+    "selector": ".empty",
+    "text": "No vacancies",
+    "job_count": 0,
+    "accepted": true
+  }
+]

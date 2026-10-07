@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "candidate_version": "0.13.962",
+  "scope": "offline compiler screening of source960 snapshot; fresh deployed-source admission and activation still required",
+  "compiled_profiles": 103,
+  "monitor_boards": 7212,
+  "new_profiles": {
+    "dom.direct-urls/v1": 13,
+    "dom.rendered-urls/v1": 1,
+    "inline.rendered-items/v1": 11,
+    "rss.successfactors-legacy-xml-skip/v1": 1
+  },
+  "remaining_monitors": 670,
+  "cache_mismatches": 0,
+  "rendered_inline_canonical_cases": 8,
+  "rendered_inline_race_seconds": 3.605,
+  "python_empty_state_cases": 12,
+  "dom_core_full_race_seconds": 2.656,
+  "python_ownership_projection_cases": 13,
+  "dom_canonical_and_inline_cold_cases": "passed",
+  "production_adopted": false,
+  "full_migration_complete": false,
+  "canonical_cases": 46,
+  "canonical_race_seconds": 18.617,
+  "new_inline_cold_cases": 3,
+  "new_inline_cold_race_seconds": 4.289,
+  "offline_screen_source": "5601b6230",
+  "full_suites": "RSS7fc worker528.247/queue309.648 passed; combined103-profile candidate requires fresh full suites and CI"
+}

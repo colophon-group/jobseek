@@ -24,6 +24,7 @@ import (
 	"time"
 
 	df "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/dayforcesession"
+	feed "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/feedsession"
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/framing"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/lightpandaadapter"
@@ -463,6 +464,11 @@ func (service *runtimeV1Service) handleConnection(
 		return
 	}
 	if bytes.HasPrefix(bytes.TrimSpace(payload), []byte("{")) {
+		var feedRequest feed.Request
+		if feed.Decode(payload, feed.RequestLimit, &feedRequest) == nil && feedRequest.Valid() {
+			service.handleFeed(connectionContext, tlsConnection, reader, feedRequest)
+			return
+		}
 		var request df.Request
 		if df.Decode(payload, df.RequestLimit, &request) != nil || !request.Valid() {
 			return

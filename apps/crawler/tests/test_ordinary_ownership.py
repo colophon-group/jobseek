@@ -536,8 +536,15 @@ def test_detail_projection_is_independent_of_monitor_membership(profile):
         "dom.rendered-urls/v1",
         "dom.rendered-rows/v1",
         "dayforce.session-search/v1",
+        "inline.rendered-items/v1",
         "nextdata.rendered-items/v1",
         "nextdata.rendered-urls/v1",
+        "rss.rendered-generic-skip/v1",
+        "rss.rendered-generic-items/v1",
+        "rss.rendered-generic-summary-skip/v1",
+        "rss.rendered-generic-summary-items/v1",
+        "rss.rendered-wp_job_manager-skip/v1",
+        "rss.rendered-wp_job_manager-items/v1",
     ],
 )
 def test_rendered_monitor_projection_preserves_exact_worker_boundary(profile):

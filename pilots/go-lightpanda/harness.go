@@ -72,10 +72,12 @@ var (
 // Task is intentionally small: the pilot navigates once and optionally
 // evaluates one synchronous JavaScript expression.
 type Task struct {
-	URL        string
-	Evaluation *TaskEvaluation
-	Navigation *navigationOptions
-	Dayforce   *dayforceTask
+	URL               string
+	Evaluation        *TaskEvaluation
+	Navigation        *navigationOptions
+	Dayforce          *dayforceTask
+	Feed              *feedTask
+	ResponseBodyLimit uint64
 }
 
 // TaskEvaluation is present exactly for B1 work. Presence is explicit so an
@@ -87,12 +89,14 @@ type TaskEvaluation struct {
 
 // Result contains only data from the top-level document.
 type Result struct {
-	ResourcePolicy *runtimev1.ResourcePolicySignals `json:"-"`
-	Status         int                              `json:"status"`
-	FinalURL       string                           `json:"final_url"`
-	HTML           string                           `json:"html"`
-	HTMLPresent    bool                             `json:"-"`
-	Expression     json.RawMessage                  `json:"expression"`
+	feedSessionSettled bool
+	ResourcePolicy     *runtimev1.ResourcePolicySignals `json:"-"`
+	Status             int                              `json:"status"`
+	FinalURL           string                           `json:"final_url"`
+	HTML               string                           `json:"html"`
+	HTMLPresent        bool                             `json:"-"`
+	ResponseBody       []byte                           `json:"-"`
+	Expression         json.RawMessage                  `json:"expression"`
 }
 
 type managedProcess interface {
@@ -256,6 +260,12 @@ func executeTask(ctx context.Context, deps dependencies, process managedProcess,
 }
 
 func validateTask(task Task) error {
+	if task.Feed != nil && (!task.Feed.request.Valid() || task.Feed.converse == nil || task.Feed.request.FeedURL != task.URL || task.Dayforce != nil || task.Evaluation != nil || task.ResponseBodyLimit != 2_000_000) {
+		return errors.New("invalid feed session task")
+	}
+	if task.ResponseBodyLimit > 2_000_000 || (task.ResponseBodyLimit != 0 && (task.Dayforce != nil || task.Evaluation != nil)) {
+		return errors.New("invalid main-document response capture")
+	}
 	if task.Dayforce != nil && (!task.Dayforce.request.Valid() || task.URL != task.Dayforce.request.TargetURL || task.Evaluation != nil || task.Dayforce.converse == nil) {
 		return errDayforceSession
 	}
@@ -310,6 +320,18 @@ func validateCDPEndpoint(raw string, expectedPort int) error {
 }
 
 func validateResult(task Task, result Result) error {
+	if task.Feed != nil {
+		if !result.feedSessionSettled {
+			return errors.New("feed session unfinished")
+		}
+		return nil
+	}
+	if task.ResponseBodyLimit == 0 && result.ResponseBody != nil || task.ResponseBodyLimit != 0 && result.ResponseBody == nil {
+		return errors.New("main-document response capture presence mismatch")
+	}
+	if uint64(len(result.ResponseBody)) > task.ResponseBodyLimit {
+		return errResourceLimit
+	}
 	if result.Status < 100 || result.Status > 599 {
 		return fmt.Errorf("missing or invalid main-document response status %d", result.Status)
 	}
@@ -758,6 +780,7 @@ type mainDocumentResponse struct {
 	status         int64
 	url            string
 	loaderID       cdp.LoaderID
+	requestID      network.RequestID
 }
 
 type mainDocumentFrame struct {
@@ -812,6 +835,30 @@ func (chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (
 	targetCtx, cancelTarget := chromedp.NewContext(allocatorCtx, targetOptions...)
 	defer cancelTarget()
 
+	if task.Feed != nil {
+		// chromedp binds its first CDP connection to the context of its first
+		// Run. Initialize at session scope so page-listener cancellation does
+		// not close the connection needed by the next feed page.
+		if err := chromedp.Run(targetCtx); err != nil {
+			return Result{}, fmt.Errorf("initialize feed session: %w", err)
+		}
+		return task.Feed.converse(ctx, func(pageCtx context.Context, endpoint string) (Result, error) {
+			step := task
+			step.Feed = nil
+			step.URL = endpoint
+			return executeOnTarget(pageCtx, targetCtx, step)
+		})
+	}
+	return executeOnTarget(ctx, targetCtx, task)
+}
+
+func executeOnTarget(ctx, target context.Context, task Task) (Result, error) {
+	targetCtx, cancel := context.WithCancel(target)
+	defer cancel()
+	if ctx.Err() != nil {
+		return Result{}, ctx.Err()
+	}
+
 	var mainFrame cdp.FrameID
 	var latestResponse mainDocumentResponse
 	var responseMu sync.Mutex
@@ -849,9 +896,10 @@ func (chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (
 		signals, invalid := mainDocumentPolicySignals(eventResponse.Response.Headers)
 		latestResponse = mainDocumentResponse{
 			resourcePolicy: signals, policyInvalid: invalid,
-			status:   eventResponse.Response.Status,
-			url:      eventResponse.Response.URL,
-			loaderID: eventResponse.LoaderID,
+			status:    eventResponse.Response.Status,
+			url:       eventResponse.Response.URL,
+			loaderID:  eventResponse.LoaderID,
+			requestID: eventResponse.RequestID,
 		}
 		responseMu.Unlock()
 	})
@@ -860,11 +908,16 @@ func (chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (
 	var html string
 	var capturedFrame mainDocumentFrame
 	navigate := chromedp.Navigate(task.URL)
-	if task.Navigation != nil {
-		state := newNavigationState(mainFrame)
+	var state *navigationState
+	if task.Navigation != nil || task.ResponseBodyLimit != 0 {
+		state = newNavigationState(mainFrame)
 		chromedp.ListenTarget(targetCtx, func(event any) { state.observe(event, time.Now()) })
 		navigate = chromedp.ActionFunc(func(actionCtx context.Context) error {
-			return navigateDocument(actionCtx, state, *task.Navigation, func(navigationCtx context.Context) error {
+			options := navigationOptions{wait: runtimev1.WaitCondition_WAIT_CONDITION_LOAD, timeout: 30 * time.Second}
+			if task.Navigation != nil {
+				options = *task.Navigation
+			}
+			return navigateDocument(actionCtx, state, options, func(navigationCtx context.Context) error {
 				// A timeout cancels only this command/wait. The target and its
 				// committed document remain alive for the readiness fallback.
 				commandCtx := cdp.WithExecutor(navigationCtx, chromedp.FromContext(actionCtx).Target)
@@ -880,11 +933,14 @@ func (chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (
 			})
 		})
 	}
+	captureDocument := chromedp.Tasks{}
+	if task.ResponseBodyLimit == 0 {
+		captureDocument = append(captureDocument, chromedp.WaitReady("html", chromedp.ByQuery), chromedp.OuterHTML("html", &html, chromedp.ByQuery))
+	}
 	if err := chromedp.Run(targetCtx,
 		navigate,
-		chromedp.WaitReady("html", chromedp.ByQuery),
+		captureDocument,
 		chromedp.Location(&finalURL),
-		chromedp.OuterHTML("html", &html, chromedp.ByQuery),
 		chromedp.ActionFunc(func(actionCtx context.Context) error {
 			frameTree, err := page.GetFrameTree().Do(actionCtx)
 			if err != nil {
@@ -914,6 +970,26 @@ func (chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (
 	}
 	if err != nil {
 		return Result{}, err
+	}
+
+	var responseBody []byte
+	if task.ResponseBodyLimit != 0 {
+		if err := waitForDocumentBody(targetCtx, state, capturedResponse.requestID); err != nil {
+			return Result{}, err
+		}
+		if err := chromedp.Run(targetCtx, chromedp.ActionFunc(func(actionCtx context.Context) error {
+			body, err := network.GetResponseBody(capturedResponse.requestID).Do(actionCtx)
+			if err != nil {
+				return errors.New("main-document response body unavailable")
+			}
+			if uint64(len(body)) > task.ResponseBodyLimit {
+				return errResourceLimit
+			}
+			responseBody = append([]byte{}, body...)
+			return nil
+		})); err != nil {
+			return Result{}, err
+		}
 	}
 	if task.Dayforce != nil {
 		if err := executeDayforceConversation(targetCtx, task.Dayforce, dayforceCapture, int(mainStatus), finalURL, html, capturedResponse.resourcePolicy); err != nil {
@@ -949,6 +1025,7 @@ func (chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (
 		FinalURL:       finalURL,
 		HTML:           html,
 		HTMLPresent:    true,
+		ResponseBody:   responseBody,
 		Expression:     expression,
 	}, nil
 }

@@ -20,13 +20,13 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 	} else {
 		preset = "generic"
 	}
-	if preset != "teamtailor" && preset != "successfactors" && preset != "generic" && preset != "governmentjobs" && preset != "zoho_recruit" && preset != "hr_manager" {
+	if preset != "teamtailor" && preset != "successfactors" && preset != "generic" && preset != "governmentjobs" && preset != "zoho_recruit" && preset != "hr_manager" && preset != "wp_job_manager" {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
 	if raw, ok := md["variant"]; ok && json.Unmarshal(raw, &variant) != nil {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
-	if preset != "successfactors" && variant != "" || preset == "successfactors" && variant != "" && variant != "feed" {
+	if preset != "successfactors" && variant != "" || preset == "successfactors" && variant != "" && variant != "feed" && variant != "legacy_xml" {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
 	if raw, ok := md["feed_url"]; ok && json.Unmarshal(raw, &feed) != nil {
@@ -61,6 +61,9 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 		}
 		path := "/jobs.rss"
+		if preset == "wp_job_manager" {
+			path = "/?feed=job_feed"
+		}
 		if preset == "successfactors" {
 			path = "/googlefeed.xml"
 		}
@@ -70,9 +73,19 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 	if err != nil || len(feed) > 8192 || u.Scheme != "https" || u.Hostname() == "" || u.Host != u.Hostname() || u.User != nil || u.Opaque != "" || u.Fragment != "" || strings.ContainsAny(feed, "\x00\r\n") {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
-	validFeed := preset == "generic" || preset == "zoho_recruit" || preset == "governmentjobs" || preset == "hr_manager" || u.RawQuery == "" && strings.HasSuffix(u.Path, "/jobs.rss")
+	validFeed := preset == "wp_job_manager" || preset == "generic" || preset == "zoho_recruit" || preset == "governmentjobs" || preset == "hr_manager" || u.RawQuery == "" && strings.HasSuffix(u.Path, "/jobs.rss")
 	if preset == "successfactors" {
 		validFeed = u.RawQuery == "" && strings.EqualFold(strings.TrimRight(u.Path, "/"), "/googlefeed.xml") || u.Path == "/services/rss/category/" && rssCategoryQuery.MatchString(u.RawQuery)
+		if variant == "legacy_xml" {
+			_, company, err := SuccessFactorsLegacyXMLIdentity(feed)
+			validFeed = err == nil
+			if raw, exists := md["company"]; exists && string(raw) != "null" {
+				var configured string
+				if json.Unmarshal(raw, &configured) != nil || strings.TrimSpace(configured) != company {
+					validFeed = false
+				}
+			}
+		}
 	}
 	if !validFeed {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
@@ -83,9 +96,27 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 	if _, err := FeedMonitorURLRules(config); err != nil {
 		return GreenhouseMonitorProfile{}, err
 	}
-	name := "rss." + preset + "-skip/v1"
+	profilePreset := preset
+	if variant == "legacy_xml" {
+		profilePreset = "successfactors-legacy-xml"
+	}
+	if raw, ok := md["description_mode"]; ok && string(raw) != "null" {
+		var mode string
+		if preset != "generic" || json.Unmarshal(raw, &mode) != nil || mode != "title_employment_location" {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		profilePreset = "generic-summary"
+	}
+	_, pagination, options, err := RSSOptions(config)
+	if err != nil {
+		return GreenhouseMonitorProfile{}, err
+	}
+	if options["render"] == true {
+		profilePreset = "rendered-" + profilePreset
+	}
+	name := "rss." + profilePreset + "-skip/v1"
 	if feedHasDetailAssignment(md) {
-		name = "rss." + preset + "-items/v1"
+		name = "rss." + profilePreset + "-items/v1"
 	}
 	token := "feed"
 	if preset == "hr_manager" {
@@ -95,6 +126,7 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 	if err != nil {
 		return GreenhouseMonitorProfile{}, err
 	}
+	profile.RSSPagination = pagination
 	return profile, nil
 }
 

@@ -1,0 +1,549 @@
+{
+  "schema": 1,
+  "source_revision": "acb4bb9e7627c541f7ff0aba4bb0c1ca4995f48b",
+  "routing_epoch": 211,
+  "scope": "fresh configuration admission against deployed source960; stage/activation and natural processing remain separate",
+  "enabled_monitors": 7885,
+  "ordinary_admitted_monitors": 7186,
+  "exclusive_b0_monitors": 3,
+  "remaining_monitors": 696,
+  "remaining_by_type": {
+    "dom": 253,
+    "api_sniffer": 149,
+    "linkedin": 31,
+    "inline": 19,
+    "rss": 18,
+    "accenture": 12,
+    "jobs_ch": 11,
+    "computrabajo": 11,
+    "sitemap": 11,
+    "unifr": 9,
+    "umantis": 9,
+    "notion": 8,
+    "talentbrew": 8,
+    "avature": 7,
+    "recruiterbox": 6,
+    "hrmos": 6,
+    "smartrecruiters": 6,
+    "seek": 6,
+    "manatal": 5,
+    "darwinbox": 5,
+    "jobbank104": 4,
+    "ycombinator": 4,
+    "taleo": 4,
+    "practicematch": 4,
+    "hibob": 4,
+    "brassring": 4,
+    "woowa": 3,
+    "deel": 3,
+    "earcu": 3,
+    "jobstreet": 3,
+    "bytedance": 3,
+    "pageup": 3,
+    "workable": 3,
+    "typify": 3,
+    "intervieweb": 3,
+    "traffit": 3,
+    "welcometothejungle": 3,
+    "talentreef": 2,
+    "talemetry": 2,
+    "job51": 2,
+    "cvwarehouse": 2,
+    "paynet": 2,
+    "fenbi": 2,
+    "headhunter": 2,
+    "johdi": 2,
+    "jobdiva": 2,
+    "nextdata": 2,
+    "oracle_hcm": 2,
+    "beehire": 1,
+    "inploi": 1,
+    "kipt": 1,
+    "curately": 1,
+    "njoyn": 1,
+    "workday": 1,
+    "universia": 1,
+    "seamlesshiring": 1,
+    "ashby": 1,
+    "infoniqa": 1,
+    "unisante": 1,
+    "jarvi": 1,
+    "candidatus": 1,
+    "nowhiring": 1,
+    "keka": 1,
+    "infor": 1,
+    "hirehive": 1,
+    "recruitee": 1,
+    "peoplesoft": 1,
+    "amazon": 1,
+    "turbohire": 1,
+    "papa_johns": 1,
+    "cnstaff": 1,
+    "wecruit": 1,
+    "lever": 1,
+    "jobconvo": 1,
+    "prospective": 1
+  },
+  "remaining_configuration_key_counts": {
+    "dom": {
+      "url_filter": 203,
+      "render": 179,
+      "wait": 112,
+      "timeout": 104,
+      "link_selector": 100,
+      "actions": 73,
+      "resource_policy": 43,
+      "proxy": 42,
+      "pagination": 40,
+      "empty_selector": 23,
+      "empty_text": 19,
+      "require_jsonld_jobposting": 18,
+      "url_transform": 17,
+      "empty_states": 14,
+      "skip_ssl": 14,
+      "stealth": 14,
+      "bot_protection": 13,
+      "advertised_total": 13,
+      "transport_attempts": 12,
+      "rich_rows": 9,
+      "channel": 6,
+      "headless": 6,
+      "inactive_detail_states": 6,
+      "fetch_url_transform": 5,
+      "include_board_url": 5,
+      "request_headers": 5,
+      "require_unexpired_pdf": 5,
+      "url_allowlist": 5,
+      "persistent_context": 4,
+      "rescrape_policy": 3,
+      "script_json_links": 3,
+      "retry_statuses": 2,
+      "encoding": 2,
+      "prospective_board": 2,
+      "prospective_canonical_path": 2,
+      "require_pdf_text": 2,
+      "onclick_selector": 2,
+      "my_job_shop": 2,
+      "lucca_board": 2,
+      "wait_fallback": 2,
+      "title_matched_url_scan": 1,
+      "drop_threshold": 1,
+      "delist_threshold": 1,
+      "oracle_adf_job_ids": 1,
+      "fingerprint_response": 1,
+      "vagas_tenant": 1,
+      "lg_portal": 1,
+      "url": 1,
+      "job_link_pattern": 1,
+      "hotelcareer_profile": 1,
+      "yousty_organization": 1,
+      "bunge_bigredsky_board": 1,
+      "jobtoolz_tenant": 1,
+      "dualoo_portal": 1,
+      "defaults": 1,
+      "exclude_detail_selector": 1
+    },
+    "recruiterbox": {
+      "tenant": 6
+    },
+    "talentreef": {
+      "alias": 2,
+      "locale": 2
+    },
+    "manatal": {
+      "slug": 5
+    },
+    "linkedin": {
+      "company_id": 30,
+      "company_slug": 25,
+      "canonical_numeric_job_urls": 5,
+      "source_ownership_excluded_country_codes": 2,
+      "company_ids": 1,
+      "keywords": 1
+    },
+    "hrmos": {
+      "tenant": 5
+    },
+    "api_sniffer": {
+      "api_url": 147,
+      "method": 144,
+      "json_path": 134,
+      "fields": 114,
+      "params": 78,
+      "pagination": 72,
+      "url_template": 69,
+      "browser": 69,
+      "url_field": 64,
+      "request_headers": 62,
+      "total_path": 38,
+      "post_data": 38,
+      "item_filter": 18,
+      "settle": 16,
+      "items": 15,
+      "score": 15,
+      "wait": 15,
+      "url_filter": 11,
+      "timeout": 10,
+      "total": 10,
+      "empty_response": 10,
+      "proxy": 7,
+      "render": 6,
+      "url_regex": 6,
+      "url_allowlist": 6,
+      "enrich": 6,
+      "api_url_match": 4,
+      "transport_attempts": 4,
+      "url_template_fields": 3,
+      "slug_fields": 3,
+      "pagination_convergence": 3,
+      "url_transform": 3,
+      "transient_403": 3,
+      "channel": 2,
+      "headless": 2,
+      "persistent_context": 2,
+      "rescrape_policy": 2,
+      "defaults": 2,
+      "stealth": 2,
+      "max_items": 1,
+      "resource_policy": 1,
+      "max_pages": 1,
+      "response_decrypt": 1,
+      "url_field_match": 1,
+      "delist_threshold": 1,
+      "skip_ssl": 1,
+      "post_data_refresh": 1,
+      "require_pdf_pattern": 1,
+      "require_unexpired_pdf": 1,
+      "route_params": 1,
+      "disable_http2": 1,
+      "warmup_url": 1
+    },
+    "jobs_ch": {
+      "locale": 11,
+      "company_id": 11,
+      "portal": 9,
+      "document_company_id": 1
+    },
+    "accenture": {
+      "site": 12,
+      "country": 12,
+      "language": 12,
+      "endpoint": 2
+    },
+    "computrabajo": {
+      "proxy": 4,
+      "host": 3,
+      "variant": 3
+    },
+    "inline": {
+      "steps": 19,
+      "render": 18,
+      "defaults": 13,
+      "wait": 8,
+      "timeout": 8,
+      "require_zero_proof": 4,
+      "preserve_single_location": 4,
+      "defaults_by_title": 4,
+      "fetch_contains": 4,
+      "stealth": 3,
+      "actions": 3,
+      "proxy": 2,
+      "skip_ssl": 1,
+      "item_boundary": 1,
+      "section_end": 1,
+      "section_start": 1,
+      "item_boundary_tag": 1,
+      "detail_click_selector": 1,
+      "detail_identity_regex": 1,
+      "detail_content_selector": 1,
+      "detail_identity_selector": 1,
+      "detail_identity_attribute": 1,
+      "empty_text": 1,
+      "fetch_urls": 1,
+      "empty_selector": 1,
+      "empty_requires_no_jobs": 1
+    },
+    "talemetry": {
+      "transport": 1,
+      "rescrape_policy": 1,
+      "proxy": 1
+    },
+    "smartrecruiters": {
+      "token": 3,
+      "canonical_identity": 2,
+      "company": 2,
+      "language_preference": 2,
+      "company_identifier": 1,
+      "canonical_job_id_url_template": 1
+    },
+    "jobbank104": {
+      "token": 4,
+      "proxy": 3
+    },
+    "unifr": {
+      "source": 9
+    },
+    "rss": {
+      "preset": 18,
+      "feed_url": 12,
+      "variant": 8,
+      "url_transform": 7,
+      "job_filter": 6,
+      "url_allowlist": 6,
+      "proxy": 4,
+      "company": 4,
+      "url_filter": 4,
+      "brand": 3,
+      "locale": 3,
+      "host": 3,
+      "render": 2,
+      "channel": 2,
+      "headless": 2,
+      "persistent_context": 2,
+      "fetch_company": 2,
+      "listing_url": 2,
+      "wait": 1,
+      "timeout": 1,
+      "pagination": 1,
+      "rescrape_policy": 1,
+      "description_mode": 1,
+      "detail_fields": 1,
+      "stealth": 1,
+      "warmup_url": 1,
+      "transport_attempts": 1,
+      "identity_migration": 1,
+      "_identity_migration_receipt": 1,
+      "resolve_job_invite_identity": 1
+    },
+    "beehire": {
+      "slug": 1
+    },
+    "sitemap": {
+      "url_filter": 11,
+      "sitemap_url": 11,
+      "proxy": 3,
+      "xml_attempts": 2,
+      "rescrape_policy": 2,
+      "skip_ssl": 2,
+      "defaults": 1
+    },
+    "job51": {
+      "ctmid": 2
+    },
+    "ycombinator": {
+      "slug": 3
+    },
+    "taleo": {
+      "cws": 4,
+      "org": 4,
+      "host": 4,
+      "partition": 4
+    },
+    "inploi": {
+      "api_key": 1,
+      "segment_id": 1
+    },
+    "kipt": {
+      "max_age_days": 1,
+      "default_location": 1
+    },
+    "curately": {
+      "currency": 1,
+      "language": 1,
+      "client_id": 1,
+      "days_back": 1,
+      "short_name": 1,
+      "salary_unit": 1,
+      "snapshot_attempts": 1,
+      "semantic_zero_attempts": 1
+    },
+    "notion": {
+      "title_exclude": 2,
+      "collection_index": 1
+    },
+    "deel": {
+      "slug": 3,
+      "org_id": 1,
+      "board_id": 1
+    },
+    "avature": {
+      "listing_url": 7,
+      "portal_id": 5
+    },
+    "earcu": {
+      "feed_url": 3,
+      "proxy": 2
+    },
+    "jobstreet": {
+      "host": 3,
+      "company_id": 3,
+      "organisation_id": 3
+    },
+    "practicematch": {
+      "proxy": 4
+    },
+    "hibob": {
+      "origin": 2
+    },
+    "njoyn": {
+      "wait": 1,
+      "proxy": 1,
+      "channel": 1,
+      "stealth": 1,
+      "timeout": 1,
+      "headless": 1,
+      "max_pages": 1,
+      "page_wait_ms": 1,
+      "delist_threshold": 1,
+      "persistent_context": 1,
+      "transport_attempts": 1,
+      "direct_fallback_on_origin_block": 1
+    },
+    "seek": {
+      "host": 4,
+      "advertiser_id": 4
+    },
+    "workday": {
+      "site": 1,
+      "company": 1,
+      "ssl_verify": 1,
+      "wd_instance": 1
+    },
+    "umantis": {
+      "customer_id": 9,
+      "_identity_migration_receipt": 7,
+      "listing_path": 3,
+      "region": 2,
+      "empty_state_text": 1,
+      "employer_field_id": 1,
+      "expected_employer": 1,
+      "strict_listing_contract": 1,
+      "cname": 1,
+      "proxy": 1
+    },
+    "universia": {
+      "board_id": 1,
+      "language": 1
+    },
+    "pageup": {
+      "locale": 2,
+      "instance": 2,
+      "listing_url": 2,
+      "source_pointer": 2
+    },
+    "workable": {
+      "proxy": 3,
+      "token": 3
+    },
+    "seamlesshiring": {
+      "tenant": 1
+    },
+    "ashby": {
+      "token": 1
+    },
+    "brassring": {
+      "site_id": 4,
+      "partner_id": 4
+    },
+    "infoniqa": {
+      "employer_name": 1
+    },
+    "unisante": {
+      "identity_migration": 1
+    },
+    "fenbi": {
+      "kind": 2
+    },
+    "headhunter": {
+      "proxy": 2,
+      "employer_id": 2,
+      "host": 1
+    },
+    "jarvi": {
+      "currency": 1,
+      "public_api_key": 1
+    },
+    "johdi": {
+      "flow": 2,
+      "locale": 2,
+      "company_key": 2
+    },
+    "intervieweb": {
+      "provider": 2
+    },
+    "nowhiring": {
+      "slug": 1
+    },
+    "traffit": {
+      "slug": 3
+    },
+    "jobdiva": {
+      "token": 2
+    },
+    "infor": {
+      "origin": 1,
+      "dataarea": 1,
+      "job_board": 1,
+      "hr_organization": 1
+    },
+    "welcometothejungle": {
+      "slug": 3,
+      "locale": 3,
+      "organization_slug": 1
+    },
+    "nextdata": {
+      "path": 2,
+      "wait": 2,
+      "fields": 2,
+      "url_template": 2,
+      "source": 1,
+      "timeout": 1,
+      "browser_expression": 1,
+      "render": 1,
+      "stealth": 1,
+      "slug_fields": 1
+    },
+    "hirehive": {
+      "slug": 1,
+      "defaults": 1
+    },
+    "recruitee": {
+      "api_base": 1
+    },
+    "oracle_hcm": {
+      "proxy": 1
+    },
+    "turbohire": {
+      "org_id": 1
+    },
+    "papa_johns": {
+      "proxy": 1
+    },
+    "wecruit": {
+      "suite_key": 1,
+      "api_origin": 1,
+      "recruit_types": 1
+    },
+    "lever": {
+      "token": 1,
+      "region": 1
+    },
+    "jobconvo": {
+      "locale": 1,
+      "career_page": 1,
+      "listing_url": 1
+    },
+    "prospective": {
+      "filters": 1,
+      "medium_id": 1,
+      "application_identity": 1
+    }
+  },
+  "priorities": [
+    "Finish grouped remaining RSS variants and transports using the verified raw response path",
+    "Group DOM, API sniffer and Inline browser/actions/pagination coverage using existing renderer and processors",
+    "Group remaining small HTTP/API providers using their actual Python transports and parser contracts",
+    "Replace mandatory Python runtime consumers and prove whole-lane operation before retirement"
+  ],
+  "full_migration_complete": false
+}

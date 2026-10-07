@@ -85,8 +85,9 @@ accepts the exact typed canonical JSON request in `dayforcesession`, followed
 by the empty opening marker. It carries a configuration fingerprint, canonical
 Dayforce listing identity, expected HTTP-bootstrap site identity, offset overlap
 and bounded deadline. It accepts no script, request headers, proxy configuration,
-credential paths or arbitrary origin URL. Generic B0/B1 constructors continue to
-reject captures, actions and origin-contact evaluation.
+credential paths or arbitrary origin URL. Generic B0/B1 constructors continue to reject captures, actions and
+origin-contact evaluation. The navigation-only Go service additionally supports
+the bounded main-document response capture described below.
 
 One fresh Lightpanda target captures the first correlated main-frame search
 request/response. Its CSRF lease stays in controller memory and is erased on
@@ -109,6 +110,27 @@ and production deployment must be qualified before admitting Dayforce ownership.
 It does not implement generic `ExecutionFrame` resumption or an origin ledger.
 
 ## B0/B1 one-shot wire order
+
+The ordinary Go worker also uses `jobseek.lightpanda.feed-session/v1` on the
+same pinned connection and C4 reservation. Its strict typed request binds one
+HTTPS feed, configuration fingerprint, pagination parameter/sequence, readiness
+and navigation budget. It accepts no scripts, headers or proxy credentials.
+One fresh Lightpanda process and target retain cookies across feed pages.
+Each sequenced page returns the exact bounded final main-document bytes and
+publisher signals, including XML and CDATA. Page results remain provisional;
+successful finish is returned only after target/process disposal. Disconnect
+cancels active navigation. The client requires the matching final sequence and
+EOF before granting a complete inventory to the native worker.
+
+Requests are at most16 KiB, commands1 KiB, raw bodies2,000,000 bytes and result
+frames2 MiB. The session ceiling is600 seconds. The existing deny policy, mTLS
+identity, C4 capacity and memory limits apply. Generic pagination is bounded by
+its compiled options; the default WordPress traversal also respects the native
+50,000-job bound. Failed browser attempts discard the whole inventory, while
+direct HTTP feed streams preserve previously accepted complete200-job batches.
+Publisher reservations and failed/repeated/limited pages never finalize absence.
+Proxy feed configurations remain unadmitted until trusted transport and installed
+proof are available. This conversation does not implement generic resumption.
 
 Each connection has this exact order:
 
@@ -149,6 +171,24 @@ wait, one `RENDER` capability, no evaluation/action/capture/session/header/TLS
 override, and the task's frozen timeout and routing revision. It opens a raw
 `asyncio` TLS socket to the literal IP. HTTP clients, proxy environment,
 connection reuse, transport retry, and backend fallback are absent.
+
+## Raw main-document feed capture
+
+The navigation-only Go adapter can request `RENDER` plus `RESPONSE_CAPTURE`
+with exactly one `CapturePlan`: `RESPONSE_BODY`, a nonempty capture ID and a
+positive byte limit no greater than2,000,000. URL patterns, artifact-only output,
+evaluation, actions, persistent sessions and request/transport overrides remain
+refused before runner contact. The existing Python B0 client remains render-only.
+
+The renderer waits for the correlated final main-document loading completion,
+then returns its original CDP response bytes, including XML CDATA, in the existing
+complete chunk manifest. It returns an empty HTML manifest alongside the capture;
+it does not serialize an XML DOM or capture redirects/subresources. Final URL,
+status and publisher-policy signals refer to that same document. The maximum
+capture fits the existing2 MiB result frame. Missing bytes, identity changes,
+oversized bodies or invalid chunk hashes fail closed. Authoritative process
+cleanup still precedes success. This one-shot capability does not itself provide
+affine pagination, proxy transport or ownership admission for RSS feeds.
 
 ## Capacity and memory admission
 

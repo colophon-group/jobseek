@@ -207,6 +207,9 @@ func parseDOMInventory(ctx context.Context, result RichDiscovery, profile queue.
 		ordered = append(ordered, raw)
 	}
 	sort.Strings(ordered)
+	if err := dom.ValidateListingEmpty(source, c, len(ordered)); err != nil {
+		return RichDiscovery{Response: result.Response}, err
+	}
 	if len(ordered) > 50_000 {
 		result.Truncated = true
 		ordered = ordered[:50_000]

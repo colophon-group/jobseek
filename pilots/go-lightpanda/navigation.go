@@ -45,6 +45,7 @@ type navigationState struct {
 	committed, domReady, loaded bool
 	documentRequest             network.RequestID
 	documentStatusValid         bool
+	documentCompleted           bool
 	documentFailure             error
 	requests                    map[network.RequestID]struct{}
 	idleSince                   time.Time
@@ -118,6 +119,7 @@ func (state *navigationState) observe(event any, now time.Time) {
 		if event.Type == network.ResourceTypeDocument && event.FrameID == state.mainFrame {
 			state.documentRequest = event.RequestID
 			state.documentStatusValid = false
+			state.documentCompleted = false
 			state.documentFailure = nil
 		}
 		// WebSocket connections are not pending HTTP resource loads. Redirects
@@ -127,6 +129,9 @@ func (state *navigationState) observe(event any, now time.Time) {
 			state.idleSince = time.Time{}
 		}
 	case *network.EventLoadingFinished:
+		if event.RequestID == state.documentRequest {
+			state.documentCompleted = true
+		}
 		if _, ok := state.requests[event.RequestID]; ok {
 			delete(state.requests, event.RequestID)
 			if len(state.requests) == 0 {
@@ -278,4 +283,32 @@ func navigateDocumentOnce(ctx context.Context, state *navigationState, options n
 		return errNavigationTimeout
 	}
 	return err
+}
+
+// Raw capture waits for the correlated final document body, independent of the
+// configured DOM readiness condition. Redirect and subresource bodies cannot
+// satisfy this wait.
+func waitForDocumentBody(ctx context.Context, state *navigationState, request network.RequestID) error {
+	if state == nil || request == "" {
+		return errors.New("main-document response identity unavailable")
+	}
+	for {
+		state.mu.Lock()
+		current, complete, failure := state.documentRequest, state.documentCompleted, state.documentFailure
+		state.mu.Unlock()
+		if current != request {
+			return errors.New("main-document changed before body capture")
+		}
+		if failure != nil {
+			return failure
+		}
+		if complete {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-state.changed:
+		}
+	}
 }

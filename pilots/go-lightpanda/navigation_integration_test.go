@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"net"
@@ -12,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	feed "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/feedsession"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	"github.com/colophon-group/jobseek/apps/crawler/contracts/v1/lightpandaadapter"
 )
@@ -31,10 +33,24 @@ func TestLightpandaNavigationReadinessIntegration(t *testing.T) {
 	if err := verifyFileSHA256(binary, expected); err != nil {
 		t.Fatal(err)
 	}
+	const feedXML = `<?xml version="1.0"?><rss><channel><item><title>Engineer</title><description><![CDATA[<p>Build & maintain <strong>systems</strong>.</p>]]></description></item></channel></rss>`
 	const originPolicyURL = "https://fixture.invalid/license"
 	var documentRequests atomic.Int64
 	var resetRequests atomic.Int64
 	origin := newTestLoopbackServer(t, "127.0.0.2", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/feed-redirect" {
+			w.Header().Set("TDM-Reservation", "0")
+			http.Redirect(w, r, "/feed", http.StatusFound)
+			return
+		}
+		if r.URL.Path == "/feed" {
+			w.Header().Set("Content-Type", "application/rss+xml; charset=utf-8")
+			w.Header().Set("TDM-Reservation", "1")
+			w.Header().Set("TDM-Policy", originPolicyURL)
+			w.WriteHeader(200)
+			_, _ = io.WriteString(w, feedXML)
+			return
+		}
 		if r.URL.Path == "/reset" {
 			attempt := resetRequests.Add(1)
 			if attempt == 1 || r.URL.Query().Get("always") == "1" {
@@ -95,6 +111,63 @@ func TestLightpandaNavigationReadinessIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	t.Run("raw-XML-response-CDATAs-and-final-policy", func(t *testing.T) {
+		for _, path := range []string{"/feed", "/feed-redirect"} {
+			input := bridgeInput(origin.URL+path, "", 0)
+			input.Plan.Navigation.TimeoutMs = 10000
+			input.Plan.Navigation.WaitUntil = runtimev1.WaitCondition_WAIT_CONDITION_DOM_CONTENT_LOADED
+			input.Plan.RequiredCapabilities = append(input.Plan.RequiredCapabilities, runtimev1.BrowserCapability_BROWSER_CAPABILITY_RESPONSE_CAPTURE)
+			input.Plan.Captures = []*runtimev1.CapturePlan{{CaptureId: "feed", Kind: runtimev1.CaptureKind_CAPTURE_KIND_RESPONSE_BODY, MaxBytes: 2_000_000}}
+			result := adapter.Execute(context.Background(), input)
+			success := result.GetSuccess()
+			if success == nil || success.FinalUrl != origin.URL+"/feed" || len(success.Captures) != 1 || !bytes.Equal(bridgeManifestBody(success.Captures[0].Body), []byte(feedXML)) || success.Html.TotalSizeBytes != 0 || success.ResourcePolicy.GetTdmReservationHeader() != "1" || success.ResourcePolicy.GetTdmPolicyHeader() != originPolicyURL {
+				t.Fatalf("raw feed capture differs for %s: %v", path, result)
+			}
+			input.Plan.Captures[0].MaxBytes = 1
+			result = adapter.Execute(context.Background(), input)
+			if result.GetError() == nil || result.GetError().Error.Code != runtimev1.ErrorCode_ERROR_CODE_RESOURCE_LIMIT {
+				t.Fatal("capture ceiling did not refuse", result)
+			}
+		}
+	})
+
+	t.Run("affine-raw-feed-retains-cookies-and-disposes-listeners", func(t *testing.T) {
+		var hits atomic.Int64
+		affine := newTestLoopbackServer(t, "127.0.0.2", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			hits.Add(1)
+			if r.URL.Query().Get("page") == "1" {
+				http.SetCookie(w, &http.Cookie{Name: "feed-session", Value: "held", Path: "/"})
+			} else {
+				cookie, e := r.Cookie("feed-session")
+				if e != nil || cookie.Value != "held" {
+					t.Error("second page lost affine cookie")
+					w.WriteHeader(403)
+					return
+				}
+			}
+			w.Header().Set("Content-Type", "application/rss+xml; charset=utf-8")
+			_, _ = io.WriteString(w, feedXML)
+		}))
+		request := feed.Request{Protocol: feed.Protocol, RequestID: strings.Repeat("a", 64), ConfigFingerprint: strings.Repeat("b", 64), FeedURL: "https://fixture.example/feed", PageParameter: "page", Start: 1, Increment: 1, MaxPages: 2, Wait: "domcontentloaded", NavigationTimeoutMS: 10000, TimeoutMS: 30000}
+		task := Task{URL: request.FeedURL, ResponseBodyLimit: feed.BodyLimit, Navigation: &navigationOptions{wait: runtimev1.WaitCondition_WAIT_CONDITION_DOM_CONTENT_LOADED, timeout: 10 * time.Second}, Feed: &feedTask{request: request, converse: func(ctx context.Context, fetch feedPageFetch) (Result, error) {
+			for _, page := range []string{"1", "2"} {
+				result, e := fetch(ctx, affine.URL+"/feed?page="+page)
+				if e != nil {
+					return Result{}, e
+				}
+				if result.Status != 200 || !bytes.Equal(result.ResponseBody, []byte(feedXML)) {
+					t.Error("affine raw XML differs")
+					return Result{}, feed.ErrProtocol
+				}
+			}
+			return Result{feedSessionSettled: true}, nil
+		}}}
+		result, e := fixtureRunner(context.Background(), Config{Binary: binary, TaskTimeout: 30 * time.Second, EgressPolicy: defaultEgressPolicy()}, task)
+		if e != nil || !result.feedSessionSettled || hits.Load() != 2 {
+			t.Fatal("affine feed failed after cleanup", e, hits.Load())
+		}
+	})
 	for _, wait := range []runtimev1.WaitCondition{1, 2, 3, 4} {
 		input := bridgeInput(origin.URL+"/document", "", 1024)
 		input.Plan.Navigation.WaitUntil = wait
