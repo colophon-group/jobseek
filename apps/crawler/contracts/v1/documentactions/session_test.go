@@ -55,3 +55,21 @@ func TestRequestBindingAndFullWireBound(t *testing.T) {
 		t.Fatal("request diagnostic leaked")
 	}
 }
+
+func TestRemovalActionsPreserveOrderAndRejectMixedPayloads(t *testing.T) {
+	var raw any
+	json.Unmarshal([]byte(`[{"action":"remove","selector":".obsolete","required":true},{"action":"dismiss_overlays"}]`), &raw)
+	got, err := Parse(raw)
+	if err != nil || len(got) != 2 || got[0].Selector != ".obsolete" || !got[0].Required || got[1].Kind != "dismiss_overlays" || got[1].Required || got[1].TimeoutMS != 10000 {
+		t.Fatal("removal defaults/order lost", err)
+	}
+	for _, body := range []string{`[{"action":"remove"}]`, `[{"action":"remove","selector":12}]`, `[{"action":"remove","selector":""}]`, `[{"action":"remove","selector":"a","script":"private"}]`, `[{"action":"dismiss_overlays","selector":"a"}]`} {
+		json.Unmarshal([]byte(body), &raw)
+		if _, err := Parse(raw); err == nil {
+			t.Fatal("invalid removal admitted", body)
+		}
+	}
+	if Valid([]Action{{Kind: "remove", Selector: strings.Repeat("a", 4097), TimeoutMS: 1}}) || Valid([]Action{{Kind: "evaluate", Selector: "a", Script: "private", TimeoutMS: 1}}) {
+		t.Fatal("mixed/unbounded selector admitted")
+	}
+}

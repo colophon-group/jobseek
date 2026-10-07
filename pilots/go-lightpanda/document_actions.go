@@ -12,6 +12,9 @@ import (
 
 var errDocumentAction = errors.New("required browser action failed")
 
+// Match the existing Python consent-removal action's selector set exactly.
+const overlaySelector = `[class*="cookie-banner"], [class*="cookie-consent"], [class*="cookie-notice"], [id*="cookie"], [class*="consent-banner"], [class*="consent-modal"], [role="dialog"][class*="cookie"], [role="dialog"][class*="consent"]`
+
 type documentActionExecutor func(context.Context, actions.Action) error
 
 func runDocumentActions(ctx context.Context, pipeline []actions.Action, execute documentActionExecutor, check func() (bool, error)) error {
@@ -53,6 +56,20 @@ func executeDocumentAction(ctx context.Context, action actions.Action) error {
 		case <-timer.C:
 			return nil
 		}
+	}
+	if action.Kind == "remove" || action.Kind == "dismiss_overlays" {
+		selector := action.Selector
+		if action.Kind == "dismiss_overlays" {
+			selector = overlaySelector
+		}
+		encoded, _ := json.Marshal(selector)
+		return chromedp.Run(ctx, chromedp.ActionFunc(func(actionCtx context.Context) error {
+			_, exception, err := runtime.Evaluate(`document.querySelectorAll(` + string(encoded) + `).forEach(el => el.remove())`).Do(actionCtx)
+			if err != nil || exception != nil {
+				return errDocumentAction
+			}
+			return nil
+		}))
 	}
 	if action.Kind != "evaluate" {
 		return actions.ErrActions

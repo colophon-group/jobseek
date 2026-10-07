@@ -1,6 +1,6 @@
 # Go and Lightpanda migration delivery plan
 
-Updated 2026-10-07. Delivery remains the full migration; it is incomplete.
+Updated 2026-10-08. Delivery remains the full migration; it is incomplete.
 
 ## Delivery objective
 
@@ -16,78 +16,84 @@ whole-service CPU/RAM/density/attributable cost; and a supported cold reversal
 with its observation window. A merged candidate or synthetic benchmark does
 not complete migration.
 
-## Latest checkpoint — 2026-10-07
+## Latest checkpoint — 2026-10-08
 
-Production runs **0.13.964**, source `16ebb019d7b3dbafbf33bb829200369713a4da5c`,
-merged in [PR #10350](https://github.com/colophon-group/jobseek/pull/10350).
-The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37668416367)
-succeeded on its supported second attempt, retaining the original immutable
-image pair. The [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37671318212)
-also succeeded at that source. **Lightpanda 1.0.0** remains the latest stable
-release, verified against the official release list October 7. The renderer
-uses the pinned multi-architecture digest, with CORS enabled for CDP evaluation.
+Production runs **0.13.966**, source
+`c3ca78862534353152294fa94e2e6ce5600c531f`, delivered through the grouped
+[Deel/HiBob/TRAFFIT PR #10352](https://github.com/colophon-group/jobseek/pull/10352).
+The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37693870016)
+succeeded on its deploy-only second attempt with the original immutable images.
+Its first attempt correctly refused to deploy while the outgoing B0 owner existed.
+The matching-source [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37695407644)
+also succeeded. Independent cold verification passed at epoch **220**, with all
+seven base services running and restart-armed, six HTTP endpoints healthy, no
+native ownership/tokens, and preserved historical receipts.
+**Lightpanda 1.0.0** remains the newest stable release, reverified October 8,
+digest-pinned with CORS enabled.
 
-The grouped release qualifies **55 extra configurations across three types**:
-33 API browser, 20 DOM and two Inline. Fresh canonical/cache and actual scheduled
-posting admission found **7,295 monitors**, **2,616 detail boards** and
-**1,475,517 scheduled postings** eligible for native ownership. It found zero
-monitor configuration/cache mismatches. 40 cached detail incompatibilities and
-one actual Eightfold route retain legacy ownership; three exclusive B0 boards
-remain outside ordinary ownership. **587 monitor configurations remain** in the
-captured census. These are admission counts, not current Go serving counts.
+The last broader native serving proof is source965 at epoch **219**, following
+[PR #10351](https://github.com/colophon-group/jobseek/pull/10351).
+It repaired the legacy ownership reader's API-browser classification and replaced
+the deployment proxy preflight with the installed Go executable. All eight health
+endpoints and ten running, restart-armed services passed before supported retirement.
+Fresh source965 admission covered **7,295 monitor boards**, **2,616 detail boards**
+and **1,482,240 scheduled postings**, with zero monitor configuration/cache
+mismatches. Forty cached detail incompatibilities and one actual Eightfold route
+retained legacy ownership. Three exclusive B0 boards remain outside ordinary
+ownership. The captured remaining monitor census was **587**.
 
-Broad ordinary activation at epoch 217 committed its exact SQL plan, then
-failed legacy worker readiness: the installed Python projection reader omitted
-`api_sniffer.browser-items/v1` from its browser profile classification. The
-original wrapper contained all writers and retained its exact pending identity.
-Supported `recover-pending` retired that plan and restored the complete
-restart-armed base/B0 stack. All seven independent HTTP health probes passed;
-nine services were independently verified running. Broad ordinary ownership remains withdrawn. Before the source965 rollout,
-the original B0 rollback and exact selector clear succeeded; independent cold218
-verification is in progress. No direct SQL/Redis repairs occurred.
+The grouped DOM/Inline/API-browser changes qualified 55 extra configurations.
+A normal-schedule followup observed three newly admitted API-browser boards with
+completed attempts and valid canonical descriptions; the 20 new DOM and two new
+Inline boards still lacked natural completions in that snapshot. Full fleet
+freshness and conservation remain unproved. The same followup recorded **77 claim
+errors and 183 unacknowledged detail attempts**. Bounded read-only SQL observations
+showed retained active detail fences and matching completed detail deadlines.
+These failures remain open migration work; service health is not settlement proof.
 
-[PR #10351](https://github.com/colophon-group/jobseek/pull/10351), release
-0.13.965 reviewed at `dd6f470bdb0e3fab4b6521a3e7ce3fc108b6a4b5`, repairs that reader and
-moves the remaining deployment proxy preflight into the installed Go binary.
-The old reader rejects the actual captured production plan; the patched reader
-reproduces its exact Go projection. The shared Go/Python fixture now includes
-API browser ownership. The installed-image codec and network-disabled native
-preflight checks passed at this exact head. Required CI's native and exporter jobs stalled during fixture setup before
-tests; targeted retries passed without repeating the other successful checks.
-The exact-head merge completed as `0a6ddda170478cc6b6469615e086734940cf5fbf`.
-The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37686292179)
-and matching-source [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37686710589)
-are running. **Source965 is not yet promoted at this checkpoint.**
-See the [reader correction](evidence/go-native-api-browser-legacy-reader-repair-2026-10-07.json).
+Source966 ports **Deel, HiBob and TRAFFIT together**, covering all ten existing
+registry configurations. Seventeen actual Python field cases, native HTTP/policy
+fixtures, six real PostgreSQL/Redis write/policy scenarios and nine cold-retirement
+scenarios passed. Required CI, actual Crawler Deploy Gate status and installed
+image checks passed at reviewed head `710c7223be6b88560072d9c2d9ed8a8e3c901e36`.
+The ten boards are **not yet native-owned**. Broader native ownership will stay
+inactive through the shared-action/detail-lock correction in
+[PR #10354](https://github.com/colophon-group/jobseek/pull/10354), then the combined
+profiles will receive fresh source-bound admission and one supported activation.
+This avoids another activation of the reproduced lock-upgrade defect.
 
-The next grouped candidate ports **Deel, HiBob and TRAFFIT together**. It covers
-all ten existing registry configurations and retains configured provider identity,
-public request headers, settings resolution, pagination and publisher policy.
-Seventeen frozen actual Python field cases and native HTTP fixtures pass.
-Six real PostgreSQL/Redis write and publisher settlement scenarios pass; nine
-cold-retirement scenarios pass across all three providers. This candidate is
-not production-owned. Required release checks and fresh production admission
-remain necessary; do not count the ten boards as delivered yet.
+The following grouped work has begun on shared DOM/Inline element and overlay
+removal actions, retaining Python defaults, selector semantics, failure policy,
+source binding and publisher checks. Focused contract/worker/pilot tests pass.
+The retained census qualifies six additional DOM configurations; the candidate also repairs a reproduced shared-board lock upgrade deadlock
+affecting native detail profiles. Two real PostgreSQL detail validations failed
+as unacknowledged before the correction; the corrected concurrent regression,
+canonical/publisher revalidation and cold-retirement scenarios pass. Detail
+attempts keep a shared configuration/policy lock and exclusive posting/fence
+locks. Safe error-phase diagnostics are included for remaining failures.
+Actual production error reduction remains unproved until deployed and observed.
 
 ## Continue delivery
 
-1. Finish the original immutable source965 crawler and renderer rollouts.
-   Verify the independently observed cold218 reversal, retired ordinary plan,
-   preserved historical receipts, SQL/Redis ownership absence and restored base
-   writers. Preserve exact build/image identities and re-read deployment holds.
-   Do not retry the incompatible source964 broad plan.
+1. Complete the shared DOM/Inline actions and reproduced detail-lock correction
+   in PR #10354 through actual pinned Lightpanda integration, real database/queue
+   checks and final-head required CI/installed identity/Crawler Deploy Gate.
+   Keep broader ownership inactive while the healthy source966 base serves.
+   Merge/deploy the correction with the supported immutable full-stack workflow.
 2. After exact-source promotion, activate/read back B0, then capture fresh
    canonical configurations, cache and actual posting routes. Stage and activate
    the resulting source/epoch-bound ordinary plan. Independently verify all
    service identities, readiness, ownership, normal scheduled completions,
    canonical content, publisher outcomes, freshness and queue conservation.
-3. Complete the Deel/HiBob/TRAFFIT candidate through required CI and installed
-   identity checks, merge and deploy with the same supported transitions.
-   Continue remaining providers in useful groups. The current remaining census
-   includes DOM 219, API sniffer 116, RSS 17 and Sitemap 11. Shared DOM/Inline
-   click, wait_for, repeat and pagination contracts can qualify multiple types
-   together; test actual Lightpanda behavior and preserve configured resource,
-   proxy and browser requirements. Never weaken admission to reduce the count.
+   Diagnose the high detail unacknowledged and claim-error counts through safe
+   phase diagnostics; retain attempts and supported recovery authority.
+3. Continue useful groups across remaining provider and shared browser contracts.
+   The captured census includes DOM 219, API sniffer 116, RSS 17 and Sitemap 11.
+   Shared DOM/Inline actions can qualify multiple types together; test actual
+   Lightpanda behavior and preserve configured resource, proxy and browser
+   requirements. Combine small shared additions with provider coverage instead
+   of a separate runtime rollout for each option. Never weaken admission to reduce
+   the count. Source966's ten new boards still need fresh serving evidence.
 4. Replace mandatory Python runtime consumers: legacy worker/browser execution,
    schema preparation, supervision/reaper/metrics and operational entrypoints.
    Reuse delivered Go sync, queue, schema, reaper, drain and exporter engines;

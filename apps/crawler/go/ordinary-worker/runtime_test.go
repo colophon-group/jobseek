@@ -1,9 +1,12 @@
 package worker
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
+	"log"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -192,4 +195,17 @@ func TestRuntimePerTaskDeadlineBoundsUncooperativeWorkWithoutGlobalStall(t *test
 	}
 	close(release)
 	awaitRuntime(t, exited)
+}
+
+func TestRuntimeTaskDiagnosticRetainsPhaseWithoutPrivateCause(t *testing.T) {
+	var output bytes.Buffer
+	previous := log.Writer()
+	log.SetOutput(&output)
+	defer log.SetOutput(previous)
+	logRuntimeTaskError(claimRunError("detail_read", errors.New("private SQL and credentials")))
+	logRuntimeTaskError(errors.New("private upstream URL and body"))
+	text := output.String()
+	if !strings.Contains(text, "detail_read: failed") || !strings.Contains(text, "task: failed") || strings.Contains(text, "private") {
+		t.Fatal("runtime diagnostic leaked cause or lost phase")
+	}
 }

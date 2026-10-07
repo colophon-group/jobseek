@@ -24,6 +24,7 @@ var digest = regexp.MustCompile(`^[0-9a-f]{64}$`)
 type Action struct {
 	Kind         string  `json:"action"`
 	Script       string  `json:"script,omitempty"`
+	Selector     string  `json:"selector,omitempty"`
 	Milliseconds float64 `json:"ms,omitempty"`
 	TimeoutMS    uint64  `json:"timeout_ms"`
 	Required     bool    `json:"required,omitempty"`
@@ -43,11 +44,19 @@ func Valid(actions []Action) bool {
 		budget += a.TimeoutMS
 		switch a.Kind {
 		case "wait":
-			if a.Script != "" || math.IsNaN(a.Milliseconds) || math.IsInf(a.Milliseconds, 0) || a.Milliseconds < 0 || a.Milliseconds > 120000 {
+			if a.Script != "" || a.Selector != "" || math.IsNaN(a.Milliseconds) || math.IsInf(a.Milliseconds, 0) || a.Milliseconds < 0 || a.Milliseconds > 120000 {
 				return false
 			}
 		case "evaluate":
-			if len(a.Script) == 0 || len(a.Script) > 16384 || a.Milliseconds != 0 {
+			if len(a.Script) == 0 || len(a.Script) > 16384 || a.Selector != "" || a.Milliseconds != 0 {
+				return false
+			}
+		case "remove":
+			if len(a.Selector) == 0 || len(a.Selector) > 4096 || a.Script != "" || a.Milliseconds != 0 {
+				return false
+			}
+		case "dismiss_overlays":
+			if a.Selector != "" || a.Script != "" || a.Milliseconds != 0 {
 				return false
 			}
 		default:
@@ -87,7 +96,7 @@ func Parse(raw any) ([]Action, error) {
 		a := Action{TimeoutMS: 10000}
 		a.Kind, _ = m["action"].(string)
 		for k := range m {
-			if k != "action" && k != "required" && k != "timeout" && !(k == "script" && a.Kind == "evaluate") && !(k == "ms" && a.Kind == "wait") {
+			if k != "action" && k != "required" && k != "timeout" && !(k == "script" && a.Kind == "evaluate") && !(k == "selector" && a.Kind == "remove") && !(k == "ms" && a.Kind == "wait") {
 				return nil, ErrActions
 			}
 		}
@@ -118,6 +127,12 @@ func Parse(raw any) ([]Action, error) {
 			if !ok {
 				return nil, ErrActions
 			}
+		case "remove":
+			a.Selector, ok = m["selector"].(string)
+			if !ok {
+				return nil, ErrActions
+			}
+		case "dismiss_overlays":
 		default:
 			return nil, ErrActions
 		}
