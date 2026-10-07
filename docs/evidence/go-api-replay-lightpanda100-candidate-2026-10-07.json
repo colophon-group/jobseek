@@ -1,0 +1,29 @@
+{
+  "source_revision": "ce8c14bb8e04f4c915a4903ff9492e07b2254452",
+  "run": 37648160771,
+  "lightpanda_release": "1.0.0",
+  "status": "terminal success",
+  "architectures": [
+    {
+      "architecture": "amd64",
+      "job": 112884242075,
+      "real_binary_cases": [
+        "TestLightpandaAPIReplaySessionIntegration/private-cookie-and-pagination",
+        "TestLightpandaAPIReplaySessionIntegration/later-publisher-denial"
+      ],
+      "status": "pass"
+    },
+    {
+      "architecture": "arm64",
+      "job": 112884242549,
+      "real_binary_cases": [
+        "TestLightpandaAPIReplaySessionIntegration/private-cookie-and-pagination",
+        "TestLightpandaAPIReplaySessionIntegration/later-publisher-denial"
+      ],
+      "status": "pass"
+    }
+  ],
+  "runtime_admission": false,
+  "remaining": "HTTP fallback, service/worker protocol, grouped DOM/Inline actions and profile admission/persistence parity",
+  "scope": "Unadmitted API replay implementation: real pinned browser capture, same-target cookies/CSRF, captured first page, pagination, later-page publisher denial and cleanup. No production board is admitted by this proof."
+}

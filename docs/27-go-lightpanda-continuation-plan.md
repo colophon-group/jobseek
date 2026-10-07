@@ -88,9 +88,11 @@ retirement remain unproved.
    default of 200 pages have local implementations and
    passing local tests, including the existing inventory traversal and cleanup;
    **these components grant no runtime admission**. The actual HTTPS/cookie/CSRF
-   capture, pagination and later-page publisher-denial fixtures are wired into
-   both Linux architecture CI runs. Finish HTTP fallback and the service/worker
-   protocol, then inspect those real-binary results before admitting the profile.
+   capture, pagination and later-page publisher-denial fixtures passed on
+   Lightpanda 1.0.0 in [both Linux architecture CI jobs](https://github.com/colophon-group/jobseek/actions/runs/37648160771)
+   at `ce8c14bb8e04f4c915a4903ff9492e07b2254452`; see the
+   [candidate proof](evidence/go-api-replay-lightpanda100-candidate-2026-10-07.json).
+   Finish HTTP fallback and the service/worker protocol before admitting the profile.
    Group DOM/Inline action pipelines in the same useful release; 73 remaining DOM configurations and 3 Inline
    configurations contain actions. Verify actual Lightpanda 1.0.0 navigation,
    clicks, waits/evaluation, required failures, pagination and publisher policy.
