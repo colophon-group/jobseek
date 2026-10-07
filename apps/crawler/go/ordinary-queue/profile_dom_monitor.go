@@ -62,6 +62,9 @@ func directDOMMonitorOptions(config map[string]string) (dom.ListingConfig, error
 		return dom.ListingConfig{}, err
 	}
 	listing.RichRows, err = dom.RichRowsOptions(md["rich_rows"])
+	if err == nil && listing.RichRows != nil && listing.EmptySelector != "" {
+		return dom.ListingConfig{}, ErrUnsupportedProfile
+	}
 	if err == nil && listing.RichRows != nil && listing.RichRows.TotalSelector != "" && listing.Pagination != nil {
 		return dom.ListingConfig{}, ErrUnsupportedProfile
 	}
