@@ -21,7 +21,7 @@ func TestRichRowsMatchActualPythonInventory(t *testing.T) {
 		}
 	}
 	raw, e := os.ReadFile("testdata/python_rich_rows.json")
-	if e != nil || json.Unmarshal(raw, &corpus) != nil || len(corpus.Cases) != 48 {
+	if e != nil || json.Unmarshal(raw, &corpus) != nil || len(corpus.Cases) != 50 {
 		t.Fatal("actual Python rich-row evidence missing", e)
 	}
 	for _, c := range corpus.Cases {
@@ -71,5 +71,20 @@ func TestRichRowsMatchActualPythonInventory(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestRichRowsSelectorTranslationPreservesQuotedValuesAndRefusesComplexRelations(t *testing.T) {
+	for _, c := range []struct{ input, expected string }{
+		{"article:has(> a[href^='/jobs/'])", "article:haschild(a[href^='/jobs/'])"},
+		{`article[data-text=":has(> a)"]`, `article[data-text=":has(> a)"]`},
+	} {
+		v, e := richRowsCSS(c.input)
+		if e != nil || v != c.expected {
+			t.Fatal("selector normalization differs", v, e)
+		}
+	}
+	if _, e := richRowsCSS("article:has(> div > a)"); e == nil {
+		t.Fatal("unproved relative path admitted")
 	}
 }

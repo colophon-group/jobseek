@@ -90,6 +90,10 @@ func richRowsSelector(raw json.RawMessage) (string, error) {
 	if v == "" {
 		return "", ErrRichRows
 	}
+	v, e = richRowsCSS(v)
+	if e != nil {
+		return "", e
+	}
 	if _, e = cascadia.Compile(v); e != nil {
 		return "", ErrRichRows
 	}

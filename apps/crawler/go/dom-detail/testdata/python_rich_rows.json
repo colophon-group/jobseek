@@ -1110,6 +1110,64 @@
         }
       ],
       "error": false
+    },
+    {
+      "name": "has-direct-child",
+      "options": {
+        "row_selector": "article:has(> a[href^='/jobs/'])",
+        "link_selector": "a"
+      },
+      "source": "<article class=\"job\"><a href=\"/jobs/123\"><h2>Senior Engineer 東京</h2></a><span class=\"city\">Zurich</span><span class=\"country\">Switzerland</span><span class=\"team\">Platform</span><div class=\"description\"><p>Build &amp; learn.</p></div></article>",
+      "base_url": "https://example.com/careers",
+      "include": null,
+      "allow_empty": false,
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/123",
+          "title": "Senior Engineer 東京",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "has-direct-child-excludes-grandchild",
+      "options": {
+        "row_selector": "article:has(> a[href^='/jobs/'])",
+        "link_selector": "a"
+      },
+      "source": "<article class=\"job\"><a href=\"/jobs/123\"><h2>Senior Engineer 東京</h2></a><span class=\"city\">Zurich</span><span class=\"country\">Switzerland</span><span class=\"team\">Platform</span><div class=\"description\"><p>Build &amp; learn.</p></div></article><article class=\"job\"><div><a href=\"/jobs/456\"><h2>Senior Engineer 東京</h2></a></div><span class=\"city\">Zurich</span><span class=\"country\">Switzerland</span><span class=\"team\">Platform</span><div class=\"description\"><p>Build &amp; learn.</p></div></article>",
+      "base_url": "https://example.com/careers",
+      "include": null,
+      "allow_empty": false,
+      "jobs": [
+        {
+          "url": "https://example.com/jobs/123",
+          "title": "Senior Engineer 東京",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "error": false
     }
   ]
 }

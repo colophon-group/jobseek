@@ -146,6 +146,16 @@ for key in ["link_attr", "location_selector_mode", "location_separator", "duplic
     case("null-" + key, {key: None})
 case("ordered-title-replacements", {"title_replacements": {"Senior": "Lead", "Lead": "Staff"}})
 
+case("has-direct-child", {"row_selector": "article:has(> a[href^='/jobs/'])"})
+case(
+    "has-direct-child-excludes-grandchild",
+    {"row_selector": "article:has(> a[href^='/jobs/'])"},
+    source=ROW
+    + ROW.replace("<a ", "<div><a ")
+    .replace("</a>", "</a></div>")
+    .replace("/jobs/123", "/jobs/456"),
+)
+
 Path(__file__).with_name("python_rich_rows.json").write_text(
     json.dumps({"cases": CASES}, ensure_ascii=False, indent=2) + "\n"
 )
