@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/andybalholm/cascadia"
+	actions "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/documentactions"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	lp "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/lightpandaclient"
 	apisniffer "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
@@ -20,6 +21,7 @@ import (
 	policy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 	whatwg "github.com/nlnwa/whatwg-url/url"
 	"golang.org/x/net/html"
+	"google.golang.org/protobuf/proto"
 )
 
 type renderedMonitorClient interface {
@@ -33,6 +35,9 @@ func (r *NativeRenderedDetails) FetchMonitor(ctx context.Context, profile queue.
 	}
 	if queue.RSSRenderedProfile(profile.Profile) {
 		return r.fetchRSS(ctx, profile, config)
+	}
+	if profile.Profile == "api_sniffer.browser-items/v1" {
+		return r.fetchAPIReplay(ctx, profile, config)
 	}
 	_, options, err := queue.RenderedDOMMonitorOptions(config)
 	if profile.Provider == "inline" {
@@ -97,7 +102,24 @@ func (r *NativeRenderedDetails) executeMonitorNavigation(ctx context.Context, pr
 	if err != nil {
 		return nil, err
 	}
-	body, err := held.Execute(ctx, input)
+	pipeline, err := actions.Parse(options["actions"])
+	if err != nil {
+		held.Close()
+		return nil, err
+	}
+	var body []byte
+	if len(pipeline) > 0 {
+		payload, marshalErr := proto.Marshal(input)
+		if marshalErr != nil {
+			held.Close()
+			return nil, marshalErr
+		}
+		requestDigest := sha256.Sum256([]byte(requestID))
+		response, actionErr := held.DocumentActions(ctx, actions.Request{Protocol: actions.Protocol, RequestID: hex.EncodeToString(requestDigest[:]), ConfigFingerprint: profile.EffectiveConfigSHA256, Input: payload, Actions: pipeline})
+		body, err = response.Result, actionErr
+	} else {
+		body, err = held.Execute(ctx, input)
+	}
 	held.Close()
 	if err != nil {
 		return nil, err

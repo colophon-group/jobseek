@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	actions "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/documentactions"
 	"net/url"
 	"regexp"
 )
@@ -116,7 +117,7 @@ func InspectRenderedDetail(boardID string, config map[string]string, source stri
 	return profile, nil
 }
 
-func validateRenderedNavigation(options map[string]any) error {
+func validateRenderedNavigation(options map[string]any, allowActions ...bool) error {
 	if options["render"] != true {
 		return ErrUnsupportedProfile
 	}
@@ -124,6 +125,12 @@ func validateRenderedNavigation(options map[string]any) error {
 		return ErrUnsupportedProfile
 	}
 	for _, key := range []string{"actions", "request_headers", "enrich", "fallback"} {
+		if key == "actions" && len(allowActions) == 1 && allowActions[0] {
+			if _, err := actions.Parse(options[key]); err != nil {
+				return ErrUnsupportedProfile
+			}
+			continue
+		}
 		value := options[key]
 		if value == nil {
 			continue

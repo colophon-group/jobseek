@@ -10,11 +10,14 @@ import (
 )
 
 func TestRealRenderedInlinePersistsCanonicalFieldsAndRejectsInvalidInventory(t *testing.T) {
-	for _, mode := range []string{"rich", "header", "meta", "root404", "zero-proof", "explicit-empty", "challenge", "malformed"} {
+	for _, mode := range []string{"rich", "actions", "header", "meta", "root404", "zero-proof", "explicit-empty", "challenge", "malformed"} {
 		t.Run(mode, func(t *testing.T) {
 			md := `{"render":true,"scraper_type":"skip","steps":[{"tag":"h2","field":"title"},{"tag":"p","field":"description","html":true,"stop_tag":"h2"}],"defaults":{"locations":["Zurich"]},"require_zero_proof":true`
 			if mode == "explicit-empty" {
 				md += `,"empty_selector":".empty","empty_text":"No vacancies"`
+			}
+			if mode == "actions" {
+				md += `,"actions":[{"action":"evaluate","script":"() => window.ready = true","required":true},{"action":"wait","ms":0}]`
 			}
 			md += `}`
 			f := privateRichPipelineFixture(t, "inline", md, queue.Browser)
@@ -70,7 +73,7 @@ func TestRealRenderedInlinePersistsCanonicalFieldsAndRejectsInvalidInventory(t *
 			if e = f.pg.QueryRow(ctx, "SELECT consecutive_failures,empty_check_count,tdm_reserved FROM job_board WHERE id=$1::uuid", f.board).Scan(&failures, &empty, &reserved); e != nil {
 				t.Fatal(e)
 			}
-			if mode == "rich" {
+			if mode == "rich" || mode == "actions" {
 				var title, html string
 				var locations []int32
 				if e = f.pg.QueryRow(ctx, "SELECT p.titles[1],p.location_ids,d.html FROM job_posting p JOIN descriptions d ON d.posting_id=p.id WHERE p.board_id=$1::uuid AND p.id<>$2::uuid", f.board, f.original).Scan(&title, &locations, &html); e != nil {

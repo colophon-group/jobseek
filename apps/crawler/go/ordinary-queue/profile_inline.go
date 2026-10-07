@@ -69,7 +69,7 @@ func RenderedInlineMonitorOptions(config map[string]string) (api.InlineMonitorOp
 			options[key] = v
 		}
 	}
-	if validateRenderedNavigation(options) != nil {
+	if validateRenderedNavigation(options, true) != nil {
 		return fail()
 	}
 	for _, key := range []string{"fetch_json_path", "detail_click_selector", "detail_content_selector", "detail_identity_selector", "detail_identity_attribute", "detail_identity_regex"} {

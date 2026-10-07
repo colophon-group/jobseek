@@ -22,8 +22,10 @@ import (
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
+	actions "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/documentactions"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	resourcepolicy "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/resourcepolicy"
+	policy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 )
 
 const (
@@ -69,14 +71,16 @@ var (
 	}{reserved: make(map[int]struct{})}
 )
 
-// Task is intentionally small: the pilot navigates once and optionally
-// evaluates one synchronous JavaScript expression.
+// Task navigates one fresh target, then runs a bounded action pipeline, one
+// expression, or a provider conversation. These execution modes are exclusive.
 type Task struct {
 	URL               string
+	Actions           []actions.Action
 	Evaluation        *TaskEvaluation
 	Navigation        *navigationOptions
 	Dayforce          *dayforceTask
 	Feed              *feedTask
+	APIReplay         *apiReplayTask
 	ResponseBodyLimit uint64
 }
 
@@ -89,14 +93,15 @@ type TaskEvaluation struct {
 
 // Result contains only data from the top-level document.
 type Result struct {
-	feedSessionSettled bool
-	ResourcePolicy     *runtimev1.ResourcePolicySignals `json:"-"`
-	Status             int                              `json:"status"`
-	FinalURL           string                           `json:"final_url"`
-	HTML               string                           `json:"html"`
-	HTMLPresent        bool                             `json:"-"`
-	ResponseBody       []byte                           `json:"-"`
-	Expression         json.RawMessage                  `json:"expression"`
+	feedSessionSettled      bool
+	apiReplaySessionSettled bool
+	ResourcePolicy          *runtimev1.ResourcePolicySignals `json:"-"`
+	Status                  int                              `json:"status"`
+	FinalURL                string                           `json:"final_url"`
+	HTML                    string                           `json:"html"`
+	HTMLPresent             bool                             `json:"-"`
+	ResponseBody            []byte                           `json:"-"`
+	Expression              json.RawMessage                  `json:"expression"`
 }
 
 type managedProcess interface {
@@ -167,7 +172,7 @@ func runTask(ctx context.Context, config Config, task Task) (Result, error) {
 			isolateChild: config.isolateChild,
 		},
 		ready:        httpReadyWaiter{interval: defaultReadyInterval},
-		executor:     chromedpExecutor{},
+		executor:     chromedpExecutor{egressPolicy: config.EgressPolicy},
 		allocatePort: allocateLoopbackPort,
 		releasePort:  releaseLoopbackPort,
 		portOpen:     loopbackPortOpen,
@@ -260,6 +265,12 @@ func executeTask(ctx context.Context, deps dependencies, process managedProcess,
 }
 
 func validateTask(task Task) error {
+	if len(task.Actions) > 0 && (!actions.Valid(task.Actions) || task.Evaluation != nil || task.APIReplay != nil || task.Feed != nil || task.Dayforce != nil || task.ResponseBodyLimit != 0) {
+		return actions.ErrActions
+	}
+	if task.APIReplay != nil && (task.APIReplay.boardURL != task.URL || task.APIReplay.converse == nil || task.Dayforce != nil || task.Feed != nil || task.Evaluation != nil || task.ResponseBodyLimit != 0 || task.Navigation == nil || task.APIReplay.options.Inventory.Endpoint == "") {
+		return errReplayCapture
+	}
 	if task.Feed != nil && (!task.Feed.request.Valid() || task.Feed.converse == nil || task.Feed.request.FeedURL != task.URL || task.Dayforce != nil || task.Evaluation != nil || task.ResponseBodyLimit != 2_000_000) {
 		return errors.New("invalid feed session task")
 	}
@@ -320,6 +331,12 @@ func validateCDPEndpoint(raw string, expectedPort int) error {
 }
 
 func validateResult(task Task, result Result) error {
+	if task.APIReplay != nil {
+		if !result.apiReplaySessionSettled {
+			return errReplayCapture
+		}
+		return nil
+	}
 	if task.Feed != nil {
 		if !result.feedSessionSettled {
 			return errors.New("feed session unfinished")
@@ -342,7 +359,7 @@ func validateResult(task Task, result Result) error {
 		return errors.New("main-document outerHTML is missing")
 	}
 	htmlLimit := maxHTMLBytes
-	if task.Dayforce != nil {
+	if task.Dayforce != nil || task.APIReplay != nil {
 		htmlLimit = 1_000_000 - 1
 	}
 	if len(result.HTML) > htmlLimit {
@@ -772,7 +789,7 @@ func fetchVersion(ctx context.Context, client *http.Client, endpoint string) (st
 	return version.WebSocketDebuggerURL, true, nil
 }
 
-type chromedpExecutor struct{}
+type chromedpExecutor struct{ egressPolicy EgressPolicy }
 
 type mainDocumentResponse struct {
 	resourcePolicy *runtimev1.ResourcePolicySignals
@@ -822,7 +839,17 @@ func comparableDocumentURL(raw string) (string, error) {
 	return parsed.String(), nil
 }
 
-func (chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (Result, error) {
+func (executor chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (Result, error) {
+	if task.APIReplay != nil && task.APIReplay.fallback == nil {
+		copyTask := *task.APIReplay
+		fetch, closeHTTP, err := newReplayHTTPFallback(copyTask.options, executor.egressPolicy)
+		if err != nil {
+			return Result{}, err
+		}
+		defer closeHTTP()
+		copyTask.fallback = fetch
+		task.APIReplay = &copyTask
+	}
 	allocatorCtx, cancelAllocator := chromedp.NewRemoteAllocator(ctx, cdpURL, chromedp.NoModifyURL)
 	defer cancelAllocator()
 	var targetOptions []chromedp.ContextOption
@@ -878,6 +905,16 @@ func executeOnTarget(ctx, target context.Context, task Task) (Result, error) {
 		return Result{}, fmt.Errorf("initialize fresh target: %w", err)
 	}
 	var dayforceCapture *dayforceSearchCapture
+	var apiCapture *replayCapture
+	if task.APIReplay != nil {
+		var err error
+		apiCapture, err = newReplayCapture(task.APIReplay.options)
+		if err != nil {
+			return Result{}, err
+		}
+		defer apiCapture.erase()
+		chromedp.ListenTarget(targetCtx, apiCapture.observe)
+	}
 	if task.Dayforce != nil {
 		var err error
 		dayforceCapture, err = newDayforceSearchCapture(mainFrame, task.Dayforce.request.SearchURL())
@@ -937,8 +974,7 @@ func executeOnTarget(ctx, target context.Context, task Task) (Result, error) {
 	if task.ResponseBodyLimit == 0 {
 		captureDocument = append(captureDocument, chromedp.WaitReady("html", chromedp.ByQuery), chromedp.OuterHTML("html", &html, chromedp.ByQuery))
 	}
-	if err := chromedp.Run(targetCtx,
-		navigate,
+	snapshotDocument := chromedp.Tasks{
 		captureDocument,
 		chromedp.Location(&finalURL),
 		chromedp.ActionFunc(func(actionCtx context.Context) error {
@@ -955,8 +991,34 @@ func executeOnTarget(ctx, target context.Context, task Task) (Result, error) {
 			}
 			return nil
 		}),
-	); err != nil {
+	}
+	if err := chromedp.Run(targetCtx, navigate, snapshotDocument); err != nil {
 		return Result{}, err
+	}
+	if len(task.Actions) > 0 {
+		check := func() (bool, error) {
+			if err := chromedp.Run(targetCtx, snapshotDocument); err != nil {
+				return false, err
+			}
+			responseMu.Lock()
+			current := latestResponse
+			responseMu.Unlock()
+			if current.policyInvalid {
+				return false, policy.ErrSignals
+			}
+			if _, err := correlateMainDocumentSnapshot(current, capturedFrame, finalURL); err != nil {
+				return false, err
+			}
+			err := policy.Check(current.resourcePolicy, html, finalURL)
+			var reserved *policy.Reservation
+			if errors.As(err, &reserved) {
+				return true, nil
+			}
+			return false, err
+		}
+		if err := runDocumentActions(targetCtx, task.Actions, executeDocumentAction, check); err != nil {
+			return Result{}, err
+		}
 	}
 
 	// Freeze the navigation result before evaluating caller JavaScript. Even a
@@ -995,6 +1057,14 @@ func executeOnTarget(ctx, target context.Context, task Task) (Result, error) {
 		if err := executeDayforceConversation(targetCtx, task.Dayforce, dayforceCapture, int(mainStatus), finalURL, html, capturedResponse.resourcePolicy); err != nil {
 			return Result{}, err
 		}
+	}
+	if task.APIReplay != nil {
+		if err := executeAPIReplayConversation(targetCtx, task.APIReplay, apiCapture, int(mainStatus), finalURL, html, capturedResponse.resourcePolicy); err != nil {
+			return Result{}, err
+		}
+		// The bootstrap HTML may contain credentials. Only the conversation's
+		// checked API documents can cross its eventual service protocol.
+		return Result{apiReplaySessionSettled: true}, nil
 	}
 
 	var expression json.RawMessage

@@ -1,9 +1,7 @@
 package worker
 
 import (
-	"errors"
 	api "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
-	"net"
 	"net/url"
 	"regexp"
 	"strings"
@@ -11,176 +9,27 @@ import (
 	"unicode/utf8"
 
 	"golang.org/x/text/cases"
-	"golang.org/x/text/unicode/norm"
 )
 
 type pythonURL struct{ scheme, host, path, params, query, fragment string }
 
 // Preserve urllib identity bytes: net/url resolution percent-escapes Unicode
 // paths and rejects invalid percent escapes accepted by the existing crawler.
-func pythonJoinURL(base, reference string) (string, error) {
-	if base == "" {
-		return reference, nil
-	}
-	if reference == "" {
-		return base, nil
-	}
-	b, ok := parsePythonURL(base)
-	if !ok {
-		return "", errors.New("invalid base URL")
-	}
-	p, ok := parsePythonURL(reference)
-	if !ok {
-		return "", errors.New("invalid reference URL")
-	}
-	if p.scheme == "" {
-		p.scheme = b.scheme
-	}
-	if p.scheme != b.scheme || p.scheme != "http" && p.scheme != "https" {
-		return reference, nil
-	}
-	if p.host != "" {
-		return p.String(), nil
-	}
-	p.host = b.host
-	if p.path == "" && p.params == "" {
-		p.path, p.params = b.path, b.params
-		if p.query == "" {
-			p.query = b.query
-		}
-		return p.String(), nil
-	}
-	segments := strings.Split(p.path, "/")
-	if !strings.HasPrefix(p.path, "/") {
-		parts := strings.Split(b.path, "/")
-		if parts[len(parts)-1] != "" {
-			parts = parts[:len(parts)-1]
-		}
-		segments = append(parts, segments...)
-		filtered := []string{segments[0]}
-		if len(segments) > 2 {
-			for _, segment := range segments[1 : len(segments)-1] {
-				if segment != "" {
-					filtered = append(filtered, segment)
-				}
-			}
-		}
-		if len(segments) > 1 {
-			filtered = append(filtered, segments[len(segments)-1])
-		}
-		segments = filtered
-	}
-	resolved := []string{}
-	for _, segment := range segments {
-		switch segment {
-		case "..":
-			if len(resolved) > 0 {
-				resolved = resolved[:len(resolved)-1]
-			}
-		case ".":
-		default:
-			resolved = append(resolved, segment)
-		}
-	}
-	if last := segments[len(segments)-1]; last == "." || last == ".." {
-		resolved = append(resolved, "")
-	}
-	p.path = strings.Join(resolved, "/")
-	if p.path == "" {
-		p.path = "/"
-	}
-	return p.String(), nil
-}
+func pythonJoinURL(base, reference string) (string, error) { return api.PythonJoinURL(base, reference) }
 
-var urlScheme = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9+.-]*$`)
-var ipvFuture = regexp.MustCompile(`^v[0-9A-Fa-f]+\..+$`)
 var talSegment = regexp.MustCompile(`/xf-[a-f0-9]+/`)
-var paramSchemes = map[string]bool{"": true, "ftp": true, "hdl": true, "prospero": true, "http": true, "imap": true, "https": true, "shttp": true, "rtsp": true, "rtsps": true, "rtspu": true, "sip": true, "sips": true, "mms": true, "sftp": true, "tel": true}
+
 var volatileSuccessFactors = map[string]bool{"_s.crb": true, "jobAlertController_jobAlertId": true, "jobAlertController_jobAlertName": true, "browserTimeZone": true}
 
 // Classification/canonicalization use Python urllib's decomposition, rather
 // than Go's stricter escaped-path parser. Unmodified URLs retain their exact
 // bytes, including invalid percent escapes accepted by the Python URL lane.
 func parsePythonURL(raw string) (pythonURL, bool) {
-	s := strings.TrimLeftFunc(raw, func(r rune) bool { return r <= 32 })
-	s = strings.NewReplacer("\t", "", "\r", "", "\n", "").Replace(s)
-	p := pythonURL{}
-	if colon := strings.IndexByte(s, ':'); colon >= 0 && urlScheme.MatchString(s[:colon]) {
-		p.scheme = strings.ToLower(s[:colon])
-		s = s[colon+1:]
-	}
-	if strings.HasPrefix(s, "//") {
-		s = s[2:]
-		end := strings.IndexAny(s, "/?#")
-		if end < 0 {
-			end = len(s)
-		}
-		p.host, s = s[:end], s[end:]
-		if strings.ContainsAny(p.host, "[]") {
-			host := p.host
-			if at := strings.LastIndexByte(host, '@'); at >= 0 {
-				host = host[at+1:]
-			}
-			open, close := strings.IndexByte(host, '['), strings.IndexByte(host, ']')
-			if open != 0 || close < open || (close+1 < len(host) && host[close+1] != ':') {
-				return pythonURL{}, false
-			}
-			bracket := host[open+1 : close]
-			if !ipvFuture.MatchString(bracket) {
-				address := bracket
-				if scope := strings.IndexByte(address, '%'); scope >= 0 {
-					address = address[:scope]
-				}
-				if ip := net.ParseIP(address); ip == nil || !strings.Contains(address, ":") {
-					return pythonURL{}, false
-				}
-			}
-		}
-		checked := strings.NewReplacer("@", "", ":", "", "#", "", "?", "").Replace(p.host)
-		if normalized := norm.NFKC.String(checked); normalized != checked && strings.ContainsAny(normalized, "/?#@:") {
-			return pythonURL{}, false
-		}
-	}
-	if fragment := strings.IndexByte(s, '#'); fragment >= 0 {
-		p.fragment, s = s[fragment+1:], s[:fragment]
-	}
-	if query := strings.IndexByte(s, '?'); query >= 0 {
-		p.query, s = s[query+1:], s[:query]
-	}
-	p.path = s
-	if paramSchemes[p.scheme] {
-		start := strings.LastIndexByte(s, '/') + 1
-		if semi := strings.IndexByte(s[start:], ';'); semi >= 0 {
-			index := start + semi
-			p.path, p.params = s[:index], s[index+1:]
-		}
-	}
-	return p, true
+	p, ok := api.ParsePythonURL(raw)
+	return pythonURL{p.Scheme, p.Host, p.Path, p.Params, p.Query, p.Fragment}, ok
 }
-
 func (p pythonURL) String() string {
-	path := p.path
-	if p.params != "" {
-		path += ";" + p.params
-	}
-	result := ""
-	if p.scheme != "" {
-		result = p.scheme + ":"
-	}
-	if p.host != "" {
-		result += "//" + p.host
-		if path != "" && !strings.HasPrefix(path, "/") {
-			result += "/"
-		}
-	}
-	result += path
-	if p.query != "" {
-		result += "?" + p.query
-	}
-	if p.fragment != "" {
-		result += "#" + p.fragment
-	}
-	return result
+	return (api.PythonURL{Scheme: p.scheme, Host: p.host, Path: p.path, Params: p.params, Query: p.query, Fragment: p.fragment}).String()
 }
 
 func classifyJobURL(raw, board string) string {

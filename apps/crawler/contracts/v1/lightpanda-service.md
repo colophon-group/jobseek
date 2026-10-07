@@ -190,6 +190,40 @@ oversized bodies or invalid chunk hashes fail closed. Authoritative process
 cleanup still precedes success. This one-shot capability does not itself provide
 affine pagination, proxy transport or ownership admission for RSS feeds.
 
+## Native DOM and Inline actions
+
+`jobseek.lightpanda.document-actions/v1` is a separate framed request on the
+existing pinned mTLS reservation. It carries the existing navigation input,
+request/configuration fingerprints and an ordered action list. The renderer
+revalidates navigation through its render-only adapter and attaches actions
+only after that preflight. Evaluation plans, captures and unrelated runtime
+capabilities remain rejected by this path.
+
+The admitted actions are `wait` and `evaluate`. Python defaults are preserved:
+1,000 ms for a wait, ten seconds per action, optional failure unless
+`required: true`. Evaluation invokes a function expression and awaits its
+Promise, discarding the returned value. Required failure rejects the entire
+inventory. Parent cancellation remains terminal even for an optional action.
+Unknown controls and interactions retain their current owner. There are at most
+32 actions, 32 KiB of encoded actions, 120 seconds per action and 300 seconds
+of aggregate action time; complete requests remain within 128 KiB.
+
+Each action operates in the same fresh target. The renderer recaptures and
+correlates the main frame/loader/URL/policy before further actions and after the
+pipeline. Publisher denial stops further actions and returns the declared
+resource for normal policy classification. Invalid evidence or incomplete
+capture fails closed. Only the existing typed document result crosses the
+wire, after child/port cleanup; script exceptions never enter public diagnostics.
+The sole bound response requires matching request/configuration fingerprints
+and connection EOF. A disconnect or trailing request byte cancels execution.
+
+The resident connection ceiling is 750 seconds: initial read/handshake budget,
+the longest 600-second API conversation and cleanup/write time. Navigation and
+action budgets remain independently bounded; the worker retains its existing
+600-second task deadline and heartbeat lease. No shared browser or new queue
+is introduced. Production admission requires the original source-bound plan
+and supported staging/activation; the RPC alone grants no board ownership.
+
 ## Capacity and memory admission
 
 Startup reads cgroup v2 `memory.max` and `memory.swap.max` and refuses to start

@@ -13,6 +13,8 @@ COPY --from=contracts v1/lightpandaadapter/ /workspace/apps/crawler/contracts/v1
 COPY --from=contracts v1/resourcepolicy/ /workspace/apps/crawler/contracts/v1/resourcepolicy/
 COPY --from=contracts v1/dayforcesession/ /workspace/apps/crawler/contracts/v1/dayforcesession/
 COPY --from=contracts v1/feedsession/ /workspace/apps/crawler/contracts/v1/feedsession/
+COPY --from=contracts v1/documentactions/ /workspace/apps/crawler/contracts/v1/documentactions/
+COPY --from=contracts v1/apireplay/ /workspace/apps/crawler/contracts/v1/apireplay/
 COPY --from=contracts v1/lightpandaclient/ /workspace/apps/crawler/contracts/v1/lightpandaclient/
 COPY --from=contracts v1/b0task/ /workspace/apps/crawler/contracts/v1/b0task/
 COPY --from=api-sniffer-monitor go.mod go.sum *.go adp_employment_types.json adp_salary_units.json /workspace/apps/crawler/go/api-sniffer-monitor/
@@ -76,7 +78,7 @@ FROM pilot-base AS integration-test
 COPY --from=integration-build /out/go-lightpanda.test /usr/local/bin/go-lightpanda.test
 ENV LIGHTPANDA_INTEGRATION_BIN=/usr/local/bin/lightpanda
 RUN --network=none /usr/local/bin/go-lightpanda.test \
-    -test.run '^(TestLightpandaIntegration|TestLightpandaDayforceSessionIntegration|TestLightpandaNavigationReadinessIntegration|TestLightpandaRuntimeV1BridgeIntegration|TestLightpandaRuntimeV1StdioIntegration|TestLightpandaPoolRuntimeV1IntegrationC4|TestLightpandaEgressPolicyIntegration)$' \
+    -test.run '^(TestLightpandaIntegration|TestLightpandaDayforceSessionIntegration|TestLightpandaAPIReplaySessionIntegration|TestLightpandaDocumentActionsIntegration|TestLightpandaNavigationReadinessIntegration|TestLightpandaRuntimeV1BridgeIntegration|TestLightpandaRuntimeV1StdioIntegration|TestLightpandaPoolRuntimeV1IntegrationC4|TestLightpandaEgressPolicyIntegration)$' \
     -test.count=1 -test.v
 
 FROM pilot-base AS runtime

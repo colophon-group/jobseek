@@ -1,0 +1,65 @@
+{
+  "schema": "jobseek.grouped-browser-native-candidate/v1",
+  "source_revision": "0dec76982ac1163851a0f5e0da7ae38dcb3fb8c1",
+  "version": "0.13.964",
+  "compiled_profiles": 108,
+  "pull_request": "https://github.com/colophon-group/jobseek/pull/10350",
+  "production_admitted": false,
+  "scope": {
+    "api_browser": 33,
+    "dom_wait_evaluate": 20,
+    "inline_wait_evaluate": 2,
+    "total_additional_configurations": 55
+  },
+  "offline_screen": {
+    "proof": "native964-actions-offline-census-at0dec76982-2026-10-07.json",
+    "eligible_monitors": 7295,
+    "remaining_monitors": 587,
+    "canonical_cache_mismatch": 0,
+    "cached_unsupported": 0,
+    "authority": "Retained source963 capture; fresh admission and supported staging/rollout required"
+  },
+  "local_verification": {
+    "contracts_race": "PASS documentactions1.191s/client1.486s; request binding, EOF, cancellation",
+    "pilot_full_race": "PASS8.270s with local actual-binary fixture skip; real browser proof pending CI",
+    "dom_inline_postgres_redis_actions": "PASS2.260s with required real fixtures",
+    "full_worker_queue": {
+      "source_revision": "0dec76982ac1163851a0f5e0da7ae38dcb3fb8c1",
+      "requirement": "Final full suites and current required PR checks must pass before merge",
+      "historical_api_core_full_suites": {
+        "source_revision": "cc5e3275bd291bdb84beb97e5831c4096af04eaa",
+        "worker_seconds": 548.462,
+        "queue_seconds": 342.58,
+        "status": "PASS"
+      },
+      "current_full_suites": "Recorded by the protected original driver and current PR native-execution check"
+    }
+  },
+  "original_ci": {
+    "pilot_run": 37656522604,
+    "required_ci_run": 37656523186,
+    "runtime_contract_run": 37656522581,
+    "browser_lanes_run": 37656523411,
+    "deploy_gate_run": 37656523992,
+    "status": "Actual Lightpanda fixtures terminal PASS on both architectures; required merge checks tracked on PR10350",
+    "pilot_status": "terminal SUCCESS on AMD64 and ARM64",
+    "actual_browser_cases": [
+      "private-cookie-and-pagination",
+      "later-publisher-denial",
+      "sequential-async-optional",
+      "required-failure",
+      "publisher-before-actions",
+      "publisher-after-action"
+    ],
+    "pilot_url": "https://github.com/colophon-group/jobseek/actions/runs/37656522604"
+  },
+  "remaining_for_delivery": [
+    "Terminal full worker/queue suites and both architecture real action service/client fixtures",
+    "Fresh required-check and exact-head merge authority",
+    "Original immutable rollout, fresh source/epoch admission and supported activation",
+    "Natural profile-specific canonical completions and SQL/Redis freshness/conservation"
+  ],
+  "full_migration_complete": false,
+  "updated_at_utc": "2026-10-07T17:11:04.364284+00:00",
+  "candidate_only": true
+}
