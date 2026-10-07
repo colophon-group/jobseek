@@ -106,6 +106,7 @@ def ownership_projection(payload: str) -> str:
                     "dayforce.session-search/v1",
                     "nextdata.rendered-items/v1",
                     "nextdata.rendered-urls/v1",
+                    "api_sniffer.browser-items/v1",
                 }
                 else "simple"
             )
