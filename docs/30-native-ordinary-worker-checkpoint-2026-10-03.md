@@ -5,6 +5,41 @@
 The full migration goal is **active and incomplete**. Ship multiple provider
 and variant types per release, sharing reference verification, CI and cutover.
 
+### Latest operational update — 02:10 UTC October7
+
+Production source957 is now independently verified **cold at epoch208** after
+supported B0 rollback and selector clear. Both native ownership paths, receipts,
+projection, claim tokens and current write fences are absent. The failed957 plan
+is retired; historical audit receipts remain intact. Seven base processes retain
+exact release images and restart policies, six serving health endpoints return200,
+B0 producer/executor are stopped under their supported policies, and no one-offs
+remain. This supersedes the earlier active207 readback below.
+
+[PR #10346](https://github.com/colophon-group/jobseek/pull/10346), candidate958,
+is ready at exact head `0a4bc8efc598772602ddbdfe4c33d2d93403e34e`.
+Full local worker/queue race suites passed in492.648/271.430 seconds with required
+PostgreSQL/Redis fixtures. Original native execution CI, installed-image parity
+for all85 profiles and Crawler Deploy Gate passed. Original
+[Required CI run37558109978](https://github.com/colophon-group/jobseek/actions/runs/37558109978)
+is still finishing its browser-image build at this checkpoint. Merge requires
+its terminal success and a fresh head/base/operator/hold/check/merge-state audit.
+A new immutable deployment, source/receipt-bound census and newly staged ordinary
+plan must follow. Neither the retired957 plan nor an earlier cohort grants reuse
+or natural-processing authority.
+
+The next candidate959 has a committed native DOM rich-row configuration and
+extraction core. Fifty actual Python reference cases and the full DOM module
+race suite pass; all28 current canonical rich-row configs parse unchanged.
+Direct-child relational selectors, replacement order, descriptions, locations,
+section/lifecycle bounds, duplicate policy and advertised counts are covered.
+This proves the pure parser. Ordinary direct/proxy/rendered discovery profiles,
+delegated field scheduling, canonical persistence and cold reversal still need
+integration and verification before any board is adopted. Keep remaining RSS
+variants in this grouped continuation and update Python browser ownership
+attestation when introducing a rendered rich-row profile.
+
+### Prior source957 and candidate958 snapshot
+
 Production **0.13.957** is deployed from merged source
 `60d0de8bebfbd25486791cb741d3b5ce814dfbce` through the successful original
 [deployment 37553965143](https://github.com/colophon-group/jobseek/actions/runs/37553965143).
