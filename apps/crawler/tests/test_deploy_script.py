@@ -118,7 +118,7 @@ def test_deploy_validates_environment_proxy_secret_before_host_mutation() -> Non
         "WEBSHARE_PROXY_URLS": "${{ secrets.WEBSHARE_PROXY_URLS }}",
         "WEBSHARE_PROXY_URL": "${{ secrets.WEBSHARE_PROXY_URL }}",
     }
-    assert "-m src.runtime_proxy_preflight" in validation["run"]
+    assert "go-ordinary-worker --proxy-preflight" in validation["run"]
     assert "WEBSHARE_API_KEY" not in validation["run"]
 
 

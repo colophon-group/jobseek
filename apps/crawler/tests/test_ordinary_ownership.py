@@ -545,6 +545,7 @@ def test_detail_projection_is_independent_of_monitor_membership(profile):
         "rss.rendered-generic-summary-items/v1",
         "rss.rendered-wp_job_manager-skip/v1",
         "rss.rendered-wp_job_manager-items/v1",
+        "api_sniffer.browser-items/v1",
     ],
 )
 def test_rendered_monitor_projection_preserves_exact_worker_boundary(profile):

@@ -228,6 +228,31 @@ jobs:
             exit 1
           fi
 
+      - name: Verify installed proxy preflight without runtime credentials or network
+        run: |
+          set -euo pipefail
+          output="$(docker run --rm --read-only --network none \
+            --entrypoint /usr/local/bin/go-ordinary-worker \
+            -e PROXY_PROVIDER=none \
+            jobseek-crawler:runtime-v1 --proxy-preflight)"
+          test "$output" = 'Runtime proxy configuration valid: mode=disabled, pool_entries=0'
+          if docker run --rm --read-only --network none \
+            --entrypoint /usr/local/bin/go-ordinary-worker \
+            -e PROXY_PROVIDER=webshare \
+            jobseek-crawler:runtime-v1 --proxy-preflight; then
+            echo 'Proxy preflight accepted a selected provider without an endpoint' >&2
+            exit 1
+          fi
+
+      - name: Verify installed legacy routing reader against the Go codec fixture
+        run: |
+          set -euo pipefail
+          docker run --rm --read-only --network none \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/apps/crawler/go/ordinary-queue/testdata/ownership_projection_python.json,target=/tmp/ownership-codec.json,readonly" \
+            --entrypoint /app/.venv/bin/python \
+            jobseek-crawler:runtime-v1 \
+            -I -c 'import json, pathlib; from src.ordinary_ownership import ownership_projection; cases=json.loads(pathlib.Path("/tmp/ownership-codec.json").read_text())["cases"]; assert any(case["name"] == "api_browser_monitor" for case in cases); assert all(ownership_projection(case["payload"]) == case["projection"] for case in cases)'
+
       - name: Verify installed build info for all long-lived roles
         run: |
           set -euo pipefail

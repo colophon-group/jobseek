@@ -409,7 +409,7 @@ func TestOwnershipProjectionMatchesActualPythonCodec(t *testing.T) {
 			Hash                      string `json:"projection_sha1"`
 		}
 	}
-	if json.Unmarshal(body, &capture) != nil || len(capture.Cases) != 5 {
+	if json.Unmarshal(body, &capture) != nil || len(capture.Cases) != 6 {
 		t.Fatal("Python projection capture unavailable")
 	}
 	for _, c := range capture.Cases {

@@ -35,6 +35,13 @@
       "plan_sha256": "77ccdf30ebc9bc119ed476cf8553c0e727179f193be9f7510a2c8a811e737512",
       "projection": "{\"version\":\"jobseek.ordinary.ownership-projection/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"plan_sha256\":\"77ccdf30ebc9bc119ed476cf8553c0e727179f193be9f7510a2c8a811e737512\",\"members\":{\"00000000-0000-4000-8000-000000000001\":\"greenhouse\"},\"details\":{\"00000000-0000-4000-8000-000000000098\":\"*\"}}",
       "projection_sha1": "712b22d357672be79b9351081cccb9e4d5757d8a"
+    },
+    {
+      "name": "api_browser_monitor",
+      "payload": "{\"version\":\"jobseek.ordinary.ownership/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"members\":[{\"board_id\":\"00000000-0000-4000-8000-000000000001\",\"domain\":\"api-fixture.invalid\",\"kind\":\"monitor\",\"worker\":\"browser\",\"profile\":\"api_sniffer.browser-items/v1\"}],\"routing_projection\":\"jobseek.ordinary.ownership-projection/v1\"}",
+      "plan_sha256": "4314e1941c53d939d702a36df370b6e0aedd250b95f1eea4896038ec216dcde2",
+      "projection": "{\"version\":\"jobseek.ordinary.ownership-projection/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"plan_sha256\":\"4314e1941c53d939d702a36df370b6e0aedd250b95f1eea4896038ec216dcde2\",\"members\":{\"00000000-0000-4000-8000-000000000001\":\"api-fixture.invalid\"}}",
+      "projection_sha1": "4dca7430bf256385ac92c40b3bdfa5e0aa86c39c"
     }
   ]
 }

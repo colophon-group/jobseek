@@ -1,0 +1,20 @@
+{
+  "schema": "jobseek.native-api-browser-legacy-reader-repair/v1",
+  "version": "0.13.965",
+  "affected_runtime_revision": "16ebb019d7b3dbafbf33bb829200369713a4da5c",
+  "failure": "Go ownership at217 committed, but legacy worker readiness rejected api_sniffer.browser-items/v1 because the Python projection reader classified that profile as simple",
+  "containment": "Original wrapper retained exact pending identity and stopped/disarmed all writers",
+  "supported_recovery": "Original recover-pending succeeded on attempt2 after a transient host mutation lock refusal; exact217 plan retired, base/B0 stack restored, seven independent HTTP health probes passed",
+  "correction": "Classify api_sniffer.browser-items/v1 as browser in the existing legacy ownership reader; preserve wrong-lane rejection and exact payload/projection/source/epoch checks",
+  "verification": {
+    "before": "Regression reproduced: new browser profile failed while existing12 browser profiles passed",
+    "actual_production_plan": "Original reader rejects actual7295-monitor/2616-detail plan; patched reader reproduces exact Go projection c61fd07123f4215f3e66e7641f35633ae8d0d9af",
+    "python_ownership": "50 PASS /6 Docker-specific skips",
+    "cutover_contract": "17 PASS5.81s",
+    "cross_language_fixture": "API browser case appended to shared frozen actual-codec fixture; focused Go race and Python fixture checks",
+    "installed_image": "New network-disabled required-CI step checks installed wheel against the complete shared fixture; pending CI"
+  },
+  "broader_native_owner_active": false,
+  "runtime_go_implementation_changed": false,
+  "full_migration_complete": false
+}
