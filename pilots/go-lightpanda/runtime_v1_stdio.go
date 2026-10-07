@@ -336,16 +336,29 @@ func validRuntimeV1RenderSuccess(success *runtimev1.BrowserSuccess) bool {
 	if success == nil || !resourcepolicy.Valid(success.ResourcePolicy) || len(success.ProtoReflect().GetUnknown()) != 0 ||
 		!validRuntimeV1URL(success.FinalUrl) || success.Status == nil ||
 		*success.Status < 100 || *success.Status > 599 || success.Html == nil ||
-		len(success.ActionOutcomes) != 0 || len(success.Captures) != 0 ||
+		len(success.ActionOutcomes) != 0 || len(success.Captures) > 1 ||
 		len(success.Evaluations) != 0 || len(success.Artifacts) != 0 {
 		return false
+	}
+	if len(success.Captures) == 1 {
+		if success.Html.TotalSizeBytes != 0 {
+			return false
+		}
+		capture := success.Captures[0]
+		if capture == nil || len(capture.ProtoReflect().GetUnknown()) != 0 || capture.CaptureId == "" || len(capture.CaptureId) > 256 || !validRuntimeV1Manifest(capture.Body, lightpandaadapter.ResponseBodyPayloadLimit) {
+			return false
+		}
 	}
 	return validRuntimeV1HTML(success.Html)
 }
 
 func validRuntimeV1HTML(manifest *runtimev1.ChunkManifest) bool {
+	return validRuntimeV1Manifest(manifest, lightpandaadapter.HTMLPayloadLimit)
+}
+
+func validRuntimeV1Manifest(manifest *runtimev1.ChunkManifest, limit uint64) bool {
 	if manifest == nil || len(manifest.ProtoReflect().GetUnknown()) != 0 || !manifest.Complete ||
-		manifest.TotalSizeBytes > lightpandaadapter.HTMLPayloadLimit ||
+		manifest.TotalSizeBytes > limit ||
 		!validRuntimeV1SHA256(manifest.TotalSha256) {
 		return false
 	}

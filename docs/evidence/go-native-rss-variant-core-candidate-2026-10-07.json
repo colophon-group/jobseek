@@ -36,5 +36,17 @@
   "streamed_prefix_failure_parity": "passed for malformed small/large XML, trailing data and late structured-summary parser error; exact original200-job committed prefix",
   "full_suites": "pending",
   "actual_python_stream_cases": 9,
-  "stream_reference_race_seconds": 1.989
+  "stream_reference_race_seconds": 1.989,
+  "python_pagination_config_cases": 16,
+  "historical_rendered_row_new_epoch_cases": 2,
+  "historical_receipt_race_seconds": 2.964,
+  "raw_browser_response_capture": {
+    "state": "implemented; installed Linux XML/CDATA proof pending",
+    "max_bytes": 2000000,
+    "shared_contract": "existing response-body capture plan and chunk manifest",
+    "adapter_race_seconds": 1.339,
+    "renderer_full_race_seconds": 8.486,
+    "maximum_capture_fits_existing_frame": true,
+    "new_epoch_receipts_preserved": true
+  }
 }

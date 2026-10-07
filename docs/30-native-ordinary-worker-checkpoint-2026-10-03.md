@@ -5,6 +5,29 @@
 The full migration goal is **active and incomplete**. Ship multiple provider
 and variant types per release, sharing reference verification, CI and cutover.
 
+### Current rollout and RSS batch — 04:35 UTC October7
+
+Combined release960 merged in PR10347 as source
+`acb4bb9e7627c541f7ff0aba4bb0c1ca4995f48b`; its merge tree equals the reviewed
+head and required/installed/pilot/deploy-gate checks passed. Original immutable
+deployment37570306419 remains in progress. Supported source958 ordinary
+retirement, B0 rollback and selector clear completed; independent cold210 proof
+verifies the exact healthy base fleet and retained historical audit receipts.
+After terminal960 promotion, verify exact cold source/images, activate supported
+B0, obtain a fresh source/receipt census and actual posting routes, and activate
+a new ordinary plan. Historical958 cohort counts below do not authorize960.
+
+Candidate961 now includes16 actual Python pagination configuration references,
+real browser rich-row interrupted-history adoption/reversal proof, and raw final-
+document response capture through the existing Lightpanda contract. Local
+adapter race1.339s and full renderer race8.486s pass; maximum2,000,000-byte capture
+fits the existing wire frame. Capture preserves original XML bytes/CDATA and
+correlated policy signals; requests for other resources/actions remain refused.
+The existing installed Linux readiness suite now exercises raw RSS capture,
+redirect correlation and resource limits; that actual-browser proof remains
+pending. Affine pagination/proxy feeds and SuccessFactors properties still need
+integration before this grouped release is ready for adoption.
+
 ### Next grouped RSS integration candidate961 — October7
 
 The next batch now connects SuccessFactors legacy XML and Generic RSS structured

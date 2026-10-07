@@ -34,6 +34,8 @@ const (
 	EvaluationPayloadLimit uint64 = 64 * 1024
 	// HTMLPayloadLimit keeps the inactive adapter's materialized HTML bounded.
 	HTMLPayloadLimit uint64 = 1024 * 1024
+	// ResponseBodyPayloadLimit matches the existing browser RSS body ceiling.
+	ResponseBodyPayloadLimit uint64 = 2_000_000
 	// InputPayloadLimit bounds the complete serialized BrowserExecutionInput.
 	InputPayloadLimit = 128 * 1024
 	// HTMLChunkLimit is the deterministic inline chunk size.
@@ -85,12 +87,18 @@ type RawEvaluation struct {
 // RawSuccess is the only B1 provider success shape. Status and HTML are
 // required for every admitted B1 plan; a non-nil empty HTML slice means a
 // present empty document.
+type RawCapture struct {
+	CaptureID string
+	Body      []byte
+}
+
 type RawSuccess struct {
 	ResourcePolicy *runtimev1.ResourcePolicySignals
 	FinalURL       string
 	Status         *uint32
 	HTML           []byte
 	Evaluations    []RawEvaluation
+	Captures       []RawCapture
 }
 
 type runnerOutcomeKind uint8
@@ -116,11 +124,17 @@ type RunnerOutcome struct {
 // cleanup. Oversized material is represented without copying it and is mapped
 // to the closed resource-limit result by Execute.
 func NewRunnerSuccess(bound BoundInput, raw *RawSuccess) RunnerOutcome {
-	if raw == nil || !resourcepolicy.Valid(raw.ResourcePolicy) || len(raw.FinalURL) > maxTargetURLBytes || len(raw.Evaluations) > maxEvaluations {
+	if raw == nil || !resourcepolicy.Valid(raw.ResourcePolicy) || len(raw.FinalURL) > maxTargetURLBytes || len(raw.Evaluations) > maxEvaluations || len(raw.Captures) > 1 {
 		return RunnerOutcome{bindingFingerprint: bound.fingerprint}
 	}
 	if len(raw.Evaluations) == 1 && len(raw.Evaluations[0].EvaluationID) > maxEvaluationIDBytes {
 		return RunnerOutcome{bindingFingerprint: bound.fingerprint}
+	}
+	if len(raw.Captures) == 1 && (len(raw.Captures[0].CaptureID) > maxEvaluationIDBytes || raw.Captures[0].Body == nil) {
+		return RunnerOutcome{bindingFingerprint: bound.fingerprint}
+	}
+	if len(raw.Captures) == 1 && uint64(len(raw.Captures[0].Body)) > ResponseBodyPayloadLimit {
+		return RunnerOutcome{kind: runnerOutcomeResourceLimit, bindingFingerprint: bound.fingerprint}
 	}
 	if uint64(len(raw.HTML)) > HTMLPayloadLimit ||
 		(len(raw.Evaluations) == 1 && uint64(len(raw.Evaluations[0].JSON)) > EvaluationPayloadLimit) {
@@ -150,6 +164,9 @@ func NewRunnerSuccess(bound BoundInput, raw *RawSuccess) RunnerOutcome {
 		if raw.Evaluations[0].JSON != nil && cloned.Evaluations[0].JSON == nil {
 			cloned.Evaluations[0].JSON = []byte{}
 		}
+	}
+	if len(raw.Captures) == 1 {
+		cloned.Captures = []RawCapture{{CaptureID: raw.Captures[0].CaptureID, Body: append([]byte{}, raw.Captures[0].Body...)}}
 	}
 	return RunnerOutcome{
 		kind: runnerOutcomeSuccess, bindingFingerprint: bound.fingerprint, success: cloned,
@@ -347,7 +364,7 @@ func bindNavigation(input *runtimev1.BrowserExecutionInput, navigationWaits bool
 		return BoundInput{}, nil, false
 	}
 
-	_, unsupported, valid := validateCapabilities(cloned.Plan.RequiredCapabilities)
+	_, unsupported, valid := validateCapabilities(cloned.Plan.RequiredCapabilities, navigationWaits)
 	if !valid {
 		return BoundInput{}, nil, false
 	}
@@ -374,7 +391,7 @@ func shallowB1Cardinalities(input *runtimev1.BrowserExecutionInput) bool {
 	if len(plan.RequiredCapabilities) == 0 ||
 		len(plan.RequiredCapabilities) > int(runtimev1.BrowserCapability_BROWSER_CAPABILITY_TRANSPORT_OVERRIDES) ||
 		plan.Navigation == nil || len(plan.Navigation.Headers) != 0 || plan.Session != nil ||
-		len(plan.Actions) != 0 || len(plan.Captures) != 0 || len(plan.Evaluations) > maxEvaluations ||
+		len(plan.Actions) != 0 || len(plan.Captures) > 1 || len(plan.Evaluations) > maxEvaluations ||
 		len(plan.Interceptions) != 0 || len(plan.OriginOperations) < 1 || len(plan.OriginOperations) > 2 {
 		return false
 	}
@@ -383,6 +400,7 @@ func shallowB1Cardinalities(input *runtimev1.BrowserExecutionInput) bool {
 
 func validateCapabilities(
 	capabilities []runtimev1.BrowserCapability,
+	responseCapture ...bool,
 ) ([]runtimev1.BrowserCapability, []runtimev1.BrowserCapability, bool) {
 	if len(capabilities) < 1 {
 		return nil, nil, false
@@ -403,7 +421,8 @@ func validateCapabilities(
 	unsupported := make([]runtimev1.BrowserCapability, 0, len(normalized))
 	for capability := range seen {
 		if capability != runtimev1.BrowserCapability_BROWSER_CAPABILITY_RENDER &&
-			capability != runtimev1.BrowserCapability_BROWSER_CAPABILITY_EVALUATE {
+			capability != runtimev1.BrowserCapability_BROWSER_CAPABILITY_EVALUATE &&
+			!(len(responseCapture) == 1 && responseCapture[0] && capability == runtimev1.BrowserCapability_BROWSER_CAPABILITY_RESPONSE_CAPTURE) {
 			unsupported = append(unsupported, capability)
 		}
 	}
@@ -415,7 +434,7 @@ func validateCapabilities(
 func validB1Plan(plan *runtimev1.BrowserPlan, navigationWaits bool) bool {
 	if plan == nil || plan.ContractVersion != runtimeContractVersion || !validHTTPURL(plan.TargetUrl) ||
 		plan.Navigation == nil || plan.Session != nil || len(plan.Actions) != 0 ||
-		len(plan.Captures) != 0 || len(plan.Interceptions) != 0 ||
+		len(plan.Captures) > 1 || len(plan.Interceptions) != 0 ||
 		len(plan.Evaluations) > maxEvaluations ||
 		len(plan.OriginOperations) < 1 || len(plan.OriginOperations) > 2 {
 		return false
@@ -439,6 +458,21 @@ func validB1Plan(plan *runtimev1.BrowserPlan, navigationWaits bool) bool {
 				fallback.TimeoutMs == 0 || fallback.TimeoutMs > 5000 || fallback.TimeoutMs > navigation.TimeoutMs {
 				return false
 			}
+		}
+	}
+	hasCapture := false
+	for _, capability := range plan.RequiredCapabilities {
+		if capability == runtimev1.BrowserCapability_BROWSER_CAPABILITY_RESPONSE_CAPTURE {
+			hasCapture = true
+		}
+	}
+	if hasCapture != (len(plan.Captures) == 1) {
+		return false
+	}
+	if hasCapture {
+		capture := plan.Captures[0]
+		if !navigationWaits || len(plan.Evaluations) != 0 || capture == nil || capture.CaptureId == "" || len(capture.CaptureId) > maxEvaluationIDBytes || capture.Kind != runtimev1.CaptureKind_CAPTURE_KIND_RESPONSE_BODY || capture.UrlPattern != nil || capture.ArtifactOnly || capture.MaxBytes == 0 || capture.MaxBytes > ResponseBodyPayloadLimit {
+			return false
 		}
 	}
 	hasEvaluate := false
@@ -580,7 +614,7 @@ func (adapter *Adapter) mapSuccess(
 ) (*runtimev1.BrowserSuccess, bool, bool) {
 	if raw == nil || !resourcepolicy.Valid(raw.ResourcePolicy) || !validHTTPURL(raw.FinalURL) || raw.Status == nil ||
 		*raw.Status < 100 || *raw.Status > 599 || raw.HTML == nil ||
-		len(raw.Evaluations) != len(plan.Evaluations) {
+		len(raw.Evaluations) != len(plan.Evaluations) || len(raw.Captures) != len(plan.Captures) || len(raw.Captures) == 1 && len(raw.HTML) != 0 {
 		return nil, false, false
 	}
 	if uint64(len(raw.HTML)) > HTMLPayloadLimit {
@@ -622,6 +656,16 @@ func (adapter *Adapter) mapSuccess(
 		})
 	}
 
+	captures := make([]*runtimev1.CapturedValue, 0, len(raw.Captures))
+	for index, value := range raw.Captures {
+		if value.CaptureID != plan.Captures[index].CaptureId || value.Body == nil {
+			return nil, false, false
+		}
+		if uint64(len(value.Body)) > plan.Captures[index].MaxBytes {
+			return nil, true, false
+		}
+		captures = append(captures, &runtimev1.CapturedValue{CaptureId: value.CaptureID, Body: inlineChunkManifest(value.Body)})
+	}
 	statusValue := *raw.Status
 	return &runtimev1.BrowserSuccess{
 		FinalUrl:       raw.FinalURL,
@@ -629,6 +673,7 @@ func (adapter *Adapter) mapSuccess(
 		Status:         &statusValue,
 		Html:           inlineChunkManifest(raw.HTML),
 		Evaluations:    evaluations,
+		Captures:       captures,
 	}, false, true
 }
 
