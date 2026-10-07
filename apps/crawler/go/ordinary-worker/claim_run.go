@@ -402,7 +402,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		// stop at a publisher header; incomplete inventories never reach writes.
 		matches := richResponseMatches(profile, response.endpoint)
 		if profile.Provider == "rss" {
-			matches = queue.RSSMonitorResourceMatches(profile, task.Config, response.endpoint)
+			matches = matches || queue.RSSMonitorResourceMatches(profile, task.Config, response.endpoint)
 		}
 		if profile.Provider == "dom" {
 			matches = queue.DOMMonitorResourceMatches(profile, task.Config, response.endpoint)
@@ -440,7 +440,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		}
 		if response.reserved {
 			initial := profile.Endpoint
-			if profile.Provider == "rss" || queue.SecondaryProvider(profile.Provider) || profile.Profile == "rss.hr_manager-skip/v1" || profile.Profile == "rss.hr_manager-items/v1" {
+			if profile.Provider == "rss" && profile.RSSPagination != nil || queue.SecondaryProvider(profile.Provider) || profile.Profile == "rss.hr_manager-skip/v1" || profile.Profile == "rss.hr_manager-items/v1" {
 				initial = response.endpoint
 			}
 			if profile.Provider == "dom" || profile.Provider == "mokahr" || profile.Provider == "almacareer" || profile.Provider == "eightfold" || profile.Provider == "inline" || profile.Provider == "beisen" || profile.Provider == "api_sniffer" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "oracle_hcm" || profile.Provider == "icims" || profile.Provider == "phenom" || profile.Provider == "nextdata" {
