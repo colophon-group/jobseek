@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	nethttp "net/http"
+	"strings"
 	"time"
 
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
@@ -462,6 +463,19 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		}
 	}
 	if fetchErr != nil {
+		var prefix *rssStreamPrefixError
+		if (strings.HasPrefix(profile.Profile, "rss.generic-summary-") || strings.HasPrefix(profile.Profile, "rss.successfactors-legacy-xml-")) && errors.As(fetchErr, &prefix) && len(discovery.Jobs) > 0 {
+			processed, _, rejected, err := writeFeedPolicyInventory(ctx, cycle, preparer, task.Config, discovery)
+			if processed != nil {
+				result.Batches = processed.Batches
+			}
+			if err != nil {
+				return failure("processing", err)
+			}
+			if rejected > 0 {
+				return failure("provider_boundary", queue.ErrProviderBoundary)
+			}
+		}
 		return failure("fetch", fetchErr)
 	}
 	if streamed != nil {

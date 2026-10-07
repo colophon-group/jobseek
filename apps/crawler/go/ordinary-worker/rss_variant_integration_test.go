@@ -12,7 +12,10 @@ import (
 func TestRealGroupedRSSVariantsPersistFieldsAndRejectInvalidInventory(t *testing.T) {
 	for _, kind := range []string{"legacy_xml", "summary"} {
 		for _, assignment := range []string{"skip", "json-ld"} {
-			for _, mode := range []string{"complete", "partial", "reserved"} {
+			for _, mode := range []string{"complete", "partial", "reserved", "late_xml", "late_parser"} {
+				if kind == "legacy_xml" && mode == "late_parser" {
+					continue
+				}
 				t.Run(kind+"/"+assignment+"/"+mode, func(t *testing.T) {
 					md := `{"preset":"successfactors","variant":"legacy_xml","company":"Fixture","feed_url":"https://career.example.com/career?company=Fixture&career_ns=job_listing_summary&resultType=XML","scraper_type":"` + assignment + `"}`
 					if kind == "summary" {
@@ -30,6 +33,29 @@ func TestRealGroupedRSSVariantsPersistFieldsAndRejectInvalidInventory(t *testing
 					}
 					if mode == "partial" {
 						body += "<broken"
+					}
+					if strings.HasPrefix(mode, "late_") {
+						var items strings.Builder
+						for n := 0; n < 201; n++ {
+							jobID := fmt.Sprintf("%s%03d", id, n)
+							if kind == "legacy_xml" {
+								fmt.Fprintf(&items, `<Job><ReqId>%s</ReqId><JobTitle>Senior Software Engineer</JobTitle><Job-Description><![CDATA[<p>Build reliable systems in Python.</p>]]></Job-Description><filter8><value>Zurich</value></filter8></Job>`, jobID)
+							} else {
+								summary := "Senior Software Engineer | Full Time | Zurich"
+								if mode == "late_parser" && n == 200 {
+									summary = "Wrong title | Zurich"
+								}
+								fmt.Fprintf(&items, `<item><link>https://example.com/job/%s/%d</link><title>Senior Software Engineer</title><description>%s</description></item>`, f.company, n, summary)
+							}
+						}
+						if kind == "legacy_xml" {
+							body = `<?xml version="1.0"?><Jobs>` + items.String() + `</Jobs>`
+						} else {
+							body = `<rss><channel>` + items.String() + `</channel></rss>`
+						}
+						if mode == "late_xml" {
+							body += "<broken"
+						}
 					}
 					requests := 0
 					client := richPipelineHTTP(t, func(w http.ResponseWriter, r *http.Request) {
@@ -57,6 +83,16 @@ func TestRealGroupedRSSVariantsPersistFieldsAndRejectInvalidInventory(t *testing
 						t.Fatal(err)
 					}
 					if mode != "complete" {
+						if strings.HasPrefix(mode, "late_") {
+							var prefix int
+							if err := f.pg.QueryRow(ctx, "SELECT count(*) FROM job_posting WHERE board_id=$1::uuid AND id<>$2::uuid", f.board, f.original).Scan(&prefix); err != nil {
+								t.Fatal(err)
+							}
+							if prefix != 200 || result.Batches.Inserted != 200 || missing != 0 || failures != 1 || reserved {
+								t.Fatal("late RSS failure lost committed prefix or finalized absence", prefix, result.Batches, missing, failures, reserved)
+							}
+							return
+						}
 						if inserted != 0 || missing != 0 || reserved != (mode == "reserved") || failures != map[string]int{"partial": 1, "reserved": 0}[mode] {
 							t.Fatal("invalid inventory changed canonical state", inserted, missing, reserved, failures)
 						}

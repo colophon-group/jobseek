@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+import asyncio
 import dataclasses
 import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import httpx
+
 from src.core.monitors.rss import (
     _parse_generic_title_employment_location_item,
     _parse_sf_legacy_xml_item,
     _sf_legacy_xml_identity,
+    discover_stream,
 )
 
 cases = []
@@ -134,7 +138,99 @@ for query in [
 ]:
     source = "https://Career.example.com/career?" + query
     identity_cases.append({"source": source, "expected": _sf_legacy_xml_identity(source)})
+
+
+async def collect_streams():
+    streams = []
+    for kind in ["legacy_xml", "summary"]:
+        for mode in [
+            "complete",
+            "malformed_small",
+            "malformed_large",
+            "trailing_data",
+            "late_parser",
+        ]:
+            legacy = kind == "legacy_xml"
+            if legacy and mode == "late_parser":
+                continue
+            items = []
+            for n in range(201):
+                if legacy:
+                    padding = "x" * (512 if mode == "malformed_large" else 0)
+                    item = (
+                        f"<Job><ReqId>{n + 1}</ReqId><JobTitle>Engineer</JobTitle>"
+                        f"<Job-Description>{padding}Build.</Job-Description></Job>"
+                    )
+                else:
+                    padding = " " * (512 if mode == "malformed_large" else 0)
+                    summary = f"Engineer | {padding}Zürich"
+                    if mode == "late_parser" and n == 200:
+                        summary = "Different title | Zürich"
+                    item = (
+                        f"<item><link>https://example.com/jobs/{n + 1}</link>"
+                        f"<title>Engineer</title><description>{summary}"
+                        "</description></item>"
+                    )
+                items.append(item)
+            body = (
+                '<?xml version="1.0"?><Jobs>' + "".join(items) + "</Jobs>"
+                if legacy
+                else "<rss><channel>" + "".join(items) + "</channel></rss>"
+            )
+            if mode.startswith("malformed"):
+                body += "<broken"
+            if mode == "trailing_data":
+                body += "junk"
+            metadata = (
+                {
+                    "preset": "successfactors",
+                    "variant": "legacy_xml",
+                    "feed_url": "https://career.example.com/career?company=Fixture_Company"
+                    "&career_ns=job_listing_summary&resultType=XML",
+                }
+                if legacy
+                else {
+                    "preset": "generic",
+                    "feed_url": "https://example.com/feed",
+                    "description_mode": "title_employment_location",
+                }
+            )
+            batch_sizes, urls = [], []
+            error = False
+            async with httpx.AsyncClient(
+                transport=httpx.MockTransport(
+                    lambda request, body=body: httpx.Response(200, text=body, request=request)
+                )
+            ) as client:
+                try:
+                    async for batch in discover_stream(
+                        {"board_url": "https://example.com/careers", "metadata": metadata}, client
+                    ):
+                        batch_sizes.append(len(batch))
+                        urls.extend(job.url for job in batch)
+                except (ET.ParseError, ValueError):
+                    error = True
+            streams.append(
+                {
+                    "name": kind + "-" + mode,
+                    "kind": kind,
+                    "body": body,
+                    "error": error,
+                    "batch_sizes": batch_sizes,
+                    "urls": urls,
+                }
+            )
+    return streams
+
+
+streams = asyncio.run(collect_streams())
 Path(__file__).with_name("python_rss_variants.json").write_text(
-    json.dumps({"cases": cases, "identities": identity_cases}, ensure_ascii=False, indent=2) + "\n"
+    json.dumps(
+        {"cases": cases, "identities": identity_cases, "stream_cases": streams},
+        ensure_ascii=False,
+        indent=2,
+    )
+    + "\n"
 )
-print(f"Frozen {len(cases)} parser and {len(identity_cases)} feed identity cases")
+print(f"Frozen {len(cases)} parser, {len(identity_cases)} identity and {len(streams)} stream cases")
+print([(c["name"], c["batch_sizes"], c["error"]) for c in streams])

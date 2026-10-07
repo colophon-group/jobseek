@@ -61,8 +61,13 @@ func readRSSXMLValue(d *xml.Decoder, start xml.StartElement) (rssXMLValue, error
 	}
 }
 
-func parseSFLegacyXML(raw []byte, origin, company string) (RichDiscovery, error) {
+func parseSFLegacyXML(raw []byte, origin, company string) (result RichDiscovery, err error) {
 	out := RichDiscovery{Jobs: []RichMonitorJob{}}
+	defer func() {
+		if err != nil {
+			result, err = rssValidatedPrefix(out, err)
+		}
+	}()
 	head := strings.ToLower(strings.TrimLeft(string(raw), "\ufeff \t\r\n"))
 	if !strings.HasPrefix(head, "<?xml") && !strings.HasPrefix(head, "<rss") && !strings.HasPrefix(head, "<feed") {
 		return RichDiscovery{}, errors.New("legacy XML non-feed response")
@@ -153,10 +158,17 @@ func parseSFLegacyXML(raw []byte, origin, company string) (RichDiscovery, error)
 	}
 }
 
-func parseGenericStructuredSummary(raw []byte) (RichDiscovery, error) {
-	out, err := parseGenericRSS(raw)
-	if err != nil {
-		return out, err
+func parseGenericStructuredSummary(raw []byte) (result RichDiscovery, err error) {
+	out, parseErr := parseRSSProviderPrefix(raw, "generic", true)
+	converted := 0
+	defer func() {
+		if err != nil {
+			out.Jobs = out.Jobs[:converted]
+			result, err = rssValidatedPrefix(out, err)
+		}
+	}()
+	if parseErr != nil && len(out.Jobs) == 0 {
+		return out, parseErr
 	}
 	for i := range out.Jobs {
 		job := &out.Jobs[i]
@@ -186,8 +198,9 @@ func parseGenericStructuredSummary(raw []byte) (RichDiscovery, error) {
 		if len(fields) == 2 {
 			job.EmploymentType = fields[0]
 		}
+		converted++
 	}
-	return out, nil
+	return out, parseErr
 }
 
 func pythonRSSDigit(r rune) bool {

@@ -10,13 +10,14 @@ and variant types per release, sharing reference verification, CI and cutover.
 The next batch now connects SuccessFactors legacy XML and Generic RSS structured
 summaries to native direct discovery with four additional profiles (94 compiled).
 Twenty-four actual Python item cases plus seven strict feed-identity cases pass;
-12 PostgreSQL/Redis worker cases pass in4.478 seconds, and39 grouped provider
+18 PostgreSQL/Redis worker cases pass in9.702 seconds, and39 grouped provider
 cold cases pass in31.351 seconds. Tests verify title, location, employment,
 remote policy, descriptions/upload state, failed-inventory absence handling and
 queue deadlines. Exact tenant/company and parser options bind ownership.
 
-This candidate is not published or adopted. Verify accepted stream prefixes
-when later parser/body failures occur after complete200-job batches, complete
+This candidate is not published or adopted. Nine actual Python stream references now prove that malformed XML and late
+summary-parser failures preserve complete200-job batches. Native canonical tests
+retain exactly200 accepted writes without finalizing absence. Complete
 bounded generic/WordPress pagination, SuccessFactors properties and rendered
 feed paths, then full suites and installed CI. Keep these variants grouped in
 the same delivery. Current evidence is focused candidate proof.

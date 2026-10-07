@@ -43,7 +43,16 @@ func parseGenericRSS(raw []byte) (RichDiscovery, error) {
 }
 
 func parseRSSProvider(raw []byte, preset string) (RichDiscovery, error) {
+	return parseRSSProviderPrefix(raw, preset, false)
+}
+
+func parseRSSProviderPrefix(raw []byte, preset string, preserve bool) (out RichDiscovery, err error) {
 	result := RichDiscovery{Jobs: []RichMonitorJob{}}
+	defer func() {
+		if preserve && err != nil {
+			out, err = rssValidatedPrefix(result, err)
+		}
+	}()
 	head := strings.TrimLeft(string(raw), "\ufeff \t\r\n")
 	lower := strings.ToLower(head)
 	if !strings.HasPrefix(lower, "<?xml") && !strings.HasPrefix(lower, "<rss") && !strings.HasPrefix(lower, "<feed") {
