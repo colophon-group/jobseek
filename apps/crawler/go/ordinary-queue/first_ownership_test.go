@@ -161,66 +161,77 @@ func TestRealFirstOwnershipActivationRetirementPreservesSchedulesAndB0(t *testin
 }
 
 func TestRealFirstOwnershipFreshEpochRetainsRetiredOwnerAndInterruptedReceipt(t *testing.T) {
-	p := firstOwnershipFixture(t)
-	ctx := context.Background()
-	if _, err := applyFirstFixture(t, p, false); err != nil {
-		t.Fatal(err)
-	}
-	old, err := OpenOwnedAuthority(ctx, p.f.dsn, p.f.client, p.f.epoch, p.plan.digest, p.plan.SourceRevision())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer old.Close()
-	claim, err := old.Claim(ctx, Simple)
-	if err != nil || claim == nil {
-		t.Fatal("old owner did not claim", err)
-	}
-	var receiptBefore string
-	if err := p.f.observer.QueryRow(ctx, "SELECT to_jsonb(f)::text FROM ordinary_worker_write_fence f WHERE task_id=$1::uuid", p.f.task.ID).Scan(&receiptBefore); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := applyFirstFixture(t, p, true); err != nil {
-		t.Fatal("supported old-owner retirement failed", err)
-	}
-	// A separate isolated Redis/B0 fixture initializes a genuinely fresh
-	// serving epoch through production Lua; SQL retains the prior owner and
-	// interrupted receipt. This tests admission, not full host B0 reversal.
-	next := firstOwnershipFixtureHistory(t, true)
-	if next.f.epoch <= p.f.epoch {
-		t.Fatal("fixture did not allocate a fresh epoch")
-	}
-	before, canonical := snapshot(t, next.f.client), coldCanonicalSnapshot(t, p.f)
-	if result, err := applyFirstFixture(t, next, false); err != nil || result.State != "active" {
-		t.Fatal("fresh owner refused retired history", err)
-	}
-	after := snapshot(t, next.f.client)
-	delete(after, ownershipProjectionKey)
-	if !reflect.DeepEqual(before, after) || firstFixtureState(t, p) != "retired" || coldCanonicalSnapshot(t, p.f) != canonical {
-		t.Fatal("fresh adoption changed old authority, schedules, B0 or canonical rows")
-	}
-	var receiptAfter string
-	if err := p.f.observer.QueryRow(ctx, "SELECT to_jsonb(f)::text FROM ordinary_worker_write_fence f WHERE task_id=$1::uuid", p.f.task.ID).Scan(&receiptAfter); err != nil || receiptAfter != receiptBefore {
-		t.Fatal("fresh adoption rewrote the interrupted historical receipt", err)
-	}
-	if _, err := old.Write(ctx, claim, true, func(context.Context, pgx.Tx) error {
-		t.Fatal("retired old attempt reached its writer")
-		return nil
-	}); !errors.Is(err, ErrAuthorityLost) {
-		t.Fatal("retired old attempt retained authority at the fresh epoch", err)
-	}
-	// Production retained old active attempt records. The next owner must
-	// still retire after it has made an interrupted attempt of its own.
-	current, currentClaim := firstRetirementClaim(t, next)
-	canonical = coldCanonicalSnapshot(t, next.f)
-	if _, err := applyFirstFixture(t, next, true); err != nil {
-		t.Fatal("current interrupted owner refused legitimate retired history", err)
-	}
-	if canonical != coldCanonicalSnapshot(t, next.f) {
-		t.Fatal("retirement rewrote current or historical attempt records")
-	}
-	assertFirstRetirementSchedule(t, next, firstRetirementDue(t, next))
-	if err := current.Heartbeat(ctx, currentClaim); !errors.Is(err, ErrAuthorityLost) {
-		t.Fatal("current retired attempt retained authority", err)
+	for _, rendered := range []bool{false, true} {
+		name := "simple"
+		if rendered {
+			name = "rendered-rows"
+		}
+		t.Run(name, func(t *testing.T) {
+			p := firstOwnershipFixture(t)
+			if rendered {
+				p = firstRenderedRowsHistoryFixture(t, p)
+			}
+			ctx := context.Background()
+			if _, err := applyFirstFixture(t, p, false); err != nil {
+				t.Fatal(err)
+			}
+			old, err := OpenOwnedAuthority(ctx, p.f.dsn, p.f.client, p.f.epoch, p.plan.digest, p.plan.SourceRevision())
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer old.Close()
+			claim, err := old.Claim(ctx, p.f.task.Worker)
+			if err != nil || claim == nil {
+				t.Fatal("old owner did not claim", err)
+			}
+			var receiptBefore string
+			if err := p.f.observer.QueryRow(ctx, "SELECT to_jsonb(f)::text FROM ordinary_worker_write_fence f WHERE task_id=$1::uuid", p.f.task.ID).Scan(&receiptBefore); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := applyFirstFixture(t, p, true); err != nil {
+				t.Fatal("supported old-owner retirement failed", err)
+			}
+			// A separate isolated Redis/B0 fixture initializes a genuinely fresh
+			// serving epoch through production Lua; SQL retains the prior owner and
+			// interrupted receipt. This tests admission, not full host B0 reversal.
+			next := firstOwnershipFixtureHistory(t, true)
+			if next.f.epoch <= p.f.epoch {
+				t.Fatal("fixture did not allocate a fresh epoch")
+			}
+			before, canonical := snapshot(t, next.f.client), coldCanonicalSnapshot(t, p.f)
+			if result, err := applyFirstFixture(t, next, false); err != nil || result.State != "active" {
+				t.Fatal("fresh owner refused retired history", err)
+			}
+			after := snapshot(t, next.f.client)
+			delete(after, ownershipProjectionKey)
+			if !reflect.DeepEqual(before, after) || firstFixtureState(t, p) != "retired" || coldCanonicalSnapshot(t, p.f) != canonical {
+				t.Fatal("fresh adoption changed old authority, schedules, B0 or canonical rows")
+			}
+			var receiptAfter string
+			if err := p.f.observer.QueryRow(ctx, "SELECT to_jsonb(f)::text FROM ordinary_worker_write_fence f WHERE task_id=$1::uuid", p.f.task.ID).Scan(&receiptAfter); err != nil || receiptAfter != receiptBefore {
+				t.Fatal("fresh adoption rewrote the interrupted historical receipt", err)
+			}
+			if _, err := old.Write(ctx, claim, true, func(context.Context, pgx.Tx) error {
+				t.Fatal("retired old attempt reached its writer")
+				return nil
+			}); !errors.Is(err, ErrAuthorityLost) {
+				t.Fatal("retired old attempt retained authority at the fresh epoch", err)
+			}
+			// Production retained old active attempt records. The next owner must
+			// still retire after it has made an interrupted attempt of its own.
+			current, currentClaim := firstRetirementClaim(t, next)
+			canonical = coldCanonicalSnapshot(t, next.f)
+			if _, err := applyFirstFixture(t, next, true); err != nil {
+				t.Fatal("current interrupted owner refused legitimate retired history", err)
+			}
+			if canonical != coldCanonicalSnapshot(t, next.f) {
+				t.Fatal("retirement rewrote current or historical attempt records")
+			}
+			assertFirstRetirementSchedule(t, next, firstRetirementDue(t, next))
+			if err := current.Heartbeat(ctx, currentClaim); !errors.Is(err, ErrAuthorityLost) {
+				t.Fatal("current retired attempt retained authority", err)
+			}
+		})
 	}
 }
 
@@ -497,4 +508,41 @@ func coldCanonicalSnapshot(t *testing.T, f authorityFixture) string {
 		t.Fatal("canonical transition snapshot unavailable")
 	}
 	return body
+}
+
+// Exercise an actual browser ownership plan and interrupted claim, rather than
+// rewriting immutable plan history to resemble a browser receipt.
+func firstRenderedRowsHistoryFixture(t *testing.T, p firstOwnerFixture) firstOwnerFixture {
+	t.Helper()
+	f, ctx := p.f, context.Background()
+	metadata := `{"render":true,"rich_rows":{"row_selector":"article","link_selector":"a","description_selector":".description"},"scraper_type":"skip"}`
+	if _, err := f.observer.Exec(ctx, "UPDATE job_board SET board_url=$2,crawler_type='dom',throttle_key='dom',metadata=$3::jsonb,monitor_needs_browser=true WHERE id=$1::uuid", f.task.ID, "https://example.com/fixture", metadata); err != nil {
+		t.Fatal(err)
+	}
+	config := profileConfig()
+	config["board_url"], config["crawler_type"], config["metadata"] = "https://example.com/fixture", "dom", metadata
+	config["company_id"], config["board_slug"] = f.company, "ordinary-"+f.company
+	config["domain"], config["throttle_key"], config["monitor_needs_browser"] = "dom", "dom", "1"
+	if err := f.client.redis.HSet(ctx, "board:"+f.task.ID, config).Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.client.redis.Del(ctx, "monitors_simple:greenhouse", "ft_monitors_simple:greenhouse").Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.client.redis.ZRem(ctx, "ready:simple:1", "greenhouse").Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.client.redis.ZAdd(ctx, "monitors_browser:dom", redis.Z{Score: 1, Member: f.task.ID}).Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.client.redis.ZAdd(ctx, "ready:browser:1", redis.Z{Score: 1, Member: "dom"}).Err(); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := f.authority.StageOwnership(ctx, strings.Repeat("a", 40), []string{f.task.ID}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.plan = plan
+	p.f.task = &Task{Worker: Browser, Kind: Monitor, ID: f.task.ID, Domain: "dom"}
+	return p
 }
