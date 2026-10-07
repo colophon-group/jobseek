@@ -1,0 +1,32 @@
+{
+  "schema": "jobseek.native-retirement-eligibility-comparison/v1",
+  "observed_at_utc": "2026-10-07T12:29:39.299786+00:00",
+  "source_revision": "d2fa77713308f17eeb38fb06de060dc6b67dc595",
+  "routing_epoch": 213,
+  "plan_sha256": "2f644942918cfba5ff5ce4bf601bde24c48319cac4120906fc8cbf1f6ebbc4d6",
+  "read_only": true,
+  "statement_timeout_ms": 10000,
+  "results": [
+    {
+      "query": "original",
+      "returncode": 3,
+      "elapsed_seconds": 10.224,
+      "foreign": null,
+      "statement_timeout": true,
+      "query_sha256": "eb612abc508731a03160c179903086a77d60c45e69e441ed91c81b21963c627d"
+    },
+    {
+      "query": "materialized",
+      "returncode": 0,
+      "elapsed_seconds": 1.281,
+      "foreign": "f",
+      "statement_timeout": false,
+      "query_sha256": "c6a13053eb2169c20376af8d150b4757362d9189b5f1f3a0fa770abe038952ee"
+    }
+  ],
+  "production_state": "Supported retirement failed at eligibility/observation; original wrapper retained retiring identity and contained all crawler writers. No merge or deployment occurred.",
+  "correction": "Materialize retired-plan monitor/detail membership once per query; preserve existing worker/profile/current/historical/foreign-attempt predicates and all timeout budgets.",
+  "runtime_recovery": "Requires verified immutable compatible administrator and the original cold-retirement wrapper; no direct SQL/Redis repairs.",
+  "focused_retirement_race_suite": "pass30.540s",
+  "full_migration_complete": false
+}

@@ -119,23 +119,35 @@ func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client,
 			// Interrupted attempts remain retained after retirement. Admit an
 			// older monitor only when its immutable, retired plan owned it;
 			// unrelated old attempts and current/future foreign work still refuse.
-			if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM public.ordinary_worker_write_fence f
+			// Expand each immutable historical plan once. Correlated JSON expansion
+			// per receipt exceeds the ten-second admin statement budget at fleet scale.
+			if err := tx.QueryRow(ctx, `WITH old_plans AS MATERIALIZED (
+ SELECT p.routing_epoch,p.payload::jsonb AS payload
+ FROM public.ordinary_worker_ownership_plan p
+ WHERE p.state='retired' AND p.routing_epoch<$1
+ AND EXISTS(SELECT 1 FROM public.ordinary_worker_write_fence f
+   WHERE f.state='active' AND f.routing_epoch=p.routing_epoch)
+), old_monitors AS MATERIALIZED (
+ SELECT p.routing_epoch,m->>'board_id' AS board_id
+ FROM old_plans p CROSS JOIN LATERAL jsonb_array_elements(p.payload->'members') m
+ WHERE m->>'kind'='monitor'
+ AND (m->>'worker'='simple' OR (m->>'worker'='browser' AND m->>'profile' IN ('dom.rendered-urls/v1','dom.rendered-rows/v1','inline.rendered-items/v1','rss.rendered-generic-skip/v1','rss.rendered-generic-items/v1','rss.rendered-generic-summary-skip/v1','rss.rendered-generic-summary-items/v1','rss.rendered-wp_job_manager-skip/v1','rss.rendered-wp_job_manager-items/v1','nextdata.rendered-items/v1','nextdata.rendered-urls/v1','dayforce.session-search/v1')))
+), old_details AS MATERIALIZED (
+ SELECT p.routing_epoch,d->>'board_id' AS board_id
+ FROM old_plans p CROSS JOIN LATERAL jsonb_array_elements(p.payload->'details') d
+ WHERE (d->>'worker'='simple' AND d->>'profile' IN ('workday.cxs-detail/v1','jsonld.direct-detail/v1','jsonld.proxy-detail/v1','smartrecruiters.api-detail/v1','workable.api-detail/v1','dom.direct-detail/v1','dom.proxy-detail/v1','join.nextdata-detail/v1','oracle_hcm.api-detail/v1','embedded.direct-detail/v1','api_sniffer.http-detail/v1','api_sniffer.proxy-http-detail/v1','mokahr.encrypted-detail/v1','eightfold.jsonld-api-detail/v1','eightfold.proxy-jsonld-api-detail/v1','paycom.public-detail/v1','rippling.v1-detail/v1','adp.public-detail/v1','paylocity.html-detail/v1','paylocity.proxy-html-detail/v1'))
+ OR (d->>'worker'='browser' AND d->>'profile' IN ('dom.rendered-detail/v1','jsonld.rendered-detail/v1','embedded.rendered-detail/v1'))
+)
+SELECT EXISTS(SELECT 1 FROM public.ordinary_worker_write_fence f
  WHERE f.state='active' AND NOT (
  (f.task_kind='monitor' AND f.task_id=f.board_id AND (
    (f.routing_epoch=$1 AND f.board_id=ANY($2::uuid[])) OR
-   (f.routing_epoch<$1 AND EXISTS(SELECT 1 FROM public.ordinary_worker_ownership_plan p
-     WHERE p.state='retired' AND p.routing_epoch=f.routing_epoch
-     AND EXISTS(SELECT 1 FROM jsonb_array_elements(p.payload::jsonb->'members') m
-       WHERE m->>'board_id'=f.board_id::text AND m->>'kind'='monitor'
-       AND (m->>'worker'='simple' OR (m->>'worker'='browser' AND m->>'profile' IN ('dom.rendered-urls/v1','dom.rendered-rows/v1','inline.rendered-items/v1','rss.rendered-generic-skip/v1','rss.rendered-generic-items/v1','rss.rendered-generic-summary-skip/v1','rss.rendered-generic-summary-items/v1','rss.rendered-wp_job_manager-skip/v1','rss.rendered-wp_job_manager-items/v1','nextdata.rendered-items/v1','nextdata.rendered-urls/v1','dayforce.session-search/v1')))))))) OR
+   (f.routing_epoch<$1 AND EXISTS(SELECT 1 FROM old_monitors m
+     WHERE m.routing_epoch=f.routing_epoch AND m.board_id=f.board_id::text)))) OR
  (f.task_kind='scrape' AND (
    (f.routing_epoch=$1 AND f.board_id=ANY($3::uuid[]) AND EXISTS(SELECT 1 FROM public.job_posting jp WHERE jp.id=f.task_id AND jp.board_id=f.board_id)) OR
-   (f.routing_epoch<$1 AND EXISTS(SELECT 1 FROM public.ordinary_worker_ownership_plan p
-     WHERE p.state='retired' AND p.routing_epoch=f.routing_epoch
-     AND EXISTS(SELECT 1 FROM jsonb_array_elements(p.payload::jsonb->'details') d
-       WHERE d->>'board_id'=f.board_id::text AND (
-         (d->>'worker'='simple' AND d->>'profile' IN ('workday.cxs-detail/v1','jsonld.direct-detail/v1','jsonld.proxy-detail/v1','smartrecruiters.api-detail/v1','workable.api-detail/v1','dom.direct-detail/v1','dom.proxy-detail/v1','join.nextdata-detail/v1','oracle_hcm.api-detail/v1','embedded.direct-detail/v1','api_sniffer.http-detail/v1','api_sniffer.proxy-http-detail/v1','mokahr.encrypted-detail/v1','eightfold.jsonld-api-detail/v1','eightfold.proxy-jsonld-api-detail/v1','paycom.public-detail/v1','rippling.v1-detail/v1','adp.public-detail/v1','paylocity.html-detail/v1','paylocity.proxy-html-detail/v1')) OR
-         (d->>'worker'='browser' AND d->>'profile' IN ('dom.rendered-detail/v1','jsonld.rendered-detail/v1','embedded.rendered-detail/v1'))))))))))`, epoch, ids, detailIDs).Scan(&foreign); err != nil {
+   (f.routing_epoch<$1 AND EXISTS(SELECT 1 FROM old_details d
+     WHERE d.routing_epoch=f.routing_epoch AND d.board_id=f.board_id::text))))))`, epoch, ids, detailIDs).Scan(&foreign); err != nil {
 				return err
 			}
 			if foreign {

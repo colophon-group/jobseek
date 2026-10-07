@@ -24,9 +24,9 @@
     "cold_retirement_cases": 12,
     "full_api_module_race": "pass",
     "worker_vet": "pass",
-    "full_worker_queue_suites": "Pending final four-provider commit; superseded two-provider full worker and queue checks passed",
-    "required_ci": "Pending final four-provider head",
-    "crawler_deploy_gate": "Draft candidate; gate intentionally rejects merge authority"
+    "full_worker_queue_suites": "Superseded7b467a84f passed508.132s/334.398s; final query-correction head pending",
+    "required_ci": "Superseded7b467a84f passed; final query-correction head pending",
+    "crawler_deploy_gate": "Ready PR; superseded7b467a84f passed, final query-correction head must recheck"
   },
   "production_ownership": false,
   "full_migration_complete": false,
@@ -37,7 +37,7 @@
     "Fresh canonical/cache/actual detail route admission",
     "Scheduled production proof and full runtime retirement"
   ],
-  "observed_at_utc": "2026-10-07T11:48:19.152895+00:00",
+  "observed_at_utc": "2026-10-07T12:33:50.292059+00:00",
   "previous_two_provider_offline_eligibility": {
     "eligible_monitor_boards": 7223,
     "new_since962": 11,
@@ -47,5 +47,16 @@
     "capture_source_revision": "acb4bb9e7627c541f7ff0aba4bb0c1ca4995f48b",
     "authority": "Offline configuration screening only; fresh production admission required"
   },
-  "retained_legacy_detail_scope": "Recruiterbox dedicated scraper remains on legacy ownership; existing JSON-LD assignments retain native eligibility"
+  "retained_legacy_detail_scope": "Recruiterbox dedicated scraper remains on legacy ownership; existing JSON-LD assignments retain native eligibility",
+  "retirement_correction": "Materialize historical membership after source962 eligibility query exceeded10s. Read-only production comparison: original timeout10.224s; replacement1.281s, same foreign=false result.",
+  "offline_eligibility": {
+    "compiler_source_revision": "7b467a84f85cf9a42bfe10a4809e7313ccb236a8",
+    "capture_source_revision": "d2fa77713308f17eeb38fb06de060dc6b67dc595",
+    "eligible_monitor_boards": 7240,
+    "new_since962": 28,
+    "remaining_monitors": 642,
+    "canonical_cache_projection_mismatches": 0,
+    "cached_unsupported": 0,
+    "authority": "Configuration screening only; final query correction does not change provider admission, fresh963 actual posting route admission required"
+  }
 }

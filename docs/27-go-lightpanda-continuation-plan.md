@@ -61,9 +61,24 @@ monitor completions and437 detail completions across23 profiles,29 canonical
 samples, eight healthy endpoints and no processing diagnostics. Rendered Inline
 has real completions. This observation does not prove every-profile freshness.
 
+At12:19 UTC, supported source962 retirement failed at eligibility observation.
+The original wrapper retained its retiring identity and contained all writers.
+A read-only comparison at12:29 UTC reproduced the original query's10-second
+timeout; materializing historical plan membership completed in1.281 seconds
+with the same ownership decision. The correction preserves all authority
+predicates and timeout budgets. See the [retirement evidence](evidence/go-native-retirement-eligibility-2026-10-07.json).
+Candidate963 includes this correction and needs final-head checks, a verified
+immutable compatible administrator, supported source962 retirement/reversal,
+and independent cold214 readback before its normal runtime promotion.
+
 ## Continue delivery
 
-1. Keep observing source962 scheduled completions, canonical fields,
+1. Finish verified compatible-admin recovery of the contained source962
+   retirement through the original wrapper, then B0 rollback, selector clear and
+   independent cold214 readback. Preserve its exact pending identity and all
+   historical receipts. Resume original immutable963 deployment and fresh
+   source/receipt-bound actual posting admission and ownership. Observe
+   scheduled completions, canonical fields,
    descriptions, publisher outcomes, SQL/Redis deadlines, health and freshness
    against the exact source/images/epoch/receipts.
 2. Deliver the next compatible provider batch together. Candidate963 adds
@@ -71,7 +86,8 @@ has real completions. This observation does not prove every-profile freshness.
    jobs.ch/jobup employer-scoped API pagination through the existing native
    worker and canonical processors:28 registry configurations.33 actual Python
    traversal references, canonicalPG/Redis publisher/settlement checks and12
-   cold-retirement cases pass; final-head full suites and CI remain. Continue
+   cold-retirement cases pass. Full worker/queue race suites passed at7b467a84f
+   in508.132/334.398 seconds; final query-correction head must revalidate. Continue
    the large shared browser paths together:
    DOM239, API sniffer149 and Inline8 in the current offline screening.
    API-sniffer replay must retain captured response selection, auth refresh,
