@@ -1,19 +1,32 @@
 # Job Seek — llms.txt
 # https://llmstxt.org/
 
-> Job Seek is a company-tracking tool for job seekers who already know where they want to work. It monitors career pages directly from thousands of companies — no third-party aggregators — so postings appear within hours of going live. Build watchlists of the companies you care about, get email alerts when roles open up, and track applications in one place. Multi-dimensional filters (seniority, tech stack, salary, location, language) when you want to narrow further.
+> Job Seek searches job postings indexed directly from company career pages across a worldwide catalogue. Find roles by keyword, location, occupation, seniority, technology, salary, experience, work mode and posting language, or follow target companies with watchlists and email alerts. Application tracking and personal watchlist management are available on the website. Coverage and posting freshness vary by company.
 
 ## Key Facts
 
-- Built around per-company watchlists and email alerts — designed for users who know their target companies, not broad "find any job" searches
-- Indexes thousands of company career pages directly — no recruiter spam, no reposted ghost jobs
-- Re-indexed frequently for freshness — postings appear within hours, typically before LinkedIn/Indeed cross-post
-- Millions of postings tracked over time
+- Supports both job discovery across the catalogue and watchlists for target companies
+- Sources postings directly from company career pages; catalogue coverage and available matches change
+- Monitors company career pages for changes; the MCP tools report current indexed matches
 - 4 languages: English, German, French, Italian
 - Free tier: full search, up to 10 watchlists, email alerts, application tracker
 - Pro tier: Narrowed results for watchlists, US$10/month or the local-currency price shown at checkout, plus applicable taxes. Eligible accounts receive a seven-day free trial requiring a payment method. Check the subscription page for current signup availability.
 - Open-source crawler (MIT), job data (CC BY-NC 4.0)
 - Built by Colophon Group, a small developer studio in Switzerland
+
+## MCP and Public API
+
+- [Hosted MCP](https://jseek.co/mcp) — Stateless Streamable HTTP; no API key required. Add this URL to a compatible client's MCP configuration.
+- [MCP setup and tool reference](https://github.com/colophon-group/jobseek/tree/main/packages/mcp-server) — Hosted and local stdio setup (`npx -y @jseek/mcp-server`).
+- [REST OpenAPI contract](https://jseek.co/api/openapi.json) — Current parameters, responses and limits.
+- `search_jobs`: up to 5 matching companies with up to 3 posting summaries each, plus a `moreAt` browsing link. Supports keywords, exact location/occupation/seniority/technology slugs, work mode, employment type, EUR salary, experience and document language; no pagination or company filter.
+- `resolve_slugs`: resolve freetext to current filter slugs; clarify ambiguous locations. `list_taxonomies` and `jobseek://taxonomies/{type}` resources expose seniority, occupation, technology and industry data. Industries are not a job-search filter; locations use the resolver.
+- `get_job_detail`: available posting metadata, including original salary currency/period. Missing fields are unknown; descriptions and applications are accessed through the returned posting link.
+- `search_companies`: up to 10 name matches with company-page links.
+- `create_watchlist_link`: prepares a website link and preview, without saving anything. The user signs in to save. Company and currency parameters are website prefill; the preview does not apply company selection, treats salary as EUR, and counts jobs in the returned company sample.
+- `report_bug`, `suggest_feature`, `give_feedback`: optional write tools for concise, sanitized product feedback. Describe the task and observed issue or missing capability; omit personal information, credentials and transcripts. Return basic success/failure, without tracking IDs or status retrieval.
+- Response/link locale: en, de, fr, it (default en). Posting-language filtering is independent of locale. Public reads share a 60/minute edge budget and 30/minute origin limit per IP; feedback allows 5 submissions/hour per client IP. Respect 403/429 responses and retry instructions.
+- Website account features (personal watchlists, application tracking, billing and Narrowed results) are not MCP account-management capabilities. Anonymous watchlist discovery and ghost-analysis tools are retired.
 
 ## Pages
 

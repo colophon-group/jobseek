@@ -6,27 +6,14 @@ import { register as registerCompanies } from "./tools/companies.js";
 import { register as registerTaxonomies } from "./tools/taxonomies.js";
 import { register as registerResolve } from "./tools/resolve.js";
 import { register as registerCreateWatchlist } from "./tools/create-watchlist.js";
+import { register as registerFeedback } from "./tools/feedback.js";
+import { MCP_SERVER_INFO, MCP_INSTRUCTIONS } from "./metadata.js";
 
 export function createServer(
   baseUrl: string,
   options: JobseekClientOptions = {},
 ) {
-  const server = new McpServer(
-    { name: "jobseek", version: "0.3.0" },
-    {
-      instructions: `You are connected to Job Seek (jseek.co), a job search engine that monitors 290+ company career pages across Switzerland and Europe.
-
-IMPORTANT WORKFLOW:
-1. Filter params (loc, occ, sen, tech) require exact slugs, NOT freetext.
-2. Use resolve_slugs to convert the user's freetext to slugs BEFORE calling search_jobs with filters.
-3. Only the 'q' param in search_jobs accepts freetext keywords.
-4. Use get_job_detail to drill into a specific posting from search results (salary, technologies, seniority, experience).
-5. After showing results, offer to create a watchlist if the user wants email alerts for new matching jobs.
-
-Available locales: en (English), de (German), fr (French), it (Italian).
-Rate limit: 30 requests per minute.`,
-    },
-  );
+  const server = new McpServer(MCP_SERVER_INFO, { instructions: MCP_INSTRUCTIONS });
 
   const client = new JobseekClient(baseUrl, options);
 
@@ -37,6 +24,7 @@ Rate limit: 30 requests per minute.`,
   registerTaxonomies(server, client);
   registerResolve(server, client);
   registerCreateWatchlist(server, client);
+  registerFeedback(server, client);
 
   // Register taxonomy resource template
   const TAXONOMY_TYPES = ["seniority", "occupations", "technologies", "industries"] as const;
@@ -48,7 +36,9 @@ Rate limit: 30 requests per minute.`,
         resources: TAXONOMY_TYPES.map((type) => ({
           uri: `jobseek://taxonomies/${type}`,
           name: `Taxonomy: ${type}`,
-          description: `Complete list of valid ${type} slugs and names`,
+          description: type === "industries"
+            ? "Available industry suggestions with IDs and names; industries are not a search_jobs filter"
+            : `Available ${type} values for job filters (occupations and technologies are grouped)`,
           mimeType: "application/json" as const,
         })),
       }),

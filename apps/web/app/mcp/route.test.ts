@@ -336,7 +336,7 @@ describe("/mcp instrumentation", () => {
     expect(mocks.handleMcpRequest).toHaveBeenLastCalledWith(
       configuredRequest,
       undefined,
-      { internalMcpToken: "private-hosted-token" },
+      { internalMcpToken: "private-hosted-token", internalMcpClientIp: "203.0.113.10" },
     );
 
     setTestEnv({ HOSTED_MCP_API_PROVENANCE_TOKEN: undefined });

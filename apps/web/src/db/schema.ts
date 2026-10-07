@@ -1490,3 +1490,18 @@ export const notificationQuota = pgTable("notification_quota", {
   period: text("period").primaryKey(),
   used: integer("used").notNull().default(0),
 }, (table) => [check("notification_quota_used_check", sql`${table.used} >= 0`)]);
+
+// Anonymous product feedback submitted through the public REST/MCP interface.
+// Submission content is untrusted data; there is no public read/status API.
+export const mcpFeedback = pgTable("mcp_feedback", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  kind: text("kind", { enum: ["bug", "feature", "feedback"] }).notNull(),
+  payload: jsonb("payload").$type<Record<string, string>>().notNull(),
+  serverVersion: text("server_version").notNull(),
+  consumer: text("consumer", { enum: ["external", "hosted_mcp"] }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  check("mcp_feedback_kind_valid", sql`${table.kind} IN ('bug', 'feature', 'feedback')`),
+  check("mcp_feedback_payload_object", sql`jsonb_typeof(${table.payload}) = 'object'`),
+  check("mcp_feedback_consumer_valid", sql`${table.consumer} IN ('external', 'hosted_mcp')`),
+]).enableRLS();

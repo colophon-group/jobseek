@@ -1,8 +1,8 @@
 {
   "name": "@jseek/mcp-server",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "mcpName": "io.github.colophon-group/jobseek",
-  "description": "MCP server for Job Seek — search jobs and companies on jseek.co",
+  "description": "Job Seek MCP: search jobs, salaries and companies, prepare career watchlist links, and submit feedback.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -18,7 +18,9 @@
     ".": "./dist/index.js",
     "./server": "./dist/server.js",
     "./handler": "./dist/handler.js",
-    "./public-api-contract": "./dist/public-api-contract.js"
+    "./public-api-contract": "./dist/public-api-contract.js",
+    "./metadata": "./dist/metadata.js",
+    "./feedback-contract": "./dist/feedback-contract.js"
   },
   "files": [
     "dist",
@@ -43,5 +45,17 @@
   },
   "engines": {
     "node": ">=18"
-  }
+  },
+  "homepage": "https://jseek.co",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "job-search",
+    "jobs",
+    "careers",
+    "salary",
+    "remote-jobs",
+    "watchlists",
+    "jobseek"
+  ]
 }

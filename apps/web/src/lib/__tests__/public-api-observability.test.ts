@@ -53,6 +53,14 @@ describe("public REST API observability", () => {
     vi.restoreAllMocks();
   });
 
+  it("records feedback POST without logging submission content", async () => {
+    const observed = withPublicApiObservability("feedback", async () => new Response(null, { status: 200 }));
+    await observed(new Request("https://example.test/api/v1/feedback", { method: "POST", body: "PRIVATE_FEEDBACK_CANARY" }) as NextRequest);
+    await drainAfter();
+    expect(console.info).toHaveBeenCalledWith("public_api.request", expect.objectContaining({ route: "feedback", method: "POST" }));
+    expect(JSON.stringify(vi.mocked(console.info).mock.calls)).not.toContain("PRIVATE_FEEDBACK_CANARY");
+  });
+
   it.each([
     ["missing", undefined, undefined, "external"],
     ["valid", "valid-private-token", undefined, "hosted_mcp"],

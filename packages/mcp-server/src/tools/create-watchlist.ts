@@ -12,7 +12,7 @@ import { apiLocaleSchema } from "../locale-schema.js";
 export function register(server: McpServer, client: JobseekClient) {
   server.tool(
     "create_watchlist_link",
-    "Generate a prefilled link for the user to create a watchlist on jseek.co. The link opens the watchlist creation page with filters pre-filled. The user must log in to save. Returns a preview with matching job and company counts so you can verify the filters are useful before sharing the link.",
+    "Prepare email alerts for a user's target companies or job filters by generating a prefilled Job Seek watchlist link with a matching preview. Accepts company slugs from search_companies in addition to job filters. This tool only prepares the link: the user opens it and signs in to save a watchlist. Preview applies job filters but not the company prefill, treats salary bounds as EUR, and counts jobs only in the returned company sample. Company selection and display currency are website prefill, not preview constraints.",
     {
       title: z.string().describe("Watchlist title"),
       q: z.string().optional().describe("Keywords"),

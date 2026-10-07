@@ -1,4 +1,5 @@
 import { handleMcpRequest } from "@jseek/mcp-server/handler";
+import { JOBSEEK_TOOL_NAMES as TOOL_NAMES } from "@jseek/mcp-server/metadata";
 import { after } from "next/server";
 import { recordPublicApiMetric } from "@/lib/public-api-metrics";
 import { getClientIp } from "@/lib/rate-limit";
@@ -23,14 +24,7 @@ const MCP_RPC_METHODS = new Set([
   "resources/read",
 ]);
 
-const JOBSEEK_TOOL_NAMES = new Set([
-  "create_watchlist_link",
-  "get_job_detail",
-  "list_taxonomies",
-  "resolve_slugs",
-  "search_companies",
-  "search_jobs",
-]);
+const JOBSEEK_TOOL_NAMES = new Set<string>(TOOL_NAMES);
 
 type McpVerb = "POST" | "GET" | "DELETE" | "OPTIONS";
 
@@ -109,7 +103,7 @@ async function invokeMcpHandler(req: Request): Promise<Response> {
   // calls remain public and are deliberately classified as external.
   const internalMcpToken = process.env.HOSTED_MCP_API_PROVENANCE_TOKEN;
   return internalMcpToken
-    ? handleMcpRequest(req, undefined, { internalMcpToken })
+    ? handleMcpRequest(req, undefined, { internalMcpToken, internalMcpClientIp: getClientIp(req.headers) })
     : handleMcpRequest(req);
 }
 

@@ -70,7 +70,7 @@ Company pages bring together current openings, posting activity, and similar emp
 
 ## Use Job Seek from AI tools and code
 
-The hosted MCP endpoint exposes read-only tools for job search, posting details, companies, taxonomies, public watchlists, and prefilled watchlist links:
+The hosted MCP endpoint exposes tools for job search, posting metadata, company lookup, filter discovery, and prefilled watchlist links. It also accepts bug reports, feature suggestions, and usability feedback through three write tools:
 
 ```text
 https://jseek.co/mcp

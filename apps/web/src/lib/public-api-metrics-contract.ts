@@ -10,6 +10,7 @@ export const PUBLIC_API_METRIC_ROUTES = [
   "resolve",
   "watchlists",
   "watchlist_create",
+  "feedback",
   "mcp",
   "unknown",
 ] as const;

@@ -2029,6 +2029,11 @@ jobs:
           scripts/test-stripe-billing-pg.ts
           --database-url postgresql://postgres:postgres@127.0.0.1:5432/jobseek_auth_fixture
 
+      - name: Execute MCP feedback storage contract against PostgreSQL 17
+        env:
+          MCP_FEEDBACK_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/jobseek_auth_fixture
+        run: pnpm --filter @jobseek/web exec vitest run src/db/__tests__/mcp-feedback-migration.test.ts
+
       - name: Install PostgreSQL 17 client for company-reference restore verification
         run: |
           set -euo pipefail

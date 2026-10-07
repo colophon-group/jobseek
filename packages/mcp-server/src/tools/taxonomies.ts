@@ -6,7 +6,7 @@ import { apiLocaleSchema } from "../locale-schema.js";
 export function register(server: McpServer, client: JobseekClient) {
   server.tool(
     "list_taxonomies",
-    "List all valid values for a taxonomy type (seniority levels, occupations, technologies, or industries). Use this to discover available filter values before searching.",
+    "Discover Job Seek's available seniority, occupation and technology filter values, or industry suggestions. Seniority items contain slugs/names; occupations and technologies are grouped; industry suggestions contain IDs/names and are not a search_jobs filter. Use resolve_slugs for locations and specific freetext matches. The same English data is available as jobseek://taxonomies/{type} resources.",
     {
       type: z
         .enum(["seniority", "occupations", "technologies", "industries"])

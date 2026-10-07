@@ -6,12 +6,12 @@ import { apiLocaleSchema } from "../locale-schema.js";
 export function register(server: McpServer, client: JobseekClient) {
   server.tool(
     "resolve_slugs",
-    "Convert freetext to exact taxonomy slugs needed for filter parameters. ALWAYS call this before using loc/occ/sen/tech params in search_jobs. For example, resolve 'Zurich' to get the slug 'zurich', or 'machine learning' to get 'machine-learning'.",
+    "Find matching locations, occupations, seniority levels, technologies or industries from freetext and return their current slugs and names. Use it before loc/occ/sen/tech filters when you do not already have a slug returned by Job Seek. Pick from returned matches; clarify ambiguity and do not invent slugs. Industries are discovery information, not a search_jobs filter.",
     {
       type: z
         .enum(["locations", "occupations", "seniority", "technologies", "industries"])
         .describe("Which taxonomy to search"),
-      q: z.string().describe("Freetext query (min 2 chars)"),
+      q: z.string().trim().min(2).describe("Freetext query (min 2 chars)"),
       locale: apiLocaleSchema,
     },
     { title: "Resolve Slugs", readOnlyHint: true, destructiveHint: false, openWorldHint: true, idempotentHint: true },

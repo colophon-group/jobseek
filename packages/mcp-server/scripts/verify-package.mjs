@@ -4,6 +4,9 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { handleMcpRequest } from "../dist/handler.js";
 import { createServer } from "../dist/server.js";
 import { JobseekClient } from "../dist/client.js";
+import { MCP_SERVER_VERSION, JOBSEEK_TOOL_NAMES } from "../dist/metadata.js";
+import { feedbackSubmissionSchema } from "../dist/feedback-contract.js";
+import { z } from "zod";
 import {
   API_LOCALES,
   DEFAULT_API_LOCALE,
@@ -98,6 +101,9 @@ assert(
 // regressions that package metadata and TypeScript compilation cannot detect,
 // including schemas that the MCP SDK can register but cannot serialize.
 const expectedToolSchemas = {
+  report_bug: { properties: ["affectedTool", "expected", "goal", "impact", "observed", "reproduction", "workaround"], required: ["expected", "goal", "impact", "observed"] },
+  suggest_feature: { properties: ["affectedTool", "benefit", "capability", "goal", "impact", "workaround"], required: ["benefit", "capability", "goal", "impact"] },
+  give_feedback: { properties: ["affectedTool", "goal", "improvement", "observation"], required: ["goal", "observation"] },
   create_watchlist_link: {
     properties: [
       "companies",
@@ -135,6 +141,12 @@ const expectedToolSchemas = {
   },
 };
 const expectedTools = Object.keys(expectedToolSchemas).sort();
+assert(MCP_SERVER_VERSION === packageJson.version, "Runtime version must match package version");
+assert(JSON.stringify([...JOBSEEK_TOOL_NAMES].sort()) === JSON.stringify(expectedTools), "Instrumented tool names must match the public registry");
+assert(serverJson.remotes?.some(remote => remote.type === "streamable-http" && remote.url === "https://jseek.co/mcp"), "Registry metadata must advertise the hosted endpoint");
+assert(JSON.stringify(openApi.paths["/api/v1/feedback"].post.requestBody.content["application/json"].schema) === JSON.stringify(z.toJSONSchema(feedbackSubmissionSchema)), "OpenAPI feedback schema must match tool/backend validation");
+const readme = await readFile("README.md", "utf8");
+for (const name of expectedTools) assert(readme.includes("`" + name + "`"), `README must document ${name}`);
 
 // The hosted endpoint already streams POST replies. Verify its public tool
 // registry too: retiring tools must affect both HTTP and stdio clients.
@@ -222,7 +234,7 @@ for (const name of ["sal", "exp"]) {
 }
 
 for (const [path, pathItem] of Object.entries(openApi.paths ?? {})) {
-  if (path === "/api/v1/watchlists") continue;
+  if (path === "/api/v1/watchlists" || !pathItem.get) continue;
   const parameters = pathItem?.get?.parameters;
   assert(Array.isArray(parameters), `OpenAPI ${path} must define GET parameters`);
   const localeParameter = parameters.find(
@@ -328,6 +340,14 @@ try {
     }
   }
 
+  for (const name of ["report_bug", "suggest_feature", "give_feedback"]) {
+    const tool = tools.find(tool => tool.name === name);
+    assert(tool.annotations.readOnlyHint === false && tool.annotations.idempotentHint === false, `${name} must advertise a non-idempotent write`);
+    assert(tool.inputSchema.additionalProperties === false, `${name} must reject undeclared fields`);
+  }
+  assert(!/290\+|ALWAYS call/i.test(client.getInstructions() ?? ""), "Instructions must not repeat stale catalogue counts or force redundant resolution");
+  assert(client.getServerVersion()?.websiteUrl === "https://jseek.co", "Handshake must include website discovery metadata");
+
   const searchTool = tools.find(({ name }) => name === "search_jobs");
   const searchPatterns = {
     wm: SEARCH_WORK_MODE_LIST_PATTERN,
@@ -416,6 +436,7 @@ try {
     const internalToken = "SECRET_HOSTED_MCP_PROVENANCE_CANARY";
     const hostedClient = new JobseekClient("https://example.invalid", {
       internalMcpToken: internalToken,
+      internalMcpClientIp: "203.0.113.42",
     });
     await hostedClient.get("/api/v1/job", { id: "job-1" });
     await hostedClient.post("/api/v1/internal-test", { ok: true });
@@ -429,6 +450,7 @@ try {
         request.headers.get("x-jobseek-internal-mcp-token") === internalToken,
         `A configured ${request.method} must send the hosted provenance token header`,
       );
+      assert(request.headers.get("x-jobseek-mcp-client-ip") === "203.0.113.42", "Configured hosted provenance must carry client IP for feedback rate limiting");
       assert(
         !request.url.includes(internalToken),
         "The hosted provenance token must never be added to a request URL",
@@ -437,6 +459,32 @@ try {
   } finally {
     globalThis.fetch = originalFetch;
   }
+
+  const priorFetch = globalThis.fetch;
+  const feedbackCalls = [];
+  globalThis.fetch = async (input, init) => {
+    feedbackCalls.push({ url: String(input), method: init?.method, body: JSON.parse(init.body) });
+    return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json" } });
+  };
+  try {
+    const examples = [
+      ["report_bug", "bug", { goal: "Find matching roles", expected: "Return matching summaries", observed: "The tool returned an error", impact: "blocked", affectedTool: "search_jobs" }],
+      ["suggest_feature", "feature", { goal: "Compare role compensation", capability: "Salary in search summaries", benefit: "Fewer follow-up calls", impact: "partial" }],
+      ["give_feedback", "feedback", { goal: "Find jobs", observation: "The returned page links were useful" }],
+    ];
+    for (const [name, kind, args] of examples) {
+      const result = await client.callTool({ name, arguments: args });
+      assert(!result.isError && JSON.stringify(result.structuredContent) === '{"success":true}', `${name} must return only basic success`);
+      const call = feedbackCalls.at(-1);
+      assert(call.method === "POST" && call.url.endsWith("/api/v1/feedback") && call.body.kind === kind, `${name} must reach the shared submission backend`);
+    }
+    const before = feedbackCalls.length;
+    const invalid = await client.callTool({ name: "give_feedback", arguments: { goal: "Find jobs", observation: "Useful", transcript: "PRIVATE_CANARY" } });
+    assert(invalid.isError && feedbackCalls.length === before, "Unknown feedback fields must fail before submission");
+    globalThis.fetch = async () => { throw new Error("SECRET_FAILURE_CANARY"); };
+    const failed = await client.callTool({ name: "give_feedback", arguments: examples[2][2] });
+    assert(failed.isError && !JSON.stringify(failed).includes("SECRET_FAILURE_CANARY"), "Submission failure must remain a safe tool error");
+  } finally { globalThis.fetch = priorFetch; }
 
   const { resourceTemplates } = await client.listResourceTemplates();
   assert(

@@ -631,6 +631,13 @@
       "when": 1790992800000,
       "tag": "0101_company_reference_selection_contract",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1791410269806,
+      "tag": "0102_mcp_feedback",
+      "breakpoints": true
     }
   ]
 }
