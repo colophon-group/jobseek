@@ -1,0 +1,38 @@
+{
+  "schema": "jobseek.native-rss-provider-candidate/v1",
+  "version": "0.13.958",
+  "base_source_revision": "60d0de8bebfbd25486791cb741d3b5ce814dfbce",
+  "state": "local candidate; not merged, deployed or adopted",
+  "profiles": [
+    "rss.governmentjobs-skip/v1",
+    "rss.governmentjobs-items/v1",
+    "rss.zoho_recruit-skip/v1",
+    "rss.zoho_recruit-items/v1"
+  ],
+  "compiled_profiles": 85,
+  "reference_cases": 16,
+  "canonical_pg_redis_cases": 24,
+  "cold_reversal_cases": 6,
+  "verification": {
+    "parser_and_canonical_race_seconds": 17.38,
+    "profile_race_seconds": 2.829,
+    "cold_and_profile_race_seconds": 6.193,
+    "nextdata_identity_and_native_executable_race_seconds": 8.966,
+    "python_ownership": "41 passed,6 environment skips",
+    "original_production_plan_replay": "old verifier rejects; candidate exact projection SHA1 matches",
+    "full_race": "pending",
+    "required_ci": "pending",
+    "installed_image_parity": "pending"
+  },
+  "cutover_correction": {
+    "legacy_browser_members_missing": 10,
+    "legacy_detail_members_missing": 103,
+    "deployed_detail_profiles_missing": 8,
+    "all_missing_compiled_detail_variants_added": 9,
+    "original_plan_sha256": "09e0ed5e284cd3ae9b3f416005b5a4112dd9caa9b59df02ed9e4068f679314bd",
+    "exact_replayed_projection_sha1": "e6ebdeb0328ff6bd72e702b68e4f989cc193d48c",
+    "original_failed_plan_state": "retired",
+    "authority": "offline immutable payload replay; new source-bound staging and activation required"
+  },
+  "full_migration_complete": false
+}

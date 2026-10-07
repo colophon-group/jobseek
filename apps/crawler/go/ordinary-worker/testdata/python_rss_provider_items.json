@@ -1,0 +1,375 @@
+{
+  "cases": [
+    {
+      "name": "governmentjobs-full",
+      "preset": "governmentjobs",
+      "body": "<rss><channel><item xmlns:g=\"http://www.neogov.com/namespaces/JobListing\"><title> Café &amp;amp; 東京 </title><guid>123</guid><pubDate>2026-10-07</pubDate><link>https://www.governmentjobs.com/careers/fixture/jobs/123</link><description><![CDATA[<p>Build &amp; learn.</p>Lieu : <b>Zürich</b> &amp;amp; 東京<br />]]></description><Location>ignored legacy location</Location><JobID>ignored legacy id</JobID><g:location>Zürich, CH</g:location><g:jobType>Full Time</g:jobType><g:jobId>456</g:jobId><g:department>Engineering</g:department><g:examplesofduties><![CDATA[<p>Serve &amp; build</p>]]></g:examplesofduties><g:qualifications>Degree &amp;amp; experience</g:qualifications><g:supplementalinformation>Remote</g:supplementalinformation></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://www.governmentjobs.com/careers/fixture/jobs/123",
+          "title": "Café &amp; 東京",
+          "description": "<p>Build & learn.</p>Lieu : <b>Zürich</b> &amp; 東京<br />\n<h2>Examples of Duties</h2>\n<p>Serve & build</p>\n<h2>Qualifications</h2>\nDegree & experience\n<h2>Supplemental Information</h2>\nRemote",
+          "locations": [
+            "Zürich, CH"
+          ],
+          "employment_type": "Full Time",
+          "job_location_type": null,
+          "date_posted": "2026-10-07",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "456",
+            "department": "Engineering"
+          },
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "governmentjobs-minimal",
+      "preset": "governmentjobs",
+      "body": "<rss><channel><item xmlns:g=\"http://www.neogov.com/namespaces/JobListing\"><title> Café &amp;amp; 東京 </title><guid>123</guid><pubDate>2026-10-07</pubDate><link>https://www.governmentjobs.com/careers/fixture/jobs/123</link></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://www.governmentjobs.com/careers/fixture/jobs/123",
+          "title": "Café &amp; 東京",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-07",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "governmentjobs-missing_link",
+      "preset": "governmentjobs",
+      "body": "<rss><channel><item xmlns:g=\"http://www.neogov.com/namespaces/JobListing\"><title> Café &amp;amp; 東京 </title><guid>123</guid><pubDate>2026-10-07</pubDate><description><![CDATA[<p>Build &amp; learn.</p>Lieu : <b>Zürich</b> &amp;amp; 東京<br />]]></description><Location>ignored legacy location</Location><JobID>ignored legacy id</JobID><g:location>Zürich, CH</g:location><g:jobType>Full Time</g:jobType><g:jobId>456</g:jobId><g:department>Engineering</g:department><g:examplesofduties><![CDATA[<p>Serve &amp; build</p>]]></g:examplesofduties><g:qualifications>Degree &amp;amp; experience</g:qualifications><g:supplementalinformation>Remote</g:supplementalinformation></item></channel></rss>",
+      "jobs": []
+    },
+    {
+      "name": "governmentjobs-nested_title",
+      "preset": "governmentjobs",
+      "body": "<rss><channel><item xmlns:g=\"http://www.neogov.com/namespaces/JobListing\"><title> Leading <b>nested</b> trailing </title><guid>123</guid><pubDate>2026-10-07</pubDate><link>https://www.governmentjobs.com/careers/fixture/jobs/123</link><description><![CDATA[<p>Build &amp; learn.</p>Lieu : <b>Zürich</b> &amp;amp; 東京<br />]]></description><Location>ignored legacy location</Location><JobID>ignored legacy id</JobID><g:location>Zürich, CH</g:location><g:jobType>Full Time</g:jobType><g:jobId>456</g:jobId><g:department>Engineering</g:department><g:examplesofduties><![CDATA[<p>Serve &amp; build</p>]]></g:examplesofduties><g:qualifications>Degree &amp;amp; experience</g:qualifications><g:supplementalinformation>Remote</g:supplementalinformation></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://www.governmentjobs.com/careers/fixture/jobs/123",
+          "title": "Leading",
+          "description": "<p>Build & learn.</p>Lieu : <b>Zürich</b> &amp; 東京<br />\n<h2>Examples of Duties</h2>\n<p>Serve & build</p>\n<h2>Qualifications</h2>\nDegree & experience\n<h2>Supplemental Information</h2>\nRemote",
+          "locations": [
+            "Zürich, CH"
+          ],
+          "employment_type": "Full Time",
+          "job_location_type": null,
+          "date_posted": "2026-10-07",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "456",
+            "department": "Engineering"
+          },
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "governmentjobs-wrong_namespace",
+      "preset": "governmentjobs",
+      "body": "<rss><channel><item xmlns:g=\"https://example.com/foreign\"><title> Café &amp;amp; 東京 </title><guid>123</guid><pubDate>2026-10-07</pubDate><link>https://www.governmentjobs.com/careers/fixture/jobs/123</link><description><![CDATA[<p>Build &amp; learn.</p>Lieu : <b>Zürich</b> &amp;amp; 東京<br />]]></description><Location>ignored legacy location</Location><JobID>ignored legacy id</JobID><g:location>Zürich, CH</g:location><g:jobType>Full Time</g:jobType><g:jobId>456</g:jobId><g:department>Engineering</g:department><g:examplesofduties><![CDATA[<p>Serve &amp; build</p>]]></g:examplesofduties><g:qualifications>Degree &amp;amp; experience</g:qualifications><g:supplementalinformation>Remote</g:supplementalinformation></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://www.governmentjobs.com/careers/fixture/jobs/123",
+          "title": "Café &amp; 東京",
+          "description": "<p>Build & learn.</p>Lieu : <b>Zürich</b> &amp; 東京<br />",
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-07",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "governmentjobs-duplicate",
+      "preset": "governmentjobs",
+      "body": "<rss><channel><item xmlns:g=\"http://www.neogov.com/namespaces/JobListing\"><title> Café &amp;amp; 東京 </title><guid>123</guid><pubDate>2026-10-07</pubDate><link>https://www.governmentjobs.com/careers/fixture/jobs/123</link><description><![CDATA[<p>Build &amp; learn.</p>Lieu : <b>Zürich</b> &amp;amp; 東京<br />]]></description><Location>ignored legacy location</Location><JobID>ignored legacy id</JobID><g:location>Zürich, CH</g:location><g:jobType>Full Time</g:jobType><g:jobId>456</g:jobId><g:department>Engineering</g:department><g:examplesofduties><![CDATA[<p>Serve &amp; build</p>]]></g:examplesofduties><g:qualifications>Degree &amp;amp; experience</g:qualifications><g:supplementalinformation>Remote</g:supplementalinformation><title>Second title</title><guid>999</guid><g:location>second location</g:location></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://www.governmentjobs.com/careers/fixture/jobs/123",
+          "title": "Café &amp; 東京",
+          "description": "<p>Build & learn.</p>Lieu : <b>Zürich</b> &amp; 東京<br />\n<h2>Examples of Duties</h2>\n<p>Serve & build</p>\n<h2>Qualifications</h2>\nDegree & experience\n<h2>Supplemental Information</h2>\nRemote",
+          "locations": [
+            "Zürich, CH"
+          ],
+          "employment_type": "Full Time",
+          "job_location_type": null,
+          "date_posted": "2026-10-07",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "456",
+            "department": "Engineering"
+          },
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "governmentjobs-unicode_id",
+      "preset": "governmentjobs",
+      "body": "<rss><channel><item xmlns:g=\"http://www.neogov.com/namespaces/JobListing\"><title> Café &amp;amp; 東京 </title><guid>１２３</guid><pubDate>2026-10-07</pubDate><link>https://www.governmentjobs.com/careers/fixture/jobs/123</link><description><![CDATA[<p>Build &amp; learn.</p>Lieu : <b>Zürich</b> &amp;amp; 東京<br />]]></description><Location>ignored legacy location</Location><JobID>ignored legacy id</JobID><g:location>Zürich, CH</g:location><g:jobType>Full Time</g:jobType><g:jobId>456</g:jobId><g:department>Engineering</g:department><g:examplesofduties><![CDATA[<p>Serve &amp; build</p>]]></g:examplesofduties><g:qualifications>Degree &amp;amp; experience</g:qualifications><g:supplementalinformation>Remote</g:supplementalinformation></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://www.governmentjobs.com/careers/fixture/jobs/123",
+          "title": "Café &amp; 東京",
+          "description": "<p>Build & learn.</p>Lieu : <b>Zürich</b> &amp; 東京<br />\n<h2>Examples of Duties</h2>\n<p>Serve & build</p>\n<h2>Qualifications</h2>\nDegree & experience\n<h2>Supplemental Information</h2>\nRemote",
+          "locations": [
+            "Zürich, CH"
+          ],
+          "employment_type": "Full Time",
+          "job_location_type": null,
+          "date_posted": "2026-10-07",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "456",
+            "department": "Engineering"
+          },
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "governmentjobs-non_provider_host",
+      "preset": "governmentjobs",
+      "body": "<rss><channel><item xmlns:g=\"http://www.neogov.com/namespaces/JobListing\"><title> Café &amp;amp; 東京 </title><guid>123</guid><pubDate>2026-10-07</pubDate><link>https://fixture.example.com/jobs/123</link><description><![CDATA[<p>Build &amp; learn.</p>Lieu : <b>Zürich</b> &amp;amp; 東京<br />]]></description><Location>ignored legacy location</Location><JobID>ignored legacy id</JobID><g:location>Zürich, CH</g:location><g:jobType>Full Time</g:jobType><g:jobId>456</g:jobId><g:department>Engineering</g:department><g:examplesofduties><![CDATA[<p>Serve &amp; build</p>]]></g:examplesofduties><g:qualifications>Degree &amp;amp; experience</g:qualifications><g:supplementalinformation>Remote</g:supplementalinformation></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://fixture.example.com/jobs/123",
+          "title": "Café &amp; 東京",
+          "description": "<p>Build & learn.</p>Lieu : <b>Zürich</b> &amp; 東京<br />\n<h2>Examples of Duties</h2>\n<p>Serve & build</p>\n<h2>Qualifications</h2>\nDegree & experience\n<h2>Supplemental Information</h2>\nRemote",
+          "locations": [
+            "Zürich, CH"
+          ],
+          "employment_type": "Full Time",
+          "job_location_type": null,
+          "date_posted": "2026-10-07",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "456",
+            "department": "Engineering"
+          },
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "zoho_recruit-full",
+      "preset": "zoho_recruit",
+      "body": "<rss><channel><item xmlns:g=\"http://www.neogov.com/namespaces/JobListing\"><title> Café &amp;amp; 東京 </title><guid>123</guid><pubDate>2026-10-07</pubDate><link>https://fixture.zohorecruit.eu/jobs/Careers/123</link><description><![CDATA[<p>Build &amp; learn.</p>Lieu : <b>Zürich</b> &amp;amp; 東京<br />]]></description><Location>ignored legacy location</Location><JobID>ignored legacy id</JobID><g:location>Zürich, CH</g:location><g:jobType>Full Time</g:jobType><g:jobId>456</g:jobId><g:department>Engineering</g:department><g:examplesofduties><![CDATA[<p>Serve &amp; build</p>]]></g:examplesofduties><g:qualifications>Degree &amp;amp; experience</g:qualifications><g:supplementalinformation>Remote</g:supplementalinformation></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://fixture.zohorecruit.eu/jobs/Careers/123",
+          "title": "Café & 東京",
+          "description": "<p>Build & learn.</p>Lieu : <b>Zürich</b> &amp; 東京<br />",
+          "locations": [
+            "Zürich & 東京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-07",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123"
+          },
+          "source_identity": "zoho_recruit:fixture.eu:123"
+        }
+      ]
+    },
+    {
+      "name": "zoho_recruit-minimal",
+      "preset": "zoho_recruit",
+      "body": "<rss><channel><item xmlns:g=\"http://www.neogov.com/namespaces/JobListing\"><title> Café &amp;amp; 東京 </title><guid>123</guid><pubDate>2026-10-07</pubDate><link>https://fixture.zohorecruit.eu/jobs/Careers/123</link></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://fixture.zohorecruit.eu/jobs/Careers/123",
+          "title": "Café & 東京",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-07",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123"
+          },
+          "source_identity": "zoho_recruit:fixture.eu:123"
+        }
+      ]
+    },
+    {
+      "name": "zoho_recruit-missing_link",
+      "preset": "zoho_recruit",
+      "body": "<rss><channel><item xmlns:g=\"http://www.neogov.com/namespaces/JobListing\"><title> Café &amp;amp; 東京 </title><guid>123</guid><pubDate>2026-10-07</pubDate><description><![CDATA[<p>Build &amp; learn.</p>Lieu : <b>Zürich</b> &amp;amp; 東京<br />]]></description><Location>ignored legacy location</Location><JobID>ignored legacy id</JobID><g:location>Zürich, CH</g:location><g:jobType>Full Time</g:jobType><g:jobId>456</g:jobId><g:department>Engineering</g:department><g:examplesofduties><![CDATA[<p>Serve &amp; build</p>]]></g:examplesofduties><g:qualifications>Degree &amp;amp; experience</g:qualifications><g:supplementalinformation>Remote</g:supplementalinformation></item></channel></rss>",
+      "jobs": []
+    },
+    {
+      "name": "zoho_recruit-nested_title",
+      "preset": "zoho_recruit",
+      "body": "<rss><channel><item xmlns:g=\"http://www.neogov.com/namespaces/JobListing\"><title> Leading <b>nested</b> trailing </title><guid>123</guid><pubDate>2026-10-07</pubDate><link>https://fixture.zohorecruit.eu/jobs/Careers/123</link><description><![CDATA[<p>Build &amp; learn.</p>Lieu : <b>Zürich</b> &amp;amp; 東京<br />]]></description><Location>ignored legacy location</Location><JobID>ignored legacy id</JobID><g:location>Zürich, CH</g:location><g:jobType>Full Time</g:jobType><g:jobId>456</g:jobId><g:department>Engineering</g:department><g:examplesofduties><![CDATA[<p>Serve &amp; build</p>]]></g:examplesofduties><g:qualifications>Degree &amp;amp; experience</g:qualifications><g:supplementalinformation>Remote</g:supplementalinformation></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://fixture.zohorecruit.eu/jobs/Careers/123",
+          "title": "Leading",
+          "description": "<p>Build & learn.</p>Lieu : <b>Zürich</b> &amp; 東京<br />",
+          "locations": [
+            "Zürich & 東京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-07",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123"
+          },
+          "source_identity": "zoho_recruit:fixture.eu:123"
+        }
+      ]
+    },
+    {
+      "name": "zoho_recruit-wrong_namespace",
+      "preset": "zoho_recruit",
+      "body": "<rss><channel><item xmlns:g=\"https://example.com/foreign\"><title> Café &amp;amp; 東京 </title><guid>123</guid><pubDate>2026-10-07</pubDate><link>https://fixture.zohorecruit.eu/jobs/Careers/123</link><description><![CDATA[<p>Build &amp; learn.</p>Lieu : <b>Zürich</b> &amp;amp; 東京<br />]]></description><Location>ignored legacy location</Location><JobID>ignored legacy id</JobID><g:location>Zürich, CH</g:location><g:jobType>Full Time</g:jobType><g:jobId>456</g:jobId><g:department>Engineering</g:department><g:examplesofduties><![CDATA[<p>Serve &amp; build</p>]]></g:examplesofduties><g:qualifications>Degree &amp;amp; experience</g:qualifications><g:supplementalinformation>Remote</g:supplementalinformation></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://fixture.zohorecruit.eu/jobs/Careers/123",
+          "title": "Café & 東京",
+          "description": "<p>Build & learn.</p>Lieu : <b>Zürich</b> &amp; 東京<br />",
+          "locations": [
+            "Zürich & 東京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-07",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123"
+          },
+          "source_identity": "zoho_recruit:fixture.eu:123"
+        }
+      ]
+    },
+    {
+      "name": "zoho_recruit-duplicate",
+      "preset": "zoho_recruit",
+      "body": "<rss><channel><item xmlns:g=\"http://www.neogov.com/namespaces/JobListing\"><title> Café &amp;amp; 東京 </title><guid>123</guid><pubDate>2026-10-07</pubDate><link>https://fixture.zohorecruit.eu/jobs/Careers/123</link><description><![CDATA[<p>Build &amp; learn.</p>Lieu : <b>Zürich</b> &amp;amp; 東京<br />]]></description><Location>ignored legacy location</Location><JobID>ignored legacy id</JobID><g:location>Zürich, CH</g:location><g:jobType>Full Time</g:jobType><g:jobId>456</g:jobId><g:department>Engineering</g:department><g:examplesofduties><![CDATA[<p>Serve &amp; build</p>]]></g:examplesofduties><g:qualifications>Degree &amp;amp; experience</g:qualifications><g:supplementalinformation>Remote</g:supplementalinformation><title>Second title</title><guid>999</guid><g:location>second location</g:location></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://fixture.zohorecruit.eu/jobs/Careers/123",
+          "title": "Café & 東京",
+          "description": "<p>Build & learn.</p>Lieu : <b>Zürich</b> &amp; 東京<br />",
+          "locations": [
+            "Zürich & 東京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-07",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123"
+          },
+          "source_identity": "zoho_recruit:fixture.eu:123"
+        }
+      ]
+    },
+    {
+      "name": "zoho_recruit-unicode_id",
+      "preset": "zoho_recruit",
+      "body": "<rss><channel><item xmlns:g=\"http://www.neogov.com/namespaces/JobListing\"><title> Café &amp;amp; 東京 </title><guid>１２３</guid><pubDate>2026-10-07</pubDate><link>https://fixture.zohorecruit.eu/jobs/Careers/123</link><description><![CDATA[<p>Build &amp; learn.</p>Lieu : <b>Zürich</b> &amp;amp; 東京<br />]]></description><Location>ignored legacy location</Location><JobID>ignored legacy id</JobID><g:location>Zürich, CH</g:location><g:jobType>Full Time</g:jobType><g:jobId>456</g:jobId><g:department>Engineering</g:department><g:examplesofduties><![CDATA[<p>Serve &amp; build</p>]]></g:examplesofduties><g:qualifications>Degree &amp;amp; experience</g:qualifications><g:supplementalinformation>Remote</g:supplementalinformation></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://fixture.zohorecruit.eu/jobs/Careers/123",
+          "title": "Café & 東京",
+          "description": "<p>Build & learn.</p>Lieu : <b>Zürich</b> &amp; 東京<br />",
+          "locations": [
+            "Zürich & 東京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-07",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "１２３"
+          },
+          "source_identity": null
+        }
+      ]
+    },
+    {
+      "name": "zoho_recruit-non_provider_host",
+      "preset": "zoho_recruit",
+      "body": "<rss><channel><item xmlns:g=\"http://www.neogov.com/namespaces/JobListing\"><title> Café &amp;amp; 東京 </title><guid>123</guid><pubDate>2026-10-07</pubDate><link>https://fixture.example.com/jobs/123</link><description><![CDATA[<p>Build &amp; learn.</p>Lieu : <b>Zürich</b> &amp;amp; 東京<br />]]></description><Location>ignored legacy location</Location><JobID>ignored legacy id</JobID><g:location>Zürich, CH</g:location><g:jobType>Full Time</g:jobType><g:jobId>456</g:jobId><g:department>Engineering</g:department><g:examplesofduties><![CDATA[<p>Serve &amp; build</p>]]></g:examplesofduties><g:qualifications>Degree &amp;amp; experience</g:qualifications><g:supplementalinformation>Remote</g:supplementalinformation></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://fixture.example.com/jobs/123",
+          "title": "Café & 東京",
+          "description": "<p>Build & learn.</p>Lieu : <b>Zürich</b> &amp; 東京<br />",
+          "locations": [
+            "Zürich & 東京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-07",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123"
+          },
+          "source_identity": null
+        }
+      ]
+    }
+  ]
+}

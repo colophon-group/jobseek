@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -487,22 +488,15 @@ async def test_real_legacy_detail_write_excludes_actual_canonical_board(monkeypa
             await pool.execute("DELETE FROM company WHERE id=$1", company)
 
 
-@pytest.mark.parametrize(
-    "profile",
-    [
-        "jsonld.direct-detail/v1",
-        "smartrecruiters.api-detail/v1",
-        "workable.api-detail/v1",
-        "dom.direct-detail/v1",
-        "dom.rendered-detail/v1",
-        "jsonld.rendered-detail/v1",
-        "join.nextdata-detail/v1",
-        "oracle_hcm.api-detail/v1",
-        "embedded.direct-detail/v1",
-        "embedded.rendered-detail/v1",
-        "api_sniffer.http-detail/v1",
-    ],
-)
+def _compiled_native_detail_profiles():
+    source = (Path(__file__).parents[1] / "go/ordinary-worker/environment.go").read_text()
+    profiles = sorted(set(re.findall(r'"([a-z0-9_.-]+detail/v1)"', source)))
+    assert len(profiles) >= 23, "compiled detail capability evidence is incomplete"
+    # Workday's retained monitor-membership requirement has dedicated tests.
+    return [profile for profile in profiles if profile != "workday.cxs-detail/v1"]
+
+
+@pytest.mark.parametrize("profile", _compiled_native_detail_profiles())
 def test_detail_projection_is_independent_of_monitor_membership(profile):
     _, payload = expectation()
     doc = json.loads(payload)
@@ -536,11 +530,20 @@ def test_detail_projection_is_independent_of_monitor_membership(profile):
             ownership_projection(json.dumps(changed, separators=(",", ":")))
 
 
-def test_rendered_monitor_projection_preserves_exact_worker_boundary():
+@pytest.mark.parametrize(
+    "profile",
+    [
+        "dom.rendered-urls/v1",
+        "dayforce.session-search/v1",
+        "nextdata.rendered-items/v1",
+        "nextdata.rendered-urls/v1",
+    ],
+)
+def test_rendered_monitor_projection_preserves_exact_worker_boundary(profile):
     _, payload = expectation()
     doc = json.loads(payload)
     member = doc["members"][0]
-    member["profile"], member["worker"] = "dom.rendered-urls/v1", "browser"
+    member["profile"], member["worker"] = profile, "browser"
     projection = json.loads(ownership_projection(json.dumps(doc, separators=(",", ":"))))
     assert projection["members"] == {member["board_id"]: member["domain"]}
     member["worker"] = "simple"
