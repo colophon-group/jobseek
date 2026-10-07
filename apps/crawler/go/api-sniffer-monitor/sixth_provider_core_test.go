@@ -3,6 +3,7 @@ package apisniffer
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"os"
 	"reflect"
@@ -16,16 +17,18 @@ func TestSixthProviderInventoriesMatchActualPython(t *testing.T) {
 	}
 	var data struct {
 		Inventories []struct {
-			Provider, Scenario string
-			Pages              map[string]string
-			Requests           []string
-			Expected           struct {
-				Error, Truncated bool
-				URLs             []string
+			Provider, Scenario, Source string
+			Metadata                   map[string]any
+			Pages                      map[string]string
+			Statuses                   map[string]int
+			Requests                   []string
+			Expected                   struct {
+				Error, Truncated, Gone bool
+				URLs                   []string
 			}
 		}
 	}
-	if json.Unmarshal(raw, &data) != nil || len(data.Inventories) != 12 {
+	if json.Unmarshal(raw, &data) != nil || len(data.Inventories) != 33 {
 		t.Fatal("Python inventory corpus unavailable")
 	}
 	normalize := func(source string) string {
@@ -53,6 +56,10 @@ func TestSixthProviderInventoriesMatchActualPython(t *testing.T) {
 			for source, body := range c.Pages {
 				pages[normalize(source)] = body
 			}
+			statuses := map[string]int{}
+			for source, status := range c.Statuses {
+				statuses[normalize(source)] = status
+			}
 			requests := []string{}
 			fetch := func(ctx context.Context, source string) (string, error) {
 				source = normalize(source)
@@ -60,6 +67,9 @@ func TestSixthProviderInventoriesMatchActualPython(t *testing.T) {
 				body, ok := pages[source]
 				if !ok {
 					t.Fatal("request left fixture", source)
+				}
+				if status := statuses[source]; status != 0 && status != 200 {
+					return "", fmt.Errorf("fixture status %d", status)
 				}
 				return body, nil
 			}
@@ -79,6 +89,28 @@ func TestSixthProviderInventoriesMatchActualPython(t *testing.T) {
 				for _, job := range jobs {
 					urls = append(urls, job["url"].(string))
 				}
+			} else if c.Provider == "recruiterbox" {
+				urls, truncated, e = DiscoverRecruiterbox(context.Background(), RecruiterboxOptions{"tenant"}, func(ctx context.Context, source string) (string, bool, error) {
+					if status := statuses[normalize(source)]; status == 404 || status == 410 {
+						requests = append(requests, normalize(source))
+						return "", true, nil
+					}
+					body, e := fetch(ctx, source)
+					return body, false, e
+				}, join)
+			} else if c.Provider == "jobs_ch" {
+				md, _ := json.Marshal(c.Metadata)
+				o, err := JobCloudOptionsFromMetadata(c.Source, string(md))
+				if err != nil {
+					t.Fatal(err)
+				}
+				urls, e = DiscoverJobCloud(context.Background(), o, func(ctx context.Context, source string) (*Document, error) {
+					body, e := fetch(ctx, source)
+					if e != nil {
+						return nil, e
+					}
+					return Decode([]byte(body))
+				})
 			} else {
 				urls, truncated, e = DiscoverHRMOS(context.Background(), HRMOSOptions{"tenant"}, fetch, join)
 			}
@@ -90,7 +122,9 @@ func TestSixthProviderInventoriesMatchActualPython(t *testing.T) {
 			}
 			want := []string{}
 			for _, source := range c.Requests {
-				want = append(want, normalize(source))
+				if v := normalize(source); len(want) == 0 || want[len(want)-1] != v {
+					want = append(want, v)
+				}
 			}
 			if !reflect.DeepEqual(requests, want) {
 				t.Fatalf("requests differ: got%v want%v", requests, want)

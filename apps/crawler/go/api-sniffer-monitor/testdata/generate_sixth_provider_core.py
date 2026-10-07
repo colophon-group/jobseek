@@ -1,4 +1,4 @@
-"""Freeze existing Python Manatal/HRMOS parsing for native parity checks."""
+"""Freeze the four existing Python providers for native parity checks."""
 
 from __future__ import annotations
 
@@ -10,7 +10,9 @@ from pathlib import Path
 import httpx
 
 from src.core.monitors import hrmos as hrmos_monitor
+from src.core.monitors import jobs_ch as jobcloud_monitor
 from src.core.monitors import manatal as manatal_monitor
+from src.core.monitors import recruiterbox as recruiterbox_monitor
 from src.core.monitors.hrmos import (
     _is_explicit_empty_listing,
     _page_metadata,
@@ -155,6 +157,138 @@ async def inventories():
                     "provider": provider,
                     "scenario": scenario,
                     "pages": responses,
+                    "requests": requests,
+                    "expected": expected,
+                }
+            )
+    out.extend(await extension_inventories())
+    return out
+
+
+async def extension_inventories():
+    out = []
+    for provider in ("recruiterbox", "jobs_ch"):
+        scenarios = (
+            "complete",
+            "empty",
+            "duplicate",
+            "changed_count",
+            "incomplete",
+            "later_missing",
+            "later_failure",
+            "foreign_company",
+        )
+        scenarios += (
+            ("first_missing", "inactive_first", "inactive_later")
+            if provider == "recruiterbox"
+            else ("uuid_alias", "jobup_alias")
+        )
+        for scenario in scenarios:
+            source = (
+                "https://tenant.recruiterbox.com/"
+                if provider == "recruiterbox"
+                else "https://www.jobs.ch/de/firmen/123-tenant/"
+            )
+            metadata = {}
+            if scenario in {"uuid_alias", "jobup_alias"}:
+                host, path, locale = (
+                    ("www.jobup.ch", "societes", "fr")
+                    if scenario == "jobup_alias"
+                    else ("www.jobs.ch", "firmen", "de")
+                )
+                source = (
+                    f"https://{host}/{locale}/{path}/abcdef01-2345-6789-abcd-ef0123456789-tenant/"
+                )
+                metadata = {"document_company_id": 123}
+            pages, statuses, requests = {}, {}, []
+
+            def respond(
+                request,
+                provider=provider,
+                scenario=scenario,
+                pages=pages,
+                statuses=statuses,
+                requests=requests,
+            ):
+                page = int(
+                    request.url.params.get("p" if provider == "recruiterbox" else "page", "1")
+                )
+                total = 0 if scenario == "empty" else 101
+                if scenario == "changed_count" and page == 2:
+                    total = 102
+                identities = list(range(1, 101)) if page == 1 else [101]
+                if scenario == "empty" or scenario == "incomplete" and page == 2:
+                    identities = []
+                if scenario == "duplicate" and page == 2:
+                    identities = [1]
+                status = (
+                    404
+                    if scenario == "later_missing" and page == 2
+                    else 500
+                    if scenario == "later_failure" and page == 2
+                    else 200
+                )
+                if scenario == "first_missing":
+                    status = 404
+                if provider == "recruiterbox":
+                    body = f"<script>var total_jobs: {total}</script>"
+                    body += "".join(f'<a href="/jobs/job{i}/">job</a>' for i in identities)
+                    if scenario == "foreign_company" and page == 2:
+                        body = f'<script>var total_jobs: {total}</script><a href="https://other.hire.trakstar.com/jobs/job101/">foreign</a>'
+                    if scenario == "inactive_first" or scenario == "inactive_later" and page == 2:
+                        body = (
+                            '<a href="https://recruiterbox.com/inactive-ats">Inactive account</a>'
+                            " No longer using Trakstar Hire"
+                        )
+                else:
+                    body = json.dumps(
+                        {
+                            "documents": [
+                                {
+                                    "id": f"00000000-0000-0000-0000-{i:012d}",
+                                    "company": {
+                                        "id": "999"
+                                        if scenario == "foreign_company" and page == 2
+                                        else "123"
+                                    },
+                                }
+                                for i in identities
+                            ],
+                            "numPages": 0 if total == 0 else 2,
+                            "currentPage": page,
+                            "totalHits": total,
+                            "rows": 100,
+                            "start": (page - 1) * 100,
+                        }
+                    )
+                key = str(request.url)
+                pages[key], statuses[key] = body, status
+                requests.append(key)
+                return httpx.Response(status, text=body)
+
+            async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+                try:
+                    result = await (
+                        recruiterbox_monitor if provider == "recruiterbox" else jobcloud_monitor
+                    ).discover({"board_url": source, "metadata": metadata}, client)
+                    values = result.urls if hasattr(result, "urls") else result
+                    expected = {
+                        "error": False,
+                        "truncated": bool(getattr(result, "truncated", False)),
+                        "urls": sorted(values),
+                    }
+                except Exception as exc:
+                    from src.core.monitors import BoardGoneError
+
+                    expected = {"error": True, "gone": isinstance(exc, BoardGoneError)}
+            out.append(
+                {
+                    "provider": provider,
+                    "scenario": scenario,
+                    "source": source,
+                    "metadata": metadata,
+                    "pages": pages,
+                    "statuses": statuses,
                     "requests": requests,
                     "expected": expected,
                 }

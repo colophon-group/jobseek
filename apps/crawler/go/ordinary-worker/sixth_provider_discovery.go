@@ -80,3 +80,72 @@ func discoverHRMOSInventoryWithWait(ctx context.Context, client *http.Client, p 
 	}
 	return out, nil
 }
+
+func discoverRecruiterboxInventory(ctx context.Context, client *http.Client, p queue.GreenhouseMonitorProfile, config map[string]string) (RichDiscovery, error) {
+	return discoverRecruiterboxInventoryWithWait(ctx, client, p, config, pauseRich)
+}
+func discoverRecruiterboxInventoryWithWait(ctx context.Context, client *http.Client, p queue.GreenhouseMonitorProfile, config map[string]string, wait func(context.Context, time.Duration) error) (RichDiscovery, error) {
+	out := RichDiscovery{Jobs: []RichMonitorJob{}}
+	o, e := api.RecruiterboxOptionsFromMetadata(config["board_url"], config["metadata"])
+	if e != nil || client == nil || wait == nil || p.Provider != "recruiterbox" || p.Profile != "recruiterbox.listing-urls/v1" || p.Endpoint != o.PageURL(1) || config["monitor_needs_browser"] != "0" {
+		return out, queue.ErrConfiguration
+	}
+	sealed := *client
+	sealed.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	urls, truncated, e := api.DiscoverRecruiterbox(ctx, o, func(ctx context.Context, source string) (string, bool, error) {
+		body, response, e := fetchFifthListing(ctx, &sealed, o, source, map[int]bool{202: true, 401: true, 403: true}, 64<<20, true, wait)
+		out.Response = response
+		if e != nil {
+			if response != nil && (response.status == 404 || response.status == 410) {
+				if source == o.PageURL(1) {
+					return "", false, &DiscoveryError{Kind: "provider_gone", Status: response.status}
+				}
+				return "", true, nil
+			}
+			return "", false, e
+		}
+		runes := []rune(body)
+		if len(runes) > 2000001 {
+			body = string(runes[:2000001])
+		}
+		if api.RecruiterboxInactive(body) {
+			response.providerDisabled = true
+			return "", false, &DiscoveryError{Kind: "provider_gone", Status: 200}
+		}
+		classified, e := dom.ClassifyDocument(body, dom.Object{}, source)
+		if e != nil || classified["classification"] == "challenge" {
+			return "", false, &DiscoveryError{Kind: "bot_challenge"}
+		}
+		return body, false, nil
+	}, pythonJoinURL)
+	if e != nil {
+		return RichDiscovery{Response: out.Response}, e
+	}
+	out.Truncated = truncated
+	for _, source := range urls {
+		out.Jobs = append(out.Jobs, RichMonitorJob{URL: source, URLOnly: true})
+	}
+	return out, nil
+}
+func discoverJobCloudInventory(ctx context.Context, client *http.Client, p queue.GreenhouseMonitorProfile, config map[string]string) (RichDiscovery, error) {
+	return discoverJobCloudInventoryWithWait(ctx, client, p, config, pauseRich)
+}
+func discoverJobCloudInventoryWithWait(ctx context.Context, client *http.Client, p queue.GreenhouseMonitorProfile, config map[string]string, wait func(context.Context, time.Duration) error) (RichDiscovery, error) {
+	out := RichDiscovery{Jobs: []RichMonitorJob{}}
+	o, e := api.JobCloudOptionsFromMetadata(config["board_url"], config["metadata"])
+	if e != nil || client == nil || wait == nil || p.Provider != "jobs_ch" || p.Profile != "jobs_ch.company-urls/v1" || p.Endpoint != o.SearchURL(1) || config["monitor_needs_browser"] != "0" {
+		return out, queue.ErrConfiguration
+	}
+	urls, e := api.DiscoverJobCloud(ctx, o, func(ctx context.Context, source string) (*api.Document, error) {
+		d, response, e := fetchSecondaryJSONPage(ctx, client, o, source, nil, nil, nil, wait)
+		out.Response = response
+		return d, e
+	})
+	if e != nil {
+		return RichDiscovery{Response: out.Response}, e
+	}
+	for _, source := range urls {
+		out.Jobs = append(out.Jobs, RichMonitorJob{URL: source, URLOnly: true})
+	}
+	return out, nil
+}

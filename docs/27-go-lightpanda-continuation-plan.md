@@ -43,9 +43,11 @@ cleared ownership, zero current fences and no orphan historical receipts.
 Historical audit receipts remain. After normal cross-store reconciliation completed, source962 independent cold
 readback passed at09:34 UTC: exact release/images, seven restart-armed base
 processes, six healthy endpoints and cleared ownership at212. Supported selector
-stage succeeded and original B0 activation is running. Fresh962 canonical/cache
-and scheduled-route admission plus ordinary activation remain pending; no previous
-receipt, cohort or ownership plan grants reuse.
+stage, B0 activation and independent receipt readback succeeded. Fresh source962
+canonical/cache configuration and all scheduled detail routes were reconciled;
+ordinary ownership is active at epoch213 for7,212 monitor boards and2,616 detail
+boards, including1,459,769 scheduled postings.41 detail boards retain legacy
+ownership because cached or actual posting routes did not qualify.
 
 Offline source962 screening of the last source960 capture qualifies7,212
 monitors,26 more than960, leaving670 monitors across the retained provider
@@ -53,26 +55,30 @@ backlog. These are configuration screening counts; fresh source962 production
 admission must reconcile canonical/cache state and actual scheduled detail
 routes. Source960 previously owned7,186 monitors and2,616 detail boards,
 including1,463,861 scheduled postings. Every-profile freshness, whole-lane
-resource/cost proof and complete Python retirement remain unfinished.
+resource/cost proof and complete Python retirement remain unfinished. At11:45 UTC,
+independent source/image/receipt-bound observation verified1,401 naturally scheduled
+monitor completions and437 detail completions across23 profiles,29 canonical
+samples, eight healthy endpoints and no processing diagnostics. Rendered Inline
+has real completions. This observation does not prove every-profile freshness.
 
 ## Continue delivery
 
-1. Finish the running supported source962 B0 activation and verify its receipt.
-   Capture fresh source/receipt-bound canonical and
-   cached configurations plus every scheduled detail route, then stage/activate
-   ordinary ownership. Verify real scheduled completions, canonical fields,
+1. Keep observing source962 scheduled completions, canonical fields,
    descriptions, publisher outcomes, SQL/Redis deadlines, health and freshness
    against the exact source/images/epoch/receipts.
 2. Deliver the next compatible provider batch together. Candidate963 adds
-   Manatal rich pagination and HRMOS URL-only listing/count pagination through
-   the existing native worker and canonical processors:11 registry configs,
-   11 enabled boards in the protected census. Actual Python parsing/traversal,
-   canonicalPG/Redis publisher/settlement and cold-retirement checks pass; full
-   suites and CI remain. Continue the large shared browser paths together:
+   Manatal rich pagination, HRMOS and Recruiterbox URL-only listings, and
+   jobs.ch/jobup employer-scoped API pagination through the existing native
+   worker and canonical processors:28 registry configurations.33 actual Python
+   traversal references, canonicalPG/Redis publisher/settlement checks and12
+   cold-retirement cases pass; final-head full suites and CI remain. Continue
+   the large shared browser paths together:
    DOM239, API sniffer149 and Inline8 in the current offline screening.
    API-sniffer replay must retain captured response selection, auth refresh,
    browser cookies, HTTP fallback and bounded pagination. Group remaining
-   small providers such as Recruiterbox with compatible HTTP/API work.
+   small providers with compatible HTTP/API work. Recruiterbox's dedicated
+   detail scraper remains a separate legacy contract; JSON-LD assignments
+   already retain native detail eligibility.
 3. Replace mandatory Python consumers in compatible groups: worker/browser
    `crawler run`/`run-browser`; deployment `crawler sync` and schema preparation;
    activation/epoch/reaper and maintenance commands. Reuse the existing Go queue,
@@ -110,9 +116,13 @@ and [Hetzner maintenance](16-hetzner-maintenance.md) for deployment and recovery
 
 ## Next grouped provider candidate
 
-Candidate **0.13.963** compiles105 profiles with Manatal and HRMOS. It preserves
+Candidate **0.13.963** compiles107 profiles with Manatal, HRMOS, Recruiterbox and
+jobs.ch/jobup. It preserves
 Manatal's advertised-count/no-progress rules and rich fields; HRMOS canonical
 URLs, listing markers, explicit emptiness, totals and current-page checks;
+Recruiterbox authoritative totals, partial-inventory protection and inactive
+account evidence; JobCloud company aliases, portal/localized identities and
+exact pagination completeness;
 source-bound publisher observations and whole-inventory failure; and supported
 cold retirement after interrupted writes or acknowledgment loss. The existing
 queue, processors, persistence and maintenance paths remain the execution

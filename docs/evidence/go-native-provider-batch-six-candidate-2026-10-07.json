@@ -4,29 +4,29 @@
   "base_source": "d2fa77713308f17eeb38fb06de060dc6b67dc595",
   "providers": [
     "manatal",
-    "hrmos"
+    "hrmos",
+    "recruiterbox",
+    "jobs_ch"
   ],
-  "compiled_profiles": 105,
+  "compiled_profiles": 107,
   "registry_configurations": {
     "manatal": 5,
-    "hrmos": 6
-  },
-  "previous_enabled_census": {
-    "manatal": 5,
-    "hrmos": 6
+    "hrmos": 6,
+    "recruiterbox": 6,
+    "jobs_ch": 11
   },
   "verification": {
     "actual_python_parsing_cases": 16,
-    "actual_python_inventory_traversals": 12,
-    "native_worker_reference_http_cases": 12,
-    "canonical_postgresql_redis_cases": 12,
-    "canonical_publisher_reservation_cases": 4,
-    "cold_retirement_cases": 6,
+    "actual_python_inventory_traversals": 33,
+    "native_worker_reference_http_cases": 33,
+    "canonical_postgresql_redis_cases": 33,
+    "canonical_publisher_reservation_cases": 8,
+    "cold_retirement_cases": 12,
     "full_api_module_race": "pass",
     "worker_vet": "pass",
-    "full_worker_queue_suites": "initial at3e3ca31f8 failed because local PostgreSQL fixture was stopped; fixture restored; fresh corrected-head rerun pending",
-    "required_ci": "pending",
-    "crawler_deploy_gate": "pending"
+    "full_worker_queue_suites": "Pending final four-provider commit; superseded two-provider full worker and queue checks passed",
+    "required_ci": "Pending final four-provider head",
+    "crawler_deploy_gate": "Draft candidate; gate intentionally rejects merge authority"
   },
   "production_ownership": false,
   "full_migration_complete": false,
@@ -37,7 +37,8 @@
     "Fresh canonical/cache/actual detail route admission",
     "Scheduled production proof and full runtime retirement"
   ],
-  "offline_eligibility": {
+  "observed_at_utc": "2026-10-07T11:48:19.152895+00:00",
+  "previous_two_provider_offline_eligibility": {
     "eligible_monitor_boards": 7223,
     "new_since962": 11,
     "remaining_monitors": 659,
@@ -45,5 +46,6 @@
     "cached_unsupported": 0,
     "capture_source_revision": "acb4bb9e7627c541f7ff0aba4bb0c1ca4995f48b",
     "authority": "Offline configuration screening only; fresh production admission required"
-  }
+  },
+  "retained_legacy_detail_scope": "Recruiterbox dedicated scraper remains on legacy ownership; existing JSON-LD assignments retain native eligibility"
 }
