@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "candidate_version": "0.13.960",
+  "scope": [
+    "shared RSS and DOM job filters",
+    "provider URL allowlist fullmatch and terminal failure",
+    "RSS 200-job prefix conservation",
+    "DOM URL-only and rich rows"
+  ],
+  "python_reference": {
+    "cases": 26,
+    "supported": 24,
+    "malformed_allowlist_refused_before_ownership": 2,
+    "actual_rss_stream_cases": 4,
+    "fixture": "apps/crawler/go/ordinary-worker/testdata/python_feed_policy.json"
+  },
+  "canonical_verification": {
+    "postgresql_redis_cases": 26,
+    "seconds": 7.998,
+    "families": [
+      "generic RSS",
+      "SuccessFactors RSS",
+      "Teamtailor RSS",
+      "DOM rich rows",
+      "DOM URL-only"
+    ],
+    "preserved": [
+      "accepted fields and descriptions",
+      "independent URL-only details",
+      "committed 200-job prefix on late classification failure",
+      "no authoritative empty/missing/gone after boundary rejection",
+      "queue leases and deadlines",
+      "one legacy host failure per failed monitor"
+    ]
+  },
+  "cold_verification": {
+    "cases": 33,
+    "seconds": 27.61,
+    "modes": [
+      "interrupted",
+      "committed-before-ack",
+      "config drift"
+    ],
+    "redis_restart": true
+  },
+  "historical_canonical_screen": {
+    "source": "60d0de8bebfbd25486791cb741d3b5ce814dfbce",
+    "policy_boards": 21,
+    "parent959_admitted": 0,
+    "candidate960_admitted": 8,
+    "candidate960_refused": 13,
+    "profiles": {
+      "dom.direct-rows/v1": 1,
+      "dom.direct-urls/v1": 2,
+      "rss.generic-skip/v1": 1,
+      "rss.successfactors-skip/v1": 2,
+      "rss.teamtailor-skip/v1": 2
+    },
+    "scope": "offline existing snapshot only; fresh source-bound census and ownership remain required"
+  },
+  "format_dependency_checks": "module tidy diff, ruff check/format, git diff check passed",
+  "remaining": [
+    "immutable image CI and deployment gate",
+    "exact source merge and full deployment",
+    "fresh canonical admission and supported ownership cutover",
+    "natural canonical and queue verification"
+  ],
+  "production_adopted": false,
+  "full_migration_complete": false,
+  "full_suites": {
+    "source_head": "0444d5c2a3b02de7d074b1168bf500c7cd9aeaff",
+    "worker_seconds": 502.851,
+    "queue_seconds": 301.919,
+    "race": true,
+    "required_postgresql": true,
+    "required_redis": true,
+    "clean_source_unchanged": true,
+    "combined_pr_runtime_tree_equal": true,
+    "crawler_tree": "a5be284ce621ec95577563af73133ebeffa8d978"
+  }
+}

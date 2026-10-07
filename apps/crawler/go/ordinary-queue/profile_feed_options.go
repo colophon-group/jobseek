@@ -2,6 +2,7 @@ package queue
 
 import (
 	"encoding/json"
+	"errors"
 	"regexp"
 	"strings"
 
@@ -32,10 +33,12 @@ func feedHasDetailAssignment(md map[string]json.RawMessage) bool {
 	return json.Unmarshal(md["scraper_type"], &scraper) == nil && scraper != "skip"
 }
 
-// Feed URL policy changes posting identities, never fetch authority. Collision
-// selection, security allowlists and rich job filters need their separate proof.
+// Feed policy changes inventory/content selection and identities, never fetch
+// authority. Provider-boundary rejections require a failed terminal cycle.
 type FeedURLRules struct {
 	include, exclude *regexp2.Regexp
+	allowlist        *regexp2.Regexp
+	JobFilter        *FeedJobFilter
 	find             *regexp.Regexp
 	replacement      string
 }
@@ -45,10 +48,21 @@ func FeedMonitorURLRules(config map[string]string) (*FeedURLRules, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, present := md["url_allowlist"]; present {
-		return nil, ErrUnsupportedProfile
-	}
 	r := &FeedURLRules{}
+	r.JobFilter, err = feedJobFilter(md["job_filter"])
+	if err != nil {
+		return nil, err
+	}
+	if raw, present := md["url_allowlist"]; present {
+		var pattern string
+		if json.Unmarshal(raw, &pattern) != nil || pattern == "" || len(pattern) > 2048 {
+			return nil, ErrUnsupportedProfile
+		}
+		r.allowlist, err = dom.CompileURLPattern(`\A(?:` + pattern + `)\Z`)
+		if err != nil {
+			return nil, ErrUnsupportedProfile
+		}
+	}
 	var include, exclude string
 	if raw, ok := md["url_filter"]; ok && string(raw) != "null" {
 		if json.Unmarshal(raw, &include) != nil {
@@ -116,22 +130,51 @@ func FeedMonitorURLRules(config map[string]string) (*FeedURLRules, error) {
 	return r, nil
 }
 
+var ErrProviderBoundary = errors.New("provider boundary allowlist rejected inventory")
+var ErrProviderClassification = errors.New("provider job classification is ambiguous")
+
+func (r *FeedURLRules) RequiresRawInventory() bool {
+	return r != nil && (r.allowlist != nil || r.JobFilter != nil)
+}
+
+func (r *FeedURLRules) ProviderAllows(source string) (bool, error) {
+	if r == nil {
+		return false, ErrConfiguration
+	}
+	if r.allowlist == nil {
+		return true, nil
+	}
+	return r.allowlist.MatchString(source)
+}
+
+func (r *FeedURLRules) Rewrite(source string) string {
+	if r.find != nil {
+		return r.find.ReplaceAllString(source, r.replacement)
+	}
+	return source
+}
+
 func (r *FeedURLRules) Apply(source string) (string, bool, error) {
+	keep, err := r.FilterURL(source)
+	if err != nil || !keep {
+		return "", keep, err
+	}
+	return r.Rewrite(source), true, nil
+}
+
+func (r *FeedURLRules) FilterURL(source string) (bool, error) {
 	if r == nil || len(source) > 8192 || strings.ContainsAny(source, "\x00\r\n") {
-		return "", false, ErrUnsupportedProfile
+		return false, ErrUnsupportedProfile
 	}
 	keep, err := r.include.MatchString(source)
 	if err != nil || !keep {
-		return "", false, err
+		return false, err
 	}
 	if r.exclude != nil {
 		reject, err := r.exclude.MatchString(source)
 		if err != nil || reject {
-			return "", false, err
+			return false, err
 		}
 	}
-	if r.find != nil {
-		source = r.find.ReplaceAllString(source, r.replacement)
-	}
-	return source, true, nil
+	return true, nil
 }

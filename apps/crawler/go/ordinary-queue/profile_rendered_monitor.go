@@ -9,7 +9,7 @@ import (
 const domRenderedMonitorProfile = "dom.rendered-urls/v1"
 
 func MonitorWorker(profile GreenhouseMonitorProfile) WorkerType {
-	if profile.Profile == dayforceMonitorProfile || profile.Profile == domRenderedMonitorProfile || profile.Profile == "nextdata.rendered-items/v1" || profile.Profile == "nextdata.rendered-urls/v1" {
+	if profile.Profile == dayforceMonitorProfile || profile.Profile == domRenderedMonitorProfile || profile.Profile == domRenderedRowsProfile || profile.Profile == "nextdata.rendered-items/v1" || profile.Profile == "nextdata.rendered-urls/v1" {
 		return Browser
 	}
 	return Simple

@@ -5,6 +5,154 @@
 The full migration goal is **active and incomplete**. Ship multiple provider
 and variant types per release, sharing reference verification, CI and cutover.
 
+### Combined delivery update — 03:32 UTC October7
+
+PR #10347 now groups DOM direct/proxy/Lightpanda rich rows, HR Manager RSS and
+shared filters for Generic RSS, SuccessFactors, Teamtailor, rich DOM and URL-only
+DOM in release0.13.960. The complete worker/queue race suites passed at clean
+`0444d5c2a3b02de7d074b1168bf500c7cd9aeaff` in502.851/301.919 seconds.
+The combined crawler tree is identical; CI additionally uses a bounded20-minute
+suite deadline after the slower runner hit Go's ten-minute default. Fresh exact-
+head required, native and installed-image checks remain required. One combined
+PR and deployment replaces separate959/960 deliveries.
+
+Original release958 deployment37564684440 and promotion succeeded. Independent
+readback verified exact image digests, full base health and cold208; supported
+B0 activation then succeeded and source/receipt-bound readback passed at209.
+Fresh admission reconciles1,493,765 scheduled postings and admits7,159 monitor
+boards and2,617 detail boards with1,468,186 scheduled owned postings. Forty
+detail boards retain their legacy owner because actual routes/cache did not
+match. Ordinary staging is running; actual ordinary serving/natural processing
+is not yet claimed by this checkpoint. Lightpanda remains pinned to1.0.0.
+
+### Grouped shared policy candidate960 — October7
+
+Candidate960 ports shared rich-job filters and provider URL allowlists across
+Generic RSS, SuccessFactors RSS, Teamtailor RSS, DOM rich rows and DOM URL-only
+monitors. Twenty-six actual Python policy references (including two malformed
+allowlists refused before ownership), four actual Python RSS stream references,
+26 PostgreSQL/Redis cases and33 cold-retirement cases pass. The native path
+preserves raw duplicate ordering, filter order, Python metadata text, allowlist
+fullmatch, accepted writes on boundary rejection, and the original200-job RSS
+batch prefix when a later classification fails. Failed cycles cannot finalize
+empty/missing/gone processing; URL-only jobs retain independent detail work.
+
+An offline comparison of21 policy-bearing boards in the unchanged source957
+canonical snapshot admits eight configurations across these five families;
+parent959 admitted none. Thirteen still require other options. This snapshot
+proves eligibility only. Full worker/queue suites, immutable-image CI, fresh
+canonical admission and actual production ownership remain required. See the
+[portable candidate evidence](evidence/go-native-shared-feed-policy-candidate-2026-10-07.json).
+
+PR #10347 is published at `42feb0eb32f8ab29d698d3169e4e6b8e58bad4c1` for the
+completed DOM rich-row and HR Manager batch. Its full local worker/queue suites
+passed in499.379/282.912 seconds. Original CI is running; the amd64 Lightpanda
+pilot failed on a public Go module-proxy download and only that failed job was
+rerun. PR #10346 is merged at `82c73de3ea432634c5e365c5f57dfc02873a4bf6`;
+its original immutable release build passed and full deployment37564684440 is
+running. Source958 production success and ownership are not yet claimed.
+Lightpanda remains pinned to the latest verified stable release1.0.0.
+
+### Delivery update — 03:04 UTC October7
+
+[PR #10346](https://github.com/colophon-group/jobseek/pull/10346) merged as
+`82c73de3ea432634c5e365c5f57dfc02873a4bf6` after fresh exact-head/base/draft/
+operator/hold/required-check authority and cold208 readback. Its parent is the
+expected source957 revision and its tree exactly equals reviewed head0a4bc8e.
+The original [immutable deployment37564684440](https://github.com/colophon-group/jobseek/actions/runs/37564684440)
+is live; preflight passed and build/company-OG jobs are running. Production is
+not yet claimed to be source958. Retain original run identity, prove the full
+rollout and exact images, then independent cold readback and fresh B0/ordinary
+source/receipt-bound staging, activation and natural canonical/queue proof.
+
+Candidate959's full worker race suite passed in499.379 seconds; the full queue
+suite now passes in282.912 seconds with its scoped cursor assertion retained.
+The index-test fixture change affects no production runtime code. Candidate959
+is rebased onto merged958 with an identical tree to its full-suite source. Its
+shared transport/parser/persistence/cold tests and Python ownership proof are
+complete locally; publish this grouped DOM/HR Manager PR and require fresh
+immutable-image/native CI and Crawler Deploy Gate before delivery. Keep the
+production ownership cutover separate from this local candidate evidence.
+
+### Full-suite follow-up — 02:51 UTC October7
+
+Candidate959's full worker race suite passed in499.379 seconds at
+`57a457cc6cd07bfaebd275ffde21db475a5d10a7`. Its full queue suite found one
+existing cursor-plan assertion failure: the tiny private database chose the
+primary-key index rather than `idx_jp_board_id_cursor`. The test now seeds2048
+competing-board rows inside a rolled-back transaction and analyzes that private
+fixture. It still requires the exact scoped UUID index with no sort; five
+repetitions pass in2.493 seconds. No production runtime code changed in this
+follow-up. Re-run the full queue suite and retain its original failed evidence.
+Candidate958's original browser-image CI build is still live; do not merge it
+until Required CI is terminal green and fresh final merge authority is checked.
+
+### Grouped candidate959 implementation — 02:36 UTC October7
+
+Candidate959 now integrates DOM rich rows across direct HTTP, credentialed proxy
+HTTP and Lightpanda rendered single pages, plus HR Manager RSS. The executable
+reports90 compiled profiles. Fifty-two actual Python DOM reference cases,
+17 actual Python HR Manager join cases,39 PostgreSQL/Redis worker cases and
+18 cold-retirement cases pass. The cold cases include direct/proxy/rendered DOM
+rows and HR Manager, with interrupted claims, committed-before-ack receipts,
+config drift, and Redis restart. Python ownership attestation passes42 cases
+with six environment-dependent skips. Full DOM race tests, focused worker/queue
+race tests, formatting and module dependency checks pass; full worker/queue
+suites and immutable-image CI remain required before merge or deployment.
+
+The native DOM path preserves complete first-page rich HTML, first raw URL
+across pagination, Python URL joining even for rendered rich rows, ordered
+replacement ownership hashes, missing-content detail recovery, future detail
+deadlines, and scraper-owned descriptions/locales. HR Manager binds the first-
+party tenant board and feed, validates exact position/feed IDs, persists durable
+source identity and structured locations/employment/language, and attributes
+publisher reservations to the observed board or feed resource.
+
+An offline screen of the unchanged source957 canonical census admits18 direct
+DOM rich-row boards and one HR Manager board. Ten of28 DOM rich-row boards remain
+refused because they require additional options, including browser pagination,
+empty states, prospective canonical paths, job filters and portal-specific
+behavior. Pure parsing of all28 rich_rows objects is narrower evidence than
+whole-profile eligibility. No candidate959 production ownership is active.
+Continue these remaining variants and RSS extensions in subsequent grouped
+ports; preserve every currently enabled legacy route until its replacement is
+proved. Candidate958's original Required CI browser-image build is still live.
+
+### Latest operational update — 02:10 UTC October7
+
+Production source957 is now independently verified **cold at epoch208** after
+supported B0 rollback and selector clear. Both native ownership paths, receipts,
+projection, claim tokens and current write fences are absent. The failed957 plan
+is retired; historical audit receipts remain intact. Seven base processes retain
+exact release images and restart policies, six serving health endpoints return200,
+B0 producer/executor are stopped under their supported policies, and no one-offs
+remain. This supersedes the earlier active207 readback below.
+
+[PR #10346](https://github.com/colophon-group/jobseek/pull/10346), candidate958,
+is ready at exact head `0a4bc8efc598772602ddbdfe4c33d2d93403e34e`.
+Full local worker/queue race suites passed in492.648/271.430 seconds with required
+PostgreSQL/Redis fixtures. Original native execution CI, installed-image parity
+for all85 profiles and Crawler Deploy Gate passed. Original
+[Required CI run37558109978](https://github.com/colophon-group/jobseek/actions/runs/37558109978)
+is still finishing its browser-image build at this checkpoint. Merge requires
+its terminal success and a fresh head/base/operator/hold/check/merge-state audit.
+A new immutable deployment, source/receipt-bound census and newly staged ordinary
+plan must follow. Neither the retired957 plan nor an earlier cohort grants reuse
+or natural-processing authority.
+
+The next candidate959 has a committed native DOM rich-row configuration and
+extraction core. Fifty actual Python reference cases and the full DOM module
+race suite pass; all28 current canonical rich-row configs parse unchanged.
+Direct-child relational selectors, replacement order, descriptions, locations,
+section/lifecycle bounds, duplicate policy and advertised counts are covered.
+This proves the pure parser. Ordinary direct/proxy/rendered discovery profiles,
+delegated field scheduling, canonical persistence and cold reversal still need
+integration and verification before any board is adopted. Keep remaining RSS
+variants in this grouped continuation and update Python browser ownership
+attestation when introducing a rendered rich-row profile.
+
+### Prior source957 and candidate958 snapshot
+
 Production **0.13.957** is deployed from merged source
 `60d0de8bebfbd25486791cb741d3b5ce814dfbce` through the successful original
 [deployment 37553965143](https://github.com/colophon-group/jobseek/actions/runs/37553965143).

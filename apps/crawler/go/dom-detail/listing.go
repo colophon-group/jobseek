@@ -17,6 +17,7 @@ type ListingConfig struct {
 	Selector, Include, Exclude, Encoding string
 	Attempts                             int
 	Pagination                           *ListingPagination
+	RichRows                             *RichRowsConfig
 }
 
 // ListingOptions covers the existing static single-page href inventory.

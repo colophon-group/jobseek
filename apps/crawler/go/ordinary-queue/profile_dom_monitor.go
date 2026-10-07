@@ -8,6 +8,16 @@ import (
 	dom "github.com/colophon-group/jobseek/apps/crawler/go/dom-detail"
 )
 
+const domDirectRowsProfile = "dom.direct-rows/v1"
+const domRenderedRowsProfile = "dom.rendered-rows/v1"
+
+func DOMMonitorUsesRichRows(profile string) bool {
+	return profile == domDirectRowsProfile || profile == domRenderedRowsProfile || profile == "dom.proxy-rows/v1"
+}
+func DOMRichMonitorEnrichment(config map[string]string) ([]string, error) {
+	return monitorEnrichmentFields(config, map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true})
+}
+
 func DOMMonitorOptions(config map[string]string) (dom.ListingConfig, error) {
 	if monitorWorkerProfile(config) == Browser {
 		listing, _, err := RenderedDOMMonitorOptions(config)
@@ -47,7 +57,15 @@ func directDOMMonitorOptions(config map[string]string) (dom.ListingConfig, error
 			options[key] = value
 		}
 	}
-	return dom.ListingOptions(options, config["board_url"])
+	listing, err := dom.ListingOptions(options, config["board_url"])
+	if err != nil {
+		return dom.ListingConfig{}, err
+	}
+	listing.RichRows, err = dom.RichRowsOptions(md["rich_rows"])
+	if err == nil && listing.RichRows != nil && listing.RichRows.TotalSelector != "" && listing.Pagination != nil {
+		return dom.ListingConfig{}, ErrUnsupportedProfile
+	}
+	return listing, err
 }
 
 func inspectDOMMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
@@ -58,12 +76,22 @@ func inspectDOMMonitor(boardID string, config map[string]string, md map[string]j
 	if _, err := FeedMonitorURLRules(config); err != nil {
 		return GreenhouseMonitorProfile{}, err
 	}
-	if _, err := DOMMonitorOptions(config); err != nil {
+	listing, err := DOMMonitorOptions(config)
+	if err != nil {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
 	profile := "dom.direct-urls/v1"
 	if monitorWorkerProfile(config) == Browser {
 		profile = domRenderedMonitorProfile
+	}
+	if listing.RichRows != nil {
+		if _, err := DOMRichMonitorEnrichment(config); err != nil {
+			return GreenhouseMonitorProfile{}, err
+		}
+		profile = domDirectRowsProfile
+		if monitorWorkerProfile(config) == Browser {
+			profile = domRenderedRowsProfile
+		}
 	}
 	return inspectURLOnlyMonitor(boardID, config, md, "dom", profile, "dom", config["board_url"])
 }

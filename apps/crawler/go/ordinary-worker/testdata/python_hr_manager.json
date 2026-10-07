@@ -1,0 +1,233 @@
+{
+  "cases": [
+    {
+      "name": "workplace",
+      "board": "<input id=\"prefix_HiddenField_PositionList\" value=\"{&quot;PositionList&quot;: {&quot;CustomerAlias&quot;: &quot;fixture&quot;, &quot;TransactionStatus&quot;: {&quot;StatusCode&quot;: 0}, &quot;PositionCountList&quot;: 1, &quot;Items&quot;: [{&quot;Id&quot;: 123, &quot;ProjectType&quot;: &quot;RecruitmentProject&quot;, &quot;WorkPlace&quot;: &quot; Zurich &quot;, &quot;CustomList1&quot;: {&quot;Name&quot;: &quot; Full Time &quot;}, &quot;Languages&quot;: [{&quot;Code&quot;: &quot;EN&quot;}]}]}}\">",
+      "feed": "<rss><channel><item><link>https://candidate.hr-manager.net/jobs/123</link><title>Senior Engineer</title><guid>123</guid><description><![CDATA[<p>Build &amp; learn.</p>]]></description></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://candidate.hr-manager.net/jobs/123",
+          "title": "Senior Engineer",
+          "description": "<p>Build & learn.</p>",
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "Full Time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123"
+          },
+          "source_identity": "hr_manager:fixture:123"
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "multiple-locations",
+      "board": "<input id=\"prefix_HiddenField_PositionList\" value=\"{&quot;PositionList&quot;: {&quot;CustomerAlias&quot;: &quot;fixture&quot;, &quot;TransactionStatus&quot;: {&quot;StatusCode&quot;: 0}, &quot;PositionCountList&quot;: 1, &quot;Items&quot;: [{&quot;Id&quot;: 123, &quot;ProjectType&quot;: &quot;RecruitmentProject&quot;, &quot;CustomList1&quot;: {&quot;Name&quot;: &quot; Full Time &quot;}, &quot;Languages&quot;: [{&quot;Code&quot;: &quot;EN&quot;}], &quot;PositionLocationMultiSelection&quot;: [{&quot;Name&quot;: &quot; Zurich &quot;}, {&quot;Name&quot;: &quot;Zurich&quot;}, {&quot;Name&quot;: &quot;Tokyo&quot;}, {&quot;Name&quot;: &quot;&quot;}]}]}}\">",
+      "feed": "<rss><channel><item><link>https://candidate.hr-manager.net/jobs/123</link><title>Senior Engineer</title><guid>123</guid><description><![CDATA[<p>Build &amp; learn.</p>]]></description></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://candidate.hr-manager.net/jobs/123",
+          "title": "Senior Engineer",
+          "description": "<p>Build & learn.</p>",
+          "locations": [
+            "Zurich",
+            "Tokyo"
+          ],
+          "employment_type": "Full Time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123"
+          },
+          "source_identity": "hr_manager:fixture:123"
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "primary-location",
+      "board": "<input id=\"prefix_HiddenField_PositionList\" value=\"{&quot;PositionList&quot;: {&quot;CustomerAlias&quot;: &quot;fixture&quot;, &quot;TransactionStatus&quot;: {&quot;StatusCode&quot;: 0}, &quot;PositionCountList&quot;: 1, &quot;Items&quot;: [{&quot;Id&quot;: 123, &quot;ProjectType&quot;: &quot;RecruitmentProject&quot;, &quot;CustomList1&quot;: {&quot;Name&quot;: &quot; Full Time &quot;}, &quot;Languages&quot;: [{&quot;Code&quot;: &quot;EN&quot;}], &quot;PositionLocation&quot;: {&quot;Name&quot;: &quot; Zurich &quot;}}]}}\">",
+      "feed": "<rss><channel><item><link>https://candidate.hr-manager.net/jobs/123</link><title>Senior Engineer</title><guid>123</guid><description><![CDATA[<p>Build &amp; learn.</p>]]></description></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://candidate.hr-manager.net/jobs/123",
+          "title": "Senior Engineer",
+          "description": "<p>Build & learn.</p>",
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "Full Time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123"
+          },
+          "source_identity": "hr_manager:fixture:123"
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "missing-location",
+      "board": "<input id=\"prefix_HiddenField_PositionList\" value=\"{&quot;PositionList&quot;: {&quot;CustomerAlias&quot;: &quot;fixture&quot;, &quot;TransactionStatus&quot;: {&quot;StatusCode&quot;: 0}, &quot;PositionCountList&quot;: 1, &quot;Items&quot;: [{&quot;Id&quot;: 123, &quot;ProjectType&quot;: &quot;RecruitmentProject&quot;, &quot;CustomList1&quot;: {&quot;Name&quot;: &quot; Full Time &quot;}, &quot;Languages&quot;: [{&quot;Code&quot;: &quot;EN&quot;}]}]}}\">",
+      "feed": "<rss><channel><item><link>https://candidate.hr-manager.net/jobs/123</link><title>Senior Engineer</title><guid>123</guid><description><![CDATA[<p>Build &amp; learn.</p>]]></description></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://candidate.hr-manager.net/jobs/123",
+          "title": "Senior Engineer",
+          "description": "<p>Build & learn.</p>",
+          "locations": null,
+          "employment_type": "Full Time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "en",
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123"
+          },
+          "source_identity": "hr_manager:fixture:123"
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "language-invalid",
+      "board": "<input id=\"prefix_HiddenField_PositionList\" value=\"{&quot;PositionList&quot;: {&quot;CustomerAlias&quot;: &quot;fixture&quot;, &quot;TransactionStatus&quot;: {&quot;StatusCode&quot;: 0}, &quot;PositionCountList&quot;: 1, &quot;Items&quot;: [{&quot;Id&quot;: 123, &quot;ProjectType&quot;: &quot;RecruitmentProject&quot;, &quot;WorkPlace&quot;: &quot; Zurich &quot;, &quot;CustomList1&quot;: {&quot;Name&quot;: &quot; Full Time &quot;}, &quot;Languages&quot;: [{&quot;Code&quot;: &quot;en-US&quot;}]}]}}\">",
+      "feed": "<rss><channel><item><link>https://candidate.hr-manager.net/jobs/123</link><title>Senior Engineer</title><guid>123</guid><description><![CDATA[<p>Build &amp; learn.</p>]]></description></item></channel></rss>",
+      "jobs": [
+        {
+          "url": "https://candidate.hr-manager.net/jobs/123",
+          "title": "Senior Engineer",
+          "description": "<p>Build & learn.</p>",
+          "locations": [
+            "Zurich"
+          ],
+          "employment_type": "Full Time",
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": "123"
+          },
+          "source_identity": "hr_manager:fixture:123"
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "empty",
+      "board": "<input id=\"prefix_HiddenField_PositionList\" value=\"{&quot;PositionList&quot;: {&quot;CustomerAlias&quot;: &quot;fixture&quot;, &quot;TransactionStatus&quot;: {&quot;StatusCode&quot;: 0}, &quot;PositionCountList&quot;: 0, &quot;Items&quot;: []}}\">",
+      "feed": "<rss><channel></channel></rss>",
+      "jobs": [],
+      "error": false
+    },
+    {
+      "name": "wrong-tenant",
+      "board": "<input id=\"prefix_HiddenField_PositionList\" value=\"{&quot;PositionList&quot;: {&quot;CustomerAlias&quot;: &quot;other&quot;, &quot;TransactionStatus&quot;: {&quot;StatusCode&quot;: 0}, &quot;PositionCountList&quot;: 1, &quot;Items&quot;: [{&quot;Id&quot;: 123, &quot;ProjectType&quot;: &quot;RecruitmentProject&quot;, &quot;WorkPlace&quot;: &quot; Zurich &quot;, &quot;CustomList1&quot;: {&quot;Name&quot;: &quot; Full Time &quot;}, &quot;Languages&quot;: [{&quot;Code&quot;: &quot;EN&quot;}]}]}}\">",
+      "feed": "<rss><channel><item><link>https://candidate.hr-manager.net/jobs/123</link><title>Senior Engineer</title><guid>123</guid><description><![CDATA[<p>Build &amp; learn.</p>]]></description></item></channel></rss>",
+      "jobs": [],
+      "error": true,
+      "error_type": "ValueError"
+    },
+    {
+      "name": "failed-status",
+      "board": "<input id=\"prefix_HiddenField_PositionList\" value=\"{&quot;PositionList&quot;: {&quot;CustomerAlias&quot;: &quot;fixture&quot;, &quot;TransactionStatus&quot;: {&quot;StatusCode&quot;: 1}, &quot;PositionCountList&quot;: 1, &quot;Items&quot;: [{&quot;Id&quot;: 123, &quot;ProjectType&quot;: &quot;RecruitmentProject&quot;, &quot;WorkPlace&quot;: &quot; Zurich &quot;, &quot;CustomList1&quot;: {&quot;Name&quot;: &quot; Full Time &quot;}, &quot;Languages&quot;: [{&quot;Code&quot;: &quot;EN&quot;}]}]}}\">",
+      "feed": "<rss><channel><item><link>https://candidate.hr-manager.net/jobs/123</link><title>Senior Engineer</title><guid>123</guid><description><![CDATA[<p>Build &amp; learn.</p>]]></description></item></channel></rss>",
+      "jobs": [],
+      "error": true,
+      "error_type": "ValueError"
+    },
+    {
+      "name": "wrong-count",
+      "board": "<input id=\"prefix_HiddenField_PositionList\" value=\"{&quot;PositionList&quot;: {&quot;CustomerAlias&quot;: &quot;fixture&quot;, &quot;TransactionStatus&quot;: {&quot;StatusCode&quot;: 0}, &quot;PositionCountList&quot;: 2, &quot;Items&quot;: [{&quot;Id&quot;: 123, &quot;ProjectType&quot;: &quot;RecruitmentProject&quot;, &quot;WorkPlace&quot;: &quot; Zurich &quot;, &quot;CustomList1&quot;: {&quot;Name&quot;: &quot; Full Time &quot;}, &quot;Languages&quot;: [{&quot;Code&quot;: &quot;EN&quot;}]}]}}\">",
+      "feed": "<rss><channel><item><link>https://candidate.hr-manager.net/jobs/123</link><title>Senior Engineer</title><guid>123</guid><description><![CDATA[<p>Build &amp; learn.</p>]]></description></item></channel></rss>",
+      "jobs": [],
+      "error": true,
+      "error_type": "ValueError"
+    },
+    {
+      "name": "wrong-project",
+      "board": "<input id=\"prefix_HiddenField_PositionList\" value=\"{&quot;PositionList&quot;: {&quot;CustomerAlias&quot;: &quot;fixture&quot;, &quot;TransactionStatus&quot;: {&quot;StatusCode&quot;: 0}, &quot;PositionCountList&quot;: 1, &quot;Items&quot;: [{&quot;Id&quot;: 123, &quot;ProjectType&quot;: &quot;Other&quot;, &quot;WorkPlace&quot;: &quot; Zurich &quot;, &quot;CustomList1&quot;: {&quot;Name&quot;: &quot; Full Time &quot;}, &quot;Languages&quot;: [{&quot;Code&quot;: &quot;EN&quot;}]}]}}\">",
+      "feed": "<rss><channel><item><link>https://candidate.hr-manager.net/jobs/123</link><title>Senior Engineer</title><guid>123</guid><description><![CDATA[<p>Build &amp; learn.</p>]]></description></item></channel></rss>",
+      "jobs": [],
+      "error": true,
+      "error_type": "ValueError"
+    },
+    {
+      "name": "duplicate-position",
+      "board": "<input id=\"prefix_HiddenField_PositionList\" value=\"{&quot;PositionList&quot;: {&quot;CustomerAlias&quot;: &quot;fixture&quot;, &quot;TransactionStatus&quot;: {&quot;StatusCode&quot;: 0}, &quot;PositionCountList&quot;: 2, &quot;Items&quot;: [{&quot;Id&quot;: 123, &quot;ProjectType&quot;: &quot;RecruitmentProject&quot;, &quot;WorkPlace&quot;: &quot; Zurich &quot;, &quot;CustomList1&quot;: {&quot;Name&quot;: &quot; Full Time &quot;}, &quot;Languages&quot;: [{&quot;Code&quot;: &quot;EN&quot;}]}, {&quot;Id&quot;: 123, &quot;ProjectType&quot;: &quot;RecruitmentProject&quot;, &quot;WorkPlace&quot;: &quot; Zurich &quot;, &quot;CustomList1&quot;: {&quot;Name&quot;: &quot; Full Time &quot;}, &quot;Languages&quot;: [{&quot;Code&quot;: &quot;EN&quot;}]}]}}\">",
+      "feed": "<rss><channel><item><link>https://candidate.hr-manager.net/jobs/123</link><title>Senior Engineer</title><guid>123</guid><description><![CDATA[<p>Build &amp; learn.</p>]]></description></item></channel></rss>",
+      "jobs": [],
+      "error": true,
+      "error_type": "ValueError"
+    },
+    {
+      "name": "duplicate-feed-id",
+      "board": "<input id=\"prefix_HiddenField_PositionList\" value=\"{&quot;PositionList&quot;: {&quot;CustomerAlias&quot;: &quot;fixture&quot;, &quot;TransactionStatus&quot;: {&quot;StatusCode&quot;: 0}, &quot;PositionCountList&quot;: 1, &quot;Items&quot;: [{&quot;Id&quot;: 123, &quot;ProjectType&quot;: &quot;RecruitmentProject&quot;, &quot;WorkPlace&quot;: &quot; Zurich &quot;, &quot;CustomList1&quot;: {&quot;Name&quot;: &quot; Full Time &quot;}, &quot;Languages&quot;: [{&quot;Code&quot;: &quot;EN&quot;}]}]}}\">",
+      "feed": "<rss><channel><item><link>https://candidate.hr-manager.net/jobs/123</link><title>Senior Engineer</title><guid>123</guid><description><![CDATA[<p>Build &amp; learn.</p>]]></description></item><item><link>https://candidate.hr-manager.net/jobs/123</link><title>Senior Engineer</title><guid>123</guid><description><![CDATA[<p>Build &amp; learn.</p>]]></description></item></channel></rss>",
+      "jobs": [],
+      "error": true,
+      "error_type": "ValueError"
+    },
+    {
+      "name": "outside-position",
+      "board": "<input id=\"prefix_HiddenField_PositionList\" value=\"{&quot;PositionList&quot;: {&quot;CustomerAlias&quot;: &quot;fixture&quot;, &quot;TransactionStatus&quot;: {&quot;StatusCode&quot;: 0}, &quot;PositionCountList&quot;: 1, &quot;Items&quot;: [{&quot;Id&quot;: 123, &quot;ProjectType&quot;: &quot;RecruitmentProject&quot;, &quot;WorkPlace&quot;: &quot; Zurich &quot;, &quot;CustomList1&quot;: {&quot;Name&quot;: &quot; Full Time &quot;}, &quot;Languages&quot;: [{&quot;Code&quot;: &quot;EN&quot;}]}]}}\">",
+      "feed": "<rss><channel><item><link>https://candidate.hr-manager.net/jobs/123</link><title>Senior Engineer</title><guid>456</guid><description><![CDATA[<p>Build &amp; learn.</p>]]></description></item></channel></rss>",
+      "jobs": [],
+      "error": true,
+      "error_type": "ValueError"
+    },
+    {
+      "name": "missing-feed-id",
+      "board": "<input id=\"prefix_HiddenField_PositionList\" value=\"{&quot;PositionList&quot;: {&quot;CustomerAlias&quot;: &quot;fixture&quot;, &quot;TransactionStatus&quot;: {&quot;StatusCode&quot;: 0}, &quot;PositionCountList&quot;: 1, &quot;Items&quot;: [{&quot;Id&quot;: 123, &quot;ProjectType&quot;: &quot;RecruitmentProject&quot;, &quot;WorkPlace&quot;: &quot; Zurich &quot;, &quot;CustomList1&quot;: {&quot;Name&quot;: &quot; Full Time &quot;}, &quot;Languages&quot;: [{&quot;Code&quot;: &quot;EN&quot;}]}]}}\">",
+      "feed": "<rss><channel><item><link>https://candidate.hr-manager.net/jobs/123</link><title>Senior Engineer</title><description><![CDATA[<p>Build &amp; learn.</p>]]></description></item></channel></rss>",
+      "jobs": [],
+      "error": true,
+      "error_type": "ValueError"
+    },
+    {
+      "name": "missing-feed-link",
+      "board": "<input id=\"prefix_HiddenField_PositionList\" value=\"{&quot;PositionList&quot;: {&quot;CustomerAlias&quot;: &quot;fixture&quot;, &quot;TransactionStatus&quot;: {&quot;StatusCode&quot;: 0}, &quot;PositionCountList&quot;: 1, &quot;Items&quot;: [{&quot;Id&quot;: 123, &quot;ProjectType&quot;: &quot;RecruitmentProject&quot;, &quot;WorkPlace&quot;: &quot; Zurich &quot;, &quot;CustomList1&quot;: {&quot;Name&quot;: &quot; Full Time &quot;}, &quot;Languages&quot;: [{&quot;Code&quot;: &quot;EN&quot;}]}]}}\">",
+      "feed": "<rss><channel><item><title>Senior Engineer</title><guid>123</guid><description><![CDATA[<p>Build &amp; learn.</p>]]></description></item></channel></rss>",
+      "jobs": [],
+      "error": true,
+      "error_type": "ValueError"
+    },
+    {
+      "name": "missing-position-feed",
+      "board": "<input id=\"prefix_HiddenField_PositionList\" value=\"{&quot;PositionList&quot;: {&quot;CustomerAlias&quot;: &quot;fixture&quot;, &quot;TransactionStatus&quot;: {&quot;StatusCode&quot;: 0}, &quot;PositionCountList&quot;: 1, &quot;Items&quot;: [{&quot;Id&quot;: 123, &quot;ProjectType&quot;: &quot;RecruitmentProject&quot;, &quot;WorkPlace&quot;: &quot; Zurich &quot;, &quot;CustomList1&quot;: {&quot;Name&quot;: &quot; Full Time &quot;}, &quot;Languages&quot;: [{&quot;Code&quot;: &quot;EN&quot;}]}]}}\">",
+      "feed": "<rss><channel></channel></rss>",
+      "jobs": [],
+      "error": true,
+      "error_type": "ValueError"
+    },
+    {
+      "name": "malformed-feed",
+      "board": "<input id=\"prefix_HiddenField_PositionList\" value=\"{&quot;PositionList&quot;: {&quot;CustomerAlias&quot;: &quot;fixture&quot;, &quot;TransactionStatus&quot;: {&quot;StatusCode&quot;: 0}, &quot;PositionCountList&quot;: 1, &quot;Items&quot;: [{&quot;Id&quot;: 123, &quot;ProjectType&quot;: &quot;RecruitmentProject&quot;, &quot;WorkPlace&quot;: &quot; Zurich &quot;, &quot;CustomList1&quot;: {&quot;Name&quot;: &quot; Full Time &quot;}, &quot;Languages&quot;: [{&quot;Code&quot;: &quot;EN&quot;}]}]}}\">",
+      "feed": "<rss><channel><item><link>https://candidate.hr-manager.net/jobs/123</link><title>Senior Engineer</title><guid>123</guid><description><![CDATA[<p>Build &amp; learn.</p>]]></description></item></channel>",
+      "jobs": [],
+      "error": true,
+      "error_type": "ParseError"
+    }
+  ]
+}

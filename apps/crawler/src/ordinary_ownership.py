@@ -95,6 +95,7 @@ def ownership_projection(payload: str) -> str:
                 if m["profile"]
                 in {
                     "dom.rendered-urls/v1",
+                    "dom.rendered-rows/v1",
                     "dayforce.session-search/v1",
                     "nextdata.rendered-items/v1",
                     "nextdata.rendered-urls/v1",

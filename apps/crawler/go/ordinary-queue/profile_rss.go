@@ -20,7 +20,7 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 	} else {
 		preset = "generic"
 	}
-	if preset != "teamtailor" && preset != "successfactors" && preset != "generic" && preset != "governmentjobs" && preset != "zoho_recruit" {
+	if preset != "teamtailor" && preset != "successfactors" && preset != "generic" && preset != "governmentjobs" && preset != "zoho_recruit" && preset != "hr_manager" {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
 	if raw, ok := md["variant"]; ok && json.Unmarshal(raw, &variant) != nil {
@@ -38,6 +38,13 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 		if e != nil {
 			return GreenhouseMonitorProfile{}, e
 		}
+	}
+	if preset == "hr_manager" {
+		o, err := HRManagerOptions(config)
+		if err != nil {
+			return GreenhouseMonitorProfile{}, err
+		}
+		feed = o.Feed
 	}
 	if raw, ok := md["tenant"]; ok {
 		var tenant string
@@ -63,7 +70,7 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 	if err != nil || len(feed) > 8192 || u.Scheme != "https" || u.Hostname() == "" || u.Host != u.Hostname() || u.User != nil || u.Opaque != "" || u.Fragment != "" || strings.ContainsAny(feed, "\x00\r\n") {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
-	validFeed := preset == "generic" || preset == "zoho_recruit" || preset == "governmentjobs" || u.RawQuery == "" && strings.HasSuffix(u.Path, "/jobs.rss")
+	validFeed := preset == "generic" || preset == "zoho_recruit" || preset == "governmentjobs" || preset == "hr_manager" || u.RawQuery == "" && strings.HasSuffix(u.Path, "/jobs.rss")
 	if preset == "successfactors" {
 		validFeed = u.RawQuery == "" && strings.EqualFold(strings.TrimRight(u.Path, "/"), "/googlefeed.xml") || u.Path == "/services/rss/category/" && rssCategoryQuery.MatchString(u.RawQuery)
 	}
@@ -80,7 +87,11 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 	if feedHasDetailAssignment(md) {
 		name = "rss." + preset + "-items/v1"
 	}
-	profile, err := inspectURLOnlyMonitor(boardID, config, md, "rss", name, "feed", feed)
+	token := "feed"
+	if preset == "hr_manager" {
+		token = config["board_url"]
+	}
+	profile, err := inspectURLOnlyMonitor(boardID, config, md, "rss", name, token, feed)
 	if err != nil {
 		return GreenhouseMonitorProfile{}, err
 	}

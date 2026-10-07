@@ -42,10 +42,10 @@ func assertFirstRetirementSchedule(t *testing.T, p firstOwnerFixture, due *time.
 	t.Helper()
 	ctx := context.Background()
 	task := inflight(p.f.task)
-	if p.f.client.redis.ZScore(ctx, "inflight:simple", task).Err() != redis.Nil || p.f.client.redis.HExists(ctx, "inflight_tokens:simple", task).Val() || p.f.client.redis.Exists(ctx, ownershipProjectionKey).Val() != 0 {
+	if p.f.client.redis.ZScore(ctx, "inflight:"+string(p.f.task.Worker), task).Err() != redis.Nil || p.f.client.redis.HExists(ctx, "inflight_tokens:"+string(p.f.task.Worker), task).Val() || p.f.client.redis.Exists(ctx, ownershipProjectionKey).Val() != 0 {
 		t.Fatal("retirement retained a native lease or ownership projection")
 	}
-	key := "monitors_simple:" + p.f.task.Domain
+	key := "monitors_" + string(p.f.task.Worker) + ":" + p.f.task.Domain
 	score, err := p.f.client.redis.ZScore(ctx, key, p.f.task.ID).Result()
 	if due == nil {
 		if err != redis.Nil {

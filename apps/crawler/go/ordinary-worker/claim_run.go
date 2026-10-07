@@ -336,6 +336,8 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		errors.As(err, &workdayReservation)
 	} else if task.Worker == queue.Browser {
 		discovery, fetchErr = renderer.FetchMonitor(ctx, profile, task.Config)
+	} else if profile.Profile == "rss.hr_manager-skip/v1" || profile.Profile == "rss.hr_manager-items/v1" {
+		discovery, fetchErr = discoverHRManager(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "dom" {
 		discovery, fetchErr = discoverDOMInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "phenom" {
@@ -420,7 +422,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		}
 		if response.reserved {
 			initial := profile.Endpoint
-			if queue.SecondaryProvider(profile.Provider) {
+			if queue.SecondaryProvider(profile.Provider) || profile.Profile == "rss.hr_manager-skip/v1" || profile.Profile == "rss.hr_manager-items/v1" {
 				initial = response.endpoint
 			}
 			if profile.Provider == "dom" || profile.Provider == "mokahr" || profile.Provider == "almacareer" || profile.Provider == "eightfold" || profile.Provider == "inline" || profile.Provider == "beisen" || profile.Provider == "api_sniffer" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "oracle_hcm" || profile.Provider == "icims" || profile.Provider == "phenom" || profile.Provider == "nextdata" {
@@ -470,6 +472,29 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		}
 		return finishSuccess(terminal)
 	}
+	if profile.Provider == "rss" || profile.Provider == "dom" {
+		rules, err := queue.FeedMonitorURLRules(task.Config)
+		if err != nil {
+			return failure("configuration", err)
+		}
+		if rules.RequiresRawInventory() {
+			processed, summary, rejected, err := writeFeedPolicyInventory(ctx, cycle, preparer, task.Config, discovery)
+			if processed != nil {
+				result.Batches = processed.Batches
+			}
+			if err != nil {
+				return failure("processing", err)
+			}
+			if rejected > 0 {
+				return failure("provider_boundary", queue.ErrProviderBoundary)
+			}
+			terminal, err := cycle.FinishSuccess(ctx, summary)
+			if err != nil {
+				return failure("lifecycle", err)
+			}
+			return finishSuccess(terminal)
+		}
+	}
 	if profile.Provider == "rss" || profile.Provider == "sitemap" || profile.Provider == "eightfold" || profile.Provider == "dom" {
 		discovery.Jobs, err = applyFeedMonitorURLs(ctx, task.Config, discovery.Jobs)
 		if err != nil {
@@ -481,7 +506,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		return failure("inventory", err)
 	}
 	inventory.MetadataUpdates = discovery.MetadataUpdates
-	if profile.Provider == "workday" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "dom" || profile.Provider == "icims" || profile.Provider == "breezy" || profile.Provider == "jazzhr" || profile.Provider == "gupy" || profile.Provider == "phenom" {
+	if profile.Provider == "workday" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "dom" && !queue.DOMMonitorUsesRichRows(profile.Profile) || profile.Provider == "icims" || profile.Provider == "breezy" || profile.Provider == "jazzhr" || profile.Provider == "gupy" || profile.Provider == "phenom" {
 		for offset := 0; offset < len(inventory.Jobs); offset += 500 {
 			end := min(offset+500, len(inventory.Jobs))
 			urls := make([]string, 0, end-offset)

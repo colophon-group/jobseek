@@ -84,22 +84,52 @@ func discoverDOMSingleInventory(ctx context.Context, verified *http.Client, prof
 	// Preserve the existing 500,000-codepoint single-page listing preview.
 	count := 0
 	for offset := range source {
-		if !later && count == 500_000 {
+		if c.RichRows == nil && !later && count == 500_000 {
 			source = source[:offset]
 			break
 		}
 		count++
 	}
-	return parseDOMInventory(ctx, result, profile, c, source, "", false)
+	return parseDOMInventory(ctx, result, profile, c, source, "", false, later)
 }
 
-func parseDOMInventory(ctx context.Context, result RichDiscovery, profile queue.GreenhouseMonitorProfile, c dom.ListingConfig, source, finalURL string, rendered bool) (RichDiscovery, error) {
+func parseDOMInventory(ctx context.Context, result RichDiscovery, profile queue.GreenhouseMonitorProfile, c dom.ListingConfig, source, finalURL string, rendered bool, allowEmpty ...bool) (RichDiscovery, error) {
 	classification, err := dom.ClassifyDocument(source, dom.Object{}, profile.Endpoint)
 	if rendered && err == nil && classification["classification"] == "challenge" {
 		return result, executor.ErrBotChallenge
 	}
 	if err != nil || classification["classification"] == "challenge" {
 		return result, &DiscoveryError{Kind: "inventory_failed", cause: errors.New("DOM listing origin challenge")}
+	}
+	if c.RichRows != nil {
+		base := profile.Endpoint
+		if rendered {
+			base = finalURL
+		}
+		include, err := dom.CompileURLPattern(c.Include)
+		if err != nil {
+			return result, err
+		}
+		if c.Include == "" {
+			include = nil
+		}
+		rows, err := dom.ParseRichRows(ctx, source, base, c.RichRows, dom.RichRowsPolicy{Include: include, AllowEmpty: len(allowEmpty) > 0 && allowEmpty[0], JoinURL: pythonJoinURL})
+		if err != nil {
+			return RichDiscovery{Response: result.Response}, &DiscoveryError{Kind: "inventory_failed", cause: err}
+		}
+		if len(rows) > 50_000 {
+			result.Truncated = true
+			rows = rows[:50_000]
+		}
+		for _, row := range rows {
+			title := row.Title
+			metadata := map[string]any{}
+			for key, value := range row.Metadata {
+				metadata[key] = value
+			}
+			result.Jobs = append(result.Jobs, RichMonitorJob{URL: row.URL, Title: &title, Description: row.Description, Locations: row.Locations, Metadata: metadata})
+		}
+		return result, nil
 	}
 	var hrefs []string
 	if rendered {
@@ -182,7 +212,7 @@ func parseDOMInventory(ctx context.Context, result RichDiscovery, profile queue.
 		ordered = ordered[:50_000]
 	}
 	for _, raw := range ordered {
-		result.Jobs = append(result.Jobs, RichMonitorJob{URL: raw})
+		result.Jobs = append(result.Jobs, RichMonitorJob{URL: raw, URLOnly: true})
 	}
 	return result, nil
 }
@@ -221,7 +251,10 @@ func discoverDOMInventory(ctx context.Context, client *http.Client, profile queu
 	add := func(in []RichMonitorJob) (int, error) {
 		added := 0
 		for _, job := range in {
-			identity, keep, err := rules.Apply(job.URL)
+			identity, keep, err := job.URL, true, error(nil)
+			if c.RichRows == nil && !rules.RequiresRawInventory() {
+				identity, keep, err = rules.Apply(job.URL)
+			}
 			if err != nil {
 				return 0, err
 			}

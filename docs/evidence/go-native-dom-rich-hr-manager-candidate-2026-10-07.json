@@ -1,0 +1,72 @@
+{
+  "candidate_version": "0.13.959",
+  "base_candidate_head": "0a4bc8efc598772602ddbdfe4c33d2d93403e34e",
+  "scope": "DOM rich rows and HR Manager RSS grouped native integration; candidate only",
+  "compiled_profiles": 90,
+  "reference_cases": {
+    "dom_rich_rows_actual_python": 52,
+    "hr_manager_actual_python": 17
+  },
+  "verification": {
+    "real_worker_pg_redis_cases": 39,
+    "cold_retirement_cases": 18,
+    "python_ownership_passed": 42,
+    "python_ownership_environment_skipped": 6,
+    "full_dom_module_race": "passed",
+    "focused_worker_race": "passed",
+    "focused_queue_race": "passed",
+    "full_worker_queue_suites": "passed; worker runtime unchanged across queue-test fixture fix and exact-tree rebase",
+    "immutable_image_ci": "pending",
+    "full_worker_race": {
+      "state": "passed",
+      "seconds": 499.379,
+      "head": "57a457cc6cd07bfaebd275ffde21db475a5d10a7"
+    },
+    "full_queue_initial_race": {
+      "state": "failed",
+      "seconds": 279.219,
+      "reason": "existing tiny-fixture cursor assertion selected job_posting_pkey instead of idx_jp_board_id_cursor"
+    },
+    "cursor_fixture_follow_up": {
+      "production_runtime_changes": false,
+      "competing_board_rows": 2048,
+      "rolled_back": true,
+      "index_assertion_retained": "idx_jp_board_id_cursor directly without sort",
+      "repetitions_passed": 5,
+      "seconds": 2.493
+    },
+    "full_queue_race": {
+      "state": "passed",
+      "seconds": 282.912,
+      "head": "cab5d4f81cbc2b3e4d7846759944fc5fa1195397"
+    },
+    "exact_tree_rebase": {
+      "previous_head": "cab5d4f81cbc2b3e4d7846759944fc5fa1195397",
+      "rebased_head": "240ac73ff1162d6f4f648598101fbf3d466f7633",
+      "tree": "bba73aed05e7460f7a3a8e934318b051ce340ca6",
+      "equal": true
+    }
+  },
+  "offline_canonical_screen": {
+    "source_revision": "60d0de8bebfbd25486791cb741d3b5ce814dfbce",
+    "dom_rich_rows_configs": 28,
+    "dom_direct_rows_profiles_admitted": 18,
+    "hr_manager_profiles_admitted": 1,
+    "dom_rich_profiles_refused": 10,
+    "authority": "eligibility only; fresh deployed-source census and cutover required"
+  },
+  "production_ownership": false,
+  "remaining_options": [
+    "DOM browser pagination",
+    "DOM empty states",
+    "prospective canonical paths",
+    "job filters and portal behavior",
+    "remaining RSS presets and variants"
+  ],
+  "lightpanda": {
+    "latest_stable_verified": "1.0.0",
+    "official_release": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
+    "existing_renderer_pin_retained": true
+  },
+  "base_merged_source": "82c73de3ea432634c5e365c5f57dfc02873a4bf6"
+}

@@ -59,7 +59,9 @@ func TestFeedAssignmentBindingsRetainNestedConfigAndBrowserDetails(t *testing.T)
 
 func TestFeedURLRulesRefuseUnimplementedIdentityOrDelegation(t *testing.T) {
 	for _, metadata := range []string{
-		`{"url_allowlist":"^https://example.com/"}`,
+		`{"url_allowlist":""}`,
+		`{"url_allowlist":"["}`,
+		`{"url_allowlist":null}`,
 		`{"url_transform":{"find":"x","replace":"{identity}"}}`,
 		`{"url_transform":{"find":"x","replace":"y","collision_policy":"prefer_source_pattern"}}`,
 		`{"url_transform":{"find":"(","replace":"y"}}`,
