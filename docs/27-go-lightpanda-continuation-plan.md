@@ -117,7 +117,7 @@ and rendered single-page listings. Offline screening of the source960 snapshot
 qualifies25 additional boards (11 Inline,14 DOM) beyond the RSS candidate,
 reducing the configuration backlog to670. This is admission screening, not
 serving ownership. Eight Inline canonicalPG/Redis cases and12 actual Python
-empty-state comparisons pass. DOM canonical and new Inline cold cases are
-prepared; they remain unproved until executed. Combine compatible coverage
+empty-state comparisons pass. The46 canonical worker cases and3 new Inline cold cases pass18.617/4.289 seconds.
+Combined full suites, fresh installed CI and production adoption still remain. Combine compatible coverage
 into a useful rollout before another single-board cutover. See the
 [browser candidate evidence](evidence/go-native-browser-coverage-candidate-2026-10-07.json).

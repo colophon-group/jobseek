@@ -44,9 +44,11 @@
     "queue_race_seconds": 302.496,
     "require_postgres": true,
     "require_redis": true,
-    "status": "current83b24 full worker found provider resource regressions; corrected7fc940c06 focused PG/Redis26.394s passed; fresh full worker/queue suites running",
+    "status": "corrected RSS7fc full worker/queue passed; combined browser candidate requires fresh full suites",
     "original_failed_source": "83b24db21116dde368690a7698aa8c9e96da856d",
-    "current_source": "7fc940c060ea38a8e7a845ff410f4dac6c8e12e3"
+    "current_source": "7fc940c060ea38a8e7a845ff410f4dac6c8e12e3",
+    "current_worker_race_seconds": 528.247,
+    "current_queue_race_seconds": 309.648
   },
   "actual_python_stream_cases": 9,
   "stream_reference_race_seconds": 1.989,
