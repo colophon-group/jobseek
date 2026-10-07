@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	"io"
 	"net"
@@ -51,9 +52,10 @@ func runtimeUsesProxy(task queue.Task) bool {
 // All endpoint authority comes from protected startup settings. Configs and
 // errors deliberately have no printable credentials or provider response text.
 type proxyRuntimeConfig struct {
-	endpoints []*url.URL
-	forced    int
-	enabled   bool
+	endpoints   []*url.URL
+	forced      int
+	enabled     bool
+	poolEntries int
 }
 
 func (proxyRuntimeConfig) String() string   { return "native proxy configuration" }
@@ -76,6 +78,7 @@ func readProxyRuntimeConfig(getenv func(string) string) (proxyRuntimeConfig, err
 		}
 	}
 	backbone := len(raws) > 0
+	c.poolEntries = len(raws)
 	if !backbone && getenv("WEBSHARE_PROXY_URL") != "" {
 		raws = []string{getenv("WEBSHARE_PROXY_URL")}
 	}
@@ -116,6 +119,23 @@ func readProxyRuntimeConfig(getenv func(string) string) (proxyRuntimeConfig, err
 		c.forced = n
 	}
 	return c, nil
+}
+
+// ProxyPreflight validates only protected proxy settings, without opening
+// network clients or requiring database, queue, or ownership configuration.
+func ProxyPreflight(getenv func(string) string) (string, error) {
+	c, err := readProxyRuntimeConfig(getenv)
+	if err != nil || c.enabled && len(c.endpoints) == 0 {
+		return "", ErrStartup
+	}
+	mode := "disabled"
+	if c.enabled {
+		mode = "legacy_direct"
+		if c.poolEntries > 0 {
+			mode = "backbone_pool"
+		}
+	}
+	return fmt.Sprintf("Runtime proxy configuration valid: mode=%s, pool_entries=%d", mode, c.poolEntries), nil
 }
 
 type proxyEndpointError struct{ reason string }

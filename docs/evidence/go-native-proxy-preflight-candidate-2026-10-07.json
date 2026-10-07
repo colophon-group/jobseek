@@ -1,0 +1,21 @@
+{
+  "schema": "jobseek.native-proxy-preflight-candidate/v1",
+  "base_revision": "690e2163d478b200370246c2fea05b393fb6028f",
+  "version": "0.13.965",
+  "command": "go-ordinary-worker --proxy-preflight",
+  "changes": [
+    "Deployment preflight uses the existing Go protected proxy parser without DB, Redis, renderer or ownership credentials",
+    "Reports only selected mode and pool cardinality; malformed or missing selected endpoints reject with fixed error",
+    "Installed image CI exercises the command with network disabled",
+    "Historical rollback images retain their compatible Python CLI until the rollback window expires"
+  ],
+  "verification": {
+    "go_race": "PASS focused proxy/preflight1.732s",
+    "actual_linked_command": "5 cases PASS: disabled, backbone, legacy, missing, malformed; only proxy environment; no endpoint values in stdout/stderr",
+    "deployment_contract_tests": "55 PASS44.71s",
+    "static": "go vet, go mod tidy-diff, gofmt and ruff PASS",
+    "real_installed_image": "Pending required CI"
+  },
+  "production_deployed": false,
+  "full_migration_complete": false
+}

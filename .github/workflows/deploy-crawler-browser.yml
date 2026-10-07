@@ -280,7 +280,7 @@ jobs:
             -e WEBSHARE_PROXY_URLS \
             -e WEBSHARE_PROXY_URL \
             "$IMAGE" \
-            /app/.venv/bin/python -m src.runtime_proxy_preflight
+            go-ordinary-worker --proxy-preflight
 
       - name: Build exact pre-deploy CSV rollback candidate
         id: previous-data

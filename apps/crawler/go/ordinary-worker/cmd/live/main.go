@@ -43,6 +43,13 @@ func run() error {
 		return json.NewEncoder(os.Stdout).Encode(value)
 	}
 	switch command {
+	case "--proxy-preflight":
+		message, err := worker.ProxyPreflight(os.Getenv)
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintln(os.Stdout, message)
+		return err
 	case "--identity":
 		return encode(worker.Identity(sourceRevision))
 	case "--stage-ownership", "--inspect-ownership":
