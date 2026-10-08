@@ -51,10 +51,13 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 		config["crawler_type"], config["board_url"], config["metadata"] = provider, row[headers["board_url"]], string(encoded)
 		profile, e := InspectRichMonitor(profileBoardID, config)
 		if metadata["proxy"] == true {
-			if provider == "earcu" || provider == "computrabajo" {
+			if provider == "earcu" || provider == "computrabajo" || provider == "practicematch" {
 				want := "earcu.proxy-feed-items/v1"
 				if provider == "computrabajo" {
 					want = "computrabajo.proxy-listing-urls/v1"
+				}
+				if provider == "practicematch" {
+					want = "practicematch.proxy-listing-urls/v1"
 				}
 				if e != nil || profile.Profile != want || !ProfileRequiresProxy(profile.Profile) {
 					t.Fatal("required provider proxy authority lost", provider)
@@ -73,8 +76,30 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 		if scraper == "skip" {
 			continue
 		}
+		if provider == "linkedin" {
+			// Guest listings deliberately retain the existing scheduled detail
+			// scraper until its independent ownership profile is qualified.
+			if scraper != "linkedin" {
+				t.Fatal("LinkedIn scheduled detail delegation changed", scraper)
+			}
+			if _, err := secondaryMonitorEnrichment(config); err != nil {
+				t.Fatal("LinkedIn scheduled field delegation unsupported", err)
+			}
+			counts[provider+"_delegated_detail"]++
+			continue
+		}
 		var detail WorkdayDetailProfile
 		switch provider {
+		case "taleo":
+			o, err := api.TaleoOptionsFromMetadata(config["board_url"], config["metadata"])
+			if err != nil {
+				t.Fatal(err)
+			}
+			if scraper == "dom" {
+				detail, e = InspectDOMDetail(profileBoardID, config, o.Board.JobURL(123), Simple)
+			} else {
+				detail, e = InspectJSONLDDetail(profileBoardID, config, o.Board.JobURL(123), Simple)
+			}
 		case "talentbrew":
 			detail, e = inspectDetailOwnership(profileBoardID, config)
 		case "computrabajo", "ycombinator":
