@@ -57,6 +57,9 @@ func TestStaticProviderDetailCanonicalRegistryBindings(t *testing.T) {
 			if err != nil || actual.Profile != want || actual.SourceURL != source || actual.EffectiveBoardSHA256 != p.EffectiveBoardSHA256 || !detailDomainMatches(p.Domain, actual) {
 				t.Fatal(actual, err)
 			}
+			if scraper == "linkedin" && actual.Domain != "ch.linkedin.com" {
+				t.Fatal("localized posting domain replaced by guest endpoint", actual.Domain)
+			}
 			if raw := row[h["scraper_config"]]; raw != "" && !reflect.DeepEqual(actual.EnrichmentFields, []string{"description", "employment_type", "job_location_type"}) {
 				t.Fatal("selected fields changed", actual.EnrichmentFields)
 			}

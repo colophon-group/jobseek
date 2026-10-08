@@ -66,7 +66,7 @@ func inspectStaticProviderDetail(boardID string, config map[string]string, sourc
 		return fail()
 	}
 	options, err := api.StaticProviderDetailOptionsForSource(scraper, source)
-	endpoint, parseErr := url.Parse(options.Endpoint)
+	posting, parseErr := url.Parse(source)
 	if err != nil || parseErr != nil {
 		return fail()
 	}
@@ -82,7 +82,9 @@ func inspectStaticProviderDetail(boardID string, config map[string]string, sourc
 		return fail()
 	}
 	digest := sha256.Sum256(body)
-	p := WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: options.Endpoint, Domain: strings.ToLower(endpoint.Hostname()), Profile: profile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), EnrichmentFields: enrich}
+	// Queue ownership follows the posting's existing source domain. LinkedIn's
+	// fixed www guest endpoint may differ from a localized posting host.
+	p := WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: options.Endpoint, Domain: strings.ToLower(posting.Hostname()), Profile: profile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), EnrichmentFields: enrich}
 	if ownership {
 		p.SourceURL = config["board_url"]
 		p.Domain = "*"

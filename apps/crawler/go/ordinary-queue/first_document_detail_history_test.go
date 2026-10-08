@@ -46,7 +46,7 @@ func TestRealFirstDocumentDetailHistorySurvivesFreshEpoch(t *testing.T) {
 					"jazzhr":   "https://fixture.applytojob.com/apply/jobs/details/123",
 					"taleo":    "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
 				}[provider]
-				domain := map[string]string{"linkedin": "www.linkedin.com", "jazzhr": "fixture.applytojob.com", "taleo": "fixture.taleo.net"}[provider]
+				domain := map[string]string{"linkedin": "ch.linkedin.com", "jazzhr": "fixture.applytojob.com", "taleo": "fixture.taleo.net"}[provider]
 				old = firstIndependentDetailFixture(t, fmt.Sprintf(`{"scraper_type":%q}`, provider), source, domain)
 			} else if provider == "pdf" || provider == "seek" {
 				old = firstAPIDetailFixture(t, provider)
