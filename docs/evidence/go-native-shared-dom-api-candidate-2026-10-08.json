@@ -39,13 +39,16 @@
     "public_http_reference": "22 completed captures match all fields and semantic request shapes/counts; one original HTTP failure (easyjet-taleo) remains unqualified; browser-designated routes require affine evidence",
     "public_explicit_mapping_reference": "81 jobs across JD Sports32, ScreenPoint13, Wonderflow2, Loccitane34; actual original Python with explicit maps preserves every captured field/request; same-capture Go matches",
     "revised_registry_race": "PASS1.672s",
-    "revised_api_full_race": "PASS4.866s"
+    "revised_api_full_race": "PASS4.866s",
+    "public_dom_http_reference": "7 successful original direct HTTP captures match 57 URLs, truncation and request shape/counts; 5 direct HTTP references blocked, including 3 declared required-proxy boards; declared rendered/proxy execution remains unqualified"
   },
   "retained_corrected_failures": [
     "Initial real publisher settlement rejected the child resource; handoff now keeps the installed listing resource fence and independently sealed finite child/config binding.",
     "Test expectations were corrected for raw bool location normalization and the original first-empty missing-count safety; production normalizers and disappearance guards remain unchanged.",
     "Public automatic mapping rejected four ambiguous publisher payloads. Explicit CSV maps now preserve their actual captured Python output; ambiguity rejection remains.",
-    "Bucher title comparison now applies actual original Python _coerce_text, matching Go processing; raw initial capture retained."
+    "Bucher title comparison now applies actual original Python _coerce_text, matching Go processing; raw initial capture retained.",
+    "CSV edits invalidated the generated Lightpanda census checksum. Regenerated with the original census command and validated the data contract; failed run37833206364 retained.",
+    "Initial private DOM capture normalization imported a typing alias for MonitorResult. Replayed the retained response captures offline using the actual original core result type; no repeated public fetch."
   ],
   "source980_delivery": {
     "pr": 10367,

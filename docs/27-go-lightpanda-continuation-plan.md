@@ -507,8 +507,11 @@ replay matches every field and request shape/count for all 22 successful origina
 API captures. Four ambiguous publisher payloads require explicit CSV mappings;
 these preserve all 81 captured jobs and fields under actual original Python and
 Go replay. Bucher text comparison applies the original processing normalization.
-One original HTTP reference failed (EasyJet Taleo); affine browser and DOM public
-qualification, revised-head CI, immutable deployment and fresh route admission
+Seven successful DOM direct HTTP captures match 57 URLs, truncation and request
+shapes/counts. Five direct HTTP references were blocked, including three declared
+required-proxy boards. One API original HTTP reference failed (EasyJet Taleo);
+affine browser/required-proxy public qualification, revised-head CI, immutable
+deployment and fresh route admission
 remain pending. See the
 [candidate evidence](evidence/go-native-shared-dom-api-candidate-2026-10-08.json).
 
