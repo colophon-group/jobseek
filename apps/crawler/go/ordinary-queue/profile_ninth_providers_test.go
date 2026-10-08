@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"os"
 	"testing"
+
+	api "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
 )
 
 func TestNinthProvidersCurrentRegistryCoverage(t *testing.T) {
@@ -56,6 +58,27 @@ func TestNinthProvidersCurrentRegistryCoverage(t *testing.T) {
 		}
 		if SecondaryMonitorResourceMatches(p, config, "https://example.com/other") {
 			t.Fatal("foreign endpoint admitted")
+		}
+		if provider == "computrabajo" || provider == "ycombinator" {
+			o, err := api.NinthProviderOptionsFromMetadata(provider, config["board_url"], config["metadata"])
+			if err != nil {
+				t.Fatal(err)
+			}
+			source := o.Origin + "/Detail/123"
+			if provider == "ycombinator" {
+				source = o.ListingURL() + "/A1-engineer"
+			} else if o.Variant == "employer" {
+				source = o.Origin + "/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-11111111111111111111111111111111"
+			}
+			var detail WorkdayDetailProfile
+			if md["scraper_type"] == "dom" {
+				detail, err = InspectDOMDetail(profileBoardID, config, source, Simple)
+			} else {
+				detail, err = InspectJSONLDDetail(profileBoardID, config, source, Simple)
+			}
+			if err != nil || detail.EffectiveBoardSHA256 != p.EffectiveConfigSHA256 {
+				t.Fatal("configured delegated detail binding lost", row[head["board_slug"]], err)
+			}
 		}
 		config["monitor_needs_browser"] = "1"
 		if _, e := InspectRichMonitor(profileBoardID, config); e == nil {

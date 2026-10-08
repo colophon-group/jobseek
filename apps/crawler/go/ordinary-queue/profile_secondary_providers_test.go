@@ -86,7 +86,11 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 			} else if o.Variant == "employer" {
 				source = o.Origin + "/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-11111111111111111111111111111111"
 			}
-			detail, e = InspectJSONLDDetail(profileBoardID, config, source, Simple)
+			if scraper == "dom" {
+				detail, e = InspectDOMDetail(profileBoardID, config, source, Simple)
+			} else {
+				detail, e = InspectJSONLDDetail(profileBoardID, config, source, Simple)
+			}
 		case "hrmos":
 			o, err := api.HRMOSOptionsFromMetadata(config["board_url"], config["metadata"])
 			if err != nil {
