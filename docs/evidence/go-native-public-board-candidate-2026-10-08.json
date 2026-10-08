@@ -111,5 +111,20 @@
   "full_queue_race_seconds": 392.246,
   "full_worker_race_seconds": 566.932,
   "full_api_race_seconds": 3.668,
-  "vet_formatting": "PASS API/queue/worker"
+  "vet_formatting": "PASS API/queue/worker",
+  "claim_attestation_followup": {
+    "problem": "legacy claim polling transfers immutable full ownership payload repeatedly; production ClientWrite waits observed",
+    "change": "startup payload attestation retained; each subsequent claim freshly verifies exact active SQL identity and allocator under both barriers; Redis exact projection check unchanged",
+    "tests": {
+      "ownership_real_postgres_redis": 58,
+      "pipeline": 63
+    },
+    "settlement_failure_causation": "unproved",
+    "production_conservation": "open"
+  },
+  "installed_identity_followup": {
+    "first_check": "failed: old workflow exact array omitted four new profiles",
+    "corrected_profile_count": 126,
+    "ci": "pending fresh head"
+  }
 }

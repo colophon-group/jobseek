@@ -42,7 +42,14 @@ Independent serving verification confirmed all ten source-bound restart-armed
 services and eight health endpoints. Its first bounded normal-schedule snapshot
 had 23 successful monitor settlements, one successful detail settlement and zero
 claim errors; SQL recorded 24 completed monitor attempts. New API/TalentBrew
-monitor completions and fleet freshness/conservation remain pending. See the [source971 release evidence](evidence/go-native-source971-release-2026-10-08.json).
+monitor completions and fleet freshness/conservation remain pending. A later
+04:36 UTC snapshot confirmed eight healthy endpoints, 461 successful monitors,
+eight successful details and zero claim errors, but six unacknowledged monitor
+settlements. Retained receipt/recovery inspection remains open. Legacy workers
+still transfer the complete immutable ownership payload on every queue poll;
+candidate972 reuses startup attestation and freshly checks active SQL identity
+and allocator under both barriers. This overhead is observed; causation of the
+settlement failures has not been established. See the [source971 release evidence](evidence/go-native-source971-release-2026-10-08.json).
 
 Source970's final ordinary activation had failed with `detail_transport:
 configuration`. Its supported pending recovery, full-stack restoration, B0
@@ -67,7 +74,12 @@ parity/component corpora, 28 verified HTTP fixtures, twelve real PostgreSQL/Redi
 write/policy/failure cases and twelve real cold-retirement cases. Full queue (392.246s) and
 worker (566.932s) real PostgreSQL/Redis race suites passed. Configuration screening against the fresh
 source971 snapshot qualifies **7,384** monitors, leaving **498**; this candidate
-has no production ownership. See the [candidate evidence](evidence/go-native-public-board-candidate-2026-10-08.json).
+has no production ownership. [PR #10359](https://github.com/colophon-group/jobseek/pull/10359)
+is draft pending exact-head checks. The first installed-image check found an
+outdated exact profile list in the workflow; the corrected assertion matches
+all 126 executable profiles. The legacy claim change passes 58 ownership tests,
+including real PostgreSQL/Redis retirement and allocator-loss checks, plus 63
+pipeline tests. See the [candidate evidence](evidence/go-native-public-board-candidate-2026-10-08.json).
 
 ## Continue delivery
 
@@ -75,7 +87,7 @@ has no production ownership. See the [candidate evidence](evidence/go-native-pub
    Continue bounded normal-schedule observation and confirm
    canonical proxy detail execution, new API/TalentBrew monitor completions,
    description/R2 effects, failure recovery and queue conservation.
-2. Publish the grouped four-provider candidate after its passed full local suites.
+2. Finish exact-head CI for the published grouped four-provider candidate.
    Await native/installed CI and merge through fresh exact-head required checks.
    Use the original immutable deployment and supported cold cutover workflows.
 3. Batch the largest remaining cohorts: **204 DOM**, **97 API**, **31 LinkedIn**,
