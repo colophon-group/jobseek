@@ -58,7 +58,9 @@ func (s *nativeSitemapSession) Get(ctx context.Context, resource string, headers
 	if s.response.reserved {
 		return response, &bounded.Error{Kind: bounded.ErrorTDMReservation}
 	}
-	remaining := int64(55<<20) - s.stats.DecodedBytes - s.stats.StatusBodyBytes
+	// Large indexes such as Jobteaser contain several 15–16 MiB leaves.
+	// Retain the protocol's per-file ceiling and a finite whole-operation budget.
+	remaining := int64(512<<20) - s.stats.DecodedBytes - s.stats.StatusBodyBytes
 	if remaining <= 0 {
 		return response, &bounded.Error{Kind: bounded.ErrorAggregateLimit}
 	}
