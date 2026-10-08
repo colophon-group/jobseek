@@ -1,7 +1,7 @@
 {
   "version": "jobseek.native-migration-candidate/v1",
   "candidate_version": "0.13.977",
-  "status": "Implemented and focused checks passed; full suites, required CI and production delivery pending",
+  "status": "Full local suites and focused/public qualification passed; exact reviewed-head CI, installed-image and production delivery pending",
   "scope": {
     "seek_graphql_detail_boards": 6,
     "explicit_fields_api_automatic_array_configs": 11,
@@ -46,18 +46,24 @@
       "postings": 106,
       "empty_inventories": 2,
       "comparison": "All Python fields and inventories; nil/empty extras and metadata objects normalized as absent. Raw differences retained privately."
-    }
+    },
+    "full_queue_race_seconds": 936.523,
+    "full_worker_race_seconds": 919.991,
+    "full_suite_head": "6c12a9de5900087a5d11d533bca2fc51a9432708",
+    "vet": "queue, worker and API pass",
+    "workflow_version_checks": 126,
+    "actual_python_ownership_projection_cases": 9
   },
   "remaining": [
-    "Complete full queue/worker race suites, vet and required CI.",
-    "Refresh base to delivered source976 and bind exact reviewed head.",
-    "Supported immutable crawler and renderer rollout, fresh canonical config/route admission and owner activation.",
-    "Full freshness/conservation and comparable whole-lane cost remain migration completion gates."
+    "Required CI, actual Crawler Deploy Gate and installed-image checks at final reviewed head.",
+    "Supported immutable rollout, fresh canonical config/route admission and owner activation.",
+    "Full freshness/conservation, comparable whole-lane cost and final Python retirement remain migration completion gates."
   ],
   "private_provenance": [
     "native977-seek-detail-python-initial-2026-10-08.json",
     "native977-seek-detail-go-replay-retry1-2026-10-08.json",
     "native977-api-auto-public-python-initial-2026-10-08.json",
     "native977-api-auto-public-go-replay-normalized1-2026-10-08.json"
-  ]
+  ],
+  "base_revision": "072160c56d744a84933097cd184a39cd37c5d9c9"
 }
