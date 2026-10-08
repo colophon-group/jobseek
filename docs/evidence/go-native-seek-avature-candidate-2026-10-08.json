@@ -315,5 +315,47 @@
       "jobseek_ordinary_go_posting_touches_total 11136"
     ],
     "full_freshness_conservation": "pending"
+  },
+  "delivery_checkpoint": {
+    "source_revision": "072160c56d744a84933097cd184a39cd37c5d9c9",
+    "reviewed_head": "959a8c32730f9d4f2f571f948def3852b6791abb",
+    "pull_request": 10363,
+    "required_ci": "PASS",
+    "actual_crawler_deploy_gate": "PASS",
+    "original_crawler_run": 37790063521,
+    "original_renderer_run": 37790138361,
+    "rollouts": "PASS",
+    "independent_renderer_and_incoming_cold236": "PASS",
+    "b0_routing_epoch": 237,
+    "b0_active_readback": "PASS",
+    "ordinary_state": "STAGED, independently verified inert; original activation running",
+    "ordinary_plan": "11d3df89631b635314d1b4914ccdaf043026a3df1a1f5ad6854cb473536b8b3e",
+    "projection": "22ee5efd7feb03e8acfd8b4ab1049ab86158fe68",
+    "monitor_boards": 7439,
+    "detail_boards": 2672,
+    "scheduled_owned_postings": 1461672,
+    "scheduled_detail_postings_screened": 1492188,
+    "monitor_holdouts": 3,
+    "cache_excluded_boards": 41,
+    "route_excluded_boards": 1,
+    "scope": "Source976 ordinary serving authority/readiness pending; previous source975 production samples remain historical evidence."
+  },
+  "final_delivery_checkpoint": {
+    "source_revision": "072160c56d744a84933097cd184a39cd37c5d9c9",
+    "ordinary_and_b0_epoch": 237,
+    "ordinary_activation": "pass",
+    "independent_fleet_readback": "2026-10-08T15:02:48Z PASS:10 immutable-image writers/8 health endpoints/SQL/Redis",
+    "natural_sample": {
+      "at": "2026-10-08T15:05:15Z",
+      "successful_monitors": 165,
+      "successful_details": 3,
+      "claim_errors": 0,
+      "full_freshness_conservation": false
+    },
+    "subsequent_outgoing_ordinary_retirement": "pass",
+    "subsequent_base_b0_restoration": "pass",
+    "subsequent_b0_rollback_selector_clear": "pass",
+    "subsequent_cold_epoch": 238,
+    "current_native_owners_active": false
   }
 }

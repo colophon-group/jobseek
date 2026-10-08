@@ -36,11 +36,11 @@ func firstNotionDetailHistoryFixture(t *testing.T) firstOwnerFixture {
 }
 
 func TestRealFirstDocumentDetailHistorySurvivesFreshEpoch(t *testing.T) {
-	for _, provider := range []string{"pdf", "notion"} {
+	for _, provider := range []string{"seek", "pdf", "notion"} {
 		t.Run(provider, func(t *testing.T) {
 			var old firstOwnerFixture
-			if provider == "pdf" {
-				old = firstAPIDetailFixture(t, "pdf")
+			if provider == "pdf" || provider == "seek" {
+				old = firstAPIDetailFixture(t, provider)
 			} else {
 				old = firstNotionDetailHistoryFixture(t)
 			}

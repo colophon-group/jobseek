@@ -50,6 +50,9 @@ func firstAPIDetailFixture(t *testing.T, requested string) firstOwnerFixture {
 	p := firstOwnershipFixture(t)
 	f, ctx := p.f, context.Background()
 	provider, boardURL, source, metadata := "workday", "https://fixture.wd1.myworkdayjobs.com/Careers", "https://fixture.wd1.myworkdayjobs.com/Careers/job/JR001", `{"scraper_type":"workday"}`
+	if requested == "seek" {
+		provider, boardURL, source, metadata = "seek", "https://au.seek.com/jobs?advertiserid=9094357", "https://au.seek.com/job/123", `{"scraper_type":"seek"}`
+	}
 	if requested == "oracle_hcm" {
 		provider = "oracle_hcm"
 		boardURL = "https://fixture.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs"
@@ -84,6 +87,9 @@ func firstAPIDetailFixture(t *testing.T, requested string) firstOwnerFixture {
 	}
 	p.plan = plan
 	p.f.task = &Task{Worker: Simple, Kind: Scrape, ID: f.task.ID, Domain: func() string {
+		if provider == "seek" {
+			return "au.seek.com"
+		}
 		if provider == "oracle_hcm" {
 			return "fixture.fa.em2.oraclecloud.com"
 		}
@@ -102,7 +108,7 @@ func TestRealFirstEmbeddedDetailRetirementConservesInterruptedAndCompletedAttemp
 	testFirstAPIDetailRetirement(t, "embedded")
 }
 func TestRealFirstProviderBatchDetailRetirementConservesInterruptedAndCompletedAttempts(t *testing.T) {
-	for _, provider := range []string{"pdf", "mokahr", "eightfold", "paycom", "rippling", "adp", "paylocity", "paylocity/proxy", "eightfold/proxy"} {
+	for _, provider := range []string{"seek", "pdf", "mokahr", "eightfold", "paycom", "rippling", "adp", "paylocity", "paylocity/proxy", "eightfold/proxy"} {
 		t.Run(provider, func(t *testing.T) { testFirstAPIDetailRetirement(t, provider) })
 	}
 }

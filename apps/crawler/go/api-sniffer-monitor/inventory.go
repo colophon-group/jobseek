@@ -199,10 +199,27 @@ func Discover(ctx context.Context, o Options, fetch Fetch, join JoinURL) (Invent
 		return result, err
 	}
 	if first == nil {
-		if len(o.EmptyResponse) > 0 {
+		if len(o.EmptyResponse) > 0 || o.AutoPath {
 			return result, ErrInventory
 		}
 		return result, nil
+	}
+	if o.AutoPath {
+		selected, err := first.SelectAPIArray(o.Endpoint)
+		if err != nil {
+			return result, err
+		}
+		if selected != nil {
+			o.Path = selected.Path
+		} else if _, array := first.Value.([]any); !array {
+			// A nonempty wrapper can hide a changed or too-small inventory.
+			// Only an exact configured empty response may prove absence here.
+			matches, err := first.MatchesEmptyResponse(o.EmptyResponse)
+			if len(o.EmptyResponse) == 0 || err != nil || !matches {
+				return result, ErrInventory
+			}
+			return result, nil
+		}
 	}
 	items, err := first.items(o.Path, o.PathValues, o.ItemFilter != nil && len(o.ItemFilter.RequireRegex) > 0)
 	if err != nil {

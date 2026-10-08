@@ -116,6 +116,9 @@ func InspectJSONLDDetail(boardID string, config map[string]string, source string
 }
 
 func inspectDetailOwnership(boardID string, config map[string]string) (WorkdayDetailProfile, error) {
+	if config["crawler_type"] == "seek" {
+		return inspectSeekDetail(boardID, config, config["board_url"], Simple, true)
+	}
 	if profile, err := InspectPDFDetail(boardID, config, config["board_url"], Simple); err == nil {
 		profile.Domain = "*"
 		return profile, nil
@@ -153,6 +156,9 @@ func inspectDetailOwnership(boardID string, config map[string]string) (WorkdayDe
 }
 
 func inspectDetail(boardID string, config map[string]string, source string, worker WorkerType) (WorkdayDetailProfile, error) {
+	if config["crawler_type"] == "seek" {
+		return InspectSeekDetail(boardID, config, source, worker)
+	}
 	if profile, err := InspectPDFDetail(boardID, config, source, worker); err == nil {
 		return profile, nil
 	}

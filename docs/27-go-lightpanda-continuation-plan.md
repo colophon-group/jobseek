@@ -18,70 +18,83 @@ not complete migration.
 
 ## Latest checkpoint — 2026-10-08
 
-Release **0.13.975**, source `e08a42989ad65ce556d4d1538a959a56db5a57c3`,
-is merged in [PR #10362](https://github.com/colophon-group/jobseek/pull/10362).
-Required CI, the actual Crawler Deploy Gate and installed runtime checks passed
-at head `b57489a0696134da29c153a6c9b0959c2fbaf42d`. The original
-[crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37772644152)
-and [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37772901951)
-succeeded. Independent immutable-image, outgoing source974 cold234, incoming
-source975 cold234 and B0 readback passed. B0 is active at **epoch235**; all seven
-checked health endpoints passed.
+Release **0.13.976**, source `072160c56d744a84933097cd184a39cd37c5d9c9`,
+merged in [PR #10363](https://github.com/colophon-group/jobseek/pull/10363)
+after Required CI, the actual Crawler Deploy Gate and installed-image checks
+passed at head `959a8c32730f9d4f2f571f948def3852b6791abb`. The original
+[crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37790063521)
+and matching [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37790138361)
+succeeded. Independent source/image and incoming cold236 checks passed.
+B0 activation and seven health endpoints passed at **epoch237**.
 
-This delivered batch compiles **132 profiles**: Unifr's nine monitors, PDF details
-across fifty configurations, and seven Umantis receipt bindings. Sixty-one actual
-Python Unifr cases, seventeen PDF field cases, seven binary/OCR cases and real
-SQL/Redis settlement and retirement checks passed. Five public Unifr inventories
-and field samples match; four existing source failures remain failures. Twenty
-captured PDFs preserve title/location outcomes, including existing required-title
-failures. PDF HTML/layout differs from pypdf; full description quality remains a
-migration gate. See [source975 evidence](evidence/go-native-unifr-pdf-candidate-2026-10-08.json).
+This batch compiles **134 profiles** and delivers six SEEK and seven Avature
+monitors. Ninety actual Python cases, thirteen registry checks, eighteen HTTP
+cases, seven real SQL/Redis worker cases and six cold-retirement cases pass.
+All thirteen public inventory outcomes match, including one empty SEEK board
+and HSBC's existing missing-range failure. Twelve Avature detail samples match
+every original Python field through the existing native DOM route. Explicit
+portal IDs bind HSBC and Unifi UK. SEEK details still use Python in this release.
 
-Fresh canonical/cache and actual posting-route admission at epoch235 screened
-**1,494,003 scheduled detail postings** and selected **7,426 monitor boards**,
-**2,672 detail boards**, and **1,463,368 scheduled postings**, including all fifty
-PDF configurations and 162 scheduled PDF postings. Three monitor holdouts remain:
-Hays, Siemens and RTX. Every board stays enabled. The independently checked fresh
-plan is `9a517459c1dd1558abb5abf0670742533b15cbc7978a420a4c562cedc0d87745`,
-projection `3355a6013b96b8bb9403767fde5b881e89fa57b0`. Supported ordinary activation and independent SQL/Redis projection, ten immutable-image
-writers and eight health endpoints passed. Ordinary and B0 ownership are active at
-epoch235. The natural observation at 13:03 UTC records 293 successful monitor runs,
-seven successful detail runs and zero claim errors. Failed/gone outcomes are separate;
-these samples do not establish full freshness or queue conservation.
+Fresh epoch237 admission screened **1,492,188 scheduled detail postings** and
+selected **7,439 monitors**, **2,672 detail boards** and **1,461,672 scheduled
+postings**. All thirteen new monitors are included. Three monitor holdouts,
+41 detail cache exclusions and one actual-route exclusion remain; every board
+stays enabled. Exact plan
+`11d3df89631b635314d1b4914ccdaf043026a3df1a1f5ad6854cb473536b8b3e`
+and projection `22ee5efd7feb03e8acfd8b4ab1049ab86158fe68` were activated and
+independently verified at epoch237: all ten immutable-image writers, eight health
+endpoints and SQL/Redis ownership passed. The 15:05 UTC natural sample records
+165 successful monitors, three successful details and zero claim errors; failed
+and gone outcomes remain separate. Supported ordinary retirement, independent
+full base/B0 restoration, B0 rollback/selector clearing and cold238 subsequently
+passed in preparation for source977. No native ownership remains active at this
+checkpoint; the complete source976 base stack is restored. See
+[source976 evidence](evidence/go-native-seek-avature-candidate-2026-10-08.json).
 
-Source974's never-activated plan remains inert/staged. Its eligibility refusal
-and subsequent supported recovery are retained evidence; current four-board UKG
-config mismatches against that exact old plan warranted fresh admission. The
-checks were retained, and the old plan is not reused.
+The prior source975 owner was retired through the original wrapper. Independent
+full base/B0 restoration, supported B0 rollback/selector clearing and outgoing
+cold236 checks passed before merge. Source974's never-activated plan stays inert.
+Source975 delivered nine Unifr monitors, fifty PDF configurations and seven
+Umantis receipt bindings; its 293 successful monitor and seven successful detail
+observations remain samples, not full freshness/conservation proof. PDF HTML/layout
+still differs from pypdf; description quality remains a migration gate.
 
-## Next grouped candidate — SEEK and Avature
+## Next grouped candidate — SEEK details and automatic API arrays
 
-Candidate **0.13.976** compiles **134 profiles** and ports two monitor types across
-**six SEEK and seven Avature boards**. SEEK drains the exact AU/NZ advertiser API
-with stable total/page/advertiser/job-ID proofs. Avature preserves scoped portal
-HTML inventories, explicit ranges and pagination, stable detail identities and
-partial-inventory protection. Failed later pages expose no successful prefix;
-publisher reservation is checked before status and parsing, including on 503.
-Both monitors schedule the existing configured detail route without invented
-listing titles or descriptions.
+Candidate **0.13.977** compiles **135 profiles**. It replaces SEEK GraphQL details
+for all six current boards and extends the existing API monitor for eleven
+configurations with explicit field and URL mappings and automatic array selection.
+SEEK advertiser and AU/NZ market bindings come from the canonical board; endpoint,
+query, credential and transport overrides are rejected. Publisher reservations
+stop status handling, parsing and retries, including 503 and incomplete bodies.
+Expired/empty results keep the existing transient failure and monitor-delisting
+contract. API selection preserves ordered traversal, scores and stable ties;
+resource limits discard all candidates. Literal empty arrays or exact configured
+empty documents can prove absence; unproved empty/small wrappers fail.
 
-All thirteen captured public outcomes match Go: twelve complete inventories
-(including an authoritative empty SEEK board), and HSBC's existing missing-range
-failure. Twelve Avature detail samples match every original Python field through
-the existing native DOM route. Public portal IDs 88 (HSBC) and 23 (Unifi UK) are
-bound explicitly in the registry before admission. Settlement can confirm those
-identities, including on truncated inventories, without rewriting the installed
-ownership binding. Unbound or noncanonical identity configurations remain legacy
-until qualified. SEEK GraphQL details still need their native replacement.
+Twenty-five actual Python SEEK cases, fifty-eight array cases, ten inventory
+cases, seventeen registry bindings, sixteen HTTP cases, fifteen real SQL/Redis
+worker cases, six interruption/retirement cases and a retained-receipt fresh-epoch
+case pass. Full API (5.288s), queue (936.523s) and worker (919.991s) race suites,
+vet, Python ownership/cutover (78 passed, 9 skipped), and 126 workflow/version
+checks pass. Ten public SEEK outcomes match every populated field and GraphQL
+request: eight populated and two empty results. Eleven public API captures match
+106 postings and two empty inventories, with empty/absent metadata and extras
+objects normalized as absent; raw differences are retained. Required CI, actual
+deploy gate and installed-image checks passed at head `edb0322cfb15ea855c747d03794cc7b4635f3ffc`.
+Fresh merge authority correctly stopped when `main` advanced with web-only
+PR10364. The candidate is rebased on `56b32385877c622f7e188e64a1a0d8afbf4d07ab`;
+new exact-head checks and production delivery remain pending. Crawler code is
+unchanged by that rebase; historical test identities are preserved. See
+[next candidate evidence](evidence/go-native-seek-detail-api-array-candidate-2026-10-08.json).
 
-Ninety actual Python parser cases, thirteen registry checks, eighteen HTTP cases,
-seven real SQL/Redis worker cases and six cold-retirement cases pass. The full
-API race suite and queue/worker vet pass. Full queue (428.762s) and worker (676.952s, with a 25-minute test limit) race
-regressions passed. The initial default ten-minute worker timeout and its local orphan
-fixture were recovered through normal local retirement; failed runs are retained
-without being counted as passes. Exact candidate CI/installed-image checks and
-rollout remain pending. See the
-[grouped candidate evidence](evidence/go-native-seek-avature-candidate-2026-10-08.json).
+The following grouped port targets all 31 LinkedIn, four Taleo and four
+PracticeMatch monitors. Its separate 0.13.978 prototype compiles 138 profiles
+and has no production authority. Actual Python cases pass (68 LinkedIn, 61
+Taleo, 26 PracticeMatch), with 39 registry bindings, 39 HTTP cases, eleven
+PostgreSQL/Redis cases and three family cold-retirement cases. Current public
+qualification is running; broad checks remain pending. LinkedIn detail fields
+retain their existing delegated schedule. Full migration completion gates remain open.
 
 Lightpanda remains pinned to stable **1.0.0**, verified against the
 [official release](https://github.com/lightpanda-io/browser/releases/tag/1.0.0),
@@ -180,7 +193,7 @@ configuration changes, without production ownership; see the
 
 ## Continue delivery
 
-1. Complete grouped974 PR #10361 Required CI and the actual Crawler Deploy Gate. Merge with fresh
+1. Complete SEEK detail/API PR #10365 Required CI and the actual Crawler Deploy Gate at its refreshed head. Merge with fresh
    unchanged head/base, no holds and exact-head authority. Keep Lightpanda on the
    newest verified stable release and immutable digest.
 2. Quiesce and retire outgoing B0 through supported wrappers, prove cold state,
@@ -189,8 +202,8 @@ configuration changes, without production ownership; see the
    perform supported B0 and ordinary staging/activation and independently verify
    every service, receipt and endpoint. Investigate any producer failure using
    safe error-family diagnostics; preserve ownership and publisher checks.
-3. Port Unifr with PDF details next, then group remaining DOM/API/RSS/Sitemap/
-   LinkedIn contracts by reusable engines. Observe normal-schedule fields,
+3. Finish the grouped LinkedIn/Taleo/PracticeMatch monitors, then the remaining
+   detail and browser contracts by reusable engines. Observe normal-schedule fields,
    description/R2 effects, settlement recovery and freshness as ownership grows.
 4. Replace remaining mandatory Python runtime/deployment/maintenance consumers.
    Existing sync, queue, schema, reaper, drain, exporter and reconciliation engines
