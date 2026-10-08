@@ -33,14 +33,28 @@ cache mismatches and one unsupported actual route retain their existing detail
 owner. All boards stay enabled. The supported wrapper staged plan
 `a9d95201edd74a1103ce5e985f813858b2a4580f720294ad1f4eb0782a66aca4` and projection
 `043a074c36676199debb9f9cd1d1c206c69f7636` at epoch243. Independent SQL verification
-and a zero-drift configuration audit passed. Supported ordinary activation is in
-progress; active ordinary authority and natural outcomes are not yet claimed.
+and a zero-drift configuration audit passed. Ordinary eligibility and SQL activation
+passed, but complete readiness failed when the B0 producer's full Redis audit hit
+its unchanged three-second deadline. Supported recovery and independent full
+nine-service/seven-health/SQL+Redis restoration passed; the failed plan is retired.
+Supported B0 rollback and selector clearing then passed, followed by independent
+complete **cold244** verification. Both native owners are currently inactive; the
+complete immutable source980 base remains serving.
+
+A private, isolated same-size synthetic cohort with 60 valid legacy claimers
+reproduced the audit deadline. Batching reads alone did not eliminate it and is
+not included in this candidate. Reducing actual claim work while retaining all
+authority/conservation guards is the next operational task before another full
+ownership activation. The observed 21.4-second Redis SAVE belongs to recovery and
+does not establish the cause of the earlier producer failure.
 
 [PR #10368](https://github.com/colophon-group/jobseek/pull/10368) prepares the next
 **35-configuration API/DOM group**, including four explicit publisher field maps.
 Full initial-head queue/worker suites and required checks passed; 22 API and seven
 DOM successful public HTTP captures match original output and request contracts.
-Current-head checks, immutable delivery and route admission remain pending.
+Initial exact-head Required CI, Crawler Deploy Gate, image parity and Lightpanda
+pilot checks passed. The final checkpoint revision needs fresh required checks;
+immutable delivery and route admission remain pending.
 Declared proxy and affine browser public execution still require qualification.
 
 Continue by verifying source980 activation and natural operation, delivering the
