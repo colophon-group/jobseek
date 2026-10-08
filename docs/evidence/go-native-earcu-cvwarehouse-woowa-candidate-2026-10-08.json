@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "candidate_version": "0.13.968",
+  "types": [
+    "earcu",
+    "cvwarehouse",
+    "woowa"
+  ],
+  "compiled_profile_count": 115,
+  "registry_configs": {
+    "earcu": 3,
+    "cvwarehouse": 2,
+    "woowa": 3,
+    "proxy_required_earcu": 2
+  },
+  "validation": {
+    "actual_python_field_cases": 27,
+    "csv_queue_admission": "PASS all8",
+    "real_canonical_write_reservation_partial_scenarios": "PASS18, includes credentialed CONNECT",
+    "real_cold_retirement_scenarios": "PASS12/11.493s",
+    "full_native_suites": "pending",
+    "required_ci": "pending",
+    "full_queue_race": "360.334s failed only previous registry assertion that proxy routes were unsupported; updated assertion now requires earcu.proxy-feed-items/v1. Focused registry/admission race retest PASS1.627s; final-head CI full run pending.",
+    "full_worker_race": "running with real PostgreSQL and Redis required"
+  },
+  "intentional_behavior_correction": "Admit only validated numeric single-job HTTPS CVWarehouse root advert URLs before generic bare-host filtering; existing Python worker drops these provider jobs.",
+  "production_status": "not deployed/admitted/owned; source967 predecessor rollouts in progress",
+  "goal_status": "active/incomplete"
+}

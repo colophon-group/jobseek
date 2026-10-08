@@ -278,6 +278,8 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			}
 			return nil
 		}, renderedPage)
+	} else if profile.Provider == "earcu" || profile.Provider == "cvwarehouse" || profile.Provider == "woowa" {
+		discovery, fetchErr = FetchEighthProvidersHTTP(ctx, http.client, profile, task.Config, pauseRich)
 	} else if profile.Provider == "deel" || profile.Provider == "hibob" || profile.Provider == "traffit" {
 		discovery, fetchErr = discoverSeventhProviderInventory(ctx, http.client, profile, task.Config)
 	} else if profile.Provider == "recruiterbox" {

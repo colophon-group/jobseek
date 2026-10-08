@@ -145,7 +145,15 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 	}
 	zohoIdentity := profile.Profile == "rss.zoho_recruit-skip/v1" || profile.Profile == "rss.zoho_recruit-items/v1"
 	hrIdentity := profile.Profile == "rss.hr_manager-skip/v1" || profile.Profile == "rss.hr_manager-items/v1"
-	identityEnabled := identityConfig != nil || zohoIdentity || hrIdentity
+	woowaIdentity := profile.Provider == "woowa"
+	var woowaOptions apisniffer.EighthProviderOptions
+	if woowaIdentity {
+		woowaOptions, err = apisniffer.EighthProviderOptionsFromMetadata("woowa", claim.task.Config["board_url"], claim.task.Config["metadata"])
+		if err != nil {
+			return nil, ErrConfiguration
+		}
+	}
+	identityEnabled := identityConfig != nil || zohoIdentity || hrIdentity || woowaIdentity
 	identities := []string{}
 	explicit := []bool{}
 	identityByURL := map[string]string{}
@@ -161,7 +169,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		if posting.URL == "" || strings.ContainsRune(posting.URL, 0) || posting.Content == nil || posting.Content.Enrich || posting.Content.Fields.Titles == nil || len(posting.Content.Fields.Locales) == 0 || byURL[posting.URL] != nil {
 			return nil, ErrConfiguration
 		}
-		if !identityEnabled && posting.SourceIdentity != "" || identityConfig != nil && !identityConfig.Valid(posting.SourceIdentity) || zohoIdentity && !validZohoRSSIdentity(posting.URL, posting.SourceIdentity) || hrIdentity && !validHRManagerRSSIdentity(claim.task.Config, posting.SourceIdentity) {
+		if woowaIdentity && !woowaOptions.WoowaIdentityMatches(posting.URL, posting.SourceIdentity) || !identityEnabled && posting.SourceIdentity != "" || identityConfig != nil && !identityConfig.Valid(posting.SourceIdentity) || zohoIdentity && !validZohoRSSIdentity(posting.URL, posting.SourceIdentity) || hrIdentity && !validHRManagerRSSIdentity(claim.task.Config, posting.SourceIdentity) {
 			return nil, ErrConfiguration
 		}
 		identity := posting.URL

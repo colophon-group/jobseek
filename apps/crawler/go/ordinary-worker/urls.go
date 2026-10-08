@@ -42,6 +42,9 @@ func classifyJobURL(raw, board string) string {
 	}
 	path := strings.TrimRight(p.path, "/")
 	if path == "" {
+		if api.CVWarehousePostingURL(raw) {
+			return ""
+		}
 		return "bare_host"
 	}
 	if bp, ok := parsePythonURL(board); ok && strings.EqualFold(bp.host, p.host) && strings.TrimRight(bp.path, "/") == path && p.query == "" {
