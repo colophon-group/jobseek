@@ -105,6 +105,7 @@ describe("rate-limit configuration", () => {
       { prefix: "rl:ai-filter-demand:minute:v1", tokens: 12, window: "60 s" },
       { prefix: "rl:query-intent:minute:v1", tokens: 12, window: "60 s" },
       { prefix: "rl:query-intent:hour:v1", tokens: 120, window: "3600 s" },
+      { prefix: "rl:feedback:hour:v1", tokens: 5, window: "3600 s" },
     ]);
   });
 });

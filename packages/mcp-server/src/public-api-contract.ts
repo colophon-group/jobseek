@@ -8,7 +8,7 @@ export const API_LOCALES = ["en", "de", "fr", "it"] as const;
 
 export const DEFAULT_API_LOCALE = API_LOCALES[0];
 
-export const PUBLIC_API_VERSION = "1.3.0";
+export const PUBLIC_API_VERSION = "1.4.0";
 
 /**
  * End of the compatibility period for anonymous watchlist discovery.

@@ -3,21 +3,25 @@ const INTERNAL_MCP_TOKEN_HEADER = "x-jobseek-internal-mcp-token";
 
 export interface JobseekClientOptions {
   internalMcpToken?: string;
+  internalMcpClientIp?: string;
 }
 
 export class JobseekClient {
   private baseUrl: string;
   private internalMcpToken: string | undefined;
+  private internalMcpClientIp: string | undefined;
 
   constructor(baseUrl = DEFAULT_BASE, options: JobseekClientOptions = {}) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
     this.internalMcpToken = options.internalMcpToken || undefined;
+    this.internalMcpClientIp = options.internalMcpClientIp || undefined;
   }
 
   private headers(initial?: HeadersInit): Headers {
     const headers = new Headers(initial);
     if (this.internalMcpToken) {
       headers.set(INTERNAL_MCP_TOKEN_HEADER, this.internalMcpToken);
+      if (this.internalMcpClientIp) headers.set("x-jobseek-mcp-client-ip", this.internalMcpClientIp);
     }
     return headers;
   }

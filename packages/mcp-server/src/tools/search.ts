@@ -14,7 +14,7 @@ import { apiLocaleSchema } from "../locale-schema.js";
 export function register(server: McpServer, client: JobseekClient) {
   server.tool(
     "search_jobs",
-    "Search job postings across companies on jseek.co. Returns up to 5 companies with their top 3 matching postings. The 'q' parameter accepts freetext keywords. All filter params (loc, occ, sen, tech) require exact slugs — use resolve_slugs first to convert freetext to slugs.",
+    "Find matching jobs sourced directly from company career pages: keywords, location, occupation, seniority, technology, remote/hybrid/onsite, employment type, EUR salary, experience and document language. Returns up to 5 companies with up to 3 posting summaries each, totalCompanies and a moreAt browsing link; no pagination or company filter. q accepts freetext; loc/occ/sen/tech use exact slugs returned by resolve_slugs or list_taxonomies. Use get_job_detail for salary and other available metadata, and create_watchlist_link for email-alert setup.",
     {
       q: z.string().optional().describe("Freetext keywords"),
       loc: z
@@ -49,17 +49,17 @@ export function register(server: McpServer, client: JobseekClient) {
         .string()
         .regex(new RegExp(SEARCH_INTEGER_RANGE_PATTERN))
         .optional()
-        .describe("Salary range in EUR, format: min-max (e.g. 80000-150000)"),
+        .describe("Salary bounds in EUR, integer min-max (80000-150000, 100000-, or -80000). Not the user's display currency."),
       exp: z
         .string()
         .regex(new RegExp(SEARCH_INTEGER_RANGE_PATTERN))
         .optional()
-        .describe("Experience range in years, format: min-max (e.g. 3-10)"),
+        .describe("Experience bounds in years, integer min-max (3-10, 3-, or -5)"),
       lang: z
         .string()
         .regex(new RegExp(SEARCH_LANGUAGE_LIST_PATTERN))
         .optional()
-        .describe("Job document language codes, comma-separated (en, de, fr, it)"),
+        .describe("Two-letter posting document language codes, comma-separated (e.g. en,de). Independent of response locale; omitted means all document languages."),
       locale: apiLocaleSchema,
     },
     { title: "Search Jobs", readOnlyHint: true, destructiveHint: false, openWorldHint: true },

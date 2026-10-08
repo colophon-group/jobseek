@@ -1,20 +1,37 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.colophon-group/jobseek",
-  "description": "Search jobs and companies on Job Seek (jseek.co)",
+  "description": "Search jobs, salaries and companies; prepare career watchlist links and submit product feedback.",
   "repository": {
     "url": "https://github.com/colophon-group/jobseek",
     "source": "github"
   },
-  "version": "0.3.0",
+  "version": "0.4.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@jseek/mcp-server",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "transport": {
         "type": "stdio"
       }
+    }
+  ],
+  "title": "Job Seek",
+  "websiteUrl": "https://jseek.co",
+  "icons": [
+    {
+      "src": "https://jseek.co/js_logo_black_circle.svg",
+      "mimeType": "image/svg+xml",
+      "sizes": [
+        "any"
+      ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://jseek.co/mcp"
     }
   ]
 }

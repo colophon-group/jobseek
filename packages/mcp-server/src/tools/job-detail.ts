@@ -6,7 +6,7 @@ import { apiLocaleSchema } from "../locale-schema.js";
 export function register(server: McpServer, client: JobseekClient) {
   server.tool(
     "get_job_detail",
-    "Get full structured metadata for a job posting by ID. Returns salary, technologies, seniority, experience, and locations. Does not include the job description — visit the returned URL on jseek.co to read the full posting. Use posting IDs from search_jobs results.",
+    "Inspect a job returned by search_jobs using its posting ID. Returns title, company, locations, seniority, technologies, salary with original currency/period, experience, employment type, firstSeenAt and the posting URL. Fields may be missing or null; do not infer missing salary or experience. The full description and application are accessed through the returned URL, not this tool.",
     {
       id: z.string().describe("Job posting UUID (from search_jobs topPostings[].id)"),
       locale: apiLocaleSchema,

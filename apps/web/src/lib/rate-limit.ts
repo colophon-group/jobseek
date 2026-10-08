@@ -122,3 +122,10 @@ export const queryIntentSustainedLimiter = new Ratelimit({
   limiter: Ratelimit.slidingWindow(120, "3600 s"),
   prefix: "rl:query-intent:hour:v1",
 });
+
+/** Anonymous MCP/product feedback: 5 submissions per hour per client IP. */
+export const feedbackLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(5, "3600 s"),
+  prefix: "rl:feedback:hour:v1",
+});
