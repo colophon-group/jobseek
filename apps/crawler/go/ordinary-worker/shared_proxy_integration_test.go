@@ -25,7 +25,7 @@ func proxyFixtureMetadata(t *testing.T, raw string, proxy bool) string {
 }
 
 func TestSharedProxyRuntimePreservesIndependentDetailsAndBrowserTransport(t *testing.T) {
-	for _, provider := range []string{"dom", "api_sniffer", "inline", "sitemap", "eightfold", "phenom"} {
+	for _, provider := range []string{"dom", "api_sniffer", "inline", "sitemap", "eightfold", "phenom", "earcu", "computrabajo"} {
 		c := map[string]string{"crawler_type": provider, "monitor_needs_browser": "0", "metadata": `{"proxy":true,"scraper_type":"json-ld","scraper_config":{"proxy":false}}`}
 		if !runtimeUsesProxy(queue.Task{Kind: queue.Monitor, Config: c}) {
 			t.Fatal("configured HTTP proxy not selected", provider)

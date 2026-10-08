@@ -1,7 +1,7 @@
 {
   "observed_at": "2026-10-08",
   "candidate_version": "0.13.970",
-  "candidate_status": "local full queue race and focused worker validation passed; full worker race running; final-head CI and production pending",
+  "candidate_status": "MERGED/deployed source970; freshadmission7350/2616 andstagingpassed; ordinary startupfailed finalrestartarming due runtime proxydetail selection; supportedpendingrecovery, B0rollback, selectorclear andindependent cold226passed; legacyserving restored, no native ordinary authority",
   "monitor_types": {
     "dom": 9,
     "api_sniffer": 2
@@ -22,7 +22,7 @@
     "dom_parser_full_race_seconds": 2.656,
     "vet": "passed including final URL callback",
     "full_queue_race": "passed377.626s",
-    "full_worker_race": "running"
+    "full_worker_race": "passed555.425s"
   },
   "proofs": {
     "dom": [
@@ -57,5 +57,17 @@
     "comparable whole-service cost",
     "supported cold reversal observation window",
     "production Python Playwright Chromium retirement"
-  ]
+  ],
+  "source_revision": "896a9d847547e7a3b86dcef26401a51f5ec2007b",
+  "reviewed_head": "6bc30a3e1993eaeb98acbe899c4d489fd6e37e4f",
+  "pr": 10357,
+  "cold_reversal": {
+    "epoch": 226,
+    "base_services": 7,
+    "healthy_endpoints": 6,
+    "active_plans": 0,
+    "native_tokens": 0,
+    "selectors_cleared": true,
+    "historical_attempts_retained": true
+  }
 }

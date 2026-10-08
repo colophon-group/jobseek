@@ -278,6 +278,8 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			}
 			return nil
 		}, renderedPage)
+	} else if profile.Provider == "talentbrew" {
+		discovery, fetchErr = FetchTalentBrewHTTP(ctx, http.client, profile, task.Config, pauseRich)
 	} else if profile.Provider == "beehire" || profile.Provider == "hirehive" || profile.Provider == "welcometothejungle" || profile.Provider == "computrabajo" || profile.Provider == "ycombinator" {
 		discovery, fetchErr = FetchNinthProvidersHTTP(ctx, http.client, profile, task.Config, pauseRich)
 	} else if profile.Provider == "earcu" || profile.Provider == "cvwarehouse" || profile.Provider == "woowa" {
@@ -504,12 +506,12 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		}
 		return finishSuccess(terminal)
 	}
-	if profile.Provider == "rss" || profile.Provider == "dom" {
+	if profile.Provider == "rss" || profile.Provider == "dom" || profile.Provider == "api_sniffer" {
 		rules, err := queue.FeedMonitorURLRules(task.Config)
 		if err != nil {
 			return failure("configuration", err)
 		}
-		if rules.RequiresRawInventory() {
+		if rules.RequiresRawInventory() || profile.Provider == "api_sniffer" && rules.HasURLFilter() {
 			processed, summary, rejected, err := writeFeedPolicyInventory(ctx, cycle, preparer, task.Config, discovery)
 			if processed != nil {
 				result.Batches = processed.Batches

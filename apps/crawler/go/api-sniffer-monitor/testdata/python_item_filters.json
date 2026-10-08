@@ -1,0 +1,981 @@
+[
+  {
+    "name": "include-scalars-and-lists",
+    "config": {
+      "include": {
+        "scope": [
+          "main"
+        ]
+      }
+    },
+    "items": [
+      {
+        "id": "1",
+        "scope": "main"
+      },
+      {
+        "id": "2",
+        "scope": [
+          "other",
+          "main"
+        ]
+      },
+      {
+        "id": "3",
+        "scope": "other"
+      },
+      {
+        "id": "4",
+        "scope": 1
+      }
+    ],
+    "total": 10,
+    "rows": [
+      {
+        "id": "1",
+        "scope": "main"
+      },
+      {
+        "id": "2",
+        "scope": [
+          "other",
+          "main"
+        ]
+      }
+    ],
+    "scoped_total": 8,
+    "error": false
+  },
+  {
+    "name": "exclude-scalars-and-lists",
+    "config": {
+      "exclude": {
+        "scope": [
+          "main"
+        ]
+      }
+    },
+    "items": [
+      {
+        "id": "1",
+        "scope": "main"
+      },
+      {
+        "id": "2",
+        "scope": [
+          "other",
+          "main"
+        ]
+      },
+      {
+        "id": "3",
+        "scope": "other"
+      },
+      {
+        "id": "4",
+        "scope": 1
+      }
+    ],
+    "total": 10,
+    "rows": [
+      {
+        "id": "3",
+        "scope": "other"
+      },
+      {
+        "id": "4",
+        "scope": 1
+      }
+    ],
+    "scoped_total": 8,
+    "error": false
+  },
+  {
+    "name": "nested-path",
+    "config": {
+      "include": {
+        "owner.name": [
+          "Acme"
+        ]
+      }
+    },
+    "items": [
+      {
+        "owner": {
+          "name": "Acme"
+        }
+      },
+      {
+        "owner": {
+          "name": "Other"
+        }
+      }
+    ],
+    "total": 2,
+    "rows": [
+      {
+        "owner": {
+          "name": "Acme"
+        }
+      }
+    ],
+    "scoped_total": 1,
+    "error": false
+  },
+  {
+    "name": "all-paths-required",
+    "config": {
+      "include": {
+        "scope": [
+          "main"
+        ],
+        "id": [
+          "2"
+        ]
+      }
+    },
+    "items": [
+      {
+        "id": "1",
+        "scope": "main"
+      },
+      {
+        "id": "2",
+        "scope": [
+          "other",
+          "main"
+        ]
+      },
+      {
+        "id": "3",
+        "scope": "other"
+      },
+      {
+        "id": "4",
+        "scope": 1
+      }
+    ],
+    "total": 4,
+    "rows": [
+      {
+        "id": "2",
+        "scope": [
+          "other",
+          "main"
+        ]
+      }
+    ],
+    "scoped_total": 1,
+    "error": false
+  },
+  {
+    "name": "excluded-after-include",
+    "config": {
+      "include": {
+        "scope": [
+          "main"
+        ]
+      },
+      "exclude": {
+        "id": [
+          "2"
+        ]
+      }
+    },
+    "items": [
+      {
+        "id": "1",
+        "scope": "main"
+      },
+      {
+        "id": "2",
+        "scope": [
+          "other",
+          "main"
+        ]
+      },
+      {
+        "id": "3",
+        "scope": "other"
+      },
+      {
+        "id": "4",
+        "scope": 1
+      }
+    ],
+    "total": 4,
+    "rows": [
+      {
+        "id": "1",
+        "scope": "main"
+      }
+    ],
+    "scoped_total": 1,
+    "error": false
+  },
+  {
+    "name": "regex-search",
+    "config": {
+      "exclude_regex": {
+        "scope": [
+          "(?i)MAIN"
+        ]
+      }
+    },
+    "items": [
+      {
+        "id": "1",
+        "scope": "main"
+      },
+      {
+        "id": "2",
+        "scope": [
+          "other",
+          "main"
+        ]
+      },
+      {
+        "id": "3",
+        "scope": "other"
+      },
+      {
+        "id": "4",
+        "scope": 1
+      }
+    ],
+    "total": 4,
+    "rows": [
+      {
+        "id": "3",
+        "scope": "other"
+      },
+      {
+        "id": "4",
+        "scope": 1
+      }
+    ],
+    "scoped_total": 2,
+    "error": false
+  },
+  {
+    "name": "required-full-match",
+    "config": {
+      "require_regex": {
+        "id": "1|12"
+      }
+    },
+    "items": [
+      {
+        "id": "12"
+      }
+    ],
+    "total": 1,
+    "rows": [
+      {
+        "id": "12"
+      }
+    ],
+    "scoped_total": 1,
+    "error": false
+  },
+  {
+    "name": "required-no-partial",
+    "config": {
+      "require_regex": {
+        "id": "[0-9]+"
+      }
+    },
+    "items": [
+      {
+        "id": "x12"
+      }
+    ],
+    "total": 1,
+    "rows": null,
+    "scoped_total": null,
+    "error": true
+  },
+  {
+    "name": "required-invalid-bool",
+    "config": {
+      "require_regex": {
+        "id": "[0-9]+"
+      }
+    },
+    "items": [
+      {
+        "id": true
+      }
+    ],
+    "total": 1,
+    "rows": null,
+    "scoped_total": null,
+    "error": true
+  },
+  {
+    "name": "required-invalid-float",
+    "config": {
+      "require_regex": {
+        "id": "[0-9]+"
+      }
+    },
+    "items": [
+      {
+        "id": 12.0
+      }
+    ],
+    "total": 1,
+    "rows": null,
+    "scoped_total": null,
+    "error": true
+  },
+  {
+    "name": "required-large-integer",
+    "config": {
+      "require_regex": {
+        "id": "[0-9]+"
+      }
+    },
+    "items": [
+      {
+        "id": 123456789012345678901234567890
+      }
+    ],
+    "total": 1,
+    "rows": [
+      {
+        "id": 123456789012345678901234567890
+      }
+    ],
+    "scoped_total": 1,
+    "error": false
+  },
+  {
+    "name": "required-missing",
+    "config": {
+      "require_regex": {
+        "id": "[0-9]+"
+      }
+    },
+    "items": [
+      {}
+    ],
+    "total": 1,
+    "rows": null,
+    "scoped_total": null,
+    "error": true
+  },
+  {
+    "name": "require-after-scope",
+    "config": {
+      "include": {
+        "scope": [
+          "main"
+        ]
+      },
+      "require_regex": {
+        "id": "[0-9]+"
+      }
+    },
+    "items": [
+      {
+        "id": "1",
+        "scope": "main"
+      },
+      {
+        "id": "bad",
+        "scope": "other"
+      }
+    ],
+    "total": 2,
+    "rows": [
+      {
+        "id": "1",
+        "scope": "main"
+      }
+    ],
+    "scoped_total": 1,
+    "error": false
+  },
+  {
+    "name": "dedupe-first-order",
+    "config": {
+      "dedupe_by": [
+        "id"
+      ]
+    },
+    "items": [
+      {
+        "id": "1",
+        "title": "First"
+      },
+      {
+        "id": "2"
+      },
+      {
+        "id": "1",
+        "title": "Second"
+      }
+    ],
+    "total": 3,
+    "rows": [
+      {
+        "id": "1",
+        "title": "First"
+      },
+      {
+        "id": "2"
+      }
+    ],
+    "scoped_total": 2,
+    "error": false
+  },
+  {
+    "name": "dedupe-integer-string",
+    "config": {
+      "dedupe_by": [
+        "id"
+      ]
+    },
+    "items": [
+      {
+        "id": 1
+      },
+      {
+        "id": "1"
+      }
+    ],
+    "total": 2,
+    "rows": [
+      {
+        "id": 1
+      }
+    ],
+    "scoped_total": 1,
+    "error": false
+  },
+  {
+    "name": "dedupe-invalid-preserved",
+    "config": {
+      "dedupe_by": [
+        "id"
+      ]
+    },
+    "items": [
+      {
+        "id": true
+      },
+      {
+        "id": 1.0
+      },
+      {
+        "id": ""
+      },
+      {},
+      {
+        "id": null
+      }
+    ],
+    "total": 5,
+    "rows": [
+      {
+        "id": true
+      },
+      {
+        "id": 1.0
+      },
+      {
+        "id": ""
+      },
+      {},
+      {
+        "id": null
+      }
+    ],
+    "scoped_total": 5,
+    "error": false
+  },
+  {
+    "name": "dedupe-composite",
+    "config": {
+      "dedupe_by": [
+        "id",
+        "scope"
+      ]
+    },
+    "items": [
+      {
+        "id": "1",
+        "scope": "a"
+      },
+      {
+        "id": "1",
+        "scope": "b"
+      },
+      {
+        "id": "1",
+        "scope": "a"
+      }
+    ],
+    "total": 3,
+    "rows": [
+      {
+        "id": "1",
+        "scope": "a"
+      },
+      {
+        "id": "1",
+        "scope": "b"
+      }
+    ],
+    "scoped_total": 2,
+    "error": false
+  },
+  {
+    "name": "preferred-order",
+    "config": {
+      "dedupe_by": [
+        "id"
+      ],
+      "dedupe_preference": {
+        "path": "locale",
+        "preferred_values": [
+          "en",
+          "de"
+        ],
+        "fallback_by": [
+          "locale",
+          "url"
+        ]
+      }
+    },
+    "items": [
+      {
+        "id": "1",
+        "locale": "de",
+        "url": "b"
+      },
+      {
+        "id": "2",
+        "locale": "fr",
+        "url": "c"
+      },
+      {
+        "id": "1",
+        "locale": "en",
+        "url": "a"
+      }
+    ],
+    "total": 3,
+    "rows": [
+      {
+        "id": "2",
+        "locale": "fr",
+        "url": "c"
+      },
+      {
+        "id": "1",
+        "locale": "en",
+        "url": "a"
+      }
+    ],
+    "scoped_total": 2,
+    "error": false
+  },
+  {
+    "name": "preference-lexical-tie",
+    "config": {
+      "dedupe_by": [
+        "id"
+      ],
+      "dedupe_preference": {
+        "path": "locale",
+        "preferred_values": [
+          "en",
+          "de"
+        ],
+        "fallback_by": [
+          "locale",
+          "url"
+        ]
+      }
+    },
+    "items": [
+      {
+        "id": "1",
+        "locale": "en",
+        "url": "b"
+      },
+      {
+        "id": "1",
+        "locale": "en",
+        "url": "a"
+      }
+    ],
+    "total": 2,
+    "rows": [
+      {
+        "id": "1",
+        "locale": "en",
+        "url": "a"
+      }
+    ],
+    "scoped_total": 1,
+    "error": false
+  },
+  {
+    "name": "preference-invalid-fallback",
+    "config": {
+      "dedupe_by": [
+        "id"
+      ],
+      "dedupe_preference": {
+        "path": "locale",
+        "preferred_values": [
+          "en",
+          "de"
+        ],
+        "fallback_by": [
+          "locale",
+          "url"
+        ]
+      }
+    },
+    "items": [
+      {
+        "id": "1",
+        "locale": "en"
+      }
+    ],
+    "total": 1,
+    "rows": null,
+    "scoped_total": null,
+    "error": true
+  },
+  {
+    "name": "preference-invalid-id-preserved",
+    "config": {
+      "dedupe_by": [
+        "id"
+      ],
+      "dedupe_preference": {
+        "path": "locale",
+        "preferred_values": [
+          "en",
+          "de"
+        ],
+        "fallback_by": [
+          "locale",
+          "url"
+        ]
+      }
+    },
+    "items": [
+      {
+        "locale": "en"
+      }
+    ],
+    "total": 1,
+    "rows": [
+      {
+        "locale": "en"
+      }
+    ],
+    "scoped_total": 1,
+    "error": false
+  },
+  {
+    "name": "gap-remains-after-filter",
+    "config": {
+      "include": {
+        "scope": [
+          "main"
+        ]
+      }
+    },
+    "items": [
+      {
+        "id": "1",
+        "scope": "main"
+      },
+      {
+        "id": "2",
+        "scope": [
+          "other",
+          "main"
+        ]
+      },
+      {
+        "id": "3",
+        "scope": "other"
+      },
+      {
+        "id": "4",
+        "scope": 1
+      }
+    ],
+    "total": 100,
+    "rows": [
+      {
+        "id": "1",
+        "scope": "main"
+      },
+      {
+        "id": "2",
+        "scope": [
+          "other",
+          "main"
+        ]
+      }
+    ],
+    "scoped_total": 98,
+    "error": false
+  },
+  {
+    "name": "total-clamps-zero",
+    "config": {
+      "include": {
+        "scope": [
+          "main"
+        ]
+      }
+    },
+    "items": [
+      {
+        "id": "1",
+        "scope": "main"
+      },
+      {
+        "id": "2",
+        "scope": [
+          "other",
+          "main"
+        ]
+      },
+      {
+        "id": "3",
+        "scope": "other"
+      },
+      {
+        "id": "4",
+        "scope": 1
+      }
+    ],
+    "total": 1,
+    "rows": [
+      {
+        "id": "1",
+        "scope": "main"
+      },
+      {
+        "id": "2",
+        "scope": [
+          "other",
+          "main"
+        ]
+      }
+    ],
+    "scoped_total": 0,
+    "error": false
+  },
+  {
+    "name": "invalid-empty",
+    "config": {},
+    "items": [
+      {
+        "id": "1",
+        "scope": "main"
+      },
+      {
+        "id": "2",
+        "scope": [
+          "other",
+          "main"
+        ]
+      },
+      {
+        "id": "3",
+        "scope": "other"
+      },
+      {
+        "id": "4",
+        "scope": 1
+      }
+    ],
+    "total": 4,
+    "rows": null,
+    "scoped_total": null,
+    "error": true
+  },
+  {
+    "name": "invalid-key",
+    "config": {
+      "unknown": true
+    },
+    "items": [
+      {
+        "id": "1",
+        "scope": "main"
+      },
+      {
+        "id": "2",
+        "scope": [
+          "other",
+          "main"
+        ]
+      },
+      {
+        "id": "3",
+        "scope": "other"
+      },
+      {
+        "id": "4",
+        "scope": 1
+      }
+    ],
+    "total": 4,
+    "rows": null,
+    "scoped_total": null,
+    "error": true
+  },
+  {
+    "name": "invalid-empty-include",
+    "config": {
+      "include": {}
+    },
+    "items": [
+      {
+        "id": "1",
+        "scope": "main"
+      },
+      {
+        "id": "2",
+        "scope": [
+          "other",
+          "main"
+        ]
+      },
+      {
+        "id": "3",
+        "scope": "other"
+      },
+      {
+        "id": "4",
+        "scope": 1
+      }
+    ],
+    "total": 4,
+    "rows": null,
+    "scoped_total": null,
+    "error": true
+  },
+  {
+    "name": "invalid-values",
+    "config": {
+      "include": {
+        "scope": []
+      }
+    },
+    "items": [
+      {
+        "id": "1",
+        "scope": "main"
+      },
+      {
+        "id": "2",
+        "scope": [
+          "other",
+          "main"
+        ]
+      },
+      {
+        "id": "3",
+        "scope": "other"
+      },
+      {
+        "id": "4",
+        "scope": 1
+      }
+    ],
+    "total": 4,
+    "rows": null,
+    "scoped_total": null,
+    "error": true
+  },
+  {
+    "name": "invalid-regex",
+    "config": {
+      "exclude_regex": {
+        "scope": [
+          "("
+        ]
+      }
+    },
+    "items": [
+      {
+        "id": "1",
+        "scope": "main"
+      },
+      {
+        "id": "2",
+        "scope": [
+          "other",
+          "main"
+        ]
+      },
+      {
+        "id": "3",
+        "scope": "other"
+      },
+      {
+        "id": "4",
+        "scope": 1
+      }
+    ],
+    "total": 4,
+    "rows": null,
+    "scoped_total": null,
+    "error": true
+  },
+  {
+    "name": "invalid-preference-alone",
+    "config": {
+      "dedupe_preference": {
+        "path": "locale",
+        "preferred_values": [
+          "en",
+          "de"
+        ],
+        "fallback_by": [
+          "locale",
+          "url"
+        ]
+      }
+    },
+    "items": [
+      {
+        "id": "1",
+        "scope": "main"
+      },
+      {
+        "id": "2",
+        "scope": [
+          "other",
+          "main"
+        ]
+      },
+      {
+        "id": "3",
+        "scope": "other"
+      },
+      {
+        "id": "4",
+        "scope": 1
+      }
+    ],
+    "total": 4,
+    "rows": null,
+    "scoped_total": null,
+    "error": true
+  }
+]

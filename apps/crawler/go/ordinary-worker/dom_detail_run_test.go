@@ -28,6 +28,10 @@ func TestRealProxyDOMDetailUsesVerifiedHTTPSharedEnrichmentAndCanonicalSettlemen
 func realDOMDetailTransportSuccess(t *testing.T, proxy bool) {
 	f, a, claim := domOwnedFixture(t, proxy)
 	ctx := context.Background()
+	selectedProxy, selectErr := runtimeClaimUsesProxy(ctx, a, claim)
+	if selectErr != nil || selectedProxy != proxy {
+		t.Fatal("runtime transport lost canonical detail profile", selectedProxy, selectErr)
+	}
 	calls := 0
 	client := richPipelineHTTP(t, func(w http.ResponseWriter, r *http.Request) {
 		calls++

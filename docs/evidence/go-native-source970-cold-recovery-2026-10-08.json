@@ -1,0 +1,70 @@
+{
+  "observed_at": "2026-10-08",
+  "version": "0.13.970",
+  "source_revision": "896a9d847547e7a3b86dcef26401a51f5ec2007b",
+  "pr": 10357,
+  "reviewed_head": "6bc30a3e1993eaeb98acbe899c4d489fd6e37e4f",
+  "original_crawler_run": 37714479975,
+  "matching_renderer_run": 37714515175,
+  "images": {
+    "JOBSEEK_DEPLOY_REVISION": "896a9d847547e7a3b86dcef26401a51f5ec2007b",
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:3e9069b07aaa060d09b67a0a66522d0a9a7fa92af786a7fdb27a20ea463ee719",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:274cb5eaabdffb27c32ac1b5704d069382b122100054f0b387fa8e96282355f4",
+    "renderer": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:a7b31e5f12be086502d859b235ba591c23143fb4ace4c8a76d34fd6c8f6e1c98"
+  },
+  "admission": {
+    "epoch": 225,
+    "monitor_boards": 7350,
+    "detail_boards": 2616,
+    "scheduled_owned_postings": 1476640,
+    "monitor_configuration_gain_over_source968": 31,
+    "actual_scheduled_routes_examined": 1504533,
+    "board_configuration_cache_mismatches": 0,
+    "excluded_detail_cache_boards": 40,
+    "excluded_route_boards": 1,
+    "excluded_b0_boards": 3
+  },
+  "ordinary_activation": {
+    "status": "failed before restartarming",
+    "native_exit_code": 1,
+    "sanitized_phase": "detail_transport",
+    "sanitized_class": "configuration",
+    "plan": "7d32903d220ce976412afe141a8cfe34059180df9b511b1fe69aa8a505557038",
+    "projection": "7e5e66c4dda4f1a9e6b0b3de39aeba26a55df255",
+    "serving_authority": false
+  },
+  "supported_recovery": {
+    "recover_pending": "passed",
+    "retired_plan_state": "retired",
+    "independent_full_services": 9,
+    "independent_health_endpoints": 7,
+    "source_images_and_restart_policies": "passed",
+    "ordinary_receipt_absent": true,
+    "b0_epoch_before_rollback": 225
+  },
+  "cold_reversal": {
+    "supported_b0_rollback": "passed",
+    "selector_clear": "passed",
+    "independent_epoch": 226,
+    "base_services": 7,
+    "healthy_endpoints": 6,
+    "active_native_plans": 0,
+    "native_queue_tokens": 0,
+    "native_actors": "stopped or absent",
+    "selectors_cleared": true,
+    "live_admin_oneoffs": 0,
+    "historical_attempts_retained": true
+  },
+  "current_serving": "restored complete legacy stack; native owners inactive",
+  "correction_candidate": {
+    "version": "0.13.971",
+    "pr": 10358,
+    "proxy_detail_failure_reproduced_in_real_postgres_redis": true,
+    "canonical_detail_transport_selection": "passed real direct/proxy DOM/JSONLD writes and ACK",
+    "eArcu_and_computrabajo_monitor_proxy_dispatch": "fixed",
+    "actual_executable_authenticated_proxy_write_ack_and_drain_race_seconds": 5.311,
+    "full_worker_race_seconds": 561.22,
+    "candidate_production_owned": false
+  },
+  "full_migration_complete": false
+}

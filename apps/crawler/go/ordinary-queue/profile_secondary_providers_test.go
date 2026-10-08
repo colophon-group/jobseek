@@ -75,6 +75,8 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 		}
 		var detail WorkdayDetailProfile
 		switch provider {
+		case "talentbrew":
+			detail, e = inspectDetailOwnership(profileBoardID, config)
 		case "computrabajo", "ycombinator":
 			o, err := api.NinthProviderOptionsFromMetadata(provider, config["board_url"], config["metadata"])
 			if err != nil {

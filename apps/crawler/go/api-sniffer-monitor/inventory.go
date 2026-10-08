@@ -40,7 +40,7 @@ type Request struct {
 type Fetch func(context.Context, Request) (*Document, error)
 type JoinURL func(string, string) (string, error)
 
-func (d *Document) items(path string, values bool) ([]map[string]any, error) {
+func (d *Document) items(path string, values bool, strict ...bool) ([]map[string]any, error) {
 	v, err := Search(d.Value, path)
 	if err != nil {
 		return nil, ErrInventory
@@ -62,6 +62,8 @@ func (d *Document) items(path string, values bool) ([]map[string]any, error) {
 	for _, v := range a {
 		if obj, ok := v.(map[string]any); ok {
 			out = append(out, obj)
+		} else if len(strict) > 0 && strict[0] {
+			return nil, ErrInventory
 		}
 	}
 	return out, nil
@@ -202,7 +204,7 @@ func Discover(ctx context.Context, o Options, fetch Fetch, join JoinURL) (Invent
 		}
 		return result, nil
 	}
-	items, err := first.items(o.Path, o.PathValues)
+	items, err := first.items(o.Path, o.PathValues, o.ItemFilter != nil && len(o.ItemFilter.RequireRegex) > 0)
 	if err != nil {
 		return result, err
 	}
@@ -216,9 +218,18 @@ func Discover(ctx context.Context, o Options, fetch Fetch, join JoinURL) (Invent
 	total, hasTotal := first.total(o.Path, o.TotalPath)
 	pageSize := len(items)
 	projected := []Job{}
+	type sourceRow struct {
+		document *Document
+		row      map[string]any
+	}
+	sourceRows := []sourceRow{}
 	add := func(d *Document, rows []map[string]any) error {
 		d.Root = root.Value
 		for _, row := range rows {
+			if o.ItemFilter != nil {
+				sourceRows = append(sourceRows, sourceRow{d, row})
+				continue
+			}
 			job, found, err := project(d, row, o, join)
 			if err != nil {
 				return err
@@ -249,12 +260,13 @@ func Discover(ctx context.Context, o Options, fetch Fetch, join JoinURL) (Invent
 					return result, err
 				}
 				if page != nil {
-					rows, err := page.items(o.Path, false)
+					rows, err := page.items(o.Path, false, o.ItemFilter != nil && len(o.ItemFilter.RequireRegex) > 0)
 					if err != nil {
 						return result, err
 					}
 					if len(rows) > 0 {
 						projected = nil
+						sourceRows = nil
 						itemCount = len(rows)
 						if err := add(page, rows); err != nil {
 							return result, err
@@ -289,7 +301,7 @@ func Discover(ctx context.Context, o Options, fetch Fetch, join JoinURL) (Invent
 					return result, ctx.Err()
 				}
 				if probeErr == nil && page != nil {
-					rows, err := page.items(o.Path, false)
+					rows, err := page.items(o.Path, false, o.ItemFilter != nil && len(o.ItemFilter.RequireRegex) > 0)
 					if err != nil {
 						return result, err
 					}
@@ -297,6 +309,7 @@ func Discover(ctx context.Context, o Options, fetch Fetch, join JoinURL) (Invent
 						pageSize = len(rows)
 						itemCount = pageSize
 						projected = nil
+						sourceRows = nil
 						if err := add(page, rows); err != nil {
 							return result, err
 						}
@@ -334,7 +347,7 @@ func Discover(ctx context.Context, o Options, fetch Fetch, join JoinURL) (Invent
 				}
 				rows := []map[string]any{}
 				if page != nil {
-					rows, err = page.items(o.Path, false)
+					rows, err = page.items(o.Path, false, o.ItemFilter != nil && len(o.ItemFilter.RequireRegex) > 0)
 					if err != nil {
 						return result, err
 					}
@@ -358,6 +371,31 @@ func Discover(ctx context.Context, o Options, fetch Fetch, join JoinURL) (Invent
 					}
 				}
 				value += increment
+			}
+		}
+	}
+	if o.ItemFilter != nil {
+		rows := []map[string]any{}
+		for _, source := range sourceRows {
+			rows = append(rows, source.row)
+		}
+		selected, err := FilterItemIndices(rows, o.ItemFilter)
+		if err != nil {
+			return result, err
+		}
+		removed := len(sourceRows) - len(selected)
+		if hasTotal {
+			total = max(0, total-removed)
+		}
+		itemCount -= removed
+		for _, i := range selected {
+			source := sourceRows[i]
+			job, found, err := project(source.document, source.row, o, join)
+			if err != nil {
+				return result, err
+			}
+			if found {
+				projected = append(projected, job)
 			}
 		}
 	}
