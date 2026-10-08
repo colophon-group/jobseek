@@ -242,7 +242,17 @@ func discoverDOMInventory(ctx context.Context, client *http.Client, profile queu
 		return RichDiscovery{}, err
 	}
 	client = &scoped
-	result, err := discoverDOMSingleInventory(ctx, client, profile, c, false)
+	return collectDOMListingPages(ctx, profile, config, c, func(p queue.GreenhouseMonitorProfile, c dom.ListingConfig, later bool) (RichDiscovery, error) {
+		return discoverDOMSingleInventory(ctx, client, p, c, later)
+	})
+}
+
+func collectDOMListingPages(ctx context.Context, profile queue.GreenhouseMonitorProfile, config map[string]string, c dom.ListingConfig, fetch func(queue.GreenhouseMonitorProfile, dom.ListingConfig, bool) (RichDiscovery, error)) (RichDiscovery, error) {
+	result, err := fetch(profile, c, false)
+	if result.Response != nil && result.Response.reserved {
+		result.Jobs = nil
+		return result, err
+	}
 	if err != nil || c.Pagination == nil {
 		return result, err
 	}
@@ -286,8 +296,12 @@ func discoverDOMInventory(ctx context.Context, client *http.Client, profile queu
 		pageProfile.Endpoint = endpoint
 		pageOptions := c
 		pageOptions.Attempts = c.Pagination.Attempts
-		next, e := discoverDOMSingleInventory(ctx, client, pageProfile, pageOptions, true)
+		next, e := fetch(pageProfile, pageOptions, true)
 		result.Response = next.Response
+		if next.Response != nil && next.Response.reserved {
+			result.Jobs = nil
+			return result, e
+		}
 		if e != nil {
 			result.Jobs = nil
 			return result, e

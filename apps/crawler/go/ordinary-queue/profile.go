@@ -23,6 +23,7 @@ var greenhouseToken = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
 // and verify enabled/canonical board state before it can affect a queue pop.
 type GreenhouseMonitorProfile struct {
 	RSSPagination                               *RSSPagination
+	RSSDetailEnrichment                         bool
 	BoardID, CompanyID, Domain, Token, Endpoint string
 	Provider, Region, Profile                   string
 	Language                                    string

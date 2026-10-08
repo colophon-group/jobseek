@@ -18,7 +18,7 @@ type heldNextdataMonitor func(context.Context, queue.GreenhouseMonitorProfile, m
 func (f heldNextdataMonitor) FetchNextdataPage(ctx context.Context, p queue.GreenhouseMonitorProfile, c map[string]string, url string) nextdataPage {
 	return f(ctx, p, c, url)
 }
-func (f heldNextdataMonitor) FetchMonitor(context.Context, queue.GreenhouseMonitorProfile, map[string]string) (RichDiscovery, error) {
+func (f heldNextdataMonitor) FetchMonitor(context.Context, queue.GreenhouseMonitorProfile, map[string]string, *http.Client) (RichDiscovery, error) {
 	return RichDiscovery{}, queue.ErrUnsupportedProfile
 }
 

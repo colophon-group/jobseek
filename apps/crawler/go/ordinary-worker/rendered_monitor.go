@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"errors"
 	htmltext "html"
+	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"strings"
 	"time"
@@ -25,10 +27,10 @@ import (
 )
 
 type renderedMonitorClient interface {
-	FetchMonitor(context.Context, queue.GreenhouseMonitorProfile, map[string]string) (RichDiscovery, error)
+	FetchMonitor(context.Context, queue.GreenhouseMonitorProfile, map[string]string, *http.Client) (RichDiscovery, error)
 }
 
-func (r *NativeRenderedDetails) FetchMonitor(ctx context.Context, profile queue.GreenhouseMonitorProfile, config map[string]string) (RichDiscovery, error) {
+func (r *NativeRenderedDetails) FetchMonitor(ctx context.Context, profile queue.GreenhouseMonitorProfile, config map[string]string, verified *http.Client) (RichDiscovery, error) {
 	result := RichDiscovery{Jobs: []RichMonitorJob{}}
 	if r == nil || r.client == nil || queue.MonitorWorker(profile) != queue.Browser {
 		return result, queue.ErrConfiguration
@@ -52,6 +54,11 @@ func (r *NativeRenderedDetails) FetchMonitor(ctx context.Context, profile queue.
 	case <-ctx.Done():
 		return result, ctx.Err()
 	}
+	if profile.Provider == "dom" {
+		return collectRenderedDOMPages(ctx, profile, config, verified, func(attempt int) (*runtimev1.BrowserResult, error) {
+			return r.executeMonitorNavigation(ctx, profile, options, attempt)
+		})
+	}
 	for attempt := 0; attempt < 2; attempt++ {
 		value, err := r.executeMonitorNavigation(ctx, profile, options, attempt)
 		if err != nil {
@@ -64,6 +71,46 @@ func (r *NativeRenderedDetails) FetchMonitor(ctx context.Context, profile queue.
 		return result, err
 	}
 	return result, executor.ErrBotChallenge
+}
+
+// The legacy mixed route renders its root and fetches subsequent pages with
+// the independent HTTP client. Pagination.browser=true remains unadmitted.
+func collectRenderedDOMPages(ctx context.Context, profile queue.GreenhouseMonitorProfile, config map[string]string, verified *http.Client, navigate func(int) (*runtimev1.BrowserResult, error)) (RichDiscovery, error) {
+	listing, _, err := queue.RenderedDOMMonitorOptions(config)
+	if err != nil || profile.Endpoint != config["board_url"] {
+		return RichDiscovery{}, queue.ErrConfiguration
+	}
+	var tail *http.Client
+	if listing.Pagination != nil {
+		if verified == nil {
+			return RichDiscovery{}, queue.ErrConfiguration
+		}
+		clone := *verified
+		clone.Jar, err = cookiejar.New(nil)
+		if err != nil {
+			return RichDiscovery{}, err
+		}
+		tail = &clone
+	}
+	return collectDOMListingPages(ctx, profile, config, listing, func(p queue.GreenhouseMonitorProfile, c dom.ListingConfig, later bool) (RichDiscovery, error) {
+		if later {
+			c.Document.SameOrigin = true
+			return discoverDOMSingleInventory(ctx, tail, p, c, true)
+		}
+		var result RichDiscovery
+		for attempt := 0; attempt < 2; attempt++ {
+			value, err := navigate(attempt)
+			if err != nil {
+				return result, err
+			}
+			result, err = parseHeldRenderedMonitor(ctx, p, config, value)
+			if attempt == 0 && errors.Is(err, executor.ErrBotChallenge) {
+				continue
+			}
+			return result, err
+		}
+		return result, executor.ErrBotChallenge
+	})
 }
 
 // Navigation is shared by DOM and embedded document monitors. Parsing remains

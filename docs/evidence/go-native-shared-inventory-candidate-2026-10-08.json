@@ -1,0 +1,82 @@
+{
+  "schema": "jobseek.go-native.shared-inventory-candidate/v1",
+  "version": "0.13.973",
+  "status": "committed candidate; full local real SQL/Redis race suites passed; no production ownership",
+  "base_source": "3c3231b6451316f3f861692ce572b7f82d60af8b",
+  "next_base": "merged PR10359/source972",
+  "contracts": [
+    "DOM rendered root with configured verified HTTP pagination tails; browser-fetch tails remain unsupported",
+    "Explicit Sitemap root can differ from display board origin; children remain bound to root HTTPS origin; separate configured content retry and existing status/transport retry budgets",
+    "SuccessFactors RSS optional historic company property and bounded required metadata properties; exact origin/redirect/body/marker/publisher checks before complete inventory publication",
+    "Sitemap keeps 50 MiB per-file and 512 MiB total decoded/status-byte budgets: complete Jobteaser inventory exceeds the old 55 MiB operation limit."
+  ],
+  "configuration_screen": {
+    "baseline": "source971 canonical/cache capture, remaining configurations after candidate972 screening",
+    "newly_qualified": 19,
+    "by_provider": {
+      "dom": 11,
+      "sitemap": 6,
+      "rss": 2
+    },
+    "authority": "configuration qualification only; fresh archived merged-source canonical/posting-route admission required"
+  },
+  "tests": {
+    "real_postgres_redis_race_cases": 32,
+    "real_case_seconds": 14.961,
+    "actual_python_metadata_text_component_cases": 7,
+    "queue_scope_rejections": "passed",
+    "sitemap_module_race_suite": "passed",
+    "worker_queue_vet": "passed",
+    "full_queue_suite": {
+      "status": "passed",
+      "real_postgres_redis": true,
+      "race": true,
+      "seconds": 380.958
+    },
+    "full_worker_suite": {
+      "status": "passed",
+      "real_postgres_redis": true,
+      "race": true,
+      "seconds": 596.328
+    },
+    "sitemap_aggregate_budget_regressions": "passed: beyond old aggregate threshold, exhaustion, and final leaf overflow",
+    "full_worker_after_budget_fix": "pending exact-head CI"
+  },
+  "read_only_public_probes": {
+    "bertelsmann_m6": {
+      "raw_sitemap_urls": 1053,
+      "filtered_inventory": 0,
+      "actual_python_raw_and_filtered_counts_match": true
+    },
+    "cyberbit_betterteam": {
+      "raw_sitemap_urls": 30921,
+      "filtered_inventory": 8
+    },
+    "netjets_us": {
+      "raw_feed_jobs": 176,
+      "filtered_inventory": 101,
+      "samples_with_company_title_location_description": true
+    },
+    "netjets_europe": {
+      "raw_feed_jobs": 176,
+      "filtered_inventory": 25,
+      "samples_with_company_title_location_description": true
+    },
+    "edmond_de_rothschild_jobteaser": {
+      "status": "complete-inventory probe passed after bounded aggregate correction",
+      "filtered_inventory": 21,
+      "truncated": false,
+      "observed_child_bytes": "Six job leaves total approximately 93 MB; all eight advertised children have valid same-origin XML.",
+      "actual_python_parity": "pending"
+    },
+    "dom_rendered_roots": "existing held-document engine reused; public browser-pagination proof pending",
+    "proxy_sitemap_variants": "configured transport retained; public protected-proxy proof pending"
+  },
+  "required_followup": [
+    "Complete exact-head full native CI after the observed Sitemap aggregate-budget correction",
+    "Review public failed root and browser/proxy proof before ownership expansion",
+    "Original immutable deployment, fresh canonical/cache/actual-posting-route admission, supported cutover and independent serving verification",
+    "Natural-schedule freshness, recovery/conservation and description/R2 evidence remain required"
+  ],
+  "full_migration_complete": false
+}

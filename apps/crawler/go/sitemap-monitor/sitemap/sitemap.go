@@ -19,7 +19,7 @@ import (
 const (
 	maxProtocolURLs        = 50_000
 	defaultRootMaxAttempts = 3
-	maxRootMaxAttempts     = 3
+	maxRootMaxAttempts     = 5
 	defaultRootBackoff     = 500 * time.Millisecond
 )
 
@@ -82,17 +82,18 @@ func (e *RetryExhaustedError) Error() string {
 }
 
 type Config struct {
-	SitemapURL       string
-	IncludeLiteral   string
-	ExcludeLiteral   string
-	ReplacePrefix    string
-	Replacement      string
-	MaxURLs          int
-	MaxIndexChildren int
-	MaxIndexDepth    int
-	ChildMaxAttempts int
-	RootMaxAttempts  int
-	RootBackoff      time.Duration
+	SitemapURL          string
+	IncludeLiteral      string
+	ExcludeLiteral      string
+	ReplacePrefix       string
+	Replacement         string
+	MaxURLs             int
+	MaxIndexChildren    int
+	MaxIndexDepth       int
+	ChildMaxAttempts    int
+	RootMaxAttempts     int
+	RootContentAttempts int
+	RootBackoff         time.Duration
 	// RequireURLSet rejects an index immediately after the root response. It
 	// gives the fleet benchmark a provable one-request-per-origin contract
 	// without changing the production-shadow canary's admitted index behavior.
@@ -175,6 +176,12 @@ func NormalizeConfig(config Config) (Config, error) {
 		config.ChildMaxAttempts = 1
 	}
 	if config.MaxIndexDepth < 1 || config.MaxIndexDepth > 8 || config.ChildMaxAttempts < 1 || config.ChildMaxAttempts > 5 {
+		return Config{}, newError(ErrorConfig, config.SitemapURL, 0, nil)
+	}
+	if config.RootContentAttempts == 0 {
+		config.RootContentAttempts = 1
+	}
+	if config.RootContentAttempts < 1 || config.RootContentAttempts > 5 {
 		return Config{}, newError(ErrorConfig, config.SitemapURL, 0, nil)
 	}
 	if config.RootMaxAttempts == 0 {
@@ -363,7 +370,35 @@ func (r *Runner) fetchChild(ctx context.Context, session Session, resource strin
 	panic("unreachable")
 }
 
-func (r *Runner) fetchRoot(ctx context.Context, session sessionGetter) (document, error) {
+// Content retries are distinct from transport/status retries. A configured
+// root returning HTML, malformed XML or not-found cannot publish a partial
+// inventory; publisher signals and transient exhaustion still propagate.
+func (r *Runner) fetchRoot(ctx context.Context, session Session) (document, error) {
+	var doc document
+	var err error
+	for attempt := 1; attempt <= r.config.RootContentAttempts; attempt++ {
+		doc, err = r.fetchRootTransport(ctx, session)
+		if err == nil && (doc.XMLName.Local == "urlset" || doc.XMLName.Local == "sitemapindex") {
+			return doc, nil
+		}
+		if err == nil {
+			err = newError(ErrorUnsupported, r.config.SitemapURL, 0, nil)
+		}
+		var invalid *Error
+		if !errors.As(err, &invalid) || !(invalid.Kind == ErrorXML || invalid.Kind == ErrorUnsupported || invalid.Kind == ErrorStatus && (invalid.Status == 404 || invalid.Status == 410)) {
+			return doc, err
+		}
+		if attempt == r.config.RootContentAttempts {
+			return doc, err
+		}
+		if err = r.sleep(ctx, 250*time.Millisecond*time.Duration(attempt)); err != nil {
+			return document{}, err
+		}
+	}
+	return doc, err
+}
+
+func (r *Runner) fetchRootTransport(ctx context.Context, session sessionGetter) (document, error) {
 	for attempt := 1; attempt <= r.config.RootMaxAttempts; attempt++ {
 		doc, _, err := fetchDocument(ctx, session, r.config.SitemapURL, r.origin(), r.config.AllowHTTPForTesting, false)
 		if err == nil {

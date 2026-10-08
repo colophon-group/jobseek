@@ -22,7 +22,7 @@ func monitorWorkerProfile(config map[string]string) WorkerType {
 	return Simple
 }
 
-// Validate navigation and the existing single-page inventory parser separately,
+// Validate navigation and the existing inventory parser separately,
 // binding the original canonical configuration rather than this parser clone.
 func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map[string]any, error) {
 	fail := func() (dom.ListingConfig, map[string]any, error) {
@@ -55,6 +55,28 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 	for _, key := range []string{"browser_backend", "routing_revision", "wait", "wait_fallback", "timeout", "actions", "request_headers"} {
 		delete(cloneMD, key)
 	}
+	if raw, exists := cloneMD["pagination"]; exists && string(raw) != "null" {
+		var pagination map[string]json.RawMessage
+		if json.Unmarshal(raw, &pagination) != nil || pagination == nil {
+			return fail()
+		}
+		if flag, exists := pagination["browser"]; exists {
+			var browser bool
+			if json.Unmarshal(flag, &browser) != nil || browser {
+				return fail()
+			}
+			delete(pagination, "browser")
+		}
+		// Browser-fetch tails still require a held-session contract. The admitted
+		// mixed route renders only the root and uses verified HTTP for its tails.
+		// Browser authority remains bound to the original profile and options;
+		// only the pure URL/pagination parser receives this static clone.
+		parsed, err := json.Marshal(pagination)
+		if err != nil {
+			return fail()
+		}
+		cloneMD["pagination"] = parsed
+	}
 	cloneMD["render"] = json.RawMessage(`false`)
 	body, err := json.Marshal(cloneMD)
 	if err != nil {
@@ -63,7 +85,7 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 	clone := cloneConfig(config)
 	clone["monitor_needs_browser"], clone["metadata"] = "0", string(body)
 	listing, err := directDOMMonitorOptions(clone)
-	if err != nil || listing.Pagination != nil {
+	if err != nil {
 		return fail()
 	}
 	return listing, options, nil

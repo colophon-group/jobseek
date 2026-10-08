@@ -13,7 +13,7 @@ import (
 
 type heldMonitor func(context.Context, queue.GreenhouseMonitorProfile, map[string]string) (RichDiscovery, error)
 
-func (f heldMonitor) FetchMonitor(c context.Context, p queue.GreenhouseMonitorProfile, m map[string]string) (RichDiscovery, error) {
+func (f heldMonitor) FetchMonitor(c context.Context, p queue.GreenhouseMonitorProfile, m map[string]string, _ *http.Client) (RichDiscovery, error) {
 	return f(c, p, m)
 }
 

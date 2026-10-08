@@ -126,6 +126,11 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 	if err != nil {
 		return GreenhouseMonitorProfile{}, err
 	}
+	fields, _, err := RSSDetailFields(config)
+	if err != nil {
+		return GreenhouseMonitorProfile{}, err
+	}
+	profile.RSSDetailEnrichment = len(fields) > 0
 	profile.RSSPagination = pagination
 	return profile, nil
 }

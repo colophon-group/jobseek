@@ -90,7 +90,7 @@ func TestGroupedGenericCurrentRegistryEligibility(t *testing.T) {
 	t.Logf("local configuration eligibility only: %v", counts)
 }
 
-func TestDOMPaginationBindsOnlyConfiguredPagesAndKeepsRenderedPagesExcluded(t *testing.T) {
+func TestDOMPaginationBindsOnlyConfiguredPagesAcrossDirectAndRenderedNavigation(t *testing.T) {
 	cfg := domMonitorConfig()
 	cfg["metadata"] = `{"url_filter":"/jobs/","pagination":{"param_name":"page","start":1,"increment":2,"max_pages":3},"url_transform":{"find":"\\?tracking=.*$","replace":""},"scraper_type":"json-ld"}`
 	p, e := InspectRichMonitor(profileBoardID, cfg)
@@ -106,8 +106,21 @@ func TestDOMPaginationBindsOnlyConfiguredPagesAndKeepsRenderedPagesExcluded(t *t
 		}
 	}
 	cfg["monitor_needs_browser"] = "1"
-	cfg["metadata"] = `{"render":true,"pagination":{"param_name":"page","max_pages":3},"scraper_type":"json-ld"}`
+	cfg["metadata"] = `{"render":true,"pagination":{"browser":false,"param_name":"page","max_pages":3},"scraper_type":"json-ld"}`
+	p, e = InspectRichMonitor(profileBoardID, cfg)
+	if e != nil || MonitorWorker(p) != Browser {
+		t.Fatal("rendered pagination lost browser authority", e)
+	}
+	for _, test := range []struct {
+		url      string
+		accepted bool
+	}{{p.Endpoint, true}, {p.Endpoint + "&page=2", true}, {p.Endpoint + "&page=3", true}, {p.Endpoint + "&page=4", false}, {p.Endpoint + "&page=2&unbound=x", false}, {"https://foreign.example/listing?locale=en&page=2", false}} {
+		if DOMMonitorResourceMatches(p, cfg, test.url) != test.accepted {
+			t.Fatal("rendered page escaped immutable resource scope", test.url)
+		}
+	}
+	cfg["monitor_needs_browser"] = "0"
 	if _, e = InspectRichMonitor(profileBoardID, cfg); e == nil {
-		t.Fatal("single-page rendered engine acquired pagination")
+		t.Fatal("explicit browser pagination acquired direct authority")
 	}
 }
