@@ -1,0 +1,738 @@
+{
+  "board": {
+    "host": "phe.tbe.taleo.net",
+    "partition": "phe01",
+    "org": "ACME",
+    "cws": 1
+  },
+  "identities": [
+    {
+      "url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "valid": true,
+      "board": {
+        "host": "phe.tbe.taleo.net",
+        "partition": "phe01",
+        "org": "ACME",
+        "cws": 1
+      },
+      "detail": false,
+      "rid": null,
+      "offset": null
+    },
+    {
+      "url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=123",
+      "valid": true,
+      "board": {
+        "host": "phe.tbe.taleo.net",
+        "partition": "phe01",
+        "org": "ACME",
+        "cws": 1
+      },
+      "detail": true,
+      "rid": 123,
+      "offset": null
+    },
+    {
+      "url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1&rowFrom=20",
+      "valid": true,
+      "board": {
+        "host": "phe.tbe.taleo.net",
+        "partition": "phe01",
+        "org": "ACME",
+        "cws": 1
+      },
+      "detail": false,
+      "rid": null,
+      "offset": 20
+    },
+    {
+      "url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1&rowFrom=２０",
+      "valid": true,
+      "board": {
+        "host": "phe.tbe.taleo.net",
+        "partition": "phe01",
+        "org": "ACME",
+        "cws": 1
+      },
+      "detail": false,
+      "rid": null,
+      "offset": 20
+    },
+    {
+      "url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1&rowFrom=-0",
+      "valid": false,
+      "board": null,
+      "detail": false,
+      "rid": null,
+      "offset": null
+    },
+    {
+      "url": "http://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "valid": false,
+      "board": null,
+      "detail": false,
+      "rid": null,
+      "offset": null
+    },
+    {
+      "url": "https://user@phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "valid": false,
+      "board": null,
+      "detail": false,
+      "rid": null,
+      "offset": null
+    },
+    {
+      "url": "https://phe.tbe.taleo.net:444/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "valid": false,
+      "board": null,
+      "detail": false,
+      "rid": null,
+      "offset": null
+    },
+    {
+      "url": "https://phe.tbe.taleo.net.evil.test/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "valid": false,
+      "board": null,
+      "detail": false,
+      "rid": null,
+      "offset": null
+    },
+    {
+      "url": "https://phe.tbe.taleo.net/phg01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "valid": false,
+      "board": null,
+      "detail": false,
+      "rid": null,
+      "offset": null
+    },
+    {
+      "url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1&org=OTHER",
+      "valid": false,
+      "board": null,
+      "detail": false,
+      "rid": null,
+      "offset": null
+    },
+    {
+      "url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1&department=x",
+      "valid": false,
+      "board": null,
+      "detail": false,
+      "rid": null,
+      "offset": null
+    },
+    {
+      "url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1&rowFrom=1",
+      "valid": false,
+      "board": null,
+      "detail": false,
+      "rid": null,
+      "offset": null
+    },
+    {
+      "url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=0",
+      "valid": false,
+      "board": null,
+      "detail": false,
+      "rid": null,
+      "offset": null
+    },
+    {
+      "url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=123&rid=456",
+      "valid": false,
+      "board": null,
+      "detail": false,
+      "rid": null,
+      "offset": null
+    },
+    {
+      "url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults/extra?org=ACME&cws=1",
+      "valid": false,
+      "board": null,
+      "detail": false,
+      "rid": null,
+      "offset": null
+    }
+  ],
+  "redirects": [
+    {
+      "resource": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "target": "https://phh.tbe.taleo.net/phh01/ats/careers/v2/searchResults?org=ACME&cws=41",
+      "valid": true,
+      "url": "https://phh.tbe.taleo.net/phh01/ats/careers/v2/searchResults?org=ACME&cws=41",
+      "board": {
+        "host": "phh.tbe.taleo.net",
+        "partition": "phh01",
+        "org": "ACME",
+        "cws": 41
+      }
+    },
+    {
+      "resource": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "target": "https://phe.tbe.taleo.net/dispatcher/servlet/DispatcherServlet?org=ACME&act=redirectCws&redirectUrl=https%3A%2F%2Fphe.tbe.taleo.net%2Fphe01%2Fats%2Fcareers%2Fv2%2FsearchResults%3Forg%3DACME%26cws%3D1",
+      "valid": true,
+      "url": "https://phe.tbe.taleo.net/dispatcher/servlet/DispatcherServlet?org=ACME&act=redirectCws&redirectUrl=https%3A%2F%2Fphe.tbe.taleo.net%2Fphe01%2Fats%2Fcareers%2Fv2%2FsearchResults%3Forg%3DACME%26cws%3D1",
+      "board": {
+        "host": "phe.tbe.taleo.net",
+        "partition": "phe01",
+        "org": "ACME",
+        "cws": 1
+      }
+    },
+    {
+      "resource": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "target": "https://evil.test/jobs",
+      "valid": false,
+      "url": "",
+      "board": null
+    },
+    {
+      "resource": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "target": "https://phh.tbe.taleo.net/phh01/ats/careers/v2/searchResults?org=OTHER&cws=41",
+      "valid": false,
+      "url": "",
+      "board": null
+    },
+    {
+      "resource": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "target": "https://phh.tbe.taleo.net/phh01/ats/careers/v2/searchResults?org=ACME&cws=41&rowFrom=10",
+      "valid": false,
+      "url": "",
+      "board": null
+    },
+    {
+      "resource": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "target": "https://phe.tbe.taleo.net/dispatcher/servlet/DispatcherServlet?org=ACME&act=redirectCws&redirectUrl=https%3A%2F%2Fphe.tbe.taleo.net%2Fphe01%2Fats%2Fcareers%2Fv2%2FsearchResults%3Forg%3DACME%26cws%3D1%26rowFrom%3D10",
+      "valid": false,
+      "url": "",
+      "board": null
+    },
+    {
+      "resource": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "target": "https://phe.tbe.taleo.net/dispatcher/servlet/DispatcherServlet?org=OTHER&act=redirectCws&redirectUrl=https%3A%2F%2Fphe.tbe.taleo.net%2Fphe01%2Fats%2Fcareers%2Fv2%2FsearchResults%3Forg%3DACME%26cws%3D1",
+      "valid": false,
+      "url": "",
+      "board": null
+    },
+    {
+      "resource": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "target": "",
+      "valid": false,
+      "url": "",
+      "board": null
+    }
+  ],
+  "inactive": [
+    {
+      "resource": "https://phe.tbe.taleo.net/dispatcher/servlet/DispatcherServlet?org=ACME&act=redirectCws&redirectUrl=https%3A%2F%2Fphe.tbe.taleo.net%2Fphe01%2Fats%2Fcareers%2Fv2%2FsearchResults%3Forg%3DACME%26cws%3D1",
+      "target": "INACTIVEcareers/v2/searchResults?org=ACME&cws=1",
+      "gone": true
+    },
+    {
+      "resource": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "target": "INACTIVEcareers/v2/searchResults?org=ACME&cws=1",
+      "gone": true
+    },
+    {
+      "resource": "https://phe.tbe.taleo.net/dispatcher/servlet/DispatcherServlet?org=ACME&act=redirectCws&redirectUrl=https%3A%2F%2Fphe.tbe.taleo.net%2Fphe01%2Fats%2Fcareers%2Fv2%2FsearchResults%3Forg%3DACME%26cws%3D1",
+      "target": "INACTIVEcareers/v2/searchResults?org=OTHER&cws=1",
+      "gone": false
+    },
+    {
+      "resource": "https://phe.tbe.taleo.net/dispatcher/servlet/DispatcherServlet?org=ACME&act=redirectCws&redirectUrl=https%3A%2F%2Fphe.tbe.taleo.net%2Fphe01%2Fats%2Fcareers%2Fv2%2FsearchResults%3Forg%3DACME%26cws%3D1",
+      "target": "INACTIVEcareers/v2/searchResults?org=ACME&cws=2",
+      "gone": false
+    },
+    {
+      "resource": "https://phe.tbe.taleo.net/dispatcher/servlet/DispatcherServlet?org=ACME&act=redirectCws&redirectUrl=https%3A%2F%2Fphe.tbe.taleo.net%2Fphe01%2Fats%2Fcareers%2Fv2%2FsearchResults%3Forg%3DACME%26cws%3D1",
+      "target": "INACTIVEcareers/v2/searchResults?org=ACME&cws=1&x=1",
+      "gone": false
+    }
+  ],
+  "pages": [
+    {
+      "name": "total-empty",
+      "body": "<section class=\"oracletaleocwsv2-search-results\"><span class=\"oracletaleocwsv2-panel-number\">0</span></section>",
+      "offset": 0,
+      "total": 0,
+      "urls": [],
+      "next": null,
+      "failed": false
+    },
+    {
+      "name": "total-ten",
+      "body": "<section class=\"oracletaleocwsv2-search-results\"><span class=\"oracletaleocwsv2-panel-number\">17</span><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=2\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=3\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=4\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=5\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=6\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=7\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=8\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=9\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=10\">Job</a></section>",
+      "offset": 0,
+      "total": 17,
+      "urls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=1",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=10",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=2",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=3",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=4",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=5",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=6",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=7",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=8",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=9"
+      ],
+      "next": null,
+      "failed": false
+    },
+    {
+      "name": "total-child",
+      "body": "<section class=\"oracletaleocwsv2-search-results\"><span class=\"oracletaleocwsv2-panel-number\">17</span><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=11\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=12\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=13\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=14\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=15\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=16\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=17\">Job</a></section>",
+      "offset": 10,
+      "total": 17,
+      "urls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=11",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=12",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=13",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=14",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=15",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=16",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=17"
+      ],
+      "next": null,
+      "failed": false
+    },
+    {
+      "name": "wrong-count",
+      "body": "<section class=\"oracletaleocwsv2-search-results\"><span class=\"oracletaleocwsv2-panel-number\">17</span><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=2\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=3\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=4\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=5\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=6\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=7\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=8\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=9\">Job</a></section>",
+      "offset": 0,
+      "failed": true,
+      "urls": []
+    },
+    {
+      "name": "cursor-empty",
+      "body": "<section class=\"oracletaleocwsv2-search-results\"></section>",
+      "offset": 0,
+      "total": null,
+      "urls": [],
+      "next": null,
+      "failed": false
+    },
+    {
+      "name": "cursor-first",
+      "body": "<section class=\"oracletaleocwsv2-search-results\"><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=2\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=3\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=4\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=5\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=6\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=7\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=8\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=9\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=10\">Job</a><a class=\"jscroll-next\" href=\"/phe01/ats/careers/v2/searchResults?next&amp;rowFrom=10&amp;act=null&amp;sortColumn=null&amp;sortOrder=null&amp;currentTime=1785797000000\">Next</a></section>",
+      "offset": 0,
+      "total": null,
+      "urls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=1",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=10",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=2",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=3",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=4",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=5",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=6",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=7",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=8",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=9"
+      ],
+      "next": 10,
+      "failed": false
+    },
+    {
+      "name": "cursor-child",
+      "body": "<section class=\"oracletaleocwsv2-search-results\"><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=11\">Job</a></section>",
+      "offset": 10,
+      "total": null,
+      "urls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=11"
+      ],
+      "next": null,
+      "failed": false
+    },
+    {
+      "name": "cursor-wrong-count",
+      "body": "<section class=\"oracletaleocwsv2-search-results\"><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a><a class=\"jscroll-next\" href=\"/phe01/ats/careers/v2/searchResults?next&amp;rowFrom=10&amp;act=null&amp;sortColumn=null&amp;sortOrder=null&amp;currentTime=1785797000000\">Next</a></section>",
+      "offset": 0,
+      "failed": true,
+      "urls": []
+    },
+    {
+      "name": "cursor-skips",
+      "body": "<section class=\"oracletaleocwsv2-search-results\"><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=2\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=3\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=4\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=5\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=6\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=7\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=8\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=9\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=10\">Job</a><a class=\"jscroll-next\" href=\"/phe01/ats/careers/v2/searchResults?next&amp;rowFrom=20&amp;act=null&amp;sortColumn=null&amp;sortOrder=null&amp;currentTime=1785797000000\">Next</a></section>",
+      "offset": 0,
+      "failed": true,
+      "urls": []
+    },
+    {
+      "name": "foreign-cursor",
+      "body": "<section class=\"oracletaleocwsv2-search-results\"><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=2\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=3\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=4\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=5\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=6\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=7\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=8\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=9\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=10\">Job</a><a class=\"jscroll-next\" href=\"https://evil.test/phe01/ats/careers/v2/searchResults?next&amp;rowFrom=10&amp;act=null&amp;sortColumn=null&amp;sortOrder=null&amp;currentTime=1785797000000\">Next</a></section>",
+      "offset": 0,
+      "failed": true,
+      "urls": []
+    },
+    {
+      "name": "cursor-query-scope",
+      "body": "<section class=\"oracletaleocwsv2-search-results\"><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=2\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=3\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=4\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=5\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=6\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=7\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=8\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=9\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=10\">Job</a><a class=\"jscroll-next\" href=\"/phe01/ats/careers/v2/searchResults?next=x&amp;rowFrom=10&amp;act=null&amp;sortColumn=null&amp;sortOrder=null&amp;currentTime=1785797000000\">Next</a></section>",
+      "offset": 0,
+      "failed": true,
+      "urls": []
+    },
+    {
+      "name": "duplicate-links",
+      "body": "<section class=\"oracletaleocwsv2-search-results\"><span class=\"oracletaleocwsv2-panel-number\">1</span><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a></section>",
+      "offset": 0,
+      "total": 1,
+      "urls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=1"
+      ],
+      "next": null,
+      "failed": false
+    },
+    {
+      "name": "relative-link",
+      "body": "<section class=\"oracletaleocwsv2-search-results\"><span class=\"oracletaleocwsv2-panel-number\">1</span><a href=\"/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a></section>",
+      "offset": 0,
+      "total": 1,
+      "urls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=1"
+      ],
+      "next": null,
+      "failed": false
+    },
+    {
+      "name": "foreign-job",
+      "body": "<section class=\"oracletaleocwsv2-search-results\"><span class=\"oracletaleocwsv2-panel-number\">1</span><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=OTHER&amp;cws=1&amp;rid=1\">Job</a></section>",
+      "offset": 0,
+      "failed": true,
+      "urls": []
+    },
+    {
+      "name": "numeric-unicode",
+      "body": "<section class=\"oracletaleocwsv2-search-results\"><span class=\"oracletaleocwsv2-panel-number\">１</span><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a></section>",
+      "offset": 0,
+      "total": 1,
+      "urls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=1"
+      ],
+      "next": null,
+      "failed": false
+    },
+    {
+      "name": "count-comma",
+      "body": "<section class=\"oracletaleocwsv2-search-results\"><span class=\"oracletaleocwsv2-panel-number\">1,234</span><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=2\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=3\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=4\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=5\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=6\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=7\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=8\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=9\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=10\">Job</a></section>",
+      "offset": 0,
+      "total": 1234,
+      "urls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=1",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=10",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=2",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=3",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=4",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=5",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=6",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=7",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=8",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=9"
+      ],
+      "next": null,
+      "failed": false
+    },
+    {
+      "name": "count-nested",
+      "body": "<section class=\"oracletaleocwsv2-search-results\"><span class=\"oracletaleocwsv2-panel-number\"><b>1</b></span><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a></section>",
+      "offset": 0,
+      "total": 1,
+      "urls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=1"
+      ],
+      "next": null,
+      "failed": false
+    },
+    {
+      "name": "count-label",
+      "body": "<section class=\"oracletaleocwsv2-search-results\"><span class=\"oracletaleocwsv2-panel-number\">Open</span></section>",
+      "offset": 0,
+      "total": null,
+      "urls": [],
+      "next": null,
+      "failed": false
+    },
+    {
+      "name": "count-conflict",
+      "body": "<section class=\"oracletaleocwsv2-search-results\"><span class=\"oracletaleocwsv2-panel-number\">0</span></section><span class=\"oracletaleocwsv2-panel-number\">1</span>",
+      "offset": 0,
+      "total": null,
+      "urls": [],
+      "next": null,
+      "failed": false
+    },
+    {
+      "name": "not-listing",
+      "body": "<html>challenge</html>",
+      "offset": 0,
+      "failed": true,
+      "urls": []
+    }
+  ],
+  "inventories": [
+    {
+      "name": "total-complete",
+      "board_url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "metadata": {
+        "host": "phe.tbe.taleo.net",
+        "partition": "phe01",
+        "org": "ACME",
+        "cws": 1
+      },
+      "bodies": {
+        "0": "<section class=\"oracletaleocwsv2-search-results\"><span class=\"oracletaleocwsv2-panel-number\">17</span><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=2\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=3\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=4\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=5\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=6\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=7\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=8\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=9\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=10\">Job</a></section>",
+        "10": "<section class=\"oracletaleocwsv2-search-results\"><span class=\"oracletaleocwsv2-panel-number\">17</span><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=11\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=12\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=13\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=14\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=15\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=16\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=17\">Job</a></section>"
+      },
+      "calls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1&rowFrom=10"
+      ],
+      "urls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=1",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=10",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=11",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=12",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=13",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=14",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=15",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=16",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=17",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=2",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=3",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=4",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=5",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=6",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=7",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=8",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=9"
+      ],
+      "failed": false
+    },
+    {
+      "name": "total-empty",
+      "board_url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "metadata": {
+        "host": "phe.tbe.taleo.net",
+        "partition": "phe01",
+        "org": "ACME",
+        "cws": 1
+      },
+      "bodies": {
+        "0": "<section class=\"oracletaleocwsv2-search-results\"><span class=\"oracletaleocwsv2-panel-number\">0</span></section>"
+      },
+      "calls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1"
+      ],
+      "urls": [],
+      "failed": false
+    },
+    {
+      "name": "total-changed",
+      "board_url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "metadata": {
+        "host": "phe.tbe.taleo.net",
+        "partition": "phe01",
+        "org": "ACME",
+        "cws": 1
+      },
+      "bodies": {
+        "0": "<section class=\"oracletaleocwsv2-search-results\"><span class=\"oracletaleocwsv2-panel-number\">17</span><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=2\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=3\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=4\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=5\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=6\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=7\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=8\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=9\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=10\">Job</a></section>",
+        "10": "<section class=\"oracletaleocwsv2-search-results\"><span class=\"oracletaleocwsv2-panel-number\">18</span><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=11\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=12\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=13\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=14\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=15\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=16\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=17\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=18\">Job</a></section>"
+      },
+      "calls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1&rowFrom=10"
+      ],
+      "urls": [],
+      "failed": true
+    },
+    {
+      "name": "total-overlap",
+      "board_url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "metadata": {
+        "host": "phe.tbe.taleo.net",
+        "partition": "phe01",
+        "org": "ACME",
+        "cws": 1
+      },
+      "bodies": {
+        "0": "<section class=\"oracletaleocwsv2-search-results\"><span class=\"oracletaleocwsv2-panel-number\">17</span><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=2\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=3\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=4\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=5\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=6\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=7\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=8\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=9\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=10\">Job</a></section>",
+        "10": "<section class=\"oracletaleocwsv2-search-results\"><span class=\"oracletaleocwsv2-panel-number\">17</span><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=10\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=11\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=12\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=13\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=14\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=15\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=16\">Job</a></section>"
+      },
+      "calls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1&rowFrom=10"
+      ],
+      "urls": [],
+      "failed": true
+    },
+    {
+      "name": "total-late-failure",
+      "board_url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "metadata": {
+        "host": "phe.tbe.taleo.net",
+        "partition": "phe01",
+        "org": "ACME",
+        "cws": 1
+      },
+      "bodies": {
+        "0": "<section class=\"oracletaleocwsv2-search-results\"><span class=\"oracletaleocwsv2-panel-number\">17</span><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=2\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=3\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=4\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=5\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=6\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=7\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=8\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=9\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=10\">Job</a></section>",
+        "10": null
+      },
+      "calls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1&rowFrom=10"
+      ],
+      "urls": [],
+      "failed": true
+    },
+    {
+      "name": "total-cap",
+      "board_url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "metadata": {
+        "host": "phe.tbe.taleo.net",
+        "partition": "phe01",
+        "org": "ACME",
+        "cws": 1
+      },
+      "bodies": {
+        "0": "<section class=\"oracletaleocwsv2-search-results\"><span class=\"oracletaleocwsv2-panel-number\">50001</span><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=2\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=3\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=4\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=5\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=6\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=7\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=8\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=9\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=10\">Job</a></section>"
+      },
+      "calls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1"
+      ],
+      "urls": [],
+      "failed": true
+    },
+    {
+      "name": "cursor-complete",
+      "board_url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "metadata": {
+        "host": "phe.tbe.taleo.net",
+        "partition": "phe01",
+        "org": "ACME",
+        "cws": 1
+      },
+      "bodies": {
+        "0": "<section class=\"oracletaleocwsv2-search-results\"><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=2\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=3\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=4\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=5\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=6\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=7\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=8\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=9\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=10\">Job</a><a class=\"jscroll-next\" href=\"/phe01/ats/careers/v2/searchResults?next&amp;rowFrom=10&amp;act=null&amp;sortColumn=null&amp;sortOrder=null&amp;currentTime=1785797000000\">Next</a></section>",
+        "10": "<section class=\"oracletaleocwsv2-search-results\"><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=11\">Job</a></section>"
+      },
+      "calls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1&rowFrom=10"
+      ],
+      "urls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=1",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=10",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=11",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=2",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=3",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=4",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=5",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=6",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=7",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=8",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&cws=1&rid=9"
+      ],
+      "failed": false
+    },
+    {
+      "name": "cursor-empty",
+      "board_url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "metadata": {
+        "host": "phe.tbe.taleo.net",
+        "partition": "phe01",
+        "org": "ACME",
+        "cws": 1
+      },
+      "bodies": {
+        "0": "<section class=\"oracletaleocwsv2-search-results\"></section>"
+      },
+      "calls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1"
+      ],
+      "urls": [],
+      "failed": false
+    },
+    {
+      "name": "cursor-child-empty",
+      "board_url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "metadata": {
+        "host": "phe.tbe.taleo.net",
+        "partition": "phe01",
+        "org": "ACME",
+        "cws": 1
+      },
+      "bodies": {
+        "0": "<section class=\"oracletaleocwsv2-search-results\"><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=2\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=3\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=4\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=5\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=6\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=7\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=8\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=9\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=10\">Job</a><a class=\"jscroll-next\" href=\"/phe01/ats/careers/v2/searchResults?next&amp;rowFrom=10&amp;act=null&amp;sortColumn=null&amp;sortOrder=null&amp;currentTime=1785797000000\">Next</a></section>",
+        "10": "<section class=\"oracletaleocwsv2-search-results\"></section>"
+      },
+      "calls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1&rowFrom=10"
+      ],
+      "urls": [],
+      "failed": true
+    },
+    {
+      "name": "cursor-overlap",
+      "board_url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "metadata": {
+        "host": "phe.tbe.taleo.net",
+        "partition": "phe01",
+        "org": "ACME",
+        "cws": 1
+      },
+      "bodies": {
+        "0": "<section class=\"oracletaleocwsv2-search-results\"><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=2\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=3\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=4\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=5\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=6\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=7\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=8\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=9\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=10\">Job</a><a class=\"jscroll-next\" href=\"/phe01/ats/careers/v2/searchResults?next&amp;rowFrom=10&amp;act=null&amp;sortColumn=null&amp;sortOrder=null&amp;currentTime=1785797000000\">Next</a></section>",
+        "10": "<section class=\"oracletaleocwsv2-search-results\"><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=10\">Job</a></section>"
+      },
+      "calls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1&rowFrom=10"
+      ],
+      "urls": [],
+      "failed": true
+    },
+    {
+      "name": "cursor-theme-change",
+      "board_url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "metadata": {
+        "host": "phe.tbe.taleo.net",
+        "partition": "phe01",
+        "org": "ACME",
+        "cws": 1
+      },
+      "bodies": {
+        "0": "<section class=\"oracletaleocwsv2-search-results\"><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=2\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=3\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=4\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=5\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=6\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=7\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=8\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=9\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=10\">Job</a><a class=\"jscroll-next\" href=\"/phe01/ats/careers/v2/searchResults?next&amp;rowFrom=10&amp;act=null&amp;sortColumn=null&amp;sortOrder=null&amp;currentTime=1785797000000\">Next</a></section>",
+        "10": "<section class=\"oracletaleocwsv2-search-results\"><span class=\"oracletaleocwsv2-panel-number\">11</span><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=11\">Job</a></section>"
+      },
+      "calls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1&rowFrom=10"
+      ],
+      "urls": [],
+      "failed": true
+    },
+    {
+      "name": "cursor-late-failure",
+      "board_url": "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+      "metadata": {
+        "host": "phe.tbe.taleo.net",
+        "partition": "phe01",
+        "org": "ACME",
+        "cws": 1
+      },
+      "bodies": {
+        "0": "<section class=\"oracletaleocwsv2-search-results\"><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=1\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=2\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=3\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=4\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=5\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=6\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=7\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=8\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=9\">Job</a><a href=\"https://phe.tbe.taleo.net/phe01/ats/careers/v2/viewRequisition?org=ACME&amp;cws=1&amp;rid=10\">Job</a><a class=\"jscroll-next\" href=\"/phe01/ats/careers/v2/searchResults?next&amp;rowFrom=10&amp;act=null&amp;sortColumn=null&amp;sortOrder=null&amp;currentTime=1785797000000\">Next</a></section>",
+        "10": null
+      },
+      "calls": [
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1",
+        "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1&rowFrom=10"
+      ],
+      "urls": [],
+      "failed": true
+    }
+  ]
+}

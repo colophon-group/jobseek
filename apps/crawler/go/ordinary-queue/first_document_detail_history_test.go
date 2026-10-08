@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -36,10 +37,18 @@ func firstNotionDetailHistoryFixture(t *testing.T) firstOwnerFixture {
 }
 
 func TestRealFirstDocumentDetailHistorySurvivesFreshEpoch(t *testing.T) {
-	for _, provider := range []string{"seek", "pdf", "notion"} {
+	for _, provider := range []string{"seek", "pdf", "notion", "linkedin", "jazzhr", "taleo"} {
 		t.Run(provider, func(t *testing.T) {
 			var old firstOwnerFixture
-			if provider == "pdf" || provider == "seek" {
+			if provider == "linkedin" || provider == "jazzhr" || provider == "taleo" {
+				source := map[string]string{
+					"linkedin": "https://ch.linkedin.com/jobs/view/engineer-123",
+					"jazzhr":   "https://fixture.applytojob.com/apply/jobs/details/123",
+					"taleo":    "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
+				}[provider]
+				domain := map[string]string{"linkedin": "ch.linkedin.com", "jazzhr": "fixture.applytojob.com", "taleo": "fixture.taleo.net"}[provider]
+				old = firstIndependentDetailFixture(t, fmt.Sprintf(`{"scraper_type":%q}`, provider), source, domain)
+			} else if provider == "pdf" || provider == "seek" {
 				old = firstAPIDetailFixture(t, provider)
 			} else {
 				old = firstNotionDetailHistoryFixture(t)

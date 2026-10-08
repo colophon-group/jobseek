@@ -196,6 +196,9 @@ def ownership_projection(payload: str) -> str:
                     "notion.public-detail/v1",
                     "pdf.public-detail/v1",
                     "seek.graphql-detail/v1",
+                    "linkedin.guest-detail/v1",
+                    "jazzhr.public-detail/v1",
+                    "taleo.enterprise-detail/v1",
                 )
                 or (d["profile"] == "workday.cxs-detail/v1" and d["board_id"] not in members)
                 or (

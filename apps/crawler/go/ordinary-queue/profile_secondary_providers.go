@@ -3,9 +3,13 @@ package queue
 import (
 	"encoding/json"
 	api "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
+	"strings"
 )
 
 func SecondaryProvider(provider string) bool {
+	if provider == "linkedin" || provider == "taleo" || provider == "practicematch" {
+		return true
+	}
 	if provider == "umantis" || provider == "notion" || provider == "unifr" || provider == "seek" || provider == "avature" {
 		return true
 	}
@@ -21,6 +25,15 @@ func paycomEnrichmentFields(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true})
 }
 func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
+	if config["crawler_type"] == "linkedin" {
+		// Existing LinkedIn configs delegate description and employment fields
+		// to their separately scheduled detail scraper. The guest monitor keeps
+		// the rich summary and the existing hybrid enqueue contract.
+		return monitorEnrichmentFields(config, map[string]bool{"title": true, "description": true, "locations": true, "date_posted": true, "employment_type": true, "job_location_type": true})
+	}
+	if config["crawler_type"] == "taleo" || config["crawler_type"] == "practicematch" {
+		return monitorEnrichmentFields(config, map[string]bool{})
+	}
 	if config["crawler_type"] == "seek" || config["crawler_type"] == "avature" {
 		return monitorEnrichmentFields(config, map[string]bool{})
 	}
@@ -74,6 +87,24 @@ func inspectSecondaryMonitor(boardID string, config map[string]string, md map[st
 	provider := config["crawler_type"]
 	var profile, endpoint string
 	switch provider {
+	case "linkedin":
+		o, e := api.LinkedInOptionsFromMetadata(config["board_url"], config["metadata"])
+		if e != nil || len(o.CompanyIDs) == 0 {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		profile, endpoint = "linkedin.guest-items/v1", api.LinkedInListingRequest(strings.Join(o.CompanyIDs, ","), "", 0).URL
+	case "taleo":
+		o, e := api.TaleoOptionsFromMetadata(config["board_url"], config["metadata"])
+		if e != nil || !o.Configured {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		profile, endpoint = "taleo.listing-urls/v1", o.Board.ListingURL(nil)
+	case "practicematch":
+		o, e := api.PracticeMatchOptionsFromMetadata(config["board_url"], config["metadata"])
+		if e != nil || string(md["proxy"]) != "true" {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		profile, endpoint = "practicematch.proxy-listing-urls/v1", o.BoardURL
 	case "seek":
 		o, e := api.SeekOptionsFromMetadata(config["board_url"], config["metadata"])
 		if e != nil {
@@ -260,6 +291,15 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 		return false
 	}
 	switch p.Provider {
+	case "linkedin":
+		o, e := api.LinkedInOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && p.Profile == "linkedin.guest-items/v1" && p.Endpoint == api.LinkedInListingRequest(strings.Join(o.CompanyIDs, ","), "", 0).URL && o.ResourceMatches(resource)
+	case "taleo":
+		o, e := api.TaleoOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && o.Configured && p.Profile == "taleo.listing-urls/v1" && p.Endpoint == o.Board.ListingURL(nil) && o.ResourceMatches(resource)
+	case "practicematch":
+		o, e := api.PracticeMatchOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && p.Profile == "practicematch.proxy-listing-urls/v1" && p.Endpoint == o.BoardURL && o.ResourceMatches(resource)
 	case "seek":
 		o, e := api.SeekOptionsFromMetadata(config["board_url"], config["metadata"])
 		return e == nil && p.Profile == "seek.advertiser-urls/v1" && p.Endpoint == o.PageURL(1) && o.ResourceMatches(resource)
@@ -349,6 +389,11 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 }
 func SecondaryMonitorGone(config map[string]string, resource string, status int, disabled bool) bool {
 	switch config["crawler_type"] {
+	case "linkedin", "practicematch":
+		return false
+	case "taleo":
+		o, e := api.TaleoOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && o.Configured && o.FirstResourceMatches(resource) && ((status == 404 || status == 410) && !disabled || disabled && (status == 301 || status == 302 || status == 303 || status == 307 || status == 308))
 	case "seek":
 		return false
 	case "avature":

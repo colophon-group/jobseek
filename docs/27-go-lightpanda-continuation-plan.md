@@ -391,3 +391,28 @@ Required checks, merge, immutable rollout, fresh admission, supported ordinary
 activation and independent serving proof passed. New-provider completions and
 full freshness/conservation proof remain pending at this checkpoint. Preserve every
 remaining board until its replacement contract passes.
+
+
+## Next grouped detail batch: LinkedIn, JazzHR, Taleo Enterprise
+
+Candidate **0.13.979** adds three independent detail profiles for **59 current
+configurations**: 34 LinkedIn, 20 JazzHR, and five Taleo Enterprise. It reuses
+the existing JSON-LD and DOM libraries and preserves provider-specific HTTP
+retries, selected enrichment fields, exact closed-job signals and bounded public
+redirects. All 51 original Python parser cases, 16 source identities, 63 actual
+Python request traces and 30 additional publisher/redirect cases pass. The 59
+registry bindings pass. Same-capture public replay matches all fields and request
+counts for 51 outcomes across 48 boards: 45 populated results and six actual
+Python empty results. Eleven boards have no active scheduled posting to sample.
+
+All 17 real database settlement cases and six document-history/cold reversal
+cases pass, including all three new detail profiles. The preceding three-monitor
+batch also passed its full queue (439.568s) and worker (649.559s) race suites.
+Deliver both batches together as **0.13.979**, with six new profiles and 98
+configurations. Combined broad suites, current-head required CI, immutable
+rollout and production admission remain pending. See the [candidate evidence](evidence/go-native-static-provider-details-candidate-2026-10-08.json).
+Finish and deliver the preceding grouped monitor batch while qualifying these
+details. Then address reusable DOM/API configuration gaps in groups: the retained
+source976 offline census found 193 unsupported DOM monitors and 86 API monitors.
+Those counts are prioritization evidence, not production ownership or freshness
+proof. Keep remaining boards enabled and preserve useful offline Python.
