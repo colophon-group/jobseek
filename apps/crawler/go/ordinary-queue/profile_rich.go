@@ -30,8 +30,8 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		for _, key := range []string{"tenant", "portal", "offset_overlap", "proxy", "render", "skip_ssl", "ssl_verify", "actions", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
 		}
-	case "earcu", "cvwarehouse", "woowa", "deel", "hibob", "traffit", "manatal", "hrmos", "recruiterbox", "jobs_ch", "adp", "cornerstone", "paylocity", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "comeet", "jobvite", "paycom", "rippling":
-		for _, key := range []string{"feed_url", "section", "jobs", "org_id", "origin", "cid", "cc_id", "ccId", "lang", "locale", "portal", "document_company_id", "site_id", "corp", "domain", "company_id", "company", "slug", "job_url_pattern", "host", "tenant", "board_id", "boardID", "listing_url", "description_include_regex", "include_closed", "proxy", "render", "skip_ssl", "ssl_verify", "actions", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+	case "beehire", "hirehive", "welcometothejungle", "computrabajo", "ycombinator", "earcu", "cvwarehouse", "woowa", "deel", "hibob", "traffit", "manatal", "hrmos", "recruiterbox", "jobs_ch", "adp", "cornerstone", "paylocity", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "comeet", "jobvite", "paycom", "rippling":
+		for _, key := range []string{"defaults", "organization_slug", "variant", "feed_url", "section", "jobs", "org_id", "origin", "cid", "cc_id", "ccId", "lang", "locale", "portal", "document_company_id", "site_id", "corp", "domain", "company_id", "company", "slug", "job_url_pattern", "host", "tenant", "board_id", "boardID", "listing_url", "description_include_regex", "include_closed", "proxy", "render", "skip_ssl", "ssl_verify", "actions", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
 		}
 	case "mokahr", "almacareer", "eightfold":

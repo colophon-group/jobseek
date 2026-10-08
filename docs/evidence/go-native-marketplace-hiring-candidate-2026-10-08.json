@@ -1,0 +1,46 @@
+{
+  "observed_at": "2026-10-08",
+  "candidate_version": "0.13.969",
+  "candidate_status": "implementation and focused local validation; full worker race suite running; final-head CI and deployment pending",
+  "providers": {
+    "beehire": 1,
+    "hirehive": 1,
+    "welcometothejungle": 3,
+    "computrabajo": 11,
+    "ycombinator": 4
+  },
+  "required_proxy_routes": 4,
+  "installed_profile_count": 121,
+  "actual_python_cases": {
+    "rich_fields": 28,
+    "listings": 18
+  },
+  "local_validation": {
+    "csv_admission": "passed20",
+    "http_inventory_and_policy": "passed",
+    "real_postgres_redis_write_policy_partial_scenarios": 18,
+    "proxy_direct_egress_rejection": "passed",
+    "real_cold_retirement_scenarios": 18,
+    "worker_focused_race_seconds": 10.182,
+    "retirement_race_seconds": 16.695,
+    "full_worker_race": "running",
+    "gofmt": "passed",
+    "vet_worker": "passed",
+    "ruff_fixture_generator": "passed"
+  },
+  "production_owned": false,
+  "completion_gates_open": [
+    "all remaining enabled profiles and runtime consumers",
+    "production freshness and queue conservation",
+    "remaining unacknowledged settlement causes/recovery",
+    "comparable whole-service cost",
+    "cold reversal observation window",
+    "production Python Playwright Chromium retirement"
+  ],
+  "public_readonly_probe": {
+    "direct_configurations_succeeded": 16,
+    "required_proxy_configurations_not_probed_with_direct_client": 4,
+    "rich_samples_have_title_html_location_language": true,
+    "scope": "Go HTTP discovery and sampled fields only; no production database writes or ownership"
+  }
+}

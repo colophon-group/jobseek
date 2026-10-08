@@ -18,94 +18,71 @@ not complete migration.
 
 ## Latest checkpoint — 2026-10-08
 
-Production runs **0.13.966**, source
-`c3ca78862534353152294fa94e2e6ce5600c531f`, delivered through the grouped
-[Deel/HiBob/TRAFFIT PR #10352](https://github.com/colophon-group/jobseek/pull/10352).
-The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37693870016)
-succeeded on its deploy-only second attempt with the original immutable images.
-Its first attempt correctly refused to deploy while the outgoing B0 owner existed.
-The matching-source [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37695407644)
-also succeeded. Independent cold verification passed at epoch **220**, with all
-seven base services running and restart-armed, six HTTP endpoints healthy, no
-native ownership/tokens, and preserved historical receipts.
-**Lightpanda 1.0.0** remains the newest stable release, reverified October 8,
-digest-pinned with CORS enabled.
+The eArcu/CVWarehouse/Woowa batch [PR #10355](https://github.com/colophon-group/jobseek/pull/10355)
+merged reviewed head `affe3f9406ac55dac2a9e6316f84a5e3ff1e5191` as source968
+`1676b322c6eced43601ee3ec3ed3ccd51edd850b`. Required CI, actual Crawler Deploy
+Gate, native execution, installed-image parity and Lightpanda checks passed.
+The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37705811220)
+has succeeded, including promotion, using its original build images. The matching
+[renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37705841688)
+has succeeded. Source968 native ownership remains inactive until independently
+verified promotion. **Lightpanda 1.0.0** is still the newest stable release,
+rechecked October 8, and remains digest-pinned with CORS enabled.
 
-The last broader native serving proof is source965 at epoch **219**, following
-[PR #10351](https://github.com/colophon-group/jobseek/pull/10351).
-It repaired the legacy ownership reader's API-browser classification and replaced
-the deployment proxy preflight with the installed Go executable. All eight health
-endpoints and ten running, restart-armed services passed before supported retirement.
-Fresh source965 admission covered **7,295 monitor boards**, **2,616 detail boards**
-and **1,482,240 scheduled postings**, with zero monitor configuration/cache
-mismatches. Forty cached detail incompatibilities and one actual Eightfold route
-retained legacy ownership. Three exclusive B0 boards remain outside ordinary
-ownership. The captured remaining monitor census was **587**.
+Outgoing source967 `0f25771595d3caceab3e6c403f9cd66bdbd5d763` completed the
+supported ordinary retirement and B0 rollback. Independent cold verification
+passed at epoch **222**: seven base services running and restart-armed, six HTTP
+health endpoints, no native owners or tokens, selectors cleared, historical
+write receipts preserved. The final source968 merge used that fresh closure
+proof and exact head/base authority; no deployment hold was bypassed.
 
-The grouped DOM/Inline/API-browser changes qualified 55 extra configurations.
-A normal-schedule followup observed three newly admitted API-browser boards with
-completed attempts and valid canonical descriptions; the 20 new DOM and two new
-Inline boards still lacked natural completions in that snapshot. Full fleet
-freshness and conservation remain unproved. The same followup recorded **77 claim
-errors and 183 unacknowledged detail attempts**. Bounded read-only SQL observations
-showed retained active detail fences and matching completed detail deadlines.
-These failures remain open migration work; service health is not settlement proof.
+Before retirement, source967 admitted **7,311 monitor boards**, **2,616 detail
+boards** and **1,483,867 scheduled postings**. Sixteen monitors were newly admitted:
+three Deel, four HiBob, three TRAFFIT and six DOM. Forty detail-cache
+incompatibilities and one actual Eightfold route retained legacy ownership;
+three exclusive B0 boards remained outside ordinary ownership. The captured
+remaining monitor census was **571**, including the incoming eight source968
+provider configurations and twenty configurations in the next five-provider
+candidate. These figures are admission evidence, not full fleet freshness.
 
-Source966 ports **Deel, HiBob and TRAFFIT together**, covering all ten existing
-registry configurations. Seventeen actual Python field cases, native HTTP/policy
-fixtures, six real PostgreSQL/Redis write/policy scenarios and nine cold-retirement
-scenarios passed. Required CI, actual Crawler Deploy Gate status and installed
-image checks passed at reviewed head `710c7223be6b88560072d9c2d9ed8a8e3c901e36`.
-The ten boards are **not yet native-owned**. The shared-action/detail-lock
-correction in [PR #10354](https://github.com/colophon-group/jobseek/pull/10354)
-merged as source967 `0f25771595d3caceab3e6c403f9cd66bdbd5d763` after final-head
-Required CI and actual Crawler Deploy Gate passed. Its original
-[crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37700033018)
-is in progress; the matching
-[renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37700256417)
-has succeeded at this checkpoint. Broader native ownership stays inactive
-until promotion and independent verification, then the combined profiles receive
-fresh source-bound admission and one supported activation.
-This avoids another activation of the reproduced lock-upgrade defect.
+Independent active-state checks passed for ten running, restart-armed services
+and eight health endpoints. The bounded normal-schedule snapshot had zero claim
+errors, 39 successful monitors and 47 successful details; three unacknowledged
+details and one unacknowledged monitor remained, with safe settlement/failure
+phase diagnostics. One newly admitted DOM board completed an attempt; new
+Deel/HiBob/TRAFFIT normal completions were not yet observed. All 24 sampled
+native-written descriptions had nonempty title/HTML/locales, exact matching
+signed SHA256-prefix hashes, matching R2 pointers and completed uploads.
+Full recovery, freshness and queue conservation remain open. Older monitor-only
+samples contained two legacy description hash mismatches predating migration;
+they are not evidence of a native description write.
 
-The merged correction adds shared DOM/Inline element and overlay
-removal actions, retaining Python defaults, selector semantics, failure policy,
-source binding and publisher checks. Full real PostgreSQL/Redis queue and worker
-race suites passed (351.501s and
-536.774s); actual pinned Lightpanda 1.0.0 service fixtures passed on both
-architectures, as did installed image parity. The separate ARM64 candidate/control
-measurement also passed. Fleet-wide service cost remains unproved.
-The retained census qualifies six additional DOM configurations; the candidate also repairs a reproduced shared-board lock upgrade deadlock
-affecting native detail profiles. Two real PostgreSQL detail validations failed
-as unacknowledged before the correction; the corrected concurrent regression,
-canonical/publisher revalidation and cold-retirement scenarios pass. Detail
-attempts keep a shared configuration/policy lock and exclusive posting/fence
-locks. Safe error-phase diagnostics are included for remaining failures.
-Actual production error reduction remains unproved until deployed and observed.
+Source967's shared DOM/Inline removal and overlay actions retain Python defaults,
+selector semantics, failure policy and publisher checks. Its detail fix removes
+a reproduced shared-board lock-upgrade deadlock while retaining exclusive
+posting/fence locks. Full real PostgreSQL/Redis queue and worker race suites,
+actual pinned Lightpanda service fixtures on both architectures and installed
+image parity passed. The separate ARM64 candidate/control measurement passed;
+comparable fleet-wide service cost remains unproved.
 
 ## Continue delivery
 
-1. Finish the original immutable source967 full-stack and matching renderer
-   rollouts after merged PR #10354, then independently verify the promoted
-   source/images and cold epoch220. The correction has passed the required
-   checks; keep broader ownership inactive through promotion.
-2. After exact-source promotion, activate/read back B0, then capture fresh
-   canonical configurations, cache and actual posting routes. Stage and activate
-   the resulting source/epoch-bound ordinary plan. Independently verify all
-   service identities, readiness, ownership, normal scheduled completions,
-   canonical content, publisher outcomes, freshness and queue conservation.
-   Diagnose the high detail unacknowledged and claim-error counts through safe
-   phase diagnostics; retain attempts and supported recovery authority.
-3. Finish the next eArcu/CVWarehouse/Woowa group through full native suites,
-   required CI, installed image identity and supported deployment. It covers
-   all eight registry configurations, including both required eArcu proxies.
-   Continue useful groups across remaining provider and shared browser contracts.
-   The captured census includes DOM 219, API sniffer 116, RSS 17 and Sitemap 11.
-   Shared DOM/Inline actions can qualify multiple types together; test actual
-   Lightpanda behavior and preserve configured resource, proxy and browser
-   requirements. Combine small shared additions with provider coverage instead
-   of a separate runtime rollout for each option. Never weaken admission to reduce
-   the count. Source966's ten new boards still need fresh serving evidence.
+1. Finish source968's original immutable full-stack rollout and independently
+   verify the promoted source, original image digests and cold epoch222. Preserve
+   original failed-attempt evidence and use only supported recovery if needed.
+2. Activate/read back source968 B0, then capture fresh canonical configurations,
+   cache and actual posting routes. Stage and activate one source/epoch-bound
+   ordinary plan. Verify service identities, readiness, normal scheduled work,
+   canonical content, publisher outcomes, freshness and conservation. Diagnose
+   remaining unacknowledged settlement phases using actual evidence; do not
+   equate completed fences with successful work or health with settlement.
+3. Complete the five-type Beehire/HireHive/WTTJ/Computrabajo/Y Combinator group,
+   covering all twenty registry configurations and four required proxy routes.
+   Then prioritize shared DOM/API/browser contracts with the largest remaining
+   cohorts, combining compatible provider and action changes in useful batches.
+   The source967 remaining census includes DOM213, API sniffer116, RSS17 and
+   Sitemap11. Preserve resource, proxy, browser and complete-inventory contracts;
+   never weaken admission to reduce the remaining count.
 4. Replace mandatory Python runtime consumers: legacy worker/browser execution,
    schema preparation, supervision/reaper/metrics and operational entrypoints.
    Reuse delivered Go sync, queue, schema, reaper, drain and exporter engines;
@@ -123,13 +100,13 @@ status. Batch multiple compatible types per iteration. Add infrastructure or
 fixtures for an observed failure or a changed contract. Keep the full delivery
 goal active until all completion evidence and production retirement are done.
 
-## Next grouped candidate — eArcu, CVWarehouse and Woowa
+## Delivered implementation — eArcu, CVWarehouse and Woowa
 
 Candidate **0.13.968** adds four immutable profiles (115 total), covering eArcu's
 three boards, CVWarehouse's two boards and all three Woowa variants. Both Aldi
 eArcu boards retain required proxy authority and actual credentialed CONNECT;
-no automatic direct fallback is introduced. This candidate is not yet deployed,
-admitted or native-owned.
+no automatic direct fallback is introduced. The implementation has merged; its original crawler rollout is pending and
+production admission and native ownership are not yet established.
 
 The port preserves eArcu live-only XML, bounded autodetection, retries and strict
 same-portal vacancy URLs; CVWarehouse's largest advertised section, configured
@@ -144,7 +121,8 @@ real PostgreSQL/Redis write/reservation/partial-failure scenarios passed, includ
 proxy execution; twelve real cold-retirement scenarios passed. The full queue
 race run (360.334s) found one outdated registry expectation, corrected to require
 explicit eArcu proxy authority; the focused registry/admission race retest passed
-(1.627s). The full worker race suite and final-head CI remain pending.
+(1.627s). The full worker race suite passed (545.398s). Final-head native CI passed the
+corrected complete queue suite; Required CI and actual Crawler Deploy Gate passed.
 
 Database verification caught and corrected two integration defects before
 release: Woowa identities need provider-bound validation in the existing identity
@@ -153,6 +131,38 @@ by the generic bare-host rule. The latter is an intentional correction to the
 current Python worker's filtering: only HTTPS CVWarehouse root URLs with exactly
 one numeric `job` query qualify. Generic root/navigation filtering remains.
 Public-feed and normal-schedule production results are still required.
+
+## Next grouped candidate — five public hiring providers
+
+Candidate **0.13.969** ports Beehire, HireHive, Welcome to the Jungle,
+Computrabajo/PandaPe and Y Combinator together: twenty current configurations,
+four required proxy routes and six immutable profiles (**121** total).
+Implementation and focused local validation are complete; full suites, final-head
+CI, installed images, production admission and native ownership remain pending.
+
+Beehire preserves campaign-language selection, localized titles/locales, contract
+codes, location fallback and incomplete/duplicate truncation. HireHive preserves
+public pagination, tenant defaults, bounded retries and salary field parsing.
+WTTJ retains anonymous search-only APIs, legacy organization hints, marketplace
+mirror deduplication, ten concurrent detail requests, terminal-status filtering
+and detail-closure handling. Computrabajo/PandaPe uses explicit totals and page
+markers, 20-row pages, snapshot restart, bounded 403/429 retries and the existing
+JSON-LD detail route; proxy owners cannot use direct egress. Y Combinator retains
+scoped raw-HTML URL discovery and delegates posting fields to JSON-LD details.
+
+Twenty-eight rich-field and eighteen listing cases match actual Python parsers.
+All twenty CSV admissions pass. HTTP fixtures cover complete inventories,
+late-page/detail failures, reservations, redirects, retries, gone semantics and
+snapshot recovery. Eighteen real PostgreSQL/Redis scenarios verify canonical
+writes, HTML staging, localized titles/locales, detail queue intents, reservation
+and partial-failure settlement; a separate proxy execution guard passes.
+Eighteen real cold-retirement scenarios pass, including interrupted writes,
+commit-before-ack recovery and refusal of operator drift. Read-only Go HTTP probes succeeded on all sixteen direct configurations,
+including live rich title/HTML/location/language samples and multi-page inventories
+up to 2,760 jobs. Four required proxy configurations were deliberately not fetched
+with a direct client; their credentialed proxy fixture and transport guard pass.
+The full worker race suite is running; do not report full-suite or production
+success yet.
 
 ## Operational handoff
 

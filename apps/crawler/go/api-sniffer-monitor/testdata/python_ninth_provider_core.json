@@ -1,0 +1,2156 @@
+{
+  "cases": [
+    {
+      "provider": "beehire",
+      "name": "localized",
+      "row": {
+        "id": "b1",
+        "inviteKey": "b1",
+        "title": {
+          "1": " Ingénieur ",
+          "0": " Engineer "
+        },
+        "language": 1,
+        "fullDescription": {
+          "1": "<p>Construire</p>",
+          "0": "<p>Build</p>"
+        },
+        "location": {
+          "city": "Geneva",
+          "state": "Geneva",
+          "country": "Switzerland"
+        },
+        "details": {
+          "contract": {
+            "type": "contractType_permanent",
+            "remote": "hybrid"
+          }
+        },
+        "jobCategories": [
+          {
+            "label": "Platform"
+          }
+        ],
+        "created": "2026-10-08"
+      },
+      "source": "https://app.beehire.com/career/tenant",
+      "metadata": {},
+      "expected": {
+        "url": "https://app.beehire.com/invite/b1",
+        "title": "Ingénieur",
+        "description": "<p>Construire</p>",
+        "locations": [
+          "Geneva, Switzerland"
+        ],
+        "employment_type": "contractType_permanent",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": null,
+        "language": "fr",
+        "extras": null,
+        "metadata": {
+          "id": "b1",
+          "invite_key": "b1",
+          "contract": {
+            "type": "contractType_permanent",
+            "remote": "hybrid"
+          },
+          "categories": [
+            "Platform"
+          ]
+        },
+        "localizations": {
+          "fr": {
+            "title": "Ingénieur",
+            "description": "<p>Construire</p>",
+            "locations": [
+              "Geneva, Switzerland"
+            ]
+          },
+          "en": {
+            "title": "Engineer",
+            "description": "<p>Build</p>",
+            "locations": [
+              "Geneva, Switzerland"
+            ]
+          }
+        }
+      },
+      "error": false
+    },
+    {
+      "provider": "beehire",
+      "name": "plain",
+      "row": {
+        "id": "b1",
+        "inviteKey": "b1",
+        "title": " Engineer ",
+        "language": 1,
+        "fullDescription": "<p>Build</p>",
+        "location": {
+          "city": "Geneva",
+          "state": "Geneva",
+          "country": "Switzerland"
+        },
+        "details": {
+          "contract": {
+            "type": "contractType_permanent",
+            "remote": "hybrid"
+          }
+        },
+        "jobCategories": [
+          {
+            "label": "Platform"
+          }
+        ],
+        "created": "2026-10-08"
+      },
+      "source": "https://app.beehire.com/career/tenant",
+      "metadata": {},
+      "expected": {
+        "url": "https://app.beehire.com/invite/b1",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Geneva, Switzerland"
+        ],
+        "employment_type": "contractType_permanent",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": null,
+        "language": "fr",
+        "extras": null,
+        "metadata": {
+          "id": "b1",
+          "invite_key": "b1",
+          "contract": {
+            "type": "contractType_permanent",
+            "remote": "hybrid"
+          },
+          "categories": [
+            "Platform"
+          ]
+        },
+        "localizations": null
+      },
+      "error": false
+    },
+    {
+      "provider": "beehire",
+      "name": "first-language",
+      "row": {
+        "id": "b1",
+        "inviteKey": "b1",
+        "title": {
+          "4": " Engenheiro ",
+          "1": " Ingénieur "
+        },
+        "language": 99,
+        "fullDescription": {
+          "1": "<p>Construire</p>",
+          "0": "<p>Build</p>"
+        },
+        "location": {
+          "city": "Geneva",
+          "state": "Geneva",
+          "country": "Switzerland"
+        },
+        "details": {
+          "contract": {
+            "type": "contractType_permanent",
+            "remote": "hybrid"
+          }
+        },
+        "jobCategories": [
+          {
+            "label": "Platform"
+          }
+        ],
+        "created": "2026-10-08"
+      },
+      "source": "https://app.beehire.com/career/tenant",
+      "metadata": {},
+      "expected": {
+        "url": "https://app.beehire.com/invite/b1",
+        "title": "Engenheiro",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Geneva, Switzerland"
+        ],
+        "employment_type": "contractType_permanent",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "id": "b1",
+          "invite_key": "b1",
+          "contract": {
+            "type": "contractType_permanent",
+            "remote": "hybrid"
+          },
+          "categories": [
+            "Platform"
+          ]
+        },
+        "localizations": {
+          "fr": {
+            "title": "Ingénieur",
+            "description": "<p>Construire</p>",
+            "locations": [
+              "Geneva, Switzerland"
+            ]
+          },
+          "en": {
+            "title": null,
+            "description": "<p>Build</p>",
+            "locations": [
+              "Geneva, Switzerland"
+            ]
+          },
+          "pt": {
+            "title": "Engenheiro",
+            "description": null,
+            "locations": [
+              "Geneva, Switzerland"
+            ]
+          }
+        }
+      },
+      "error": false
+    },
+    {
+      "provider": "beehire",
+      "name": "fallback-description",
+      "row": {
+        "id": "b1",
+        "inviteKey": "b1",
+        "title": {
+          "1": " Ingénieur ",
+          "0": " Engineer "
+        },
+        "language": 1,
+        "fullDescription": null,
+        "location": {
+          "city": "Geneva",
+          "state": "Geneva",
+          "country": "Switzerland"
+        },
+        "details": {
+          "contract": {
+            "type": "contractType_permanent",
+            "remote": "hybrid"
+          }
+        },
+        "jobCategories": [
+          {
+            "label": "Platform"
+          }
+        ],
+        "created": "2026-10-08",
+        "description": {
+          "0": "<p>Build</p>"
+        }
+      },
+      "source": "https://app.beehire.com/career/tenant",
+      "metadata": {},
+      "expected": {
+        "url": "https://app.beehire.com/invite/b1",
+        "title": "Ingénieur",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Geneva, Switzerland"
+        ],
+        "employment_type": "contractType_permanent",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": null,
+        "language": "fr",
+        "extras": null,
+        "metadata": {
+          "id": "b1",
+          "invite_key": "b1",
+          "contract": {
+            "type": "contractType_permanent",
+            "remote": "hybrid"
+          },
+          "categories": [
+            "Platform"
+          ]
+        },
+        "localizations": {
+          "fr": {
+            "title": "Ingénieur",
+            "description": null,
+            "locations": [
+              "Geneva, Switzerland"
+            ]
+          },
+          "en": {
+            "title": "Engineer",
+            "description": "<p>Build</p>",
+            "locations": [
+              "Geneva, Switzerland"
+            ]
+          }
+        }
+      },
+      "error": false
+    },
+    {
+      "provider": "beehire",
+      "name": "worldwide",
+      "row": {
+        "id": "b1",
+        "inviteKey": "b1",
+        "title": {
+          "1": " Ingénieur ",
+          "0": " Engineer "
+        },
+        "language": 1,
+        "fullDescription": {
+          "1": "<p>Construire</p>",
+          "0": "<p>Build</p>"
+        },
+        "location": {
+          "isWorldwide": true
+        },
+        "details": {
+          "contract": {
+            "type": "contractType_permanent",
+            "remote": "hybrid"
+          }
+        },
+        "jobCategories": [
+          {
+            "label": "Platform"
+          }
+        ],
+        "created": "2026-10-08"
+      },
+      "source": "https://app.beehire.com/career/tenant",
+      "metadata": {},
+      "expected": {
+        "url": "https://app.beehire.com/invite/b1",
+        "title": "Ingénieur",
+        "description": "<p>Construire</p>",
+        "locations": [
+          "Worldwide"
+        ],
+        "employment_type": "contractType_permanent",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": null,
+        "language": "fr",
+        "extras": null,
+        "metadata": {
+          "id": "b1",
+          "invite_key": "b1",
+          "contract": {
+            "type": "contractType_permanent",
+            "remote": "hybrid"
+          },
+          "categories": [
+            "Platform"
+          ]
+        },
+        "localizations": {
+          "fr": {
+            "title": "Ingénieur",
+            "description": "<p>Construire</p>",
+            "locations": [
+              "Worldwide"
+            ]
+          },
+          "en": {
+            "title": "Engineer",
+            "description": "<p>Build</p>",
+            "locations": [
+              "Worldwide"
+            ]
+          }
+        }
+      },
+      "error": false
+    },
+    {
+      "provider": "beehire",
+      "name": "named-location",
+      "row": {
+        "id": "b1",
+        "inviteKey": "b1",
+        "title": {
+          "1": " Ingénieur ",
+          "0": " Engineer "
+        },
+        "language": 1,
+        "fullDescription": {
+          "1": "<p>Construire</p>",
+          "0": "<p>Build</p>"
+        },
+        "location": {
+          "name": " Zürich ",
+          "isWorldwide": true
+        },
+        "details": {
+          "contract": {
+            "type": "contractType_permanent",
+            "remote": "hybrid"
+          }
+        },
+        "jobCategories": [
+          {
+            "label": "Platform"
+          }
+        ],
+        "created": "2026-10-08"
+      },
+      "source": "https://app.beehire.com/career/tenant",
+      "metadata": {},
+      "expected": {
+        "url": "https://app.beehire.com/invite/b1",
+        "title": "Ingénieur",
+        "description": "<p>Construire</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": "contractType_permanent",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": null,
+        "language": "fr",
+        "extras": null,
+        "metadata": {
+          "id": "b1",
+          "invite_key": "b1",
+          "contract": {
+            "type": "contractType_permanent",
+            "remote": "hybrid"
+          },
+          "categories": [
+            "Platform"
+          ]
+        },
+        "localizations": {
+          "fr": {
+            "title": "Ingénieur",
+            "description": "<p>Construire</p>",
+            "locations": [
+              "Zürich"
+            ]
+          },
+          "en": {
+            "title": "Engineer",
+            "description": "<p>Build</p>",
+            "locations": [
+              "Zürich"
+            ]
+          }
+        }
+      },
+      "error": false
+    },
+    {
+      "provider": "beehire",
+      "name": "no-title",
+      "row": {
+        "id": "b1",
+        "inviteKey": "b1",
+        "title": null,
+        "language": 1,
+        "fullDescription": {
+          "1": "<p>Construire</p>",
+          "0": "<p>Build</p>"
+        },
+        "location": {
+          "city": "Geneva",
+          "state": "Geneva",
+          "country": "Switzerland"
+        },
+        "details": {
+          "contract": {
+            "type": "contractType_permanent",
+            "remote": "hybrid"
+          }
+        },
+        "jobCategories": [
+          {
+            "label": "Platform"
+          }
+        ],
+        "created": "2026-10-08"
+      },
+      "source": "https://app.beehire.com/career/tenant",
+      "metadata": {},
+      "expected": null,
+      "error": false
+    },
+    {
+      "provider": "beehire",
+      "name": "no-url",
+      "row": {
+        "id": "b1",
+        "inviteKey": null,
+        "title": {
+          "1": " Ingénieur ",
+          "0": " Engineer "
+        },
+        "language": 1,
+        "fullDescription": {
+          "1": "<p>Construire</p>",
+          "0": "<p>Build</p>"
+        },
+        "location": {
+          "city": "Geneva",
+          "state": "Geneva",
+          "country": "Switzerland"
+        },
+        "details": {
+          "contract": {
+            "type": "contractType_permanent",
+            "remote": "hybrid"
+          }
+        },
+        "jobCategories": [
+          {
+            "label": "Platform"
+          }
+        ],
+        "created": "2026-10-08"
+      },
+      "source": "https://app.beehire.com/career/tenant",
+      "metadata": {},
+      "expected": null,
+      "error": false
+    },
+    {
+      "provider": "beehire",
+      "name": "invite-link",
+      "row": {
+        "id": "b1",
+        "inviteKey": "b1",
+        "title": {
+          "1": " Ingénieur ",
+          "0": " Engineer "
+        },
+        "language": 1,
+        "fullDescription": {
+          "1": "<p>Construire</p>",
+          "0": "<p>Build</p>"
+        },
+        "location": {
+          "city": "Geneva",
+          "state": "Geneva",
+          "country": "Switzerland"
+        },
+        "details": {
+          "contract": {
+            "type": "contractType_permanent",
+            "remote": "hybrid"
+          }
+        },
+        "jobCategories": [
+          {
+            "label": "Platform"
+          }
+        ],
+        "created": "2026-10-08",
+        "inviteLink": "/invite/direct"
+      },
+      "source": "https://app.beehire.com/career/tenant",
+      "metadata": {},
+      "expected": {
+        "url": "https://app.beehire.com/invite/direct",
+        "title": "Ingénieur",
+        "description": "<p>Construire</p>",
+        "locations": [
+          "Geneva, Switzerland"
+        ],
+        "employment_type": "contractType_permanent",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": null,
+        "language": "fr",
+        "extras": null,
+        "metadata": {
+          "id": "b1",
+          "invite_key": "b1",
+          "contract": {
+            "type": "contractType_permanent",
+            "remote": "hybrid"
+          },
+          "categories": [
+            "Platform"
+          ]
+        },
+        "localizations": {
+          "fr": {
+            "title": "Ingénieur",
+            "description": "<p>Construire</p>",
+            "locations": [
+              "Geneva, Switzerland"
+            ]
+          },
+          "en": {
+            "title": "Engineer",
+            "description": "<p>Build</p>",
+            "locations": [
+              "Geneva, Switzerland"
+            ]
+          }
+        }
+      },
+      "error": false
+    },
+    {
+      "provider": "beehire",
+      "name": "empty-description-map",
+      "row": {
+        "id": "b1",
+        "inviteKey": "b1",
+        "title": {
+          "1": " Ingénieur ",
+          "0": " Engineer "
+        },
+        "language": 1,
+        "fullDescription": {},
+        "location": {
+          "city": "Geneva",
+          "state": "Geneva",
+          "country": "Switzerland"
+        },
+        "details": {
+          "contract": {
+            "type": "contractType_permanent",
+            "remote": "hybrid"
+          }
+        },
+        "jobCategories": [
+          {
+            "label": "Platform"
+          }
+        ],
+        "created": "2026-10-08",
+        "description": {
+          "0": "fallback"
+        }
+      },
+      "source": "https://app.beehire.com/career/tenant",
+      "metadata": {},
+      "expected": {
+        "url": "https://app.beehire.com/invite/b1",
+        "title": "Ingénieur",
+        "description": "fallback",
+        "locations": [
+          "Geneva, Switzerland"
+        ],
+        "employment_type": "contractType_permanent",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": null,
+        "language": "fr",
+        "extras": null,
+        "metadata": {
+          "id": "b1",
+          "invite_key": "b1",
+          "contract": {
+            "type": "contractType_permanent",
+            "remote": "hybrid"
+          },
+          "categories": [
+            "Platform"
+          ]
+        },
+        "localizations": {
+          "fr": {
+            "title": "Ingénieur",
+            "description": null,
+            "locations": [
+              "Geneva, Switzerland"
+            ]
+          },
+          "en": {
+            "title": "Engineer",
+            "description": null,
+            "locations": [
+              "Geneva, Switzerland"
+            ]
+          }
+        }
+      },
+      "error": false
+    },
+    {
+      "provider": "hirehive",
+      "name": "rich",
+      "row": {
+        "id": 12,
+        "hosted_url": "https://tenant.hirehive.com/engineer-12/",
+        "title": "Engineer",
+        "description": {
+          "html": "<p>Build</p>",
+          "text": "fallback"
+        },
+        "location": " Zürich ",
+        "type": {
+          "type": "Full time"
+        },
+        "language": {
+          "code": "de_CH"
+        },
+        "published_date": "2026-10-08",
+        "compensation_tiers": [
+          {
+            "min_value": 100000,
+            "max_value": 130000,
+            "currency_code": "CHF",
+            "interval": "annually"
+          }
+        ],
+        "category": {
+          "name": "Platform"
+        },
+        "experience": {
+          "type": "senior"
+        }
+      },
+      "source": "https://tenant.hirehive.com/",
+      "metadata": {
+        "defaults": {
+          "job_location_type": "hybrid"
+        }
+      },
+      "expected": {
+        "url": "https://tenant.hirehive.com/engineer-12/",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": {
+          "currency": "CHF",
+          "min": 100000,
+          "max": 130000,
+          "unit": "year"
+        },
+        "language": "de",
+        "extras": null,
+        "metadata": {
+          "id": 12,
+          "category": "Platform",
+          "experience": "senior"
+        },
+        "localizations": null
+      },
+      "error": false
+    },
+    {
+      "provider": "hirehive",
+      "name": "structured-location",
+      "row": {
+        "id": 12,
+        "hosted_url": "https://tenant.hirehive.com/engineer-12/",
+        "title": "Engineer",
+        "description": {
+          "html": "<p>Build</p>",
+          "text": "fallback"
+        },
+        "location": null,
+        "type": {
+          "type": "Full time"
+        },
+        "language": {
+          "code": "de_CH"
+        },
+        "published_date": "2026-10-08",
+        "compensation_tiers": [
+          {
+            "min_value": 100000,
+            "max_value": 130000,
+            "currency_code": "CHF",
+            "interval": "annually"
+          }
+        ],
+        "category": {
+          "name": "Platform"
+        },
+        "experience": {
+          "type": "senior"
+        },
+        "state_code": "ZH",
+        "country": {
+          "name": "CH"
+        }
+      },
+      "source": "https://tenant.hirehive.com/",
+      "metadata": {
+        "defaults": {
+          "job_location_type": "hybrid"
+        }
+      },
+      "expected": {
+        "url": "https://tenant.hirehive.com/engineer-12/",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "ZH, CH"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": {
+          "currency": "CHF",
+          "min": 100000,
+          "max": 130000,
+          "unit": "year"
+        },
+        "language": "de",
+        "extras": null,
+        "metadata": {
+          "id": 12,
+          "category": "Platform",
+          "experience": "senior"
+        },
+        "localizations": null
+      },
+      "error": false
+    },
+    {
+      "provider": "hirehive",
+      "name": "text-description",
+      "row": {
+        "id": 12,
+        "hosted_url": "https://tenant.hirehive.com/engineer-12/",
+        "title": "Engineer",
+        "description": {
+          "html": "",
+          "text": "Build"
+        },
+        "location": " Zürich ",
+        "type": {
+          "type": "Full time"
+        },
+        "language": {
+          "code": "de_CH"
+        },
+        "published_date": "2026-10-08",
+        "compensation_tiers": [
+          {
+            "min_value": 100000,
+            "max_value": 130000,
+            "currency_code": "CHF",
+            "interval": "annually"
+          }
+        ],
+        "category": {
+          "name": "Platform"
+        },
+        "experience": {
+          "type": "senior"
+        }
+      },
+      "source": "https://tenant.hirehive.com/",
+      "metadata": {
+        "defaults": {
+          "job_location_type": "hybrid"
+        }
+      },
+      "expected": {
+        "url": "https://tenant.hirehive.com/engineer-12/",
+        "title": "Engineer",
+        "description": "Build",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": {
+          "currency": "CHF",
+          "min": 100000,
+          "max": 130000,
+          "unit": "year"
+        },
+        "language": "de",
+        "extras": null,
+        "metadata": {
+          "id": 12,
+          "category": "Platform",
+          "experience": "senior"
+        },
+        "localizations": null
+      },
+      "error": false
+    },
+    {
+      "provider": "hirehive",
+      "name": "empty-language",
+      "row": {
+        "id": 12,
+        "hosted_url": "https://tenant.hirehive.com/engineer-12/",
+        "title": "Engineer",
+        "description": {
+          "html": "<p>Build</p>",
+          "text": "fallback"
+        },
+        "location": " Zürich ",
+        "type": {
+          "type": "Full time"
+        },
+        "language": {
+          "code": ""
+        },
+        "published_date": "2026-10-08",
+        "compensation_tiers": [
+          {
+            "min_value": 100000,
+            "max_value": 130000,
+            "currency_code": "CHF",
+            "interval": "annually"
+          }
+        ],
+        "category": {
+          "name": "Platform"
+        },
+        "experience": {
+          "type": "senior"
+        }
+      },
+      "source": "https://tenant.hirehive.com/",
+      "metadata": {
+        "defaults": {
+          "job_location_type": "hybrid"
+        }
+      },
+      "expected": {
+        "url": "https://tenant.hirehive.com/engineer-12/",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": {
+          "currency": "CHF",
+          "min": 100000,
+          "max": 130000,
+          "unit": "year"
+        },
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "id": 12,
+          "category": "Platform",
+          "experience": "senior"
+        },
+        "localizations": null
+      },
+      "error": false
+    },
+    {
+      "provider": "hirehive",
+      "name": "invalid-language",
+      "row": {
+        "id": 12,
+        "hosted_url": "https://tenant.hirehive.com/engineer-12/",
+        "title": "Engineer",
+        "description": {
+          "html": "<p>Build</p>",
+          "text": "fallback"
+        },
+        "location": " Zürich ",
+        "type": {
+          "type": "Full time"
+        },
+        "language": {
+          "code": "deutsch"
+        },
+        "published_date": "2026-10-08",
+        "compensation_tiers": [
+          {
+            "min_value": 100000,
+            "max_value": 130000,
+            "currency_code": "CHF",
+            "interval": "annually"
+          }
+        ],
+        "category": {
+          "name": "Platform"
+        },
+        "experience": {
+          "type": "senior"
+        }
+      },
+      "source": "https://tenant.hirehive.com/",
+      "metadata": {
+        "defaults": {
+          "job_location_type": "hybrid"
+        }
+      },
+      "expected": {
+        "url": "https://tenant.hirehive.com/engineer-12/",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": {
+          "currency": "CHF",
+          "min": 100000,
+          "max": 130000,
+          "unit": "year"
+        },
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "id": 12,
+          "category": "Platform",
+          "experience": "senior"
+        },
+        "localizations": null
+      },
+      "error": false
+    },
+    {
+      "provider": "hirehive",
+      "name": "salary-fallback",
+      "row": {
+        "id": 12,
+        "hosted_url": "https://tenant.hirehive.com/engineer-12/",
+        "title": "Engineer",
+        "description": {
+          "html": "<p>Build</p>",
+          "text": "fallback"
+        },
+        "location": " Zürich ",
+        "type": {
+          "type": "Full time"
+        },
+        "language": {
+          "code": "de_CH"
+        },
+        "published_date": "2026-10-08",
+        "compensation_tiers": [],
+        "category": {
+          "name": "Platform"
+        },
+        "experience": {
+          "type": "senior"
+        },
+        "salary": "CHF 100000 - 130000 per year"
+      },
+      "source": "https://tenant.hirehive.com/",
+      "metadata": {
+        "defaults": {
+          "job_location_type": "hybrid"
+        }
+      },
+      "expected": {
+        "url": "https://tenant.hirehive.com/engineer-12/",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": {
+          "currency": "CHF",
+          "min": 100000,
+          "max": 130000,
+          "unit": "year"
+        },
+        "language": "de",
+        "extras": null,
+        "metadata": {
+          "id": 12,
+          "category": "Platform",
+          "experience": "senior"
+        },
+        "localizations": null
+      },
+      "error": false
+    },
+    {
+      "provider": "hirehive",
+      "name": "zero-tier",
+      "row": {
+        "id": 12,
+        "hosted_url": "https://tenant.hirehive.com/engineer-12/",
+        "title": "Engineer",
+        "description": {
+          "html": "<p>Build</p>",
+          "text": "fallback"
+        },
+        "location": " Zürich ",
+        "type": {
+          "type": "Full time"
+        },
+        "language": {
+          "code": "de_CH"
+        },
+        "published_date": "2026-10-08",
+        "compensation_tiers": [
+          {
+            "min_value": 0,
+            "max_value": null,
+            "interval": "hour",
+            "currency_code": "CHF"
+          }
+        ],
+        "category": {
+          "name": "Platform"
+        },
+        "experience": {
+          "type": "senior"
+        }
+      },
+      "source": "https://tenant.hirehive.com/",
+      "metadata": {
+        "defaults": {
+          "job_location_type": "hybrid"
+        }
+      },
+      "expected": {
+        "url": "https://tenant.hirehive.com/engineer-12/",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Zürich"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": {
+          "currency": "CHF",
+          "min": 0,
+          "max": null,
+          "unit": "hour"
+        },
+        "language": "de",
+        "extras": null,
+        "metadata": {
+          "id": 12,
+          "category": "Platform",
+          "experience": "senior"
+        },
+        "localizations": null
+      },
+      "error": false
+    },
+    {
+      "provider": "hirehive",
+      "name": "no-url",
+      "row": {
+        "id": 12,
+        "hosted_url": null,
+        "title": "Engineer",
+        "description": {
+          "html": "<p>Build</p>",
+          "text": "fallback"
+        },
+        "location": " Zürich ",
+        "type": {
+          "type": "Full time"
+        },
+        "language": {
+          "code": "de_CH"
+        },
+        "published_date": "2026-10-08",
+        "compensation_tiers": [
+          {
+            "min_value": 100000,
+            "max_value": 130000,
+            "currency_code": "CHF",
+            "interval": "annually"
+          }
+        ],
+        "category": {
+          "name": "Platform"
+        },
+        "experience": {
+          "type": "senior"
+        }
+      },
+      "source": "https://tenant.hirehive.com/",
+      "metadata": {
+        "defaults": {
+          "job_location_type": "hybrid"
+        }
+      },
+      "expected": null,
+      "error": false
+    },
+    {
+      "provider": "welcometothejungle",
+      "name": "republished",
+      "row": {
+        "slug": "engineer-12",
+        "name": "Engineer",
+        "status": "published",
+        "archived_at": "2020-01-01",
+        "description": "<p>Build</p>",
+        "contract_type": "CDI",
+        "remote": "partial",
+        "language": "fr",
+        "published_at": "2026-10-08",
+        "salary_min": 50000,
+        "salary_max": 70000,
+        "salary_currency": "EUR",
+        "salary_period": "yearly",
+        "reference": "REF",
+        "start_date": "2026-11-01",
+        "profession": {
+          "name": {
+            "fr": "Ingénierie",
+            "en": "Engineering"
+          }
+        },
+        "profile": "<p>Skills</p>",
+        "key_missions": [
+          "Build",
+          "Ship"
+        ],
+        "skills": [
+          {
+            "name": {
+              "fr": "Go",
+              "en": "Golang"
+            }
+          }
+        ],
+        "offices": [
+          {
+            "local_address": "Paris"
+          },
+          {
+            "city": "Paris"
+          },
+          {
+            "address": "Lyon"
+          }
+        ]
+      },
+      "source": "https://www.welcometothejungle.com/fr/companies/tenant/jobs",
+      "metadata": {},
+      "expected": {
+        "url": "https://www.welcometothejungle.com/fr/companies/tenant/jobs/engineer-12",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Paris",
+          "Lyon"
+        ],
+        "employment_type": "CDI",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": {
+          "currency": "EUR",
+          "min": 50000,
+          "max": 70000,
+          "unit": "year"
+        },
+        "language": "fr",
+        "extras": {
+          "qualifications": "<p>Skills</p>",
+          "responsibilities": [
+            "Build",
+            "Ship"
+          ],
+          "skills": [
+            "Go"
+          ]
+        },
+        "metadata": {
+          "reference": "REF",
+          "start_date": "2026-11-01",
+          "profession": "Ingénierie"
+        },
+        "localizations": null
+      },
+      "error": false
+    },
+    {
+      "provider": "welcometothejungle",
+      "name": "archived",
+      "row": {
+        "slug": "engineer-12",
+        "name": "Engineer",
+        "status": "archived",
+        "archived_at": "2020-01-01",
+        "description": "<p>Build</p>",
+        "contract_type": "CDI",
+        "remote": "partial",
+        "language": "fr",
+        "published_at": "2026-10-08",
+        "salary_min": 50000,
+        "salary_max": 70000,
+        "salary_currency": "EUR",
+        "salary_period": "yearly",
+        "reference": "REF",
+        "start_date": "2026-11-01",
+        "profession": {
+          "name": {
+            "fr": "Ingénierie",
+            "en": "Engineering"
+          }
+        },
+        "profile": "<p>Skills</p>",
+        "key_missions": [
+          "Build",
+          "Ship"
+        ],
+        "skills": [
+          {
+            "name": {
+              "fr": "Go",
+              "en": "Golang"
+            }
+          }
+        ],
+        "offices": [
+          {
+            "local_address": "Paris"
+          },
+          {
+            "city": "Paris"
+          },
+          {
+            "address": "Lyon"
+          }
+        ]
+      },
+      "source": "https://www.welcometothejungle.com/fr/companies/tenant/jobs",
+      "metadata": {},
+      "expected": null,
+      "error": false
+    },
+    {
+      "provider": "welcometothejungle",
+      "name": "expired",
+      "row": {
+        "slug": "engineer-12",
+        "name": "Engineer",
+        "status": "expired",
+        "archived_at": "2020-01-01",
+        "description": "<p>Build</p>",
+        "contract_type": "CDI",
+        "remote": "partial",
+        "language": "fr",
+        "published_at": "2026-10-08",
+        "salary_min": 50000,
+        "salary_max": 70000,
+        "salary_currency": "EUR",
+        "salary_period": "yearly",
+        "reference": "REF",
+        "start_date": "2026-11-01",
+        "profession": {
+          "name": {
+            "fr": "Ingénierie",
+            "en": "Engineering"
+          }
+        },
+        "profile": "<p>Skills</p>",
+        "key_missions": [
+          "Build",
+          "Ship"
+        ],
+        "skills": [
+          {
+            "name": {
+              "fr": "Go",
+              "en": "Golang"
+            }
+          }
+        ],
+        "offices": [
+          {
+            "local_address": "Paris"
+          },
+          {
+            "city": "Paris"
+          },
+          {
+            "address": "Lyon"
+          }
+        ]
+      },
+      "source": "https://www.welcometothejungle.com/fr/companies/tenant/jobs",
+      "metadata": {},
+      "expected": null,
+      "error": false
+    },
+    {
+      "provider": "welcometothejungle",
+      "name": "closed",
+      "row": {
+        "slug": "engineer-12",
+        "name": "Engineer",
+        "status": "closed",
+        "archived_at": "2020-01-01",
+        "description": "<p>Build</p>",
+        "contract_type": "CDI",
+        "remote": "partial",
+        "language": "fr",
+        "published_at": "2026-10-08",
+        "salary_min": 50000,
+        "salary_max": 70000,
+        "salary_currency": "EUR",
+        "salary_period": "yearly",
+        "reference": "REF",
+        "start_date": "2026-11-01",
+        "profession": {
+          "name": {
+            "fr": "Ingénierie",
+            "en": "Engineering"
+          }
+        },
+        "profile": "<p>Skills</p>",
+        "key_missions": [
+          "Build",
+          "Ship"
+        ],
+        "skills": [
+          {
+            "name": {
+              "fr": "Go",
+              "en": "Golang"
+            }
+          }
+        ],
+        "offices": [
+          {
+            "local_address": "Paris"
+          },
+          {
+            "city": "Paris"
+          },
+          {
+            "address": "Lyon"
+          }
+        ]
+      },
+      "source": "https://www.welcometothejungle.com/fr/companies/tenant/jobs",
+      "metadata": {},
+      "expected": null,
+      "error": false
+    },
+    {
+      "provider": "welcometothejungle",
+      "name": "locale-fallback",
+      "row": {
+        "slug": "engineer-12",
+        "name": "Engineer",
+        "status": "published",
+        "archived_at": "2020-01-01",
+        "description": "<p>Build</p>",
+        "contract_type": "CDI",
+        "remote": "partial",
+        "language": null,
+        "published_at": "2026-10-08",
+        "salary_min": 50000,
+        "salary_max": 70000,
+        "salary_currency": "EUR",
+        "salary_period": "yearly",
+        "reference": "REF",
+        "start_date": "2026-11-01",
+        "profession": {
+          "name": {
+            "fr": "Ingénierie",
+            "en": "Engineering"
+          }
+        },
+        "profile": "<p>Skills</p>",
+        "key_missions": [
+          "Build",
+          "Ship"
+        ],
+        "skills": [
+          {
+            "name": {
+              "fr": "Go",
+              "en": "Golang"
+            }
+          }
+        ],
+        "offices": [
+          {
+            "local_address": "Paris"
+          },
+          {
+            "city": "Paris"
+          },
+          {
+            "address": "Lyon"
+          }
+        ]
+      },
+      "source": "https://www.welcometothejungle.com/fr/companies/tenant/jobs",
+      "metadata": {},
+      "expected": {
+        "url": "https://www.welcometothejungle.com/fr/companies/tenant/jobs/engineer-12",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Paris",
+          "Lyon"
+        ],
+        "employment_type": "CDI",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": {
+          "currency": "EUR",
+          "min": 50000,
+          "max": 70000,
+          "unit": "year"
+        },
+        "language": "fr",
+        "extras": {
+          "qualifications": "<p>Skills</p>",
+          "responsibilities": [
+            "Build",
+            "Ship"
+          ],
+          "skills": [
+            "Go"
+          ]
+        },
+        "metadata": {
+          "reference": "REF",
+          "start_date": "2026-11-01",
+          "profession": "Ingénierie"
+        },
+        "localizations": null
+      },
+      "error": false
+    },
+    {
+      "provider": "welcometothejungle",
+      "name": "single-office",
+      "row": {
+        "slug": "engineer-12",
+        "name": "Engineer",
+        "status": "published",
+        "archived_at": "2020-01-01",
+        "description": "<p>Build</p>",
+        "contract_type": "CDI",
+        "remote": "partial",
+        "language": "fr",
+        "published_at": "2026-10-08",
+        "salary_min": 50000,
+        "salary_max": 70000,
+        "salary_currency": "EUR",
+        "salary_period": "yearly",
+        "reference": "REF",
+        "start_date": "2026-11-01",
+        "profession": {
+          "name": {
+            "fr": "Ingénierie",
+            "en": "Engineering"
+          }
+        },
+        "profile": "<p>Skills</p>",
+        "key_missions": [
+          "Build",
+          "Ship"
+        ],
+        "skills": [
+          {
+            "name": {
+              "fr": "Go",
+              "en": "Golang"
+            }
+          }
+        ],
+        "offices": null,
+        "office": {
+          "city": "Paris"
+        }
+      },
+      "source": "https://www.welcometothejungle.com/fr/companies/tenant/jobs",
+      "metadata": {},
+      "expected": {
+        "url": "https://www.welcometothejungle.com/fr/companies/tenant/jobs/engineer-12",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Paris"
+        ],
+        "employment_type": "CDI",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": {
+          "currency": "EUR",
+          "min": 50000,
+          "max": 70000,
+          "unit": "year"
+        },
+        "language": "fr",
+        "extras": {
+          "qualifications": "<p>Skills</p>",
+          "responsibilities": [
+            "Build",
+            "Ship"
+          ],
+          "skills": [
+            "Go"
+          ]
+        },
+        "metadata": {
+          "reference": "REF",
+          "start_date": "2026-11-01",
+          "profession": "Ingénierie"
+        },
+        "localizations": null
+      },
+      "error": false
+    },
+    {
+      "provider": "welcometothejungle",
+      "name": "unknown-remote",
+      "row": {
+        "slug": "engineer-12",
+        "name": "Engineer",
+        "status": "published",
+        "archived_at": "2020-01-01",
+        "description": "<p>Build</p>",
+        "contract_type": "CDI",
+        "remote": "unknown",
+        "language": "fr",
+        "published_at": "2026-10-08",
+        "salary_min": 50000,
+        "salary_max": 70000,
+        "salary_currency": "EUR",
+        "salary_period": "yearly",
+        "reference": "REF",
+        "start_date": "2026-11-01",
+        "profession": {
+          "name": {
+            "fr": "Ingénierie",
+            "en": "Engineering"
+          }
+        },
+        "profile": "<p>Skills</p>",
+        "key_missions": [
+          "Build",
+          "Ship"
+        ],
+        "skills": [
+          {
+            "name": {
+              "fr": "Go",
+              "en": "Golang"
+            }
+          }
+        ],
+        "offices": [
+          {
+            "local_address": "Paris"
+          },
+          {
+            "city": "Paris"
+          },
+          {
+            "address": "Lyon"
+          }
+        ]
+      },
+      "source": "https://www.welcometothejungle.com/fr/companies/tenant/jobs",
+      "metadata": {},
+      "expected": {
+        "url": "https://www.welcometothejungle.com/fr/companies/tenant/jobs/engineer-12",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Paris",
+          "Lyon"
+        ],
+        "employment_type": "CDI",
+        "job_location_type": null,
+        "date_posted": "2026-10-08",
+        "base_salary": {
+          "currency": "EUR",
+          "min": 50000,
+          "max": 70000,
+          "unit": "year"
+        },
+        "language": "fr",
+        "extras": {
+          "qualifications": "<p>Skills</p>",
+          "responsibilities": [
+            "Build",
+            "Ship"
+          ],
+          "skills": [
+            "Go"
+          ]
+        },
+        "metadata": {
+          "reference": "REF",
+          "start_date": "2026-11-01",
+          "profession": "Ingénierie"
+        },
+        "localizations": null
+      },
+      "error": false
+    },
+    {
+      "provider": "welcometothejungle",
+      "name": "no-salary",
+      "row": {
+        "slug": "engineer-12",
+        "name": "Engineer",
+        "status": "published",
+        "archived_at": "2020-01-01",
+        "description": "<p>Build</p>",
+        "contract_type": "CDI",
+        "remote": "partial",
+        "language": "fr",
+        "published_at": "2026-10-08",
+        "salary_min": null,
+        "salary_max": null,
+        "salary_currency": "EUR",
+        "salary_period": "yearly",
+        "reference": "REF",
+        "start_date": "2026-11-01",
+        "profession": {
+          "name": {
+            "fr": "Ingénierie",
+            "en": "Engineering"
+          }
+        },
+        "profile": "<p>Skills</p>",
+        "key_missions": [
+          "Build",
+          "Ship"
+        ],
+        "skills": [
+          {
+            "name": {
+              "fr": "Go",
+              "en": "Golang"
+            }
+          }
+        ],
+        "offices": [
+          {
+            "local_address": "Paris"
+          },
+          {
+            "city": "Paris"
+          },
+          {
+            "address": "Lyon"
+          }
+        ]
+      },
+      "source": "https://www.welcometothejungle.com/fr/companies/tenant/jobs",
+      "metadata": {},
+      "expected": {
+        "url": "https://www.welcometothejungle.com/fr/companies/tenant/jobs/engineer-12",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Paris",
+          "Lyon"
+        ],
+        "employment_type": "CDI",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": null,
+        "language": "fr",
+        "extras": {
+          "qualifications": "<p>Skills</p>",
+          "responsibilities": [
+            "Build",
+            "Ship"
+          ],
+          "skills": [
+            "Go"
+          ]
+        },
+        "metadata": {
+          "reference": "REF",
+          "start_date": "2026-11-01",
+          "profession": "Ingénierie"
+        },
+        "localizations": null
+      },
+      "error": false
+    },
+    {
+      "provider": "welcometothejungle",
+      "name": "missing-name",
+      "row": {
+        "slug": "engineer-12",
+        "name": null,
+        "status": "published",
+        "archived_at": "2020-01-01",
+        "description": "<p>Build</p>",
+        "contract_type": "CDI",
+        "remote": "partial",
+        "language": "fr",
+        "published_at": "2026-10-08",
+        "salary_min": 50000,
+        "salary_max": 70000,
+        "salary_currency": "EUR",
+        "salary_period": "yearly",
+        "reference": "REF",
+        "start_date": "2026-11-01",
+        "profession": {
+          "name": {
+            "fr": "Ingénierie",
+            "en": "Engineering"
+          }
+        },
+        "profile": "<p>Skills</p>",
+        "key_missions": [
+          "Build",
+          "Ship"
+        ],
+        "skills": [
+          {
+            "name": {
+              "fr": "Go",
+              "en": "Golang"
+            }
+          }
+        ],
+        "offices": [
+          {
+            "local_address": "Paris"
+          },
+          {
+            "city": "Paris"
+          },
+          {
+            "address": "Lyon"
+          }
+        ]
+      },
+      "source": "https://www.welcometothejungle.com/fr/companies/tenant/jobs",
+      "metadata": {},
+      "expected": null,
+      "error": false
+    },
+    {
+      "provider": "welcometothejungle",
+      "name": "missing-slug",
+      "row": {
+        "slug": null,
+        "name": "Engineer",
+        "status": "published",
+        "archived_at": "2020-01-01",
+        "description": "<p>Build</p>",
+        "contract_type": "CDI",
+        "remote": "partial",
+        "language": "fr",
+        "published_at": "2026-10-08",
+        "salary_min": 50000,
+        "salary_max": 70000,
+        "salary_currency": "EUR",
+        "salary_period": "yearly",
+        "reference": "REF",
+        "start_date": "2026-11-01",
+        "profession": {
+          "name": {
+            "fr": "Ingénierie",
+            "en": "Engineering"
+          }
+        },
+        "profile": "<p>Skills</p>",
+        "key_missions": [
+          "Build",
+          "Ship"
+        ],
+        "skills": [
+          {
+            "name": {
+              "fr": "Go",
+              "en": "Golang"
+            }
+          }
+        ],
+        "offices": [
+          {
+            "local_address": "Paris"
+          },
+          {
+            "city": "Paris"
+          },
+          {
+            "address": "Lyon"
+          }
+        ]
+      },
+      "source": "https://www.welcometothejungle.com/fr/companies/tenant/jobs",
+      "metadata": {},
+      "expected": null,
+      "error": false
+    }
+  ],
+  "listings": [
+    {
+      "provider": "computrabajo",
+      "name": "employer-zero",
+      "source": "https://hn.computrabajo.com/empresas/ofertas-de-trabajo-de-tenant-0123456789abcdef",
+      "body": "<link rel=\"canonical\" href=\"https://hn.computrabajo.com/empresas/ofertas-de-trabajo-de-tenant-0123456789abcdef\"><meta name=\"title\" content=\"0 ofertas de trabajo\">",
+      "page": 1,
+      "expected": {
+        "urls": [],
+        "total": 0
+      },
+      "error": false
+    },
+    {
+      "provider": "computrabajo",
+      "name": "employer-one",
+      "source": "https://hn.computrabajo.com/empresas/ofertas-de-trabajo-de-tenant-0123456789abcdef",
+      "body": "<link rel=\"canonical\" href=\"https://hn.computrabajo.com/empresas/ofertas-de-trabajo-de-tenant-0123456789abcdef\"><meta name=\"title\" content=\"1 ofertas de trabajo\"><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000001\">Job</a>",
+      "page": 1,
+      "expected": {
+        "urls": [
+          "https://hn.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000001"
+        ],
+        "total": 1
+      },
+      "error": false
+    },
+    {
+      "provider": "computrabajo",
+      "name": "employer-full-page",
+      "source": "https://hn.computrabajo.com/empresas/ofertas-de-trabajo-de-tenant-0123456789abcdef",
+      "body": "<link rel=\"canonical\" href=\"https://hn.computrabajo.com/empresas/ofertas-de-trabajo-de-tenant-0123456789abcdef\"><meta name=\"title\" content=\"21 ofertas de trabajo\"><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000001\">Job</a><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000002\">Job</a><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000003\">Job</a><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000004\">Job</a><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000005\">Job</a><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000006\">Job</a><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000007\">Job</a><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000008\">Job</a><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000009\">Job</a><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-0000000000000000000000000000000a\">Job</a><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-0000000000000000000000000000000b\">Job</a><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-0000000000000000000000000000000c\">Job</a><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-0000000000000000000000000000000d\">Job</a><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-0000000000000000000000000000000e\">Job</a><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-0000000000000000000000000000000f\">Job</a><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000010\">Job</a><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000011\">Job</a><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000012\">Job</a><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000013\">Job</a><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000014\">Job</a>",
+      "page": 1,
+      "expected": {
+        "urls": [
+          "https://hn.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000001",
+          "https://hn.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000002",
+          "https://hn.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000003",
+          "https://hn.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000004",
+          "https://hn.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000005",
+          "https://hn.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000006",
+          "https://hn.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000007",
+          "https://hn.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000008",
+          "https://hn.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000009",
+          "https://hn.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-0000000000000000000000000000000a",
+          "https://hn.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-0000000000000000000000000000000b",
+          "https://hn.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-0000000000000000000000000000000c",
+          "https://hn.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-0000000000000000000000000000000d",
+          "https://hn.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-0000000000000000000000000000000e",
+          "https://hn.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-0000000000000000000000000000000f",
+          "https://hn.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000010",
+          "https://hn.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000011",
+          "https://hn.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000012",
+          "https://hn.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000013",
+          "https://hn.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000014"
+        ],
+        "total": 21
+      },
+      "error": false
+    },
+    {
+      "provider": "computrabajo",
+      "name": "employer-last-page",
+      "source": "https://hn.computrabajo.com/empresas/ofertas-de-trabajo-de-tenant-0123456789abcdef",
+      "body": "<link rel=\"canonical\" href=\"https://hn.computrabajo.com/empresas/ofertas-de-trabajo-de-tenant-0123456789abcdef\"><meta name=\"title\" content=\"21 ofertas de trabajo\"><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000015\">Job</a>",
+      "page": 2,
+      "expected": {
+        "urls": [
+          "https://hn.computrabajo.com/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000015"
+        ],
+        "total": 21
+      },
+      "error": false
+    },
+    {
+      "provider": "computrabajo",
+      "name": "employer-duplicate",
+      "source": "https://hn.computrabajo.com/empresas/ofertas-de-trabajo-de-tenant-0123456789abcdef",
+      "body": "<link rel=\"canonical\" href=\"https://hn.computrabajo.com/empresas/ofertas-de-trabajo-de-tenant-0123456789abcdef\"><meta name=\"title\" content=\"2 ofertas de trabajo\"><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000001\">Job</a><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000001\">Job</a>",
+      "page": 1,
+      "expected": null,
+      "error": true
+    },
+    {
+      "provider": "computrabajo",
+      "name": "employer-missing-job",
+      "source": "https://hn.computrabajo.com/empresas/ofertas-de-trabajo-de-tenant-0123456789abcdef",
+      "body": "<link rel=\"canonical\" href=\"https://hn.computrabajo.com/empresas/ofertas-de-trabajo-de-tenant-0123456789abcdef\"><meta name=\"title\" content=\"2 ofertas de trabajo\"><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000001\">Job</a>",
+      "page": 1,
+      "expected": null,
+      "error": true
+    },
+    {
+      "provider": "computrabajo",
+      "name": "employer-missing-total",
+      "source": "https://hn.computrabajo.com/empresas/ofertas-de-trabajo-de-tenant-0123456789abcdef",
+      "body": "<link rel=\"canonical\" href=\"https://hn.computrabajo.com/empresas/ofertas-de-trabajo-de-tenant-0123456789abcdef\"><meta name=\"title\" content=\"1 unknown\"><a class=\"js-o-link\" href=\"/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-00000000000000000000000000000001\">Job</a>",
+      "page": 1,
+      "expected": null,
+      "error": true
+    },
+    {
+      "provider": "computrabajo",
+      "name": "pandape-zero",
+      "source": "https://tenant.pandape.infojobs.com.br/",
+      "body": "<section id=\"VacancySection\"></section><div class=\"color-title font-3xl\">0 vagas de emprego</div><input id=\"hdn_PageSize\" value=\"20\"><input id=\"hdn_PageNumber\" value=\"1\"><input id=\"hdn_isLast\" value=\"true\">",
+      "page": 1,
+      "expected": {
+        "urls": [],
+        "total": 0
+      },
+      "error": false
+    },
+    {
+      "provider": "computrabajo",
+      "name": "pandape-one",
+      "source": "https://tenant.pandape.infojobs.com.br/",
+      "body": "<section id=\"VacancySection\"></section><div class=\"color-title font-3xl\">1 vagas de emprego</div><input id=\"hdn_PageSize\" value=\"20\"><input id=\"hdn_PageNumber\" value=\"1\"><input id=\"hdn_isLast\" value=\"true\"><a class=\"card-vacancy\" href=\"/Detail/1\">Job</a>",
+      "page": 1,
+      "expected": {
+        "urls": [
+          "https://tenant.pandape.infojobs.com.br/Detail/1"
+        ],
+        "total": 1
+      },
+      "error": false
+    },
+    {
+      "provider": "computrabajo",
+      "name": "pandape-full-page",
+      "source": "https://tenant.pandape.infojobs.com.br/",
+      "body": "<section id=\"VacancySection\"></section><div class=\"color-title font-3xl\">21 vagas de emprego</div><input id=\"hdn_PageSize\" value=\"20\"><input id=\"hdn_PageNumber\" value=\"1\"><input id=\"hdn_isLast\" value=\"false\"><a class=\"card-vacancy\" href=\"/Detail/1\">Job</a><a class=\"card-vacancy\" href=\"/Detail/2\">Job</a><a class=\"card-vacancy\" href=\"/Detail/3\">Job</a><a class=\"card-vacancy\" href=\"/Detail/4\">Job</a><a class=\"card-vacancy\" href=\"/Detail/5\">Job</a><a class=\"card-vacancy\" href=\"/Detail/6\">Job</a><a class=\"card-vacancy\" href=\"/Detail/7\">Job</a><a class=\"card-vacancy\" href=\"/Detail/8\">Job</a><a class=\"card-vacancy\" href=\"/Detail/9\">Job</a><a class=\"card-vacancy\" href=\"/Detail/10\">Job</a><a class=\"card-vacancy\" href=\"/Detail/11\">Job</a><a class=\"card-vacancy\" href=\"/Detail/12\">Job</a><a class=\"card-vacancy\" href=\"/Detail/13\">Job</a><a class=\"card-vacancy\" href=\"/Detail/14\">Job</a><a class=\"card-vacancy\" href=\"/Detail/15\">Job</a><a class=\"card-vacancy\" href=\"/Detail/16\">Job</a><a class=\"card-vacancy\" href=\"/Detail/17\">Job</a><a class=\"card-vacancy\" href=\"/Detail/18\">Job</a><a class=\"card-vacancy\" href=\"/Detail/19\">Job</a><a class=\"card-vacancy\" href=\"/Detail/20\">Job</a>",
+      "page": 1,
+      "expected": {
+        "urls": [
+          "https://tenant.pandape.infojobs.com.br/Detail/1",
+          "https://tenant.pandape.infojobs.com.br/Detail/10",
+          "https://tenant.pandape.infojobs.com.br/Detail/11",
+          "https://tenant.pandape.infojobs.com.br/Detail/12",
+          "https://tenant.pandape.infojobs.com.br/Detail/13",
+          "https://tenant.pandape.infojobs.com.br/Detail/14",
+          "https://tenant.pandape.infojobs.com.br/Detail/15",
+          "https://tenant.pandape.infojobs.com.br/Detail/16",
+          "https://tenant.pandape.infojobs.com.br/Detail/17",
+          "https://tenant.pandape.infojobs.com.br/Detail/18",
+          "https://tenant.pandape.infojobs.com.br/Detail/19",
+          "https://tenant.pandape.infojobs.com.br/Detail/2",
+          "https://tenant.pandape.infojobs.com.br/Detail/20",
+          "https://tenant.pandape.infojobs.com.br/Detail/3",
+          "https://tenant.pandape.infojobs.com.br/Detail/4",
+          "https://tenant.pandape.infojobs.com.br/Detail/5",
+          "https://tenant.pandape.infojobs.com.br/Detail/6",
+          "https://tenant.pandape.infojobs.com.br/Detail/7",
+          "https://tenant.pandape.infojobs.com.br/Detail/8",
+          "https://tenant.pandape.infojobs.com.br/Detail/9"
+        ],
+        "total": 21
+      },
+      "error": false
+    },
+    {
+      "provider": "computrabajo",
+      "name": "pandape-last-page",
+      "source": "https://tenant.pandape.infojobs.com.br/",
+      "body": "<section id=\"VacancySection\"></section><div class=\"color-title font-3xl\">21 vagas de emprego</div><input id=\"hdn_PageSize\" value=\"20\"><input id=\"hdn_PageNumber\" value=\"2\"><input id=\"hdn_isLast\" value=\"true\"><a class=\"card-vacancy\" href=\"/Detail/21\">Job</a>",
+      "page": 2,
+      "expected": {
+        "urls": [
+          "https://tenant.pandape.infojobs.com.br/Detail/21"
+        ],
+        "total": 21
+      },
+      "error": false
+    },
+    {
+      "provider": "computrabajo",
+      "name": "pandape-duplicate",
+      "source": "https://tenant.pandape.infojobs.com.br/",
+      "body": "<section id=\"VacancySection\"></section><div class=\"color-title font-3xl\">2 vagas de emprego</div><input id=\"hdn_PageSize\" value=\"20\"><input id=\"hdn_PageNumber\" value=\"1\"><input id=\"hdn_isLast\" value=\"true\"><a class=\"card-vacancy\" href=\"/Detail/1\">Job</a><a class=\"card-vacancy\" href=\"/Detail/1\">Job</a>",
+      "page": 1,
+      "expected": null,
+      "error": true
+    },
+    {
+      "provider": "computrabajo",
+      "name": "pandape-missing-job",
+      "source": "https://tenant.pandape.infojobs.com.br/",
+      "body": "<section id=\"VacancySection\"></section><div class=\"color-title font-3xl\">2 vagas de emprego</div><input id=\"hdn_PageSize\" value=\"20\"><input id=\"hdn_PageNumber\" value=\"1\"><input id=\"hdn_isLast\" value=\"true\"><a class=\"card-vacancy\" href=\"/Detail/1\">Job</a>",
+      "page": 1,
+      "expected": null,
+      "error": true
+    },
+    {
+      "provider": "computrabajo",
+      "name": "pandape-missing-total",
+      "source": "https://tenant.pandape.infojobs.com.br/",
+      "body": "<section id=\"VacancySection\"></section><div class=\"color-title font-3xl\">1 unknown</div><input id=\"hdn_PageSize\" value=\"20\"><input id=\"hdn_PageNumber\" value=\"1\"><input id=\"hdn_isLast\" value=\"true\"><a class=\"card-vacancy\" href=\"/Detail/1\">Job</a>",
+      "page": 1,
+      "expected": null,
+      "error": true
+    },
+    {
+      "provider": "ycombinator",
+      "name": "scoped",
+      "source": "https://www.ycombinator.com/companies/tenant/jobs",
+      "body": "<a href=\"/companies/tenant/jobs/Ab1-engineer\">Job</a><a href=\"/companies/other/jobs/Bb2-other\">Other</a>",
+      "page": 1,
+      "expected": {
+        "urls": [
+          "https://www.ycombinator.com/companies/tenant/jobs/Ab1-engineer"
+        ],
+        "total": 0
+      },
+      "error": false
+    },
+    {
+      "provider": "ycombinator",
+      "name": "duplicate",
+      "source": "https://www.ycombinator.com/companies/tenant/jobs",
+      "body": "\"/companies/tenant/jobs/Ab1-engineer\" \"/companies/tenant/jobs/Ab1-engineer\"",
+      "page": 1,
+      "expected": {
+        "urls": [
+          "https://www.ycombinator.com/companies/tenant/jobs/Ab1-engineer"
+        ],
+        "total": 0
+      },
+      "error": false
+    },
+    {
+      "provider": "ycombinator",
+      "name": "single-quote",
+      "source": "https://www.ycombinator.com/companies/tenant/jobs",
+      "body": "'/companies/tenant/jobs/Ab1-engineer'",
+      "page": 1,
+      "expected": {
+        "urls": [],
+        "total": 0
+      },
+      "error": false
+    },
+    {
+      "provider": "ycombinator",
+      "name": "empty",
+      "source": "https://www.ycombinator.com/companies/tenant/jobs",
+      "body": "<html/>",
+      "page": 1,
+      "expected": {
+        "urls": [],
+        "total": 0
+      },
+      "error": false
+    }
+  ]
+}
