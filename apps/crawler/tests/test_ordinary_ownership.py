@@ -19,6 +19,7 @@ import pytest
 import redis.asyncio as redis
 from redis.exceptions import ResponseError
 
+from src import ordinary_ownership as ownership_module
 from src import redis_queue as rq
 from src.config import settings
 from src.ordinary_ownership import (
@@ -30,6 +31,11 @@ from src.ordinary_ownership import (
     ownership_projection,
     prepare_legacy_ownership,
 )
+
+
+@pytest.fixture(autouse=True)
+def isolate_startup_attestation(monkeypatch):
+    monkeypatch.setattr(ownership_module, "_detail_ownership", None)
 
 
 def expectation(
@@ -167,6 +173,40 @@ async def test_legacy_barrier_rejects_stale_identity_before_claim(mode):
         async with legacy_ownership_barrier(pool, expected):
             called = True
     assert not called
+
+
+async def test_attested_claim_polls_recheck_identity_without_payload_transfer(monkeypatch):
+    expected, payload = expectation()
+    install_settings(monkeypatch, expected)
+    pool, conn = fake_pool(
+        [
+            dict(
+                plan_sha256=expected.plan_sha256,
+                routing_epoch=7,
+                source_revision=expected.source_revision,
+                payload=payload,
+            ),
+            dict(last_value=7, is_called=True),
+        ]
+    )
+    assert await prepare_legacy_ownership(pool) == expected
+    conn.fetchrow.reset_mock()
+    conn.fetchval.return_value = True
+    for _ in range(3):
+        async with legacy_ownership_barrier(pool, expected):
+            pass
+    conn.fetchrow.assert_not_awaited()
+    assert conn.fetchval.await_count == 3
+    assert conn.fetchval.await_args.args[1:] == (
+        expected.plan_sha256,
+        expected.source_revision,
+        7,
+    )
+    # A cached payload cannot grant a claim after retirement or epoch loss.
+    conn.fetchval.return_value = False
+    with pytest.raises(OrdinaryOwnershipError):
+        async with legacy_ownership_barrier(pool, expected):
+            pytest.fail("stale startup identity granted a claim")
 
 
 async def test_legacy_barrier_redacts_errors_and_propagates_cancellation():
@@ -349,6 +389,23 @@ async def test_real_legacy_attestation_projection_loss_and_retirement(monkeypatc
             "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE plan_sha256=$1",
             expected.plan_sha256,
         )
+        before = await queue_snapshot(client)
+        with pytest.raises(OrdinaryOwnershipError):
+            async with legacy_ownership_barrier(pool, expected):
+                await rq.claim_work(ownership=expected)
+        assert before == await queue_snapshot(client)
+
+
+async def test_real_cached_claim_rejects_allocator_drift(monkeypatch):
+    async with (
+        private_active_plan() as (pool, expected, payload),
+        private_redis(monkeypatch) as client,
+    ):
+        install_settings(monkeypatch, expected)
+        assert await prepare_legacy_ownership(pool) == expected
+        await client.set("ordinary:ownership:active", ownership_projection(payload))
+        await seed_private_queue(client)
+        await pool.execute("SELECT nextval('public.lightpanda_b0_routing_epoch_seq')")
         before = await queue_snapshot(client)
         with pytest.raises(OrdinaryOwnershipError):
             async with legacy_ownership_barrier(pool, expected):

@@ -1,0 +1,130 @@
+{
+  "schema": "jobseek.native-public-board-candidate/v1",
+  "version": "0.13.972",
+  "source_base": "3ebd1d16cf8340670d4ac154ead7fedeb2e0ce65",
+  "installed_profiles": 126,
+  "providers": {
+    "intervieweb": 3,
+    "typify": 3,
+    "universia": 1,
+    "talentreef": 2
+  },
+  "actual_python_cases": {
+    "intervieweb": 25,
+    "typify": 24,
+    "universia": 26,
+    "talentreef": 22
+  },
+  "parity_scope": "Universia API helper preserves raw enums; existing worker normalizes enums/internship signals and verified HTTP fixture confirms canonical values. No unobserved production freshness claim.",
+  "verified_http_cases": 28,
+  "real_database_cases": 12,
+  "real_database_seconds": 5.419,
+  "cold_retirement_cases": 12,
+  "cold_retirement_seconds": 11.381,
+  "public_inventory_probes": 9,
+  "public_inventory_results": [
+    {
+      "board_slug": "avolta-autogrill-it",
+      "provider": "intervieweb",
+      "status": "success",
+      "jobs": 171,
+      "truncated": false,
+      "observed_at_utc": "2026-10-08T03:57:25Z"
+    },
+    {
+      "board_slug": "dominos-belgium",
+      "provider": "typify",
+      "status": "success",
+      "jobs": 571,
+      "truncated": false,
+      "observed_at_utc": "2026-10-08T03:57:36Z"
+    },
+    {
+      "board_slug": "dominos-germany",
+      "provider": "typify",
+      "status": "success",
+      "jobs": 1987,
+      "truncated": false,
+      "observed_at_utc": "2026-10-08T03:57:39Z"
+    },
+    {
+      "board_slug": "dominos-netherlands",
+      "provider": "typify",
+      "status": "success",
+      "jobs": 2271,
+      "truncated": false,
+      "observed_at_utc": "2026-10-08T03:57:41Z"
+    },
+    {
+      "board_slug": "fressnapf-maxizoo-arcaplanet",
+      "provider": "intervieweb",
+      "status": "success",
+      "jobs": 15,
+      "truncated": false,
+      "observed_at_utc": "2026-10-08T03:57:47Z"
+    },
+    {
+      "board_slug": "fulenwider-enterprises-careers-butchs",
+      "provider": "talentreef",
+      "status": "success",
+      "jobs": 0,
+      "truncated": false,
+      "observed_at_utc": "2026-10-08T03:57:48Z"
+    },
+    {
+      "board_slug": "fulenwider-enterprises-careers-tacobell",
+      "provider": "talentreef",
+      "status": "success",
+      "jobs": 0,
+      "truncated": false,
+      "observed_at_utc": "2026-10-08T03:57:49Z"
+    },
+    {
+      "board_slug": "msc-technology-italy",
+      "provider": "intervieweb",
+      "status": "success",
+      "jobs": 23,
+      "truncated": false,
+      "observed_at_utc": "2026-10-08T03:57:50Z"
+    },
+    {
+      "board_slug": "santander-colombia-universia",
+      "provider": "universia",
+      "status": "success",
+      "jobs": 1,
+      "truncated": false,
+      "observed_at_utc": "2026-10-08T03:57:51Z"
+    }
+  ],
+  "public_delegated_detail_samples": 6,
+  "public_delegated_detail_fields": "all6 HTTP200/nonempty title/description/location; descriptions464\u20135110chars",
+  "candidate_configuration_screen": {
+    "qualified_monitors": 7384,
+    "remaining_monitors": 498,
+    "gain_over_source971": 9,
+    "source_snapshot_epoch": 227,
+    "authority": "configuration-only screening; not production admission"
+  },
+  "full_queue_worker_checks": "PASS real PostgreSQL/Redis complete race suites",
+  "production_owned": false,
+  "full_migration_complete": false,
+  "full_queue_race_seconds": 392.246,
+  "full_worker_race_seconds": 566.932,
+  "full_api_race_seconds": 3.668,
+  "vet_formatting": "PASS API/queue/worker",
+  "claim_attestation_followup": {
+    "problem": "legacy claim polling transfers immutable full ownership payload repeatedly; production ClientWrite waits observed",
+    "change": "startup payload attestation retained; each subsequent claim freshly verifies exact active SQL identity and allocator under both barriers; Redis exact projection check unchanged",
+    "tests": {
+      "ownership_real_postgres_redis": 58,
+      "pipeline": 63
+    },
+    "settlement_failure_causation": "unproved",
+    "production_conservation": "open"
+  },
+  "installed_identity_followup": {
+    "first_check": "failed: old workflow exact array omitted four new profiles",
+    "corrected_profile_count": 126,
+    "ci": "pending fresh head"
+  }
+}

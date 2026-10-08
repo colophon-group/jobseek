@@ -26,6 +26,10 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		allowed[key] = value
 	}
 	switch config["crawler_type"] {
+	case "intervieweb", "typify", "universia", "talentreef":
+		for _, key := range []string{"provider", "api_url", "board_id", "language", "alias", "locale", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+			allowed[key] = true
+		}
 	case "talentbrew":
 		for _, key := range []string{"max_pages", "page_max_chars", "ajax_page_size", "page_size", "records_per_page", "ajax", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true

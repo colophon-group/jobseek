@@ -6,6 +6,9 @@ import (
 )
 
 func SecondaryProvider(provider string) bool {
+	if TenthProvider(provider) {
+		return true
+	}
 	if provider == "talentbrew" || provider == "beehire" || provider == "hirehive" || provider == "welcometothejungle" || provider == "computrabajo" || provider == "ycombinator" || provider == "earcu" || provider == "cvwarehouse" || provider == "woowa" || provider == "deel" || provider == "hibob" || provider == "traffit" || provider == "manatal" || provider == "hrmos" || provider == "recruiterbox" || provider == "jobs_ch" {
 		return true
 	}
@@ -15,6 +18,13 @@ func paycomEnrichmentFields(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true})
 }
 func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
+	if TenthProvider(config["crawler_type"]) {
+		allowed := map[string]bool{}
+		if config["crawler_type"] == "typify" {
+			allowed["description"] = true
+		}
+		return monitorEnrichmentFields(config, allowed)
+	}
 	if config["crawler_type"] == "talentbrew" || config["crawler_type"] == "beehire" || config["crawler_type"] == "hirehive" || config["crawler_type"] == "welcometothejungle" || config["crawler_type"] == "earcu" || config["crawler_type"] == "cvwarehouse" || config["crawler_type"] == "woowa" || config["crawler_type"] == "deel" || config["crawler_type"] == "hibob" || config["crawler_type"] == "traffit" || config["crawler_type"] == "manatal" || config["crawler_type"] == "hrmos" || config["crawler_type"] == "recruiterbox" || config["crawler_type"] == "jobs_ch" {
 		return monitorEnrichmentFields(config, map[string]bool{})
 	}
@@ -34,6 +44,9 @@ func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, allowed)
 }
 func inspectSecondaryMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
+	if TenthProvider(config["crawler_type"]) {
+		return inspectTenthMonitor(boardID, config, md)
+	}
 	if config["crawler_type"] == "dayforce" {
 		return inspectDayforceMonitor(boardID, config, md)
 	}
@@ -198,6 +211,9 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 		return false
 	}
 	switch p.Provider {
+	case "intervieweb", "typify", "universia", "talentreef":
+		o, e := api.TenthProviderOptionsFromMetadata(p.Provider, config["board_url"], config["metadata"])
+		return e == nil && p.Profile == o.Profile() && p.Endpoint == o.ListingURL() && o.ResourceMatches(resource)
 	case "talentbrew":
 		o, e := api.TalentBrewOptionsFromMetadata(config["board_url"], config["metadata"])
 		return e == nil && p.Profile == "talentbrew.listing-urls/v1" && p.Endpoint == o.BoardURL && o.ResourceMatches(resource)
@@ -269,6 +285,8 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 }
 func SecondaryMonitorGone(config map[string]string, resource string, status int, disabled bool) bool {
 	switch config["crawler_type"] {
+	case "intervieweb", "typify", "universia", "talentreef":
+		return tenthMonitorGone(config, resource, status, disabled)
 	case "welcometothejungle", "ycombinator", "talentbrew":
 		return false
 	case "beehire", "hirehive", "computrabajo":

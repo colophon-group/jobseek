@@ -241,6 +241,25 @@ async def _attest(
     return payload
 
 
+async def _require_active_identity(
+    conn: asyncpg.Connection | asyncpg.pool.PoolConnectionProxy, expected: LegacyOwnership
+) -> None:
+    # The transition trigger retains active/retired plans and forbids payload
+    # changes. Startup attests the payload; each claim/write still checks its
+    # exact current SQL identity and allocator while holding both barriers.
+    active = await conn.fetchval(
+        "SELECT EXISTS(SELECT 1 FROM public.ordinary_worker_ownership_plan p "
+        "CROSS JOIN public.lightpanda_b0_routing_epoch_seq e "
+        "WHERE p.state='active' AND p.plan_sha256=$1 AND p.source_revision=$2 "
+        "AND p.routing_epoch=$3 AND e.is_called AND e.last_value=$3)",
+        expected.plan_sha256,
+        expected.source_revision,
+        int(expected.routing_epoch),
+    )
+    if active is not True:
+        raise OrdinaryOwnershipError()
+
+
 class OrdinaryDetailWriteRejected(asyncio.CancelledError):
     """Ownership loss cancels an old detail without spending its failure budget."""
 
@@ -274,17 +293,7 @@ async def require_legacy_detail_write(
             selected = _detail_ownership
         if selected is None or selected[0] != expected:
             raise OrdinaryDetailWriteRejected()
-        active = await conn.fetchval(
-            "SELECT EXISTS(SELECT 1 FROM public.ordinary_worker_ownership_plan p "
-            "CROSS JOIN public.lightpanda_b0_routing_epoch_seq e "
-            "WHERE p.state='active' AND p.plan_sha256=$1 AND p.source_revision=$2 "
-            "AND p.routing_epoch=$3 AND e.is_called AND e.last_value=$3)",
-            expected.plan_sha256,
-            expected.source_revision,
-            int(expected.routing_epoch),
-        )
-        if active is not True:
-            raise OrdinaryDetailWriteRejected()
+        await _require_active_identity(conn, expected)
         boards = selected[1]
         if not boards:
             return
@@ -304,13 +313,17 @@ async def require_legacy_detail_write(
 
 @asynccontextmanager
 async def legacy_ownership_barrier(
-    pool: asyncpg.Pool, expected: LegacyOwnership | None
+    pool: asyncpg.Pool, expected: LegacyOwnership | None, *, attest_payload: bool = False
 ) -> AsyncIterator[None]:
     try:
         async with asyncio.timeout(15), pool.acquire() as conn, conn.transaction():
             await conn.execute("SELECT pg_advisory_xact_lock_shared($1)", LEASE_BARRIER)
             await conn.execute("SELECT pg_advisory_xact_lock_shared($1)", EPOCH_BARRIER)
-            await _attest(conn, expected)
+            selected = _detail_ownership
+            if attest_payload or expected is None or selected is None or selected[0] != expected:
+                await _attest(conn, expected)
+            else:
+                await _require_active_identity(conn, expected)
             yield
     except asyncio.CancelledError:
         raise
@@ -324,6 +337,6 @@ async def prepare_legacy_ownership(pool: asyncpg.Pool) -> LegacyOwnership | None
         expected = configured_legacy_ownership()
     except Exception:
         raise OrdinaryOwnershipError() from None
-    async with legacy_ownership_barrier(pool, expected):
+    async with legacy_ownership_barrier(pool, expected, attest_payload=True):
         pass
     return expected

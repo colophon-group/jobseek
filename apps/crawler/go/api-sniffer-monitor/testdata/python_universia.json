@@ -1,0 +1,1078 @@
+{
+  "scopes": [
+    {
+      "name": "company",
+      "payload": {
+        "slug": "sample",
+        "entity": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "entityType": "company"
+        },
+        "languages": [
+          "es-CO"
+        ]
+      },
+      "value": {
+        "board_id": "11111111-1111-4111-8111-111111111111",
+        "language": "es"
+      },
+      "error": null
+    },
+    {
+      "name": "university",
+      "payload": {
+        "slug": "sample",
+        "entity": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "entityType": "university"
+        },
+        "languages": [
+          "de"
+        ]
+      },
+      "value": {
+        "board_id": "11111111-1111-4111-8111-111111111111",
+        "language": "de"
+      },
+      "error": null
+    },
+    {
+      "name": "bad-language",
+      "payload": {
+        "slug": "sample",
+        "entity": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "entityType": "company"
+        },
+        "languages": [
+          "ES"
+        ]
+      },
+      "value": {
+        "board_id": "11111111-1111-4111-8111-111111111111",
+        "language": null
+      },
+      "error": null
+    },
+    {
+      "name": "foreign-slug",
+      "payload": {
+        "slug": "foreign",
+        "entity": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "entityType": "company"
+        }
+      },
+      "value": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "bad-type",
+      "payload": {
+        "slug": "sample",
+        "entity": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "entityType": "other"
+        }
+      },
+      "value": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "bad-id",
+      "payload": {
+        "slug": "sample",
+        "entity": {
+          "id": "bad",
+          "entityType": "company"
+        }
+      },
+      "value": null,
+      "error": "ValueError"
+    }
+  ],
+  "pages": [
+    {
+      "name": "one",
+      "payload": {
+        "offset": 0,
+        "limit": 100,
+        "size": 1,
+        "total": 1,
+        "totalPages": 1,
+        "results": [
+          {
+            "identifier": "22222222-2222-4222-8222-222222222222",
+            "boards": [
+              "11111111-1111-4111-8111-111111111111"
+            ],
+            "status": "published",
+            "title": "  Go\nEngineer ",
+            "description": " <p>Build Go.</p> ",
+            "requirements": " <ul><li>Go</li></ul> ",
+            "incentiveCompensation": "<p>Degree</p>",
+            "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111",
+            "jobLocation": {
+              "address": {
+                "addressLocality": " Bogot\u00e1 ",
+                "addressRegion": "Bogot\u00e1",
+                "addressCountry": "CO"
+              }
+            },
+            "employmentType": "FULL_TIME",
+            "jobLocationType": "TELECOMMUTE",
+            "postingType": "job",
+            "educationalLevel": "degree",
+            "totalJobOpenings": 2,
+            "role": {
+              "name": " Engineering "
+            },
+            "contractType": {
+              "name": " Permanent "
+            },
+            "datePosted": "2026-10-01",
+            "validThrough": "2026-12-01"
+          }
+        ]
+      },
+      "rows": [
+        {
+          "identifier": "22222222-2222-4222-8222-222222222222",
+          "boards": [
+            "11111111-1111-4111-8111-111111111111"
+          ],
+          "status": "published",
+          "title": "  Go\nEngineer ",
+          "description": " <p>Build Go.</p> ",
+          "requirements": " <ul><li>Go</li></ul> ",
+          "incentiveCompensation": "<p>Degree</p>",
+          "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111",
+          "jobLocation": {
+            "address": {
+              "addressLocality": " Bogot\u00e1 ",
+              "addressRegion": "Bogot\u00e1",
+              "addressCountry": "CO"
+            }
+          },
+          "employmentType": "FULL_TIME",
+          "jobLocationType": "TELECOMMUTE",
+          "postingType": "job",
+          "educationalLevel": "degree",
+          "totalJobOpenings": 2,
+          "role": {
+            "name": " Engineering "
+          },
+          "contractType": {
+            "name": " Permanent "
+          },
+          "datePosted": "2026-10-01",
+          "validThrough": "2026-12-01"
+        }
+      ],
+      "total": 1,
+      "error": null
+    },
+    {
+      "name": "empty",
+      "payload": {
+        "offset": 0,
+        "limit": 100,
+        "size": 0,
+        "total": 0,
+        "totalPages": 0,
+        "results": []
+      },
+      "rows": [],
+      "total": 0,
+      "error": null
+    },
+    {
+      "name": "gap",
+      "payload": {
+        "offset": 0,
+        "limit": 100,
+        "size": 1,
+        "total": 2,
+        "totalPages": 1,
+        "results": [
+          {
+            "identifier": "22222222-2222-4222-8222-222222222222",
+            "boards": [
+              "11111111-1111-4111-8111-111111111111"
+            ],
+            "status": "published",
+            "title": "  Go\nEngineer ",
+            "description": " <p>Build Go.</p> ",
+            "requirements": " <ul><li>Go</li></ul> ",
+            "incentiveCompensation": "<p>Degree</p>",
+            "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111",
+            "jobLocation": {
+              "address": {
+                "addressLocality": " Bogot\u00e1 ",
+                "addressRegion": "Bogot\u00e1",
+                "addressCountry": "CO"
+              }
+            },
+            "employmentType": "FULL_TIME",
+            "jobLocationType": "TELECOMMUTE",
+            "postingType": "job",
+            "educationalLevel": "degree",
+            "totalJobOpenings": 2,
+            "role": {
+              "name": " Engineering "
+            },
+            "contractType": {
+              "name": " Permanent "
+            },
+            "datePosted": "2026-10-01",
+            "validThrough": "2026-12-01"
+          }
+        ]
+      },
+      "rows": null,
+      "total": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "wrong-offset",
+      "payload": {
+        "offset": 100,
+        "limit": 100,
+        "size": 1,
+        "total": 1,
+        "totalPages": 1,
+        "results": [
+          {
+            "identifier": "22222222-2222-4222-8222-222222222222",
+            "boards": [
+              "11111111-1111-4111-8111-111111111111"
+            ],
+            "status": "published",
+            "title": "  Go\nEngineer ",
+            "description": " <p>Build Go.</p> ",
+            "requirements": " <ul><li>Go</li></ul> ",
+            "incentiveCompensation": "<p>Degree</p>",
+            "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111",
+            "jobLocation": {
+              "address": {
+                "addressLocality": " Bogot\u00e1 ",
+                "addressRegion": "Bogot\u00e1",
+                "addressCountry": "CO"
+              }
+            },
+            "employmentType": "FULL_TIME",
+            "jobLocationType": "TELECOMMUTE",
+            "postingType": "job",
+            "educationalLevel": "degree",
+            "totalJobOpenings": 2,
+            "role": {
+              "name": " Engineering "
+            },
+            "contractType": {
+              "name": " Permanent "
+            },
+            "datePosted": "2026-10-01",
+            "validThrough": "2026-12-01"
+          }
+        ]
+      },
+      "rows": null,
+      "total": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "bad-pages",
+      "payload": {
+        "offset": 0,
+        "limit": 100,
+        "size": 1,
+        "total": 1,
+        "totalPages": 2,
+        "results": [
+          {
+            "identifier": "22222222-2222-4222-8222-222222222222",
+            "boards": [
+              "11111111-1111-4111-8111-111111111111"
+            ],
+            "status": "published",
+            "title": "  Go\nEngineer ",
+            "description": " <p>Build Go.</p> ",
+            "requirements": " <ul><li>Go</li></ul> ",
+            "incentiveCompensation": "<p>Degree</p>",
+            "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111",
+            "jobLocation": {
+              "address": {
+                "addressLocality": " Bogot\u00e1 ",
+                "addressRegion": "Bogot\u00e1",
+                "addressCountry": "CO"
+              }
+            },
+            "employmentType": "FULL_TIME",
+            "jobLocationType": "TELECOMMUTE",
+            "postingType": "job",
+            "educationalLevel": "degree",
+            "totalJobOpenings": 2,
+            "role": {
+              "name": " Engineering "
+            },
+            "contractType": {
+              "name": " Permanent "
+            },
+            "datePosted": "2026-10-01",
+            "validThrough": "2026-12-01"
+          }
+        ]
+      },
+      "rows": null,
+      "total": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "bool-total",
+      "payload": {
+        "offset": 0,
+        "limit": 100,
+        "size": 1,
+        "total": true,
+        "totalPages": 1,
+        "results": [
+          {
+            "identifier": "22222222-2222-4222-8222-222222222222",
+            "boards": [
+              "11111111-1111-4111-8111-111111111111"
+            ],
+            "status": "published",
+            "title": "  Go\nEngineer ",
+            "description": " <p>Build Go.</p> ",
+            "requirements": " <ul><li>Go</li></ul> ",
+            "incentiveCompensation": "<p>Degree</p>",
+            "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111",
+            "jobLocation": {
+              "address": {
+                "addressLocality": " Bogot\u00e1 ",
+                "addressRegion": "Bogot\u00e1",
+                "addressCountry": "CO"
+              }
+            },
+            "employmentType": "FULL_TIME",
+            "jobLocationType": "TELECOMMUTE",
+            "postingType": "job",
+            "educationalLevel": "degree",
+            "totalJobOpenings": 2,
+            "role": {
+              "name": " Engineering "
+            },
+            "contractType": {
+              "name": " Permanent "
+            },
+            "datePosted": "2026-10-01",
+            "validThrough": "2026-12-01"
+          }
+        ]
+      },
+      "rows": null,
+      "total": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "string-total",
+      "payload": {
+        "offset": 0,
+        "limit": 100,
+        "size": 1,
+        "total": "1",
+        "totalPages": 1,
+        "results": [
+          {
+            "identifier": "22222222-2222-4222-8222-222222222222",
+            "boards": [
+              "11111111-1111-4111-8111-111111111111"
+            ],
+            "status": "published",
+            "title": "  Go\nEngineer ",
+            "description": " <p>Build Go.</p> ",
+            "requirements": " <ul><li>Go</li></ul> ",
+            "incentiveCompensation": "<p>Degree</p>",
+            "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111",
+            "jobLocation": {
+              "address": {
+                "addressLocality": " Bogot\u00e1 ",
+                "addressRegion": "Bogot\u00e1",
+                "addressCountry": "CO"
+              }
+            },
+            "employmentType": "FULL_TIME",
+            "jobLocationType": "TELECOMMUTE",
+            "postingType": "job",
+            "educationalLevel": "degree",
+            "totalJobOpenings": 2,
+            "role": {
+              "name": " Engineering "
+            },
+            "contractType": {
+              "name": " Permanent "
+            },
+            "datePosted": "2026-10-01",
+            "validThrough": "2026-12-01"
+          }
+        ]
+      },
+      "rows": null,
+      "total": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "float-total",
+      "payload": {
+        "offset": 0,
+        "limit": 100,
+        "size": 1,
+        "total": 1.0,
+        "totalPages": 1,
+        "results": [
+          {
+            "identifier": "22222222-2222-4222-8222-222222222222",
+            "boards": [
+              "11111111-1111-4111-8111-111111111111"
+            ],
+            "status": "published",
+            "title": "  Go\nEngineer ",
+            "description": " <p>Build Go.</p> ",
+            "requirements": " <ul><li>Go</li></ul> ",
+            "incentiveCompensation": "<p>Degree</p>",
+            "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111",
+            "jobLocation": {
+              "address": {
+                "addressLocality": " Bogot\u00e1 ",
+                "addressRegion": "Bogot\u00e1",
+                "addressCountry": "CO"
+              }
+            },
+            "employmentType": "FULL_TIME",
+            "jobLocationType": "TELECOMMUTE",
+            "postingType": "job",
+            "educationalLevel": "degree",
+            "totalJobOpenings": 2,
+            "role": {
+              "name": " Engineering "
+            },
+            "contractType": {
+              "name": " Permanent "
+            },
+            "datePosted": "2026-10-01",
+            "validThrough": "2026-12-01"
+          }
+        ]
+      },
+      "rows": null,
+      "total": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "foreign-board",
+      "payload": {
+        "offset": 0,
+        "limit": 100,
+        "size": 1,
+        "total": 1,
+        "totalPages": 1,
+        "results": [
+          {
+            "identifier": "22222222-2222-4222-8222-222222222222",
+            "boards": [
+              "22222222-2222-4222-8222-222222222222"
+            ],
+            "status": "published",
+            "title": "  Go\nEngineer ",
+            "description": " <p>Build Go.</p> ",
+            "requirements": " <ul><li>Go</li></ul> ",
+            "incentiveCompensation": "<p>Degree</p>",
+            "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111",
+            "jobLocation": {
+              "address": {
+                "addressLocality": " Bogot\u00e1 ",
+                "addressRegion": "Bogot\u00e1",
+                "addressCountry": "CO"
+              }
+            },
+            "employmentType": "FULL_TIME",
+            "jobLocationType": "TELECOMMUTE",
+            "postingType": "job",
+            "educationalLevel": "degree",
+            "totalJobOpenings": 2,
+            "role": {
+              "name": " Engineering "
+            },
+            "contractType": {
+              "name": " Permanent "
+            },
+            "datePosted": "2026-10-01",
+            "validThrough": "2026-12-01"
+          }
+        ]
+      },
+      "rows": null,
+      "total": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "unpublished",
+      "payload": {
+        "offset": 0,
+        "limit": 100,
+        "size": 1,
+        "total": 1,
+        "totalPages": 1,
+        "results": [
+          {
+            "identifier": "22222222-2222-4222-8222-222222222222",
+            "boards": [
+              "11111111-1111-4111-8111-111111111111"
+            ],
+            "status": "draft",
+            "title": "  Go\nEngineer ",
+            "description": " <p>Build Go.</p> ",
+            "requirements": " <ul><li>Go</li></ul> ",
+            "incentiveCompensation": "<p>Degree</p>",
+            "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111",
+            "jobLocation": {
+              "address": {
+                "addressLocality": " Bogot\u00e1 ",
+                "addressRegion": "Bogot\u00e1",
+                "addressCountry": "CO"
+              }
+            },
+            "employmentType": "FULL_TIME",
+            "jobLocationType": "TELECOMMUTE",
+            "postingType": "job",
+            "educationalLevel": "degree",
+            "totalJobOpenings": 2,
+            "role": {
+              "name": " Engineering "
+            },
+            "contractType": {
+              "name": " Permanent "
+            },
+            "datePosted": "2026-10-01",
+            "validThrough": "2026-12-01"
+          }
+        ]
+      },
+      "rows": null,
+      "total": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "duplicate",
+      "payload": {
+        "offset": 0,
+        "limit": 100,
+        "size": 2,
+        "total": 2,
+        "totalPages": 1,
+        "results": [
+          {
+            "identifier": "22222222-2222-4222-8222-222222222222",
+            "boards": [
+              "11111111-1111-4111-8111-111111111111"
+            ],
+            "status": "published",
+            "title": "  Go\nEngineer ",
+            "description": " <p>Build Go.</p> ",
+            "requirements": " <ul><li>Go</li></ul> ",
+            "incentiveCompensation": "<p>Degree</p>",
+            "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111",
+            "jobLocation": {
+              "address": {
+                "addressLocality": " Bogot\u00e1 ",
+                "addressRegion": "Bogot\u00e1",
+                "addressCountry": "CO"
+              }
+            },
+            "employmentType": "FULL_TIME",
+            "jobLocationType": "TELECOMMUTE",
+            "postingType": "job",
+            "educationalLevel": "degree",
+            "totalJobOpenings": 2,
+            "role": {
+              "name": " Engineering "
+            },
+            "contractType": {
+              "name": " Permanent "
+            },
+            "datePosted": "2026-10-01",
+            "validThrough": "2026-12-01"
+          },
+          {
+            "identifier": "22222222-2222-4222-8222-222222222222",
+            "boards": [
+              "11111111-1111-4111-8111-111111111111"
+            ],
+            "status": "published",
+            "title": "  Go\nEngineer ",
+            "description": " <p>Build Go.</p> ",
+            "requirements": " <ul><li>Go</li></ul> ",
+            "incentiveCompensation": "<p>Degree</p>",
+            "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111",
+            "jobLocation": {
+              "address": {
+                "addressLocality": " Bogot\u00e1 ",
+                "addressRegion": "Bogot\u00e1",
+                "addressCountry": "CO"
+              }
+            },
+            "employmentType": "FULL_TIME",
+            "jobLocationType": "TELECOMMUTE",
+            "postingType": "job",
+            "educationalLevel": "degree",
+            "totalJobOpenings": 2,
+            "role": {
+              "name": " Engineering "
+            },
+            "contractType": {
+              "name": " Permanent "
+            },
+            "datePosted": "2026-10-01",
+            "validThrough": "2026-12-01"
+          }
+        ]
+      },
+      "rows": null,
+      "total": null,
+      "error": "ValueError"
+    }
+  ],
+  "jobs": [
+    {
+      "name": "rich",
+      "row": {
+        "identifier": "22222222-2222-4222-8222-222222222222",
+        "boards": [
+          "11111111-1111-4111-8111-111111111111"
+        ],
+        "status": "published",
+        "title": "  Go\nEngineer ",
+        "description": " <p>Build Go.</p> ",
+        "requirements": " <ul><li>Go</li></ul> ",
+        "incentiveCompensation": "<p>Degree</p>",
+        "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111",
+        "jobLocation": {
+          "address": {
+            "addressLocality": " Bogot\u00e1 ",
+            "addressRegion": "Bogot\u00e1",
+            "addressCountry": "CO"
+          }
+        },
+        "employmentType": "FULL_TIME",
+        "jobLocationType": "TELECOMMUTE",
+        "postingType": "job",
+        "educationalLevel": "degree",
+        "totalJobOpenings": 2,
+        "role": {
+          "name": " Engineering "
+        },
+        "contractType": {
+          "name": " Permanent "
+        },
+        "datePosted": "2026-10-01",
+        "validThrough": "2026-12-01"
+      },
+      "value": {
+        "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111",
+        "title": "Go Engineer",
+        "description": "<p>Build Go.</p><h3>Requirements</h3><ul><li>Go</li></ul><h3>Education</h3><p>Degree</p>",
+        "locations": [
+          "Bogot\u00e1, CO"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "remote",
+        "date_posted": "2026-10-01",
+        "language": "es",
+        "extras": {
+          "qualifications": "<ul><li>Go</li></ul><p>Degree</p>",
+          "valid_through": "2026-12-01"
+        },
+        "metadata": {
+          "universia_job_id": "22222222-2222-4222-8222-222222222222",
+          "universia_board_id": "11111111-1111-4111-8111-111111111111",
+          "posting_type": "job",
+          "educational_level": "degree",
+          "total_job_openings": 2,
+          "role": "Engineering",
+          "contract_type": "Permanent"
+        },
+        "source_identity": "universia:11111111-1111-4111-8111-111111111111:22222222-2222-4222-8222-222222222222"
+      },
+      "error": null
+    },
+    {
+      "name": "intern",
+      "row": {
+        "identifier": "22222222-2222-4222-8222-222222222222",
+        "boards": [
+          "11111111-1111-4111-8111-111111111111"
+        ],
+        "status": "published",
+        "title": "  Go\nEngineer ",
+        "description": " <p>Build Go.</p> ",
+        "requirements": " <ul><li>Go</li></ul> ",
+        "incentiveCompensation": "<p>Degree</p>",
+        "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111",
+        "jobLocation": {
+          "address": {
+            "addressLocality": " Bogot\u00e1 ",
+            "addressRegion": "Bogot\u00e1",
+            "addressCountry": "CO"
+          }
+        },
+        "employmentType": "internship",
+        "jobLocationType": "TELECOMMUTE",
+        "postingType": "job",
+        "educationalLevel": "degree",
+        "totalJobOpenings": 2,
+        "role": {
+          "name": " Engineering "
+        },
+        "contractType": {
+          "name": " Permanent "
+        },
+        "datePosted": "2026-10-01",
+        "validThrough": "2026-12-01"
+      },
+      "value": {
+        "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111",
+        "title": "Go Engineer",
+        "description": "<p>Build Go.</p><h3>Requirements</h3><ul><li>Go</li></ul><h3>Education</h3><p>Degree</p>",
+        "locations": [
+          "Bogot\u00e1, CO"
+        ],
+        "employment_type": "internship",
+        "job_location_type": "remote",
+        "date_posted": "2026-10-01",
+        "language": "es",
+        "extras": {
+          "qualifications": "<ul><li>Go</li></ul><p>Degree</p>",
+          "valid_through": "2026-12-01"
+        },
+        "metadata": {
+          "universia_job_id": "22222222-2222-4222-8222-222222222222",
+          "universia_board_id": "11111111-1111-4111-8111-111111111111",
+          "posting_type": "job",
+          "educational_level": "degree",
+          "total_job_openings": 2,
+          "role": "Engineering",
+          "contract_type": "Permanent"
+        },
+        "source_identity": "universia:11111111-1111-4111-8111-111111111111:22222222-2222-4222-8222-222222222222"
+      },
+      "error": null
+    },
+    {
+      "name": "street",
+      "row": {
+        "identifier": "22222222-2222-4222-8222-222222222222",
+        "boards": [
+          "11111111-1111-4111-8111-111111111111"
+        ],
+        "status": "published",
+        "title": "  Go\nEngineer ",
+        "description": " <p>Build Go.</p> ",
+        "requirements": " <ul><li>Go</li></ul> ",
+        "incentiveCompensation": "<p>Degree</p>",
+        "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111",
+        "jobLocation": {
+          "address": {
+            "streetAddress": " Main\nRoad "
+          }
+        },
+        "employmentType": "FULL_TIME",
+        "jobLocationType": "TELECOMMUTE",
+        "postingType": "job",
+        "educationalLevel": "degree",
+        "totalJobOpenings": 2,
+        "role": {
+          "name": " Engineering "
+        },
+        "contractType": {
+          "name": " Permanent "
+        },
+        "datePosted": "2026-10-01",
+        "validThrough": "2026-12-01"
+      },
+      "value": {
+        "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111",
+        "title": "Go Engineer",
+        "description": "<p>Build Go.</p><h3>Requirements</h3><ul><li>Go</li></ul><h3>Education</h3><p>Degree</p>",
+        "locations": [
+          "Main Road"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "remote",
+        "date_posted": "2026-10-01",
+        "language": "es",
+        "extras": {
+          "qualifications": "<ul><li>Go</li></ul><p>Degree</p>",
+          "valid_through": "2026-12-01"
+        },
+        "metadata": {
+          "universia_job_id": "22222222-2222-4222-8222-222222222222",
+          "universia_board_id": "11111111-1111-4111-8111-111111111111",
+          "posting_type": "job",
+          "educational_level": "degree",
+          "total_job_openings": 2,
+          "role": "Engineering",
+          "contract_type": "Permanent"
+        },
+        "source_identity": "universia:11111111-1111-4111-8111-111111111111:22222222-2222-4222-8222-222222222222"
+      },
+      "error": null
+    },
+    {
+      "name": "missing-title",
+      "row": {
+        "identifier": "22222222-2222-4222-8222-222222222222",
+        "boards": [
+          "11111111-1111-4111-8111-111111111111"
+        ],
+        "status": "published",
+        "title": " ",
+        "description": " <p>Build Go.</p> ",
+        "requirements": " <ul><li>Go</li></ul> ",
+        "incentiveCompensation": "<p>Degree</p>",
+        "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111",
+        "jobLocation": {
+          "address": {
+            "addressLocality": " Bogot\u00e1 ",
+            "addressRegion": "Bogot\u00e1",
+            "addressCountry": "CO"
+          }
+        },
+        "employmentType": "FULL_TIME",
+        "jobLocationType": "TELECOMMUTE",
+        "postingType": "job",
+        "educationalLevel": "degree",
+        "totalJobOpenings": 2,
+        "role": {
+          "name": " Engineering "
+        },
+        "contractType": {
+          "name": " Permanent "
+        },
+        "datePosted": "2026-10-01",
+        "validThrough": "2026-12-01"
+      },
+      "value": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "missing-description",
+      "row": {
+        "identifier": "22222222-2222-4222-8222-222222222222",
+        "boards": [
+          "11111111-1111-4111-8111-111111111111"
+        ],
+        "status": "published",
+        "title": "  Go\nEngineer ",
+        "description": " ",
+        "requirements": " <ul><li>Go</li></ul> ",
+        "incentiveCompensation": "<p>Degree</p>",
+        "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111",
+        "jobLocation": {
+          "address": {
+            "addressLocality": " Bogot\u00e1 ",
+            "addressRegion": "Bogot\u00e1",
+            "addressCountry": "CO"
+          }
+        },
+        "employmentType": "FULL_TIME",
+        "jobLocationType": "TELECOMMUTE",
+        "postingType": "job",
+        "educationalLevel": "degree",
+        "totalJobOpenings": 2,
+        "role": {
+          "name": " Engineering "
+        },
+        "contractType": {
+          "name": " Permanent "
+        },
+        "datePosted": "2026-10-01",
+        "validThrough": "2026-12-01"
+      },
+      "value": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "foreign-url",
+      "row": {
+        "identifier": "22222222-2222-4222-8222-222222222222",
+        "boards": [
+          "11111111-1111-4111-8111-111111111111"
+        ],
+        "status": "published",
+        "title": "  Go\nEngineer ",
+        "description": " <p>Build Go.</p> ",
+        "requirements": " <ul><li>Go</li></ul> ",
+        "incentiveCompensation": "<p>Degree</p>",
+        "url": "https://foreign.example/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111",
+        "jobLocation": {
+          "address": {
+            "addressLocality": " Bogot\u00e1 ",
+            "addressRegion": "Bogot\u00e1",
+            "addressCountry": "CO"
+          }
+        },
+        "employmentType": "FULL_TIME",
+        "jobLocationType": "TELECOMMUTE",
+        "postingType": "job",
+        "educationalLevel": "degree",
+        "totalJobOpenings": 2,
+        "role": {
+          "name": " Engineering "
+        },
+        "contractType": {
+          "name": " Permanent "
+        },
+        "datePosted": "2026-10-01",
+        "validThrough": "2026-12-01"
+      },
+      "value": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "duplicate-query",
+      "row": {
+        "identifier": "22222222-2222-4222-8222-222222222222",
+        "boards": [
+          "11111111-1111-4111-8111-111111111111"
+        ],
+        "status": "published",
+        "title": "  Go\nEngineer ",
+        "description": " <p>Build Go.</p> ",
+        "requirements": " <ul><li>Go</li></ul> ",
+        "incentiveCompensation": "<p>Degree</p>",
+        "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111&referer=11111111-1111-4111-8111-111111111111",
+        "jobLocation": {
+          "address": {
+            "addressLocality": " Bogot\u00e1 ",
+            "addressRegion": "Bogot\u00e1",
+            "addressCountry": "CO"
+          }
+        },
+        "employmentType": "FULL_TIME",
+        "jobLocationType": "TELECOMMUTE",
+        "postingType": "job",
+        "educationalLevel": "degree",
+        "totalJobOpenings": 2,
+        "role": {
+          "name": " Engineering "
+        },
+        "contractType": {
+          "name": " Permanent "
+        },
+        "datePosted": "2026-10-01",
+        "validThrough": "2026-12-01"
+      },
+      "value": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "wrong-entity",
+      "row": {
+        "identifier": "22222222-2222-4222-8222-222222222222",
+        "boards": [
+          "11111111-1111-4111-8111-111111111111"
+        ],
+        "status": "published",
+        "title": "  Go\nEngineer ",
+        "description": " <p>Build Go.</p> ",
+        "requirements": " <ul><li>Go</li></ul> ",
+        "incentiveCompensation": "<p>Degree</p>",
+        "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111&entityid=22222222-2222-4222-8222-222222222222",
+        "jobLocation": {
+          "address": {
+            "addressLocality": " Bogot\u00e1 ",
+            "addressRegion": "Bogot\u00e1",
+            "addressCountry": "CO"
+          }
+        },
+        "employmentType": "FULL_TIME",
+        "jobLocationType": "TELECOMMUTE",
+        "postingType": "job",
+        "educationalLevel": "degree",
+        "totalJobOpenings": 2,
+        "role": {
+          "name": " Engineering "
+        },
+        "contractType": {
+          "name": " Permanent "
+        },
+        "datePosted": "2026-10-01",
+        "validThrough": "2026-12-01"
+      },
+      "value": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "query-entity",
+      "row": {
+        "identifier": "22222222-2222-4222-8222-222222222222",
+        "boards": [
+          "11111111-1111-4111-8111-111111111111"
+        ],
+        "status": "published",
+        "title": "  Go\nEngineer ",
+        "description": " <p>Build Go.</p> ",
+        "requirements": " <ul><li>Go</li></ul> ",
+        "incentiveCompensation": "<p>Degree</p>",
+        "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111&entityid=11111111-1111-4111-8111-111111111111",
+        "jobLocation": {
+          "address": {
+            "addressLocality": " Bogot\u00e1 ",
+            "addressRegion": "Bogot\u00e1",
+            "addressCountry": "CO"
+          }
+        },
+        "employmentType": "FULL_TIME",
+        "jobLocationType": "TELECOMMUTE",
+        "postingType": "job",
+        "educationalLevel": "degree",
+        "totalJobOpenings": 2,
+        "role": {
+          "name": " Engineering "
+        },
+        "contractType": {
+          "name": " Permanent "
+        },
+        "datePosted": "2026-10-01",
+        "validThrough": "2026-12-01"
+      },
+      "value": {
+        "url": "https://www.universia.net/es/empleo/22222222-2222-4222-8222-222222222222/engineer.html?referer=11111111-1111-4111-8111-111111111111&entityid=11111111-1111-4111-8111-111111111111",
+        "title": "Go Engineer",
+        "description": "<p>Build Go.</p><h3>Requirements</h3><ul><li>Go</li></ul><h3>Education</h3><p>Degree</p>",
+        "locations": [
+          "Bogot\u00e1, CO"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "remote",
+        "date_posted": "2026-10-01",
+        "language": "es",
+        "extras": {
+          "qualifications": "<ul><li>Go</li></ul><p>Degree</p>",
+          "valid_through": "2026-12-01"
+        },
+        "metadata": {
+          "universia_job_id": "22222222-2222-4222-8222-222222222222",
+          "universia_board_id": "11111111-1111-4111-8111-111111111111",
+          "posting_type": "job",
+          "educational_level": "degree",
+          "total_job_openings": 2,
+          "role": "Engineering",
+          "contract_type": "Permanent"
+        },
+        "source_identity": "universia:11111111-1111-4111-8111-111111111111:22222222-2222-4222-8222-222222222222"
+      },
+      "error": null
+    }
+  ]
+}

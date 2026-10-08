@@ -1,0 +1,302 @@
+{
+  "pages": [
+    {
+      "name": "nl",
+      "board": "https://example.com/jobs",
+      "body": "window.typify={language:'nl'};<input class='cb-function' data-id='1'><input class='cb-function' data-id='2'>",
+      "value": {
+        "api_url": "https://example.com/api/vacancies",
+        "function_ids": [
+          "1",
+          "2"
+        ]
+      }
+    },
+    {
+      "name": "de-default",
+      "board": "https://www.dominosjobs.de/jobs",
+      "body": "window.typify={};<input class='cb-function' data-id='1'>",
+      "value": {
+        "api_url": "https://www.dominosjobs.de/de/api/vacancies",
+        "function_ids": [
+          "1"
+        ]
+      }
+    },
+    {
+      "name": "fr",
+      "board": "https://example.com/jobs",
+      "body": "window.typify={language:'fr'};<input class='cb-function' data-id='1'>",
+      "value": {
+        "api_url": "https://example.com/fr/api/vacancies",
+        "function_ids": [
+          "1"
+        ]
+      }
+    },
+    {
+      "name": "duplicate",
+      "board": "https://example.com/jobs",
+      "body": "window.typify={};<input class='cb-function' data-id='1'><input class='cb-function' data-id='1'>",
+      "value": {
+        "api_url": "https://example.com/api/vacancies",
+        "function_ids": [
+          "1"
+        ]
+      }
+    },
+    {
+      "name": "unicode-id",
+      "board": "https://example.com/jobs",
+      "body": "window.typify={};<input class='cb-function' data-id='\u0662'>",
+      "value": {
+        "api_url": "https://example.com/api/vacancies",
+        "function_ids": [
+          "\u0662"
+        ]
+      }
+    },
+    {
+      "name": "no-partitions",
+      "board": "https://example.com/jobs",
+      "body": "window.typify={}",
+      "value": null
+    },
+    {
+      "name": "no-marker",
+      "board": "https://example.com/jobs",
+      "body": "<input class='cb-function' data-id='1'>",
+      "value": null
+    }
+  ],
+  "counts": [
+    {
+      "name": "empty",
+      "payload": {
+        "pagination": {
+          "total": 0,
+          "total_pages": 0
+        },
+        "results": []
+      },
+      "total": 0,
+      "rows": [],
+      "error": null
+    },
+    {
+      "name": "one",
+      "payload": {
+        "pagination": {
+          "total": 1,
+          "total_pages": 1
+        },
+        "results": [
+          {
+            "title": "Engineer"
+          }
+        ]
+      },
+      "total": 1,
+      "rows": [
+        {
+          "title": "Engineer"
+        }
+      ],
+      "error": null
+    },
+    {
+      "name": "numeric-string",
+      "payload": {
+        "pagination": {
+          "total": "1",
+          "total_pages": "1"
+        },
+        "results": [
+          {}
+        ]
+      },
+      "total": 1,
+      "rows": [
+        {}
+      ],
+      "error": null
+    },
+    {
+      "name": "unicode-count",
+      "payload": {
+        "pagination": {
+          "total": "\u0661",
+          "total_pages": "\u0661"
+        },
+        "results": [
+          {}
+        ]
+      },
+      "total": 1,
+      "rows": [
+        {}
+      ],
+      "error": null
+    },
+    {
+      "name": "over-cap",
+      "payload": {
+        "pagination": {
+          "total": 2,
+          "total_pages": 2
+        },
+        "results": [
+          {},
+          {}
+        ]
+      },
+      "total": null,
+      "rows": null,
+      "error": "PartitionTooLargeError"
+    },
+    {
+      "name": "gap",
+      "payload": {
+        "pagination": {
+          "total": 2,
+          "total_pages": 1
+        },
+        "results": [
+          {}
+        ]
+      },
+      "total": null,
+      "rows": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "bool-total",
+      "payload": {
+        "pagination": {
+          "total": true,
+          "total_pages": 1
+        },
+        "results": [
+          {}
+        ]
+      },
+      "total": null,
+      "rows": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "float-total",
+      "payload": {
+        "pagination": {
+          "total": 1.0,
+          "total_pages": 1
+        },
+        "results": [
+          {}
+        ]
+      },
+      "total": null,
+      "rows": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "negative",
+      "payload": {
+        "pagination": {
+          "total": -1,
+          "total_pages": 0
+        },
+        "results": []
+      },
+      "total": null,
+      "rows": null,
+      "error": "ValueError"
+    }
+  ],
+  "jobs": [
+    {
+      "row": {
+        "title": "  Engineer  ",
+        "url": "/vacancy/one",
+        "location": {
+          "label": " Rotterdam "
+        }
+      },
+      "value": {
+        "url": "https://example.com/vacancy/one",
+        "title": "Engineer",
+        "locations": [
+          "Rotterdam"
+        ]
+      }
+    },
+    {
+      "row": {
+        "title": "Developer",
+        "url": "/vacancy/caf\u00e9"
+      },
+      "value": {
+        "url": "https://example.com/vacancy/caf\u00e9",
+        "title": "Developer",
+        "locations": null
+      }
+    },
+    {
+      "row": {
+        "title": "Developer",
+        "url": "/vacancy/data%2Fgo"
+      },
+      "value": {
+        "url": "https://example.com/vacancy/data%2Fgo",
+        "title": "Developer",
+        "locations": null
+      }
+    },
+    {
+      "row": {
+        "title": "Developer",
+        "url": "/vacancy/bad%ZZ"
+      },
+      "value": {
+        "url": "https://example.com/vacancy/bad%ZZ",
+        "title": "Developer",
+        "locations": null
+      }
+    },
+    {
+      "row": {
+        "title": "Foreign",
+        "url": "https://foreign.example/one"
+      },
+      "value": null
+    },
+    {
+      "row": {
+        "title": "",
+        "url": "/one"
+      },
+      "value": null
+    },
+    {
+      "row": {
+        "title": "Engineer",
+        "url": null
+      },
+      "value": null
+    },
+    {
+      "row": {
+        "title": "Engineer",
+        "url": "/one",
+        "location": {
+          "label": 3
+        }
+      },
+      "value": {
+        "url": "https://example.com/one",
+        "title": "Engineer",
+        "locations": null
+      }
+    }
+  ]
+}

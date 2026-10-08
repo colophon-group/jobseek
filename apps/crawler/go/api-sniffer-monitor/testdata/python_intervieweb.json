@@ -1,0 +1,150 @@
+{
+  "urls": [
+    {
+      "raw": "/jobs/engineer/EN/?tracking=1#top",
+      "canonical": "https://fixture.intervieweb.it/jobs/engineer/en/"
+    },
+    {
+      "raw": "//fixture.intervieweb.it/jobs/one/fr",
+      "canonical": "https://fixture.intervieweb.it/jobs/one/fr/"
+    },
+    {
+      "raw": "/jobs/caf\u00e9/en/",
+      "canonical": "https://fixture.intervieweb.it/jobs/caf\u00e9/en/"
+    },
+    {
+      "raw": "/jobs/data%2Fgo/en/",
+      "canonical": "https://fixture.intervieweb.it/jobs/data%2Fgo/en/"
+    },
+    {
+      "raw": "/jobs/bad%ZZ/en/",
+      "canonical": "https://fixture.intervieweb.it/jobs/bad%ZZ/en/"
+    },
+    {
+      "raw": "/jobs/role/en/;ignored",
+      "canonical": "https://fixture.intervieweb.it/jobs/role/en/"
+    },
+    {
+      "raw": "https://fixture.intervieweb.it:443/jobs/one/en",
+      "canonical": "https://fixture.intervieweb.it/jobs/one/en/"
+    },
+    {
+      "raw": "https://other.intervieweb.it/jobs/one/en",
+      "canonical": null
+    },
+    {
+      "raw": "http://fixture.intervieweb.it/jobs/one/en",
+      "canonical": null
+    },
+    {
+      "raw": "https://user@fixture.intervieweb.it/jobs/one/en",
+      "canonical": null
+    },
+    {
+      "raw": "/jobs/one/english",
+      "canonical": null
+    },
+    {
+      "raw": "/jobs/one/en/extra",
+      "canonical": null
+    }
+  ],
+  "pages": [
+    {
+      "name": "single",
+      "body": "<a href=\"/jobs/one/en\">One</a>",
+      "pages": 1,
+      "error": false,
+      "urls": [
+        "https://fixture.intervieweb.it/jobs/one/en/"
+      ]
+    },
+    {
+      "name": "empty",
+      "body": "No jobs",
+      "pages": 1,
+      "error": false,
+      "urls": []
+    },
+    {
+      "name": "counter",
+      "body": "Page 1 of 3 and Page 2 of 2",
+      "pages": 3,
+      "error": false,
+      "urls": []
+    },
+    {
+      "name": "unicode-counter",
+      "body": "Page \u0661 of \u0662",
+      "pages": 2,
+      "error": false,
+      "urls": []
+    },
+    {
+      "name": "zero",
+      "body": "Page 1 of 0",
+      "pages": null,
+      "error": true,
+      "urls": []
+    },
+    {
+      "name": "over-cap",
+      "body": "Page 1 of 1001",
+      "pages": null,
+      "error": true,
+      "urls": []
+    }
+  ],
+  "protocol": [
+    {
+      "name": "valid",
+      "body": "<input id=\"url-for-announces\" value=\"/app.php?module=newcareer&token=synthetic\"><a data-order=\"name\" class=\"active\">Order</a>{\"section\": \"jobs\"}",
+      "value": [
+        "https://fixture.intervieweb.it/app.php?module=newcareer&token=synthetic",
+        "jobs",
+        "name"
+      ],
+      "error": false
+    },
+    {
+      "name": "unicode-section",
+      "body": "<input id=\"url-for-announces\" value=\"/app.php?module=newcareer\"><a data-order=\"date\" class=\"active\">Order</a>{\"section\": \"caf\u00e9\"}",
+      "value": [
+        "https://fixture.intervieweb.it/app.php?module=newcareer",
+        "caf\u00e9",
+        "date"
+      ],
+      "error": false
+    },
+    {
+      "name": "cross-origin",
+      "body": "<input id=\"url-for-announces\" value=\"https://other.example/app.php?module=newcareer\"><a data-order=\"name\" class=\"active\">Order</a>{\"section\": \"jobs\"}",
+      "value": null,
+      "error": true
+    },
+    {
+      "name": "duplicate-module",
+      "body": "<input id=\"url-for-announces\" value=\"/app.php?module=newcareer&module=newcareer\"><a data-order=\"name\" class=\"active\">Order</a>{\"section\": \"jobs\"}",
+      "value": null,
+      "error": true
+    },
+    {
+      "name": "bad-module",
+      "body": "<input id=\"url-for-announces\" value=\"/app.php?module=admin\"><a data-order=\"name\" class=\"active\">Order</a>{\"section\": \"jobs\"}",
+      "value": null,
+      "error": true
+    },
+    {
+      "name": "bad-order",
+      "body": "<input id=\"url-for-announces\" value=\"/app.php?module=newcareer\"><a data-order=\"salary\" class=\"active\">Order</a>{\"section\": \"jobs\"}",
+      "value": null,
+      "error": true
+    },
+    {
+      "name": "missing-section",
+      "body": "<input id=\"url-for-announces\" value=\"/app.php?module=newcareer\"><a data-order=\"name\" class=\"active\">Order</a>",
+      "value": null,
+      "error": true
+    }
+  ]
+}

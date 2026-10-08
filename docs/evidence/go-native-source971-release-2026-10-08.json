@@ -1,0 +1,48 @@
+{
+  "source_revision": "3ebd1d16cf8340670d4ac154ead7fedeb2e0ce65",
+  "version": "0.13.971",
+  "original_crawler_workflow": 37723339750,
+  "crawler_build_job": 113135925045,
+  "matching_renderer_workflow": 37723373472,
+  "images": {
+    "crawler": "ghcr.io/colophon-group/jobseek-crawler@sha256:9b1019bd0854bb9993aac7f3f963ea1eef61f84eca6a79401bb8983a56ea6bc0",
+    "browser": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:6acd165720198ed2a79b9abec2087959bee1a8fe46578c5d6d56974a0294cfb6",
+    "renderer": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:32ac20a7e92ad91f468c62c7274e5b5956ade3c6531607514dadd95e0492dfe5"
+  },
+  "digest_source": "original successful image build step metadata; renderer deploy environment; not mutable tags",
+  "authority": "candidate release identity; independent incoming host/cold proof still required",
+  "schema": "jobseek.native-source971-release/v1",
+  "observed_at_utc": "2026-10-08T04:02:24.606402+00:00",
+  "pr": 10358,
+  "reviewed_head": "c6901bf6b472a1fe0c1d1da26811a4c668bc38b5",
+  "required_checks": "PASS exact reviewed head before merge",
+  "independent_incoming_cold_epoch": 226,
+  "independent_renderer_identity": "PASS on dedicated renderer host",
+  "b0": {
+    "status": "active",
+    "epoch": 227,
+    "plan": "98d3223101873a24f574fb1193899f970056df26c898868363af7de3de7186bb",
+    "receipt_sha256": "4bccdf351b155c4467162c262916532f6e8612a786b717562622c7d12b208ae2",
+    "health_endpoints": 7
+  },
+  "ordinary": {
+    "status": "active; supported activation and independent full-stack serving proof PASS",
+    "plan_sha256": "f79372d369e8e463a11cf0e2ab1baf6f187385d980c4534809c8fd601ceac978",
+    "projection_sha1": "ca44af64bc571a2de790be58758067d2d15dc996",
+    "admitted_monitors": 7375,
+    "admitted_detail_boards": 2616,
+    "scheduled_owned_postings": 1470796,
+    "cache_rejected_boards": 40,
+    "route_rejected_boards": 1,
+    "independent_serving_observed_at_utc": "2026-10-08T04:14:35.495351+00:00",
+    "restart_armed_services": 10,
+    "health_endpoints": 8,
+    "normal_successful_monitor_settlements": 23,
+    "normal_successful_detail_settlements": 1,
+    "normal_completed_monitor_sql_attempts": 24,
+    "claim_errors": 0,
+    "new_api_talentbrew_monitor_completions_observed": 0,
+    "natural_scope": "initial bounded normal-schedule snapshot; does not establish fleet freshness/conservation"
+  },
+  "full_migration_complete": false
+}
