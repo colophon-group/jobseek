@@ -1,0 +1,185 @@
+[
+  {
+    "name": "wordpress-two-layouts",
+    "board_url": "https://example.com/careers",
+    "metadata": {
+      "link_selector": "h3.elementor-post__title a[href], h4.entry-title a[href]",
+      "url_filter": "/jobs/"
+    },
+    "listing": "<h3 class=\"elementor-post__title\"><a class=\"role\" href=\"/jobs/1\">One</a></h3><h4 class=\"entry-title\"><a class=\"role\" href=\"/jobs/2\">Two</a></h4><a href=\"/other\">Other</a>",
+    "details": {
+      "/jobs/1": {
+        "status": 200,
+        "body": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\"}</script>"
+      },
+      "/jobs/2": {
+        "status": 200,
+        "body": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\"}</script>"
+      }
+    },
+    "expected": [
+      "https://example.com/jobs/1",
+      "https://example.com/jobs/2"
+    ],
+    "processing_expected": [
+      "https://example.com/jobs/1",
+      "https://example.com/jobs/2"
+    ],
+    "drop_reasons": {},
+    "calls": [
+      "https://example.com/careers"
+    ]
+  },
+  {
+    "name": "reversed-group-order",
+    "board_url": "https://example.com/careers",
+    "metadata": {
+      "link_selector": "h4.entry-title a[href], h3.elementor-post__title a[href]",
+      "url_filter": "/jobs/"
+    },
+    "listing": "<h3 class=\"elementor-post__title\"><a class=\"role\" href=\"/jobs/1\">One</a></h3><h4 class=\"entry-title\"><a class=\"role\" href=\"/jobs/2\">Two</a></h4><a href=\"/other\">Other</a>",
+    "details": {
+      "/jobs/1": {
+        "status": 200,
+        "body": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\"}</script>"
+      },
+      "/jobs/2": {
+        "status": 200,
+        "body": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\"}</script>"
+      }
+    },
+    "expected": [
+      "https://example.com/jobs/1",
+      "https://example.com/jobs/2"
+    ],
+    "processing_expected": [
+      "https://example.com/jobs/1",
+      "https://example.com/jobs/2"
+    ],
+    "drop_reasons": {},
+    "calls": [
+      "https://example.com/careers"
+    ]
+  },
+  {
+    "name": "overlapping-group",
+    "board_url": "https://example.com/careers",
+    "metadata": {
+      "link_selector": "a.role[href], h3.elementor-post__title a[href]",
+      "url_filter": "/jobs/"
+    },
+    "listing": "<h3 class=\"elementor-post__title\"><a class=\"role\" href=\"/jobs/1\">One</a></h3><h4 class=\"entry-title\"><a class=\"role\" href=\"/jobs/2\">Two</a></h4><a href=\"/other\">Other</a>",
+    "details": {
+      "/jobs/1": {
+        "status": 200,
+        "body": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\"}</script>"
+      },
+      "/jobs/2": {
+        "status": 200,
+        "body": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\"}</script>"
+      }
+    },
+    "expected": [
+      "https://example.com/jobs/1",
+      "https://example.com/jobs/2"
+    ],
+    "processing_expected": [
+      "https://example.com/jobs/1",
+      "https://example.com/jobs/2"
+    ],
+    "drop_reasons": {},
+    "calls": [
+      "https://example.com/careers"
+    ]
+  },
+  {
+    "name": "group-with-no-matches",
+    "board_url": "https://example.com/careers",
+    "metadata": {
+      "link_selector": "a.missing, h4.missing a",
+      "url_filter": "/jobs/"
+    },
+    "listing": "<h3 class=\"elementor-post__title\"><a class=\"role\" href=\"/jobs/1\">One</a></h3><h4 class=\"entry-title\"><a class=\"role\" href=\"/jobs/2\">Two</a></h4><a href=\"/other\">Other</a>",
+    "details": {
+      "/jobs/1": {
+        "status": 200,
+        "body": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\"}</script>"
+      },
+      "/jobs/2": {
+        "status": 200,
+        "body": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\"}</script>"
+      }
+    },
+    "expected": [],
+    "processing_expected": [],
+    "drop_reasons": {},
+    "calls": [
+      "https://example.com/careers"
+    ]
+  },
+  {
+    "name": "attribute-group",
+    "board_url": "https://example.com/careers",
+    "metadata": {
+      "link_selector": "a[href=\"/jobs/1\"], a[href=\"/jobs/2\"]",
+      "url_filter": "/jobs/"
+    },
+    "listing": "<h3 class=\"elementor-post__title\"><a class=\"role\" href=\"/jobs/1\">One</a></h3><h4 class=\"entry-title\"><a class=\"role\" href=\"/jobs/2\">Two</a></h4><a href=\"/other\">Other</a>",
+    "details": {
+      "/jobs/1": {
+        "status": 200,
+        "body": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\"}</script>"
+      },
+      "/jobs/2": {
+        "status": 200,
+        "body": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\"}</script>"
+      }
+    },
+    "expected": [
+      "https://example.com/jobs/1",
+      "https://example.com/jobs/2"
+    ],
+    "processing_expected": [
+      "https://example.com/jobs/1",
+      "https://example.com/jobs/2"
+    ],
+    "drop_reasons": {},
+    "calls": [
+      "https://example.com/careers"
+    ]
+  },
+  {
+    "name": "grouped-jsonld-verification",
+    "board_url": "https://example.com/careers",
+    "metadata": {
+      "link_selector": "h3 a[href], h4 a[href]",
+      "url_filter": "/jobs/",
+      "require_jsonld_jobposting": true
+    },
+    "listing": "<h3 class=\"elementor-post__title\"><a class=\"role\" href=\"/jobs/1\">One</a></h3><h4 class=\"entry-title\"><a class=\"role\" href=\"/jobs/2\">Two</a></h4><a href=\"/other\">Other</a>",
+    "details": {
+      "/jobs/1": {
+        "status": 200,
+        "body": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\"}</script>"
+      },
+      "/jobs/2": {
+        "status": 200,
+        "body": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\"}</script>"
+      }
+    },
+    "expected": [
+      "https://example.com/jobs/1",
+      "https://example.com/jobs/2"
+    ],
+    "processing_expected": [
+      "https://example.com/jobs/1",
+      "https://example.com/jobs/2"
+    ],
+    "drop_reasons": {},
+    "calls": [
+      "https://example.com/careers",
+      "https://example.com/jobs/1",
+      "https://example.com/jobs/2"
+    ]
+  }
+]

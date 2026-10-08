@@ -68,7 +68,7 @@ func InspectRenderedDetail(boardID string, config map[string]string, source stri
 	for key, value := range options {
 		parser[key] = value
 	}
-	for _, key := range []string{"browser_backend", "routing_revision", "wait", "wait_fallback", "timeout", "actions", "request_headers"} {
+	for _, key := range []string{"browser_backend", "routing_revision", "wait", "wait_fallback", "timeout", "actions", "request_headers", "resource_policy"} {
 		delete(parser, key)
 	}
 	parser["render"] = false
@@ -148,10 +148,15 @@ func validateRenderedNavigation(options map[string]any, allowActions ...bool) er
 			return ErrUnsupportedProfile
 		}
 	}
-	for _, key := range []string{"channel", "stealth", "headless", "persistent_context", "user_agent", "resource_policy", "block_resource_types", "transport_attempts", "retry_statuses", "fetch_url_transform", "document_fallback", "linked_description", "encoding", "description_selector"} {
+	for _, key := range []string{"channel", "stealth", "headless", "persistent_context", "user_agent", "block_resource_types", "transport_attempts", "retry_statuses", "fetch_url_transform", "document_fallback", "linked_description", "encoding", "description_selector"} {
 		if _, present := options[key]; present {
 			return ErrUnsupportedProfile
 		}
+	}
+	// Python defaults to resource_policy=none; Lightpanda currently applies no
+	// per-document resource filtering. Other policies need their own controller.
+	if policy, present := options["resource_policy"]; present && policy != nil && policy != "none" {
+		return ErrUnsupportedProfile
 	}
 	if raw, present := options["timeout"]; present {
 		n, ok := raw.(float64)

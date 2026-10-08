@@ -13,7 +13,15 @@ import (
 )
 
 func TestOriginalAutomaticAPIHTTPFieldsAndRequests(t *testing.T) {
-	raw, e := os.ReadFile("../api-sniffer-monitor/testdata/python_auto_inventory.json")
+	testOriginalAPIHTTPFieldsAndRequests(t, "../api-sniffer-monitor/testdata/python_auto_inventory.json", 17)
+}
+
+func TestOriginalHTMLAPIHTTPURLsAndRequests(t *testing.T) {
+	testOriginalAPIHTTPFieldsAndRequests(t, "../api-sniffer-monitor/testdata/python_html_inventory.json", 18)
+}
+
+func testOriginalAPIHTTPFieldsAndRequests(t *testing.T, path string, count int) {
+	raw, e := os.ReadFile(path)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -35,7 +43,7 @@ func TestOriginalAutomaticAPIHTTPFieldsAndRequests(t *testing.T) {
 			Data   json.RawMessage
 		}
 	}
-	if json.Unmarshal(raw, &cases) != nil || len(cases) != 17 {
+	if json.Unmarshal(raw, &cases) != nil || len(cases) != count {
 		t.Fatal("actual Python automatic HTTP oracle missing")
 	}
 	for _, c := range cases {
@@ -67,6 +75,12 @@ func TestOriginalAutomaticAPIHTTPFieldsAndRequests(t *testing.T) {
 				size, _ := strconv.Atoi(q.Get("limit"))
 				if q.Get("page") == "" {
 					page, _ = strconv.Atoi(q.Get("offset"))
+					var post map[string]any
+					if json.Unmarshal([]byte(body), &post) == nil {
+						if n, ok := post["page"].(float64); ok {
+							page = int(n)
+						}
+					}
 				}
 				var data []byte
 				status := 200

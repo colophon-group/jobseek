@@ -18,52 +18,78 @@ not complete migration.
 
 ## Latest checkpoint — 2026-10-08
 
-Production **0.13.980**, source `ee4d6d27f6806b22a1ec86e05c9d504364e239a1`,
-merged in [PR #10367](https://github.com/colophon-group/jobseek/pull/10367).
-Required CI and the actual Crawler Deploy Gate passed. Original crawler rollout
-`37827765892` and renderer rollout `37827922155` succeeded on attempt 1; the full
-incoming immutable stack passed independent cold242 verification. Supported B0
-activation and independent readback passed at **epoch243**. The runtime compiles
-**145 profiles** and uses checksum-pinned stable **Lightpanda 1.0.0**.
+Production **0.13.981**, source `eabefcff813a6fdb99cc807a53d894719a7c9ee8`,
+was merged in [PR #10368](https://github.com/colophon-group/jobseek/pull/10368)
+after exact-head Required CI, the actual Crawler Deploy Gate, installed-image
+parity and Lightpanda pilot checks passed. The complete immutable
+[crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37842398102)
+and matching
+[renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37842552041)
+succeeded. Independent incoming cold244 and renderer source/image checks passed.
+The runtime compiles **145 profiles**. Official release metadata was rechecked
+on October 8: stable **Lightpanda 1.0.0** is still the newest stable release; the
+upstream image remains checksum-pinned.
 
-Fresh source980 admission reconciled **1,515,737 scheduled posting routes** and
-selected **7,495 monitors**, **2,737 detail boards**, and **1,484,610 scheduled
-postings** after retaining three monitor holdouts. Forty-one boards with posting
-cache mismatches and one unsupported actual route retain their existing detail
-owner. All boards stay enabled. The supported wrapper staged plan
-`a9d95201edd74a1103ce5e985f813858b2a4580f720294ad1f4eb0782a66aca4` and projection
-`043a074c36676199debb9f9cd1d1c206c69f7636` at epoch243. Independent SQL verification
-and a zero-drift configuration audit passed. Ordinary eligibility and SQL activation
-passed, but complete readiness failed when the B0 producer's full Redis audit hit
-its unchanged three-second deadline. Supported recovery and independent full
-nine-service/seven-health/SQL+Redis restoration passed; the failed plan is retired.
-Supported B0 rollback and selector clearing then passed, followed by independent
-complete **cold244** verification. Both native owners are currently inactive; the
-complete immutable source980 base remains serving.
+The supported 25-selector B0 stage and activation succeeded. Independent readback
+confirms active **cdom epoch245**, the exact source/images/receipt and all seven
+health endpoints. B0 plan is
+`0b1fb6e10da95cacee5dd6fc5147bd05a176ee6b69c1eb664d1eb6ed655e44b4`;
+receipt SHA-256 is
+`17b8c9fc6f5af357b5f05f4b7708fda838fb0e9bb2dd17c4bd9e23f995077869`.
 
-A private, isolated same-size synthetic cohort with 60 valid legacy claimers
-reproduced the audit deadline. Batching reads alone did not eliminate it and is
-not included in this candidate. Reducing actual claim work while retaining all
-authority/conservation guards is the next operational task before another full
-ownership activation. The observed 21.4-second Redis SAVE belongs to recovery and
-does not establish the cause of the earlier producer failure.
+Fresh source981 canonical/Redis admission matches all **35 delivered API/DOM
+monitor configurations** across twelve direct API, eleven rendered API, eight
+direct DOM, three required-proxy DOM and one rendered DOM profiles. Their
+monitor-only plan
+`b66c009fbc694575550f9066912366ab6e598cb71d647c94f87adf96c2563ab9` and projection
+`94945721c7cc67b2efdfbd49e71628d24fbef76c` passed supported staging and independent
+staged SQL/Redis verification at epoch245. At the checkpoint time, supported
+activation is observing natural canonical lease expiry on the complete cold
+stack. Verify its complete readiness and active receipt before reporting those
+monitors as serving. Every separately scheduled detail keeps its current owner.
+This bounded cohort puts the delivered group into service without assuming the
+full-cohort Redis pressure issue is resolved.
 
-[PR #10368](https://github.com/colophon-group/jobseek/pull/10368) prepares the next
-**35-configuration API/DOM group**, including four explicit publisher field maps.
-Full initial-head queue/worker suites and required checks passed; 22 API and seven
-DOM successful public HTTP captures match original output and request contracts.
-Initial exact-head Required CI, Crawler Deploy Gate, image parity and Lightpanda
-pilot checks passed. The final checkpoint revision needs fresh required checks;
-immutable delivery and route admission remain pending.
-Declared proxy and affine browser public execution still require qualification.
+The next delivery combines **41 additional API/DOM configurations**: inert
+explicit-API `render` annotations, default `resource_policy: none`, explicit
+HTML-in-JSON URL inventories, DOM CSS selector lists, and API publisher
+allowlists. It preserves direct, required-proxy and affine rendered transports,
+canonical hashes, URL-only detail intents, publisher precedence, complete
+pagination and cancellation/failure conservation. HTML browser traversal and
+unimplemented resource policies remain outside admission.
 
-Continue by verifying source980 activation and natural operation, delivering the
-API/DOM group through the existing complete cutover/deploy path, and porting the
-remaining shared configurations and providers in groups. Keep the full delivery
-goal active through required runtime consumers, enabled coverage, full freshness
-and conservation, comparable whole-lane cost, supported reversal and observation
-window, then retire production Python/Playwright/Chromium. Preserve useful offline
-Python and every enabled board.
+Validation includes eighteen original Python HTML HTTP inventories, six original
+Python selector-list HTTP/processing inventories, real direct/proxy/rendered
+settlement and supported cold reversal. KPMG's same-capture replay matches all
+787 URLs, 73 requests and the original advertised-total truncation; IIBA's
+explicit zero marker matches across its array-root response. The actual IIBA
+capture exposed the initially object-only HTML empty guard; the narrow HTML
+array support and both valid/invalid array markers are now in the frozen corpus.
+Both full base queue/worker suites passed (517.125s/715.632s). The final added
+selector/allowlist controls pass complete DOM/API race suites, focused worker
+and profile checks, 26 real settlement cases and 45 cold-reversal cases. Run the
+final combined exact-head required checks before merge and immutable delivery.
+All boards stay enabled.
+
+The previous full ordinary handoff at source980 passed eligibility and SQL
+activation but failed complete readiness on the B0 producer's three-second Redis
+audit deadline. Supported recovery, B0 rollback, selector clearing and complete
+cold244 verification restored the base; plan `a9d95201...` is retired. A private
+same-size synthetic cohort reproduced the deadline under 60 continuously polling
+legacy claimers; separate Redis clients still reproduced that worst case. With
+the actual two-second legacy idle backoff, unchanged code passed at 681ms. Audit
+batching alone failed the worst-case load and was discarded. None of those
+experiments proves the production failure's exact cause or a permanent fix; the
+21.4-second Redis SAVE occurred during recovery, after the startup failure.
+Preserve the operation deadline and all authority/conservation guards.
+
+Continue by verifying the 35-monitor cohort's active authority and natural
+operation, delivering the combined 41-configuration group, and growing native
+coverage in groups while resolving full-cohort pressure. Finish mandatory runtime
+consumers, full enabled coverage, natural freshness/conservation, comparable
+whole-lane cost, supported reversal/window, then retire production
+Python/Playwright/Chromium. Keep the full delivery goal active and preserve useful
+offline Python and every enabled board.
 
 ## Historical checkpoint — source976
 

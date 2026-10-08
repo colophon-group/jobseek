@@ -11,7 +11,7 @@ func firstSharedDOMAPIFixture(t *testing.T, variant string) firstOwnerFixture {
 	parts := strings.Split(variant, "/")
 	kind, route := parts[0], parts[1]
 	provider := "dom"
-	if kind == "api-auto" {
+	if strings.HasPrefix(kind, "api-") {
 		provider = "api_sniffer"
 	}
 	var p firstOwnerFixture
@@ -27,6 +27,19 @@ func firstSharedDOMAPIFixture(t *testing.T, variant string) firstOwnerFixture {
 	md := map[string]any{"scraper_type": "skip"}
 	if provider == "api_sniffer" {
 		md["api_url"], md["json_path"], md["url_field"] = "https://example.com/api", "jobs", "url"
+		if kind == "api-html" {
+			md["json_path"] = "html"
+			delete(md, "url_field")
+		}
+		if kind == "api-inert" {
+			md["render"] = true
+		}
+		if kind == "api-boundary" {
+			md["url_allowlist"] = `^https://example\.com/jobs/[^/]+$`
+		}
+	}
+	if kind == "dom-none" || kind == "api-none" {
+		md["resource_policy"] = "none"
 	}
 	if kind == "dom-jsonld" {
 		md["require_jsonld_jobposting"] = true
@@ -34,6 +47,9 @@ func firstSharedDOMAPIFixture(t *testing.T, variant string) firstOwnerFixture {
 	}
 	if kind == "dom-include" {
 		md["include_board_url"] = true
+	}
+	if kind == "dom-group" {
+		md["link_selector"] = "h3 a[href], h4 a[href]"
 	}
 	if route == "proxy" {
 		md["proxy"] = true
@@ -62,6 +78,9 @@ func firstSharedDOMAPIFixture(t *testing.T, variant string) firstOwnerFixture {
 		_, _ = p.f.observer.Exec(context.Background(), "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE plan_sha256=$1 AND state='active'", plan.SHA256())
 	})
 	return p
+}
+func TestRealSharedNavigationHTMLVariantColdRetirement(t *testing.T) {
+	testProviderColdRetirement(t, []string{"api-html/direct", "api-html/proxy", "api-inert/direct", "api-none/direct", "api-none/proxy", "api-none/rendered", "dom-none/direct", "dom-none/proxy", "dom-none/rendered", "api-boundary/direct", "api-boundary/proxy", "api-boundary/rendered", "dom-group/direct", "dom-group/proxy", "dom-group/rendered"}, firstSharedDOMAPIFixture)
 }
 func TestRealSharedDOMAPIVariantColdRetirement(t *testing.T) {
 	testProviderColdRetirement(t, []string{"api-auto/direct", "api-auto/proxy", "api-auto/rendered", "dom-jsonld/direct", "dom-jsonld/proxy", "dom-jsonld/rendered", "dom-include/direct", "dom-include/proxy", "dom-include/rendered"}, firstSharedDOMAPIFixture)

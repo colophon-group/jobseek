@@ -18,6 +18,9 @@ func TestExistingPythonHTTPDiscoveryOracle(t *testing.T) {
 func TestOriginalPythonAutomaticHTTPDiscoveryOracle(t *testing.T) {
 	testHTTPDiscoveryOracle(t, "testdata/python_auto_inventory.json", true)
 }
+func TestOriginalPythonHTMLHTTPDiscoveryOracle(t *testing.T) {
+	testHTTPDiscoveryOracle(t, "testdata/python_html_inventory.json", true)
+}
 func testHTTPDiscoveryOracle(t *testing.T, path string, checkURLOnly bool) {
 	body, err := os.ReadFile(path)
 	if err != nil {
@@ -74,6 +77,9 @@ func testHTTPDiscoveryOracle(t *testing.T, path string, checkURLOnly bool) {
 				}
 				for _, response := range c.Responses {
 					if response.Page == page && (response.Size == nil || *response.Size == size) {
+						if o.HTML && (response.Status == 404 || response.Status == 410) && len(o.EmptyResponse) == 0 {
+							return nil, nil
+						}
 						if response.Status >= 400 {
 							return nil, fmt.Errorf("fixture HTTP %d", response.Status)
 						}

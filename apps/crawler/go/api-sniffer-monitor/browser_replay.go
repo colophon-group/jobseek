@@ -102,6 +102,10 @@ func BrowserReplayOptionsFromMetadata(boardURL, raw string) (BrowserReplayOption
 	if e != nil {
 		return o, e
 	}
+	if o.Inventory.HTML {
+		// HTML browser interception has a different original traversal contract.
+		return o, ErrOptions
+	}
 	endpoint, _ := url.Parse(o.Inventory.Endpoint)
 	// Aura requires a separate bounded interaction pass when navigation only
 	// captures non-listing actions. Keep that contract out of initial admission.

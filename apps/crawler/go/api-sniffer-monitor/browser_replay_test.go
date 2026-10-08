@@ -56,7 +56,7 @@ func TestBrowserReplayPreservesInventoryAndNavigationControls(t *testing.T) {
 	if e != nil || o.Wait != "networkidle" || o.TimeoutMS != 12000 || o.SettleMS != 250 || o.Inventory.Body != `{"z":1,"a":2}` {
 		t.Fatal("navigation/inventory differs", e, o.Inventory.Body)
 	}
-	for _, extra := range []string{`"actions":[]`, `"api_url_match":"/token/"`, `"persistent_context":false`, `"channel":"chrome"`, `"proxy":true`, `"render":true`, `"settle":-1`, `"timeout":0`} {
+	for _, extra := range []string{`"actions":[]`, `"api_url_match":"/token/"`, `"persistent_context":false`, `"channel":"chrome"`, `"proxy":true`, `"render":"invalid"`, `"settle":-1`, `"timeout":0`} {
 		if _, e := BrowserReplayOptionsFromMetadata("https://example.com/careers", strings.TrimSuffix(raw, "}")+","+extra+"}"); e == nil {
 			t.Fatal("unsupported browser control admitted", extra)
 		}

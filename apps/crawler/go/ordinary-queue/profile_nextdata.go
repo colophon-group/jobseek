@@ -85,7 +85,7 @@ func RenderedNextdataMonitorOptions(config map[string]string) (apisniffer.Nextda
 	for key, value := range md {
 		cloneMD[key] = value
 	}
-	for _, key := range []string{"browser_backend", "routing_revision", "wait", "wait_fallback", "timeout", "actions", "request_headers"} {
+	for _, key := range []string{"browser_backend", "routing_revision", "wait", "wait_fallback", "timeout", "actions", "request_headers", "resource_policy"} {
 		delete(cloneMD, key)
 	}
 	cloneMD["render"] = json.RawMessage(`false`)
