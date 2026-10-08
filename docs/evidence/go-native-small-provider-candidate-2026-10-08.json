@@ -1,7 +1,7 @@
 {
   "schema": "jobseek.native-small-provider-candidate/v1",
   "candidate_version": "0.13.980",
-  "state": "local qualification; required CI, merge, installed image and production ownership pending",
+  "state": "revised candidate with resolved UKG binding correction; final-head CI and deployment pending",
   "providers": [
     "jobbank104",
     "cnstaff",
@@ -27,7 +27,9 @@
     "real_database_settlement_and_transport_cases": 14,
     "supported_cold_retirement_cases": 12,
     "api_full_race": "PASS5.202s",
-    "api_and_worker_vet": "PASS"
+    "api_and_worker_vet": "PASS",
+    "initial_head_full_queue_race": "PASS455.589s at f7c1ee3ec4fa00d58f4481909fc866448d83b44c",
+    "initial_head_full_worker_race": "PASS652.516s at f7c1ee3ec4fa00d58f4481909fc866448d83b44c"
   },
   "corrected_failures": [
     "Initial real gone test exposed missing provider_gone classification; corrected source-bound error kind without changing publisher precedence.",
@@ -46,7 +48,17 @@
     "original_renderer_run": 37816935520,
     "attempt": 1,
     "rollouts": "SUCCESS",
-    "independent_proof": "complete healthy immutable base at cold240; ordinary inactive"
+    "independent_proof": "complete healthy immutable base at cold240; ordinary inactive",
+    "latest_state": "B0 active241, ordinary inactive after failed activation; full9writer/7health supported recovery independently verified"
   },
-  "authority": "Synthetic/reference/real local database qualification does not grant production ownership. Fresh exact-source config/route admission and original supported wrappers remain required."
+  "authority": "Synthetic/reference/real local database qualification does not grant production ownership. Fresh exact-source config/route admission and original supported wrappers remain required.",
+  "ukg_binding_correction": {
+    "trigger": "source979 zero-drift preflight then UKG Co-op/Ollies equivalent aliases persisted during quiescence; activation refused; supported full recovery passed",
+    "behavior": "bind resolved target; preserve conflicting or malformed supplied aliases and every other field in the hash",
+    "reference_binding_cases": 10,
+    "changed_parser_fence": "PASS",
+    "real_activation_and_retirement_cases": 13,
+    "focused_race": "PASS8.754s",
+    "production_authority": "pending revised exact-source admission and supported cutover"
+  }
 }

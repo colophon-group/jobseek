@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	api "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
 )
 
 var ErrUnsupportedProfile = errors.New("ordinary monitor profile is unsupported")
@@ -174,6 +176,38 @@ func stableGreenhouseConfig(config map[string]string, metadata map[string]json.R
 	for key, value := range metadata {
 		if !monitorRuntimeFields[key] {
 			stableMetadata[key] = value
+		}
+	}
+	if config["crawler_type"] == "ukg" {
+		board, err := api.UKGOptionsFromMetadata(config["board_url"], config["metadata"])
+		if err != nil {
+			return nil, ErrUnsupportedProfile
+		}
+		// Legacy discovery persists these aliases after CSV sync. Bind the
+		// resolved request target even before that write. Keep conflicting or
+		// malformed supplied aliases in the hash, along with all other config.
+		values := map[string]string{"host": board.Host, "tenant": board.Tenant,
+			"board_id": board.BoardID, "listing_url": board.ListingURL()}
+		for key, expected := range values {
+			raw, supplied := metadata[key]
+			equivalent := !supplied || string(raw) == "null"
+			var value string
+			if supplied && string(raw) != "null" && json.Unmarshal(raw, &value) == nil {
+				switch key {
+				case "host":
+					equivalent = strings.TrimRight(strings.ToLower(strings.TrimSpace(value)), ".") == expected
+				case "tenant":
+					equivalent = strings.TrimSpace(value) == expected
+				case "board_id":
+					equivalent = strings.ToLower(strings.TrimSpace(value)) == expected
+				case "listing_url":
+					parsed, e := api.UKGBoardFromURL(value)
+					equivalent = e == nil && parsed == board
+				}
+			}
+			if equivalent {
+				stableMetadata[key], _ = json.Marshal(expected)
+			}
 		}
 	}
 	if config["crawler_type"] == "eightfold" {

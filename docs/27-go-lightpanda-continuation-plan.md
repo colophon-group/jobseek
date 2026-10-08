@@ -414,8 +414,12 @@ profiles and 98 configurations. Combined queue/worker race suites passed
 installed image parity, and ARM whole-lane admission. The original full crawler
 rollout `37816859534` and renderer rollout `37816935520` succeeded at source
 `5b41c1fd4cc5b80322b4e4c90a6630ab4156e798`. Independent readback confirmed the
-complete healthy immutable base stack at cold epoch 240. Fresh ordinary
-admission and full natural freshness remain pending. See the [candidate evidence](evidence/go-native-static-provider-details-candidate-2026-10-08.json).
+complete healthy immutable base stack at cold epoch 240. Fresh ordinary admission selected 7489 monitors and 2738 detail boards at
+epoch 241. Activation failed after legacy UKG discovery added equivalent resolved
+aliases to Co-op and Ollie's between preflight and quiescence. Supported recovery
+and independent verification restored all nine base/B0 writers and seven health
+endpoints; ordinary ownership remains inactive and the failed plan remains inert.
+Full natural freshness remains pending. See the [candidate evidence](evidence/go-native-static-provider-details-candidate-2026-10-08.json).
 Next address reusable DOM/API configuration gaps in groups: the retained
 source976 offline census found 193 unsupported DOM monitors and 86 API monitors.
 Those counts are prioritization evidence, not production ownership or freshness
@@ -436,15 +440,25 @@ All 51 original Python inventory cases and 87 original HTTP traces match.
 Twenty-one publisher/redirect cases, six registry bindings, fourteen real
 PostgreSQL/Redis write/settlement/transport cases and twelve supported cold
 retirement cases pass. API full race and both API/worker vet checks pass.
-Required CI, installed image parity, immutable deployment, current admission
-and production ownership remain pending. See the
+The initial batch head passed full queue/worker race suites
+(455.589s/652.516s), Required CI and installed image parity. The revised batch also
+fixes the observed UKG cutover blocker: ownership hashes resolve host, tenant,
+board ID and listing URL before legacy discovery persists equivalent aliases.
+Conflicting aliases, changed targets, parser settings and unrelated configuration
+remain bound. Ten reference binding cases plus the changed-parser fence and
+thirteen real activation/retirement cases pass, including monitor and independent
+detail admission, conservation and rejection before effects. Revised-head broad
+checks, immutable deployment, current admission and production ownership remain
+pending. See the
 [candidate evidence](evidence/go-native-small-provider-candidate-2026-10-08.json).
 
 The source977 ordinary activation failure is retained: UKG resolved and saved
 `metadata.listing_url` after staging, so its monitor and detail hashes differed
 from current canonical/cache bindings. Supported recovery restored every writer.
-The stale plan remains inert history. Rebuild fresh admission and stage current
-bindings; preserve the ownership guard. Do not retry a plan with changed config.
+The stale plan remains inert history. Source979 repeated the same failure after a zero-drift preflight because CSV sync
+removes the learned aliases. The source980 semantic binding correction addresses
+that cause; rebuild admission on the exact deployed revision. Preserve target and
+configuration fences. Do not retry an old-source plan.
 
 Continue with grouped DOM/API configuration gaps, and qualify 51job/Jarvi
 together where their current board contracts permit. Keep the full migration
