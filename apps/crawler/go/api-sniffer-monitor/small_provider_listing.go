@@ -66,6 +66,12 @@ func smallHTML(s string) string {
 }
 
 func DiscoverSmallProvider(ctx context.Context, o SmallProviderOptions, fetch SmallProviderFetch, normalize SmallDescriptionNormalizer) ([]map[string]any, bool, error) {
+	if o.Provider == "jarvi" {
+		return DiscoverJarvi(ctx, o.BoardURL, o.PublicKey, o.Currency, fetch)
+	}
+	if o.Provider == "job51" {
+		return DiscoverJob51(ctx, o.BoardURL, o.CTMID, fetch, normalize)
+	}
 	jobs := []map[string]any{}
 	seen := map[string]bool{}
 	expected, originalPages, originalSize := -1, -1, -1

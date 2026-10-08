@@ -1,0 +1,72 @@
+{
+  "schema": "jobseek.go-migration-candidate/v1",
+  "observed_at_utc": "2026-10-08T22:37:46.294505+00:00",
+  "base_source": "cbe398d308d31bbfc731bad51210583217a919e3",
+  "candidate_version": "0.13.983",
+  "state": "implemented candidate; clean serial full worker and exact-head CI pending",
+  "providers": [
+    "jarvi",
+    "job51"
+  ],
+  "new_profiles": [
+    "jarvi.public-items/v1",
+    "job51.public-items/v1"
+  ],
+  "compiled_profiles": 147,
+  "current_registry_configurations": {
+    "jarvi": 1,
+    "job51": 2
+  },
+  "local_proofs": {
+    "actual_python_core_cases": 33,
+    "actual_python_inventory_cases": 21,
+    "http_inventory_cases": 21,
+    "publisher_redirect_retry_cases": 22,
+    "concurrent_publisher_cases": 1,
+    "pre_canceled_cases": 2,
+    "real_database_terminal_cases": 10,
+    "supported_cold_retirement_cases": 6,
+    "registry_bindings": 3,
+    "api_full_race": "PASS5.288s",
+    "api_worker_vet": "PASS",
+    "full_queue_race": "PASS538.730s",
+    "full_worker_race": "clean serial retry3 running; invalidated overlap and stale-fixture failures retained",
+    "text_character_limit_cases": 2
+  },
+  "public_same_capture": [
+    {
+      "slug": "jimmy-careers",
+      "jobs": 25,
+      "requests": 1,
+      "all_fields_match": true
+    },
+    {
+      "slug": "poly-developments-commerce-travel",
+      "jobs": 91,
+      "requests": 96,
+      "all_fields_match": true
+    },
+    {
+      "slug": "pvh-china",
+      "jobs": 11,
+      "requests": 12,
+      "all_fields_match": true
+    }
+  ],
+  "boundaries": [
+    "explicit Jarvi public SDK key and currency only; SDK discovery fallback not admitted",
+    "explicit positive 51job ctmid only; HTML ctmid discovery fallback not admitted",
+    "signed CoAPI requests regenerated and matched byte-for-byte",
+    "51job identity bound to configured employer and canonical source URL",
+    "all boards remain enabled"
+  ],
+  "production_authority": "pending exact-head checks, immutable delivery, fresh canonical/cache admission and original supported owner wrappers",
+  "full_migration_complete": false,
+  "corrected_validation_failures": [
+    "Registry metadata whitelist omitted new explicit public_api_key/currency/ctmid fields; fixed without relaxing unknown metadata rejection.",
+    "HTTP inventory originally decoded only JSON; 51job now retains original text/JSONP parse-once and five-million-character boundary.",
+    "New live adapter copied 51job stable source_identity after the shared rich-job conversion.",
+    "Initial SQL assertions were corrected for established URL fallback identity and processor skill-section enrichment.",
+    "Own focused PostgreSQL check overlapped full worker startup; stopped only own test process family, independently confirmed exclusive loopback fixture, retired only its exact stale fake-source plan, and passed all ten terminal cases before serial full-worker retry."
+  ]
+}

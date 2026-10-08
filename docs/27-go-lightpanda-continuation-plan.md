@@ -16,7 +16,60 @@ whole-service CPU/RAM/density/attributable cost; and a supported cold reversal
 with its observation window. A merged candidate or synthetic benchmark does
 not complete migration.
 
-## Latest checkpoint — 2026-10-08
+## Latest checkpoint — source982 delivery and next two-provider batch
+
+[PR #10369](https://github.com/colophon-group/jobseek/pull/10369) merged at
+`cbe398d308d31bbfc731bad51210583217a919e3`, version **0.13.982**, after exact-head
+Required CI, the actual Crawler Deploy Gate, installed-image parity and amd64/arm64
+Lightpanda checks passed. It qualifies **41 additional API/DOM configurations**
+and repairs `cdom` in all three enqueue Lua copies. Original immutable crawler
+run `37854180008` and matching dormant renderer run `37854281427` both succeeded
+on attempt 1. Independent incoming source/image checks passed at cold246.
+Supported B0 activation and seven health endpoints passed at **epoch247**. Fresh
+canonical/cache admission qualifies all **76** combined API/DOM configurations
+across six transport profiles; their grouped owner stage is in progress.
+
+Outgoing source981 ordinary ownership retired successfully. B0 rollback was
+retried only after the original scheduled reconciliation finished, then selectors
+were cleared. Independent **cold246** readback confirms every base writer armed,
+six health endpoints, both ownership receipts and Redis projection absent,
+retired SQL plan, no current fences, and stopped optional native actors. The
+source981 35-monitor natural observation remains fifteen successes, one failed
+monitor, 941 posting touches and zero claim errors; the corrected enqueue consumer
+must be exercised after fresh source982 admission. Keep every board enabled.
+
+The next iteration ports **Jarvi and 51job together**, version **0.13.983**, adding
+two profiles for all three current registry configurations. Jarvi uses its existing
+public SDK offers endpoint and field purposes. 51job preserves signed public CoAPI
+requests, complete listing pages, five concurrent details, employer-bound stable
+identities, canonical descriptions and Chinese fields. Both retain publisher
+precedence, finite inventory bounds, failure/cancellation conservation, rich
+skip-detail processing, existing retries and exact configuration/resource bindings.
+Public-key discovery and ctmid discovery fallbacks remain outside production
+admission; every current board supplies its explicit value.
+
+The original Python core and inventory corpus has **54 cases**. Actual Go HTTP
+replay, publisher/redirect/retry/concurrent failure and cancellation checks pass;
+ten real SQL/Redis terminal cases and six supported cold reversals pass. Public
+same-capture replay matches all fields for **127 jobs**: Jimmy 25/one request,
+Poly 91/96 requests and PVH 11/12 requests. These are input/output and local
+ownership proofs; the candidate is implemented while the full worker suite and required CI run. The full queue race suite passed in 538.730s;
+the first worker run was invalidated after an overlapping local fixture check.
+Its interrupted fixture left board/plan rows; the exclusive local synthetic test
+data was reset while preserving taxonomy seeds before the clean serial retry. See [candidate evidence](evidence/go-native-jarvi-job51-candidate-2026-10-08.json).
+
+Continue by completing the two original source982 rollouts and incoming proof,
+then fresh B0 and grouped ordinary admission; publish the complete Jarvi/51job
+batch after validation. The remaining source981 diagnostic frontier includes
+154 DOM, 49 API-sniffer and 15 RSS configurations, with browser/action/pagination,
+publisher allowlist and provider-specific controls. That diagnostic is a planning
+input, not a current production coverage claim. Group related controls across
+multiple types in each iteration. Resolve full-cohort Redis pressure without
+weakening deadlines or ownership/conservation checks, then finish mandatory
+consumers, natural freshness, comparable whole-service cost, reversal/window and
+production Python/Playwright/Chromium retirement. The full goal stays active.
+
+## Historical checkpoint — source981
 
 Production **0.13.981**, source `eabefcff813a6fdb99cc807a53d894719a7c9ee8`,
 was merged in [PR #10368](https://github.com/colophon-group/jobseek/pull/10368)
