@@ -1243,6 +1243,37 @@ def test_running_endpoint_attestation_rejects_extra_routed_identity() -> None:
         network_policy.verify_exact_egress_endpoint(exact, renderer_id, inventory)
 
 
+def test_renderer_library_contexts_include_embedded_assets() -> None:
+    import fnmatch
+    import shlex
+
+    dockerfile = (ROOT / "pilots/go-lightpanda/Dockerfile").read_text()
+    checked = 0
+    for context in ("api-sniffer-monitor", "dom-detail", "jsonld-detail", "publisher-policy"):
+        library = ROOT / "apps/crawler/go" / context
+        copied = []
+        for line in dockerfile.splitlines():
+            if line.startswith(f"COPY --from={context} "):
+                copied.extend(shlex.split(line)[2:-1])
+        assert copied, context
+        for source in library.glob("*.go"):
+            if source.name.endswith("_test.go"):
+                continue
+            for declaration in re.findall(r"(?m)^//go:embed (.+)$", source.read_text()):
+                for pattern in shlex.split(declaration):
+                    assets = list(library.glob(pattern))
+                    assert assets, (context, source.name, pattern)
+                    for asset in assets:
+                        relative = str(asset.relative_to(library))
+                        assert any(fnmatch.fnmatchcase(relative, item) for item in copied), (
+                            context,
+                            source.name,
+                            relative,
+                        )
+                        checked += 1
+    assert checked >= 5
+
+
 def test_service_builder_is_patch_and_digest_pinned() -> None:
     dockerfile = (ROOT / "pilots/go-lightpanda/Dockerfile").read_text(encoding="utf-8")
     assert re.search(
