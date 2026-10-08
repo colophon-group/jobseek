@@ -1,0 +1,461 @@
+{
+  "scopes": [
+    {
+      "name": "requested",
+      "payload": [
+        {
+          "published": true,
+          "locale": "en",
+          "clientId": 123,
+          "brands": [
+            " One "
+          ]
+        }
+      ],
+      "locale": "en",
+      "value": {
+        "alias": "sample",
+        "client_id": "123",
+        "locale": "en",
+        "brands": [
+          "One"
+        ]
+      },
+      "error": null
+    },
+    {
+      "name": "default",
+      "payload": [
+        {
+          "published": true,
+          "defaultLocale": true,
+          "locale": "en-us",
+          "clientId": "123",
+          "brands": [
+            "One",
+            "Two"
+          ]
+        }
+      ],
+      "locale": "fr",
+      "value": {
+        "alias": "sample",
+        "client_id": "123",
+        "locale": "en-us",
+        "brands": [
+          "One",
+          "Two"
+        ]
+      },
+      "error": null
+    },
+    {
+      "name": "first",
+      "payload": [
+        {
+          "published": true,
+          "locale": "en",
+          "clientId": "123",
+          "brands": [
+            "One"
+          ]
+        }
+      ],
+      "locale": "fr",
+      "value": {
+        "alias": "sample",
+        "client_id": "123",
+        "locale": "en",
+        "brands": [
+          "One"
+        ]
+      },
+      "error": null
+    },
+    {
+      "name": "unpublished",
+      "payload": [
+        {
+          "published": false,
+          "locale": "en",
+          "clientId": "123",
+          "brands": [
+            "One"
+          ]
+        }
+      ],
+      "locale": "en",
+      "value": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "bad-client",
+      "payload": [
+        {
+          "published": true,
+          "locale": "en",
+          "clientId": true,
+          "brands": [
+            "One"
+          ]
+        }
+      ],
+      "locale": "en",
+      "value": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "no-brands",
+      "payload": [
+        {
+          "published": true,
+          "locale": "en",
+          "clientId": "123",
+          "brands": [
+            null,
+            " "
+          ]
+        }
+      ],
+      "locale": "en",
+      "value": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "wrong-shape",
+      "payload": {},
+      "locale": "en",
+      "value": null,
+      "error": "ValueError"
+    }
+  ],
+  "jobs": [
+    {
+      "name": "rich",
+      "hit": {
+        "_source": {
+          "jobId": 17,
+          "positionType": " Engineer ",
+          "description": "<p>Build Go.</p>",
+          "address": {
+            "street1": "Main",
+            "city": " Z\u00fcrich ",
+            "country": "CH"
+          },
+          "category": "Full Time",
+          "createdDate": "2026-10-01",
+          "postingUuid": "uuid",
+          "brand": "One",
+          "clientName": "Employer"
+        }
+      },
+      "value": {
+        "url": "https://apply.jobappnetwork.com/clients/123/posting/17/en",
+        "title": "Engineer",
+        "description": "<p>Build Go.</p>",
+        "locations": [
+          "Main, Z\u00fcrich, CH"
+        ],
+        "employment_type": "Full Time",
+        "date_posted": "2026-10-01",
+        "language": "en",
+        "metadata": {
+          "job_id": 17,
+          "posting_uuid": "uuid",
+          "brand": "One",
+          "client_name": "Employer"
+        },
+        "source_identity": "talentreef:123:17"
+      }
+    },
+    {
+      "name": "dedup-location",
+      "hit": {
+        "_source": {
+          "jobId": "18",
+          "positionType": "Engineer",
+          "address": {
+            "street1": "CH",
+            "city": "CH",
+            "country": "CH"
+          }
+        }
+      },
+      "value": {
+        "url": "https://apply.jobappnetwork.com/clients/123/posting/18/en",
+        "title": "Engineer",
+        "description": null,
+        "locations": [
+          "CH"
+        ],
+        "employment_type": null,
+        "date_posted": null,
+        "language": "en",
+        "metadata": {
+          "job_id": "18"
+        },
+        "source_identity": "talentreef:123:18"
+      }
+    },
+    {
+      "name": "null-id",
+      "hit": {
+        "_source": {
+          "jobId": null,
+          "positionType": "Engineer"
+        }
+      },
+      "value": {
+        "url": "https://apply.jobappnetwork.com/clients/123/posting/None/en",
+        "title": "Engineer",
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "date_posted": null,
+        "language": "en",
+        "metadata": null,
+        "source_identity": "talentreef:123:None"
+      }
+    },
+    {
+      "name": "boolean-id",
+      "hit": {
+        "_source": {
+          "jobId": true,
+          "positionType": "Engineer"
+        }
+      },
+      "value": {
+        "url": "https://apply.jobappnetwork.com/clients/123/posting/True/en",
+        "title": "Engineer",
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "date_posted": null,
+        "language": "en",
+        "metadata": {
+          "job_id": true
+        },
+        "source_identity": "talentreef:123:True"
+      }
+    },
+    {
+      "name": "missing-id",
+      "hit": {
+        "_source": {
+          "positionType": "Engineer"
+        }
+      },
+      "value": null
+    },
+    {
+      "name": "bad-title",
+      "hit": {
+        "_source": {
+          "jobId": "18",
+          "positionType": 3
+        }
+      },
+      "value": null
+    },
+    {
+      "name": "optional-wrong-types",
+      "hit": {
+        "_source": {
+          "jobId": "18",
+          "positionType": "Engineer",
+          "description": 3,
+          "category": 3,
+          "address": []
+        }
+      },
+      "value": {
+        "url": "https://apply.jobappnetwork.com/clients/123/posting/18/en",
+        "title": "Engineer",
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "date_posted": null,
+        "language": "en",
+        "metadata": {
+          "job_id": "18"
+        },
+        "source_identity": "talentreef:123:18"
+      }
+    }
+  ],
+  "pages": [
+    {
+      "name": "empty",
+      "payload": {
+        "hits": {
+          "total": 0,
+          "hits": []
+        }
+      },
+      "rows": [],
+      "total": 0,
+      "error": null
+    },
+    {
+      "name": "object-total",
+      "payload": {
+        "hits": {
+          "total": {
+            "value": 1
+          },
+          "hits": [
+            {}
+          ]
+        }
+      },
+      "rows": [
+        {}
+      ],
+      "total": 1,
+      "error": null
+    },
+    {
+      "name": "bool-total",
+      "payload": {
+        "hits": {
+          "total": true,
+          "hits": [
+            {}
+          ]
+        }
+      },
+      "rows": [
+        {}
+      ],
+      "total": true,
+      "error": null
+    },
+    {
+      "name": "nonobject-filter",
+      "payload": {
+        "hits": {
+          "total": 1,
+          "hits": [
+            null,
+            {}
+          ]
+        }
+      },
+      "rows": [
+        {}
+      ],
+      "total": 1,
+      "error": null
+    },
+    {
+      "name": "bad-total",
+      "payload": {
+        "hits": {
+          "total": "1",
+          "hits": [
+            {}
+          ]
+        }
+      },
+      "rows": null,
+      "total": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "negative",
+      "payload": {
+        "hits": {
+          "total": -1,
+          "hits": []
+        }
+      },
+      "rows": null,
+      "total": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "float",
+      "payload": {
+        "hits": {
+          "total": 1.0,
+          "hits": [
+            {}
+          ]
+        }
+      },
+      "rows": null,
+      "total": null,
+      "error": "ValueError"
+    },
+    {
+      "name": "bad-shape",
+      "payload": {
+        "hits": []
+      },
+      "rows": null,
+      "total": null,
+      "error": "ValueError"
+    }
+  ],
+  "request": {
+    "from": 1000,
+    "size": 1000,
+    "_source": [
+      "positionType",
+      "category",
+      "description",
+      "address",
+      "jobId",
+      "clientId",
+      "clientName",
+      "brandId",
+      "brand",
+      "internalOrExternal",
+      "url",
+      "postingUuid",
+      "isSalaried",
+      "minCompensation",
+      "maxCompensation",
+      "pubCompensation",
+      "createdDate"
+    ],
+    "query": {
+      "bool": {
+        "filter": [
+          {
+            "terms": {
+              "clientId.raw": [
+                "123"
+              ]
+            }
+          },
+          {
+            "terms": {
+              "brand.raw": [
+                "One",
+                "Two"
+              ]
+            }
+          },
+          {
+            "terms": {
+              "internalOrExternal": [
+                {
+                  "internalOrExternal": "externalOnly"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "sort": [
+      {
+        "positionType.raw": {
+          "order": "asc"
+        }
+      }
+    ]
+  }
+}

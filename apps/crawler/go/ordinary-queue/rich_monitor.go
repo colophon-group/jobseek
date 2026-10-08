@@ -153,7 +153,8 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 			return nil, ErrConfiguration
 		}
 	}
-	identityEnabled := identityConfig != nil || zohoIdentity || hrIdentity || woowaIdentity
+	tenthIdentity := profile.Provider == "universia" || profile.Provider == "talentreef"
+	identityEnabled := identityConfig != nil || zohoIdentity || hrIdentity || woowaIdentity || tenthIdentity
 	identities := []string{}
 	explicit := []bool{}
 	identityByURL := map[string]string{}
@@ -169,7 +170,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		if posting.URL == "" || strings.ContainsRune(posting.URL, 0) || posting.Content == nil || posting.Content.Enrich || posting.Content.Fields.Titles == nil || len(posting.Content.Fields.Locales) == 0 || byURL[posting.URL] != nil {
 			return nil, ErrConfiguration
 		}
-		if woowaIdentity && !woowaOptions.WoowaIdentityMatches(posting.URL, posting.SourceIdentity) || !identityEnabled && posting.SourceIdentity != "" || identityConfig != nil && !identityConfig.Valid(posting.SourceIdentity) || zohoIdentity && !validZohoRSSIdentity(posting.URL, posting.SourceIdentity) || hrIdentity && !validHRManagerRSSIdentity(claim.task.Config, posting.SourceIdentity) {
+		if tenthIdentity && !validTenthSourceIdentity(profile.Provider, posting.URL, posting.SourceIdentity) || woowaIdentity && !woowaOptions.WoowaIdentityMatches(posting.URL, posting.SourceIdentity) || !identityEnabled && posting.SourceIdentity != "" || identityConfig != nil && !identityConfig.Valid(posting.SourceIdentity) || zohoIdentity && !validZohoRSSIdentity(posting.URL, posting.SourceIdentity) || hrIdentity && !validHRManagerRSSIdentity(claim.task.Config, posting.SourceIdentity) {
 			return nil, ErrConfiguration
 		}
 		identity := posting.URL
