@@ -1,9 +1,9 @@
 {
   "schema": "jobseek.go-native.shared-inventory-candidate/v1",
   "version": "0.13.973",
-  "status": "local prototype; no production ownership; full native suites pending",
-  "base_source": "3ebd1d16cf8340670d4ac154ead7fedeb2e0ce65",
-  "next_base": "PR10359 source972 after supported outgoing cold reversal and exact-head merge",
+  "status": "committed candidate; full local real SQL/Redis race suites passed; no production ownership",
+  "base_source": "3c3231b6451316f3f861692ce572b7f82d60af8b",
+  "next_base": "merged PR10359/source972",
   "contracts": [
     "DOM rendered root with configured verified HTTP pagination tails; browser-fetch tails remain unsupported",
     "Explicit Sitemap root can differ from display board origin; children remain bound to root HTTPS origin; separate configured content retry and existing status/transport retry budgets",
@@ -32,7 +32,12 @@
       "race": true,
       "seconds": 380.958
     },
-    "full_worker_suite": "pending"
+    "full_worker_suite": {
+      "status": "passed",
+      "real_postgres_redis": true,
+      "race": true,
+      "seconds": 596.328
+    }
   },
   "read_only_public_probes": {
     "bertelsmann_m6": {
