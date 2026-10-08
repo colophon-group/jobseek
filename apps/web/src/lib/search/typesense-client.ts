@@ -1,3 +1,4 @@
+import { beginTypesenseMeasurement } from "./latency";
 import { Client } from "typesense";
 import type { ConfigurationOptions } from "typesense/lib/Typesense/Configuration";
 import {
@@ -40,6 +41,8 @@ export function sanitizeTypesenseClientBoundary<T extends object>(client: T): T 
           }
 
           return (...args: unknown[]) => {
+            const finishTiming = property === "search" || property === "perform"
+              ? beginTypesenseMeasurement() : undefined;
             try {
               const result = Reflect.apply(value, innerTarget, args);
               if (!isObjectLike(result)) return result;
@@ -52,11 +55,15 @@ export function sanitizeTypesenseClientBoundary<T extends object>(client: T): T 
               }
               if (typeof then === "function") {
                 return withSanitizedTypesenseBoundary(
-                  () => result as PromiseLike<unknown>,
+                  () => Promise.resolve(result as PromiseLike<unknown>).then(
+                    (value) => { finishTiming?.(value); return value; },
+                    (error) => { finishTiming?.(undefined, true); throw error; },
+                  ),
                 );
               }
               return wrap(result);
             } catch (err) {
+              finishTiming?.(undefined, true);
               throw sanitizeTypesenseBoundaryError(err);
             }
           };

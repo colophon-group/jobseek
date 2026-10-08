@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { after, type NextRequest } from "next/server";
 import { recordPublicApiMetric } from "@/lib/public-api-metrics";
 import type { PublicApiMetricInput } from "@/lib/public-api-metrics-contract";
+import { createSearchMeasurement } from "@/lib/search/latency";
 import { getClientIp } from "@/lib/rate-limit";
 
 const INTERNAL_MCP_TOKEN_HEADER = "x-jobseek-internal-mcp-token";
@@ -63,14 +64,18 @@ export function withPublicApiObservability(
     const startedAt = Date.now();
     const consumer = publicApiConsumerFor(request);
     let statusCode = 500;
+    const searchMeasurement = route === "search" ? createSearchMeasurement() : null;
 
     try {
-      const response = await handler(request);
+      const response = searchMeasurement
+        ? await searchMeasurement.run(() => handler(request))
+        : await handler(request);
       statusCode = response.status;
       return response;
     } finally {
       const durationMs = boundedDurationMs(startedAt);
       const rateLimited = statusCode === 429;
+      const searchLatency = searchMeasurement?.finish();
 
       try {
         after(async () => {
@@ -86,6 +91,14 @@ export function withPublicApiObservability(
             });
           } catch {
             // Telemetry is best-effort and must never change the API response.
+          }
+
+          if (searchLatency) {
+            try {
+              console.info("public_api.search_latency", JSON.stringify({
+                ...searchLatency, consumer, status_class: statusClass(statusCode),
+              }));
+            } catch { /* Timing logs are best-effort, just like request metrics. */ }
           }
 
           try {
