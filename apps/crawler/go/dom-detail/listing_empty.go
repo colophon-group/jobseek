@@ -38,6 +38,9 @@ func listingEmptyOptions(config Object, c *ListingConfig) error {
 // Python's legacy proof uses the first selected element and normalized,
 // case-insensitive substring text. A later unrelated marker cannot prove zero.
 func ValidateListingEmpty(source string, c ListingConfig, jobCount int) error {
+	if err := ValidateListingProofs(source, c, jobCount); err != nil {
+		return err
+	}
 	if c.EmptySelector == "" || jobCount > 0 {
 		return nil
 	}

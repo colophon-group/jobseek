@@ -1,7 +1,7 @@
 {
   "observed_at": "2026-10-08",
   "candidate_version": "0.13.969",
-  "candidate_status": "implementation and focused local validation; full worker race suite running; final-head CI and deployment pending",
+  "candidate_status": "merged exact588 as ce951; final-head CI/image/Lightpanda green; original crawler and renderer deployments running; native ownership inactive",
   "providers": {
     "beehire": 1,
     "hirehive": 1,
@@ -23,7 +23,7 @@
     "real_cold_retirement_scenarios": 18,
     "worker_focused_race_seconds": 10.182,
     "retirement_race_seconds": 16.695,
-    "full_worker_race": "running",
+    "full_worker_race": "passed565.986s",
     "gofmt": "passed",
     "vet_worker": "passed",
     "ruff_fixture_generator": "passed"
@@ -42,5 +42,14 @@
     "required_proxy_configurations_not_probed_with_direct_client": 4,
     "rich_samples_have_title_html_location_language": true,
     "scope": "Go HTTP discovery and sampled fields only; no production database writes or ownership"
-  }
+  },
+  "reviewed_head": "588dfebeff2034416a3c7cd7775252d30b556afa",
+  "merged_source": "ce951b51a5afb1479f9a1ce7d07aeebd0adcf67e",
+  "pr": 10356,
+  "required_ci": 37708776753,
+  "actual_deploy_gate": 37710718179,
+  "original_crawler_run": 37712020979,
+  "matching_renderer_run": 37712043127,
+  "outgoing_cold_epoch": 224,
+  "configured_detail_bindings": 15
 }

@@ -106,7 +106,7 @@ func discoverAPISnifferInventory(ctx context.Context, client *http.Client, profi
 					}
 				} else {
 					response.Body.Close()
-					retryable := status >= 500 || status == 408 || status == 425 || status == 429 || o.Transient403 && (status == 401 || status == 403)
+					retryable := status >= 500 || status == 408 || status == 425 || status == 429 || o.Transient403 && (status == 401 || status == 403) || len(o.EmptyResponse) > 0 && (status == 404 || status == 410)
 					if !retryable {
 						cancel()
 						return nil, nil

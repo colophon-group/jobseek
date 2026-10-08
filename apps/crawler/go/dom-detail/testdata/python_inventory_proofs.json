@@ -1,0 +1,526 @@
+{
+  "api_cases": [
+    {
+      "name": "false",
+      "payload": {
+        "found_jobs": false
+      },
+      "config": {
+        "found_jobs": false
+      },
+      "matches": true,
+      "error": false
+    },
+    {
+      "name": "boolean-not-integer",
+      "payload": {
+        "found_jobs": 0
+      },
+      "config": {
+        "found_jobs": false
+      },
+      "matches": false,
+      "error": false
+    },
+    {
+      "name": "integer",
+      "payload": {
+        "total": 0
+      },
+      "config": {
+        "total": 0
+      },
+      "matches": true,
+      "error": false
+    },
+    {
+      "name": "float-not-integer",
+      "payload": {
+        "total": 0.0
+      },
+      "config": {
+        "total": 0
+      },
+      "matches": false,
+      "error": false
+    },
+    {
+      "name": "float",
+      "payload": {
+        "total": 0.0
+      },
+      "config": {
+        "total": 0.0
+      },
+      "matches": true,
+      "error": false
+    },
+    {
+      "name": "int-not-float",
+      "payload": {
+        "total": 0
+      },
+      "config": {
+        "total": 0.0
+      },
+      "matches": false,
+      "error": false
+    },
+    {
+      "name": "array",
+      "payload": {
+        "jobs": []
+      },
+      "config": {
+        "jobs": []
+      },
+      "matches": true,
+      "error": false
+    },
+    {
+      "name": "nonempty-array",
+      "payload": {
+        "jobs": [
+          1
+        ]
+      },
+      "config": {
+        "jobs": []
+      },
+      "matches": false,
+      "error": false
+    },
+    {
+      "name": "null-not-array",
+      "payload": {
+        "jobs": null
+      },
+      "config": {
+        "jobs": []
+      },
+      "matches": false,
+      "error": false
+    },
+    {
+      "name": "missing-null",
+      "payload": {},
+      "config": {
+        "missing": null
+      },
+      "matches": true,
+      "error": false
+    },
+    {
+      "name": "nested",
+      "payload": {
+        "result": {
+          "jobs": []
+        }
+      },
+      "config": {
+        "result.jobs": []
+      },
+      "matches": true,
+      "error": false
+    },
+    {
+      "name": "multiple",
+      "payload": {
+        "jobs": [],
+        "total": 0
+      },
+      "config": {
+        "jobs": [],
+        "total": 0
+      },
+      "matches": true,
+      "error": false
+    },
+    {
+      "name": "multiple-failure",
+      "payload": {
+        "jobs": [],
+        "total": 1
+      },
+      "config": {
+        "jobs": [],
+        "total": 0
+      },
+      "matches": false,
+      "error": false
+    },
+    {
+      "name": "string",
+      "payload": {
+        "status": "no-jobs"
+      },
+      "config": {
+        "status": "no-jobs"
+      },
+      "matches": true,
+      "error": false
+    },
+    {
+      "name": "invalid-object-marker",
+      "payload": {},
+      "config": {
+        "status": {}
+      },
+      "matches": null,
+      "error": true
+    },
+    {
+      "name": "invalid-list-marker",
+      "payload": {},
+      "config": {
+        "status": [
+          1
+        ]
+      },
+      "matches": null,
+      "error": true
+    },
+    {
+      "name": "invalid-empty-config",
+      "payload": {},
+      "config": {},
+      "matches": null,
+      "error": true
+    }
+  ],
+  "dom_cases": [
+    {
+      "name": "total",
+      "body": "<div class=\"total\">2 jobs</div>",
+      "config": {
+        "advertised_total": {
+          "selector": ".total",
+          "regex": "(\\d+) jobs"
+        }
+      },
+      "count": 2,
+      "error": false
+    },
+    {
+      "name": "zero",
+      "body": "<div class=\"total\">0 jobs</div>",
+      "config": {
+        "advertised_total": {
+          "selector": ".total",
+          "regex": "(\\d+) jobs"
+        }
+      },
+      "count": 0,
+      "error": false
+    },
+    {
+      "name": "unicode",
+      "body": "<div class=\"total\">٢ jobs</div>",
+      "config": {
+        "advertised_total": {
+          "selector": ".total",
+          "regex": "(\\d+) jobs"
+        }
+      },
+      "count": 2,
+      "error": false
+    },
+    {
+      "name": "fullwidth",
+      "body": "<div class=\"total\">２ jobs</div>",
+      "config": {
+        "advertised_total": {
+          "selector": ".total",
+          "regex": "(\\d+) jobs"
+        }
+      },
+      "count": 2,
+      "error": false
+    },
+    {
+      "name": "mismatch",
+      "body": "<div class=\"total\">2 jobs</div>",
+      "config": {
+        "advertised_total": {
+          "selector": ".total",
+          "regex": "(\\d+) jobs"
+        }
+      },
+      "count": 1,
+      "error": true
+    },
+    {
+      "name": "missing",
+      "body": "<html/>",
+      "config": {
+        "advertised_total": {
+          "selector": ".total",
+          "regex": "(\\d+) jobs"
+        }
+      },
+      "count": 0,
+      "error": true
+    },
+    {
+      "name": "conflict",
+      "body": "<div class=\"total\">2 jobs</div><div class=\"total\">3 jobs</div>",
+      "config": {
+        "advertised_total": {
+          "selector": ".total",
+          "regex": "(\\d+) jobs"
+        }
+      },
+      "count": 2,
+      "error": true
+    },
+    {
+      "name": "matching-multiple",
+      "body": "<div class=\"total\">2 jobs</div><div class=\"total\">2 jobs</div>",
+      "config": {
+        "advertised_total": {
+          "selector": ".total",
+          "regex": "(\\d+) jobs"
+        }
+      },
+      "count": 2,
+      "error": false
+    },
+    {
+      "name": "no-partial-match",
+      "body": "<div class=\"total\">2 jobs extra</div>",
+      "config": {
+        "advertised_total": {
+          "selector": ".total",
+          "regex": "(\\d+) jobs"
+        }
+      },
+      "count": 2,
+      "error": true
+    },
+    {
+      "name": "alternation-backtracking",
+      "body": "<div class=\"total\">01</div>",
+      "config": {
+        "advertised_total": {
+          "selector": ".total",
+          "regex": "(0|01)"
+        }
+      },
+      "count": 1,
+      "error": false
+    },
+    {
+      "name": "no-capture",
+      "body": "<div class=\"total\">2 jobs</div>",
+      "config": {
+        "advertised_total": {
+          "selector": ".total",
+          "regex": "\\d+ jobs"
+        }
+      },
+      "count": 2,
+      "error": true
+    },
+    {
+      "name": "two-captures",
+      "body": "<div class=\"total\">2 jobs</div>",
+      "config": {
+        "advertised_total": {
+          "selector": ".total",
+          "regex": "(\\d+) (jobs)"
+        }
+      },
+      "count": 2,
+      "error": true
+    },
+    {
+      "name": "bad-regex",
+      "body": "<div class=\"total\">2 jobs</div>",
+      "config": {
+        "advertised_total": {
+          "selector": ".total",
+          "regex": "("
+        }
+      },
+      "count": 2,
+      "error": true
+    },
+    {
+      "name": "exact",
+      "body": "<div class=\"empty\">No\n jobs</div>",
+      "config": {
+        "empty_states": [
+          {
+            "selector": ".empty",
+            "exact_text": "No jobs"
+          }
+        ]
+      },
+      "count": 0,
+      "error": false
+    },
+    {
+      "name": "exact-case",
+      "body": "<div class=\"empty\">NO JOBS</div>",
+      "config": {
+        "empty_states": [
+          {
+            "selector": ".empty",
+            "exact_text": "No jobs"
+          }
+        ]
+      },
+      "count": 0,
+      "error": true
+    },
+    {
+      "name": "contains-fold",
+      "body": "<div class=\"empty\">Straße is closed</div>",
+      "config": {
+        "empty_states": [
+          {
+            "selector": ".empty",
+            "contains_text": "STRASSE"
+          }
+        ]
+      },
+      "count": 0,
+      "error": false
+    },
+    {
+      "name": "first-only",
+      "body": "<div class=\"empty\">Other</div><div class=\"empty\">No jobs</div>",
+      "config": {
+        "empty_states": [
+          {
+            "selector": ".empty",
+            "contains_text": "No jobs"
+          }
+        ]
+      },
+      "count": 0,
+      "error": true
+    },
+    {
+      "name": "exact-later",
+      "body": "<div class=\"empty\">Other</div><div class=\"empty\">No jobs</div>",
+      "config": {
+        "empty_states": [
+          {
+            "selector": ".empty",
+            "exact_text": "No jobs"
+          }
+        ]
+      },
+      "count": 0,
+      "error": false
+    },
+    {
+      "name": "positive-no-empty-proof",
+      "body": "<html/>",
+      "config": {
+        "empty_states": [
+          {
+            "selector": ".empty",
+            "exact_text": "No jobs"
+          }
+        ]
+      },
+      "count": 1,
+      "error": false
+    },
+    {
+      "name": "contradiction",
+      "body": "<div class=\"empty\">No jobs</div><a class=\"job\">Job</a>",
+      "config": {
+        "empty_states": [
+          {
+            "selector": ".empty",
+            "exact_text": "No jobs",
+            "forbidden_link_selector": "a.job"
+          }
+        ]
+      },
+      "count": 1,
+      "error": true
+    },
+    {
+      "name": "required-link",
+      "body": "<div class=\"empty\">No jobs</div><a class=\"general\" href=\"/apply\">Apply</a>",
+      "config": {
+        "empty_states": [
+          {
+            "selector": ".empty",
+            "exact_text": "No jobs",
+            "required_link_selector": "a.general",
+            "required_link_url_pattern": "https://example\\.com/apply"
+          }
+        ]
+      },
+      "count": 0,
+      "error": false
+    },
+    {
+      "name": "missing-required-link",
+      "body": "<div class=\"empty\">No jobs</div>",
+      "config": {
+        "empty_states": [
+          {
+            "selector": ".empty",
+            "exact_text": "No jobs",
+            "required_link_selector": "a.general",
+            "required_link_url_pattern": "https://example\\.com/apply"
+          }
+        ]
+      },
+      "count": 0,
+      "error": true
+    },
+    {
+      "name": "foreign-link",
+      "body": "<div class=\"empty\">No jobs</div><a class=\"general\" href=\"https://foreign.example/apply\">Apply</a>",
+      "config": {
+        "empty_states": [
+          {
+            "selector": ".empty",
+            "exact_text": "No jobs",
+            "required_link_selector": "a.general",
+            "required_link_url_pattern": "https://example\\.com/apply"
+          }
+        ]
+      },
+      "count": 0,
+      "error": true
+    },
+    {
+      "name": "unpaired-link",
+      "body": "<html/>",
+      "config": {
+        "empty_states": [
+          {
+            "selector": ".empty",
+            "exact_text": "No jobs",
+            "required_link_selector": "a.general"
+          }
+        ]
+      },
+      "count": 0,
+      "error": true
+    },
+    {
+      "name": "two-text-keys",
+      "body": "<html/>",
+      "config": {
+        "empty_states": [
+          {
+            "selector": ".empty",
+            "exact_text": "No jobs",
+            "contains_text": "No jobs"
+          }
+        ]
+      },
+      "count": 0,
+      "error": true
+    }
+  ]
+}

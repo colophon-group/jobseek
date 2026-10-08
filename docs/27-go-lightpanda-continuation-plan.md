@@ -18,16 +18,36 @@ not complete migration.
 
 ## Latest checkpoint — 2026-10-08
 
-The eArcu/CVWarehouse/Woowa batch [PR #10355](https://github.com/colophon-group/jobseek/pull/10355)
-merged reviewed head `affe3f9406ac55dac2a9e6316f84a5e3ff1e5191` as source968
-`1676b322c6eced43601ee3ec3ed3ccd51edd850b`. Required CI, actual Crawler Deploy
-Gate, native execution, installed-image parity and Lightpanda checks passed.
-The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37705811220)
-has succeeded, including promotion, using its original build images. The matching
-[renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37705841688)
-has succeeded. Source968 native ownership remains inactive until independently
-verified promotion. **Lightpanda 1.0.0** is still the newest stable release,
-rechecked October 8, and remains digest-pinned with CORS enabled.
+The five-provider [PR #10356](https://github.com/colophon-group/jobseek/pull/10356)
+merged reviewed head `588dfebeff2034416a3c7cd7775252d30b556afa` as source969
+`ce951b51a5afb1479f9a1ce7d07aeebd0adcf67e`. Required CI, actual Crawler Deploy
+Gate, full native execution, browser/installed-image parity and Lightpanda checks
+passed. Its original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37712020979)
+and matching [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37712043127)
+are running. Preserve those original build identities. Source969 native ownership
+is inactive until the complete incoming release and fresh admission are verified.
+
+Source968's supported ordinary retirement, B0 rollback and selector clearing
+succeeded. Independent cold verification passed at epoch **224**: seven base
+services running and restart-armed, six healthy endpoints, no native owners or
+tokens and retained historical receipts. This fresh closure and exact head/base
+checks preceded the source969 merge; no hold was bypassed.
+
+Source968 [PR #10355](https://github.com/colophon-group/jobseek/pull/10355) merged
+as `1676b322c6eced43601ee3ec3ed3ccd51edd850b`.
+Its original crawler/renderer rollouts succeeded and native ownership was active
+at epoch223 before retirement. It admitted 7,319 monitors, 2,616 detail boards and
+1,479,882 scheduled postings. The latest normal-schedule snapshot had 23 successful
+monitors, 54 successful details, zero claim errors and one unacknowledged monitor
+settlement. The eight new eArcu/CVWarehouse/Woowa monitor completions had not yet
+been observed; recovery, freshness and conservation remain open.
+
+**Lightpanda 1.0.0** is still the newest stable release, rechecked October 8,
+and remains digest-pinned with CORS enabled. The next shared DOM/API batch adds
+eleven configuration contracts. Prefer one grouped native activation after both
+compatible releases have green checks and independently verified deployments,
+avoiding an extra ownership retirement between the five-provider and shared
+proof batches. This groups seven monitor types and 31 configuration gains.
 
 Outgoing source967 `0f25771595d3caceab3e6c403f9cd66bdbd5d763` completed the
 supported ordinary retirement and B0 rollback. Independent cold verification
@@ -67,15 +87,18 @@ comparable fleet-wide service cost remains unproved.
 
 ## Continue delivery
 
-1. Finish source968's original immutable full-stack rollout and independently
-   verify the promoted source, original image digests and cold epoch222. Preserve
-   original failed-attempt evidence and use only supported recovery if needed.
-2. Activate/read back source968 B0, then capture fresh canonical configurations,
-   cache and actual posting routes. Stage and activate one source/epoch-bound
-   ordinary plan. Verify service identities, readiness, normal scheduled work,
-   canonical content, publisher outcomes, freshness and conservation. Diagnose
-   remaining unacknowledged settlement phases using actual evidence; do not
-   equate completed fences with successful work or health with settlement.
+1. Finish source969's original immutable crawler and matching renderer rollouts;
+   independently verify incoming images, source, readiness and cold epoch224.
+   Publish the shared DOM/API candidate against the merged source and overlap its
+   CI with rollout. If it is ready promptly, merge/deploy it while native ownership
+   remains inactive, then perform one grouped fresh admission/activation.
+2. Activate/read back incoming B0, capture fresh canonical configurations, cache
+   and actual posting routes, then stage and activate one source/epoch-bound
+   ordinary plan. Verify readiness, natural scheduled work, canonical fields,
+   publisher outcomes, freshness and conservation. Source968 admitted 7,319
+   monitors, 2,616 detail boards and 1,479,882 scheduled postings; its latest
+   snapshot had 23 successful monitors, 54 successful details, zero claim errors
+   and one unacknowledged monitor settlement. Full recovery remains open.
 3. Complete the five-type Beehire/HireHive/WTTJ/Computrabajo/Y Combinator group,
    covering all twenty registry configurations and four required proxy routes.
    Then prioritize shared DOM/API/browser contracts with the largest remaining
@@ -105,8 +128,10 @@ goal active until all completion evidence and production retirement are done.
 Candidate **0.13.968** adds four immutable profiles (115 total), covering eArcu's
 three boards, CVWarehouse's two boards and all three Woowa variants. Both Aldi
 eArcu boards retain required proxy authority and actual credentialed CONNECT;
-no automatic direct fallback is introduced. The implementation has merged; its original crawler rollout is pending and
-production admission and native ownership are not yet established.
+no automatic direct fallback is introduced. The implementation merged, both
+original rollouts succeeded and production ownership was activated. Eight new
+monitor configurations qualified; their natural completions had not yet been
+observed in the bounded source968 snapshot.
 
 The port preserves eArcu live-only XML, bounded autodetection, retries and strict
 same-portal vacancy URLs; CVWarehouse's largest advertised section, configured
@@ -137,8 +162,11 @@ Public-feed and normal-schedule production results are still required.
 Candidate **0.13.969** ports Beehire, HireHive, Welcome to the Jungle,
 Computrabajo/PandaPe and Y Combinator together: twenty current configurations,
 four required proxy routes and six immutable profiles (**121** total).
-Implementation and focused local validation are complete; full suites, final-head
-CI, installed images, production admission and native ownership remain pending.
+Implementation, full native CI and installed-image/Lightpanda checks passed at
+reviewed head `588dfebeff2034416a3c7cd7775252d30b556afa` in
+[PR #10356](https://github.com/colophon-group/jobseek/pull/10356). Required CI and
+the actual Crawler Deploy Gate are green. Exact-head merge and outgoing cold224 verification passed. The original incoming
+deployments are running; production admission and serving proof remain pending.
 
 Beehire preserves campaign-language selection, localized titles/locales, contract
 codes, location fallback and incomplete/duplicate truncation. HireHive preserves
@@ -146,8 +174,8 @@ public pagination, tenant defaults, bounded retries and salary field parsing.
 WTTJ retains anonymous search-only APIs, legacy organization hints, marketplace
 mirror deduplication, ten concurrent detail requests, terminal-status filtering
 and detail-closure handling. Computrabajo/PandaPe uses explicit totals and page
-markers, 20-row pages, snapshot restart, bounded 403/429 retries and the existing
-JSON-LD detail route; proxy owners cannot use direct egress. Y Combinator retains
+markers, 20-row pages, snapshot restart, bounded 403/429 retries and configured
+DOM or JSON-LD detail routes; proxy owners cannot use direct egress. Y Combinator retains
 scoped raw-HTML URL discovery and delegates posting fields to JSON-LD details.
 
 Twenty-eight rich-field and eighteen listing cases match actual Python parsers.
@@ -161,8 +189,36 @@ commit-before-ack recovery and refusal of operator drift. Read-only Go HTTP prob
 including live rich title/HTML/location/language samples and multi-page inventories
 up to 2,760 jobs. Four required proxy configurations were deliberately not fetched
 with a direct client; their credentialed proxy fixture and transport guard pass.
-The full worker race suite is running; do not report full-suite or production
-success yet.
+The full local worker race suite passed (565.986s). Final-head CI passed the full
+queue and worker suites, all fifteen configured DOM/JSON-LD detail bindings and
+browser/installed-image checks. Production serving proof remains open.
+
+## Next grouped candidate — shared DOM/API inventory proofs
+
+Candidate **0.13.970** extends two existing monitor types together. It qualifies
+nine current DOM configurations with `advertised_total`/`empty_states` and two
+API sniffer configurations with typed `empty_response` markers. This is a
+configuration-only screening gain of eleven; fresh route/cache admission and
+production ownership are still required.
+
+DOM checks retain exact advertised counts, whitespace/case rules, required and
+forbidden links, full-match regular expressions and contradictory-marker
+failure. API markers retain Python's exact scalar types, including distinct
+`false`, `0` and `0.0`, and bounded missing-response retries. Unproved inventories
+cannot settle as successful empty results. Combined DOM pagination or rich-row
+proof configurations remain outside admission until their complete contracts
+are verified.
+
+Seventeen API and twenty-five DOM cases match actual Python behavior. Three
+required-link regressions also retain the deployed Python 3.13 URL identity for
+raw Unicode, percent escapes and query-only references. Fifteen
+real PostgreSQL/Redis direct/rendered scenarios passed (8.427s): positive and
+proved-empty settlement, malformed/missing inventories, reservations and 404
+semantics. Both pure parser race suites and vet passed. The full queue race suite passed (377.626s); full worker race validation is
+running. Candidate PR/installed-image validation and production authority remain
+pending. Existing latest stable Lightpanda 1.0.0 and transport boundaries are
+retained. Next prioritize compatible API filtering/convergence cohorts and
+remaining DOM interactions in multi-type batches.
 
 ## Operational handoff
 
