@@ -1,0 +1,2699 @@
+{
+  "cases": [
+    {
+      "provider": "linkedin",
+      "name": "full",
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": {
+        "title": "Manager/Senior Manager, Regulatory Affairs",
+        "description": "<p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>",
+        "locations": [
+          "Boston, MA (Hybrid)"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "seniority_level": "Director",
+          "industries": "Biotechnology Research",
+          "linkedin_company_slug": "damora-therapeutics"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "linkedin",
+      "name": "empty",
+      "body": "",
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "linkedin",
+      "name": "challenge",
+      "body": "<html>Sign in</html>",
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "linkedin",
+      "name": "nested-text",
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\"> Hello <b>World</b> Again </h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": {
+        "title": "HelloWorldAgain",
+        "description": "<p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>",
+        "locations": [
+          "Boston, MA (Hybrid)"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "seniority_level": "Director",
+          "industries": "Biotechnology Research",
+          "linkedin_company_slug": "damora-therapeutics"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "linkedin",
+      "name": "remote",
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Remote)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": {
+        "title": "Manager/Senior Manager, Regulatory Affairs",
+        "description": "<p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>",
+        "locations": [
+          "Boston, MA (Remote)"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "remote",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "seniority_level": "Director",
+          "industries": "Biotechnology Research",
+          "linkedin_company_slug": "damora-therapeutics"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "linkedin",
+      "name": "remote-hybrid",
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Remote Hybrid</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": {
+        "title": "Manager/Senior Manager, Regulatory Affairs",
+        "description": "<p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>",
+        "locations": [
+          "Remote Hybrid"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "seniority_level": "Director",
+          "industries": "Biotechnology Research",
+          "linkedin_company_slug": "damora-therapeutics"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "linkedin",
+      "name": "empty-description",
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n     \n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": {
+        "title": "Manager/Senior Manager, Regulatory Affairs",
+        "description": null,
+        "locations": [
+          "Boston, MA (Hybrid)"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "seniority_level": "Director",
+          "industries": "Biotechnology Research",
+          "linkedin_company_slug": "damora-therapeutics"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "linkedin",
+      "name": "no-title",
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"unused\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": {
+        "title": null,
+        "description": "<p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>",
+        "locations": [
+          "Boston, MA (Hybrid)"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "seniority_level": "Director",
+          "industries": "Biotechnology Research",
+          "linkedin_company_slug": "damora-therapeutics"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "linkedin",
+      "name": "no-location",
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor unused\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": {
+        "title": "Manager/Senior Manager, Regulatory Affairs",
+        "description": "<p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>",
+        "locations": null,
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "seniority_level": "Director",
+          "industries": "Biotechnology Research",
+          "linkedin_company_slug": "damora-therapeutics"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "linkedin",
+      "name": "empty-criteria",
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"unused\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"unused\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"unused\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": {
+        "title": "Manager/Senior Manager, Regulatory Affairs",
+        "description": "<p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>",
+        "locations": [
+          "Boston, MA (Hybrid)"
+        ],
+        "employment_type": null,
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "linkedin_company_slug": "damora-therapeutics"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "linkedin",
+      "name": "untrusted-company",
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://evil.test/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": {
+        "title": "Manager/Senior Manager, Regulatory Affairs",
+        "description": "<p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>",
+        "locations": [
+          "Boston, MA (Hybrid)"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "seniority_level": "Director",
+          "industries": "Biotechnology Research"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "linkedin",
+      "name": "uppercase-company",
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://WWW.LINKEDIN.COM/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": {
+        "title": "Manager/Senior Manager, Regulatory Affairs",
+        "description": "<p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>",
+        "locations": [
+          "Boston, MA (Hybrid)"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "seniority_level": "Director",
+          "industries": "Biotechnology Research"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "linkedin",
+      "name": "duplicate-employment",
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n<li class=\"description__job-criteria-item\"><h3 class=\"description__job-criteria-subheader\">Employment type</h3><span class=\"description__job-criteria-text\">Part-time</span></li>",
+      "content": {
+        "title": "Manager/Senior Manager, Regulatory Affairs",
+        "description": "<p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>",
+        "locations": [
+          "Boston, MA (Hybrid)"
+        ],
+        "employment_type": "Part-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "seniority_level": "Director",
+          "industries": "Biotechnology Research",
+          "linkedin_company_slug": "damora-therapeutics"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "linkedin",
+      "name": "entity-description",
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p data-x=\"A &amp; B\">A &amp; B&nbsp;<br>Next</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": {
+        "title": "Manager/Senior Manager, Regulatory Affairs",
+        "description": "<p data-x=\"A &amp; B\">A &amp; B&nbsp;<br>Next</p><ul><li>File submissions</li></ul>",
+        "locations": [
+          "Boston, MA (Hybrid)"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "seniority_level": "Director",
+          "industries": "Biotechnology Research",
+          "linkedin_company_slug": "damora-therapeutics"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "jazzhr",
+      "name": "complete-jsonld",
+      "body": "<html><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Client Success Manager III\", \"description\": \"<p>Help customers succeed.</p>\", \"employmentType\": \"FULL_TIME\", \"jobLocationType\": \"TELECOMMUTE\", \"datePosted\": \"2026-07-29\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"addressLocality\": \"Dublin\", \"addressCountry\": \"IE\"}}, \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 70000, \"maxValue\": 90000, \"unitText\": \"YEAR\"}}}</script></html>",
+      "content": {
+        "title": "Client Success Manager III",
+        "description": "<p>Help customers succeed.</p>",
+        "locations": [
+          "Dublin, IE"
+        ],
+        "employment_type": "FULL_TIME",
+        "job_location_type": "TELECOMMUTE",
+        "date_posted": "2026-07-29",
+        "base_salary": {
+          "currency": "EUR",
+          "min": 70000,
+          "max": 90000,
+          "unit": "year"
+        },
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "jazzhr",
+      "name": "old-theme",
+      "body": "<h1 class=\"job_title\">Engineer</h1><h3 class=\"job_meta\">Remote - Full Time</h3><div><p>Build things.</p></div><button>Apply Now</button>",
+      "content": {
+        "title": "Engineer",
+        "description": "<p>Build things.</p>",
+        "locations": [
+          "Remote"
+        ],
+        "employment_type": "Full Time",
+        "job_location_type": "Remote",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "jazzhr",
+      "name": "department",
+      "body": "<h1 class=\"job_title\">Engineer</h1><h3 class=\"job_meta\">Success - Remote - Full Time</h3><div><p>Build things.</p></div><button>Apply Now</button>",
+      "content": {
+        "title": "Engineer",
+        "description": "<p>Build things.</p>",
+        "locations": [
+          "Remote"
+        ],
+        "employment_type": "Full Time",
+        "job_location_type": "Remote",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "jazzhr",
+      "name": "hybrid",
+      "body": "<h1 class=\"job_title\">Engineer</h1><h3 class=\"job_meta\">Hybrid - Contract</h3><div><p>Build things.</p></div><button>Apply Now</button>",
+      "content": {
+        "title": "Engineer",
+        "description": "<p>Build things.</p>",
+        "locations": [
+          "Hybrid"
+        ],
+        "employment_type": "Contract",
+        "job_location_type": "Hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "jazzhr",
+      "name": "single-meta",
+      "body": "<h1 class=\"job_title\">Engineer</h1><h3 class=\"job_meta\">Remote</h3><div><p>Build things.</p></div><button>Apply Now</button>",
+      "content": {
+        "title": "Engineer",
+        "description": "<p>Build things.</p>",
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "jazzhr",
+      "name": "empty-meta",
+      "body": "<h1 class=\"job_title\">Engineer</h1><h3 class=\"job_meta\"></h3><div><p>Build things.</p></div><button>Apply Now</button>",
+      "content": {
+        "title": "Engineer",
+        "description": "<p>Build things.</p>",
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "jazzhr",
+      "name": "no-meta",
+      "body": "<h1 class=\"job_title\">Engineer</h1><h3 class=\"unused\">Remote - Full Time</h3><div><p>Build things.</p></div><button>Apply Now</button>",
+      "content": {
+        "title": "Engineer",
+        "description": "<h3>Remote - Full Time</h3><p>Build things.</p>",
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "jazzhr",
+      "name": "missing-title",
+      "body": "<h1 class=\"unused\">Engineer</h1><h3 class=\"job_meta\">Remote - Full Time</h3><div><p>Build things.</p></div><button>Apply Now</button>",
+      "content": {
+        "title": null,
+        "description": "<p>Build things.</p>",
+        "locations": [
+          "Remote"
+        ],
+        "employment_type": "Full Time",
+        "job_location_type": "Remote",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "jazzhr",
+      "name": "blank",
+      "body": "",
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "jazzhr",
+      "name": "challenge",
+      "body": "<title>Just a moment</title>",
+      "content": {
+        "title": null,
+        "description": "<title>Just a moment</title><title>Just a moment</title>",
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "jazzhr",
+      "name": "jsonld-title-only",
+      "body": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"JSON title\"}</script><h1 class=\"job_title\">Engineer</h1><h3 class=\"job_meta\">Remote - Full Time</h3><div><p>Build things.</p></div><button>Apply Now</button>",
+      "content": {
+        "title": "JSON title",
+        "description": "<p>Build things.</p>",
+        "locations": [
+          "Remote"
+        ],
+        "employment_type": "Full Time",
+        "job_location_type": "Remote",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "jazzhr",
+      "name": "jsonld-description-only",
+      "body": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"description\":\"<p>JSON description</p>\"}</script><h1 class=\"job_title\">Engineer</h1><h3 class=\"job_meta\">Remote - Full Time</h3><div><p>Build things.</p></div><button>Apply Now</button>",
+      "content": {
+        "title": "Engineer",
+        "description": "<p>JSON description</p>",
+        "locations": [
+          "Remote"
+        ],
+        "employment_type": "Full Time",
+        "job_location_type": "Remote",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "jazzhr",
+      "name": "stop-boundary",
+      "body": "<h1 class=\"job_title\">Engineer</h1><h3 class=\"job_meta\">Remote - Full Time</h3><div><p>Build things.</p></div><button>Apply Now</button><p>Do not include.</p>",
+      "content": {
+        "title": "Engineer",
+        "description": "<p>Build things.</p>",
+        "locations": [
+          "Remote"
+        ],
+        "employment_type": "Full Time",
+        "job_location_type": "Remote",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "jazzhr",
+      "name": "nested-title",
+      "body": "<h1 class=\"job_title\"> Hello <b>World</b> Again </h1><h3 class=\"job_meta\">Remote - Full Time</h3><div><p>Build things.</p></div><button>Apply Now</button>",
+      "content": {
+        "title": "Hello World Again",
+        "description": "<p>Build things.</p>",
+        "locations": [
+          "Remote"
+        ],
+        "employment_type": "Full Time",
+        "job_location_type": "Remote",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "taleo",
+      "name": "enterprise",
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": {
+        "title": "Pilot's Assistant",
+        "description": "<p>Help easyJet connect passengers across Europe.</p><p>#LI-hybrid</p>\n<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+        "locations": [
+          "Switzerland-Geneva-Geneva Airport"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": {
+          "qualifications": "<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+          "valid_through": "19/08/2026, 10:59:00 PM"
+        },
+        "metadata": {
+          "ats_job_id": "252963",
+          "requisition_number": "17204",
+          "business_area": "Operations",
+          "organisation": "Flight Operations"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "taleo",
+      "name": "wipo-staff",
+      "body": "<script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['61710','','','','','','','','','Roster - Administrative Assistant','26255-FT_LT_ROS','World Intellectual Property Organization (WIPO)','G5','G5','2 years','2 years','','CH-Geneva','10-Aug-2026','','09-Sep-2026, 9:59:00 PM','','!*!%3Ch2%3EOrganizational%20Context%3C%2Fh2%3E%3Cp%3ESupport%20WIPO%27s%20global%20IP%20mission.%3C%2Fp%3E%3Ch2%3EDuties%3C%2Fh2%3E%3Cul%3E%3Cli%3ECoordinate%20administrative%20work.%3C%2Fli%3E%3C%2Ful%3E','','','','','','','','','','','','']);</script>",
+      "content": {
+        "title": "Roster - Administrative Assistant",
+        "description": "<h2>Organizational Context</h2><p>Support WIPO's global IP mission.</p><h2>Duties</h2><ul><li>Coordinate administrative work.</li></ul>",
+        "locations": [
+          "CH-Geneva"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "10-Aug-2026",
+        "base_salary": null,
+        "language": null,
+        "extras": {
+          "valid_through": "09-Sep-2026, 9:59:00 PM"
+        },
+        "metadata": {
+          "ats_job_id": "61710",
+          "requisition_number": "26255-FT_LT_ROS",
+          "organisation": "World Intellectual Property Organization (WIPO)",
+          "grade": "G5",
+          "contract_duration": "2 years"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "taleo",
+      "name": "wipo-intern",
+      "body": "<script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['61490','','','','','','','','','Internship Roster','26222-INT','various departments','variable - 8 weeks up to 12 months','','','Switzerland','18-Jul-2026, 5:08:47 PM','','03-Jan-2027, 11:59:00 PM','','!*!%3Ch2%3EInternship%20Program%3C%2Fh2%3E%3Cp%3EInterns%20support%20WIPO%20teams.%3C%2Fp%3E%3Ch2%3ERequirements%3C%2Fh2%3E%3Cul%3E%3Cli%3ECurrent%20students%20or%20recent%20graduates.%3C%2Fli%3E%3C%2Ful%3E','','','','','','','','','','','','','']);</script>",
+      "content": {
+        "title": "Internship Roster",
+        "description": "<h2>Internship Program</h2><p>Interns support WIPO teams.</p><h2>Requirements</h2><ul><li>Current students or recent graduates.</li></ul>",
+        "locations": [
+          "Switzerland"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "18-Jul-2026, 5:08:47 PM",
+        "base_salary": null,
+        "language": null,
+        "extras": {
+          "valid_through": "03-Jan-2027, 11:59:00 PM"
+        },
+        "metadata": {
+          "ats_job_id": "61490",
+          "requisition_number": "26222-INT",
+          "organisation": "various departments",
+          "contract_duration": "variable - 8 weeks up to 12 months"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "taleo",
+      "name": "encoded-title",
+      "body": "<script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['61710','','','','','','','','','Chief Officer %26 Controller','26255-FT_LT_ROS','World Intellectual Property Organization (WIPO)','G5','G5','2 years','2 years','','CH-Geneva','10-Aug-2026','','09-Sep-2026, 9:59:00 PM','','!*!%3Ch2%3EOrganizational%20Context%3C%2Fh2%3E%3Cp%3ESupport%20WIPO%27s%20global%20IP%20mission.%3C%2Fp%3E%3Ch2%3EDuties%3C%2Fh2%3E%3Cul%3E%3Cli%3ECoordinate%20administrative%20work.%3C%2Fli%3E%3C%2Ful%3E','','','','','','','','','','','','']);</script>",
+      "content": {
+        "title": "Chief Officer & Controller",
+        "description": "<h2>Organizational Context</h2><p>Support WIPO's global IP mission.</p><h2>Duties</h2><ul><li>Coordinate administrative work.</li></ul>",
+        "locations": [
+          "CH-Geneva"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "10-Aug-2026",
+        "base_salary": null,
+        "language": null,
+        "extras": {
+          "valid_through": "09-Sep-2026, 9:59:00 PM"
+        },
+        "metadata": {
+          "ats_job_id": "61710",
+          "requisition_number": "26255-FT_LT_ROS",
+          "organisation": "World Intellectual Property Organization (WIPO)",
+          "grade": "G5",
+          "contract_duration": "2 years"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "taleo",
+      "name": "unicode-title",
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Ing\u00e9nieur \u65e5\u672c\u8a9e','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": {
+        "title": "Ing\u00e9nieur \u65e5\u672c\u8a9e",
+        "description": "<p>Help easyJet connect passengers across Europe.</p><p>#LI-hybrid</p>\n<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+        "locations": [
+          "Switzerland-Geneva-Geneva Airport"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": {
+          "qualifications": "<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+          "valid_through": "19/08/2026, 10:59:00 PM"
+        },
+        "metadata": {
+          "ats_job_id": "252963",
+          "requisition_number": "17204",
+          "business_area": "Operations",
+          "organisation": "Flight Operations"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "taleo",
+      "name": "invalid-percent-title",
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Title %zz %FF%FE','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": {
+        "title": "Title %zz \ufffd\ufffd",
+        "description": "<p>Help easyJet connect passengers across Europe.</p><p>#LI-hybrid</p>\n<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+        "locations": [
+          "Switzerland-Geneva-Geneva Airport"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": {
+          "qualifications": "<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+          "valid_through": "19/08/2026, 10:59:00 PM"
+        },
+        "metadata": {
+          "ats_job_id": "252963",
+          "requisition_number": "17204",
+          "business_area": "Operations",
+          "organisation": "Flight Operations"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "taleo",
+      "name": "unicode-escape",
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pil\\u00f6t\\x27s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": {
+        "title": "Pil\u00f6t's Assistant",
+        "description": "<p>Help easyJet connect passengers across Europe.</p><p>#LI-hybrid</p>\n<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+        "locations": [
+          "Switzerland-Geneva-Geneva Airport"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": {
+          "qualifications": "<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+          "valid_through": "19/08/2026, 10:59:00 PM"
+        },
+        "metadata": {
+          "ats_job_id": "252963",
+          "requisition_number": "17204",
+          "business_area": "Operations",
+          "organisation": "Flight Operations"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "taleo",
+      "name": "unknown-escape",
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pil\\qot','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": {
+        "title": "Pilqot",
+        "description": "<p>Help easyJet connect passengers across Europe.</p><p>#LI-hybrid</p>\n<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+        "locations": [
+          "Switzerland-Geneva-Geneva Airport"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": {
+          "qualifications": "<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+          "valid_through": "19/08/2026, 10:59:00 PM"
+        },
+        "metadata": {
+          "ats_job_id": "252963",
+          "requisition_number": "17204",
+          "business_area": "Operations",
+          "organisation": "Flight Operations"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "taleo",
+      "name": "line-continuation",
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\\r\nAssistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": {
+        "title": "PilotAssistant",
+        "description": "<p>Help easyJet connect passengers across Europe.</p><p>#LI-hybrid</p>\n<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+        "locations": [
+          "Switzerland-Geneva-Geneva Airport"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": {
+          "qualifications": "<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+          "valid_through": "19/08/2026, 10:59:00 PM"
+        },
+        "metadata": {
+          "ats_job_id": "252963",
+          "requisition_number": "17204",
+          "business_area": "Operations",
+          "organisation": "Flight Operations"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "taleo",
+      "name": "empty",
+      "body": "",
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "taleo",
+      "name": "missing-marker",
+      "body": "<p>No payload</p>",
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "taleo",
+      "name": "non-array",
+      "body": "api.fillList('requisitionDescriptionInterface','descRequisition', variable)",
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "taleo",
+      "name": "short-array",
+      "body": "api.fillList('requisitionDescriptionInterface','descRequisition',['one','two'])",
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    },
+    {
+      "provider": "taleo",
+      "name": "non-string",
+      "body": "api.fillList('requisitionDescriptionInterface','descRequisition',[42])",
+      "content": null,
+      "failed": true
+    },
+    {
+      "provider": "taleo",
+      "name": "invalid-hex",
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Bad\\xQ1','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": null,
+      "failed": true
+    },
+    {
+      "provider": "taleo",
+      "name": "unterminated",
+      "body": "api.fillList('requisitionDescriptionInterface','descRequisition',['one",
+      "content": null,
+      "failed": true
+    },
+    {
+      "provider": "taleo",
+      "name": "invalid-separator",
+      "body": "api.fillList('requisitionDescriptionInterface','descRequisition',['one';'two'])",
+      "content": null,
+      "failed": true
+    },
+    {
+      "provider": "taleo",
+      "name": "value-cap",
+      "body": "api.fillList('requisitionDescriptionInterface','descRequisition',['x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x','x'])",
+      "content": null,
+      "failed": true
+    },
+    {
+      "provider": "taleo",
+      "name": "mixed-quotes",
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', [\"252963\",'','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": {
+        "title": "Pilot's Assistant",
+        "description": "<p>Help easyJet connect passengers across Europe.</p><p>#LI-hybrid</p>\n<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+        "locations": [
+          "Switzerland-Geneva-Geneva Airport"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": {
+          "qualifications": "<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+          "valid_through": "19/08/2026, 10:59:00 PM"
+        },
+        "metadata": {
+          "ats_job_id": "252963",
+          "requisition_number": "17204",
+          "business_area": "Operations",
+          "organisation": "Flight Operations"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "taleo",
+      "name": "empty-title",
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": {
+        "title": null,
+        "description": "<p>Help easyJet connect passengers across Europe.</p><p>#LI-hybrid</p>\n<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+        "locations": [
+          "Switzerland-Geneva-Geneva Airport"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": {
+          "qualifications": "<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+          "valid_through": "19/08/2026, 10:59:00 PM"
+        },
+        "metadata": {
+          "ats_job_id": "252963",
+          "requisition_number": "17204",
+          "business_area": "Operations",
+          "organisation": "Flight Operations"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "taleo",
+      "name": "remote-marker",
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-remote%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": {
+        "title": "Pilot's Assistant",
+        "description": "<p>Help easyJet connect passengers across Europe.</p><p>#LI-remote</p>\n<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+        "locations": [
+          "Switzerland-Geneva-Geneva Airport"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "remote",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": {
+          "qualifications": "<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+          "valid_through": "19/08/2026, 10:59:00 PM"
+        },
+        "metadata": {
+          "ats_job_id": "252963",
+          "requisition_number": "17204",
+          "business_area": "Operations",
+          "organisation": "Flight Operations"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "taleo",
+      "name": "onsite-marker",
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-on-site%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": {
+        "title": "Pilot's Assistant",
+        "description": "<p>Help easyJet connect passengers across Europe.</p><p>#LI-on-site</p>\n<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+        "locations": [
+          "Switzerland-Geneva-Geneva Airport"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "onsite",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": {
+          "qualifications": "<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+          "valid_through": "19/08/2026, 10:59:00 PM"
+        },
+        "metadata": {
+          "ats_job_id": "252963",
+          "requisition_number": "17204",
+          "business_area": "Operations",
+          "organisation": "Flight Operations"
+        }
+      },
+      "failed": false
+    },
+    {
+      "provider": "taleo",
+      "name": "first-marker-invalid",
+      "body": "api.fillList('requisitionDescriptionInterface','descRequisition', variable);<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false
+    }
+  ],
+  "identities": [
+    {
+      "provider": "linkedin",
+      "source": "https://www.linkedin.com/jobs/view/title-123",
+      "valid": true,
+      "endpoint": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+    },
+    {
+      "provider": "linkedin",
+      "source": "https://ch.linkedin.com/jobs/view/title-123/?track=1",
+      "valid": true,
+      "endpoint": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+    },
+    {
+      "provider": "linkedin",
+      "source": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123",
+      "valid": true,
+      "endpoint": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+    },
+    {
+      "provider": "linkedin",
+      "source": "https://www.linkedin.com/jobs/view/\uff11\uff12\uff13",
+      "valid": true,
+      "endpoint": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/\uff11\uff12\uff13"
+    },
+    {
+      "provider": "linkedin",
+      "source": "https://www.linkedin.com/company/acme/jobs",
+      "valid": false,
+      "endpoint": "https://www.linkedin.com/company/acme/jobs"
+    },
+    {
+      "provider": "jazzhr",
+      "source": "https://fixture.applytojob.com/apply/jobs/details/ABC_123?ref=x",
+      "valid": true,
+      "endpoint": "https://fixture.applytojob.com/apply/jobs/details/ABC_123?ref=x"
+    },
+    {
+      "provider": "jazzhr",
+      "source": "https://fixture.applytojob.com:443/apply/jobs/details/ABC_123",
+      "valid": true,
+      "endpoint": "https://fixture.applytojob.com:443/apply/jobs/details/ABC_123"
+    },
+    {
+      "provider": "jazzhr",
+      "source": "https://user@fixture.applytojob.com/apply/jobs/details/ABC_123",
+      "valid": false,
+      "endpoint": "https://user@fixture.applytojob.com/apply/jobs/details/ABC_123"
+    },
+    {
+      "provider": "jazzhr",
+      "source": "https://www.applytojob.com/apply/jobs/details/ABC_123",
+      "valid": false,
+      "endpoint": "https://www.applytojob.com/apply/jobs/details/ABC_123"
+    },
+    {
+      "provider": "jazzhr",
+      "source": "https://fixture.applytojob.com/apply/jobs",
+      "valid": false,
+      "endpoint": "https://fixture.applytojob.com/apply/jobs"
+    },
+    {
+      "provider": "taleo",
+      "source": "https://easyjet.taleo.net/careersection/2/jobdetail.ftl?job=17204&lang=en",
+      "valid": true,
+      "endpoint": "https://easyjet.taleo.net/careersection/2/jobdetail.ftl?job=17204&lang=en"
+    },
+    {
+      "provider": "taleo",
+      "source": "https://easyjet.taleo.net:443/careersection/2/jobdetail.ftl?job=17204",
+      "valid": true,
+      "endpoint": "https://easyjet.taleo.net:443/careersection/2/jobdetail.ftl?job=17204"
+    },
+    {
+      "provider": "taleo",
+      "source": "https://easyjet.taleo.net/careersection/2/jobdetail.ftl?job=\u013012",
+      "valid": true,
+      "endpoint": "https://easyjet.taleo.net/careersection/2/jobdetail.ftl?job=\u013012"
+    },
+    {
+      "provider": "taleo",
+      "source": "https://phe.tbe.taleo.net/careersection/2/jobdetail.ftl?job=12",
+      "valid": false,
+      "endpoint": "https://phe.tbe.taleo.net/careersection/2/jobdetail.ftl?job=12"
+    },
+    {
+      "provider": "taleo",
+      "source": "https://easyjet.taleo.net/careersection/2/jobdetail.ftl?job=12#fragment",
+      "valid": false,
+      "endpoint": "https://easyjet.taleo.net/careersection/2/jobdetail.ftl?job=12#fragment"
+    },
+    {
+      "provider": "taleo",
+      "source": "https://easyjet.taleo.net/careersection/2/jobdetail.ftl?job=bad/value",
+      "valid": false,
+      "endpoint": "https://easyjet.taleo.net/careersection/2/jobdetail.ftl?job=bad/value"
+    }
+  ],
+  "requests": [
+    {
+      "provider": "linkedin",
+      "name": "200",
+      "source": "https://ch.linkedin.com/jobs/view/engineer-123?track=x",
+      "statuses": [
+        200
+      ],
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": {
+        "title": "Manager/Senior Manager, Regulatory Affairs",
+        "description": "<p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>",
+        "locations": [
+          "Boston, MA (Hybrid)"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "seniority_level": "Director",
+          "industries": "Biotechnology Research",
+          "linkedin_company_slug": "damora-therapeutics"
+        }
+      },
+      "failed": false,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        }
+      ]
+    },
+    {
+      "provider": "linkedin",
+      "name": "201",
+      "source": "https://ch.linkedin.com/jobs/view/engineer-123?track=x",
+      "statuses": [
+        201
+      ],
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        }
+      ]
+    },
+    {
+      "provider": "linkedin",
+      "name": "204",
+      "source": "https://ch.linkedin.com/jobs/view/engineer-123?track=x",
+      "statuses": [
+        204
+      ],
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        }
+      ]
+    },
+    {
+      "provider": "linkedin",
+      "name": "301",
+      "source": "https://ch.linkedin.com/jobs/view/engineer-123?track=x",
+      "statuses": [
+        301
+      ],
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        }
+      ]
+    },
+    {
+      "provider": "linkedin",
+      "name": "400",
+      "source": "https://ch.linkedin.com/jobs/view/engineer-123?track=x",
+      "statuses": [
+        400
+      ],
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        }
+      ]
+    },
+    {
+      "provider": "linkedin",
+      "name": "401",
+      "source": "https://ch.linkedin.com/jobs/view/engineer-123?track=x",
+      "statuses": [
+        401
+      ],
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        }
+      ]
+    },
+    {
+      "provider": "linkedin",
+      "name": "403",
+      "source": "https://ch.linkedin.com/jobs/view/engineer-123?track=x",
+      "statuses": [
+        403
+      ],
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        }
+      ]
+    },
+    {
+      "provider": "linkedin",
+      "name": "404",
+      "source": "https://ch.linkedin.com/jobs/view/engineer-123?track=x",
+      "statuses": [
+        404
+      ],
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        }
+      ]
+    },
+    {
+      "provider": "linkedin",
+      "name": "410",
+      "source": "https://ch.linkedin.com/jobs/view/engineer-123?track=x",
+      "statuses": [
+        410
+      ],
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        }
+      ]
+    },
+    {
+      "provider": "linkedin",
+      "name": "408",
+      "source": "https://ch.linkedin.com/jobs/view/engineer-123?track=x",
+      "statuses": [
+        408
+      ],
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        }
+      ]
+    },
+    {
+      "provider": "linkedin",
+      "name": "425",
+      "source": "https://ch.linkedin.com/jobs/view/engineer-123?track=x",
+      "statuses": [
+        425
+      ],
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        }
+      ]
+    },
+    {
+      "provider": "linkedin",
+      "name": "429",
+      "source": "https://ch.linkedin.com/jobs/view/engineer-123?track=x",
+      "statuses": [
+        429
+      ],
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        }
+      ]
+    },
+    {
+      "provider": "linkedin",
+      "name": "500",
+      "source": "https://ch.linkedin.com/jobs/view/engineer-123?track=x",
+      "statuses": [
+        500
+      ],
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        }
+      ]
+    },
+    {
+      "provider": "linkedin",
+      "name": "503",
+      "source": "https://ch.linkedin.com/jobs/view/engineer-123?track=x",
+      "statuses": [
+        503
+      ],
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        }
+      ]
+    },
+    {
+      "provider": "linkedin",
+      "name": "999",
+      "source": "https://ch.linkedin.com/jobs/view/engineer-123?track=x",
+      "statuses": [
+        999
+      ],
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        }
+      ]
+    },
+    {
+      "provider": "linkedin",
+      "name": "empty",
+      "source": "https://ch.linkedin.com/jobs/view/engineer-123?track=x",
+      "statuses": [
+        200
+      ],
+      "body": "",
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        }
+      ]
+    },
+    {
+      "provider": "linkedin",
+      "name": "transport",
+      "source": "https://ch.linkedin.com/jobs/view/engineer-123?track=x",
+      "statuses": [
+        0
+      ],
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        }
+      ]
+    },
+    {
+      "provider": "linkedin",
+      "name": "recover-403",
+      "source": "https://ch.linkedin.com/jobs/view/engineer-123?track=x",
+      "statuses": [
+        403,
+        200
+      ],
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        }
+      ]
+    },
+    {
+      "provider": "linkedin",
+      "name": "recover-429",
+      "source": "https://ch.linkedin.com/jobs/view/engineer-123?track=x",
+      "statuses": [
+        429,
+        200
+      ],
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": {
+        "title": "Manager/Senior Manager, Regulatory Affairs",
+        "description": "<p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>",
+        "locations": [
+          "Boston, MA (Hybrid)"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "seniority_level": "Director",
+          "industries": "Biotechnology Research",
+          "linkedin_company_slug": "damora-therapeutics"
+        }
+      },
+      "failed": false,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        }
+      ]
+    },
+    {
+      "provider": "linkedin",
+      "name": "recover-503",
+      "source": "https://ch.linkedin.com/jobs/view/engineer-123?track=x",
+      "statuses": [
+        503,
+        200
+      ],
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": {
+        "title": "Manager/Senior Manager, Regulatory Affairs",
+        "description": "<p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>",
+        "locations": [
+          "Boston, MA (Hybrid)"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": {
+          "seniority_level": "Director",
+          "industries": "Biotechnology Research",
+          "linkedin_company_slug": "damora-therapeutics"
+        }
+      },
+      "failed": false,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        }
+      ]
+    },
+    {
+      "provider": "linkedin",
+      "name": "alternating",
+      "source": "https://ch.linkedin.com/jobs/view/engineer-123?track=x",
+      "statuses": [
+        429,
+        503,
+        429,
+        503,
+        200
+      ],
+      "body": "\n<section class=\"top-card-layout\">\n  <h2 class=\"top-card-layout__title\">Manager/Senior Manager, Regulatory Affairs</h2>\n  <a class=\"topcard__org-name-link\"\n     href=\"https://www.linkedin.com/company/damora-therapeutics?trk=jobs\">Damora</a>\n  <span class=\"topcard__flavor topcard__flavor--bullet\">Boston, MA (Hybrid)</span>\n  <a href=\"https://www.linkedin.com/login?session_redirect=facetCurrentCompany%3D109559449\">People</a>\n</section>\n<section class=\"show-more-less-html\">\n  <div class=\"show-more-less-html__markup\">\n    <p>Lead regulatory strategy.</p><ul><li>File submissions</li></ul>\n  </div>\n</section>\n<ul class=\"description__job-criteria-list\">\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Seniority level</h3>\n    <span class=\"description__job-criteria-text\">Director</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Employment type</h3>\n    <span class=\"description__job-criteria-text\">Full-time</span>\n  </li>\n  <li class=\"description__job-criteria-item\">\n    <h3 class=\"description__job-criteria-subheader\">Industries</h3>\n    <span class=\"description__job-criteria-text\">Biotechnology Research</span>\n  </li>\n</ul>\n",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        },
+        {
+          "method": "GET",
+          "url": "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/123"
+        }
+      ]
+    },
+    {
+      "provider": "jazzhr",
+      "name": "200",
+      "source": "https://fixture.applytojob.com/apply/jobs/details/ABC_123",
+      "statuses": [
+        200
+      ],
+      "body": "<html><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Client Success Manager III\", \"description\": \"<p>Help customers succeed.</p>\", \"employmentType\": \"FULL_TIME\", \"jobLocationType\": \"TELECOMMUTE\", \"datePosted\": \"2026-07-29\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"addressLocality\": \"Dublin\", \"addressCountry\": \"IE\"}}, \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 70000, \"maxValue\": 90000, \"unitText\": \"YEAR\"}}}</script></html>",
+      "content": {
+        "title": "Client Success Manager III",
+        "description": "<p>Help customers succeed.</p>",
+        "locations": [
+          "Dublin, IE"
+        ],
+        "employment_type": "FULL_TIME",
+        "job_location_type": "TELECOMMUTE",
+        "date_posted": "2026-07-29",
+        "base_salary": {
+          "currency": "EUR",
+          "min": 70000,
+          "max": 90000,
+          "unit": "year"
+        },
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        }
+      ]
+    },
+    {
+      "provider": "jazzhr",
+      "name": "201",
+      "source": "https://fixture.applytojob.com/apply/jobs/details/ABC_123",
+      "statuses": [
+        201
+      ],
+      "body": "<html><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Client Success Manager III\", \"description\": \"<p>Help customers succeed.</p>\", \"employmentType\": \"FULL_TIME\", \"jobLocationType\": \"TELECOMMUTE\", \"datePosted\": \"2026-07-29\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"addressLocality\": \"Dublin\", \"addressCountry\": \"IE\"}}, \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 70000, \"maxValue\": 90000, \"unitText\": \"YEAR\"}}}</script></html>",
+      "content": {
+        "title": "Client Success Manager III",
+        "description": "<p>Help customers succeed.</p>",
+        "locations": [
+          "Dublin, IE"
+        ],
+        "employment_type": "FULL_TIME",
+        "job_location_type": "TELECOMMUTE",
+        "date_posted": "2026-07-29",
+        "base_salary": {
+          "currency": "EUR",
+          "min": 70000,
+          "max": 90000,
+          "unit": "year"
+        },
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        }
+      ]
+    },
+    {
+      "provider": "jazzhr",
+      "name": "204",
+      "source": "https://fixture.applytojob.com/apply/jobs/details/ABC_123",
+      "statuses": [
+        204
+      ],
+      "body": "<html><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Client Success Manager III\", \"description\": \"<p>Help customers succeed.</p>\", \"employmentType\": \"FULL_TIME\", \"jobLocationType\": \"TELECOMMUTE\", \"datePosted\": \"2026-07-29\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"addressLocality\": \"Dublin\", \"addressCountry\": \"IE\"}}, \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 70000, \"maxValue\": 90000, \"unitText\": \"YEAR\"}}}</script></html>",
+      "content": {
+        "title": "Client Success Manager III",
+        "description": "<p>Help customers succeed.</p>",
+        "locations": [
+          "Dublin, IE"
+        ],
+        "employment_type": "FULL_TIME",
+        "job_location_type": "TELECOMMUTE",
+        "date_posted": "2026-07-29",
+        "base_salary": {
+          "currency": "EUR",
+          "min": 70000,
+          "max": 90000,
+          "unit": "year"
+        },
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        }
+      ]
+    },
+    {
+      "provider": "jazzhr",
+      "name": "301",
+      "source": "https://fixture.applytojob.com/apply/jobs/details/ABC_123",
+      "statuses": [
+        301
+      ],
+      "body": "<html><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Client Success Manager III\", \"description\": \"<p>Help customers succeed.</p>\", \"employmentType\": \"FULL_TIME\", \"jobLocationType\": \"TELECOMMUTE\", \"datePosted\": \"2026-07-29\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"addressLocality\": \"Dublin\", \"addressCountry\": \"IE\"}}, \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 70000, \"maxValue\": 90000, \"unitText\": \"YEAR\"}}}</script></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        }
+      ]
+    },
+    {
+      "provider": "jazzhr",
+      "name": "400",
+      "source": "https://fixture.applytojob.com/apply/jobs/details/ABC_123",
+      "statuses": [
+        400
+      ],
+      "body": "<html><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Client Success Manager III\", \"description\": \"<p>Help customers succeed.</p>\", \"employmentType\": \"FULL_TIME\", \"jobLocationType\": \"TELECOMMUTE\", \"datePosted\": \"2026-07-29\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"addressLocality\": \"Dublin\", \"addressCountry\": \"IE\"}}, \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 70000, \"maxValue\": 90000, \"unitText\": \"YEAR\"}}}</script></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        }
+      ]
+    },
+    {
+      "provider": "jazzhr",
+      "name": "401",
+      "source": "https://fixture.applytojob.com/apply/jobs/details/ABC_123",
+      "statuses": [
+        401
+      ],
+      "body": "<html><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Client Success Manager III\", \"description\": \"<p>Help customers succeed.</p>\", \"employmentType\": \"FULL_TIME\", \"jobLocationType\": \"TELECOMMUTE\", \"datePosted\": \"2026-07-29\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"addressLocality\": \"Dublin\", \"addressCountry\": \"IE\"}}, \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 70000, \"maxValue\": 90000, \"unitText\": \"YEAR\"}}}</script></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        }
+      ]
+    },
+    {
+      "provider": "jazzhr",
+      "name": "403",
+      "source": "https://fixture.applytojob.com/apply/jobs/details/ABC_123",
+      "statuses": [
+        403
+      ],
+      "body": "<html><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Client Success Manager III\", \"description\": \"<p>Help customers succeed.</p>\", \"employmentType\": \"FULL_TIME\", \"jobLocationType\": \"TELECOMMUTE\", \"datePosted\": \"2026-07-29\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"addressLocality\": \"Dublin\", \"addressCountry\": \"IE\"}}, \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 70000, \"maxValue\": 90000, \"unitText\": \"YEAR\"}}}</script></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        },
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        }
+      ]
+    },
+    {
+      "provider": "jazzhr",
+      "name": "404",
+      "source": "https://fixture.applytojob.com/apply/jobs/details/ABC_123",
+      "statuses": [
+        404
+      ],
+      "body": "<html><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Client Success Manager III\", \"description\": \"<p>Help customers succeed.</p>\", \"employmentType\": \"FULL_TIME\", \"jobLocationType\": \"TELECOMMUTE\", \"datePosted\": \"2026-07-29\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"addressLocality\": \"Dublin\", \"addressCountry\": \"IE\"}}, \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 70000, \"maxValue\": 90000, \"unitText\": \"YEAR\"}}}</script></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        }
+      ]
+    },
+    {
+      "provider": "jazzhr",
+      "name": "410",
+      "source": "https://fixture.applytojob.com/apply/jobs/details/ABC_123",
+      "statuses": [
+        410
+      ],
+      "body": "<html><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Client Success Manager III\", \"description\": \"<p>Help customers succeed.</p>\", \"employmentType\": \"FULL_TIME\", \"jobLocationType\": \"TELECOMMUTE\", \"datePosted\": \"2026-07-29\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"addressLocality\": \"Dublin\", \"addressCountry\": \"IE\"}}, \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 70000, \"maxValue\": 90000, \"unitText\": \"YEAR\"}}}</script></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        }
+      ]
+    },
+    {
+      "provider": "jazzhr",
+      "name": "408",
+      "source": "https://fixture.applytojob.com/apply/jobs/details/ABC_123",
+      "statuses": [
+        408
+      ],
+      "body": "<html><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Client Success Manager III\", \"description\": \"<p>Help customers succeed.</p>\", \"employmentType\": \"FULL_TIME\", \"jobLocationType\": \"TELECOMMUTE\", \"datePosted\": \"2026-07-29\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"addressLocality\": \"Dublin\", \"addressCountry\": \"IE\"}}, \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 70000, \"maxValue\": 90000, \"unitText\": \"YEAR\"}}}</script></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        }
+      ]
+    },
+    {
+      "provider": "jazzhr",
+      "name": "425",
+      "source": "https://fixture.applytojob.com/apply/jobs/details/ABC_123",
+      "statuses": [
+        425
+      ],
+      "body": "<html><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Client Success Manager III\", \"description\": \"<p>Help customers succeed.</p>\", \"employmentType\": \"FULL_TIME\", \"jobLocationType\": \"TELECOMMUTE\", \"datePosted\": \"2026-07-29\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"addressLocality\": \"Dublin\", \"addressCountry\": \"IE\"}}, \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 70000, \"maxValue\": 90000, \"unitText\": \"YEAR\"}}}</script></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        }
+      ]
+    },
+    {
+      "provider": "jazzhr",
+      "name": "429",
+      "source": "https://fixture.applytojob.com/apply/jobs/details/ABC_123",
+      "statuses": [
+        429
+      ],
+      "body": "<html><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Client Success Manager III\", \"description\": \"<p>Help customers succeed.</p>\", \"employmentType\": \"FULL_TIME\", \"jobLocationType\": \"TELECOMMUTE\", \"datePosted\": \"2026-07-29\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"addressLocality\": \"Dublin\", \"addressCountry\": \"IE\"}}, \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 70000, \"maxValue\": 90000, \"unitText\": \"YEAR\"}}}</script></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        }
+      ]
+    },
+    {
+      "provider": "jazzhr",
+      "name": "500",
+      "source": "https://fixture.applytojob.com/apply/jobs/details/ABC_123",
+      "statuses": [
+        500
+      ],
+      "body": "<html><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Client Success Manager III\", \"description\": \"<p>Help customers succeed.</p>\", \"employmentType\": \"FULL_TIME\", \"jobLocationType\": \"TELECOMMUTE\", \"datePosted\": \"2026-07-29\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"addressLocality\": \"Dublin\", \"addressCountry\": \"IE\"}}, \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 70000, \"maxValue\": 90000, \"unitText\": \"YEAR\"}}}</script></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        }
+      ]
+    },
+    {
+      "provider": "jazzhr",
+      "name": "503",
+      "source": "https://fixture.applytojob.com/apply/jobs/details/ABC_123",
+      "statuses": [
+        503
+      ],
+      "body": "<html><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Client Success Manager III\", \"description\": \"<p>Help customers succeed.</p>\", \"employmentType\": \"FULL_TIME\", \"jobLocationType\": \"TELECOMMUTE\", \"datePosted\": \"2026-07-29\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"addressLocality\": \"Dublin\", \"addressCountry\": \"IE\"}}, \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 70000, \"maxValue\": 90000, \"unitText\": \"YEAR\"}}}</script></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        }
+      ]
+    },
+    {
+      "provider": "jazzhr",
+      "name": "999",
+      "source": "https://fixture.applytojob.com/apply/jobs/details/ABC_123",
+      "statuses": [
+        999
+      ],
+      "body": "<html><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Client Success Manager III\", \"description\": \"<p>Help customers succeed.</p>\", \"employmentType\": \"FULL_TIME\", \"jobLocationType\": \"TELECOMMUTE\", \"datePosted\": \"2026-07-29\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"addressLocality\": \"Dublin\", \"addressCountry\": \"IE\"}}, \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 70000, \"maxValue\": 90000, \"unitText\": \"YEAR\"}}}</script></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        }
+      ]
+    },
+    {
+      "provider": "jazzhr",
+      "name": "empty",
+      "source": "https://fixture.applytojob.com/apply/jobs/details/ABC_123",
+      "statuses": [
+        200
+      ],
+      "body": "",
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        }
+      ]
+    },
+    {
+      "provider": "jazzhr",
+      "name": "transport",
+      "source": "https://fixture.applytojob.com/apply/jobs/details/ABC_123",
+      "statuses": [
+        0
+      ],
+      "body": "<html><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Client Success Manager III\", \"description\": \"<p>Help customers succeed.</p>\", \"employmentType\": \"FULL_TIME\", \"jobLocationType\": \"TELECOMMUTE\", \"datePosted\": \"2026-07-29\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"addressLocality\": \"Dublin\", \"addressCountry\": \"IE\"}}, \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 70000, \"maxValue\": 90000, \"unitText\": \"YEAR\"}}}</script></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        }
+      ]
+    },
+    {
+      "provider": "jazzhr",
+      "name": "recover-403",
+      "source": "https://fixture.applytojob.com/apply/jobs/details/ABC_123",
+      "statuses": [
+        403,
+        200
+      ],
+      "body": "<html><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Client Success Manager III\", \"description\": \"<p>Help customers succeed.</p>\", \"employmentType\": \"FULL_TIME\", \"jobLocationType\": \"TELECOMMUTE\", \"datePosted\": \"2026-07-29\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"addressLocality\": \"Dublin\", \"addressCountry\": \"IE\"}}, \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 70000, \"maxValue\": 90000, \"unitText\": \"YEAR\"}}}</script></html>",
+      "content": {
+        "title": "Client Success Manager III",
+        "description": "<p>Help customers succeed.</p>",
+        "locations": [
+          "Dublin, IE"
+        ],
+        "employment_type": "FULL_TIME",
+        "job_location_type": "TELECOMMUTE",
+        "date_posted": "2026-07-29",
+        "base_salary": {
+          "currency": "EUR",
+          "min": 70000,
+          "max": 90000,
+          "unit": "year"
+        },
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        },
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        }
+      ]
+    },
+    {
+      "provider": "jazzhr",
+      "name": "recover-429",
+      "source": "https://fixture.applytojob.com/apply/jobs/details/ABC_123",
+      "statuses": [
+        429,
+        200
+      ],
+      "body": "<html><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Client Success Manager III\", \"description\": \"<p>Help customers succeed.</p>\", \"employmentType\": \"FULL_TIME\", \"jobLocationType\": \"TELECOMMUTE\", \"datePosted\": \"2026-07-29\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"addressLocality\": \"Dublin\", \"addressCountry\": \"IE\"}}, \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 70000, \"maxValue\": 90000, \"unitText\": \"YEAR\"}}}</script></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        }
+      ]
+    },
+    {
+      "provider": "jazzhr",
+      "name": "recover-503",
+      "source": "https://fixture.applytojob.com/apply/jobs/details/ABC_123",
+      "statuses": [
+        503,
+        200
+      ],
+      "body": "<html><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Client Success Manager III\", \"description\": \"<p>Help customers succeed.</p>\", \"employmentType\": \"FULL_TIME\", \"jobLocationType\": \"TELECOMMUTE\", \"datePosted\": \"2026-07-29\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"addressLocality\": \"Dublin\", \"addressCountry\": \"IE\"}}, \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 70000, \"maxValue\": 90000, \"unitText\": \"YEAR\"}}}</script></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        }
+      ]
+    },
+    {
+      "provider": "jazzhr",
+      "name": "alternating",
+      "source": "https://fixture.applytojob.com/apply/jobs/details/ABC_123",
+      "statuses": [
+        429,
+        503,
+        429,
+        503,
+        200
+      ],
+      "body": "<html><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Client Success Manager III\", \"description\": \"<p>Help customers succeed.</p>\", \"employmentType\": \"FULL_TIME\", \"jobLocationType\": \"TELECOMMUTE\", \"datePosted\": \"2026-07-29\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"addressLocality\": \"Dublin\", \"addressCountry\": \"IE\"}}, \"baseSalary\": {\"currency\": \"EUR\", \"value\": {\"minValue\": 70000, \"maxValue\": 90000, \"unitText\": \"YEAR\"}}}</script></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.applytojob.com/apply/jobs/details/ABC_123"
+        }
+      ]
+    },
+    {
+      "provider": "taleo",
+      "name": "200",
+      "source": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
+      "statuses": [
+        200
+      ],
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": {
+        "title": "Pilot's Assistant",
+        "description": "<p>Help easyJet connect passengers across Europe.</p><p>#LI-hybrid</p>\n<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+        "locations": [
+          "Switzerland-Geneva-Geneva Airport"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": {
+          "qualifications": "<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+          "valid_through": "19/08/2026, 10:59:00 PM"
+        },
+        "metadata": {
+          "ats_job_id": "252963",
+          "requisition_number": "17204",
+          "business_area": "Operations",
+          "organisation": "Flight Operations"
+        }
+      },
+      "failed": false,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        }
+      ]
+    },
+    {
+      "provider": "taleo",
+      "name": "201",
+      "source": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
+      "statuses": [
+        201
+      ],
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": {
+        "title": "Pilot's Assistant",
+        "description": "<p>Help easyJet connect passengers across Europe.</p><p>#LI-hybrid</p>\n<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+        "locations": [
+          "Switzerland-Geneva-Geneva Airport"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": {
+          "qualifications": "<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+          "valid_through": "19/08/2026, 10:59:00 PM"
+        },
+        "metadata": {
+          "ats_job_id": "252963",
+          "requisition_number": "17204",
+          "business_area": "Operations",
+          "organisation": "Flight Operations"
+        }
+      },
+      "failed": false,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        }
+      ]
+    },
+    {
+      "provider": "taleo",
+      "name": "204",
+      "source": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
+      "statuses": [
+        204
+      ],
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": {
+        "title": "Pilot's Assistant",
+        "description": "<p>Help easyJet connect passengers across Europe.</p><p>#LI-hybrid</p>\n<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+        "locations": [
+          "Switzerland-Geneva-Geneva Airport"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": {
+          "qualifications": "<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+          "valid_through": "19/08/2026, 10:59:00 PM"
+        },
+        "metadata": {
+          "ats_job_id": "252963",
+          "requisition_number": "17204",
+          "business_area": "Operations",
+          "organisation": "Flight Operations"
+        }
+      },
+      "failed": false,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        }
+      ]
+    },
+    {
+      "provider": "taleo",
+      "name": "301",
+      "source": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
+      "statuses": [
+        301
+      ],
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        }
+      ]
+    },
+    {
+      "provider": "taleo",
+      "name": "400",
+      "source": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
+      "statuses": [
+        400
+      ],
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        }
+      ]
+    },
+    {
+      "provider": "taleo",
+      "name": "401",
+      "source": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
+      "statuses": [
+        401
+      ],
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        }
+      ]
+    },
+    {
+      "provider": "taleo",
+      "name": "403",
+      "source": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
+      "statuses": [
+        403
+      ],
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        }
+      ]
+    },
+    {
+      "provider": "taleo",
+      "name": "404",
+      "source": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
+      "statuses": [
+        404
+      ],
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        }
+      ]
+    },
+    {
+      "provider": "taleo",
+      "name": "410",
+      "source": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
+      "statuses": [
+        410
+      ],
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        }
+      ]
+    },
+    {
+      "provider": "taleo",
+      "name": "408",
+      "source": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
+      "statuses": [
+        408
+      ],
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        }
+      ]
+    },
+    {
+      "provider": "taleo",
+      "name": "425",
+      "source": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
+      "statuses": [
+        425
+      ],
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        }
+      ]
+    },
+    {
+      "provider": "taleo",
+      "name": "429",
+      "source": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
+      "statuses": [
+        429
+      ],
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        },
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        },
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        }
+      ]
+    },
+    {
+      "provider": "taleo",
+      "name": "500",
+      "source": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
+      "statuses": [
+        500
+      ],
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        }
+      ]
+    },
+    {
+      "provider": "taleo",
+      "name": "503",
+      "source": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
+      "statuses": [
+        503
+      ],
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        },
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        },
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        }
+      ]
+    },
+    {
+      "provider": "taleo",
+      "name": "999",
+      "source": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
+      "statuses": [
+        999
+      ],
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        }
+      ]
+    },
+    {
+      "provider": "taleo",
+      "name": "empty",
+      "source": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
+      "statuses": [
+        200
+      ],
+      "body": "",
+      "content": {
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": null,
+        "metadata": null
+      },
+      "failed": false,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        }
+      ]
+    },
+    {
+      "provider": "taleo",
+      "name": "transport",
+      "source": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
+      "statuses": [
+        0
+      ],
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        }
+      ]
+    },
+    {
+      "provider": "taleo",
+      "name": "recover-403",
+      "source": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
+      "statuses": [
+        403,
+        200
+      ],
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": null,
+      "failed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        }
+      ]
+    },
+    {
+      "provider": "taleo",
+      "name": "recover-429",
+      "source": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
+      "statuses": [
+        429,
+        200
+      ],
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": {
+        "title": "Pilot's Assistant",
+        "description": "<p>Help easyJet connect passengers across Europe.</p><p>#LI-hybrid</p>\n<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+        "locations": [
+          "Switzerland-Geneva-Geneva Airport"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": {
+          "qualifications": "<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+          "valid_through": "19/08/2026, 10:59:00 PM"
+        },
+        "metadata": {
+          "ats_job_id": "252963",
+          "requisition_number": "17204",
+          "business_area": "Operations",
+          "organisation": "Flight Operations"
+        }
+      },
+      "failed": false,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        },
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        }
+      ]
+    },
+    {
+      "provider": "taleo",
+      "name": "recover-503",
+      "source": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
+      "statuses": [
+        503,
+        200
+      ],
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": {
+        "title": "Pilot's Assistant",
+        "description": "<p>Help easyJet connect passengers across Europe.</p><p>#LI-hybrid</p>\n<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+        "locations": [
+          "Switzerland-Geneva-Geneva Airport"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": {
+          "qualifications": "<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+          "valid_through": "19/08/2026, 10:59:00 PM"
+        },
+        "metadata": {
+          "ats_job_id": "252963",
+          "requisition_number": "17204",
+          "business_area": "Operations",
+          "organisation": "Flight Operations"
+        }
+      },
+      "failed": false,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        },
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        }
+      ]
+    },
+    {
+      "provider": "taleo",
+      "name": "alternating",
+      "source": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123",
+      "statuses": [
+        429,
+        503,
+        429,
+        503,
+        200
+      ],
+      "body": "<html><body><script>api.fillList('requisitionDescriptionInterface', 'descRequisition', ['252963','','','','','','','','','Pilot\\'s Assistant','17204','!*!%3Cp%3EHelp%20easyJet%20connect%20passengers%20across%20Europe.%3C%2Fp%3E%3Cp%3E%23LI-hybrid%3C%2Fp%3E','','!*!%3Cp%3EWhat%20we%27re%20looking%20for%3C%2Fp%3E%3Cul%3E%3Cli%3ECareful%20planning%3C%2Fli%3E%3C%2Ful%3E','','Operations','','Switzerland-Geneva-Geneva Airport','','','','Flight Operations','','Full-time','','','','19/08/2026, 10:59:00 PM','','','','','','','','','','','','']);</script></body></html>",
+      "content": {
+        "title": "Pilot's Assistant",
+        "description": "<p>Help easyJet connect passengers across Europe.</p><p>#LI-hybrid</p>\n<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+        "locations": [
+          "Switzerland-Geneva-Geneva Airport"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "extras": {
+          "qualifications": "<p>What we're looking for</p><ul><li>Careful planning</li></ul>",
+          "valid_through": "19/08/2026, 10:59:00 PM"
+        },
+        "metadata": {
+          "ats_job_id": "252963",
+          "requisition_number": "17204",
+          "business_area": "Operations",
+          "organisation": "Flight Operations"
+        }
+      },
+      "failed": false,
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        },
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        },
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        },
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        },
+        {
+          "method": "GET",
+          "url": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=123"
+        }
+      ]
+    }
+  ]
+}
