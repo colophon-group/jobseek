@@ -6,7 +6,7 @@ import (
 )
 
 func SecondaryProvider(provider string) bool {
-	if provider == "umantis" || provider == "notion" {
+	if provider == "umantis" || provider == "notion" || provider == "unifr" {
 		return true
 	}
 	if TenthProvider(provider) {
@@ -21,6 +21,9 @@ func paycomEnrichmentFields(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true})
 }
 func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
+	if config["crawler_type"] == "unifr" {
+		return monitorEnrichmentFields(config, map[string]bool{})
+	}
 	if config["crawler_type"] == "notion" {
 		return monitorEnrichmentFields(config, map[string]bool{})
 	}
@@ -68,6 +71,12 @@ func inspectSecondaryMonitor(boardID string, config map[string]string, md map[st
 	provider := config["crawler_type"]
 	var profile, endpoint string
 	switch provider {
+	case "unifr":
+		o, e := api.UnifrOptionsFromMetadata(config["board_url"], config["metadata"])
+		if e != nil {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		profile, endpoint = "unifr.authoritative-items/v1", o.URL
 	case "notion":
 		o, e := api.NotionOptionsFromMetadata(config["board_url"], config["metadata"])
 		if e != nil {
@@ -232,6 +241,9 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 		return false
 	}
 	switch p.Provider {
+	case "unifr":
+		o, e := api.UnifrOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && p.Profile == "unifr.authoritative-items/v1" && p.Endpoint == o.URL && o.ResourceMatches(resource)
 	case "notion":
 		o, e := api.NotionOptionsFromMetadata(config["board_url"], config["metadata"])
 		return e == nil && p.Profile == "notion.public-urls/v1" && p.Endpoint == "https://"+o.Subdomain+".notion.site/api/v3/getPublicPageData" && o.ResourceMatches(resource)
@@ -314,7 +326,7 @@ func SecondaryMonitorGone(config map[string]string, resource string, status int,
 	switch config["crawler_type"] {
 	case "intervieweb", "typify", "universia", "talentreef":
 		return tenthMonitorGone(config, resource, status, disabled)
-	case "welcometothejungle", "ycombinator", "talentbrew":
+	case "welcometothejungle", "ycombinator", "talentbrew", "unifr":
 		return false
 	case "beehire", "hirehive", "computrabajo":
 		o, e := api.NinthProviderOptionsFromMetadata(config["crawler_type"], config["board_url"], config["metadata"])

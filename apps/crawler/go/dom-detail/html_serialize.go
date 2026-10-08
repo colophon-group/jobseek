@@ -85,3 +85,15 @@ func InnerHTML(node *html.Node) (string, error) {
 	}
 	return out.String(), nil
 }
+
+// OuterHTML preserves the same Lexbor-compatible serialization for an owned
+// source panel, including its boundary element and ordered attributes.
+func OuterHTML(node *html.Node) (string, error) {
+	var out strings.Builder
+	if node != nil {
+		if err := renderHTML(&out, node); err != nil {
+			return "", err
+		}
+	}
+	return out.String(), nil
+}

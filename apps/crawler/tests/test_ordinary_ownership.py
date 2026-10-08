@@ -87,6 +87,8 @@ def expectation(
                 "config": {"crawler_type": "dom", "metadata": '{"scraper_type":"json-ld"}'},
             }
         ]
+        if api == "pdf":
+            doc["details"][0]["profile"] = "pdf.public-detail/v1"
         if api == "notion":
             doc["details"][0].update(
                 domain="fixture.notion.site",
@@ -489,7 +491,7 @@ def test_nextdata_rendered_monitor_projection_preserves_browser_exclusion(profil
 
 
 @pytest.mark.parametrize(
-    "profile", ["workday", "jsonld", "smartrecruiters", "workable", "dom", "notion"]
+    "profile", ["workday", "jsonld", "smartrecruiters", "workable", "dom", "notion", "pdf"]
 )
 async def test_real_legacy_detail_write_excludes_actual_canonical_board(monkeypatch, profile):
     from src.lightpanda.write_fence import authoritative_write
@@ -498,7 +500,7 @@ async def test_real_legacy_detail_write_excludes_actual_canonical_board(monkeypa
     async with private_active_plan(
         details=True,
         jsonld=profile == "jsonld",
-        api=profile if profile in {"smartrecruiters", "workable", "dom", "notion"} else "",
+        api=profile if profile in {"smartrecruiters", "workable", "dom", "notion", "pdf"} else "",
     ) as (pool, expected, payload):
         install_settings(monkeypatch, expected)
         company, foreign, owned_posting, foreign_posting = (uuid.uuid4() for _ in range(4))

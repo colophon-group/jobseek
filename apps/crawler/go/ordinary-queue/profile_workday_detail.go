@@ -22,6 +22,7 @@ type WorkdayDetailProfile struct {
 	EmbeddedNextdata                                bool
 	JSONLDConfig                                    map[string]any
 	DOMConfig                                       map[string]any
+	PDFConfig                                       map[string]any
 	APITokenOverride                                string
 	APILocale                                       string
 	JoinDetailConfig                                map[string]json.RawMessage

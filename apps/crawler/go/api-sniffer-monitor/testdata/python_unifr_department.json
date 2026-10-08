@@ -1,0 +1,551 @@
+[
+  {
+    "kind": "accordion",
+    "name": "complete",
+    "options": {
+      "kind": "accordion",
+      "url": "https://www.ami.swiss/en/about-us/join/open-positions.html",
+      "suffix": "| Adolphe Merkle Institute | Université de Fribourg",
+      "heading": "Open positions",
+      "expected_ids": [
+        "styleguide-2-1",
+        "styleguide-2-2"
+      ],
+      "excluded_central_ids": {},
+      "selector": "main ul.accordion.brandedstyle",
+      "deadline_required": [
+        "styleguide-2-2"
+      ],
+      "immediately_available": [
+        "styleguide-2-1"
+      ]
+    },
+    "body": "<html><head><title>Jobs | Adolphe Merkle Institute | Université de Fribourg</title></head><body><main><h2>Open positions</h2><ul class=\"accordion brandedstyle\"><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-1\">Researcher</a><div data-accordion-content=\"styleguide-2-1\"><p>Role available immediately.</p></div></li><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-2\">Student</a><div data-accordion-content=\"styleguide-2-2\"><p>Apply by September 1st, 2050.</p></div></li></ul></main></body></html>",
+    "today": "2026-08-26",
+    "output": [
+      {
+        "url": "https://www.ami.swiss/en/about-us/join/open-positions.html?_jid=styleguide-2-1",
+        "title": "Researcher",
+        "description": "<div data-accordion-content=\"styleguide-2-1\"><p>Role available immediately.</p></div>",
+        "locations": [
+          "Fribourg, Switzerland"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": "en",
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "unifr_source_id": "styleguide-2-1"
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://www.ami.swiss/en/about-us/join/open-positions.html?_jid=styleguide-2-2",
+        "title": "Student",
+        "description": "<div data-accordion-content=\"styleguide-2-2\"><p>Apply by September 1st, 2050.</p></div>",
+        "locations": [
+          "Fribourg, Switzerland"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": "en",
+        "localizations": null,
+        "extras": {
+          "valid_through": "2050-09-01"
+        },
+        "metadata": {
+          "unifr_source_id": "styleguide-2-2"
+        },
+        "source_identity": null
+      }
+    ],
+    "error": false
+  },
+  {
+    "kind": "accordion",
+    "name": "expired-deadline",
+    "options": {
+      "kind": "accordion",
+      "url": "https://www.ami.swiss/en/about-us/join/open-positions.html",
+      "suffix": "| Adolphe Merkle Institute | Université de Fribourg",
+      "heading": "Open positions",
+      "expected_ids": [
+        "styleguide-2-1",
+        "styleguide-2-2"
+      ],
+      "excluded_central_ids": {},
+      "selector": "main ul.accordion.brandedstyle",
+      "deadline_required": [
+        "styleguide-2-2"
+      ],
+      "immediately_available": [
+        "styleguide-2-1"
+      ]
+    },
+    "body": "<html><head><title>Jobs | Adolphe Merkle Institute | Université de Fribourg</title></head><body><main><h2>Open positions</h2><ul class=\"accordion brandedstyle\"><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-1\">Researcher</a><div data-accordion-content=\"styleguide-2-1\"><p>Role available immediately.</p></div></li><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-2\">Student</a><div data-accordion-content=\"styleguide-2-2\"><p>Apply by September 1st, 2020.</p></div></li></ul></main></body></html>",
+    "today": "2026-08-26",
+    "output": [
+      {
+        "url": "https://www.ami.swiss/en/about-us/join/open-positions.html?_jid=styleguide-2-1",
+        "title": "Researcher",
+        "description": "<div data-accordion-content=\"styleguide-2-1\"><p>Role available immediately.</p></div>",
+        "locations": [
+          "Fribourg, Switzerland"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": "en",
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "unifr_source_id": "styleguide-2-1"
+        },
+        "source_identity": null
+      }
+    ],
+    "error": false
+  },
+  {
+    "kind": "accordion",
+    "name": "ambiguous-deadline",
+    "options": {
+      "kind": "accordion",
+      "url": "https://www.ami.swiss/en/about-us/join/open-positions.html",
+      "suffix": "| Adolphe Merkle Institute | Université de Fribourg",
+      "heading": "Open positions",
+      "expected_ids": [
+        "styleguide-2-1",
+        "styleguide-2-2"
+      ],
+      "excluded_central_ids": {},
+      "selector": "main ul.accordion.brandedstyle",
+      "deadline_required": [
+        "styleguide-2-2"
+      ],
+      "immediately_available": [
+        "styleguide-2-1"
+      ]
+    },
+    "body": "<html><head><title>Jobs | Adolphe Merkle Institute | Université de Fribourg</title></head><body><main><h2>Open positions</h2><ul class=\"accordion brandedstyle\"><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-1\">Researcher</a><div data-accordion-content=\"styleguide-2-1\"><p>Role available immediately.</p></div></li><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-2\">Student</a><div data-accordion-content=\"styleguide-2-2\"><p>Apply by September 1st, 2050 or by October 1, 2050</p></div></li></ul></main></body></html>",
+    "today": "2026-08-26",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "accordion",
+    "name": "missing-deadline",
+    "options": {
+      "kind": "accordion",
+      "url": "https://www.ami.swiss/en/about-us/join/open-positions.html",
+      "suffix": "| Adolphe Merkle Institute | Université de Fribourg",
+      "heading": "Open positions",
+      "expected_ids": [
+        "styleguide-2-1",
+        "styleguide-2-2"
+      ],
+      "excluded_central_ids": {},
+      "selector": "main ul.accordion.brandedstyle",
+      "deadline_required": [
+        "styleguide-2-2"
+      ],
+      "immediately_available": [
+        "styleguide-2-1"
+      ]
+    },
+    "body": "<html><head><title>Jobs | Adolphe Merkle Institute | Université de Fribourg</title></head><body><main><h2>Open positions</h2><ul class=\"accordion brandedstyle\"><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-1\">Researcher</a><div data-accordion-content=\"styleguide-2-1\"><p>Role available immediately.</p></div></li><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-2\">Student</a><div data-accordion-content=\"styleguide-2-2\"><p>No date</p></div></li></ul></main></body></html>",
+    "today": "2026-08-26",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "accordion",
+    "name": "missing-currentness",
+    "options": {
+      "kind": "accordion",
+      "url": "https://www.ami.swiss/en/about-us/join/open-positions.html",
+      "suffix": "| Adolphe Merkle Institute | Université de Fribourg",
+      "heading": "Open positions",
+      "expected_ids": [
+        "styleguide-2-1",
+        "styleguide-2-2"
+      ],
+      "excluded_central_ids": {},
+      "selector": "main ul.accordion.brandedstyle",
+      "deadline_required": [
+        "styleguide-2-2"
+      ],
+      "immediately_available": [
+        "styleguide-2-1"
+      ]
+    },
+    "body": "<html><head><title>Jobs | Adolphe Merkle Institute | Université de Fribourg</title></head><body><main><h2>Open positions</h2><ul class=\"accordion brandedstyle\"><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-1\">Researcher</a><div data-accordion-content=\"styleguide-2-1\"><p>A role</p></div></li><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-2\">Student</a><div data-accordion-content=\"styleguide-2-2\"><p>Apply by September 1st, 2050.</p></div></li></ul></main></body></html>",
+    "today": "2026-08-26",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "accordion",
+    "name": "missing-panel",
+    "options": {
+      "kind": "accordion",
+      "url": "https://www.ami.swiss/en/about-us/join/open-positions.html",
+      "suffix": "| Adolphe Merkle Institute | Université de Fribourg",
+      "heading": "Open positions",
+      "expected_ids": [
+        "styleguide-2-1",
+        "styleguide-2-2"
+      ],
+      "excluded_central_ids": {},
+      "selector": "main ul.accordion.brandedstyle",
+      "deadline_required": [
+        "styleguide-2-2"
+      ],
+      "immediately_available": [
+        "styleguide-2-1"
+      ]
+    },
+    "body": "<html><head><title>Jobs | Adolphe Merkle Institute | Université de Fribourg</title></head><body><main><h2>Open positions</h2><ul class=\"accordion brandedstyle\"><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-1\">Researcher</a><div data-accordion-content=\"styleguide-2-1\"><p>Role available immediately.</p></div></li><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-2\">Student</a><div data-missing=\"x\"><p>Apply by September 1st, 2050.</p></div></li></ul></main></body></html>",
+    "today": "2026-08-26",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "accordion",
+    "name": "duplicate-id",
+    "options": {
+      "kind": "accordion",
+      "url": "https://www.ami.swiss/en/about-us/join/open-positions.html",
+      "suffix": "| Adolphe Merkle Institute | Université de Fribourg",
+      "heading": "Open positions",
+      "expected_ids": [
+        "styleguide-2-1",
+        "styleguide-2-2"
+      ],
+      "excluded_central_ids": {},
+      "selector": "main ul.accordion.brandedstyle",
+      "deadline_required": [
+        "styleguide-2-2"
+      ],
+      "immediately_available": [
+        "styleguide-2-1"
+      ]
+    },
+    "body": "<html><head><title>Jobs | Adolphe Merkle Institute | Université de Fribourg</title></head><body><main><h2>Open positions</h2><ul class=\"accordion brandedstyle\"><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-1\">Researcher</a><div data-accordion-content=\"styleguide-2-1\"><p>Role available immediately.</p></div></li><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-1\">Researcher</a><div data-accordion-content=\"styleguide-2-1\"><p>Role available immediately.</p></div></li></ul></main></body></html>",
+    "today": "2026-08-26",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "accordion",
+    "name": "drift",
+    "options": {
+      "kind": "accordion",
+      "url": "https://www.ami.swiss/en/about-us/join/open-positions.html",
+      "suffix": "| Adolphe Merkle Institute | Université de Fribourg",
+      "heading": "Open positions",
+      "expected_ids": [
+        "styleguide-2-1",
+        "styleguide-2-2"
+      ],
+      "excluded_central_ids": {},
+      "selector": "main ul.accordion.brandedstyle",
+      "deadline_required": [
+        "styleguide-2-2"
+      ],
+      "immediately_available": [
+        "styleguide-2-1"
+      ]
+    },
+    "body": "<html><head><title>Jobs | Adolphe Merkle Institute | Université de Fribourg</title></head><body><main><h2>Open positions</h2><ul class=\"accordion brandedstyle\"><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-1\">Researcher</a><div data-accordion-content=\"styleguide-2-1\"><p>Role available immediately.</p></div></li><li><a href=\"#\" data-accordion-toggler=\"unexpected\">Student</a><div data-accordion-content=\"unexpected\"><p>Apply by September 1st, 2050.</p></div></li></ul></main></body></html>",
+    "today": "2026-08-26",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "accordion",
+    "name": "zero",
+    "options": {
+      "kind": "accordion",
+      "url": "https://www.ami.swiss/en/about-us/join/open-positions.html",
+      "suffix": "| Adolphe Merkle Institute | Université de Fribourg",
+      "heading": "Open positions",
+      "expected_ids": [
+        "styleguide-2-1",
+        "styleguide-2-2"
+      ],
+      "excluded_central_ids": {},
+      "selector": "main ul.accordion.brandedstyle",
+      "deadline_required": [
+        "styleguide-2-2"
+      ],
+      "immediately_available": [
+        "styleguide-2-1"
+      ]
+    },
+    "body": "<html><head><title>Jobs | Adolphe Merkle Institute | Université de Fribourg</title></head><body><main><h2>Open positions</h2><ul class=\"accordion brandedstyle\"></ul></main></body></html>",
+    "today": "2026-08-26",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "accordion",
+    "name": "wrong-owner",
+    "options": {
+      "kind": "accordion",
+      "url": "https://www.ami.swiss/en/about-us/join/open-positions.html",
+      "suffix": "| Adolphe Merkle Institute | Université de Fribourg",
+      "heading": "Open positions",
+      "expected_ids": [
+        "styleguide-2-1",
+        "styleguide-2-2"
+      ],
+      "excluded_central_ids": {},
+      "selector": "main ul.accordion.brandedstyle",
+      "deadline_required": [
+        "styleguide-2-2"
+      ],
+      "immediately_available": [
+        "styleguide-2-1"
+      ]
+    },
+    "body": "<html><head><title>Jobs Other</title></head><body><main><h2>Open positions</h2><ul class=\"accordion brandedstyle\"><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-1\">Researcher</a><div data-accordion-content=\"styleguide-2-1\"><p>Role available immediately.</p></div></li><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-2\">Student</a><div data-accordion-content=\"styleguide-2-2\"><p>Apply by September 1st, 2050.</p></div></li></ul></main></body></html>",
+    "today": "2026-08-26",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "accordion",
+    "name": "pagination",
+    "options": {
+      "kind": "accordion",
+      "url": "https://www.ami.swiss/en/about-us/join/open-positions.html",
+      "suffix": "| Adolphe Merkle Institute | Université de Fribourg",
+      "heading": "Open positions",
+      "expected_ids": [
+        "styleguide-2-1",
+        "styleguide-2-2"
+      ],
+      "excluded_central_ids": {},
+      "selector": "main ul.accordion.brandedstyle",
+      "deadline_required": [
+        "styleguide-2-2"
+      ],
+      "immediately_available": [
+        "styleguide-2-1"
+      ]
+    },
+    "body": "<html><head><title>Jobs | Adolphe Merkle Institute | Université de Fribourg</title></head><body><main><h2>Open positions</h2><ul class=\"accordion brandedstyle\"><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-1\">Researcher</a><div data-accordion-content=\"styleguide-2-1\"><p>Role available immediately.</p></div></li><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-2\">Student</a><div data-accordion-content=\"styleguide-2-2\"><p>Apply by September 1st, 2050.</p></div></li></ul><a rel=\"next\">Next</a></main></body></html>",
+    "today": "2026-08-26",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "deadline",
+    "name": "empty",
+    "text": "No deadline",
+    "output": "",
+    "error": false
+  },
+  {
+    "kind": "deadline",
+    "name": "english",
+    "text": "Apply by September 1st, 2050.",
+    "output": "2050-09-01",
+    "error": false
+  },
+  {
+    "kind": "deadline",
+    "name": "implied-year",
+    "text": "Recruiting 2050: apply by October 3rd.",
+    "output": "2050-10-03",
+    "error": false
+  },
+  {
+    "kind": "deadline",
+    "name": "ambiguous-year",
+    "text": "2026 and 2050: apply by October 3rd.",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "deadline",
+    "name": "german",
+    "text": "Bewerbungsfrist: 3. März 2050",
+    "output": "2050-03-03",
+    "error": false
+  },
+  {
+    "kind": "deadline",
+    "name": "geosciences",
+    "text": "Apply before 3rd of March 2050",
+    "output": "2050-03-03",
+    "error": false
+  },
+  {
+    "kind": "deadline",
+    "name": "invalid-date",
+    "text": "Apply by February 30, 2050",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "deadline",
+    "name": "ambiguous-date",
+    "text": "Apply by March 1, 2050 or by April 1, 2050",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "deadline",
+    "name": "same-date",
+    "text": "Apply by March 1, 2050 or before 1st of March 2050",
+    "output": "2050-03-01",
+    "error": false
+  },
+  {
+    "kind": "deadline",
+    "name": "unicode-boundary",
+    "text": "préby March 1, 2050",
+    "output": "",
+    "error": false
+  },
+  {
+    "kind": "links",
+    "name": "law",
+    "body": "<html><head><title>Jobs | Rechtswissenschaftliche Fakultät | Universität Freiburg</title></head><body><main><h1>Stellenangebote</h1><a href=\"/ius/de/assets/public/documents/offres-emploi/one.pdf\">Job</a></main></body></html>",
+    "error": false,
+    "output": [
+      "https://www.unifr.ch/ius/de/assets/public/documents/offres-emploi/one.pdf"
+    ],
+    "options": {
+      "kind": "links",
+      "url": "https://www.unifr.ch/ius/de/fakultaet/stellen.html",
+      "suffix": "| Rechtswissenschaftliche Fakultät | Universität Freiburg",
+      "heading": "Stellenangebote",
+      "path_prefix": "/ius/de/assets/public/documents/offres-emploi/",
+      "rewrite_from": "",
+      "rewrite_to": ""
+    }
+  },
+  {
+    "kind": "links",
+    "name": "regional-rewrite",
+    "body": "<html><head><title>Jobs | Regionaler Schuldienst | Universität Freiburg</title></head><body><main><h1>Offene Stellen</h1><a href=\"assets/public/files/one.pdf\">Job</a></main></body></html>",
+    "error": false,
+    "output": [
+      "https://www.unifr.ch/rsd/de/assets/public/files/one.pdf"
+    ],
+    "options": {
+      "kind": "links",
+      "url": "https://www.unifr.ch/rsd/de/schuldienst/jobs.html",
+      "suffix": "| Regionaler Schuldienst | Universität Freiburg",
+      "heading": "Offene Stellen",
+      "path_prefix": "/rsd/de/assets/public/files/",
+      "rewrite_from": "/rsd/de/schuldienst/assets/public/files/",
+      "rewrite_to": "/rsd/de/assets/public/files/"
+    }
+  },
+  {
+    "kind": "links",
+    "name": "duplicate",
+    "body": "<html><head><title>Jobs | Rechtswissenschaftliche Fakultät | Universität Freiburg</title></head><body><main><h1>Stellenangebote</h1><a href=\"/ius/de/assets/public/documents/offres-emploi/one.pdf\">Job</a><a href=\"/ius/de/assets/public/documents/offres-emploi/one.pdf\">Job</a></main></body></html>",
+    "error": true,
+    "output": null,
+    "options": {
+      "kind": "links",
+      "url": "https://www.unifr.ch/ius/de/fakultaet/stellen.html",
+      "suffix": "| Rechtswissenschaftliche Fakultät | Universität Freiburg",
+      "heading": "Stellenangebote",
+      "path_prefix": "/ius/de/assets/public/documents/offres-emploi/",
+      "rewrite_from": "",
+      "rewrite_to": ""
+    }
+  },
+  {
+    "kind": "links",
+    "name": "foreign",
+    "body": "<html><head><title>Jobs | Rechtswissenschaftliche Fakultät | Universität Freiburg</title></head><body><main><h1>Stellenangebote</h1><a href=\"https://example.com/one.pdf\">Job</a></main></body></html>",
+    "error": true,
+    "output": null,
+    "options": {
+      "kind": "links",
+      "url": "https://www.unifr.ch/ius/de/fakultaet/stellen.html",
+      "suffix": "| Rechtswissenschaftliche Fakultät | Universität Freiburg",
+      "heading": "Stellenangebote",
+      "path_prefix": "/ius/de/assets/public/documents/offres-emploi/",
+      "rewrite_from": "",
+      "rewrite_to": ""
+    }
+  },
+  {
+    "kind": "links",
+    "name": "query",
+    "body": "<html><head><title>Jobs | Rechtswissenschaftliche Fakultät | Universität Freiburg</title></head><body><main><h1>Stellenangebote</h1><a href=\"/ius/de/assets/public/documents/offres-emploi/one.pdf?x=1\">Job</a></main></body></html>",
+    "error": true,
+    "output": null,
+    "options": {
+      "kind": "links",
+      "url": "https://www.unifr.ch/ius/de/fakultaet/stellen.html",
+      "suffix": "| Rechtswissenschaftliche Fakultät | Universität Freiburg",
+      "heading": "Stellenangebote",
+      "path_prefix": "/ius/de/assets/public/documents/offres-emploi/",
+      "rewrite_from": "",
+      "rewrite_to": ""
+    }
+  },
+  {
+    "kind": "links",
+    "name": "fragment",
+    "body": "<html><head><title>Jobs | Rechtswissenschaftliche Fakultät | Universität Freiburg</title></head><body><main><h1>Stellenangebote</h1><a href=\"/ius/de/assets/public/documents/offres-emploi/one.pdf#x\">Job</a></main></body></html>",
+    "error": true,
+    "output": null,
+    "options": {
+      "kind": "links",
+      "url": "https://www.unifr.ch/ius/de/fakultaet/stellen.html",
+      "suffix": "| Rechtswissenschaftliche Fakultät | Universität Freiburg",
+      "heading": "Stellenangebote",
+      "path_prefix": "/ius/de/assets/public/documents/offres-emploi/",
+      "rewrite_from": "",
+      "rewrite_to": ""
+    }
+  },
+  {
+    "kind": "links",
+    "name": "path",
+    "body": "<html><head><title>Jobs | Rechtswissenschaftliche Fakultät | Universität Freiburg</title></head><body><main><h1>Stellenangebote</h1><a href=\"/elsewhere/one.pdf\">Job</a></main></body></html>",
+    "error": true,
+    "output": null,
+    "options": {
+      "kind": "links",
+      "url": "https://www.unifr.ch/ius/de/fakultaet/stellen.html",
+      "suffix": "| Rechtswissenschaftliche Fakultät | Universität Freiburg",
+      "heading": "Stellenangebote",
+      "path_prefix": "/ius/de/assets/public/documents/offres-emploi/",
+      "rewrite_from": "",
+      "rewrite_to": ""
+    }
+  },
+  {
+    "kind": "links",
+    "name": "zero",
+    "body": "<html><head><title>Jobs | Rechtswissenschaftliche Fakultät | Universität Freiburg</title></head><body><main><h1>Stellenangebote</h1></main></body></html>",
+    "error": true,
+    "output": null,
+    "options": {
+      "kind": "links",
+      "url": "https://www.unifr.ch/ius/de/fakultaet/stellen.html",
+      "suffix": "| Rechtswissenschaftliche Fakultät | Universität Freiburg",
+      "heading": "Stellenangebote",
+      "path_prefix": "/ius/de/assets/public/documents/offres-emploi/",
+      "rewrite_from": "",
+      "rewrite_to": ""
+    }
+  }
+]

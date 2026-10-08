@@ -237,7 +237,7 @@ RUN install -d --owner=10001 --group=10001 --mode=0700 \
 # Document extraction supports legacy Word postings and opt-in OCR for image-only PDFs.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       antiword tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng \
+       antiword poppler-utils tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies (cached layer)

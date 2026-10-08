@@ -1,0 +1,374 @@
+[
+  {
+    "name": "url",
+    "text": "A job\n\nBuild tools",
+    "source": "https://example.com/Senior_Engineer.pdf",
+    "config": {},
+    "output": {
+      "title": "Senior Engineer",
+      "description": "<p>A job</p>\n<p>Build tools</p>",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "error": false
+  },
+  {
+    "name": "empty",
+    "text": "",
+    "source": "https://example.com/Engineer.pdf",
+    "config": {},
+    "output": {
+      "title": "Engineer",
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "error": false
+  },
+  {
+    "name": "hash",
+    "text": "A job",
+    "source": "https://example.com/0123456789abcdef0123456789_Engineer.pdf",
+    "config": {},
+    "output": {
+      "title": "Engineer",
+      "description": "<p>A job</p>",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "error": false
+  },
+  {
+    "name": "heading",
+    "text": "lowercase\n• bullet\n\nSenior Engineer\nBuild tools",
+    "source": "https://example.com/Job.pdf",
+    "config": {
+      "title_source": "text"
+    },
+    "output": {
+      "title": "Senior Engineer",
+      "description": "<p>lowercase • bullet</p>\n<p>Senior Engineer Build tools</p>",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "error": false
+  },
+  {
+    "name": "long-heading",
+    "text": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\nNext heading",
+    "source": "https://example.com/Engineer.pdf",
+    "config": {
+      "title_source": "text"
+    },
+    "output": {
+      "title": "Engineer",
+      "description": "<p>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA Next heading</p>",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "error": false
+  },
+  {
+    "name": "missing-required",
+    "text": "No match",
+    "source": "https://example.com/Engineer.pdf",
+    "config": {
+      "title_source": "text",
+      "title_pattern": "Title: (.+)",
+      "require_title_pattern": true
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "empty-required",
+    "text": "",
+    "source": "https://example.com/Engineer.pdf",
+    "config": {
+      "title_source": "text",
+      "title_pattern": "Title: (.+)",
+      "require_title_pattern": true
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "title-text",
+    "text": "Title: Senior\nEngineer\n\nLocation: Zurich",
+    "source": "https://example.com/Engineer.pdf",
+    "config": {
+      "title_source": "text",
+      "title_pattern": "(?s)Title: (.*?)\\n\\n",
+      "location_pattern": "Location: (.+)"
+    },
+    "output": {
+      "title": "Senior Engineer",
+      "description": "<p>Title: Senior Engineer</p>\n<p>Location: Zurich</p>",
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "error": false
+  },
+  {
+    "name": "named",
+    "text": "Job: M\nechanical Engineer at A Coruna",
+    "source": "https://example.com/Engineer.pdf",
+    "config": {
+      "fields_pattern": "(?s)Job: (?P<title>.*?) at (?P<location>.+)",
+      "repair_split_initial": true
+    },
+    "output": {
+      "title": "Mechanical Engineer",
+      "description": "<p>Job: M echanical Engineer at A Coruna</p>",
+      "locations": [
+        "ACoruna"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "error": false
+  },
+  {
+    "name": "title-only-repair",
+    "text": "Title: M\nechanical Engineer\nLocation: A Coruna",
+    "source": "https://example.com/Engineer.pdf",
+    "config": {
+      "title_source": "text",
+      "title_pattern": "(?s)Title: (.*?)\\nLocation:",
+      "location_pattern": "Location: (.+)",
+      "repair_split_initial": true
+    },
+    "output": {
+      "title": "Mechanical Engineer",
+      "description": "<p>Title: M echanical Engineer Location: A Coruna</p>",
+      "locations": [
+        "A Coruna"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "error": false
+  },
+  {
+    "name": "hyphen",
+    "text": "Title: large-\nscale Researcher",
+    "source": "https://example.com/Engineer.pdf",
+    "config": {
+      "title_source": "text",
+      "title_pattern": "(?s)Title: (.+)"
+    },
+    "output": {
+      "title": "large-scale Researcher",
+      "description": "<p>Title: large- scale Researcher</p>",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "error": false
+  },
+  {
+    "name": "no-capture",
+    "text": "Clinical Pharmacologist",
+    "source": "https://example.com/Engineer.pdf",
+    "config": {
+      "title_pattern": "Clinical Pharmacologist"
+    },
+    "output": {
+      "title": "Engineer",
+      "description": "<p>Clinical Pharmacologist</p>",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "error": false
+  },
+  {
+    "name": "url-pattern",
+    "text": "A role",
+    "source": "https://example.com/12_2026_Clinical_Pharmacologist_DE.pdf",
+    "config": {
+      "title_pattern": "^\\d{2}_\\d{4}_(.+?)_DE$"
+    },
+    "output": {
+      "title": "Clinical Pharmacologist",
+      "description": "<p>A role</p>",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "error": false
+  },
+  {
+    "name": "url-location",
+    "text": "",
+    "source": "https://example.com/Engineer-Zurich.pdf",
+    "config": {
+      "location_url_pattern": "-(.+)\\.pdf$",
+      "defaults": {
+        "locations": [
+          "Fallback"
+        ]
+      }
+    },
+    "output": {
+      "title": "Engineer Zurich",
+      "description": null,
+      "locations": [
+        "Zurich"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "error": false
+  },
+  {
+    "name": "defaults",
+    "text": "A role",
+    "source": "https://example.com/Engineer.pdf",
+    "config": {
+      "defaults": {
+        "locations": [
+          "Fribourg, Switzerland"
+        ],
+        "employment_type": "part_time",
+        "base_salary": {
+          "currency": "CHF",
+          "min": 100,
+          "unit": "hour"
+        },
+        "metadata": {
+          "team": "Science"
+        }
+      }
+    },
+    "output": {
+      "title": "Engineer",
+      "description": "<p>A role</p>",
+      "locations": [
+        "Fribourg, Switzerland"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "CHF",
+        "min": 100,
+        "unit": "hour"
+      },
+      "language": null,
+      "extras": null,
+      "metadata": {
+        "team": "Science"
+      }
+    },
+    "error": false
+  },
+  {
+    "name": "description",
+    "text": "First & <Go>\nsecond\n\nThird paragraph",
+    "source": "https://example.com/Engineer.pdf",
+    "config": {},
+    "output": {
+      "title": "Engineer",
+      "description": "<p>First & <Go> second</p>\n<p>Third paragraph</p>",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "error": false
+  },
+  {
+    "name": "optional-named",
+    "text": "Position: Researcher",
+    "source": "https://example.com/Engineer.pdf",
+    "config": {
+      "fields_pattern": "Position: (?P<title>.+?)(?: at (?P<location>.+))?$"
+    },
+    "output": {
+      "title": "Researcher",
+      "description": "<p>Position: Researcher</p>",
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": null,
+      "extras": null,
+      "metadata": null
+    },
+    "error": false
+  }
+]

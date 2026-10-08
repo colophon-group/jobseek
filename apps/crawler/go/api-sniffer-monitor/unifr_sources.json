@@ -1,0 +1,123 @@
+{
+  "chemistry": {
+    "kind": "accordion",
+    "url": "https://www.unifr.ch/chem/en/department/jobs.html",
+    "suffix": "| Department of Chemistry | University of Fribourg",
+    "heading": "Open Positions",
+    "expected_ids": [
+      "styleguide-2-1",
+      "styleguide-2-2"
+    ],
+    "excluded_central_ids": {},
+    "selector": "main ul.accordion.brandedstyle",
+    "deadline_required": [],
+    "immediately_available": []
+  },
+  "ami": {
+    "kind": "accordion",
+    "url": "https://www.ami.swiss/en/about-us/join/open-positions.html",
+    "suffix": "| Adolphe Merkle Institute | Université de Fribourg",
+    "heading": "Open positions",
+    "expected_ids": [
+      "styleguide-2-1",
+      "styleguide-2-2"
+    ],
+    "excluded_central_ids": {},
+    "selector": "main ul.accordion.brandedstyle",
+    "deadline_required": [
+      "styleguide-2-2"
+    ],
+    "immediately_available": [
+      "styleguide-2-1"
+    ]
+  },
+  "biology": {
+    "kind": "accordion",
+    "url": "https://www.unifr.ch/bio/en/department/jobs.html",
+    "suffix": "| Department of Biology | University of Fribourg",
+    "heading": "Open Positions",
+    "expected_ids": [
+      "styleguide-5-1",
+      "styleguide-5-2D3",
+      "styleguide-5-3",
+      "styleguide-5-4",
+      "styleguide-5-5"
+    ],
+    "excluded_central_ids": {},
+    "selector": "main ul.accordion.brandedstyle",
+    "deadline_required": [],
+    "immediately_available": []
+  },
+  "geosciences": {
+    "kind": "accordion",
+    "url": "https://www.unifr.ch/geo/en/department/jobs/",
+    "suffix": "| Department of Geosciences | University of Fribourg",
+    "heading": "Open Positions",
+    "expected_ids": [
+      "styleguide-3-1",
+      "styleguide-3-2",
+      "styleguide-3-3"
+    ],
+    "excluded_central_ids": {},
+    "selector": "main ul.accordion.brandedstyle",
+    "deadline_required": [
+      "styleguide-3-1"
+    ],
+    "immediately_available": []
+  },
+  "physics": {
+    "kind": "accordion",
+    "url": "https://www.unifr.ch/phys/de/department/jobs/",
+    "suffix": "| Departement für Physik | Universität Freiburg",
+    "heading": "Freie Stellen im Physikdepartement",
+    "expected_ids": [
+      "styleguide-2-1",
+      "styleguide-2-2"
+    ],
+    "excluded_central_ids": {
+      "styleguide-2-2": "1911"
+    },
+    "selector": "main ul.accordion.brandedstyle",
+    "deadline_required": [
+      "styleguide-2-1"
+    ],
+    "immediately_available": []
+  },
+  "ses": {
+    "kind": "accordion",
+    "url": "https://www.unifr.ch/ses/en/fac/jobs.html",
+    "suffix": "| Faculty of Management, Economics and Social Sciences | University of Fribourg",
+    "heading": "Open positions",
+    "expected_ids": [
+      "styleguide-1-1"
+    ],
+    "excluded_central_ids": {
+      "styleguide-1-1": "1898"
+    },
+    "selector": "main ul.accordion.light",
+    "deadline_required": [],
+    "immediately_available": []
+  },
+  "law": {
+    "kind": "links",
+    "url": "https://www.unifr.ch/ius/de/fakultaet/stellen.html",
+    "suffix": "| Rechtswissenschaftliche Fakultät | Universität Freiburg",
+    "heading": "Stellenangebote",
+    "path_prefix": "/ius/de/assets/public/documents/offres-emploi/",
+    "rewrite_from": "",
+    "rewrite_to": ""
+  },
+  "regional-school-service": {
+    "kind": "links",
+    "url": "https://www.unifr.ch/rsd/de/schuldienst/jobs.html",
+    "suffix": "| Regionaler Schuldienst | Universität Freiburg",
+    "heading": "Offene Stellen",
+    "path_prefix": "/rsd/de/assets/public/files/",
+    "rewrite_from": "/rsd/de/schuldienst/assets/public/files/",
+    "rewrite_to": "/rsd/de/assets/public/files/"
+  },
+  "central": {
+    "kind": "central",
+    "url": "https://www.unifr.ch/sp/fr/postes-vacants.html"
+  }
+}

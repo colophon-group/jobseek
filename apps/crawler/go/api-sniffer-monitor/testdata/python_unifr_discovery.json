@@ -1,0 +1,185 @@
+[
+  {
+    "name": "complete",
+    "today": "2026-08-26",
+    "responses": {
+      "https://www.unifr.ch/sp/fr/postes-vacants.html": "<html><head><title>Postes vacants - Offres d'emploi à l'Université de Fribourg | Service du personnel | Université de Fribourg</title></head><body><main><h2>Postes vacants - Offres d'emploi à l'Université de Fribourg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1885\"><h4 class=\"list-group-item-heading name\">French only</h4><div id=\"open1885\">Loading...</div></li><li class=\"list-group-item\" id=\"1891\"><h4 class=\"list-group-item-heading name\">Titre français</h4><div id=\"open1891\">Loading...</div></li></ul></main></body></html>",
+      "https://www.unifr.ch/sp/de/offene-stellen.html": "<html><head><title>Offene Stellen - Stellenangebote an der Universität Freiburg | Personaldienst | Universität Freiburg</title></head><body><main><h2>Offene Stellen - Stellenangebote an der Universität Freiburg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1891\"><h4 class=\"list-group-item-heading name\">Deutscher Titel</h4><div id=\"open1891\">Loading...</div></li><li class=\"list-group-item\" id=\"1897\"><h4 class=\"list-group-item-heading name\">German only</h4><div id=\"open1897\">Loading...</div></li></ul></main></body></html>",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/fr/1885": "{\"id\": \"1885\", \"autorite\": \"Universit\\u00e9\", \"fonction\": \"French only\", \"content\": \"<p>fr detail for 1885</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/fr/postes-vacants.html#1885\"}",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/fr/1891": "{\"id\": \"1891\", \"autorite\": \"Universit\\u00e9\", \"fonction\": \"Titre fran\\u00e7ais\", \"content\": \"<p>fr detail for 1891</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/fr/postes-vacants.html#1891\"}",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/de/1891": "{\"id\": \"1891\", \"autorite\": \"Universit\\u00e4t\", \"fonction\": \"Deutscher Titel\", \"content\": \"<p>de detail for 1891</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/de/offene-stellen.html#1891\"}",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/de/1897": "{\"id\": \"1897\", \"autorite\": \"Universit\\u00e4t\", \"fonction\": \"German only\", \"content\": \"<p>de detail for 1897</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/de/offene-stellen.html#1897\"}"
+    },
+    "calls": [
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/de/1891",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/de/1897",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/fr/1885",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/fr/1891",
+      "https://www.unifr.ch/sp/de/offene-stellen.html",
+      "https://www.unifr.ch/sp/fr/postes-vacants.html"
+    ],
+    "output": [
+      {
+        "url": "https://www.unifr.ch/sp/fr/postes-vacants.html?_jid=1885",
+        "title": "French only",
+        "description": "<p>fr detail for 1885</p>",
+        "locations": [
+          "Fribourg, Switzerland"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-08-01T00:00:00+02:00",
+        "base_salary": null,
+        "language": "fr",
+        "localizations": {
+          "fr": {
+            "title": "French only",
+            "description": "<p>fr detail for 1885</p>",
+            "locations": [
+              "Fribourg, Switzerland"
+            ]
+          }
+        },
+        "extras": {
+          "valid_through": "2026-09-30"
+        },
+        "metadata": {
+          "unifr_provider_id": "1885"
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://www.unifr.ch/sp/fr/postes-vacants.html?_jid=1891",
+        "title": "Titre français",
+        "description": "<p>fr detail for 1891</p>",
+        "locations": [
+          "Fribourg, Switzerland"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-08-01T00:00:00+02:00",
+        "base_salary": null,
+        "language": "fr",
+        "localizations": {
+          "de": {
+            "title": "Deutscher Titel",
+            "description": "<p>de detail for 1891</p>",
+            "locations": [
+              "Fribourg, Switzerland"
+            ]
+          },
+          "fr": {
+            "title": "Titre français",
+            "description": "<p>fr detail for 1891</p>",
+            "locations": [
+              "Fribourg, Switzerland"
+            ]
+          }
+        },
+        "extras": {
+          "valid_through": "2026-09-30"
+        },
+        "metadata": {
+          "unifr_provider_id": "1891"
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://www.unifr.ch/sp/fr/postes-vacants.html?_jid=1897",
+        "title": "German only",
+        "description": "<p>de detail for 1897</p>",
+        "locations": [
+          "Fribourg, Switzerland"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-08-01T00:00:00+02:00",
+        "base_salary": null,
+        "language": "de",
+        "localizations": {
+          "de": {
+            "title": "German only",
+            "description": "<p>de detail for 1897</p>",
+            "locations": [
+              "Fribourg, Switzerland"
+            ]
+          }
+        },
+        "extras": {
+          "valid_through": "2026-09-30"
+        },
+        "metadata": {
+          "unifr_provider_id": "1897"
+        },
+        "source_identity": null
+      }
+    ],
+    "error": false
+  },
+  {
+    "name": "late-identity-failure",
+    "today": "2026-08-26",
+    "responses": {
+      "https://www.unifr.ch/sp/fr/postes-vacants.html": "<html><head><title>Postes vacants - Offres d'emploi à l'Université de Fribourg | Service du personnel | Université de Fribourg</title></head><body><main><h2>Postes vacants - Offres d'emploi à l'Université de Fribourg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1885\"><h4 class=\"list-group-item-heading name\">French only</h4><div id=\"open1885\">Loading...</div></li><li class=\"list-group-item\" id=\"1891\"><h4 class=\"list-group-item-heading name\">Titre français</h4><div id=\"open1891\">Loading...</div></li></ul></main></body></html>",
+      "https://www.unifr.ch/sp/de/offene-stellen.html": "<html><head><title>Offene Stellen - Stellenangebote an der Universität Freiburg | Personaldienst | Universität Freiburg</title></head><body><main><h2>Offene Stellen - Stellenangebote an der Universität Freiburg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1891\"><h4 class=\"list-group-item-heading name\">Deutscher Titel</h4><div id=\"open1891\">Loading...</div></li><li class=\"list-group-item\" id=\"1897\"><h4 class=\"list-group-item-heading name\">German only</h4><div id=\"open1897\">Loading...</div></li></ul></main></body></html>",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/fr/1885": "{\"id\": \"1885\", \"autorite\": \"Universit\\u00e9\", \"fonction\": \"French only\", \"content\": \"<p>fr detail for 1885</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/fr/postes-vacants.html#1885\"}",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/fr/1891": "{\"id\": \"1891\", \"autorite\": \"Universit\\u00e9\", \"fonction\": \"Titre fran\\u00e7ais\", \"content\": \"<p>fr detail for 1891</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/fr/postes-vacants.html#1891\"}",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/de/1891": "{\"id\": \"1891\", \"autorite\": \"Universit\\u00e4t\", \"fonction\": \"Deutscher Titel\", \"content\": \"<p>de detail for 1891</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/de/offene-stellen.html#1891\"}",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/de/1897": "{\"id\": \"9999\", \"autorite\": \"Universit\\u00e4t\", \"fonction\": \"German only\", \"content\": \"<p>de detail for 1897</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/de/offene-stellen.html#1897\"}"
+    },
+    "calls": [
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/de/1891",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/de/1897",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/fr/1885",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/fr/1891",
+      "https://www.unifr.ch/sp/de/offene-stellen.html",
+      "https://www.unifr.ch/sp/fr/postes-vacants.html"
+    ],
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "locale-owner-failure",
+    "today": "2026-08-26",
+    "responses": {
+      "https://www.unifr.ch/sp/fr/postes-vacants.html": "<html><head><title>Postes vacants - Offres d'emploi à l'Université de Fribourg | Service du personnel | Université de Fribourg</title></head><body><main><h2>Postes vacants - Offres d'emploi à l'Université de Fribourg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1885\"><h4 class=\"list-group-item-heading name\">French only</h4><div id=\"open1885\">Loading...</div></li><li class=\"list-group-item\" id=\"1891\"><h4 class=\"list-group-item-heading name\">Titre français</h4><div id=\"open1891\">Loading...</div></li></ul></main></body></html>",
+      "https://www.unifr.ch/sp/de/offene-stellen.html": "<html><head><title>Offene Stellen - Stellenangebote an der Universität Freiburg | Personaldienst | Universität Freiburg</title></head><body><main><h2>Offene Stellen - Stellenangebote an der Universität Freiburg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1891\"><h4 class=\"list-group-item-heading name\">Deutscher Titel</h4><div id=\"open1891\">Loading...</div></li><li class=\"list-group-item\" id=\"1897\"><h4 class=\"list-group-item-heading name\">German only</h4><div id=\"open1897\">Loading...</div></li></ul></main></body></html>",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/fr/1885": "{\"id\": \"1885\", \"autorite\": \"Universit\\u00e9\", \"fonction\": \"French only\", \"content\": \"<p>fr detail for 1885</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/fr/postes-vacants.html#1885\"}",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/fr/1891": "{\"id\": \"1891\", \"autorite\": \"Universit\\u00e9\", \"fonction\": \"Titre fran\\u00e7ais\", \"content\": \"<p>fr detail for 1891</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/fr/postes-vacants.html#1891\"}",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/de/1891": "{\"id\": \"1891\", \"autorite\": \"Universit\\u00e4t\", \"fonction\": \"Deutscher Titel\", \"content\": \"<p>de detail for 1891</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/de/offene-stellen.html#1891\"}",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/de/1897": "{\"id\": \"1897\", \"autorite\": \"External\", \"fonction\": \"German only\", \"content\": \"<p>de detail for 1897</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/de/offene-stellen.html#1897\"}"
+    },
+    "calls": [
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/de/1891",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/de/1897",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/fr/1885",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/fr/1891",
+      "https://www.unifr.ch/sp/de/offene-stellen.html",
+      "https://www.unifr.ch/sp/fr/postes-vacants.html"
+    ],
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "missing-description",
+    "today": "2026-08-26",
+    "responses": {
+      "https://www.unifr.ch/sp/fr/postes-vacants.html": "<html><head><title>Postes vacants - Offres d'emploi à l'Université de Fribourg | Service du personnel | Université de Fribourg</title></head><body><main><h2>Postes vacants - Offres d'emploi à l'Université de Fribourg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1885\"><h4 class=\"list-group-item-heading name\">French only</h4><div id=\"open1885\">Loading...</div></li><li class=\"list-group-item\" id=\"1891\"><h4 class=\"list-group-item-heading name\">Titre français</h4><div id=\"open1891\">Loading...</div></li></ul></main></body></html>",
+      "https://www.unifr.ch/sp/de/offene-stellen.html": "<html><head><title>Offene Stellen - Stellenangebote an der Universität Freiburg | Personaldienst | Universität Freiburg</title></head><body><main><h2>Offene Stellen - Stellenangebote an der Universität Freiburg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1891\"><h4 class=\"list-group-item-heading name\">Deutscher Titel</h4><div id=\"open1891\">Loading...</div></li><li class=\"list-group-item\" id=\"1897\"><h4 class=\"list-group-item-heading name\">German only</h4><div id=\"open1897\">Loading...</div></li></ul></main></body></html>",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/fr/1885": "{\"id\": \"1885\", \"autorite\": \"Universit\\u00e9\", \"fonction\": \"French only\", \"content\": \"<p>fr detail for 1885</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/fr/postes-vacants.html#1885\"}",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/fr/1891": "{\"id\": \"1891\", \"autorite\": \"Universit\\u00e9\", \"fonction\": \"Titre fran\\u00e7ais\", \"content\": \"<p>fr detail for 1891</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/fr/postes-vacants.html#1891\"}",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/de/1891": "{\"id\": \"1891\", \"autorite\": \"Universit\\u00e4t\", \"fonction\": \"Deutscher Titel\", \"content\": \"<p>de detail for 1891</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/de/offene-stellen.html#1891\"}",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/de/1897": "{\"id\": \"1897\", \"autorite\": \"Universit\\u00e4t\", \"fonction\": \"German only\", \"content\": \"\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/de/offene-stellen.html#1897\"}"
+    },
+    "calls": [
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/de/1891",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/de/1897",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/fr/1885",
+      "https://webapps.unifr.ch/sp/ws/b49e151b85b415a7201e88d3e9ecf54f11d7589e/detail/fr/1891",
+      "https://www.unifr.ch/sp/de/offene-stellen.html",
+      "https://www.unifr.ch/sp/fr/postes-vacants.html"
+    ],
+    "output": null,
+    "error": true
+  }
+]

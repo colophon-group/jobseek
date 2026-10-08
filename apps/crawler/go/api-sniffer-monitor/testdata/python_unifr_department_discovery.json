@@ -1,0 +1,90 @@
+[
+  {
+    "source": "physics",
+    "name": "complete",
+    "responses": {
+      "https://www.unifr.ch/phys/de/department/jobs/": "<html><head><title>Jobs | Departement für Physik | Universität Freiburg</title></head><body><main><h2>Freie Stellen im Physikdepartement</h2><ul class=\"accordion brandedstyle\"><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-1\">Researcher</a><div data-accordion-content=\"styleguide-2-1\"><p>Apply by September 1st, 2050.</p></div></li><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-2\">Researcher</a><div data-accordion-content=\"styleguide-2-2\"><p>Apply by September 1st, 2050.</p></div></li></ul></main></body></html>",
+      "https://www.unifr.ch/sp/fr/postes-vacants.html": "<html><head><title>Postes vacants - Offres d'emploi à l'Université de Fribourg | Service du personnel | Université de Fribourg</title></head><body><main><h2>Postes vacants - Offres d'emploi à l'Université de Fribourg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1911\"><h4 class=\"list-group-item-heading name\">Central role</h4><div id=\"open1911\">Loading...</div></li></ul></main></body></html>",
+      "https://www.unifr.ch/sp/de/offene-stellen.html": "<html><head><title>Offene Stellen - Stellenangebote an der Universität Freiburg | Personaldienst | Universität Freiburg</title></head><body><main><h2>Offene Stellen - Stellenangebote an der Universität Freiburg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1911\"><h4 class=\"list-group-item-heading name\">Central role</h4><div id=\"open1911\">Loading...</div></li></ul></main></body></html>"
+    },
+    "output": [
+      {
+        "url": "https://www.unifr.ch/phys/de/department/jobs/?_jid=styleguide-2-1",
+        "title": "Researcher",
+        "description": "<div data-accordion-content=\"styleguide-2-1\"><p>Apply by September 1st, 2050.</p></div>",
+        "locations": [
+          "Fribourg, Switzerland"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": "de",
+        "localizations": null,
+        "extras": {
+          "valid_through": "2050-09-01"
+        },
+        "metadata": {
+          "unifr_source_id": "styleguide-2-1"
+        },
+        "source_identity": null
+      }
+    ],
+    "error": false
+  },
+  {
+    "source": "physics",
+    "name": "missing-central",
+    "responses": {
+      "https://www.unifr.ch/phys/de/department/jobs/": "<html><head><title>Jobs | Departement für Physik | Universität Freiburg</title></head><body><main><h2>Freie Stellen im Physikdepartement</h2><ul class=\"accordion brandedstyle\"><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-1\">Researcher</a><div data-accordion-content=\"styleguide-2-1\"><p>Apply by September 1st, 2050.</p></div></li><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-2\">Researcher</a><div data-accordion-content=\"styleguide-2-2\"><p>Apply by September 1st, 2050.</p></div></li></ul></main></body></html>",
+      "https://www.unifr.ch/sp/fr/postes-vacants.html": "<html><head><title>Postes vacants - Offres d'emploi à l'Université de Fribourg | Service du personnel | Université de Fribourg</title></head><body><main><h2>Postes vacants - Offres d'emploi à l'Université de Fribourg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1885\"><h4 class=\"list-group-item-heading name\">Another role</h4><div id=\"open1885\">Loading...</div></li></ul></main></body></html>",
+      "https://www.unifr.ch/sp/de/offene-stellen.html": "<html><head><title>Offene Stellen - Stellenangebote an der Universität Freiburg | Personaldienst | Universität Freiburg</title></head><body><main><h2>Offene Stellen - Stellenangebote an der Universität Freiburg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1885\"><h4 class=\"list-group-item-heading name\">Another role</h4><div id=\"open1885\">Loading...</div></li></ul></main></body></html>"
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "source": "physics",
+    "name": "failed-locale",
+    "responses": {
+      "https://www.unifr.ch/phys/de/department/jobs/": "<html><head><title>Jobs | Departement für Physik | Universität Freiburg</title></head><body><main><h2>Freie Stellen im Physikdepartement</h2><ul class=\"accordion brandedstyle\"><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-1\">Researcher</a><div data-accordion-content=\"styleguide-2-1\"><p>Apply by September 1st, 2050.</p></div></li><li><a href=\"#\" data-accordion-toggler=\"styleguide-2-2\">Researcher</a><div data-accordion-content=\"styleguide-2-2\"><p>Apply by September 1st, 2050.</p></div></li></ul></main></body></html>",
+      "https://www.unifr.ch/sp/fr/postes-vacants.html": "<html><head><title>Postes vacants - Offres d'emploi à l'Université de Fribourg | Service du personnel | Université de Fribourg</title></head><body><main><h2>Postes vacants - Offres d'emploi à l'Université de Fribourg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1911\"><h4 class=\"list-group-item-heading name\">Central role</h4><div id=\"open1911\">Loading...</div></li></ul></main></body></html>",
+      "https://www.unifr.ch/sp/de/offene-stellen.html": "<html>Unavailable</html>"
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "source": "ses",
+    "name": "complete",
+    "responses": {
+      "https://www.unifr.ch/ses/en/fac/jobs.html": "<html><head><title>Jobs | Faculty of Management, Economics and Social Sciences | University of Fribourg</title></head><body><main><h2>Open positions</h2><ul class=\"accordion light\"><li><a href=\"#\" data-accordion-toggler=\"styleguide-1-1\">Researcher</a><div data-accordion-content=\"styleguide-1-1\"><p>Apply by September 1st, 2050.</p></div></li></ul></main></body></html>",
+      "https://www.unifr.ch/sp/fr/postes-vacants.html": "<html><head><title>Postes vacants - Offres d'emploi à l'Université de Fribourg | Service du personnel | Université de Fribourg</title></head><body><main><h2>Postes vacants - Offres d'emploi à l'Université de Fribourg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1898\"><h4 class=\"list-group-item-heading name\">Central role</h4><div id=\"open1898\">Loading...</div></li></ul></main></body></html>",
+      "https://www.unifr.ch/sp/de/offene-stellen.html": "<html><head><title>Offene Stellen - Stellenangebote an der Universität Freiburg | Personaldienst | Universität Freiburg</title></head><body><main><h2>Offene Stellen - Stellenangebote an der Universität Freiburg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1898\"><h4 class=\"list-group-item-heading name\">Central role</h4><div id=\"open1898\">Loading...</div></li></ul></main></body></html>"
+    },
+    "output": [],
+    "error": false
+  },
+  {
+    "source": "ses",
+    "name": "missing-central",
+    "responses": {
+      "https://www.unifr.ch/ses/en/fac/jobs.html": "<html><head><title>Jobs | Faculty of Management, Economics and Social Sciences | University of Fribourg</title></head><body><main><h2>Open positions</h2><ul class=\"accordion light\"><li><a href=\"#\" data-accordion-toggler=\"styleguide-1-1\">Researcher</a><div data-accordion-content=\"styleguide-1-1\"><p>Apply by September 1st, 2050.</p></div></li></ul></main></body></html>",
+      "https://www.unifr.ch/sp/fr/postes-vacants.html": "<html><head><title>Postes vacants - Offres d'emploi à l'Université de Fribourg | Service du personnel | Université de Fribourg</title></head><body><main><h2>Postes vacants - Offres d'emploi à l'Université de Fribourg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1885\"><h4 class=\"list-group-item-heading name\">Another role</h4><div id=\"open1885\">Loading...</div></li></ul></main></body></html>",
+      "https://www.unifr.ch/sp/de/offene-stellen.html": "<html><head><title>Offene Stellen - Stellenangebote an der Universität Freiburg | Personaldienst | Universität Freiburg</title></head><body><main><h2>Offene Stellen - Stellenangebote an der Universität Freiburg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1885\"><h4 class=\"list-group-item-heading name\">Another role</h4><div id=\"open1885\">Loading...</div></li></ul></main></body></html>"
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "source": "ses",
+    "name": "failed-locale",
+    "responses": {
+      "https://www.unifr.ch/ses/en/fac/jobs.html": "<html><head><title>Jobs | Faculty of Management, Economics and Social Sciences | University of Fribourg</title></head><body><main><h2>Open positions</h2><ul class=\"accordion light\"><li><a href=\"#\" data-accordion-toggler=\"styleguide-1-1\">Researcher</a><div data-accordion-content=\"styleguide-1-1\"><p>Apply by September 1st, 2050.</p></div></li></ul></main></body></html>",
+      "https://www.unifr.ch/sp/fr/postes-vacants.html": "<html><head><title>Postes vacants - Offres d'emploi à l'Université de Fribourg | Service du personnel | Université de Fribourg</title></head><body><main><h2>Postes vacants - Offres d'emploi à l'Université de Fribourg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1898\"><h4 class=\"list-group-item-heading name\">Central role</h4><div id=\"open1898\">Loading...</div></li></ul></main></body></html>",
+      "https://www.unifr.ch/sp/de/offene-stellen.html": "<html>Unavailable</html>"
+    },
+    "output": null,
+    "error": true
+  }
+]
