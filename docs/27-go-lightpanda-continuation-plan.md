@@ -43,9 +43,11 @@ Fresh canonical/cache and actual posting-route admission at epoch235 screened
 PDF configurations and 162 scheduled PDF postings. Three monitor holdouts remain:
 Hays, Siemens and RTX. Every board stays enabled. The independently checked fresh
 plan is `9a517459c1dd1558abb5abf0670742533b15cbc7978a420a4c562cedc0d87745`,
-projection `3355a6013b96b8bb9403767fde5b881e89fa57b0`. Supported ordinary activation
-is waiting for natural legacy lease expiry. Production ordinary ownership is not
-claimed at this checkpoint.
+projection `3355a6013b96b8bb9403767fde5b881e89fa57b0`. Supported ordinary activation and independent SQL/Redis projection, ten immutable-image
+writers and eight health endpoints passed. Ordinary and B0 ownership are active at
+epoch235. The natural observation at 13:03 UTC records 293 successful monitor runs,
+seven successful detail runs and zero claim errors. Failed/gone outcomes are separate;
+these samples do not establish full freshness or queue conservation.
 
 Source974's never-activated plan remains inert/staged. Its eligibility refusal
 and subsequent supported recovery are retained evidence; current four-board UKG
@@ -74,8 +76,11 @@ until qualified. SEEK GraphQL details still need their native replacement.
 
 Ninety actual Python parser cases, thirteen registry checks, eighteen HTTP cases,
 seven real SQL/Redis worker cases and six cold-retirement cases pass. The full
-API race suite and queue/worker vet pass. Full queue/worker regressions and exact
-candidate CI/rollout remain pending. See the
+API race suite and queue/worker vet pass. Full queue (428.762s) and worker (676.952s, with a 25-minute test limit) race
+regressions passed. The initial default ten-minute worker timeout and its local orphan
+fixture were recovered through normal local retirement; failed runs are retained
+without being counted as passes. Exact candidate CI/installed-image checks and
+rollout remain pending. See the
 [grouped candidate evidence](evidence/go-native-seek-avature-candidate-2026-10-08.json).
 
 Lightpanda remains pinned to stable **1.0.0**, verified against the

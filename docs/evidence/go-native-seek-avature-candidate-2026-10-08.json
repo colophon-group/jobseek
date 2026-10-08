@@ -22,7 +22,11 @@
     "cold_retirement_seconds": 6.709,
     "python_passed": 130,
     "python_skipped": 9,
-    "full_queue_worker": "pending"
+    "full_queue_worker": "passed",
+    "full_queue_race_seconds": 428.762,
+    "full_worker_race_seconds": 676.952,
+    "full_worker_timeout": "25m",
+    "prior_worker_runs": "default10m timeout; local orphan fixture retired normally before clean full rerun"
   },
   "public_monitor_replay": [
     {
@@ -273,5 +277,43 @@
     "avature_metadata_cannot_change_admitted_identity": true,
     "url_only_monitors_schedule_configured_details": true
   },
-  "remaining_detail_work": "SEEK GraphQL details remain on the existing Python scraper; Avature uses existing native DOM details when admitted. This batch migrates both monitor types."
+  "remaining_detail_work": "SEEK GraphQL details remain on the existing Python scraper; Avature uses existing native DOM details when admitted. This batch migrates both monitor types.",
+  "production_baseline": {
+    "version": "0.13.975",
+    "source_revision": "e08a42989ad65ce556d4d1538a959a56db5a57c3",
+    "routing_epoch": 235,
+    "b0": "active",
+    "ordinary": "active",
+    "ordinary_plan": "9a517459c1dd1558abb5abf0670742533b15cbc7978a420a4c562cedc0d87745",
+    "projection": "3355a6013b96b8bb9403767fde5b881e89fa57b0",
+    "monitor_boards": 7426,
+    "detail_boards": 2672,
+    "scheduled_owned_postings": 1463368,
+    "writers_verified": 10,
+    "health_status": {
+      "worker-1": 200,
+      "worker-2": 200,
+      "worker-3": 200,
+      "browser-1": 200,
+      "drain": 200,
+      "exporter": 200,
+      "lightpanda-claimant": 204,
+      "ordinary-go": 204
+    },
+    "native_outcomes_at_1303_utc": [
+      "jobseek_ordinary_go_ready 1",
+      "jobseek_ordinary_go_active_claims 3",
+      "jobseek_ordinary_go_claim_errors_total 0",
+      "crawler_tasks_total{kind=\"monitor\",status=\"failed\"} 16",
+      "crawler_tasks_total{kind=\"monitor\",status=\"gone\"} 24",
+      "crawler_tasks_total{kind=\"monitor\",status=\"succeeded\"} 293",
+      "crawler_runtime_output_items_total{stage=\"monitor\",implementation=\"go\"} 11229",
+      "crawler_tasks_total{kind=\"scrape\",status=\"failed\"} 1",
+      "crawler_tasks_total{kind=\"scrape\",status=\"skipped\"} 2",
+      "crawler_tasks_total{kind=\"scrape\",status=\"succeeded\"} 7",
+      "crawler_runtime_output_items_total{stage=\"scrape\",implementation=\"go\"} 7",
+      "jobseek_ordinary_go_posting_touches_total 11136"
+    ],
+    "full_freshness_conservation": "pending"
+  }
 }
