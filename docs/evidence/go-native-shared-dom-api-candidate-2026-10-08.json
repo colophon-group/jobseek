@@ -1,0 +1,47 @@
+{
+  "schema": "jobseek.native-shared-dom-api-candidate/v1",
+  "candidate_version": "0.13.981",
+  "state": "local qualification; broad checks, current public capture, CI, immutable delivery and production ownership pending",
+  "profiles": 145,
+  "new_profiles": 0,
+  "scope": [
+    "api_sniffer automatic field mapping",
+    "dom include_board_url",
+    "dom require_jsonld_jobposting"
+  ],
+  "registry_bindings": {
+    "api_sniffer": 23,
+    "dom": 12
+  },
+  "retained_unsupported_flagged_configs": {
+    "api_sniffer": 12,
+    "dom": 11
+  },
+  "proofs": {
+    "actual_python_mapping_cases": 32,
+    "ambiguous_mapping_rejections": 4,
+    "actual_python_api_http_cases": 17,
+    "actual_python_dom_http_processing_cases": 16,
+    "real_write_settlement_cases": 23,
+    "real_write_settlement_race": "PASS12.464s",
+    "supported_cold_retirement_cases": 27,
+    "supported_cold_retirement_race": "PASS24.586s",
+    "api_full_race": "PASS5.920s",
+    "dom_full_race": "PASS3.078s",
+    "api_dom_worker_vet": "PASS",
+    "ruff_and_format": "PASS"
+  },
+  "retained_corrected_failures": [
+    "Initial real publisher settlement rejected the child resource; handoff now keeps the installed listing resource fence and independently sealed finite child/config binding.",
+    "Test expectations were corrected for raw bool location normalization and the original first-empty missing-count safety; production normalizers and disappearance guards remain unchanged."
+  ],
+  "source980_delivery": {
+    "pr": 10367,
+    "reviewed_head": "e4fad717a95eb16cbc47473c22e82e367c2d21eb",
+    "source_revision": "ee4d6d27f6806b22a1ec86e05c9d504364e239a1",
+    "original_crawler_run": 37827765892,
+    "original_renderer_run": 37827922155,
+    "state": "merged; rollouts running; incoming authority pending"
+  },
+  "authority": "Reference/local database and registry eligibility do not grant current production ownership or full migration completion. Existing enabled boards remain preserved."
+}

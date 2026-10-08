@@ -13,7 +13,13 @@ import (
 )
 
 func TestExistingPythonHTTPDiscoveryOracle(t *testing.T) {
-	body, err := os.ReadFile("testdata/python_inventory.json")
+	testHTTPDiscoveryOracle(t, "testdata/python_inventory.json", false)
+}
+func TestOriginalPythonAutomaticHTTPDiscoveryOracle(t *testing.T) {
+	testHTTPDiscoveryOracle(t, "testdata/python_auto_inventory.json", true)
+}
+func testHTTPDiscoveryOracle(t *testing.T, path string, checkURLOnly bool) {
+	body, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,6 +29,7 @@ func TestExistingPythonHTTPDiscoveryOracle(t *testing.T) {
 		Metadata  json.RawMessage `json:"metadata"`
 		Expected  []Job           `json:"expected"`
 		Truncated bool            `json:"truncated"`
+		URLOnly   bool            `json:"url_only"`
 		Error     bool            `json:"error"`
 		Responses []struct {
 			Page   int
@@ -37,12 +44,7 @@ func TestExistingPythonHTTPDiscoveryOracle(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
 			o, err := OptionsFromMetadata(c.BoardURL, string(c.Metadata))
-			if c.Name == "url-only" {
-				if err == nil {
-					t.Fatal("Python auto-maps rich fields; native admission must retain its owner until that contract exists")
-				}
-				return
-			}
+
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -100,6 +102,9 @@ func TestExistingPythonHTTPDiscoveryOracle(t *testing.T) {
 			}
 			if err != nil {
 				t.Fatal(err)
+			}
+			if checkURLOnly && actual.URLOnly != c.URLOnly {
+				t.Fatal("rich versus URL-only contract differs", actual.URLOnly, c.URLOnly)
 			}
 			if actual.Truncated != c.Truncated {
 				t.Fatalf("truncated %v; Python %v", actual.Truncated, c.Truncated)

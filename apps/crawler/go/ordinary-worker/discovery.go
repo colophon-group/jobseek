@@ -48,6 +48,7 @@ type GreenhouseResponse struct {
 	providerDisabled   bool
 	reservationSource  string
 	policy             *string
+	domVerification    *domVerificationBinding
 }
 
 func (r *GreenhouseResponse) Endpoint() string { return r.endpoint }

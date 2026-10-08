@@ -31,7 +31,7 @@ func TestConfiguredAPIProfileBindsFieldsRequestsAndDetailContract(t *testing.T) 
 	if err != nil || q.EffectiveConfigSHA256 == p.EffectiveConfigSHA256 {
 		t.Fatal("field change not bound", err)
 	}
-	for _, metadata := range []string{`{"api_url":"https://example.com/api","json_path":"jobs","url_field":"url"}`, `{"api_url":"https://example.com/api","json_path":"jobs","url_field":"url","fields":{"title":"name"},"browser":true}`, `{"api_url":"https://example.com/api","json_path":"jobs","url_field":"url","fields":{"title":"name"},"scraper_config":{"enrich":["unsupported"]}}`} {
+	for _, metadata := range []string{`{"api_url":"https://example.com/api","json_path":"jobs","url_field":"url","fields":{"title":"name"},"browser":true}`, `{"api_url":"https://example.com/api","json_path":"jobs","url_field":"url","fields":{"title":"name"},"scraper_config":{"enrich":["unsupported"]}}`} {
 		c["metadata"] = metadata
 		if _, err := InspectRichMonitor(profileBoardID, c); err == nil {
 			t.Fatal("unported configuration admitted", metadata)

@@ -16,6 +16,7 @@ type ListingConfig struct {
 	Document                             jsonld.DocumentOptions
 	Selector, Include, Exclude, Encoding string
 	Attempts                             int
+	IncludeBoardURL, RequireJSONLD       bool
 	Pagination                           *ListingPagination
 	RichRows                             *RichRowsConfig
 	EmptySelector, EmptyText             string
@@ -30,12 +31,21 @@ type ListingConfig struct {
 func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 	c := ListingConfig{Attempts: 3, BoardURL: endpoint}
 	allowed := map[string]bool{}
-	for _, key := range []string{"advertised_total", "empty_states", "empty_selector", "empty_text", "url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "url_transform"} {
+	for _, key := range []string{"include_board_url", "require_jsonld_jobposting", "advertised_total", "empty_states", "empty_selector", "empty_text", "url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "url_transform"} {
 		allowed[key] = true
 	}
 	for key := range config {
 		if !allowed[key] {
 			return c, errors.New("unsupported static DOM listing option")
+		}
+	}
+	for key, target := range map[string]*bool{"include_board_url": &c.IncludeBoardURL, "require_jsonld_jobposting": &c.RequireJSONLD} {
+		if value, present := config[key]; present {
+			flag, ok := value.(bool)
+			if !ok {
+				return c, errors.New("invalid DOM listing verification flag")
+			}
+			*target = flag
 		}
 	}
 	for _, key := range []string{"render", "proxy", "skip_ssl", "actions"} {
@@ -118,6 +128,9 @@ func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 	}
 	c.Proofs, err = ListingProofOptions(config)
 	if err != nil || c.Proofs != nil && c.Pagination != nil {
+		return c, ErrListingProof
+	}
+	if (c.IncludeBoardURL || c.RequireJSONLD) && (c.EmptySelector != "" || config["empty_states"] != nil) || c.IncludeBoardURL && config["advertised_total"] != nil {
 		return c, ErrListingProof
 	}
 	c.Document, err = directDocumentOptions(config, endpoint)

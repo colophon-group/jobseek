@@ -428,7 +428,7 @@ proof. Keep remaining boards enabled and preserve useful offline Python.
 
 ## Next grouped monitor batch: 104 Job Bank, CNStaff, SeamlessHiring
 
-Candidate **0.13.980** adds four profiles across three providers and all six
+Merged **0.13.980** adds four profiles across three providers and all six
 current registry configurations. The three proxy-required 104 boards retain
 sealed proxy routing; the fourth uses direct HTTP. CNStaff and SeamlessHiring
 retain their complete public API inventories, including authoritative empty
@@ -447,8 +447,13 @@ board ID and listing URL before legacy discovery persists equivalent aliases.
 Conflicting aliases, changed targets, parser settings and unrelated configuration
 remain bound. Ten reference binding cases plus the changed-parser fence and
 thirteen real activation/retirement cases pass, including monitor and independent
-detail admission, conservation and rejection before effects. Revised-head broad
-checks, immutable deployment, current admission and production ownership remain
+detail admission, conservation and rejection before effects. Revised full queue/worker race suites passed (454.409s/673.007s), followed by
+exact-head Required CI, Crawler Deploy Gate, installed image parity and amd64/arm64
+pilot checks. PR #10367 merged at source
+`ee4d6d27f6806b22a1ec86e05c9d504364e239a1` after supported outgoing B0
+retirement, selector clearing and independent complete cold242 proof. Original
+crawler rollout `37827765892` and matching renderer rollout `37827922155` are
+running. Incoming immutable identities, current admission and ownership remain
 pending. See the
 [candidate evidence](evidence/go-native-small-provider-candidate-2026-10-08.json).
 
@@ -466,3 +471,40 @@ goal active through all enabled monitor/detail/browser coverage, mandatory
 consumers, full freshness/conservation, comparable cost, supported reversal and
 the retirement window. Remove production Python/Playwright/Chromium only after
 those replacement gates pass; preserve useful offline Python tooling.
+
+
+## Next grouped shared API and DOM configuration batch
+
+Candidate **0.13.981** extends the existing 145 profiles for **35 current registry
+configurations**: 23 automatic API field mappings and 12 DOM direct-board/JSON-LD
+verification configurations. The original direct, required-proxy and rendered
+transports remain bound. Twelve other API configurations and eleven DOM
+configurations with these flags retain their existing owner because additional
+options remain unsupported. These are configuration qualifications, not production
+route or output claims.
+
+Automatic mapping collects complete filtered/paginated inventory before inspecting
+the first five rows, including ADP location/name-code and team mappings. An
+ambiguous candidate field fails the whole cycle and requires explicit mapping;
+URL-only inventories preserve their distinct processing path through both HTTP
+and rendered replay. DOM includes the configured board after successful discovery
+and preserves the original downstream URL classification. JSON-LD verification
+uses full detail bodies, the existing 500-URL cap, eight bounded concurrent
+requests, original retry/omission semantics and cancellation/drain on failure.
+A publisher signal takes precedence and binds the exact observed child to the
+original listing, configuration and claim.
+
+Thirty-two original Python mapping cases, four ambiguity rejections, seventeen
+original full API HTTP cases and sixteen original DOM HTTP/processing cases pass.
+The 35 registry bindings preserve all declared transports. Twenty-three real
+PostgreSQL/Redis direct/proxy/rendered write/settlement cases and twenty-seven
+supported cold retirement cases pass. API/DOM full race and API/DOM/worker vet
+pass. Whole queue/worker broads, public current-output capture, revised-head CI,
+immutable deployment and fresh route admission remain pending. See the
+[candidate evidence](evidence/go-native-shared-dom-api-candidate-2026-10-08.json).
+
+Continue in groups across remaining shared browser/pagination/verification options
+and provider types. Keep the full migration goal active until coverage, mandatory
+consumers, full natural freshness and queue conservation, comparable cost, supported
+reversal and the retirement window justify removing production Python, Playwright
+and Chromium. Preserve useful isolated offline Python and every enabled board.

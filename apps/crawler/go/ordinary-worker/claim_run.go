@@ -443,7 +443,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			matches = matches || queue.RSSMonitorResourceMatches(profile, task.Config, response.endpoint) || queue.RSSDetailMonitorResourceMatches(profile, response.endpoint)
 		}
 		if profile.Provider == "dom" {
-			matches = queue.DOMMonitorResourceMatches(profile, task.Config, response.endpoint)
+			matches = queue.DOMMonitorResourceMatches(profile, task.Config, response.endpoint) || domVerificationResponseMatches(profile, task.Config, response)
 		}
 		if queue.SecondaryProvider(profile.Provider) {
 			matches = queue.SecondaryMonitorResourceMatches(profile, task.Config, response.endpoint)
@@ -483,6 +483,12 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			}
 			if profile.Provider == "dom" || profile.Provider == "mokahr" || profile.Provider == "almacareer" || profile.Provider == "eightfold" || profile.Provider == "inline" || profile.Provider == "beisen" || profile.Provider == "api_sniffer" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "oracle_hcm" || profile.Provider == "icims" || profile.Provider == "phenom" || profile.Provider == "nextdata" {
 				initial = response.endpoint
+			}
+			if profile.Provider == "dom" && domVerificationResponseMatches(profile, task.Config, response) {
+				// The original listing remains the installed queue resource.
+				// Its finite, config-bound child fetch supplies the final policy
+				// observation; arbitrary detail URLs never pass the seal above.
+				initial = profile.Endpoint
 			}
 			terminal, err := cycle.FinishReservationResource(ctx, initial, &queue.GreenhouseHeaderReservation{Endpoint: response.finalURL, PolicyURL: response.PolicyURL(), Source: response.reservationSource})
 			if err != nil {

@@ -1,0 +1,448 @@
+[
+  {
+    "name": "empty",
+    "items": [],
+    "expected": {}
+  },
+  {
+    "name": "plain",
+    "items": [
+      {
+        "title": "Engineer",
+        "description": "Build",
+        "location": "Zürich",
+        "employmentType": "FULL_TIME",
+        "publishedAt": "2026-10-08",
+        "remote": true,
+        "department": "Platform",
+        "url": "https://jobs.example/one"
+      }
+    ],
+    "expected": {
+      "title": "title",
+      "description": "description",
+      "employment_type": "employmentType",
+      "date_posted": "publishedAt",
+      "job_location_type": "remote",
+      "locations": "location",
+      "metadata.team": "department"
+    }
+  },
+  {
+    "name": "url-only",
+    "items": [
+      {
+        "identifier": "one",
+        "url": "https://jobs.example/one"
+      }
+    ],
+    "expected": {}
+  },
+  {
+    "name": "adp-schedule-overrides-type",
+    "items": [
+      {
+        "type": "Normal",
+        "workLevelCode": "FT"
+      }
+    ],
+    "expected": {
+      "employment_type": "workLevelCode"
+    }
+  },
+  {
+    "name": "adp-address",
+    "items": [
+      {
+        "requisitionLocations": [
+          {
+            "nameCode": {
+              "shortName": "4121-Hotel"
+            },
+            "address": {
+              "cityName": "Salt Lake City",
+              "countrySubdivisionLevel1": {
+                "codeValue": "UT"
+              },
+              "country": {
+                "longName": "US"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "expected": {
+      "locations": "requisitionLocations[].join(', ', [address.cityName, address.countrySubdivisionLevel1.codeValue, address.country.longName][?@])"
+    }
+  },
+  {
+    "name": "adp-name-short",
+    "items": [
+      {
+        "requisitionLocations": [
+          {
+            "nameCode": {
+              "shortName": "Short",
+              "longName": "Long"
+            }
+          }
+        ]
+      }
+    ],
+    "expected": {
+      "locations": "requisitionLocations[].nameCode.shortName"
+    }
+  },
+  {
+    "name": "adp-name-long",
+    "items": [
+      {
+        "requisitionLocations": [
+          {
+            "nameCode": {
+              "longName": "Long"
+            }
+          }
+        ]
+      }
+    ],
+    "expected": {
+      "locations": "requisitionLocations[].nameCode.longName"
+    }
+  },
+  {
+    "name": "location-list-strings",
+    "items": [
+      {
+        "locations": [
+          "Geneva",
+          "Paris"
+        ]
+      }
+    ],
+    "expected": {
+      "locations": "locations"
+    }
+  },
+  {
+    "name": "location-list-name",
+    "items": [
+      {
+        "locations": [
+          {
+            "code": 1,
+            "displayName": "Paris",
+            "name": "First"
+          }
+        ]
+      }
+    ],
+    "expected": {
+      "locations": "locations[].displayName"
+    }
+  },
+  {
+    "name": "location-list-fallback",
+    "items": [
+      {
+        "locations": [
+          {
+            "code": 1,
+            "geographic": "Paris",
+            "label2": "Later"
+          }
+        ]
+      }
+    ],
+    "expected": {
+      "locations": "locations[].geographic"
+    }
+  },
+  {
+    "name": "location-object-name",
+    "items": [
+      {
+        "location": {
+          "code": 1,
+          "city": "Sheffield",
+          "state": "UK"
+        }
+      }
+    ],
+    "expected": {
+      "locations": "location.city"
+    }
+  },
+  {
+    "name": "location-object-fallback",
+    "items": [
+      {
+        "location": {
+          "empty": "",
+          "first": "Paris",
+          "second": "London"
+        }
+      }
+    ],
+    "expected": {
+      "locations": "location.first"
+    }
+  },
+  {
+    "name": "location-list-empty-string",
+    "items": [
+      {
+        "locations": [
+          {
+            "first": "",
+            "second": "London"
+          }
+        ]
+      }
+    ],
+    "expected": {
+      "locations": "locations[].first"
+    }
+  },
+  {
+    "name": "location-empty",
+    "items": [
+      {
+        "locations": []
+      }
+    ],
+    "expected": {}
+  },
+  {
+    "name": "location-null",
+    "items": [
+      {
+        "location": null
+      }
+    ],
+    "expected": {}
+  },
+  {
+    "name": "department-object-name",
+    "items": [
+      {
+        "department": {
+          "name": null,
+          "title": "Platform"
+        }
+      }
+    ],
+    "expected": {
+      "metadata.team": "department.name"
+    }
+  },
+  {
+    "name": "department-object-title",
+    "items": [
+      {
+        "department": {
+          "title": "Platform",
+          "label": "Later"
+        }
+      }
+    ],
+    "expected": {
+      "metadata.team": "department.title"
+    }
+  },
+  {
+    "name": "department-object-fallback",
+    "items": [
+      {
+        "department": {
+          "code": 12,
+          "alternate": "Platform",
+          "later": "Other"
+        }
+      }
+    ],
+    "expected": {
+      "metadata.team": "department.alternate"
+    }
+  },
+  {
+    "name": "department-no-text",
+    "items": [
+      {
+        "department": {
+          "code": 12
+        }
+      }
+    ],
+    "expected": {}
+  },
+  {
+    "name": "key-from-later-item",
+    "items": [
+      {
+        "url": "https://jobs.example/one"
+      },
+      {
+        "title": "Engineer",
+        "url": "https://jobs.example/two"
+      }
+    ],
+    "expected": {
+      "title": "title"
+    }
+  },
+  {
+    "name": "sixth-item-ignored",
+    "items": [
+      {
+        "identifier": 0
+      },
+      {
+        "identifier": 1
+      },
+      {
+        "identifier": 2
+      },
+      {
+        "identifier": 3
+      },
+      {
+        "identifier": 4
+      },
+      {
+        "title": "Ignored"
+      }
+    ],
+    "expected": {}
+  },
+  {
+    "name": "first-present-location",
+    "items": [
+      {
+        "id": 1
+      },
+      {
+        "location": "Paris"
+      },
+      {
+        "location": {
+          "name": "London"
+        }
+      }
+    ],
+    "expected": {
+      "locations": "location"
+    }
+  },
+  {
+    "name": "alias-job_title",
+    "items": [
+      {
+        "job_title": "value"
+      }
+    ],
+    "expected": {
+      "title": "job_title"
+    }
+  },
+  {
+    "name": "alias-jobOpeningName",
+    "items": [
+      {
+        "jobOpeningName": "value"
+      }
+    ],
+    "expected": {
+      "title": "jobOpeningName"
+    }
+  },
+  {
+    "name": "alias-Title__c",
+    "items": [
+      {
+        "Title__c": "value"
+      }
+    ],
+    "expected": {
+      "title": "Title__c"
+    }
+  },
+  {
+    "name": "alias-bodyHtml",
+    "items": [
+      {
+        "bodyHtml": "value"
+      }
+    ],
+    "expected": {
+      "description": "bodyHtml"
+    }
+  },
+  {
+    "name": "alias-position_description_html",
+    "items": [
+      {
+        "position_description_html": "value"
+      }
+    ],
+    "expected": {
+      "description": "position_description_html"
+    }
+  },
+  {
+    "name": "alias-Job_Posting_Description__c",
+    "items": [
+      {
+        "Job_Posting_Description__c": "value"
+      }
+    ],
+    "expected": {
+      "description": "Job_Posting_Description__c"
+    }
+  },
+  {
+    "name": "alias-employment_status_label",
+    "items": [
+      {
+        "employment_status_label": "value"
+      }
+    ],
+    "expected": {
+      "employment_type": "employment_status_label"
+    }
+  },
+  {
+    "name": "alias-publication_date__c",
+    "items": [
+      {
+        "publication_date__c": "value"
+      }
+    ],
+    "expected": {
+      "date_posted": "publication_date__c"
+    }
+  },
+  {
+    "name": "alias-Modality__c",
+    "items": [
+      {
+        "Modality__c": "value"
+      }
+    ],
+    "expected": {
+      "job_location_type": "Modality__c"
+    }
+  },
+  {
+    "name": "alias-department_label",
+    "items": [
+      {
+        "department_label": "value"
+      }
+    ],
+    "expected": {
+      "metadata.team": "department_label"
+    }
+  }
+]
