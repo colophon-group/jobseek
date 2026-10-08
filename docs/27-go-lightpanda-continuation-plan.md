@@ -41,10 +41,14 @@ postings**. All thirteen new monitors are included. Three monitor holdouts,
 41 detail cache exclusions and one actual-route exclusion remain; every board
 stays enabled. Exact plan
 `11d3df89631b635314d1b4914ccdaf043026a3df1a1f5ad6854cb473536b8b3e`
-and projection `22ee5efd7feb03e8acfd8b4ab1049ab86158fe68` are staged and
-independently verified as inert. The original supported ordinary activation is
-running through its natural lease wait; serving ownership and fresh full-fleet
-readback remain pending at this checkpoint. See
+and projection `22ee5efd7feb03e8acfd8b4ab1049ab86158fe68` were activated and
+independently verified at epoch237: all ten immutable-image writers, eight health
+endpoints and SQL/Redis ownership passed. The 15:05 UTC natural sample records
+165 successful monitors, three successful details and zero claim errors; failed
+and gone outcomes remain separate. Supported ordinary retirement, independent
+full base/B0 restoration, B0 rollback/selector clearing and cold238 subsequently
+passed in preparation for source977. No native ownership remains active at this
+checkpoint; the complete source976 base stack is restored. See
 [source976 evidence](evidence/go-native-seek-avature-candidate-2026-10-08.json).
 
 The prior source975 owner was retired through the original wrapper. Independent
@@ -76,14 +80,21 @@ vet, Python ownership/cutover (78 passed, 9 skipped), and 126 workflow/version
 checks pass. Ten public SEEK outcomes match every populated field and GraphQL
 request: eight populated and two empty results. Eleven public API captures match
 106 postings and two empty inventories, with empty/absent metadata and extras
-objects normalized as absent; raw differences are retained. Exact reviewed-head
-CI, installed-image checks and production delivery remain pending. See
+objects normalized as absent; raw differences are retained. Required CI, actual
+deploy gate and installed-image checks passed at head `edb0322cfb15ea855c747d03794cc7b4635f3ffc`.
+Fresh merge authority correctly stopped when `main` advanced with web-only
+PR10364. The candidate is rebased on `56b32385877c622f7e188e64a1a0d8afbf4d07ab`;
+new exact-head checks and production delivery remain pending. Crawler code is
+unchanged by that rebase; historical test identities are preserved. See
 [next candidate evidence](evidence/go-native-seek-detail-api-array-candidate-2026-10-08.json).
 
-The following grouped port targets LinkedIn, Taleo and PracticeMatch. Its separate
-prototype has no production authority; PracticeMatch's twenty-six actual Python
-parser/form/traversal cases pass. Finish the current candidates while porting
-these types together. Full migration completion gates below remain open.
+The following grouped port targets all 31 LinkedIn, four Taleo and four
+PracticeMatch monitors. Its separate 0.13.978 prototype compiles 138 profiles
+and has no production authority. Actual Python cases pass (68 LinkedIn, 61
+Taleo, 26 PracticeMatch), with 39 registry bindings, 39 HTTP cases, eleven
+PostgreSQL/Redis cases and three family cold-retirement cases. Current public
+qualification is running; broad checks remain pending. LinkedIn detail fields
+retain their existing delegated schedule. Full migration completion gates remain open.
 
 Lightpanda remains pinned to stable **1.0.0**, verified against the
 [official release](https://github.com/lightpanda-io/browser/releases/tag/1.0.0),
@@ -182,7 +193,7 @@ configuration changes, without production ownership; see the
 
 ## Continue delivery
 
-1. Complete grouped974 PR #10361 Required CI and the actual Crawler Deploy Gate. Merge with fresh
+1. Complete SEEK detail/API PR #10365 Required CI and the actual Crawler Deploy Gate at its refreshed head. Merge with fresh
    unchanged head/base, no holds and exact-head authority. Keep Lightpanda on the
    newest verified stable release and immutable digest.
 2. Quiesce and retire outgoing B0 through supported wrappers, prove cold state,
@@ -191,8 +202,8 @@ configuration changes, without production ownership; see the
    perform supported B0 and ordinary staging/activation and independently verify
    every service, receipt and endpoint. Investigate any producer failure using
    safe error-family diagnostics; preserve ownership and publisher checks.
-3. Port Unifr with PDF details next, then group remaining DOM/API/RSS/Sitemap/
-   LinkedIn contracts by reusable engines. Observe normal-schedule fields,
+3. Finish the grouped LinkedIn/Taleo/PracticeMatch monitors, then the remaining
+   detail and browser contracts by reusable engines. Observe normal-schedule fields,
    description/R2 effects, settlement recovery and freshness as ownership grows.
 4. Replace remaining mandatory Python runtime/deployment/maintenance consumers.
    Existing sync, queue, schema, reaper, drain, exporter and reconciliation engines

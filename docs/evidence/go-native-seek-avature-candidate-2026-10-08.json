@@ -339,5 +339,23 @@
     "cache_excluded_boards": 41,
     "route_excluded_boards": 1,
     "scope": "Source976 ordinary serving authority/readiness pending; previous source975 production samples remain historical evidence."
+  },
+  "final_delivery_checkpoint": {
+    "source_revision": "072160c56d744a84933097cd184a39cd37c5d9c9",
+    "ordinary_and_b0_epoch": 237,
+    "ordinary_activation": "pass",
+    "independent_fleet_readback": "2026-10-08T15:02:48Z PASS:10 immutable-image writers/8 health endpoints/SQL/Redis",
+    "natural_sample": {
+      "at": "2026-10-08T15:05:15Z",
+      "successful_monitors": 165,
+      "successful_details": 3,
+      "claim_errors": 0,
+      "full_freshness_conservation": false
+    },
+    "subsequent_outgoing_ordinary_retirement": "pass",
+    "subsequent_base_b0_restoration": "pass",
+    "subsequent_b0_rollback_selector_clear": "pass",
+    "subsequent_cold_epoch": 238,
+    "current_native_owners_active": false
   }
 }

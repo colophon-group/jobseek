@@ -65,5 +65,22 @@
     "native977-api-auto-public-python-initial-2026-10-08.json",
     "native977-api-auto-public-go-replay-normalized1-2026-10-08.json"
   ],
-  "base_revision": "072160c56d744a84933097cd184a39cd37c5d9c9"
+  "base_revision": "56b32385877c622f7e188e64a1a0d8afbf4d07ab",
+  "historical_exact_head_ci": {
+    "head": "edb0322cfb15ea855c747d03794cc7b4635f3ffc",
+    "base": "072160c56d744a84933097cd184a39cd37c5d9c9",
+    "Required CI": "37795588096 success",
+    "installed_image_parity": "37795588215 success",
+    "actual_crawler_deploy_gate": "success",
+    "merge": "refused fresh authority: main advanced with web-only PR10364"
+  },
+  "outgoing_checkpoint": {
+    "source": "072160c56d744a84933097cd184a39cd37c5d9c9",
+    "ordinary_retirement": "pass",
+    "independent_complete_base_b0_restoration": "pass",
+    "b0_rollback_selector_clear": "pass",
+    "independent_cold_epoch": 238,
+    "native_owners_active": false,
+    "base_stack_restored": true
+  }
 }
