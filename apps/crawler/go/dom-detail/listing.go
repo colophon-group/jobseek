@@ -19,15 +19,18 @@ type ListingConfig struct {
 	Pagination                           *ListingPagination
 	RichRows                             *RichRowsConfig
 	EmptySelector, EmptyText             string
+	BoardURL                             string
+	Proofs                               *ListingProofs
+	JoinProofURL                         func(string, string) (string, error)
 }
 
 // ListingOptions covers the existing static single-page href inventory.
 // Pagination, rendered/proxy routes and content-bearing row contracts remain
 // with their current owner until their full inventory semantics are supported.
 func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
-	c := ListingConfig{Attempts: 3}
+	c := ListingConfig{Attempts: 3, BoardURL: endpoint}
 	allowed := map[string]bool{}
-	for _, key := range []string{"empty_selector", "empty_text", "url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "url_transform"} {
+	for _, key := range []string{"advertised_total", "empty_states", "empty_selector", "empty_text", "url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "url_transform"} {
 		allowed[key] = true
 	}
 	for key := range config {
@@ -112,6 +115,10 @@ func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 	}
 	if err = listingEmptyOptions(config, &c); err != nil {
 		return c, err
+	}
+	c.Proofs, err = ListingProofOptions(config)
+	if err != nil || c.Proofs != nil && c.Pagination != nil {
+		return c, ErrListingProof
 	}
 	c.Document, err = directDocumentOptions(config, endpoint)
 	// The listing outer loop owns one shared attempt budget across statuses,

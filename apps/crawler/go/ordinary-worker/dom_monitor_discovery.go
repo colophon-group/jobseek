@@ -207,6 +207,7 @@ func parseDOMInventory(ctx context.Context, result RichDiscovery, profile queue.
 		ordered = append(ordered, raw)
 	}
 	sort.Strings(ordered)
+	c.JoinProofURL = pythonJoinURL
 	if err := dom.ValidateListingEmpty(source, c, len(ordered)); err != nil {
 		return RichDiscovery{Response: result.Response}, err
 	}

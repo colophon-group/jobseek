@@ -1,0 +1,61 @@
+{
+  "observed_at": "2026-10-08",
+  "candidate_version": "0.13.970",
+  "candidate_status": "local full queue race and focused worker validation passed; full worker race running; final-head CI and production pending",
+  "monitor_types": {
+    "dom": 9,
+    "api_sniffer": 2
+  },
+  "configuration_screen_scope": "current canonical configurations only; no route/cache or ownership authority",
+  "installed_profile_count": 121,
+  "actual_python_cases": {
+    "api_empty_markers": 17,
+    "dom_inventory_proofs": 25,
+    "required_link_url_identity_python313": 3
+  },
+  "local_validation": {
+    "csv_admission": 11,
+    "real_postgres_redis_direct_and_rendered_settlement_scenarios": 15,
+    "real_db_focused_race_seconds": 8.427,
+    "required_link_identity_race_seconds": 1.729,
+    "api_parser_full_race_seconds": 2.967,
+    "dom_parser_full_race_seconds": 2.656,
+    "vet": "passed including final URL callback",
+    "full_queue_race": "passed377.626s",
+    "full_worker_race": "running"
+  },
+  "proofs": {
+    "dom": [
+      "advertised_total",
+      "empty_states",
+      "required and forbidden links",
+      "exact/substring text matching",
+      "full-match regular expressions",
+      "publisher reservation and failure preservation"
+    ],
+    "api_sniffer": [
+      "typed empty_response",
+      "missing-response failure",
+      "bounded404/410retry"
+    ]
+  },
+  "remaining_admission_boundaries": [
+    "DOM combined proof plus pagination",
+    "DOM combined proof plus rich_rows",
+    "unsupported existing controls remain outside native admission"
+  ],
+  "lightpanda": {
+    "latest_stable": "1.0.0",
+    "release_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
+    "verified_at": "2026-10-08",
+    "image_digest": "sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e"
+  },
+  "production_owned": false,
+  "completion_gates_open": [
+    "remaining enabled profiles and mandatory runtime consumers",
+    "natural serving recovery freshness and conservation",
+    "comparable whole-service cost",
+    "supported cold reversal observation window",
+    "production Python Playwright Chromium retirement"
+  ]
+}

@@ -197,11 +197,20 @@ func Discover(ctx context.Context, o Options, fetch Fetch, join JoinURL) (Invent
 		return result, err
 	}
 	if first == nil {
+		if len(o.EmptyResponse) > 0 {
+			return result, ErrInventory
+		}
 		return result, nil
 	}
 	items, err := first.items(o.Path, o.PathValues)
 	if err != nil {
 		return result, err
+	}
+	if len(items) == 0 && len(o.EmptyResponse) > 0 {
+		matches, err := first.MatchesEmptyResponse(o.EmptyResponse)
+		if err != nil || !matches {
+			return result, ErrInventory
+		}
 	}
 	root := first
 	total, hasTotal := first.total(o.Path, o.TotalPath)

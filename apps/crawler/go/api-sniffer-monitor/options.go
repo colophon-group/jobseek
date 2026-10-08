@@ -27,6 +27,7 @@ type Options struct {
 	Path, TotalPath, URLField, URLTemplate string
 	TemplateFields                         map[string]any
 	Fields                                 map[string]any
+	EmptyResponse                          map[string]any
 	Headers                                http.Header
 	Pagination                             *Pagination
 	PathValues                             bool
@@ -35,7 +36,7 @@ type Options struct {
 	Enrichment                             []string
 }
 
-var ConfigKeys = []string{"api_url", "method", "json_path", "json_path_values", "total_path", "url_field", "url_template", "url_template_fields", "fields", "params", "post_data", "post_body", "request_headers", "headers", "pagination", "max_items", "transient_403", "transport_attempts", "browser", "render", "proxy", "skip_ssl", "ssl_verify", "wait", "timeout", "settle", "items", "score", "total"}
+var ConfigKeys = []string{"api_url", "method", "json_path", "json_path_values", "total_path", "url_field", "url_template", "url_template_fields", "fields", "params", "post_data", "post_body", "request_headers", "headers", "pagination", "max_items", "transient_403", "transport_attempts", "browser", "render", "proxy", "skip_ssl", "ssl_verify", "wait", "timeout", "settle", "items", "score", "total", "empty_response"}
 
 // Explicit HTTP configurations share the production client and the original
 // inventory writer. Browser captures, rotating auth, provider-specific filters
@@ -60,6 +61,12 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 	for k := range m {
 		if !allowed[k] {
 			return o, ErrOptions
+		}
+	}
+	if value, exists := m["empty_response"]; exists && value != nil {
+		o.EmptyResponse, err = emptyResponseOptions(value)
+		if err != nil {
+			return o, err
 		}
 	}
 	if sc, ok := m["scraper_config"].(map[string]any); ok {
