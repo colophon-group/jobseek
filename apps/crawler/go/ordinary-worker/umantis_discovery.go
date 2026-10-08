@@ -92,7 +92,6 @@ func FetchUmantisHTTP(ctx context.Context, client *http.Client, p queue.Greenhou
 		if rich {
 			title := row.Title
 			job.Title = &title
-			job.Locations = []string{}
 			if row.Location != "" {
 				job.Locations = append(job.Locations, row.Location)
 			}

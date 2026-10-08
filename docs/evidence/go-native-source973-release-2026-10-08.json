@@ -1,0 +1,42 @@
+{
+  "version": "0.13.973",
+  "source_revision": "ca8f700ddd97578e2b40ff3b0709680ad54fbcf5",
+  "images": {
+    "crawler_image": "ghcr.io/colophon-group/jobseek-crawler@sha256:268576a5543fe47a5a40e9ef8e79b639c69457966142c3adba1c2e82224b3737",
+    "browser_image": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:d684ec52f81f24d8432ad6822ed0385a0330af54b2d0eae209d73ee980d836d4",
+    "renderer_image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:07105c5ceddc99c739eab280c52f25aafad65112800fefea7f75632008b72a03"
+  },
+  "b0_epoch": 231,
+  "b0_plan": "1011c7079a8dde04730373c5572a27ac5be8190c579318edcd0c27f4c141815d",
+  "b0_receipt": "727dd193ded924ad91e5ee2475dfaef50a4d418b4cf9c088649dcb8c026b8d6b",
+  "ordinary_status": "retired after failed activation; supported recover-pending and independent full base/B0 restoration passed",
+  "recovery_proof": "native-source973-recovered-verified1-2026-10-08.json",
+  "retired_ordinary_plan": "c5e5f036cfa1694440dcd957af7fb51b937bc29570f898b1af714412e80d40c8",
+  "retired_ordinary_projection": "4452677155d39b4269961dbca4c9c19458d38772",
+  "status": "installed source973 full base/B0 restored; ordinary Go owner absent",
+  "original_crawler_run": 37740504418,
+  "matching_renderer_run": 37740592176,
+  "admission": {
+    "monitors": 7398,
+    "detail_boards": 2616,
+    "scheduled_owned": 1469668,
+    "scope": "offline qualification; failed candidate retired; no current ordinary ownership"
+  },
+  "failure": {
+    "service": "lightpanda-producer",
+    "exit_code": 1,
+    "oom": false,
+    "diagnostic": "producer authority lost: redis/preflight",
+    "cause": "not established; restored PING and retained later slowlog do not prove prior failure causation"
+  },
+  "recovery": {
+    "supported_recover_pending": "pass",
+    "independent_full_base_b0": "pass",
+    "restart_armed_services": 9,
+    "health_endpoints": 7,
+    "ordinary_projection_present": false,
+    "active_sql_ordinary_plans": 0
+  },
+  "next_action": "Deliver grouped974; retain fail-closed B0 checks with safe diagnostic families; perform fresh supported cutover, never replay retired plan",
+  "full_migration_complete": false
+}

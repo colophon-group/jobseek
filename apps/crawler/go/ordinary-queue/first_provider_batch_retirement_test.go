@@ -29,6 +29,10 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 		board, metadata = "https://fixture.jobs.cz/", `{"scraper_type":"skip"}`
 	}
 	switch provider {
+	case "umantis":
+		board, metadata = "https://recruitingapp-3040.umantis.com/Jobs/All", `{"customer_id":"3040","scraper_type":"skip"}`
+	case "notion":
+		board, metadata = "https://fixture.notion.site/", `{"scraper_type":"notion"}`
 	case "intervieweb":
 		board, metadata = "https://fixture.intervieweb.it/en/career", `{"scraper_type":"json-ld"}`
 	case "typify":
@@ -176,7 +180,7 @@ func assertEightfoldCanonicalWatermarkCached(t *testing.T, p firstOwnerFixture) 
 }
 
 func TestRealProviderBatchColdRetirementAndEightfoldWatermarkRecovery(t *testing.T) {
-	for _, provider := range []string{"intervieweb", "typify", "universia", "talentreef", "talentbrew", "api_sniffer_filtered", "beehire", "hirehive", "welcometothejungle", "computrabajo", "computrabajo/proxy", "ycombinator", "earcu", "earcu/proxy", "cvwarehouse", "woowa", "deel", "hibob", "traffit", "manatal", "hrmos", "recruiterbox", "jobs_ch", "mokahr", "almacareer", "eightfold", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "dom", "rss", "inline", "api_sniffer", "comeet", "jobvite", "paycom", "rippling", "adp", "cornerstone", "paylocity", "paylocity/proxy", "dom/proxy", "api_sniffer/proxy", "inline/proxy", "sitemap/proxy", "eightfold/proxy", "phenom/proxy"} {
+	for _, provider := range []string{"umantis", "umantis/proxy", "notion", "intervieweb", "typify", "universia", "talentreef", "talentbrew", "api_sniffer_filtered", "beehire", "hirehive", "welcometothejungle", "computrabajo", "computrabajo/proxy", "ycombinator", "earcu", "earcu/proxy", "cvwarehouse", "woowa", "deel", "hibob", "traffit", "manatal", "hrmos", "recruiterbox", "jobs_ch", "mokahr", "almacareer", "eightfold", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "dom", "rss", "inline", "api_sniffer", "comeet", "jobvite", "paycom", "rippling", "adp", "cornerstone", "paylocity", "paylocity/proxy", "dom/proxy", "api_sniffer/proxy", "inline/proxy", "sitemap/proxy", "eightfold/proxy", "phenom/proxy"} {
 		modes := []string{"interrupted", "committed-before-ack", "changed-setting"}
 		if strings.Split(provider, "/")[0] == "eightfold" {
 			modes = append(modes, "reaped-before-ack", "recovered-ack", "settled-cold", "save-failure", "orphan-cache")

@@ -192,6 +192,8 @@ func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Cla
 			reservation.PolicyURL = nil
 			result.Diagnostics = append(result.Diagnostics, "invalid_policy_url")
 		}
+	} else if profile.Profile == "notion.public-detail/v1" {
+		content, reservation, err = fetchAPIDetail(ctx, http, profile)
 	} else {
 		fetched, failure := FetchWorkdayDetail(ctx, http, profile.SourceURL, profile.FacilityTenantAliases)
 		err = failure

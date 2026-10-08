@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"log"
 	"math"
 	"os"
 	"sort"
@@ -164,6 +165,9 @@ func (p *b0Producer) preflight(ctx context.Context, full bool) error {
 	}
 	release, err := p.bootstrap.acquire(ctx)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			log.Print("Lightpanda B0 preflight bootstrap gate deadline")
+		}
 		return err
 	}
 	defer release()

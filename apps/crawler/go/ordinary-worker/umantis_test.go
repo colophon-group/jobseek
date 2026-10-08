@@ -132,6 +132,27 @@ func TestUmantisHTTPPartialRichFieldsAndLatePublisherReservation(t *testing.T) {
 		}
 	}
 }
+
+func TestUmantisMissingListingLocationPreservesNilForDelegatedFields(t *testing.T) {
+	c := umantisReferenceCases(t)[0]
+	c.Metadata["scraper_type"] = "dom"
+	c.Metadata["scraper_config"] = map[string]any{"enrich": []string{"description", "locations"}}
+	for resource, response := range c.Responses {
+		response.Body = strings.ReplaceAll(response.Body, "Neuchâtel <b>CH</b>", "")
+		c.Responses[resource] = response
+	}
+	body, _ := json.Marshal(c.Metadata)
+	client := verifiedClaimFixtureClient(t, umantisReferenceHandler(t, c, false, false))
+	out, err := FetchUmantisHTTP(context.Background(), client.client, queue.GreenhouseMonitorProfile{Provider: "umantis", Profile: "umantis.listing-urls/v1", Endpoint: c.Listing}, map[string]string{"board_url": c.Listing, "metadata": string(body), "monitor_needs_browser": "0"}, noSecondaryWait)
+	if err != nil || len(out.Jobs) != 2 {
+		t.Fatal(err, out)
+	}
+	for _, job := range out.Jobs {
+		if job.Locations != nil || job.Description != nil || job.URLOnly {
+			t.Fatal("missing listing field became an explicit clearing value", job)
+		}
+	}
+}
 func TestRealUmantisCompleteAndFailedInventoryCanonicalSettlement(t *testing.T) {
 	cases := umantisReferenceCases(t)
 	for _, index := range []int{0, 1, 2, 5, 8} {

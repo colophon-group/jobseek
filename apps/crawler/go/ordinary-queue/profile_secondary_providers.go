@@ -6,7 +6,7 @@ import (
 )
 
 func SecondaryProvider(provider string) bool {
-	if provider == "umantis" {
+	if provider == "umantis" || provider == "notion" {
 		return true
 	}
 	if TenthProvider(provider) {
@@ -21,6 +21,9 @@ func paycomEnrichmentFields(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true})
 }
 func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
+	if config["crawler_type"] == "notion" {
+		return monitorEnrichmentFields(config, map[string]bool{})
+	}
 	if config["crawler_type"] == "umantis" {
 		return monitorEnrichmentFields(config, map[string]bool{"description": true, "locations": true, "title": true, "employment_type": true})
 	}
@@ -65,6 +68,12 @@ func inspectSecondaryMonitor(boardID string, config map[string]string, md map[st
 	provider := config["crawler_type"]
 	var profile, endpoint string
 	switch provider {
+	case "notion":
+		o, e := api.NotionOptionsFromMetadata(config["board_url"], config["metadata"])
+		if e != nil {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		profile, endpoint = "notion.public-urls/v1", "https://"+o.Subdomain+".notion.site/api/v3/getPublicPageData"
 	case "umantis":
 		o, e := api.UmantisOptionsFromMetadata(config["board_url"], config["metadata"])
 		if e != nil {
@@ -223,6 +232,9 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 		return false
 	}
 	switch p.Provider {
+	case "notion":
+		o, e := api.NotionOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && p.Profile == "notion.public-urls/v1" && p.Endpoint == "https://"+o.Subdomain+".notion.site/api/v3/getPublicPageData" && o.ResourceMatches(resource)
 	case "umantis":
 		o, e := api.UmantisOptionsFromMetadata(config["board_url"], config["metadata"])
 		return e == nil && (p.Profile == "umantis.listing-urls/v1" || p.Profile == "umantis.proxy-listing-urls/v1") && p.Endpoint == o.Listing && o.ResourceMatches(resource)

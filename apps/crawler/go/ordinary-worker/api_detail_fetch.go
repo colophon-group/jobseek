@@ -34,6 +34,8 @@ func fetchAPIDetail(ctx context.Context, verified *VerifiedDirectHTTP, profile q
 	var content any
 	var reservation *publisherpolicy.Reservation
 	switch profile.Profile {
+	case "notion.public-detail/v1":
+		content, reservation, err = fetchNotionDetail(ctx, &client, profile)
 	case "adp.public-detail/v1":
 		content, reservation, err = fetchADPDetail(ctx, &client, profile)
 	case "paylocity.html-detail/v1", "paylocity.proxy-html-detail/v1":

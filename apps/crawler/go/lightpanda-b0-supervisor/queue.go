@@ -133,8 +133,8 @@ func queueRedisFailure(err error, operation string) error {
 	if errors.Is(err, context.Canceled) {
 		return context.Canceled
 	}
-	if operation == "activate_legacy" {
-		log.Printf("Lightpanda B0 Redis activation failed: %s", queueRedisDiagnostic(err))
+	if operation == "activate_legacy" || operation == "preflight" || operation == "audit" {
+		log.Printf("Lightpanda B0 Redis operation failed: operation=%s diagnostic=%s", operation, queueRedisDiagnostic(err))
 	}
 	return queueAuthority("redis", operation)
 }

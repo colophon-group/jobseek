@@ -24,24 +24,44 @@ is merged and installed from its original
 and matching [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37740592176).
 Independent immutable renderer verification and incoming cold230 passed.
 Supported B0 stage, activation and seven-endpoint readback passed at **epoch231**.
-Fresh ordinary configuration/cache and actual posting-route admission is underway.
-Exclude monitor ownership for Kaiser, Hays, Euronext WTTJ, Siemens and RTX until
-complete inventory evidence passes; keep every board enabled and independently
-qualified detail ownership intact. Seven public Lightpanda DOM inventories passed:
-Bank of China254, Castelion90, Deloitte CE485, Celebal8, Cartier384, Tesco Bank9
-and Boeing BIA10. The other four DOM routes and RTX retain legacy monitors.
+Fresh source973 admission qualified **7,398 monitors**, **2,616 detail boards**
+and **1,469,668 scheduled postings**, with five monitor holdouts. This is offline
+qualification, not current ownership. Ordinary activation failed when the B0
+producer exited with `redis/preflight` before restart arming. Supported
+`recover-pending` and independent readback restored **all nine base/B0 services**,
+seven healthy endpoints and active epoch231. The ordinary SQL plan is retired;
+its receipt and Redis projection are absent. Redis latency observed after recovery
+does not establish the earlier failure's cause. Preserve this distinction when
+resuming; do not replay the retired ordinary plan. See
+[source973 evidence](evidence/go-native-source973-release-2026-10-08.json).
 
-The following **0.13.974** batch is rebased onto this merged source and groups
-Umantis, Unifr and Notion plus proven Kaiser/Euronext route conversions.
-Umantis now includes full listing discovery, strict pagination range/total proofs,
-locale deduplication, visible empty states and per-detail employer validation;
-worker integration keeps isolated cookies, bounded retry and publisher semantics.
-All nine configurations, including Lindt's proxy and three delegated enrichment
-contracts, qualify in focused registry tests. Fifty-six actual Python corpus cases,
-HTTP inventory/cookie/retry/partial-field tests and five real PostgreSQL/Redis
-settlement cases pass. Runtime wiring adds direct and proxy profile identities;
-public field verification, remaining grouped ports and required CI are pending.
-Candidate changes grant no production authority.
+Exclude monitor ownership for Kaiser, Hays, Euronext WTTJ, Siemens and RTX until
+new routes or complete inventory evidence pass on the installed source. Keep
+every board enabled and independently qualified detail ownership intact.
+
+The **0.13.974** batch groups **Umantis (nine)** and **Notion (eight)** with the
+proven Kaiser/Euronext route conversions: **19 configurations**, **130 installed
+profiles**. Both providers are wired through registry, HTTP execution, ownership,
+canonical writes, publisher reservation and supported retirement paths.
+Eighty actual Python monitor/detail corpus cases, thirteen new real PostgreSQL/Redis
+worker cases, nine new retirement cases and actual native executable startup/drain
+checks pass. The full queue race suite passes (419.650s); full worker verification
+and required CI are pending.
+
+Eight direct Umantis inventories and nine partial-field samples match Python.
+Eight delegated detail samples match existing title, description length and
+location behavior; four titles are absent in both runtimes and remain field-quality
+gaps. Protected Lindt Python/Go inventories also match (eleven URLs); its detail
+sample contains platform boilerplate in both runtimes. Seven Notion inventories match exactly;
+Kaedim returns HTTP500 in both runtimes and stays a failure. Thirteen live Notion
+detail samples match Python's title, escaped HTML and property mapping on the same
+complete response. Go follows continuation cursors; Moon Surgical exposes why a
+first chunk can be incomplete. Candidate changes grant no production authority.
+See [Umantis evidence](evidence/go-native-umantis-candidate-2026-10-08.json) and
+[Notion evidence](evidence/go-native-notion-candidate-2026-10-08.json).
+
+Unifr's nine variants and their PDF details move together to the following batch.
+This keeps grouped delivery moving while preserving the full migration objective.
 
 The last complete ordinary activation was source972. Its supported ordinary
 retirement, B0 rollback, selector clear and independent outgoing cold230 all passed.
@@ -122,11 +142,6 @@ PR rather than en_US jobs. RTX succeeds in Python but fails in Go; diagnosis
 is required before ownership expansion. Configuration screening grants no
 production ownership.
 
-The following batch groups **Umantis (nine), Unifr (nine) and Notion (eight)**.
-Umantis tenant options, listing rows, locale deduplication and strict navigation
-components match twenty-eight actual Python corpus cases. Full discovery, worker/proxy wiring and reference/real settlement tests now pass as described above.
-Public provider/detail verification and production authority are still pending.
-Unifr and Notion contract research is prepared; no new executable profiles are granted.
 The same candidate switches Kaiser’s main board to existing TalentBrew discovery
 and direct JSON-LD details, and Euronext’s WTTJ board to its existing rich API
 monitor with skip details. Actual Python and Go both find 3,091 Kaiser jobs and
@@ -137,19 +152,19 @@ configuration changes, without production ownership; see the
 
 ## Continue delivery
 
-1. Complete fresh source973 ordinary admission with the five monitor holdouts,
-   then supported staging and activation; independently verify its
-   exact source/images, active receipts, ten restart-armed services and eight health
-   endpoints. Observe normal-schedule fields, description/R2 effects, failures,
-   settlement recovery and freshness/conservation.
-2. Complete source973 exact-head CI and public browser/proxy proofs. Merge only
-   with fresh required checks, actual Deploy Gate, unchanged head/base and no holds.
-   Use original immutable deployments and supported cold cutover with fresh
-   archived merged-source configuration/cache/posting-route admission.
-3. Finish Umantis, Unifr and Notion together, then batch the largest remaining
-   DOM/API/RSS/Sitemap/LinkedIn contracts. Reuse existing parsers and engines and
-   preserve each enabled board's complete-inventory, resource, proxy, browser,
-   canonical-field and publisher contracts.
+1. Finish grouped974 full worker verification, publish its
+   PR and obtain Required CI plus the actual Crawler Deploy Gate. Merge with fresh
+   unchanged head/base, no holds and exact-head authority. Keep Lightpanda on the
+   newest verified stable release and immutable digest.
+2. Quiesce and retire outgoing B0 through supported wrappers, prove cold state,
+   then install original merged-source crawler and matching renderer images.
+   Build fresh archived-source configuration/cache/posting-route admission;
+   perform supported B0 and ordinary staging/activation and independently verify
+   every service, receipt and endpoint. Investigate any producer failure using
+   safe error-family diagnostics; preserve ownership and publisher checks.
+3. Port Unifr with PDF details next, then group remaining DOM/API/RSS/Sitemap/
+   LinkedIn contracts by reusable engines. Observe normal-schedule fields,
+   description/R2 effects, settlement recovery and freshness as ownership grows.
 4. Replace remaining mandatory Python runtime/deployment/maintenance consumers.
    Existing sync, queue, schema, reaper, drain, exporter and reconciliation engines
    are already Go; verify actual installed consumers before duplicating work.

@@ -1,0 +1,288 @@
+{
+  "version": "0.13.974",
+  "base_source": "ca8f700ddd97578e2b40ff3b0709680ad54fbcf5",
+  "status": "implemented candidate; no production authority",
+  "provider": "notion",
+  "enabled_configurations": 8,
+  "new_profiles": [
+    "notion.public-urls/v1",
+    "notion.public-detail/v1"
+  ],
+  "contract": [
+    "anonymous scoped API POST requests; isolated cookies; bounded retries",
+    "root/slug-only HTTP 500 canonical-host fallback; last transport failure cannot inherit HTTP status",
+    "complete cursor traversal, collection selection, nested page boundaries and exact configured filters",
+    "Python-compatible title, escaped HTML and ordered collection property mapping",
+    "missing referenced blocks and late collection/API failures discard the result",
+    "publisher reservations, canonical PostgreSQL fields and R2 intents use existing native settlement paths"
+  ],
+  "validation": {
+    "actual_python_monitor_cases": 14,
+    "actual_python_detail_cases": 10,
+    "physical_http_reference_cases": 14,
+    "http_regression": "500 followed by transport failures does not authorize root fallback",
+    "real_postgres_redis_monitor_and_detail_cases": 8,
+    "real_worker_race_seconds": 8.224,
+    "new_provider_cold_retirement_cases": 9,
+    "new_provider_cold_retirement_race_seconds": 8.986,
+    "installed_profiles": 130,
+    "real_native_executable_race_seconds": 16.104,
+    "full_api_race_seconds": 8.493,
+    "full_queue_race_seconds": 419.65,
+    "full_worker_race": "running",
+    "vet_and_generator_ruff": "pass"
+  },
+  "public_inventories": [
+    {
+      "board": "marble-aerospace-careers",
+      "status": "complete",
+      "count": 1,
+      "url_set_sha256": "9e9007f1769da6aa0642ab5270ee1a285440a2fb5047043d0bb4efa73f99bf2f"
+    },
+    {
+      "board": "hoshii-careers",
+      "status": "complete",
+      "count": 4,
+      "url_set_sha256": "92d78efffa713d6108ee4bd076eb7b3aa09bc293413085d9f27fbe1975d506aa"
+    },
+    {
+      "board": "entalpic-careers",
+      "status": "complete",
+      "count": 4,
+      "url_set_sha256": "84c8e6c22da638a139f4752284056b4a38b9310a08dd4769d486e9a217ea7ae8"
+    },
+    {
+      "board": "suind-suind",
+      "status": "complete",
+      "count": 4,
+      "url_set_sha256": "f16a3b94296c0f6c26826babe86fde357ef1fca62905a166c2a42d925e4d204c"
+    },
+    {
+      "board": "nunu-ai-careers",
+      "status": "complete",
+      "count": 4,
+      "url_set_sha256": "87393298cf4b41aa1a9422ef2bf522b035f7b5f53ba86ae2be9897e8f4088e8d"
+    },
+    {
+      "board": "palabra-ai-notion",
+      "status": "complete",
+      "count": 3,
+      "url_set_sha256": "778bb445ccf61b8fc1b73ceb4aeb23a4e0db522e14042cc70868d036f03ef081"
+    },
+    {
+      "board": "moon-surgical-notion",
+      "status": "complete",
+      "count": 8,
+      "url_set_sha256": "9b93dac99e94edbca14580dd35774f0efc43176c74c9bee4f788185d2bf065f6"
+    },
+    {
+      "board": "kaedim-careers",
+      "status": "failed",
+      "shared_http_status": 500,
+      "python_error_class": "PaginationFetchError"
+    }
+  ],
+  "public_detail_samples": [
+    {
+      "board": "marble-aerospace-careers",
+      "description_chars": 2409,
+      "description_sha256": "cfd098c7c4a61b9376ef15021dfc16818037826329bc1ef549608a046fd86438",
+      "employment_type": null,
+      "job_location_type": null,
+      "locations": null,
+      "metadata": {},
+      "status": "exact Python/Go fields match",
+      "title": "Founder’s Associate",
+      "url": "https://marbleaero.notion.site/1bd76a106a9c80d995f3cc72d2029e08",
+      "chunk_count": 1,
+      "first_chunk_description_chars": 2409
+    },
+    {
+      "board": "hoshii-careers",
+      "description_chars": 4265,
+      "description_sha256": "b180497f69c8d3bf44866454bd72ae753b40ca4777ee7d5388ec97646d73d975",
+      "employment_type": null,
+      "job_location_type": null,
+      "locations": null,
+      "metadata": {},
+      "status": "exact Python/Go fields match",
+      "title": "Software Engineer (Platform)",
+      "url": "https://hoshii-ai.notion.site/1895ed82c57f80098485dd31fe553910",
+      "chunk_count": 1,
+      "first_chunk_description_chars": 4265
+    },
+    {
+      "board": "hoshii-careers",
+      "description_chars": 3296,
+      "description_sha256": "f4390d7477fdedc9f0a0efdb7d6503b9b6e1cf35f55d540692e8ef53b8c53349",
+      "employment_type": null,
+      "job_location_type": null,
+      "locations": null,
+      "metadata": {},
+      "status": "exact Python/Go fields match",
+      "title": "Software Engineer (AI Agents)",
+      "url": "https://hoshii-ai.notion.site/1895ed82c57f80ab98aeef6d88b3a860",
+      "chunk_count": 1,
+      "first_chunk_description_chars": 3296
+    },
+    {
+      "board": "entalpic-careers",
+      "description_chars": 6851,
+      "description_sha256": "a221fc5949f15d8aa63bb75eb66877fdf955c28773d9df0874f91e12807f6bf4",
+      "employment_type": null,
+      "job_location_type": null,
+      "locations": null,
+      "metadata": {
+        "team": "Science Team"
+      },
+      "status": "exact Python/Go fields match",
+      "title": "Computational Chemist — Electronic & Functional Materials (CDI)",
+      "url": "https://entalpic.notion.site/3890f8fed0d180c3ad49db1919db523b",
+      "chunk_count": 1,
+      "first_chunk_description_chars": 6851
+    },
+    {
+      "board": "entalpic-careers",
+      "description_chars": 7168,
+      "description_sha256": "366123614919b9df6d93f934c455507d292bb83fca27132c3c45388f391e65e3",
+      "employment_type": null,
+      "job_location_type": null,
+      "locations": null,
+      "metadata": {
+        "team": "Science Team"
+      },
+      "status": "exact Python/Go fields match",
+      "title": "Scientific Software Developer",
+      "url": "https://entalpic.notion.site/3ad0f8fed0d180508d92cc980405f18d",
+      "chunk_count": 1,
+      "first_chunk_description_chars": 7168
+    },
+    {
+      "board": "suind-suind",
+      "description_chars": 3400,
+      "description_sha256": "0ee663b81d9a6b96df9c6de54c3e7575500fc728758bb2ffdac9fdddaa7827ac",
+      "employment_type": null,
+      "job_location_type": null,
+      "locations": [
+        "Bangalore India"
+      ],
+      "metadata": {
+        "team": "Engineering"
+      },
+      "status": "exact Python/Go fields match",
+      "title": "Mechatronics Engineering Internship",
+      "url": "https://suind.notion.site/1b0ee8c74779802fafd9e4b33a4bc167",
+      "chunk_count": 1,
+      "first_chunk_description_chars": 3400
+    },
+    {
+      "board": "suind-suind",
+      "description_chars": 1572,
+      "description_sha256": "f1784e8bb324cbe3deebc2116376864034dc92f34aa687c896c3770342fe8802",
+      "employment_type": null,
+      "job_location_type": null,
+      "locations": [
+        "Kerala India",
+        "Baramati India"
+      ],
+      "metadata": {
+        "team": "Operations"
+      },
+      "status": "exact Python/Go fields match",
+      "title": "Internship – Drone Pilot",
+      "url": "https://suind.notion.site/1bcee8c74779805cbb41f4c105cc0340",
+      "chunk_count": 1,
+      "first_chunk_description_chars": 1572
+    },
+    {
+      "board": "nunu-ai-careers",
+      "description_chars": 1944,
+      "description_sha256": "180b5f8f2de5ee2ad39e6868a2cd1297bfca4fb66f00d0d1ea38df5c51664dab",
+      "employment_type": null,
+      "job_location_type": null,
+      "locations": null,
+      "metadata": {},
+      "status": "exact Python/Go fields match",
+      "title": "QA Product Support Specialist (remote)",
+      "url": "https://nunu-ai.notion.site/2f6bcd1333f0807d9743eb467aac5268",
+      "chunk_count": 1,
+      "first_chunk_description_chars": 1944
+    },
+    {
+      "board": "nunu-ai-careers",
+      "description_chars": 3254,
+      "description_sha256": "157bf0ec65eeb2e449ef8ad80eb7c4bef8f421934ce943e12c4eb23fd2de2a08",
+      "employment_type": null,
+      "job_location_type": null,
+      "locations": null,
+      "metadata": {},
+      "status": "exact Python/Go fields match",
+      "title": "Finetune VLM for mobile games",
+      "url": "https://nunu-ai.notion.site/33abcd1333f0801984b9d555e8bad511",
+      "chunk_count": 1,
+      "first_chunk_description_chars": 3254
+    },
+    {
+      "board": "palabra-ai-notion",
+      "description_chars": 4227,
+      "description_sha256": "f3b8baa599d3e28f09a9ac1dd133e01f8522413b499b91da42bc3d60509ba90c",
+      "employment_type": null,
+      "job_location_type": null,
+      "locations": null,
+      "metadata": {},
+      "status": "exact Python/Go fields match",
+      "title": "Presales Engineer (Solutions Engineer) — Real-time AI Translation",
+      "url": "https://palabraai.notion.site/12224d16bfad80aebb2dd0afa519d118",
+      "chunk_count": 1,
+      "first_chunk_description_chars": 4227
+    },
+    {
+      "board": "palabra-ai-notion",
+      "description_chars": 3978,
+      "description_sha256": "9cc1f15bee819d01c5b2e53fdfad22975ade80571d17c3cfb671ff1630aa20cf",
+      "employment_type": null,
+      "job_location_type": null,
+      "locations": null,
+      "metadata": {},
+      "status": "exact Python/Go fields match",
+      "title": "Senior LLM engineer (TTS)",
+      "url": "https://palabraai.notion.site/25c24d16bfad803f9b37d0a4d8015ea4",
+      "chunk_count": 1,
+      "first_chunk_description_chars": 3978
+    },
+    {
+      "board": "moon-surgical-notion",
+      "description_chars": 3015,
+      "description_sha256": "ecd57a8e448445abe9785f4e5f56292119edd9ffb84f286b3177e506db3e8f50",
+      "employment_type": null,
+      "job_location_type": null,
+      "locations": null,
+      "metadata": {},
+      "status": "exact Python/Go fields match",
+      "title": "Area Sales Manager - Northeast US 🇺🇸",
+      "url": "https://moonsurgical.notion.site/175f7d48c4ef8056ab61fd872fbdea1c",
+      "chunk_count": 2,
+      "first_chunk_description_chars": 3015
+    },
+    {
+      "board": "moon-surgical-notion",
+      "description_chars": 1236,
+      "description_sha256": "8a5f8daa022c0e214bb29df19849a681f05acfd1c12f99d2f432abdff35cf924",
+      "employment_type": null,
+      "job_location_type": null,
+      "locations": null,
+      "metadata": {},
+      "status": "exact Python/Go fields match",
+      "title": "Product Support Field Service Engineer 🇺🇸",
+      "url": "https://moonsurgical.notion.site/1a6f7d48c4ef80ad940bd47175d7aa89",
+      "chunk_count": 2,
+      "first_chunk_description_chars": 1231
+    }
+  ],
+  "scope_of_field_comparison": "actual Python scraper and Go parser on the same live complete response; HTTP requests/retries separately tested against actual Python fixtures",
+  "open": [
+    "full required CI and actual deployment gate",
+    "merged-source admission and supported production ownership",
+    "natural freshness, conservation, recovery, cost and retirement completion gates"
+  ]
+}
