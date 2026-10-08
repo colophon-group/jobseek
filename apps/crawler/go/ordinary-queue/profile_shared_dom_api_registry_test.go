@@ -23,6 +23,8 @@ func TestSharedDOMAPICurrentRegistryPreservesDeclaredTransports(t *testing.T) {
 	}
 	supported := map[string]int{}
 	retained := map[string]int{}
+	explicitBoards := map[string]bool{"jd-sports-greece-cyprus": true, "screenpoint-medical-bamboohr": true, "wonderflow-bamboohr": true, "loccitane-group-australia-new-zealand": true}
+	explicitCount := 0
 	for _, row := range rows[1:] {
 		provider := row[h["monitor_type"]]
 		if provider != "dom" && provider != "api_sniffer" {
@@ -33,7 +35,14 @@ func TestSharedDOMAPICurrentRegistryPreservesDeclaredTransports(t *testing.T) {
 			t.Fatal("monitor config", row[h["board_slug"]])
 		}
 		fields, _ := md["fields"].(map[string]any)
-		candidate := provider == "api_sniffer" && len(fields) == 0 || provider == "dom" && (md["include_board_url"] == true || md["require_jsonld_jobposting"] == true)
+		explicit := explicitBoards[row[h["board_slug"]]]
+		if explicit {
+			if len(fields) == 0 {
+				t.Fatal("publicly ambiguous config lost explicit fields", row[h["board_slug"]])
+			}
+			explicitCount++
+		}
+		candidate := explicit || provider == "api_sniffer" && len(fields) == 0 || provider == "dom" && (md["include_board_url"] == true || md["require_jsonld_jobposting"] == true)
 		if !candidate {
 			continue
 		}
@@ -63,12 +72,12 @@ func TestSharedDOMAPICurrentRegistryPreservesDeclaredTransports(t *testing.T) {
 		if provider == "api_sniffer" {
 			if browser {
 				o, e := APISnifferBrowserMonitorOptions(config)
-				if e != nil || !o.Inventory.AutoFields {
+				if e != nil || o.Inventory.AutoFields == explicit {
 					t.Fatal("automatic browser mapping not bound", e)
 				}
 			} else {
 				o, e := APISnifferMonitorOptions(config)
-				if e != nil || !o.AutoFields {
+				if e != nil || o.AutoFields == explicit {
 					t.Fatal("automatic HTTP mapping not bound", e)
 				}
 			}
@@ -80,7 +89,7 @@ func TestSharedDOMAPICurrentRegistryPreservesDeclaredTransports(t *testing.T) {
 		}
 		supported[provider]++
 	}
-	if supported["api_sniffer"] != 23 || supported["dom"] != 12 || retained["api_sniffer"] != 12 || retained["dom"] != 11 {
+	if explicitCount != 4 || supported["api_sniffer"] != 23 || supported["dom"] != 12 || retained["api_sniffer"] != 12 || retained["dom"] != 11 {
 		t.Fatal("registry coverage empty", supported)
 	}
 	t.Logf("configuration binding only; production route admission pending: supported=%v retained=%v", supported, retained)

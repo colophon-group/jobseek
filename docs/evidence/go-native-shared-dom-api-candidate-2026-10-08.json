@@ -1,7 +1,7 @@
 {
   "schema": "jobseek.native-shared-dom-api-candidate/v1",
   "candidate_version": "0.13.981",
-  "state": "local qualification; broad checks, current public capture, CI, immutable delivery and production ownership pending",
+  "state": "full initial-head queue/worker and CI passed; four explicit public field mappings added; revised-head CI, affine browser/DOM public capture, immutable delivery and production ownership pending",
   "profiles": 145,
   "new_profiles": 0,
   "scope": [
@@ -11,7 +11,9 @@
   ],
   "registry_bindings": {
     "api_sniffer": 23,
-    "dom": 12
+    "dom": 12,
+    "api_sniffer_automatic": 19,
+    "api_sniffer_explicit_public_corrections": 4
   },
   "retained_unsupported_flagged_configs": {
     "api_sniffer": 12,
@@ -29,11 +31,21 @@
     "api_full_race": "PASS5.920s",
     "dom_full_race": "PASS3.078s",
     "api_dom_worker_vet": "PASS",
-    "ruff_and_format": "PASS"
+    "ruff_and_format": "PASS",
+    "full_queue_race": "PASS478.205s at be268e6474e20450cc678ae692570cff6f8ea225",
+    "full_worker_race": "PASS684.571s at be268e6474e20450cc678ae692570cff6f8ea225",
+    "initial_required_ci": "SUCCESS37828663704",
+    "initial_actual_crawler_deploy_gate": "SUCCESS37828663817",
+    "public_http_reference": "22 completed captures match all fields and semantic request shapes/counts; one original HTTP failure (easyjet-taleo) remains unqualified; browser-designated routes require affine evidence",
+    "public_explicit_mapping_reference": "81 jobs across JD Sports32, ScreenPoint13, Wonderflow2, Loccitane34; actual original Python with explicit maps preserves every captured field/request; same-capture Go matches",
+    "revised_registry_race": "PASS1.672s",
+    "revised_api_full_race": "PASS4.866s"
   },
   "retained_corrected_failures": [
     "Initial real publisher settlement rejected the child resource; handoff now keeps the installed listing resource fence and independently sealed finite child/config binding.",
-    "Test expectations were corrected for raw bool location normalization and the original first-empty missing-count safety; production normalizers and disappearance guards remain unchanged."
+    "Test expectations were corrected for raw bool location normalization and the original first-empty missing-count safety; production normalizers and disappearance guards remain unchanged.",
+    "Public automatic mapping rejected four ambiguous publisher payloads. Explicit CSV maps now preserve their actual captured Python output; ambiguity rejection remains.",
+    "Bucher title comparison now applies actual original Python _coerce_text, matching Go processing; raw initial capture retained."
   ],
   "source980_delivery": {
     "pr": 10367,
@@ -41,7 +53,7 @@
     "source_revision": "ee4d6d27f6806b22a1ec86e05c9d504364e239a1",
     "original_crawler_run": 37827765892,
     "original_renderer_run": 37827922155,
-    "state": "merged; rollouts running; incoming authority pending"
+    "state": "original crawler/renderer SUCCESS attempt1; complete incoming cold242 independently verified; supported B0active243 and independent readback PASS; ordinary admission underway"
   },
   "authority": "Reference/local database and registry eligibility do not grant current production ownership or full migration completion. Existing enabled boards remain preserved."
 }

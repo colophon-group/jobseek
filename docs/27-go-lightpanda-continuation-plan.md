@@ -452,9 +452,10 @@ exact-head Required CI, Crawler Deploy Gate, installed image parity and amd64/ar
 pilot checks. PR #10367 merged at source
 `ee4d6d27f6806b22a1ec86e05c9d504364e239a1` after supported outgoing B0
 retirement, selector clearing and independent complete cold242 proof. Original
-crawler rollout `37827765892` and matching renderer rollout `37827922155` are
-running. Incoming immutable identities, current admission and ownership remain
-pending. See the
+crawler rollout `37827765892` and matching renderer rollout `37827922155`
+succeeded on attempt 1. Independent full incoming cold242 proof passed; supported
+B0 activation and readback passed at epoch243. Fresh ordinary admission and
+activation remain pending. See the
 [candidate evidence](evidence/go-native-small-provider-candidate-2026-10-08.json).
 
 The source977 ordinary activation failure is retained: UKG resolved and saved
@@ -476,7 +477,8 @@ those replacement gates pass; preserve useful offline Python tooling.
 ## Next grouped shared API and DOM configuration batch
 
 Candidate **0.13.981** extends the existing 145 profiles for **35 current registry
-configurations**: 23 automatic API field mappings and 12 DOM direct-board/JSON-LD
+configurations**: 19 automatic API field mappings, four explicit API corrections
+and 12 DOM direct-board/JSON-LD
 verification configurations. The original direct, required-proxy and rendered
 transports remain bound. Twelve other API configurations and eleven DOM
 configurations with these flags retain their existing owner because additional
@@ -499,8 +501,15 @@ original full API HTTP cases and sixteen original DOM HTTP/processing cases pass
 The 35 registry bindings preserve all declared transports. Twenty-three real
 PostgreSQL/Redis direct/proxy/rendered write/settlement cases and twenty-seven
 supported cold retirement cases pass. API/DOM full race and API/DOM/worker vet
-pass. Whole queue/worker broads, public current-output capture, revised-head CI,
-immutable deployment and fresh route admission remain pending. See the
+pass. Full initial-head queue/worker race suites passed (478.205s/684.571s),
+followed by Required CI and the actual Crawler Deploy Gate. Same-capture Go HTTP
+replay matches every field and request shape/count for all 22 successful original
+API captures. Four ambiguous publisher payloads require explicit CSV mappings;
+these preserve all 81 captured jobs and fields under actual original Python and
+Go replay. Bucher text comparison applies the original processing normalization.
+One original HTTP reference failed (EasyJet Taleo); affine browser and DOM public
+qualification, revised-head CI, immutable deployment and fresh route admission
+remain pending. See the
 [candidate evidence](evidence/go-native-shared-dom-api-candidate-2026-10-08.json).
 
 Continue in groups across remaining shared browser/pagination/verification options
