@@ -1,0 +1,63 @@
+{
+  "version": "jobseek.native-migration-candidate/v1",
+  "candidate_version": "0.13.977",
+  "status": "Implemented and focused checks passed; full suites, required CI and production delivery pending",
+  "scope": {
+    "seek_graphql_detail_boards": 6,
+    "explicit_fields_api_automatic_array_configs": 11,
+    "native_profiles": 135
+  },
+  "contracts": [
+    "Derive public SEEK advertiser and AU/NZ market from canonical monitor identity; reject endpoint/query/transport overrides and foreign responses.",
+    "Publisher headers and body checked before status, decode and retry, including 503 and incomplete bodies.",
+    "Preserve transient empty-result handling for expired SEEK jobs; monitor authority retains delisting responsibility.",
+    "Automatic API array selection preserves ordered traversal, score and stable tie behavior; explicit field and URL mappings remain required.",
+    "Discard all candidates on traversal limits; literal empty arrays or exact configured empty documents may prove absence. Unproved empty or small wrappers fail.",
+    "Bind detail ownership, first activation, retained write receipts, cold retirement, Python routing projection and worker identity vectors."
+  ],
+  "verification": {
+    "actual_python_seek_detail_cases": 25,
+    "actual_python_array_selection_cases": 58,
+    "automatic_api_inventory_cases": 10,
+    "registry_seek_boards": 6,
+    "registry_automatic_api_configs": 11,
+    "http_seek_detail_cases": 16,
+    "real_pg_redis_seek_detail_cases": 7,
+    "real_pg_redis_api_array_cases": 8,
+    "seek_cold_retirement_cases": 6,
+    "seek_retained_receipt_fresh_epoch_cases": 1,
+    "python_ownership_cutover": {
+      "passed": 78,
+      "skipped": 9
+    },
+    "api_full_race_seconds": 5.288,
+    "public_seek_same_capture": {
+      "cases": 10,
+      "matching": 10,
+      "populated": 8,
+      "empty_python_results": 2,
+      "nonempty_boards": 5,
+      "zero_inventory_boards": 1,
+      "all_populated_fields_and_graphql_requests_match": true
+    },
+    "public_api_same_capture": {
+      "configs": 11,
+      "matching": 11,
+      "postings": 106,
+      "empty_inventories": 2,
+      "comparison": "All Python fields and inventories; nil/empty extras and metadata objects normalized as absent. Raw differences retained privately."
+    }
+  },
+  "remaining": [
+    "Complete full queue/worker race suites, vet and required CI.",
+    "Refresh base to delivered source976 and bind exact reviewed head.",
+    "Supported immutable crawler and renderer rollout, fresh canonical config/route admission and owner activation.",
+    "Full freshness/conservation and comparable whole-lane cost remain migration completion gates."
+  ],
+  "private_provenance": [
+    "native977-seek-detail-python-initial-2026-10-08.json",
+    "native977-seek-detail-go-replay-retry1-2026-10-08.json",
+    "native977-api-auto-public-python-initial-2026-10-08.json",
+    "native977-api-auto-public-go-replay-normalized1-2026-10-08.json"
+  ]
+}

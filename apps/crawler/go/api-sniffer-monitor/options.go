@@ -32,6 +32,7 @@ type Options struct {
 	Headers                                http.Header
 	Pagination                             *Pagination
 	PathValues                             bool
+	AutoPath                               bool
 	MaxItems, Attempts                     int
 	Transient403                           bool
 	Enrichment                             []string
@@ -133,9 +134,13 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 	if !validURL(boardURL) || !validURL(o.Endpoint) {
 		return o, ErrOptions
 	}
-	if _, exists := m["json_path"]; !exists {
-		return o, ErrOptions
-	} // Auto-detection is a separate legacy contract.
+	if value, exists := m["json_path"]; !exists || value == nil {
+		fields, explicitFields := m["fields"].(map[string]any)
+		if o.URLField == "" || !explicitFields || len(fields) == 0 {
+			return o, ErrOptions
+		}
+		o.AutoPath = true
+	}
 	for _, p := range []string{o.Path, o.TotalPath} {
 		if p != "" {
 			if _, err := jmespath.Compile(p); err != nil {

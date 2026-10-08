@@ -34,6 +34,8 @@ func fetchAPIDetail(ctx context.Context, verified *VerifiedDirectHTTP, profile q
 	var content any
 	var reservation *publisherpolicy.Reservation
 	switch profile.Profile {
+	case "seek.graphql-detail/v1":
+		content, reservation, err = fetchSeekDetail(ctx, &client, profile, pauseRich)
 	case "pdf.public-detail/v1":
 		content, reservation, err = fetchPDFDetail(ctx, &client, profile)
 	case "notion.public-detail/v1":
