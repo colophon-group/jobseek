@@ -15,6 +15,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from functools import lru_cache
+from urllib.parse import urlsplit
 
 import asyncpg
 
@@ -68,6 +69,31 @@ def configured_legacy_ownership() -> LegacyOwnership | None:
     if not any(values):
         return None
     return LegacyOwnership(*values)
+
+
+def _independent_detail_domain_matches(detail: dict) -> bool:
+    if detail["profile"] != "notion.public-detail/v1":
+        return detail["domain"] == "*"
+    config = detail.get("config")
+    if not isinstance(config, dict) or config.get("crawler_type") != "notion":
+        return False
+    board_url = config.get("board_url")
+    if (
+        not isinstance(board_url, str)
+        or re.fullmatch(r"[\w-]{1,128}\.notion\.site", detail["domain"]) is None
+    ):
+        return False
+    try:
+        board = urlsplit(board_url)
+        return (
+            board.scheme == "https"
+            and board.netloc == detail["domain"]
+            and board.username is None
+            and board.password is None
+            and board.port is None
+        )
+    except ValueError:
+        return False
 
 
 @lru_cache(maxsize=1)
@@ -167,12 +193,13 @@ def ownership_projection(payload: str) -> str:
                     "dom.proxy-detail/v1",
                     "jsonld.proxy-detail/v1",
                     "api_sniffer.proxy-http-detail/v1",
+                    "notion.public-detail/v1",
                 )
                 or (d["profile"] == "workday.cxs-detail/v1" and d["board_id"] not in members)
                 or (
                     d["profile"] != "workday.cxs-detail/v1"
                     and (
-                        d["domain"] != "*"
+                        not _independent_detail_domain_matches(d)
                         or not isinstance(d.get("company_id"), str)
                         or re.fullmatch(
                             r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", d["company_id"]

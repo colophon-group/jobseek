@@ -42,6 +42,13 @@
       "plan_sha256": "4314e1941c53d939d702a36df370b6e0aedd250b95f1eea4896038ec216dcde2",
       "projection": "{\"version\":\"jobseek.ordinary.ownership-projection/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"plan_sha256\":\"4314e1941c53d939d702a36df370b6e0aedd250b95f1eea4896038ec216dcde2\",\"members\":{\"00000000-0000-4000-8000-000000000001\":\"api-fixture.invalid\"}}",
       "projection_sha1": "4dca7430bf256385ac92c40b3bdfa5e0aa86c39c"
+    },
+    {
+      "name": "independent-notion-workspace",
+      "payload": "{\"version\":\"jobseek.ordinary.ownership/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"members\":[{\"board_id\":\"00000000-0000-4000-8000-000000000001\",\"domain\":\"greenhouse\",\"kind\":\"monitor\",\"worker\":\"simple\",\"profile\":\"greenhouse.token-skip/v1\"}],\"routing_projection\":\"jobseek.ordinary.ownership-projection/v1\",\"details\":[{\"board_id\":\"00000000-0000-4000-8000-000000000098\",\"domain\":\"fixture.notion.site\",\"profile\":\"notion.public-detail/v1\",\"worker\":\"simple\",\"company_id\":\"00000000-0000-4000-8000-000000000002\",\"effective_config_sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"config\":{\"crawler_type\":\"notion\",\"board_url\":\"https://fixture.notion.site/jobs\",\"metadata\":\"{\\\"scraper_type\\\":\\\"notion\\\"}\"}}]}",
+      "plan_sha256": "8cab5048e401d0134b0ffe51b9aa546e6ae2763a2724dd0f6918ae33517a6b83",
+      "projection": "{\"version\":\"jobseek.ordinary.ownership-projection/v1\",\"routing_epoch\":163,\"source_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"plan_sha256\":\"8cab5048e401d0134b0ffe51b9aa546e6ae2763a2724dd0f6918ae33517a6b83\",\"members\":{\"00000000-0000-4000-8000-000000000001\":\"greenhouse\"},\"details\":{\"00000000-0000-4000-8000-000000000098\":\"fixture.notion.site\"}}",
+      "projection_sha1": "9874a4d7be968de0e7f7d3d1d961b327fdb1048b"
     }
   ]
 }

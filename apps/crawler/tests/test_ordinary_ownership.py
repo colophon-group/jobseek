@@ -87,6 +87,16 @@ def expectation(
                 "config": {"crawler_type": "dom", "metadata": '{"scraper_type":"json-ld"}'},
             }
         ]
+        if api == "notion":
+            doc["details"][0].update(
+                domain="fixture.notion.site",
+                profile="notion.public-detail/v1",
+                config={
+                    "crawler_type": "notion",
+                    "board_url": "https://fixture.notion.site/jobs",
+                    "metadata": '{"scraper_type":"notion"}',
+                },
+            )
         payload = json.dumps(doc, separators=(",", ":"))
     expected = LegacyOwnership(
         hashlib.sha256(payload.encode()).hexdigest(),
@@ -478,7 +488,9 @@ def test_nextdata_rendered_monitor_projection_preserves_browser_exclusion(profil
         ownership_projection(json.dumps(doc, separators=(",", ":")))
 
 
-@pytest.mark.parametrize("profile", ["workday", "jsonld", "smartrecruiters", "workable", "dom"])
+@pytest.mark.parametrize(
+    "profile", ["workday", "jsonld", "smartrecruiters", "workable", "dom", "notion"]
+)
 async def test_real_legacy_detail_write_excludes_actual_canonical_board(monkeypatch, profile):
     from src.lightpanda.write_fence import authoritative_write
     from src.ordinary_ownership import OrdinaryDetailWriteRejected
@@ -486,7 +498,7 @@ async def test_real_legacy_detail_write_excludes_actual_canonical_board(monkeypa
     async with private_active_plan(
         details=True,
         jsonld=profile == "jsonld",
-        api=profile if profile in {"smartrecruiters", "workable", "dom"} else "",
+        api=profile if profile in {"smartrecruiters", "workable", "dom", "notion"} else "",
     ) as (pool, expected, payload):
         install_settings(monkeypatch, expected)
         company, foreign, owned_posting, foreign_posting = (uuid.uuid4() for _ in range(4))
@@ -569,9 +581,20 @@ def test_detail_projection_is_independent_of_monitor_membership(profile):
             "config": {"crawler_type": "dom", "metadata": '{"scraper_type":"json-ld"}'},
         }
     ]
+    domain = "*"
+    if profile == "notion.public-detail/v1":
+        domain = "fixture.notion.site"
+        doc["details"][0].update(
+            domain=domain,
+            config={
+                "crawler_type": "notion",
+                "board_url": "https://fixture.notion.site/jobs",
+                "metadata": '{"scraper_type":"notion"}',
+            },
+        )
     projection = json.loads(ownership_projection(json.dumps(doc, separators=(",", ":"))))
     assert board not in projection["members"]
-    assert projection["details"] == {board: "*"}
+    assert projection["details"] == {board: domain}
     for field, value in (
         ("domain", "jobs.example.net"),
         ("worker", "simple" if ".rendered-" in profile else "browser"),
@@ -585,6 +608,36 @@ def test_detail_projection_is_independent_of_monitor_membership(profile):
         changed["details"][0][field] = value
         with pytest.raises(OrdinaryOwnershipError):
             ownership_projection(json.dumps(changed, separators=(",", ":")))
+
+
+@pytest.mark.parametrize(
+    ("domain", "board_url"),
+    [
+        ("*", "https://fixture.notion.site/jobs"),
+        ("other.notion.site", "https://fixture.notion.site/jobs"),
+        ("fixture.notion.site", "https://example.com/jobs"),
+        ("fixture.notion.site", "http://fixture.notion.site/jobs"),
+        ("fixture.notion.site", "https://u:p@fixture.notion.site/jobs"),
+        ("fixture.notion.site", "https://fixture.notion.site:444/jobs"),
+        ("fixture.notion.site", "https://fixture.notion.site:443/jobs"),
+    ],
+)
+def test_notion_detail_projection_rejects_foreign_workspace_and_wildcard(domain, board_url):
+    _, payload = expectation()
+    doc = json.loads(payload)
+    doc["details"] = [
+        {
+            "board_id": "00000000-0000-4000-8000-000000000098",
+            "domain": domain,
+            "profile": "notion.public-detail/v1",
+            "worker": "simple",
+            "company_id": "00000000-0000-4000-8000-000000000002",
+            "effective_config_sha256": "a" * 64,
+            "config": {"crawler_type": "notion", "board_url": board_url},
+        }
+    ]
+    with pytest.raises(OrdinaryOwnershipError):
+        ownership_projection(json.dumps(doc, separators=(",", ":")))
 
 
 @pytest.mark.parametrize(

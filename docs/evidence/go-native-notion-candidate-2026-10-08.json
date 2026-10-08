@@ -14,7 +14,8 @@
     "complete cursor traversal, collection selection, nested page boundaries and exact configured filters",
     "Python-compatible title, escaped HTML and ordered collection property mapping",
     "missing referenced blocks and late collection/API failures discard the result",
-    "publisher reservations, canonical PostgreSQL fields and R2 intents use existing native settlement paths"
+    "publisher reservations, canonical PostgreSQL fields and R2 intents use existing native settlement paths",
+    "legacy Python ownership projection binds the exact Notion workspace and excludes native-owned canonical postings; wildcard/foreign workspace rejected"
   ],
   "validation": {
     "actual_python_monitor_cases": 14,
@@ -30,7 +31,9 @@
     "full_api_race_seconds": 8.493,
     "full_queue_race_seconds": 419.65,
     "vet_and_generator_ruff": "pass",
-    "full_worker_race_seconds": 629.082
+    "full_worker_race_seconds": 629.082,
+    "legacy_ownership_codec_real_module_cases": 67,
+    "legacy_ownership_codec_real_module_seconds": 3.81
   },
   "public_inventories": [
     {
