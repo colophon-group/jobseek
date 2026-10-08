@@ -1,0 +1,64 @@
+{
+  "schema": "jobseek.native-small-provider-candidate/v1",
+  "candidate_version": "0.13.980",
+  "state": "revised candidate with resolved UKG binding correction; final-head CI and deployment pending",
+  "providers": [
+    "jobbank104",
+    "cnstaff",
+    "seamlesshiring"
+  ],
+  "new_profiles": [
+    "jobbank104.public-items/v1",
+    "jobbank104.proxy-public-items/v1",
+    "cnstaff.public-items/v1",
+    "seamlesshiring.public-items/v1"
+  ],
+  "compiled_profiles": 145,
+  "current_registry_configurations": {
+    "jobbank104": 4,
+    "cnstaff": 1,
+    "seamlesshiring": 1
+  },
+  "local_proofs": {
+    "actual_python_inventory_cases": 51,
+    "actual_python_http_traces": 87,
+    "publisher_redirect_cases": 21,
+    "registry_bindings": 6,
+    "real_database_settlement_and_transport_cases": 14,
+    "supported_cold_retirement_cases": 12,
+    "api_full_race": "PASS5.202s",
+    "api_and_worker_vet": "PASS",
+    "initial_head_full_queue_race": "PASS455.589s at f7c1ee3ec4fa00d58f4481909fc866448d83b44c",
+    "initial_head_full_worker_race": "PASS652.516s at f7c1ee3ec4fa00d58f4481909fc866448d83b44c"
+  },
+  "corrected_failures": [
+    "Initial real gone test exposed missing provider_gone classification; corrected source-bound error kind without changing publisher precedence.",
+    "Direct proxy-rejection assertion was corrected to the established wrapped ErrUnsupportedProfile; no execution relaxation.",
+    "Dedicated registry coverage includes each direct/proxy binding and rejects unsupported settings."
+  ],
+  "source979_delivery": {
+    "pr": 10366,
+    "reviewed_head": "dea51862e5d2cb67b3c0989d52ce199754142585",
+    "source_revision": "5b41c1fd4cc5b80322b4e4c90a6630ab4156e798",
+    "version": "0.13.979",
+    "profiles": 141,
+    "new_profiles": 6,
+    "configurations": 98,
+    "original_crawler_run": 37816859534,
+    "original_renderer_run": 37816935520,
+    "attempt": 1,
+    "rollouts": "SUCCESS",
+    "independent_proof": "complete healthy immutable base at cold240; ordinary inactive",
+    "latest_state": "B0 active241, ordinary inactive after failed activation; full9writer/7health supported recovery independently verified"
+  },
+  "authority": "Synthetic/reference/real local database qualification does not grant production ownership. Fresh exact-source config/route admission and original supported wrappers remain required.",
+  "ukg_binding_correction": {
+    "trigger": "source979 zero-drift preflight then UKG Co-op/Ollies equivalent aliases persisted during quiescence; activation refused; supported full recovery passed",
+    "behavior": "bind resolved target; preserve conflicting or malformed supplied aliases and every other field in the hash",
+    "reference_binding_cases": 10,
+    "changed_parser_fence": "PASS",
+    "real_activation_and_retirement_cases": 13,
+    "focused_race": "PASS8.754s",
+    "production_authority": "pending revised exact-source admission and supported cutover"
+  }
+}

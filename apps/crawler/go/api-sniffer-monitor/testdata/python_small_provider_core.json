@@ -1,0 +1,5589 @@
+[
+  {
+    "provider": "cnstaff",
+    "name": "populated",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": [
+          {
+            "job_id": "1",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/1/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "1",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "cnstaff",
+    "name": "empty-authoritative",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 0,
+        "page": {
+          "now": 1,
+          "total": 0
+        },
+        "list": []
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "cnstaff",
+    "name": "non-object",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      []
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "cnstaff",
+    "name": "bool-total",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": true,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": []
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "cnstaff",
+    "name": "float-total",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1.0,
+        "page": {
+          "now": 1,
+          "total": 1.0
+        },
+        "list": []
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "cnstaff",
+    "name": "advertised-gap",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": []
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "cnstaff",
+    "name": "duplicate-identity",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 2,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": [
+          {
+            "job_id": "1",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "1",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "cnstaff",
+    "name": "malformed-row",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": [
+          null
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "cnstaff",
+    "name": "missing-id",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": [
+          {}
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "cnstaff",
+    "name": "two-pages",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 16,
+        "page": {
+          "now": 1,
+          "total": 2
+        },
+        "list": [
+          {
+            "job_id": "1",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "2",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "3",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "4",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "5",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "6",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "7",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "8",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "9",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "10",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "11",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "12",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "13",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "14",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "15",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      },
+      {
+        "total": 16,
+        "page": {
+          "now": 2,
+          "total": 2
+        },
+        "list": [
+          {
+            "job_id": "16",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=2",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/1/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "1",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/2/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "2",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/3/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "3",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/4/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "4",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/5/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "5",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/6/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "6",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/7/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "7",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/8/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "8",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/9/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "9",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/10/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "10",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/11/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "11",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/12/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "12",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/13/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "13",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/14/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "14",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/15/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "15",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/16/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "16",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "cnstaff",
+    "name": "changed-count",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 16,
+        "page": {
+          "now": 1,
+          "total": 2
+        },
+        "list": [
+          {
+            "job_id": "1",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "2",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "3",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "4",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "5",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "6",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "7",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "8",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "9",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "10",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "11",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "12",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "13",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "14",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "15",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      },
+      {
+        "total": 17,
+        "page": {
+          "now": 2,
+          "total": 2
+        },
+        "list": [
+          {
+            "job_id": "16",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          },
+          {
+            "job_id": "17",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=2",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "cnstaff",
+    "name": "field-job_detail",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": [
+          {
+            "job_id": "1",
+            "job_name_show": " 工程師 ",
+            "job_detail": "",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/1/",
+          "title": "工程師",
+          "description": "<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "1",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "cnstaff",
+    "name": "field-job_desc2",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": [
+          {
+            "job_id": "1",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": null,
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/1/",
+          "title": "工程師",
+          "description": "建造<br>系統",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "1",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "cnstaff",
+    "name": "field-job_id",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": [
+          {
+            "job_id": 1,
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "cnstaff",
+    "name": "field-job_published_at",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": [
+          {
+            "job_id": "1",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "0000-00-00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/1/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "1",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "cnstaff",
+    "name": "field-job_end_at",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": [
+          {
+            "job_id": "1",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "nonsense",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/1/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>"
+          },
+          "metadata": {
+            "id": "1",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "cnstaff",
+    "name": "field-job_name_show",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": [
+          {
+            "job_id": "1",
+            "job_name_show": null,
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "jobbank104",
+    "name": "populated",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": [
+              {
+                "jobNo": "a0001",
+                "jobUrl": "https://www.104.com.tw/job/a0001?jobsource=company",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://www.104.com.tw/job/a0001",
+          "title": "工程師",
+          "description": "<p>Build &amp; deploy &#x27;things&#x27; &quot;well&quot;.<br>Next</p>\n<p>Paragraph &lt;text&gt;</p>",
+          "locations": [
+            "台北"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "jobbank104",
+    "name": "empty-authoritative",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 0,
+          "totalPages": 0,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": []
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "jobbank104",
+    "name": "non-object",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      []
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "jobbank104",
+    "name": "bool-total",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": true,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": []
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "jobbank104",
+    "name": "float-total",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1.0,
+          "totalPages": 1.0,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": []
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "jobbank104",
+    "name": "advertised-gap",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": []
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "jobbank104",
+    "name": "duplicate-identity",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 2,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": [
+              {
+                "jobNo": "a0001",
+                "jobUrl": "https://www.104.com.tw/job/a0001?jobsource=company",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              },
+              {
+                "jobNo": "a0001",
+                "jobUrl": "https://www.104.com.tw/job/a0001?jobsource=company",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "jobbank104",
+    "name": "malformed-row",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": [
+              null
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "jobbank104",
+    "name": "missing-id",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": [
+              {}
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "jobbank104",
+    "name": "two-pages",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 3,
+          "totalPages": 2,
+          "page": 1,
+          "pageSize": 2,
+          "list": {
+            "normalJobs": [
+              {
+                "jobNo": "a0001",
+                "jobUrl": "https://www.104.com.tw/job/a0001?jobsource=company",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              },
+              {
+                "jobNo": "a0002",
+                "jobUrl": "https://www.104.com.tw/job/a0002?jobsource=company",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              }
+            ]
+          }
+        }
+      },
+      {
+        "data": {
+          "totalCount": 3,
+          "totalPages": 2,
+          "page": 2,
+          "pageSize": 2,
+          "list": {
+            "normalJobs": [
+              {
+                "jobNo": "a0003",
+                "jobUrl": "https://www.104.com.tw/job/a0003?jobsource=company",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=2&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://www.104.com.tw/job/a0001",
+          "title": "工程師",
+          "description": "<p>Build &amp; deploy &#x27;things&#x27; &quot;well&quot;.<br>Next</p>\n<p>Paragraph &lt;text&gt;</p>",
+          "locations": [
+            "台北"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        },
+        {
+          "url": "https://www.104.com.tw/job/a0002",
+          "title": "工程師",
+          "description": "<p>Build &amp; deploy &#x27;things&#x27; &quot;well&quot;.<br>Next</p>\n<p>Paragraph &lt;text&gt;</p>",
+          "locations": [
+            "台北"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        },
+        {
+          "url": "https://www.104.com.tw/job/a0003",
+          "title": "工程師",
+          "description": "<p>Build &amp; deploy &#x27;things&#x27; &quot;well&quot;.<br>Next</p>\n<p>Paragraph &lt;text&gt;</p>",
+          "locations": [
+            "台北"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "jobbank104",
+    "name": "wrong-page",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1,
+          "totalPages": 1,
+          "page": 2,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": [
+              {
+                "jobNo": "a0001",
+                "jobUrl": "https://www.104.com.tw/job/a0001?jobsource=company",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "jobbank104",
+    "name": "field-jobNo",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": [
+              {
+                "jobNo": "bad",
+                "jobUrl": "https://www.104.com.tw/job/a0001?jobsource=company",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "jobbank104",
+    "name": "field-jobUrl",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": [
+              {
+                "jobNo": "a0001",
+                "jobUrl": "https://evil.example/job/a0001",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "jobbank104",
+    "name": "field-jobName",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": [
+              {
+                "jobNo": "a0001",
+                "jobUrl": "https://www.104.com.tw/job/a0001?jobsource=company",
+                "jobName": "",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "jobbank104",
+    "name": "field-jobDescription",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": [
+              {
+                "jobNo": "a0001",
+                "jobUrl": "https://www.104.com.tw/job/a0001?jobsource=company",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": ""
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "jobbank104",
+    "name": "field-jobAddrNoDesc",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": [
+              {
+                "jobNo": "a0001",
+                "jobUrl": "https://www.104.com.tw/job/a0001?jobsource=company",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": null,
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "populated",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1,
+            "data": [
+              {
+                "id": 1,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://tenant.seamlesshiring.com/job/view/1",
+          "title": " Engineer ",
+          "description": "<p>Build</p>\n<div>Ship</div>",
+          "locations": [
+            "Lagos"
+          ],
+          "employment_type": "Full time",
+          "job_location_type": "hybrid",
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": 1,
+            "valid_through": "2027-01-01",
+            "position": "Platform"
+          },
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "empty-authoritative",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 0,
+            "data": [],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "non-object",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      []
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "bool-total",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": true,
+            "data": [],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "float-total",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1.0,
+            "data": [],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "advertised-gap",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1,
+            "data": [],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [],
+      "truncated": true
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "duplicate-identity",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 2,
+            "data": [
+              {
+                "id": 1,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              },
+              {
+                "id": 1,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://tenant.seamlesshiring.com/job/view/1",
+          "title": " Engineer ",
+          "description": "<p>Build</p>\n<div>Ship</div>",
+          "locations": [
+            "Lagos"
+          ],
+          "employment_type": "Full time",
+          "job_location_type": "hybrid",
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": 1,
+            "valid_through": "2027-01-01",
+            "position": "Platform"
+          },
+          "source_identity": null
+        }
+      ],
+      "truncated": true
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "malformed-row",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1,
+            "data": [
+              null
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [],
+      "truncated": true
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "missing-id",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1,
+            "data": [
+              {}
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [],
+      "truncated": true
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "two-pages",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 2,
+            "data": [
+              {
+                "id": 1,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": "opaque-signal"
+          }
+        }
+      },
+      {
+        "data": {
+          "jobs": {
+            "total": 2,
+            "data": [
+              {
+                "id": 2,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=2",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://tenant.seamlesshiring.com/job/view/1",
+          "title": " Engineer ",
+          "description": "<p>Build</p>\n<div>Ship</div>",
+          "locations": [
+            "Lagos"
+          ],
+          "employment_type": "Full time",
+          "job_location_type": "hybrid",
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": 1,
+            "valid_through": "2027-01-01",
+            "position": "Platform"
+          },
+          "source_identity": null
+        },
+        {
+          "url": "https://tenant.seamlesshiring.com/job/view/2",
+          "title": " Engineer ",
+          "description": "<p>Build</p>\n<div>Ship</div>",
+          "locations": [
+            "Lagos"
+          ],
+          "employment_type": "Full time",
+          "job_location_type": "hybrid",
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": 2,
+            "valid_through": "2027-01-01",
+            "position": "Platform"
+          },
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "changed-count",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 2,
+            "data": [
+              {
+                "id": 1,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": "opaque-signal"
+          }
+        }
+      },
+      {
+        "data": {
+          "jobs": {
+            "total": 3,
+            "data": [
+              {
+                "id": 2,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=2",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "no-progress",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 2,
+            "data": [],
+            "next_page_url": "opaque-signal"
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": null
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "field-summary-bool",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1,
+            "data": [
+              {
+                "id": 1,
+                "title": " Engineer ",
+                "summary": false,
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://tenant.seamlesshiring.com/job/view/1",
+          "title": " Engineer ",
+          "description": "<div>Ship</div>",
+          "locations": [
+            "Lagos"
+          ],
+          "employment_type": "Full time",
+          "job_location_type": "hybrid",
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": 1,
+            "valid_through": "2027-01-01",
+            "position": "Platform"
+          },
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "field-details-int",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1,
+            "data": [
+              {
+                "id": 1,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": 0,
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://tenant.seamlesshiring.com/job/view/1",
+          "title": " Engineer ",
+          "description": "<p>Build</p>",
+          "locations": [
+            "Lagos"
+          ],
+          "employment_type": "Full time",
+          "job_location_type": "hybrid",
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": 1,
+            "valid_through": "2027-01-01",
+            "position": "Platform"
+          },
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "field-summary-list",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1,
+            "data": [
+              {
+                "id": 1,
+                "title": " Engineer ",
+                "summary": [
+                  " ordered ",
+                  2
+                ],
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://tenant.seamlesshiring.com/job/view/1",
+          "title": " Engineer ",
+          "description": "[' ordered ', 2]\n<div>Ship</div>",
+          "locations": [
+            "Lagos"
+          ],
+          "employment_type": "Full time",
+          "job_location_type": "hybrid",
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": 1,
+            "valid_through": "2027-01-01",
+            "position": "Platform"
+          },
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "field-location-NoneType",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1,
+            "data": [
+              {
+                "id": 1,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": "<div>Ship</div>",
+                "location": null,
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://tenant.seamlesshiring.com/job/view/1",
+          "title": " Engineer ",
+          "description": "<p>Build</p>\n<div>Ship</div>",
+          "locations": null,
+          "employment_type": "Full time",
+          "job_location_type": "hybrid",
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": 1,
+            "valid_through": "2027-01-01",
+            "position": "Platform"
+          },
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "field-work_style-str",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1,
+            "data": [
+              {
+                "id": 1,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "unknown",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://tenant.seamlesshiring.com/job/view/1",
+          "title": " Engineer ",
+          "description": "<p>Build</p>\n<div>Ship</div>",
+          "locations": [
+            "Lagos"
+          ],
+          "employment_type": "Full time",
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": 1,
+            "valid_through": "2027-01-01",
+            "position": "Platform"
+          },
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "field-id-int",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1,
+            "data": [
+              {
+                "id": 0,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://tenant.seamlesshiring.com/job/view/0",
+          "title": " Engineer ",
+          "description": "<p>Build</p>\n<div>Ship</div>",
+          "locations": [
+            "Lagos"
+          ],
+          "employment_type": "Full time",
+          "job_location_type": "hybrid",
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": 0,
+            "valid_through": "2027-01-01",
+            "position": "Platform"
+          },
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": null
+  },
+  {
+    "provider": "cnstaff",
+    "name": "http-201-then-success",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": [
+          {
+            "job_id": "1",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": [
+      201,
+      200
+    ]
+  },
+  {
+    "provider": "cnstaff",
+    "name": "http-202-then-success",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": [
+          {
+            "job_id": "1",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": [
+      202,
+      200
+    ]
+  },
+  {
+    "provider": "cnstaff",
+    "name": "http-401-then-success",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": [
+          {
+            "job_id": "1",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": [
+      401,
+      200
+    ]
+  },
+  {
+    "provider": "cnstaff",
+    "name": "http-403-then-success",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": [
+          {
+            "job_id": "1",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": [
+      403,
+      200
+    ]
+  },
+  {
+    "provider": "cnstaff",
+    "name": "http-404-then-success",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": [
+          {
+            "job_id": "1",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": [
+      404,
+      200
+    ]
+  },
+  {
+    "provider": "cnstaff",
+    "name": "http-410-then-success",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": [
+          {
+            "job_id": "1",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": [
+      410,
+      200
+    ]
+  },
+  {
+    "provider": "cnstaff",
+    "name": "http-408-then-success",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": [
+          {
+            "job_id": "1",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/1/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "1",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": [
+      408,
+      200
+    ]
+  },
+  {
+    "provider": "cnstaff",
+    "name": "http-429-then-success",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": [
+          {
+            "job_id": "1",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/1/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "1",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": [
+      429,
+      200
+    ]
+  },
+  {
+    "provider": "cnstaff",
+    "name": "http-503-then-success",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": [
+          {
+            "job_id": "1",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/1/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "1",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": [
+      503,
+      200
+    ]
+  },
+  {
+    "provider": "cnstaff",
+    "name": "http-999-then-success",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": [
+          {
+            "job_id": "1",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": [
+      999,
+      200
+    ]
+  },
+  {
+    "provider": "cnstaff",
+    "name": "http-0-then-success",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": [
+          {
+            "job_id": "1",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://tenant.cnstaff.com/recruitment/job/detail/id/1/",
+          "title": "工程師",
+          "description": "建造<br>系統\n<p>有經驗</p>",
+          "locations": [
+            "北京"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": "zh",
+          "localizations": null,
+          "extras": {
+            "responsibilities": "建造<br>系統",
+            "qualifications": "<p>有經驗</p>",
+            "valid_through": "2027-01-01"
+          },
+          "metadata": {
+            "id": "1",
+            "employer": "企業",
+            "department": "平台",
+            "job_function": "技術"
+          },
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": [
+      0,
+      200
+    ]
+  },
+  {
+    "provider": "cnstaff",
+    "name": "http-503-exhausted",
+    "board": {
+      "board_url": "https://tenant.cnstaff.com/recruit",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "total": 1,
+        "page": {
+          "now": 1,
+          "total": 1
+        },
+        "list": [
+          {
+            "job_id": "1",
+            "job_name_show": " 工程師 ",
+            "job_detail": "<div>建造<br>系統</div>",
+            "job_desc2": "<p>有經驗</p>",
+            "job_address_name": " 北京 ",
+            "job_published_at": "2026-10-08 10:00:00",
+            "job_end_at": "2027-01-01",
+            "company_orgnize_name_show": " 企業 ",
+            "ws_system_job_type_ids_name": " 平台 ",
+            "g_job_type": " 技術 "
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://tenant.cnstaff.com/recruit?n=1&p=1",
+        "headers": {
+          "accept": "application/json, text/javascript, */*; q=0.01",
+          "referer": "https://tenant.cnstaff.com/recruit",
+          "x-requested-with": "XMLHttpRequest"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": [
+      503
+    ]
+  },
+  {
+    "provider": "jobbank104",
+    "name": "http-201-then-success",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": [
+              {
+                "jobNo": "a0001",
+                "jobUrl": "https://www.104.com.tw/job/a0001?jobsource=company",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": [
+      201,
+      200
+    ]
+  },
+  {
+    "provider": "jobbank104",
+    "name": "http-202-then-success",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": [
+              {
+                "jobNo": "a0001",
+                "jobUrl": "https://www.104.com.tw/job/a0001?jobsource=company",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://www.104.com.tw/job/a0001",
+          "title": "工程師",
+          "description": "<p>Build &amp; deploy &#x27;things&#x27; &quot;well&quot;.<br>Next</p>\n<p>Paragraph &lt;text&gt;</p>",
+          "locations": [
+            "台北"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": [
+      202,
+      200
+    ]
+  },
+  {
+    "provider": "jobbank104",
+    "name": "http-401-then-success",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": [
+              {
+                "jobNo": "a0001",
+                "jobUrl": "https://www.104.com.tw/job/a0001?jobsource=company",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://www.104.com.tw/job/a0001",
+          "title": "工程師",
+          "description": "<p>Build &amp; deploy &#x27;things&#x27; &quot;well&quot;.<br>Next</p>\n<p>Paragraph &lt;text&gt;</p>",
+          "locations": [
+            "台北"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": [
+      401,
+      200
+    ]
+  },
+  {
+    "provider": "jobbank104",
+    "name": "http-403-then-success",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": [
+              {
+                "jobNo": "a0001",
+                "jobUrl": "https://www.104.com.tw/job/a0001?jobsource=company",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://www.104.com.tw/job/a0001",
+          "title": "工程師",
+          "description": "<p>Build &amp; deploy &#x27;things&#x27; &quot;well&quot;.<br>Next</p>\n<p>Paragraph &lt;text&gt;</p>",
+          "locations": [
+            "台北"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": [
+      403,
+      200
+    ]
+  },
+  {
+    "provider": "jobbank104",
+    "name": "http-404-then-success",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": [
+              {
+                "jobNo": "a0001",
+                "jobUrl": "https://www.104.com.tw/job/a0001?jobsource=company",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": [
+      404,
+      200
+    ]
+  },
+  {
+    "provider": "jobbank104",
+    "name": "http-410-then-success",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": [
+              {
+                "jobNo": "a0001",
+                "jobUrl": "https://www.104.com.tw/job/a0001?jobsource=company",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": [
+      410,
+      200
+    ]
+  },
+  {
+    "provider": "jobbank104",
+    "name": "http-408-then-success",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": [
+              {
+                "jobNo": "a0001",
+                "jobUrl": "https://www.104.com.tw/job/a0001?jobsource=company",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://www.104.com.tw/job/a0001",
+          "title": "工程師",
+          "description": "<p>Build &amp; deploy &#x27;things&#x27; &quot;well&quot;.<br>Next</p>\n<p>Paragraph &lt;text&gt;</p>",
+          "locations": [
+            "台北"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": [
+      408,
+      200
+    ]
+  },
+  {
+    "provider": "jobbank104",
+    "name": "http-429-then-success",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": [
+              {
+                "jobNo": "a0001",
+                "jobUrl": "https://www.104.com.tw/job/a0001?jobsource=company",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://www.104.com.tw/job/a0001",
+          "title": "工程師",
+          "description": "<p>Build &amp; deploy &#x27;things&#x27; &quot;well&quot;.<br>Next</p>\n<p>Paragraph &lt;text&gt;</p>",
+          "locations": [
+            "台北"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": [
+      429,
+      200
+    ]
+  },
+  {
+    "provider": "jobbank104",
+    "name": "http-503-then-success",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": [
+              {
+                "jobNo": "a0001",
+                "jobUrl": "https://www.104.com.tw/job/a0001?jobsource=company",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://www.104.com.tw/job/a0001",
+          "title": "工程師",
+          "description": "<p>Build &amp; deploy &#x27;things&#x27; &quot;well&quot;.<br>Next</p>\n<p>Paragraph &lt;text&gt;</p>",
+          "locations": [
+            "台北"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": [
+      503,
+      200
+    ]
+  },
+  {
+    "provider": "jobbank104",
+    "name": "http-999-then-success",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": [
+              {
+                "jobNo": "a0001",
+                "jobUrl": "https://www.104.com.tw/job/a0001?jobsource=company",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://www.104.com.tw/job/a0001",
+          "title": "工程師",
+          "description": "<p>Build &amp; deploy &#x27;things&#x27; &quot;well&quot;.<br>Next</p>\n<p>Paragraph &lt;text&gt;</p>",
+          "locations": [
+            "台北"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": [
+      999,
+      200
+    ]
+  },
+  {
+    "provider": "jobbank104",
+    "name": "http-0-then-success",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": [
+              {
+                "jobNo": "a0001",
+                "jobUrl": "https://www.104.com.tw/job/a0001?jobsource=company",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://www.104.com.tw/job/a0001",
+          "title": "工程師",
+          "description": "<p>Build &amp; deploy &#x27;things&#x27; &quot;well&quot;.<br>Next</p>\n<p>Paragraph &lt;text&gt;</p>",
+          "locations": [
+            "台北"
+          ],
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": [
+      0,
+      200
+    ]
+  },
+  {
+    "provider": "jobbank104",
+    "name": "http-503-exhausted",
+    "board": {
+      "board_url": "https://www.104.com.tw/company/abcde",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "totalCount": 1,
+          "totalPages": 1,
+          "page": 1,
+          "pageSize": 100,
+          "list": {
+            "normalJobs": [
+              {
+                "jobNo": "a0001",
+                "jobUrl": "https://www.104.com.tw/job/a0001?jobsource=company",
+                "jobName": " 工程師 ",
+                "jobAddrNoDesc": " 台北 ",
+                "jobDescription": " Build & deploy 'things' \"well\".\nNext\n\nParagraph <text> "
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://www.104.com.tw/api/companies/abcde/jobs?page=1&pageSize=100",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://www.104.com.tw/company/abcde"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": [
+      503
+    ]
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "http-201-then-success",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1,
+            "data": [
+              {
+                "id": 1,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://tenant.seamlesshiring.com/job/view/1",
+          "title": " Engineer ",
+          "description": "<p>Build</p>\n<div>Ship</div>",
+          "locations": [
+            "Lagos"
+          ],
+          "employment_type": "Full time",
+          "job_location_type": "hybrid",
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": 1,
+            "valid_through": "2027-01-01",
+            "position": "Platform"
+          },
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": [
+      201,
+      200
+    ]
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "http-202-then-success",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1,
+            "data": [
+              {
+                "id": 1,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": {
+      "jobs": [
+        {
+          "url": "https://tenant.seamlesshiring.com/job/view/1",
+          "title": " Engineer ",
+          "description": "<p>Build</p>\n<div>Ship</div>",
+          "locations": [
+            "Lagos"
+          ],
+          "employment_type": "Full time",
+          "job_location_type": "hybrid",
+          "date_posted": "2026-10-08",
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": {
+            "id": 1,
+            "valid_through": "2027-01-01",
+            "position": "Platform"
+          },
+          "source_identity": null
+        }
+      ],
+      "truncated": false
+    },
+    "error": false,
+    "statuses": [
+      202,
+      200
+    ]
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "http-401-then-success",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1,
+            "data": [
+              {
+                "id": 1,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": [
+      401,
+      200
+    ]
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "http-403-then-success",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1,
+            "data": [
+              {
+                "id": 1,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": [
+      403,
+      200
+    ]
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "http-404-then-success",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1,
+            "data": [
+              {
+                "id": 1,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": [
+      404,
+      200
+    ]
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "http-410-then-success",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1,
+            "data": [
+              {
+                "id": 1,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": [
+      410,
+      200
+    ]
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "http-408-then-success",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1,
+            "data": [
+              {
+                "id": 1,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": [
+      408,
+      200
+    ]
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "http-429-then-success",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1,
+            "data": [
+              {
+                "id": 1,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": [
+      429,
+      200
+    ]
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "http-503-then-success",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1,
+            "data": [
+              {
+                "id": 1,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": [
+      503,
+      200
+    ]
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "http-999-then-success",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1,
+            "data": [
+              {
+                "id": 1,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": [
+      999,
+      200
+    ]
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "http-0-then-success",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1,
+            "data": [
+              {
+                "id": 1,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": [
+      0,
+      200
+    ]
+  },
+  {
+    "provider": "seamlesshiring",
+    "name": "http-503-exhausted",
+    "board": {
+      "board_url": "https://tenant.seamlesshiring.com/",
+      "metadata": {}
+    },
+    "pages": [
+      {
+        "data": {
+          "jobs": {
+            "total": 1,
+            "data": [
+              {
+                "id": 1,
+                "title": " Engineer ",
+                "summary": "<p>Build</p>",
+                "details": "<div>Ship</div>",
+                "location": " Lagos ",
+                "job_type": "Full time",
+                "work_style": "Hybrid",
+                "post_date": "2026-10-08",
+                "expiry_date": "2027-01-01",
+                "position": "Platform"
+              }
+            ],
+            "next_page_url": null
+          }
+        }
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://tenant.seamlesshiring.com/v2/jobs/job-list?limit=100&page=1",
+        "headers": {
+          "accept": "application/json"
+        }
+      }
+    ],
+    "expected": null,
+    "error": true,
+    "statuses": [
+      503
+    ]
+  }
+]

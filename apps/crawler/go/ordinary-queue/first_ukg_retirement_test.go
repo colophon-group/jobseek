@@ -68,11 +68,12 @@ func TestRealFirstRetirementAfterLegacyUKGListingDiscovery(t *testing.T) {
 				t.Fatal(err)
 			}
 			canonical, before := coldCanonicalSnapshot(t, p.f), snapshot(t, p.f.client)
-			if _, err := a.ReadWorkdayDetail(ctx, claim); !errors.Is(err, ErrAuthorityLost) {
-				t.Fatal("changed configuration granted runtime detail authority", err)
+			equivalent := mode == "learned-listing" || mode == "learned-identifiers" || mode == "cache-only"
+			if _, err := a.ReadWorkdayDetail(ctx, claim); equivalent && err != nil || !equivalent && !errors.Is(err, ErrAuthorityLost) {
+				t.Fatal("runtime detail did not bind resolved UKG target", err)
 			}
 			result, err := applyFirstFixture(t, p, true)
-			if mode != "learned-listing" && mode != "learned-identifiers" {
+			if !equivalent {
 				if !errors.Is(err, ErrAuthorityLost) || firstFixtureState(t, p) != "active" || !reflect.DeepEqual(before, snapshot(t, p.f.client)) || canonical != coldCanonicalSnapshot(t, p.f) {
 					t.Fatal("unrelated configuration change admitted or partially retired", err)
 				}
