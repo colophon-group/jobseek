@@ -202,6 +202,9 @@ func parseDOMInventory(ctx context.Context, result RichDiscovery, profile queue.
 		}
 		urls[absolute] = struct{}{}
 	}
+	if c.IncludeBoardURL {
+		urls[c.BoardURL] = struct{}{}
+	}
 	ordered := make([]string, 0, len(urls))
 	for raw := range urls {
 		ordered = append(ordered, raw)
@@ -242,9 +245,16 @@ func discoverDOMInventory(ctx context.Context, client *http.Client, profile queu
 		return RichDiscovery{}, err
 	}
 	client = &scoped
-	return collectDOMListingPages(ctx, profile, config, c, func(p queue.GreenhouseMonitorProfile, c dom.ListingConfig, later bool) (RichDiscovery, error) {
+	found, err := collectDOMListingPages(ctx, profile, config, c, func(p queue.GreenhouseMonitorProfile, c dom.ListingConfig, later bool) (RichDiscovery, error) {
+		if later {
+			c.IncludeBoardURL = false
+		}
 		return discoverDOMSingleInventory(ctx, client, p, c, later)
 	})
+	if err != nil || !c.RequireJSONLD {
+		return found, err
+	}
+	return verifyDOMJobPostingInventory(ctx, client, profile, config, found)
 }
 
 func collectDOMListingPages(ctx context.Context, profile queue.GreenhouseMonitorProfile, config map[string]string, c dom.ListingConfig, fetch func(queue.GreenhouseMonitorProfile, dom.ListingConfig, bool) (RichDiscovery, error)) (RichDiscovery, error) {
@@ -296,6 +306,7 @@ func collectDOMListingPages(ctx context.Context, profile queue.GreenhouseMonitor
 		pageProfile.Endpoint = endpoint
 		pageOptions := c
 		pageOptions.Attempts = c.Pagination.Attempts
+		pageOptions.IncludeBoardURL = false
 		next, e := fetch(pageProfile, pageOptions, true)
 		result.Response = next.Response
 		if next.Response != nil && next.Response.reserved {

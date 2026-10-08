@@ -1,0 +1,392 @@
+[
+  {
+    "name": "include-empty-document",
+    "board_url": "https://example.com/careers",
+    "metadata": {
+      "link_selector": "a.job",
+      "url_filter": "/jobs/",
+      "include_board_url": true
+    },
+    "listing": "<html>Document</html>",
+    "details": {},
+    "expected": [
+      "https://example.com/careers"
+    ],
+    "processing_expected": [],
+    "drop_reasons": {
+      "board_homepage": 1
+    },
+    "calls": [
+      "https://example.com/careers"
+    ]
+  },
+  {
+    "name": "include-links",
+    "board_url": "https://example.com/careers",
+    "metadata": {
+      "link_selector": "a.job",
+      "url_filter": "/jobs/",
+      "include_board_url": true
+    },
+    "listing": "<a class=\"job\" href=\"/jobs/1\">Engineer</a>",
+    "details": {
+      "/jobs/1": {
+        "status": 200,
+        "body": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\"}</script>"
+      }
+    },
+    "expected": [
+      "https://example.com/careers",
+      "https://example.com/jobs/1"
+    ],
+    "processing_expected": [
+      "https://example.com/jobs/1"
+    ],
+    "drop_reasons": {
+      "board_homepage": 1
+    },
+    "calls": [
+      "https://example.com/careers"
+    ]
+  },
+  {
+    "name": "include-disabled",
+    "board_url": "https://example.com/careers",
+    "metadata": {
+      "link_selector": "a.job",
+      "url_filter": "/jobs/",
+      "include_board_url": false
+    },
+    "listing": "<html>Document</html>",
+    "details": {},
+    "expected": [],
+    "processing_expected": [],
+    "drop_reasons": {},
+    "calls": [
+      "https://example.com/careers"
+    ]
+  },
+  {
+    "name": "verify-included-board",
+    "board_url": "https://example.com/careers",
+    "metadata": {
+      "link_selector": "a.job",
+      "url_filter": "/jobs/",
+      "include_board_url": true,
+      "require_jsonld_jobposting": true
+    },
+    "listing": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\"}</script>",
+    "details": {},
+    "expected": [
+      "https://example.com/careers"
+    ],
+    "processing_expected": [],
+    "drop_reasons": {
+      "board_homepage": 1
+    },
+    "calls": [
+      "https://example.com/careers",
+      "https://example.com/careers"
+    ]
+  },
+  {
+    "name": "verify-live",
+    "board_url": "https://example.com/careers",
+    "metadata": {
+      "link_selector": "a.job",
+      "url_filter": "/jobs/",
+      "require_jsonld_jobposting": true
+    },
+    "listing": "<a class=\"job\" href=\"/jobs/1\">Engineer</a>",
+    "details": {
+      "/jobs/1": {
+        "status": 200,
+        "body": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\"}</script>"
+      }
+    },
+    "expected": [
+      "https://example.com/jobs/1"
+    ],
+    "processing_expected": [
+      "https://example.com/jobs/1"
+    ],
+    "drop_reasons": {},
+    "calls": [
+      "https://example.com/careers",
+      "https://example.com/jobs/1"
+    ]
+  },
+  {
+    "name": "verify-mixed",
+    "board_url": "https://example.com/careers",
+    "metadata": {
+      "link_selector": "a.job",
+      "url_filter": "/jobs/",
+      "require_jsonld_jobposting": true
+    },
+    "listing": "<a class=\"job\" href=\"/jobs/1\">Engineer</a><a class=\"job\" href=\"/jobs/2\">Gone</a><a class=\"job\" href=\"/jobs/3\">Other</a>",
+    "details": {
+      "/jobs/1": {
+        "status": 200,
+        "body": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\"}</script>"
+      },
+      "/jobs/2": {
+        "status": 404,
+        "body": "gone"
+      },
+      "/jobs/3": {
+        "status": 200,
+        "body": "<html>Other</html>"
+      }
+    },
+    "expected": [
+      "https://example.com/jobs/1"
+    ],
+    "processing_expected": [
+      "https://example.com/jobs/1"
+    ],
+    "drop_reasons": {},
+    "calls": [
+      "https://example.com/careers",
+      "https://example.com/jobs/1",
+      "https://example.com/jobs/2",
+      "https://example.com/jobs/3"
+    ]
+  },
+  {
+    "name": "verify-all-nonjob",
+    "board_url": "https://example.com/careers",
+    "metadata": {
+      "link_selector": "a.job",
+      "url_filter": "/jobs/",
+      "require_jsonld_jobposting": true
+    },
+    "listing": "<a class=\"job\" href=\"/jobs/1\">Engineer</a>",
+    "details": {
+      "/jobs/1": {
+        "status": 200,
+        "body": "<html>Other</html>"
+      }
+    },
+    "expected": [],
+    "processing_expected": [],
+    "drop_reasons": {},
+    "calls": [
+      "https://example.com/careers",
+      "https://example.com/jobs/1"
+    ]
+  },
+  {
+    "name": "verify-gone404",
+    "board_url": "https://example.com/careers",
+    "metadata": {
+      "link_selector": "a.job",
+      "url_filter": "/jobs/",
+      "require_jsonld_jobposting": true
+    },
+    "listing": "<a class=\"job\" href=\"/jobs/1\">Engineer</a>",
+    "details": {
+      "/jobs/1": {
+        "status": 404,
+        "body": "gone"
+      }
+    },
+    "expected": [],
+    "processing_expected": [],
+    "drop_reasons": {},
+    "calls": [
+      "https://example.com/careers",
+      "https://example.com/jobs/1"
+    ]
+  },
+  {
+    "name": "verify-gone410",
+    "board_url": "https://example.com/careers",
+    "metadata": {
+      "link_selector": "a.job",
+      "url_filter": "/jobs/",
+      "require_jsonld_jobposting": true
+    },
+    "listing": "<a class=\"job\" href=\"/jobs/1\">Engineer</a>",
+    "details": {
+      "/jobs/1": {
+        "status": 410,
+        "body": "gone"
+      }
+    },
+    "expected": [],
+    "processing_expected": [],
+    "drop_reasons": {},
+    "calls": [
+      "https://example.com/careers",
+      "https://example.com/jobs/1"
+    ]
+  },
+  {
+    "name": "verify-graph",
+    "board_url": "https://example.com/careers",
+    "metadata": {
+      "link_selector": "a.job",
+      "url_filter": "/jobs/",
+      "require_jsonld_jobposting": true
+    },
+    "listing": "<a class=\"job\" href=\"/jobs/1\">Engineer</a>",
+    "details": {
+      "/jobs/1": {
+        "status": 200,
+        "body": "<script type=\"application/ld+json\">{\"@graph\":[{\"@type\":[\"Thing\",\"JobPosting\"]}]}</script>"
+      }
+    },
+    "expected": [
+      "https://example.com/jobs/1"
+    ],
+    "processing_expected": [
+      "https://example.com/jobs/1"
+    ],
+    "drop_reasons": {},
+    "calls": [
+      "https://example.com/careers",
+      "https://example.com/jobs/1"
+    ]
+  },
+  {
+    "name": "verify-malformed-jsonld",
+    "board_url": "https://example.com/careers",
+    "metadata": {
+      "link_selector": "a.job",
+      "url_filter": "/jobs/",
+      "require_jsonld_jobposting": true
+    },
+    "listing": "<a class=\"job\" href=\"/jobs/1\">Engineer</a>",
+    "details": {
+      "/jobs/1": {
+        "status": 200,
+        "body": "<script type=\"application/ld+json\">invalid</script>"
+      }
+    },
+    "expected": [],
+    "processing_expected": [],
+    "drop_reasons": {},
+    "calls": [
+      "https://example.com/careers",
+      "https://example.com/jobs/1"
+    ]
+  },
+  {
+    "name": "verify-transient503",
+    "board_url": "https://example.com/careers",
+    "metadata": {
+      "link_selector": "a.job",
+      "url_filter": "/jobs/",
+      "require_jsonld_jobposting": true
+    },
+    "listing": "<a class=\"job\" href=\"/jobs/1\">Engineer</a>",
+    "details": {
+      "/jobs/1": {
+        "status": 503,
+        "body": "unavailable"
+      }
+    },
+    "error": true,
+    "error_class": "PaginationFetchError",
+    "calls": [
+      "https://example.com/careers",
+      "https://example.com/jobs/1",
+      "https://example.com/jobs/1",
+      "https://example.com/jobs/1"
+    ]
+  },
+  {
+    "name": "verify-transient403",
+    "board_url": "https://example.com/careers",
+    "metadata": {
+      "link_selector": "a.job",
+      "url_filter": "/jobs/",
+      "require_jsonld_jobposting": true
+    },
+    "listing": "<a class=\"job\" href=\"/jobs/1\">Engineer</a>",
+    "details": {
+      "/jobs/1": {
+        "status": 403,
+        "body": "blocked"
+      }
+    },
+    "error": true,
+    "error_class": "PaginationFetchError",
+    "calls": [
+      "https://example.com/careers",
+      "https://example.com/jobs/1",
+      "https://example.com/jobs/1",
+      "https://example.com/jobs/1"
+    ]
+  },
+  {
+    "name": "verify-empty200",
+    "board_url": "https://example.com/careers",
+    "metadata": {
+      "link_selector": "a.job",
+      "url_filter": "/jobs/",
+      "require_jsonld_jobposting": true
+    },
+    "listing": "<a class=\"job\" href=\"/jobs/1\">Engineer</a>",
+    "details": {
+      "/jobs/1": {
+        "status": 200,
+        "body": ""
+      }
+    },
+    "error": true,
+    "error_class": "PaginationFetchError",
+    "calls": [
+      "https://example.com/careers",
+      "https://example.com/jobs/1",
+      "https://example.com/jobs/1",
+      "https://example.com/jobs/1"
+    ]
+  },
+  {
+    "name": "verify-nonretry201",
+    "board_url": "https://example.com/careers",
+    "metadata": {
+      "link_selector": "a.job",
+      "url_filter": "/jobs/",
+      "require_jsonld_jobposting": true
+    },
+    "listing": "<a class=\"job\" href=\"/jobs/1\">Engineer</a>",
+    "details": {
+      "/jobs/1": {
+        "status": 201,
+        "body": "<script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\"}</script>"
+      }
+    },
+    "expected": [],
+    "processing_expected": [],
+    "drop_reasons": {},
+    "calls": [
+      "https://example.com/careers",
+      "https://example.com/jobs/1"
+    ]
+  },
+  {
+    "name": "verify-reserved-body",
+    "board_url": "https://example.com/careers",
+    "metadata": {
+      "link_selector": "a.job",
+      "url_filter": "/jobs/",
+      "require_jsonld_jobposting": true
+    },
+    "listing": "<a class=\"job\" href=\"/jobs/1\">Engineer</a>",
+    "details": {
+      "/jobs/1": {
+        "status": 200,
+        "body": "<meta name=\"tdm-reservation\" content=\"1\"><script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\"}</script>"
+      }
+    },
+    "error": true,
+    "error_class": "TDMReservedError",
+    "calls": [
+      "https://example.com/careers",
+      "https://example.com/jobs/1"
+    ]
+  }
+]

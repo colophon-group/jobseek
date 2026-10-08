@@ -31,6 +31,7 @@ type Inventory struct {
 	Jobs              []Job
 	Truncated         bool
 	LastResponseProbe bool
+	URLOnly           bool
 }
 type Request struct {
 	Method, URL, Body string
@@ -235,16 +236,12 @@ func Discover(ctx context.Context, o Options, fetch Fetch, join JoinURL) (Invent
 	total, hasTotal := first.total(o.Path, o.TotalPath)
 	pageSize := len(items)
 	projected := []Job{}
-	type sourceRow struct {
-		document *Document
-		row      map[string]any
-	}
-	sourceRows := []sourceRow{}
+	sourceRows := []inventorySourceRow{}
 	add := func(d *Document, rows []map[string]any) error {
 		d.Root = root.Value
 		for _, row := range rows {
-			if o.ItemFilter != nil {
-				sourceRows = append(sourceRows, sourceRow{d, row})
+			if o.ItemFilter != nil || o.AutoFields {
+				sourceRows = append(sourceRows, inventorySourceRow{d, row})
 				continue
 			}
 			job, found, err := project(d, row, o, join)
@@ -391,12 +388,19 @@ func Discover(ctx context.Context, o Options, fetch Fetch, join JoinURL) (Invent
 			}
 		}
 	}
-	if o.ItemFilter != nil {
+	if o.ItemFilter != nil || o.AutoFields {
 		rows := []map[string]any{}
 		for _, source := range sourceRows {
 			rows = append(rows, source.row)
 		}
-		selected, err := FilterItemIndices(rows, o.ItemFilter)
+		selected := []int{}
+		for i := range rows {
+			selected = append(selected, i)
+		}
+		var err error
+		if o.ItemFilter != nil {
+			selected, err = FilterItemIndices(rows, o.ItemFilter)
+		}
 		if err != nil {
 			return result, err
 		}
@@ -405,6 +409,20 @@ func Discover(ctx context.Context, o Options, fetch Fetch, join JoinURL) (Invent
 			total = max(0, total-removed)
 		}
 		itemCount -= removed
+		if o.AutoFields {
+			samples := []inventorySourceRow{}
+			for _, i := range selected {
+				samples = append(samples, sourceRows[i])
+				if len(samples) == 5 {
+					break
+				}
+			}
+			o.Fields, err = autoMapFields(samples)
+			if err != nil {
+				return result, err
+			}
+			result.URLOnly = len(o.Fields) == 0
+		}
 		for _, i := range selected {
 			source := sourceRows[i]
 			job, found, err := project(source.document, source.row, o, join)

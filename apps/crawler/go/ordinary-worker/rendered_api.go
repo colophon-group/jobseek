@@ -72,7 +72,7 @@ func parseAPIReplayResponse(profile queue.GreenhouseMonitorProfile, response rep
 		if err != nil {
 			return RichDiscovery{}, err
 		}
-		result.Jobs = append(result.Jobs, RichMonitorJob{URL: job.URL, Title: title, Description: description, Locations: job.Locations, Language: job.Metadata["language"], DatePosted: job.DatePosted, Metadata: job.Metadata, EmploymentType: job.EmploymentType, JobLocationType: job.JobLocationType, Extras: job.Extras})
+		result.Jobs = append(result.Jobs, RichMonitorJob{URL: job.URL, URLOnly: inventory.URLOnly, Title: title, Description: description, Locations: job.Locations, Language: job.Metadata["language"], DatePosted: job.DatePosted, Metadata: job.Metadata, EmploymentType: job.EmploymentType, JobLocationType: job.JobLocationType, Extras: job.Extras})
 	}
 	return result, nil
 }

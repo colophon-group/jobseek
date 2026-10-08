@@ -85,6 +85,7 @@ async def run(name, metadata, pages):
                     if result.jobs_by_url is not None
                     else result.urls
                 )
+            row["url_only"] = isinstance(jobs, set)
             if isinstance(jobs, set):
                 out = [
                     {
@@ -279,4 +280,5 @@ async def main():
     print(f"Frozen {len(cases)} Python HTTP discovery cases")
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())

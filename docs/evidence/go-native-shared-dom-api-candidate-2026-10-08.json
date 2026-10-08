@@ -1,0 +1,69 @@
+{
+  "schema": "jobseek.native-shared-dom-api-candidate/v1",
+  "candidate_version": "0.13.981",
+  "state": "full initial-head queue/worker and CI passed; four explicit public field mappings added; revised-head CI, affine browser/DOM public capture, immutable delivery and production ownership pending",
+  "profiles": 145,
+  "new_profiles": 0,
+  "scope": [
+    "api_sniffer automatic field mapping",
+    "dom include_board_url",
+    "dom require_jsonld_jobposting"
+  ],
+  "registry_bindings": {
+    "api_sniffer": 23,
+    "dom": 12,
+    "api_sniffer_automatic": 19,
+    "api_sniffer_explicit_public_corrections": 4
+  },
+  "retained_unsupported_flagged_configs": {
+    "api_sniffer": 12,
+    "dom": 11
+  },
+  "proofs": {
+    "actual_python_mapping_cases": 32,
+    "ambiguous_mapping_rejections": 4,
+    "actual_python_api_http_cases": 17,
+    "actual_python_dom_http_processing_cases": 16,
+    "real_write_settlement_cases": 23,
+    "real_write_settlement_race": "PASS12.464s",
+    "supported_cold_retirement_cases": 27,
+    "supported_cold_retirement_race": "PASS24.586s",
+    "api_full_race": "PASS5.920s",
+    "dom_full_race": "PASS3.078s",
+    "api_dom_worker_vet": "PASS",
+    "ruff_and_format": "PASS",
+    "full_queue_race": "PASS478.205s at be268e6474e20450cc678ae692570cff6f8ea225",
+    "full_worker_race": "PASS684.571s at be268e6474e20450cc678ae692570cff6f8ea225",
+    "initial_required_ci": "SUCCESS37828663704",
+    "initial_actual_crawler_deploy_gate": "SUCCESS37828663817",
+    "public_http_reference": "22 completed captures match all fields and semantic request shapes/counts; one original HTTP failure (easyjet-taleo) remains unqualified; browser-designated routes require affine evidence",
+    "public_explicit_mapping_reference": "81 jobs across JD Sports32, ScreenPoint13, Wonderflow2, Loccitane34; actual original Python with explicit maps preserves every captured field/request; same-capture Go matches",
+    "revised_registry_race": "PASS1.672s",
+    "revised_api_full_race": "PASS4.866s",
+    "public_dom_http_reference": "7 successful original direct HTTP captures match 57 URLs, truncation and request shape/counts; 5 direct HTTP references blocked, including 3 declared required-proxy boards; declared rendered/proxy execution remains unqualified",
+    "final_runtime_head_ci_before_checkpoint": "Required CI37834431184 SUCCESS, actual Crawler Deploy Gate37834427324 SUCCESS at e007db2a6eb79180f1c88685c188a4ac13450ca3; runtime implementation unchanged in final checkpoint revision"
+  },
+  "retained_corrected_failures": [
+    "Initial real publisher settlement rejected the child resource; handoff now keeps the installed listing resource fence and independently sealed finite child/config binding.",
+    "Test expectations were corrected for raw bool location normalization and the original first-empty missing-count safety; production normalizers and disappearance guards remain unchanged.",
+    "Public automatic mapping rejected four ambiguous publisher payloads. Explicit CSV maps now preserve their actual captured Python output; ambiguity rejection remains.",
+    "Bucher title comparison now applies actual original Python _coerce_text, matching Go processing; raw initial capture retained.",
+    "CSV edits invalidated the generated Lightpanda census checksum. Regenerated with the original census command and validated the data contract; failed run37833206364 retained.",
+    "Initial private DOM capture normalization imported a typing alias for MonitorResult. Replayed the retained response captures offline using the actual original core result type; no repeated public fetch."
+  ],
+  "source980_delivery": {
+    "pr": 10367,
+    "reviewed_head": "e4fad717a95eb16cbc47473c22e82e367c2d21eb",
+    "source_revision": "ee4d6d27f6806b22a1ec86e05c9d504364e239a1",
+    "original_crawler_run": 37827765892,
+    "original_renderer_run": 37827922155,
+    "state": "original crawler/renderer SUCCESS1; ordinary eligibility/SQL activation passed but B0 producer audit deadline failed readiness; supported complete recovery independently PASS, then B0 rollback/clear and full cold244 independently PASS; native owners inactive"
+  },
+  "authority": "Reference/local database and registry eligibility do not grant current production ownership or full migration completion. Existing enabled boards remain preserved.",
+  "source980_operational_followup": {
+    "confirmed_failure": "producer authority lost: redis/preflight; audit diagnostic=deadline",
+    "reproduced": "same-size synthetic7495/2737 projection and60validlegacyclaimers, original idle0.612ms/full audit underload3489.776ms redis-class failure",
+    "unproven_changes_excluded": "two batched Redis-read variants did not clear the worst-case reproduced timeout; no timeout or authority guard changes included",
+    "next": "reduce actual per-claim queue work and demonstrate full producer audit/conservation under complete-cohort load before another production ownership activation"
+  }
+}

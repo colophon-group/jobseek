@@ -33,6 +33,7 @@ type Options struct {
 	Pagination                             *Pagination
 	PathValues                             bool
 	AutoPath                               bool
+	AutoFields                             bool
 	MaxItems, Attempts                     int
 	Transient403                           bool
 	Enrichment                             []string
@@ -274,9 +275,7 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 	if o.URLTemplate == "" && o.URLField == "" {
 		return o, ErrOptions
 	}
-	if len(o.Fields) == 0 {
-		return o, ErrOptions
-	} // Python auto-maps fields; never silently downgrade to URL-only.
+	o.AutoFields = len(o.Fields) == 0
 	if o.URLField != "" {
 		if _, err := jmespath.Compile(o.URLField); err != nil {
 			return o, ErrOptions

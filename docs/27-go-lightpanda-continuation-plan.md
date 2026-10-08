@@ -18,6 +18,55 @@ not complete migration.
 
 ## Latest checkpoint — 2026-10-08
 
+Production **0.13.980**, source `ee4d6d27f6806b22a1ec86e05c9d504364e239a1`,
+merged in [PR #10367](https://github.com/colophon-group/jobseek/pull/10367).
+Required CI and the actual Crawler Deploy Gate passed. Original crawler rollout
+`37827765892` and renderer rollout `37827922155` succeeded on attempt 1; the full
+incoming immutable stack passed independent cold242 verification. Supported B0
+activation and independent readback passed at **epoch243**. The runtime compiles
+**145 profiles** and uses checksum-pinned stable **Lightpanda 1.0.0**.
+
+Fresh source980 admission reconciled **1,515,737 scheduled posting routes** and
+selected **7,495 monitors**, **2,737 detail boards**, and **1,484,610 scheduled
+postings** after retaining three monitor holdouts. Forty-one boards with posting
+cache mismatches and one unsupported actual route retain their existing detail
+owner. All boards stay enabled. The supported wrapper staged plan
+`a9d95201edd74a1103ce5e985f813858b2a4580f720294ad1f4eb0782a66aca4` and projection
+`043a074c36676199debb9f9cd1d1c206c69f7636` at epoch243. Independent SQL verification
+and a zero-drift configuration audit passed. Ordinary eligibility and SQL activation
+passed, but complete readiness failed when the B0 producer's full Redis audit hit
+its unchanged three-second deadline. Supported recovery and independent full
+nine-service/seven-health/SQL+Redis restoration passed; the failed plan is retired.
+Supported B0 rollback and selector clearing then passed, followed by independent
+complete **cold244** verification. Both native owners are currently inactive; the
+complete immutable source980 base remains serving.
+
+A private, isolated same-size synthetic cohort with 60 valid legacy claimers
+reproduced the audit deadline. Batching reads alone did not eliminate it and is
+not included in this candidate. Reducing actual claim work while retaining all
+authority/conservation guards is the next operational task before another full
+ownership activation. The observed 21.4-second Redis SAVE belongs to recovery and
+does not establish the cause of the earlier producer failure.
+
+[PR #10368](https://github.com/colophon-group/jobseek/pull/10368) prepares the next
+**35-configuration API/DOM group**, including four explicit publisher field maps.
+Full initial-head queue/worker suites and required checks passed; 22 API and seven
+DOM successful public HTTP captures match original output and request contracts.
+Initial exact-head Required CI, Crawler Deploy Gate, image parity and Lightpanda
+pilot checks passed. The final checkpoint revision needs fresh required checks;
+immutable delivery and route admission remain pending.
+Declared proxy and affine browser public execution still require qualification.
+
+Continue by verifying source980 activation and natural operation, delivering the
+API/DOM group through the existing complete cutover/deploy path, and porting the
+remaining shared configurations and providers in groups. Keep the full delivery
+goal active through required runtime consumers, enabled coverage, full freshness
+and conservation, comparable whole-lane cost, supported reversal and observation
+window, then retire production Python/Playwright/Chromium. Preserve useful offline
+Python and every enabled board.
+
+## Historical checkpoint — source976
+
 Release **0.13.976**, source `072160c56d744a84933097cd184a39cd37c5d9c9`,
 merged in [PR #10363](https://github.com/colophon-group/jobseek/pull/10363)
 after Required CI, the actual Crawler Deploy Gate and installed-image checks
@@ -59,7 +108,7 @@ Umantis receipt bindings; its 293 successful monitor and seven successful detail
 observations remain samples, not full freshness/conservation proof. PDF HTML/layout
 still differs from pypdf; description quality remains a migration gate.
 
-## Next grouped candidate — SEEK details and automatic API arrays
+## Historical grouped release — SEEK details and automatic API arrays
 
 Candidate **0.13.977** compiles **135 profiles**. It replaces SEEK GraphQL details
 for all six current boards and extends the existing API monitor for eleven
@@ -428,7 +477,7 @@ proof. Keep remaining boards enabled and preserve useful offline Python.
 
 ## Next grouped monitor batch: 104 Job Bank, CNStaff, SeamlessHiring
 
-Candidate **0.13.980** adds four profiles across three providers and all six
+Merged **0.13.980** adds four profiles across three providers and all six
 current registry configurations. The three proxy-required 104 boards retain
 sealed proxy routing; the fourth uses direct HTTP. CNStaff and SeamlessHiring
 retain their complete public API inventories, including authoritative empty
@@ -447,9 +496,15 @@ board ID and listing URL before legacy discovery persists equivalent aliases.
 Conflicting aliases, changed targets, parser settings and unrelated configuration
 remain bound. Ten reference binding cases plus the changed-parser fence and
 thirteen real activation/retirement cases pass, including monitor and independent
-detail admission, conservation and rejection before effects. Revised-head broad
-checks, immutable deployment, current admission and production ownership remain
-pending. See the
+detail admission, conservation and rejection before effects. Revised full queue/worker race suites passed (454.409s/673.007s), followed by
+exact-head Required CI, Crawler Deploy Gate, installed image parity and amd64/arm64
+pilot checks. PR #10367 merged at source
+`ee4d6d27f6806b22a1ec86e05c9d504364e239a1` after supported outgoing B0
+retirement, selector clearing and independent complete cold242 proof. Original
+crawler rollout `37827765892` and matching renderer rollout `37827922155`
+succeeded on attempt 1. Independent full incoming cold242 proof passed; supported
+B0 activation and readback passed at epoch243. Fresh ordinary admission and
+activation remain pending. See the
 [candidate evidence](evidence/go-native-small-provider-candidate-2026-10-08.json).
 
 The source977 ordinary activation failure is retained: UKG resolved and saved
@@ -466,3 +521,51 @@ goal active through all enabled monitor/detail/browser coverage, mandatory
 consumers, full freshness/conservation, comparable cost, supported reversal and
 the retirement window. Remove production Python/Playwright/Chromium only after
 those replacement gates pass; preserve useful offline Python tooling.
+
+
+## Next grouped shared API and DOM configuration batch
+
+Candidate **0.13.981** extends the existing 145 profiles for **35 current registry
+configurations**: 19 automatic API field mappings, four explicit API corrections
+and 12 DOM direct-board/JSON-LD
+verification configurations. The original direct, required-proxy and rendered
+transports remain bound. Twelve other API configurations and eleven DOM
+configurations with these flags retain their existing owner because additional
+options remain unsupported. These are configuration qualifications, not production
+route or output claims.
+
+Automatic mapping collects complete filtered/paginated inventory before inspecting
+the first five rows, including ADP location/name-code and team mappings. An
+ambiguous candidate field fails the whole cycle and requires explicit mapping;
+URL-only inventories preserve their distinct processing path through both HTTP
+and rendered replay. DOM includes the configured board after successful discovery
+and preserves the original downstream URL classification. JSON-LD verification
+uses full detail bodies, the existing 500-URL cap, eight bounded concurrent
+requests, original retry/omission semantics and cancellation/drain on failure.
+A publisher signal takes precedence and binds the exact observed child to the
+original listing, configuration and claim.
+
+Thirty-two original Python mapping cases, four ambiguity rejections, seventeen
+original full API HTTP cases and sixteen original DOM HTTP/processing cases pass.
+The 35 registry bindings preserve all declared transports. Twenty-three real
+PostgreSQL/Redis direct/proxy/rendered write/settlement cases and twenty-seven
+supported cold retirement cases pass. API/DOM full race and API/DOM/worker vet
+pass. Full initial-head queue/worker race suites passed (478.205s/684.571s),
+followed by Required CI and the actual Crawler Deploy Gate. Same-capture Go HTTP
+replay matches every field and request shape/count for all 22 successful original
+API captures. Four ambiguous publisher payloads require explicit CSV mappings;
+these preserve all 81 captured jobs and fields under actual original Python and
+Go replay. Bucher text comparison applies the original processing normalization.
+Seven successful DOM direct HTTP captures match 57 URLs, truncation and request
+shapes/counts. Five direct HTTP references were blocked, including three declared
+required-proxy boards. One API original HTTP reference failed (EasyJet Taleo);
+affine browser/required-proxy public qualification, revised-head CI, immutable
+deployment and fresh route admission
+remain pending. See the
+[candidate evidence](evidence/go-native-shared-dom-api-candidate-2026-10-08.json).
+
+Continue in groups across remaining shared browser/pagination/verification options
+and provider types. Keep the full migration goal active until coverage, mandatory
+consumers, full natural freshness and queue conservation, comparable cost, supported
+reversal and the retirement window justify removing production Python, Playwright
+and Chromium. Preserve useful isolated offline Python and every enabled board.
