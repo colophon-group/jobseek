@@ -64,7 +64,7 @@ func TestAPIFiltersAndTalentBrewQualifyCurrentRegistryContracts(t *testing.T) {
 			}
 		}
 	}
-	if len(targets) != 0 || counts["talentbrew"] != 8 || counts["api_sniffer"] != 17 {
+	if len(targets) != 0 || counts["talentbrew"] != 9 || counts["api_sniffer"] != 17 {
 		t.Fatal("grouped configuration coverage changed", counts, targets)
 	}
 }

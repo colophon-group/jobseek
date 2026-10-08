@@ -1,0 +1,29 @@
+{
+  "schema": "jobseek.go-native.existing-provider-route-candidate/v1",
+  "version": "0.13.974",
+  "authority": "candidate CSV only; no production ownership or Go profiles added",
+  "kaiser": {
+    "monitor_type": "talentbrew",
+    "jobs": 3091,
+    "actual_python_public_count_matches": true,
+    "scraper_type": "json-ld",
+    "render": false,
+    "direct_public_samples": 3,
+    "title_description_location_present": true,
+    "description_chars": [
+      2365,
+      5543,
+      1926
+    ]
+  },
+  "euronext": {
+    "monitor_type": "welcometothejungle",
+    "jobs": 1,
+    "actual_python_public_count_matches": true,
+    "scraper_type": "skip",
+    "description_chars": 2810,
+    "title_location_present": true
+  },
+  "focused_current_registry_admission_race": "passed1.615s",
+  "full_migration_complete": false
+}

@@ -1,0 +1,2770 @@
+[
+  {
+    "name": "layout-boundary",
+    "board": "https://fixture.notion.site/",
+    "metadata": {},
+    "public": {
+      "spaceId": "44444444-4444-4444-4444-444444444444",
+      "publicHomePage": "11111111-1111-1111-1111-111111111111"
+    },
+    "chunk": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Careers"
+                  ]
+                ]
+              },
+              "content": [
+                "layout"
+              ]
+            }
+          },
+          "layout": {
+            "value": {
+              "type": "column",
+              "properties": {
+                "title": [
+                  [
+                    ""
+                  ]
+                ]
+              },
+              "content": [
+                "22222222-2222-2222-2222-222222222222"
+              ]
+            }
+          },
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ]
+              },
+              "content": [
+                "33333333-3333-3333-3333-333333333333"
+              ]
+            }
+          },
+          "33333333-3333-3333-3333-333333333333": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Embedded description page"
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "query": {
+      "result": {
+        "reducerResults": {
+          "collection_group_results": {
+            "blockIds": [
+              "22222222-2222-2222-2222-222222222222"
+            ]
+          }
+        }
+      },
+      "recordMap": {
+        "block": {
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ],
+                "status": [
+                  [
+                    "Open"
+                  ]
+                ],
+                "team": [
+                  [
+                    "Platform"
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "55555555-5555-5555-5555-555555555555": {
+            "value": {
+              "schema": {
+                "status": {
+                  "name": "Status",
+                  "type": "select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "urls": [
+      "https://fixture.notion.site/22222222222222222222222222222222"
+    ],
+    "error": false,
+    "calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      }
+    ],
+    "logical_calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      }
+    ]
+  },
+  {
+    "name": "nested-pages",
+    "board": "https://fixture.notion.site/",
+    "metadata": {
+      "include_nested": true
+    },
+    "public": {
+      "spaceId": "44444444-4444-4444-4444-444444444444",
+      "publicHomePage": "11111111-1111-1111-1111-111111111111"
+    },
+    "chunk": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Careers"
+                  ]
+                ]
+              },
+              "content": [
+                "layout"
+              ]
+            }
+          },
+          "layout": {
+            "value": {
+              "type": "column",
+              "properties": {
+                "title": [
+                  [
+                    ""
+                  ]
+                ]
+              },
+              "content": [
+                "22222222-2222-2222-2222-222222222222"
+              ]
+            }
+          },
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ]
+              },
+              "content": [
+                "33333333-3333-3333-3333-333333333333"
+              ]
+            }
+          },
+          "33333333-3333-3333-3333-333333333333": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Embedded description page"
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "query": {
+      "result": {
+        "reducerResults": {
+          "collection_group_results": {
+            "blockIds": [
+              "22222222-2222-2222-2222-222222222222"
+            ]
+          }
+        }
+      },
+      "recordMap": {
+        "block": {
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ],
+                "status": [
+                  [
+                    "Open"
+                  ]
+                ],
+                "team": [
+                  [
+                    "Platform"
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "55555555-5555-5555-5555-555555555555": {
+            "value": {
+              "schema": {
+                "status": {
+                  "name": "Status",
+                  "type": "select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "urls": [
+      "https://fixture.notion.site/22222222222222222222222222222222",
+      "https://fixture.notion.site/33333333333333333333333333333333"
+    ],
+    "error": false,
+    "calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      }
+    ],
+    "logical_calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      }
+    ]
+  },
+  {
+    "name": "title-exclude",
+    "board": "https://fixture.notion.site/",
+    "metadata": {
+      "title_exclude": "engineer"
+    },
+    "public": {
+      "spaceId": "44444444-4444-4444-4444-444444444444",
+      "publicHomePage": "11111111-1111-1111-1111-111111111111"
+    },
+    "chunk": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Careers"
+                  ]
+                ]
+              },
+              "content": [
+                "layout"
+              ]
+            }
+          },
+          "layout": {
+            "value": {
+              "type": "column",
+              "properties": {
+                "title": [
+                  [
+                    ""
+                  ]
+                ]
+              },
+              "content": [
+                "22222222-2222-2222-2222-222222222222"
+              ]
+            }
+          },
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ]
+              },
+              "content": [
+                "33333333-3333-3333-3333-333333333333"
+              ]
+            }
+          },
+          "33333333-3333-3333-3333-333333333333": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Embedded description page"
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "query": {
+      "result": {
+        "reducerResults": {
+          "collection_group_results": {
+            "blockIds": [
+              "22222222-2222-2222-2222-222222222222"
+            ]
+          }
+        }
+      },
+      "recordMap": {
+        "block": {
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ],
+                "status": [
+                  [
+                    "Open"
+                  ]
+                ],
+                "team": [
+                  [
+                    "Platform"
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "55555555-5555-5555-5555-555555555555": {
+            "value": {
+              "schema": {
+                "status": {
+                  "name": "Status",
+                  "type": "select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "urls": [],
+    "error": false,
+    "calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      }
+    ],
+    "logical_calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      }
+    ]
+  },
+  {
+    "name": "url-exclude",
+    "board": "https://fixture.notion.site/",
+    "metadata": {
+      "url_filter": {
+        "exclude": "22222222222222222222222222222222"
+      }
+    },
+    "public": {
+      "spaceId": "44444444-4444-4444-4444-444444444444",
+      "publicHomePage": "11111111-1111-1111-1111-111111111111"
+    },
+    "chunk": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Careers"
+                  ]
+                ]
+              },
+              "content": [
+                "layout"
+              ]
+            }
+          },
+          "layout": {
+            "value": {
+              "type": "column",
+              "properties": {
+                "title": [
+                  [
+                    ""
+                  ]
+                ]
+              },
+              "content": [
+                "22222222-2222-2222-2222-222222222222"
+              ]
+            }
+          },
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ]
+              },
+              "content": [
+                "33333333-3333-3333-3333-333333333333"
+              ]
+            }
+          },
+          "33333333-3333-3333-3333-333333333333": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Embedded description page"
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "query": {
+      "result": {
+        "reducerResults": {
+          "collection_group_results": {
+            "blockIds": [
+              "22222222-2222-2222-2222-222222222222"
+            ]
+          }
+        }
+      },
+      "recordMap": {
+        "block": {
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ],
+                "status": [
+                  [
+                    "Open"
+                  ]
+                ],
+                "team": [
+                  [
+                    "Platform"
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "55555555-5555-5555-5555-555555555555": {
+            "value": {
+              "schema": {
+                "status": {
+                  "name": "Status",
+                  "type": "select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "urls": [],
+    "error": false,
+    "calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      }
+    ],
+    "logical_calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      }
+    ]
+  },
+  {
+    "name": "slug-resolution",
+    "board": "https://fixture.notion.site/careers",
+    "metadata": {},
+    "public": {
+      "spaceId": "44444444-4444-4444-4444-444444444444",
+      "publicHomePage": "11111111-1111-1111-1111-111111111111"
+    },
+    "chunk": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Careers"
+                  ]
+                ]
+              },
+              "content": [
+                "layout"
+              ]
+            }
+          },
+          "layout": {
+            "value": {
+              "type": "column",
+              "properties": {
+                "title": [
+                  [
+                    ""
+                  ]
+                ]
+              },
+              "content": [
+                "22222222-2222-2222-2222-222222222222"
+              ]
+            }
+          },
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ]
+              },
+              "content": [
+                "33333333-3333-3333-3333-333333333333"
+              ]
+            }
+          },
+          "33333333-3333-3333-3333-333333333333": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Embedded description page"
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "query": {
+      "result": {
+        "reducerResults": {
+          "collection_group_results": {
+            "blockIds": [
+              "22222222-2222-2222-2222-222222222222"
+            ]
+          }
+        }
+      },
+      "recordMap": {
+        "block": {
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ],
+                "status": [
+                  [
+                    "Open"
+                  ]
+                ],
+                "team": [
+                  [
+                    "Platform"
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "55555555-5555-5555-5555-555555555555": {
+            "value": {
+              "schema": {
+                "status": {
+                  "name": "Status",
+                  "type": "select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "urls": [
+      "https://fixture.notion.site/22222222222222222222222222222222"
+    ],
+    "error": false,
+    "calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      }
+    ],
+    "logical_calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      }
+    ]
+  },
+  {
+    "name": "root-canonical-fallback",
+    "board": "https://fixture.notion.site/",
+    "metadata": {},
+    "public": {
+      "spaceId": "44444444-4444-4444-4444-444444444444",
+      "publicHomePage": "11111111-1111-1111-1111-111111111111"
+    },
+    "chunk": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Careers"
+                  ]
+                ]
+              },
+              "content": [
+                "layout"
+              ]
+            }
+          },
+          "layout": {
+            "value": {
+              "type": "column",
+              "properties": {
+                "title": [
+                  [
+                    ""
+                  ]
+                ]
+              },
+              "content": [
+                "22222222-2222-2222-2222-222222222222"
+              ]
+            }
+          },
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ]
+              },
+              "content": [
+                "33333333-3333-3333-3333-333333333333"
+              ]
+            }
+          },
+          "33333333-3333-3333-3333-333333333333": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Embedded description page"
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "query": {
+      "result": {
+        "reducerResults": {
+          "collection_group_results": {
+            "blockIds": [
+              "22222222-2222-2222-2222-222222222222"
+            ]
+          }
+        }
+      },
+      "recordMap": {
+        "block": {
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ],
+                "status": [
+                  [
+                    "Open"
+                  ]
+                ],
+                "team": [
+                  [
+                    "Platform"
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "55555555-5555-5555-5555-555555555555": {
+            "value": {
+              "schema": {
+                "status": {
+                  "name": "Status",
+                  "type": "select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "urls": [
+      "https://fixture.notion.site/22222222222222222222222222222222"
+    ],
+    "error": false,
+    "calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://www.notion.so/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      }
+    ],
+    "logical_calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://www.notion.so/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      }
+    ]
+  },
+  {
+    "name": "explicit-no-fallback",
+    "board": "https://fixture.notion.site/22222222222222222222222222222222",
+    "metadata": {},
+    "public": {
+      "spaceId": "44444444-4444-4444-4444-444444444444",
+      "publicHomePage": "11111111-1111-1111-1111-111111111111"
+    },
+    "chunk": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Careers"
+                  ]
+                ]
+              },
+              "content": [
+                "layout"
+              ]
+            }
+          },
+          "layout": {
+            "value": {
+              "type": "column",
+              "properties": {
+                "title": [
+                  [
+                    ""
+                  ]
+                ]
+              },
+              "content": [
+                "22222222-2222-2222-2222-222222222222"
+              ]
+            }
+          },
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ]
+              },
+              "content": [
+                "33333333-3333-3333-3333-333333333333"
+              ]
+            }
+          },
+          "33333333-3333-3333-3333-333333333333": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Embedded description page"
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "query": {
+      "result": {
+        "reducerResults": {
+          "collection_group_results": {
+            "blockIds": [
+              "22222222-2222-2222-2222-222222222222"
+            ]
+          }
+        }
+      },
+      "recordMap": {
+        "block": {
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ],
+                "status": [
+                  [
+                    "Open"
+                  ]
+                ],
+                "team": [
+                  [
+                    "Platform"
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "55555555-5555-5555-5555-555555555555": {
+            "value": {
+              "schema": {
+                "status": {
+                  "name": "Status",
+                  "type": "select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "urls": null,
+    "error": true,
+    "calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture",
+          "blockId": "22222222-2222-2222-2222-222222222222"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture",
+          "blockId": "22222222-2222-2222-2222-222222222222"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture",
+          "blockId": "22222222-2222-2222-2222-222222222222"
+        }
+      }
+    ],
+    "logical_calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture",
+          "blockId": "22222222-2222-2222-2222-222222222222"
+        }
+      }
+    ]
+  },
+  {
+    "name": "root-403",
+    "board": "https://fixture.notion.site/",
+    "metadata": {},
+    "public": {
+      "spaceId": "44444444-4444-4444-4444-444444444444",
+      "publicHomePage": "11111111-1111-1111-1111-111111111111"
+    },
+    "chunk": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Careers"
+                  ]
+                ]
+              },
+              "content": [
+                "layout"
+              ]
+            }
+          },
+          "layout": {
+            "value": {
+              "type": "column",
+              "properties": {
+                "title": [
+                  [
+                    ""
+                  ]
+                ]
+              },
+              "content": [
+                "22222222-2222-2222-2222-222222222222"
+              ]
+            }
+          },
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ]
+              },
+              "content": [
+                "33333333-3333-3333-3333-333333333333"
+              ]
+            }
+          },
+          "33333333-3333-3333-3333-333333333333": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Embedded description page"
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "query": {
+      "result": {
+        "reducerResults": {
+          "collection_group_results": {
+            "blockIds": [
+              "22222222-2222-2222-2222-222222222222"
+            ]
+          }
+        }
+      },
+      "recordMap": {
+        "block": {
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ],
+                "status": [
+                  [
+                    "Open"
+                  ]
+                ],
+                "team": [
+                  [
+                    "Platform"
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "55555555-5555-5555-5555-555555555555": {
+            "value": {
+              "schema": {
+                "status": {
+                  "name": "Status",
+                  "type": "select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "urls": null,
+    "error": true,
+    "calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      }
+    ],
+    "logical_calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      }
+    ]
+  },
+  {
+    "name": "transient-chunk",
+    "board": "https://fixture.notion.site/",
+    "metadata": {},
+    "public": {
+      "spaceId": "44444444-4444-4444-4444-444444444444",
+      "publicHomePage": "11111111-1111-1111-1111-111111111111"
+    },
+    "chunk": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Careers"
+                  ]
+                ]
+              },
+              "content": [
+                "layout"
+              ]
+            }
+          },
+          "layout": {
+            "value": {
+              "type": "column",
+              "properties": {
+                "title": [
+                  [
+                    ""
+                  ]
+                ]
+              },
+              "content": [
+                "22222222-2222-2222-2222-222222222222"
+              ]
+            }
+          },
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ]
+              },
+              "content": [
+                "33333333-3333-3333-3333-333333333333"
+              ]
+            }
+          },
+          "33333333-3333-3333-3333-333333333333": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Embedded description page"
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "query": {
+      "result": {
+        "reducerResults": {
+          "collection_group_results": {
+            "blockIds": [
+              "22222222-2222-2222-2222-222222222222"
+            ]
+          }
+        }
+      },
+      "recordMap": {
+        "block": {
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ],
+                "status": [
+                  [
+                    "Open"
+                  ]
+                ],
+                "team": [
+                  [
+                    "Platform"
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "55555555-5555-5555-5555-555555555555": {
+            "value": {
+              "schema": {
+                "status": {
+                  "name": "Status",
+                  "type": "select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "urls": [
+      "https://fixture.notion.site/22222222222222222222222222222222"
+    ],
+    "error": false,
+    "calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      }
+    ],
+    "logical_calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      }
+    ]
+  },
+  {
+    "name": "collection",
+    "board": "https://fixture.notion.site/",
+    "metadata": {},
+    "public": {
+      "spaceId": "44444444-4444-4444-4444-444444444444",
+      "publicHomePage": "11111111-1111-1111-1111-111111111111"
+    },
+    "chunk": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Careers"
+                  ]
+                ]
+              },
+              "content": [
+                "database"
+              ]
+            }
+          },
+          "database": {
+            "value": {
+              "type": "collection_view",
+              "properties": {
+                "title": [
+                  [
+                    "Jobs"
+                  ]
+                ]
+              },
+              "collection_id": "55555555-5555-5555-5555-555555555555",
+              "view_ids": [
+                "66666666-6666-6666-6666-666666666666"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "query": {
+      "result": {
+        "reducerResults": {
+          "collection_group_results": {
+            "blockIds": [
+              "22222222-2222-2222-2222-222222222222"
+            ]
+          }
+        }
+      },
+      "recordMap": {
+        "block": {
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ],
+                "status": [
+                  [
+                    "Open"
+                  ]
+                ],
+                "team": [
+                  [
+                    "Platform"
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "55555555-5555-5555-5555-555555555555": {
+            "value": {
+              "schema": {
+                "status": {
+                  "name": "Status",
+                  "type": "select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "urls": [
+      "https://fixture.notion.site/22222222222222222222222222222222"
+    ],
+    "error": false,
+    "calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/queryCollection",
+        "payload": {
+          "source": {
+            "type": "collection",
+            "id": "55555555-5555-5555-5555-555555555555",
+            "spaceId": "44444444-4444-4444-4444-444444444444"
+          },
+          "collectionView": {
+            "id": "66666666-6666-6666-6666-666666666666",
+            "spaceId": "44444444-4444-4444-4444-444444444444"
+          },
+          "loader": {
+            "type": "reducer",
+            "reducers": {
+              "collection_group_results": {
+                "type": "results",
+                "limit": 300
+              }
+            },
+            "searchQuery": "",
+            "userTimeZone": "UTC"
+          }
+        }
+      }
+    ],
+    "logical_calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/queryCollection",
+        "payload": {
+          "source": {
+            "type": "collection",
+            "id": "55555555-5555-5555-5555-555555555555",
+            "spaceId": "44444444-4444-4444-4444-444444444444"
+          },
+          "collectionView": {
+            "id": "66666666-6666-6666-6666-666666666666",
+            "spaceId": "44444444-4444-4444-4444-444444444444"
+          },
+          "loader": {
+            "type": "reducer",
+            "reducers": {
+              "collection_group_results": {
+                "type": "results",
+                "limit": 300
+              }
+            },
+            "searchQuery": "",
+            "userTimeZone": "UTC"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "collection-title-filter",
+    "board": "https://fixture.notion.site/",
+    "metadata": {
+      "title_exclude": "engineer"
+    },
+    "public": {
+      "spaceId": "44444444-4444-4444-4444-444444444444",
+      "publicHomePage": "11111111-1111-1111-1111-111111111111"
+    },
+    "chunk": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Careers"
+                  ]
+                ]
+              },
+              "content": [
+                "database"
+              ]
+            }
+          },
+          "database": {
+            "value": {
+              "type": "collection_view",
+              "properties": {
+                "title": [
+                  [
+                    "Jobs"
+                  ]
+                ]
+              },
+              "collection_id": "55555555-5555-5555-5555-555555555555",
+              "view_ids": [
+                "66666666-6666-6666-6666-666666666666"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "query": {
+      "result": {
+        "reducerResults": {
+          "collection_group_results": {
+            "blockIds": [
+              "22222222-2222-2222-2222-222222222222"
+            ]
+          }
+        }
+      },
+      "recordMap": {
+        "block": {
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ],
+                "status": [
+                  [
+                    "Open"
+                  ]
+                ],
+                "team": [
+                  [
+                    "Platform"
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "55555555-5555-5555-5555-555555555555": {
+            "value": {
+              "schema": {
+                "status": {
+                  "name": "Status",
+                  "type": "select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "urls": [],
+    "error": false,
+    "calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/queryCollection",
+        "payload": {
+          "source": {
+            "type": "collection",
+            "id": "55555555-5555-5555-5555-555555555555",
+            "spaceId": "44444444-4444-4444-4444-444444444444"
+          },
+          "collectionView": {
+            "id": "66666666-6666-6666-6666-666666666666",
+            "spaceId": "44444444-4444-4444-4444-444444444444"
+          },
+          "loader": {
+            "type": "reducer",
+            "reducers": {
+              "collection_group_results": {
+                "type": "results",
+                "limit": 300
+              }
+            },
+            "searchQuery": "",
+            "userTimeZone": "UTC"
+          }
+        }
+      }
+    ],
+    "logical_calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/queryCollection",
+        "payload": {
+          "source": {
+            "type": "collection",
+            "id": "55555555-5555-5555-5555-555555555555",
+            "spaceId": "44444444-4444-4444-4444-444444444444"
+          },
+          "collectionView": {
+            "id": "66666666-6666-6666-6666-666666666666",
+            "spaceId": "44444444-4444-4444-4444-444444444444"
+          },
+          "loader": {
+            "type": "reducer",
+            "reducers": {
+              "collection_group_results": {
+                "type": "results",
+                "limit": 300
+              }
+            },
+            "searchQuery": "",
+            "userTimeZone": "UTC"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "collection-property-filter",
+    "board": "https://fixture.notion.site/",
+    "metadata": {
+      "property_filter": {
+        "include": {
+          "Status": "OPEN"
+        },
+        "exclude": {
+          "Team": "Other"
+        }
+      }
+    },
+    "public": {
+      "spaceId": "44444444-4444-4444-4444-444444444444",
+      "publicHomePage": "11111111-1111-1111-1111-111111111111"
+    },
+    "chunk": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Careers"
+                  ]
+                ]
+              },
+              "content": [
+                "database"
+              ]
+            }
+          },
+          "database": {
+            "value": {
+              "type": "collection_view",
+              "properties": {
+                "title": [
+                  [
+                    "Jobs"
+                  ]
+                ]
+              },
+              "collection_id": "55555555-5555-5555-5555-555555555555",
+              "view_ids": [
+                "66666666-6666-6666-6666-666666666666"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "query": {
+      "result": {
+        "reducerResults": {
+          "collection_group_results": {
+            "blockIds": [
+              "22222222-2222-2222-2222-222222222222"
+            ]
+          }
+        }
+      },
+      "recordMap": {
+        "block": {
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ],
+                "status": [
+                  [
+                    "Open"
+                  ]
+                ],
+                "team": [
+                  [
+                    "Platform"
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "55555555-5555-5555-5555-555555555555": {
+            "value": {
+              "schema": {
+                "status": {
+                  "name": "Status",
+                  "type": "select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "urls": [
+      "https://fixture.notion.site/22222222222222222222222222222222"
+    ],
+    "error": false,
+    "calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/queryCollection",
+        "payload": {
+          "source": {
+            "type": "collection",
+            "id": "55555555-5555-5555-5555-555555555555",
+            "spaceId": "44444444-4444-4444-4444-444444444444"
+          },
+          "collectionView": {
+            "id": "66666666-6666-6666-6666-666666666666",
+            "spaceId": "44444444-4444-4444-4444-444444444444"
+          },
+          "loader": {
+            "type": "reducer",
+            "reducers": {
+              "collection_group_results": {
+                "type": "results",
+                "limit": 300
+              }
+            },
+            "searchQuery": "",
+            "userTimeZone": "UTC"
+          }
+        }
+      }
+    ],
+    "logical_calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/queryCollection",
+        "payload": {
+          "source": {
+            "type": "collection",
+            "id": "55555555-5555-5555-5555-555555555555",
+            "spaceId": "44444444-4444-4444-4444-444444444444"
+          },
+          "collectionView": {
+            "id": "66666666-6666-6666-6666-666666666666",
+            "spaceId": "44444444-4444-4444-4444-444444444444"
+          },
+          "loader": {
+            "type": "reducer",
+            "reducers": {
+              "collection_group_results": {
+                "type": "results",
+                "limit": 300
+              }
+            },
+            "searchQuery": "",
+            "userTimeZone": "UTC"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "late-collection-failure",
+    "board": "https://fixture.notion.site/",
+    "metadata": {},
+    "public": {
+      "spaceId": "44444444-4444-4444-4444-444444444444",
+      "publicHomePage": "11111111-1111-1111-1111-111111111111"
+    },
+    "chunk": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Careers"
+                  ]
+                ]
+              },
+              "content": [
+                "database"
+              ]
+            }
+          },
+          "database": {
+            "value": {
+              "type": "collection_view",
+              "properties": {
+                "title": [
+                  [
+                    "Jobs"
+                  ]
+                ]
+              },
+              "collection_id": "55555555-5555-5555-5555-555555555555",
+              "view_ids": [
+                "66666666-6666-6666-6666-666666666666"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "query": {
+      "result": {
+        "reducerResults": {
+          "collection_group_results": {
+            "blockIds": [
+              "22222222-2222-2222-2222-222222222222"
+            ]
+          }
+        }
+      },
+      "recordMap": {
+        "block": {
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ],
+                "status": [
+                  [
+                    "Open"
+                  ]
+                ],
+                "team": [
+                  [
+                    "Platform"
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "55555555-5555-5555-5555-555555555555": {
+            "value": {
+              "schema": {
+                "status": {
+                  "name": "Status",
+                  "type": "select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "urls": null,
+    "error": true,
+    "calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/queryCollection",
+        "payload": {
+          "source": {
+            "type": "collection",
+            "id": "55555555-5555-5555-5555-555555555555",
+            "spaceId": "44444444-4444-4444-4444-444444444444"
+          },
+          "collectionView": {
+            "id": "66666666-6666-6666-6666-666666666666",
+            "spaceId": "44444444-4444-4444-4444-444444444444"
+          },
+          "loader": {
+            "type": "reducer",
+            "reducers": {
+              "collection_group_results": {
+                "type": "results",
+                "limit": 300
+              }
+            },
+            "searchQuery": "",
+            "userTimeZone": "UTC"
+          }
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/queryCollection",
+        "payload": {
+          "source": {
+            "type": "collection",
+            "id": "55555555-5555-5555-5555-555555555555",
+            "spaceId": "44444444-4444-4444-4444-444444444444"
+          },
+          "collectionView": {
+            "id": "66666666-6666-6666-6666-666666666666",
+            "spaceId": "44444444-4444-4444-4444-444444444444"
+          },
+          "loader": {
+            "type": "reducer",
+            "reducers": {
+              "collection_group_results": {
+                "type": "results",
+                "limit": 300
+              }
+            },
+            "searchQuery": "",
+            "userTimeZone": "UTC"
+          }
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/queryCollection",
+        "payload": {
+          "source": {
+            "type": "collection",
+            "id": "55555555-5555-5555-5555-555555555555",
+            "spaceId": "44444444-4444-4444-4444-444444444444"
+          },
+          "collectionView": {
+            "id": "66666666-6666-6666-6666-666666666666",
+            "spaceId": "44444444-4444-4444-4444-444444444444"
+          },
+          "loader": {
+            "type": "reducer",
+            "reducers": {
+              "collection_group_results": {
+                "type": "results",
+                "limit": 300
+              }
+            },
+            "searchQuery": "",
+            "userTimeZone": "UTC"
+          }
+        }
+      }
+    ],
+    "logical_calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/queryCollection",
+        "payload": {
+          "source": {
+            "type": "collection",
+            "id": "55555555-5555-5555-5555-555555555555",
+            "spaceId": "44444444-4444-4444-4444-444444444444"
+          },
+          "collectionView": {
+            "id": "66666666-6666-6666-6666-666666666666",
+            "spaceId": "44444444-4444-4444-4444-444444444444"
+          },
+          "loader": {
+            "type": "reducer",
+            "reducers": {
+              "collection_group_results": {
+                "type": "results",
+                "limit": 300
+              }
+            },
+            "searchQuery": "",
+            "userTimeZone": "UTC"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "explicit-home-fallback",
+    "board": "https://fixture.notion.site/22222222222222222222222222222222",
+    "metadata": {},
+    "public": {
+      "spaceId": "44444444-4444-4444-4444-444444444444",
+      "publicHomePage": "11111111-1111-1111-1111-111111111111"
+    },
+    "chunk": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Careers"
+                  ]
+                ]
+              },
+              "content": [
+                "layout"
+              ]
+            }
+          },
+          "layout": {
+            "value": {
+              "type": "column",
+              "properties": {
+                "title": [
+                  [
+                    ""
+                  ]
+                ]
+              },
+              "content": [
+                "22222222-2222-2222-2222-222222222222"
+              ]
+            }
+          },
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ]
+              },
+              "content": [
+                "33333333-3333-3333-3333-333333333333"
+              ]
+            }
+          },
+          "33333333-3333-3333-3333-333333333333": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Embedded description page"
+                  ]
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "query": {
+      "result": {
+        "reducerResults": {
+          "collection_group_results": {
+            "blockIds": [
+              "22222222-2222-2222-2222-222222222222"
+            ]
+          }
+        }
+      },
+      "recordMap": {
+        "block": {
+          "22222222-2222-2222-2222-222222222222": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer"
+                  ]
+                ],
+                "status": [
+                  [
+                    "Open"
+                  ]
+                ],
+                "team": [
+                  [
+                    "Platform"
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "55555555-5555-5555-5555-555555555555": {
+            "value": {
+              "schema": {
+                "status": {
+                  "name": "Status",
+                  "type": "select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "urls": [
+      "https://fixture.notion.site/22222222222222222222222222222222"
+    ],
+    "error": false,
+    "calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture",
+          "blockId": "22222222-2222-2222-2222-222222222222"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "22222222-2222-2222-2222-222222222222"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      }
+    ],
+    "logical_calls": [
+      {
+        "url": "https://fixture.notion.site/api/v3/getPublicPageData",
+        "payload": {
+          "type": "block-space",
+          "name": "page",
+          "requestedOnPublicDomain": true,
+          "showOriginalLink": false,
+          "spaceDomain": "fixture",
+          "blockId": "22222222-2222-2222-2222-222222222222"
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "22222222-2222-2222-2222-222222222222"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      },
+      {
+        "url": "https://fixture.notion.site/api/v3/loadPageChunk",
+        "payload": {
+          "page": {
+            "id": "11111111-1111-1111-1111-111111111111"
+          },
+          "limit": 200,
+          "cursor": {
+            "stack": []
+          },
+          "chunkNumber": 0,
+          "verticalColumns": false
+        }
+      }
+    ]
+  }
+]

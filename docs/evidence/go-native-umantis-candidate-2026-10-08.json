@@ -1,0 +1,213 @@
+{
+  "version": "0.13.974",
+  "base_source": "ca8f700ddd97578e2b40ff3b0709680ad54fbcf5",
+  "status": "implemented candidate; no production authority",
+  "providers": [
+    "umantis"
+  ],
+  "enabled_configurations": 9,
+  "direct_configurations": 8,
+  "proxy_configurations": 1,
+  "delegated_enrichment_configurations": 3,
+  "new_profiles": [
+    "umantis.listing-urls/v1",
+    "umantis.proxy-listing-urls/v1"
+  ],
+  "contract": [
+    "tenant-bound listing and vacancy URLs",
+    "strict ranges, stable totals, token-bearing next links, unique numeric IDs",
+    "numeric locale deduplication",
+    "visible explicit zero and page-level exact employer metadata",
+    "whole inventory discarded on advertised tail/owner failure",
+    "isolated cookies, original bounded retries and publisher reservation handling",
+    "URL-only by default; partial title/location/employment fields only with configured enrichment; descriptions remain delegated"
+  ],
+  "validation": {
+    "actual_python_corpus_cases": 56,
+    "component_race_seconds": 1.32,
+    "registry_queue_race_seconds": 1.678,
+    "http_worker_race_seconds": 1.891,
+    "real_postgres_redis_worker_cases": 5,
+    "real_worker_race_seconds": 3.019,
+    "full_api_module_race_seconds": 8.493,
+    "real_executable_startup_profile_metrics_and_signal_drain_race_seconds": 16.104,
+    "queue_and_worker_vet": "pass",
+    "generator_ruff": "pass",
+    "full_queue_race_seconds": 419.65,
+    "installed_profiles": 130,
+    "full_worker_race_seconds": 629.082
+  },
+  "open": [
+    "full required CI and deployment gate",
+    "merged-source fresh admission and supported production cutover",
+    "natural fields, freshness, recovery and cost completion gates"
+  ],
+  "public_direct_parity": {
+    "checks": [
+      {
+        "board": "bucherer-careers-umantis",
+        "count": 29,
+        "exact_url_set_match": true,
+        "partial_rich_field_samples_match": 0
+      },
+      {
+        "board": "canton-neuchatel-careers",
+        "count": 17,
+        "exact_url_set_match": true,
+        "partial_rich_field_samples_match": 3
+      },
+      {
+        "board": "continental-careers-bestdrive-ch",
+        "count": 70,
+        "exact_url_set_match": true,
+        "partial_rich_field_samples_match": 0
+      },
+      {
+        "board": "bobst-global",
+        "count": 41,
+        "exact_url_set_match": true,
+        "partial_rich_field_samples_match": 0
+      },
+      {
+        "board": "fhgr-careers",
+        "count": 2,
+        "exact_url_set_match": true,
+        "partial_rich_field_samples_match": 0
+      },
+      {
+        "board": "university-of-neuchatel-umantis",
+        "count": 6,
+        "exact_url_set_match": true,
+        "partial_rich_field_samples_match": 3
+      },
+      {
+        "board": "j-safra-sarasin-careers",
+        "count": 12,
+        "exact_url_set_match": true,
+        "partial_rich_field_samples_match": 0
+      },
+      {
+        "board": "ruag-main",
+        "count": 77,
+        "exact_url_set_match": true,
+        "partial_rich_field_samples_match": 3
+      }
+    ],
+    "scope": "actual Go worker and Python direct discovery; eight inventories and nine partial fields match; delegated detail samples separately compared",
+    "initial_field_finding": "missing listing location was [] in Go versus null in Python; corrected and whole direct probe repeated"
+  },
+  "public_delegated_detail_samples": [
+    {
+      "board": "bucherer-careers-umantis",
+      "description_chars": 2335,
+      "employment_type": null,
+      "error_kind": "",
+      "http_status": 200,
+      "locations": [
+        "München"
+      ],
+      "status": "success",
+      "title": "Hospitality & Service Expert (m/w/d)",
+      "url": "https://recruitingapp-2840.umantis.com/Vacancies/2937/Description"
+    },
+    {
+      "board": "canton-neuchatel-careers",
+      "description_chars": 354,
+      "employment_type": null,
+      "error_kind": "",
+      "http_status": 200,
+      "locations": null,
+      "status": "incomplete-content",
+      "title": "",
+      "url": "https://recruitingapp-2702.umantis.com/Vacancies/6575/Description"
+    },
+    {
+      "board": "continental-careers-bestdrive-ch",
+      "description_chars": 2855,
+      "employment_type": null,
+      "error_kind": "",
+      "http_status": 200,
+      "locations": null,
+      "status": "success",
+      "title": "Verkaufsinnendienst (m/w/d) - Mach was mit Kommunikation",
+      "url": "https://recruitingapp-3031.umantis.com/Vacancies/584/Description"
+    },
+    {
+      "board": "bobst-global",
+      "description_chars": 219,
+      "employment_type": null,
+      "error_kind": "",
+      "http_status": 200,
+      "locations": null,
+      "status": "incomplete-content",
+      "title": "",
+      "url": "https://recruitingapp-2882.umantis.com/Vacancies/9307/Description"
+    },
+    {
+      "board": "fhgr-careers",
+      "description_chars": 2096,
+      "employment_type": null,
+      "error_kind": "",
+      "http_status": 200,
+      "locations": null,
+      "status": "success",
+      "title": "Organisationsassistenz (Direktionsassistenz)",
+      "url": "https://recruitingapp-2865.umantis.com/Vacancies/814/Description"
+    },
+    {
+      "board": "university-of-neuchatel-umantis",
+      "description_chars": 332,
+      "employment_type": null,
+      "error_kind": "",
+      "http_status": 200,
+      "locations": [
+        "Neuchâtel, Switzerland"
+      ],
+      "status": "incomplete-content",
+      "title": "",
+      "url": "https://recruitingapp-3040.umantis.com/Vacancies/6542/Description"
+    },
+    {
+      "board": "j-safra-sarasin-careers",
+      "description_chars": 149,
+      "employment_type": null,
+      "error_kind": "",
+      "http_status": 200,
+      "locations": null,
+      "status": "incomplete-content",
+      "title": "",
+      "url": "https://jsafrasarasin.umantis.com/Vacancies/531/Description"
+    },
+    {
+      "board": "ruag-main",
+      "description_chars": 3119,
+      "employment_type": null,
+      "error_kind": "",
+      "http_status": 200,
+      "locations": null,
+      "status": "success",
+      "title": "DevOps Engineer C5I",
+      "url": "https://recruitingapp-2514.umantis.com/Vacancies/18280/Description"
+    }
+  ],
+  "public_delegated_detail_comparison": "8 actual Python/Go title, description-length and location samples match; four existing titles absent in both runtimes, field-quality completion remains open",
+  "missing_listing_location": "preserve nil to retain delegated/default fields, matching Python",
+  "public_proxy_parity": {
+    "board": "lindt-spruengli-careers",
+    "count": 11,
+    "profile": "umantis.proxy-listing-urls/v1",
+    "url_set_sha256": "d09033323cb102322f13cf152b1acb8096e13f76d24e283aee08d445723f5a06",
+    "detail": {
+      "description_chars": 99,
+      "http_status": 200,
+      "locations": null,
+      "status": "complete",
+      "title": "| eRecruiting Platform",
+      "url": "https://recruitingapp-1619.umantis.com/Vacancies/1137/Description"
+    },
+    "host_source": "ca8f700ddd97578e2b40ff3b0709680ad54fbcf5",
+    "exact_python_go_inventory_match": true,
+    "actual_installed_python_detail_match": true,
+    "detail_quality": "platform boilerplate in both runtimes; quality completion remains open"
+  }
+}

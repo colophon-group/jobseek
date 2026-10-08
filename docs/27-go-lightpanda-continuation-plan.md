@@ -18,99 +18,164 @@ not complete migration.
 
 ## Latest checkpoint — 2026-10-08
 
-Release **0.13.971**, source `3ebd1d16cf8340670d4ac154ead7fedeb2e0ce65`,
-is deployed from its original immutable crawler and matching renderer builds.
-[PR #10358](https://github.com/colophon-group/jobseek/pull/10358) adds seventeen
-API item/URL-filter contracts and eight TalentBrew boards, plus canonical proxy
-selection for posting tasks whose Redis snapshot contains no board metadata.
-Required CI, the actual Crawler Deploy Gate, installed native/browser validation
-and Lightpanda checks passed at exact reviewed head
-`c6901bf6b472a1fe0c1d1da26811a4c668bc38b5`. Fresh outgoing cold226 verification
-passed immediately before the head-bound merge.
+Release **0.13.973**, source `ca8f700ddd97578e2b40ff3b0709680ad54fbcf5`,
+is merged and installed from its original
+[crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37740504418)
+and matching [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37740592176).
+Independent immutable renderer verification and incoming cold230 passed.
+Supported B0 stage, activation and seven-endpoint readback passed at **epoch231**.
+Fresh source973 admission qualified **7,398 monitors**, **2,616 detail boards**
+and **1,469,668 scheduled postings**, with five monitor holdouts. This is offline
+qualification, not current ownership. Ordinary activation failed when the B0
+producer exited with `redis/preflight` before restart arming. Supported
+`recover-pending` and independent readback restored **all nine base/B0 services**,
+seven healthy endpoints and active epoch231. The ordinary SQL plan is retired;
+its receipt and Redis projection are absent. Redis latency observed after recovery
+does not establish the earlier failure's cause. Preserve this distinction when
+resuming; do not replay the retired ordinary plan. See
+[source973 evidence](evidence/go-native-source973-release-2026-10-08.json).
 
-The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37723339750)
-and [matching renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37723373472)
-succeeded. Independent checks on both hosts confirmed the exact source and image
-digests. Incoming cold226 verification confirmed seven restart-armed base services,
-six health endpoints, cleared selectors and no native ownership/tokens/one-offs.
-Supported B0 activation and seven-endpoint readback passed at **epoch227**.
+Exclude monitor ownership for Kaiser, Hays, Euronext WTTJ, Siemens and RTX until
+new routes or complete inventory evidence pass on the installed source. Keep
+every board enabled and independently qualified detail ownership intact.
+
+The **0.13.974** batch groups **Umantis (nine)** and **Notion (eight)** with the
+proven Kaiser/Euronext route conversions: **19 configurations**, **130 installed
+profiles**. Both providers are wired through registry, HTTP execution, ownership,
+canonical writes, publisher reservation and supported retirement paths.
+Eighty actual Python monitor/detail corpus cases, thirteen new real PostgreSQL/Redis
+worker cases, nine new retirement cases and actual native executable startup/drain
+checks pass. The full queue (419.650s) and worker (629.082s) race suites pass;
+[PR #10361](https://github.com/colophon-group/jobseek/pull/10361) is open for required CI.
+
+Eight direct Umantis inventories and nine partial-field samples match Python.
+Eight delegated detail samples match existing title, description length and
+location behavior; four titles are absent in both runtimes and remain field-quality
+gaps. Protected Lindt Python/Go inventories also match (eleven URLs); its detail
+sample contains platform boilerplate in both runtimes. Seven Notion inventories match exactly;
+Kaedim returns HTTP500 in both runtimes and stays a failure. Thirteen live Notion
+detail samples match Python's title, escaped HTML and property mapping on the same
+complete response. Go follows continuation cursors; Moon Surgical exposes why a
+first chunk can be incomplete. Candidate changes grant no production authority.
+See [Umantis evidence](evidence/go-native-umantis-candidate-2026-10-08.json) and
+[Notion evidence](evidence/go-native-notion-candidate-2026-10-08.json).
+
+Unifr's nine variants and their PDF details move together to the following batch.
+This keeps grouped delivery moving while preserving the full migration objective.
+
+The last complete ordinary activation was source972. Its supported ordinary
+retirement, B0 rollback, selector clear and independent outgoing cold230 all passed.
+An hourly Go reconciliation briefly held the mutation lock and finished naturally
+before selector clear retry2 succeeded. Historical source972 delivery evidence follows.
+
+### Prior source972 delivery
+
+Release **0.13.972**, source `3c3231b6451316f3f861692ce572b7f82d60af8b`,
+was deployed from its original immutable crawler and matching renderer builds.
+Its supported ordinary retirement completed before source973’s rollout.
+[PR #10359](https://github.com/colophon-group/jobseek/pull/10359) ports
+Intervieweb, Typify, Universia and TalentReef together: nine configurations,
+126 installed profiles. All nine public inventories and six delegated JSON-LD
+field samples passed. Required CI, the actual Crawler Deploy Gate and installed
+runtime/Lightpanda checks passed at reviewed head
+`d9fb4274e4c4a0d15519de126be9722b77f3469c`.
+
+The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37731794665)
+and [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37732069085)
+succeeded. Independent renderer source/image verification and incoming cold228
+verification passed. The first incoming cold check correctly refused an active
+scheduled Go reconciliation; that job finished naturally before the successful
+second check. Supported B0 activation and seven-endpoint readback passed at
+**epoch229**.
+
 Fresh canonical configuration/cache and actual posting-route admission qualifies
-**7,375 monitors**, **2,616 detail boards** and **1,470,796 scheduled postings**.
-Forty detail-cache incompatibilities and one unsupported Eightfold route retain
-legacy ownership; three B0 boards remain exclusive. Ordinary staging and supported activation passed at the unchanged epoch.
-Independent serving verification confirmed all ten source-bound restart-armed
-services and eight health endpoints. Its first bounded normal-schedule snapshot
-had 23 successful monitor settlements, one successful detail settlement and zero
-claim errors; SQL recorded 24 completed monitor attempts. New API/TalentBrew
-monitor completions and fleet freshness/conservation remain pending. A later
-04:36 UTC snapshot confirmed eight healthy endpoints, 461 successful monitors,
-eight successful details and zero claim errors, but six unacknowledged monitor
-settlements. Retained receipt/recovery inspection remains open. Legacy workers
-still transfer the complete immutable ownership payload on every queue poll;
-candidate972 reuses startup attestation and freshly checks active SQL identity
-and allocator under both barriers. This overhead is observed; causation of the
-settlement failures has not been established. See the [source971 release evidence](evidence/go-native-source971-release-2026-10-08.json).
+**7,384 monitors**, **2,616 detail boards** and **1,469,088 scheduled postings**
+out of **1,496,376** scheduled routes. Forty detail-cache incompatibilities and
+one unsupported Eightfold route retain legacy ownership; three B0 boards remain
+exclusive. Supported ordinary staging passed at plan
+`e1f5e762517c97ce664272e43181c81b654a20fc20dd9bb47753e8501de526ba`.
+Supported ordinary activation and independent source/image/receipt checks passed:
+all ten serving services are restart-armed and eight health endpoints are healthy.
+The 06:19 UTC normal-schedule snapshot records fifty successful monitors and three
+successful details, plus five claim errors unchanged from the initial snapshot.
+The retained-fence follow-up has fifty-one completed recurring entries and one
+active in-flight entry; the initial pending settlement recovered. This is bounded
+recovery evidence, not complete fleet conservation. Newly admitted provider
+completions and full natural freshness/description/R2 verification remain open.
 
-Source970's final ordinary activation had failed with `detail_transport:
-configuration`. Its supported pending recovery, full-stack restoration, B0
-rollback and selector clearing passed; all interrupted write receipts were
-retained. The source971 fix uses the already-bound canonical detail profile to
-select the proper sealed proxy client. Four real direct/proxy DOM/JSON-LD
-regressions and the actual installed executable reproduced and verified the fix.
-See the [historical recovery evidence](evidence/go-native-source970-cold-recovery-2026-10-08.json).
+Source972 also removes repeated full ownership-payload transfers from legacy
+queue polling. Startup still fully attests immutable payload and Redis projection;
+each claim freshly checks SQL plan/allocator identity under both barriers.
+Fifty-eight real ownership tests and 63 pipeline tests pass. Source971's six
+unacknowledged monitor settlements remain historical observations; retained
+receipt inspection found no lost queue/lease entries in the first snapshot and
+normal recovery progress in the follow-up. This does not establish causation or
+complete fleet conservation. The migration remains incomplete.
 
 **Lightpanda 1.0.0** is the newest stable release, rechecked October8 against
 [official releases](https://github.com/lightpanda-io/browser/releases/tag/1.0.0).
-The production image pins
+Production pins
 `sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e`
 with CORS enabled; both architectures passed actual service fixtures.
 
-The next grouped candidate is **0.13.972**: Intervieweb, Typify, Universia and
-TalentReef together, covering **nine** enabled configurations and **126** installed
-profiles. All nine public inventories passed; two TalentReef boards returned
-verified empty brand-scoped inventories. All six delegated JSON-LD field samples
-returned title, description and location. The four providers have actual Python
-parity/component corpora, 28 verified HTTP fixtures, twelve real PostgreSQL/Redis
-write/policy/failure cases and twelve real cold-retirement cases. Full queue (392.246s) and
-worker (566.932s) real PostgreSQL/Redis race suites passed. Configuration screening against the fresh
-source971 snapshot qualifies **7,384** monitors, leaving **498**; this candidate
-has no production ownership. [PR #10359](https://github.com/colophon-group/jobseek/pull/10359)
-is draft pending exact-head checks. The first installed-image check found an
-outdated exact profile list in the workflow; the corrected assertion matches
-all 126 executable profiles. The legacy claim change passes 58 ownership tests,
-including real PostgreSQL/Redis retirement and allocator-loss checks, plus 63
-pipeline tests. See the [candidate evidence](evidence/go-native-public-board-candidate-2026-10-08.json).
+The delivered shared-variant release is **0.13.973**,
+[PR #10360](https://github.com/colophon-group/jobseek/pull/10360): DOM rendered
+roots with HTTP pagination tails, explicit Sitemap roots/content retries and
+SuccessFactors RSS company/required property enrichment. It qualifies nineteen
+additional configurations (eleven DOM, six Sitemap, two RSS). Thirty-two real
+PostgreSQL/Redis cases and actual Python metadata/text corpora pass; full queue
+(380.958s) and worker (596.328s) race suites passed before the final Sitemap
+budget correction. Full Required CI and installed-runtime checks passed at
+`daf3c288251c0318297217c1c334ae03f1312d66`.
+
+Public inventories include eight Cyberbit jobs, 101 US/25 Europe NetJets jobs
+with company/title/description/location fields, and M6's verified empty filtered
+inventory. The Jobteaser probe exposed the old 55 MiB total byte limit: six job
+leaves total approximately 93 MB. Retaining 50 MiB per file and a bounded 512 MiB
+operation produces twenty-one filtered jobs, matching actual Python's public
+inventory. Budget exhaustion regressions and changed real DOM/Sitemap settlement
+cases pass. Public Lightpanda probes completed Bank of China (254), Castelion
+(90) and Deloitte CE (485); Celebal, Cartier, Tesco Bank and Boeing BIA also pass; four DOM monitor holdouts remain.
+Protected proxy probes match Barclays Python/Go inventories (765). L’Oreal
+returns zero after filtering in both runtimes; its configured source points at
+PR rather than en_US jobs. RTX succeeds in Python but fails in Go; diagnosis
+is required before ownership expansion. Configuration screening grants no
+production ownership.
+
+The same candidate switches Kaiser’s main board to existing TalentBrew discovery
+and direct JSON-LD details, and Euronext’s WTTJ board to its existing rich API
+monitor with skip details. Actual Python and Go both find 3,091 Kaiser jobs and
+one Euronext posting; three direct Kaiser samples return title, description and
+location. Current CSV queue admission checks pass (1.615s). These are candidate
+configuration changes, without production ownership; see the
+[route evidence](evidence/go-native-existing-provider-route-candidate-2026-10-08.json).
 
 ## Continue delivery
 
-1. Source971 exact-plan ordinary activation and independent serving proof passed.
-   Continue bounded normal-schedule observation and confirm
-   canonical proxy detail execution, new API/TalentBrew monitor completions,
-   description/R2 effects, failure recovery and queue conservation.
-2. Finish exact-head CI for the published grouped four-provider candidate.
-   Await native/installed CI and merge through fresh exact-head required checks.
-   Use the original immutable deployment and supported cold cutover workflows.
-3. Batch the largest remaining cohorts: **204 DOM**, **97 API**, **31 LinkedIn**,
-   **17 RSS**, **11 Sitemap**, **9 Umantis**, **9 Unifr**, **8 Notion**, and other
-   provider families. Preserve each enabled board's resource, proxy, browser,
-   complete-inventory and content contracts. Reuse existing parsers and engines;
-   admission must follow actual configuration and posting-route evidence.
-4. Replace mandatory Python consumers: remaining worker/browser execution,
-   schema preparation, supervision/reaper/metrics and operational entrypoints.
-   Reuse delivered Go sync, queue, schema, reaper, drain and exporter engines;
-   verify the actual installed deployment/maintenance consumers.
-5. Prove every-profile normal-schedule freshness/conservation, comparable
-   whole-service CPU/RAM/density/attributable cost, complete supported cold
-   reversal and the rollback observation window.
+1. Complete grouped974 PR #10361 Required CI and the actual Crawler Deploy Gate. Merge with fresh
+   unchanged head/base, no holds and exact-head authority. Keep Lightpanda on the
+   newest verified stable release and immutable digest.
+2. Quiesce and retire outgoing B0 through supported wrappers, prove cold state,
+   then install original merged-source crawler and matching renderer images.
+   Build fresh archived-source configuration/cache/posting-route admission;
+   perform supported B0 and ordinary staging/activation and independently verify
+   every service, receipt and endpoint. Investigate any producer failure using
+   safe error-family diagnostics; preserve ownership and publisher checks.
+3. Port Unifr with PDF details next, then group remaining DOM/API/RSS/Sitemap/
+   LinkedIn contracts by reusable engines. Observe normal-schedule fields,
+   description/R2 effects, settlement recovery and freshness as ownership grows.
+4. Replace remaining mandatory Python runtime/deployment/maintenance consumers.
+   Existing sync, queue, schema, reaper, drain, exporter and reconciliation engines
+   are already Go; verify actual installed consumers before duplicating work.
+5. Prove every-profile natural freshness/conservation, comparable whole-service
+   CPU/RAM/density/attributable cost and supported cold reversal/observation window.
 6. Remove production Python, Playwright, Chromium and runtime-only assets after
-   all enabled profiles and consumers have replacement authority. Verify native
-   image/startup/deployment/maintenance end to end, retaining useful isolated
-   offline Python tooling and every enabled board.
+   all enabled profiles and consumers have replacement authority. Retain useful
+   isolated offline Python tooling and every enabled board.
 
-Maintain implementation, admission, ownership and natural-serving status. Port
-multiple compatible types per iteration. Add infrastructure or fixtures for an
-observed failure or changed contract. The full delivery goal remains active
-until the completion evidence and production retirement are done.
+Port multiple compatible types per iteration. Add infrastructure or fixtures for
+an observed failure or changed contract. Keep the full delivery goal active until
+completion evidence and production retirement are done.
 
 ## Delivered implementation — eArcu, CVWarehouse and Woowa
 

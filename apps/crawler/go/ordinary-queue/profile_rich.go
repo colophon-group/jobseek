@@ -26,6 +26,14 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		allowed[key] = value
 	}
 	switch config["crawler_type"] {
+	case "notion":
+		for _, key := range []string{"include_nested", "collection_index", "url_filter", "title_exclude", "property_filter", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+			allowed[key] = true
+		}
+	case "umantis":
+		for _, key := range []string{"customer_id", "region", "cname", "listing_path", "strict_listing_contract", "expected_employer", "employer_field_id", "empty_state_text", "proxy", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+			allowed[key] = true
+		}
 	case "intervieweb", "typify", "universia", "talentreef":
 		for _, key := range []string{"provider", "api_url", "board_id", "language", "alias", "locale", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true

@@ -1,0 +1,742 @@
+{
+  "rows": [
+    {
+      "name": "nested-fields",
+      "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/1/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr>",
+      "strict": false,
+      "rows": [
+        {
+          "id": "1",
+          "language": "2",
+          "url": "https://recruitingapp-3040.umantis.com/Vacancies/1/Description",
+          "title": "Engineer",
+          "location": "Neuchâtel CH",
+          "employment_type": "Full time"
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "strict-owner",
+      "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/1/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université <b>de Neuchâtel</b></span></td></tr>",
+      "strict": true,
+      "rows": [
+        {
+          "id": "1",
+          "language": "2",
+          "url": "https://recruitingapp-3040.umantis.com/Vacancies/1/Description",
+          "title": "Engineer",
+          "location": "Neuchâtel CH",
+          "employment_type": "Full time"
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "forged-prefix",
+      "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/1/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel <b>Other Employer</b></span></td></tr>",
+      "strict": true,
+      "rows": null,
+      "error": true
+    },
+    {
+      "name": "missing-owner",
+      "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/1/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"other\">Université de Neuchâtel</span></td></tr>",
+      "strict": true,
+      "rows": null,
+      "error": true
+    },
+    {
+      "name": "duplicate-owner",
+      "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/1/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr>",
+      "strict": true,
+      "rows": null,
+      "error": true
+    },
+    {
+      "name": "malformed-owner",
+      "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/1/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel<b>Other</span></b></span></td></tr>",
+      "strict": true,
+      "rows": null,
+      "error": true
+    },
+    {
+      "name": "locale-alias",
+      "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/1/Description/3\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr><tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/1/Description/1\">Ingénieur</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr>",
+      "strict": false,
+      "rows": [
+        {
+          "id": "1",
+          "language": "1",
+          "url": "https://recruitingapp-3040.umantis.com/Vacancies/1/Description",
+          "title": "Ingénieur",
+          "location": "Neuchâtel CH",
+          "employment_type": "Full time"
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "conflicting-locale",
+      "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/1/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr><tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/1/Description/2\">Different</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr>",
+      "strict": false,
+      "rows": null,
+      "error": true
+    },
+    {
+      "name": "duplicate-locale",
+      "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/1/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr><tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/1/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr>",
+      "strict": false,
+      "rows": [
+        {
+          "id": "1",
+          "language": "2",
+          "url": "https://recruitingapp-3040.umantis.com/Vacancies/1/Description",
+          "title": "Engineer",
+          "location": "Neuchâtel CH",
+          "employment_type": "Full time"
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "bare-link",
+      "body": "<a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/9/Description/1\">Bare job</a>",
+      "strict": false,
+      "rows": [
+        {
+          "id": "9",
+          "language": "1",
+          "url": "https://recruitingapp-3040.umantis.com/Vacancies/9/Description",
+          "title": "Bare job",
+          "location": "",
+          "employment_type": ""
+        }
+      ],
+      "error": false
+    },
+    {
+      "name": "foreign-link",
+      "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"https://foreign.example/Vacancies/1/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr>",
+      "strict": false,
+      "rows": null,
+      "error": true
+    },
+    {
+      "name": "invalid-id",
+      "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/0/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr>",
+      "strict": false,
+      "rows": null,
+      "error": true
+    },
+    {
+      "name": "blank-title",
+      "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/1/Description/2\"> </a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr>",
+      "strict": false,
+      "rows": [],
+      "error": false
+    },
+    {
+      "name": "empty",
+      "body": "No rows",
+      "strict": false,
+      "rows": [],
+      "error": false
+    }
+  ],
+  "navigation": [
+    {
+      "name": "valid",
+      "body": "<table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 3, &quot;TableFrom&quot;: 1, &quot;TableTo&quot;: 2, &quot;TableCurrentPage&quot;: 1, &quot;NextLink&quot;: {&quot;EnhancedUrl&quot;: &quot;/Jobs/3?CompanyID=32&amp;tc1184173=p2&amp;_search_token1184173=123&quot;, &quot;FieldIsActive&quot;: 1}}\"></table-navigation>",
+      "value": {
+        "table_nr": "1184173",
+        "total": 3,
+        "first": 1,
+        "last": 2,
+        "page": 1,
+        "next_url": "/Jobs/3?CompanyID=32&tc1184173=p2&_search_token1184173=123",
+        "next_active": true
+      },
+      "error": false
+    },
+    {
+      "name": "numeric-strings",
+      "body": "<table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: &quot;3&quot;, &quot;TableFrom&quot;: 1, &quot;TableTo&quot;: 2, &quot;TableCurrentPage&quot;: 1, &quot;NextLink&quot;: {&quot;EnhancedUrl&quot;: &quot;/Jobs/3?CompanyID=32&amp;tc1184173=p2&amp;_search_token1184173=123&quot;, &quot;FieldIsActive&quot;: 1}}\"></table-navigation>",
+      "value": {
+        "table_nr": "1184173",
+        "total": 3,
+        "first": 1,
+        "last": 2,
+        "page": 1,
+        "next_url": "/Jobs/3?CompanyID=32&tc1184173=p2&_search_token1184173=123",
+        "next_active": true
+      },
+      "error": false
+    },
+    {
+      "name": "boolean-count",
+      "body": "<table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: true, &quot;TableFrom&quot;: 1, &quot;TableTo&quot;: 2, &quot;TableCurrentPage&quot;: 1, &quot;NextLink&quot;: {&quot;EnhancedUrl&quot;: &quot;/Jobs/3?CompanyID=32&amp;tc1184173=p2&amp;_search_token1184173=123&quot;, &quot;FieldIsActive&quot;: 1}}\"></table-navigation>",
+      "value": null,
+      "error": true
+    },
+    {
+      "name": "fractional-count",
+      "body": "<table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 3.0, &quot;TableFrom&quot;: 1, &quot;TableTo&quot;: 2, &quot;TableCurrentPage&quot;: 1, &quot;NextLink&quot;: {&quot;EnhancedUrl&quot;: &quot;/Jobs/3?CompanyID=32&amp;tc1184173=p2&amp;_search_token1184173=123&quot;, &quot;FieldIsActive&quot;: 1}}\"></table-navigation>",
+      "value": null,
+      "error": true
+    },
+    {
+      "name": "over-cap",
+      "body": "<table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 50001, &quot;TableFrom&quot;: 1, &quot;TableTo&quot;: 2, &quot;TableCurrentPage&quot;: 1, &quot;NextLink&quot;: {&quot;EnhancedUrl&quot;: &quot;/Jobs/3?CompanyID=32&amp;tc1184173=p2&amp;_search_token1184173=123&quot;, &quot;FieldIsActive&quot;: 1}}\"></table-navigation>",
+      "value": null,
+      "error": true
+    },
+    {
+      "name": "missing-page",
+      "body": "<table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 3, &quot;TableFrom&quot;: 1, &quot;TableTo&quot;: 2, &quot;TableCurrentPage&quot;: null, &quot;NextLink&quot;: {&quot;EnhancedUrl&quot;: &quot;/Jobs/3?CompanyID=32&amp;tc1184173=p2&amp;_search_token1184173=123&quot;, &quot;FieldIsActive&quot;: 1}}\"></table-navigation>",
+      "value": null,
+      "error": true
+    },
+    {
+      "name": "bad-table",
+      "body": "<table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;0&quot;, &quot;TableTotalLines&quot;: 3, &quot;TableFrom&quot;: 1, &quot;TableTo&quot;: 2, &quot;TableCurrentPage&quot;: 1, &quot;NextLink&quot;: {&quot;EnhancedUrl&quot;: &quot;/Jobs/3?CompanyID=32&amp;tc1184173=p2&amp;_search_token1184173=123&quot;, &quot;FieldIsActive&quot;: 1}}\"></table-navigation>",
+      "value": null,
+      "error": true
+    },
+    {
+      "name": "float-active",
+      "body": "<table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 3, &quot;TableFrom&quot;: 1, &quot;TableTo&quot;: 2, &quot;TableCurrentPage&quot;: 1, &quot;NextLink&quot;: {&quot;EnhancedUrl&quot;: &quot;/Jobs/3?CompanyID=32&amp;tc1184173=p2&amp;_search_token1184173=123&quot;, &quot;FieldIsActive&quot;: 1.0}}\"></table-navigation>",
+      "value": {
+        "table_nr": "1184173",
+        "total": 3,
+        "first": 1,
+        "last": 2,
+        "page": 1,
+        "next_url": "/Jobs/3?CompanyID=32&tc1184173=p2&_search_token1184173=123",
+        "next_active": true
+      },
+      "error": false
+    },
+    {
+      "name": "boolean-active",
+      "body": "<table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 3, &quot;TableFrom&quot;: 1, &quot;TableTo&quot;: 2, &quot;TableCurrentPage&quot;: 1, &quot;NextLink&quot;: {&quot;EnhancedUrl&quot;: &quot;/Jobs/3?CompanyID=32&amp;tc1184173=p2&amp;_search_token1184173=123&quot;, &quot;FieldIsActive&quot;: true}}\"></table-navigation>",
+      "value": {
+        "table_nr": "1184173",
+        "total": 3,
+        "first": 1,
+        "last": 2,
+        "page": 1,
+        "next_url": "/Jobs/3?CompanyID=32&tc1184173=p2&_search_token1184173=123",
+        "next_active": true
+      },
+      "error": false
+    }
+  ],
+  "paths": [
+    {
+      "listing": "https://recruitingapp-3040.umantis.com/Jobs/All",
+      "expected": "https://recruitingapp-3040.umantis.com/Jobs/All?tc11=p2"
+    },
+    {
+      "listing": "https://recruitingapp-3040.umantis.com/Jobs/3?lang=fre&CompanyID=32&Reset=G&DesignID=10012",
+      "expected": "https://recruitingapp-3040.umantis.com/Jobs/3?lang=fre&CompanyID=32&DesignID=10012&tc11=p2"
+    },
+    {
+      "listing": "https://recruitingapp-3040.umantis.com/Jobs/All?x=one&x=two&blank=&tc11=p1&reset=1",
+      "expected": "https://recruitingapp-3040.umantis.com/Jobs/All?x=one&x=two&blank=&tc11=p2"
+    }
+  ],
+  "owners": [
+    {
+      "name": "owner",
+      "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel - Careers\"></head>",
+      "valid": true
+    },
+    {
+      "name": "body",
+      "body": "<head></head><body><meta name=\"description\" content=\"Université de Neuchâtel\"></body>",
+      "valid": false
+    },
+    {
+      "name": "prefix",
+      "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel Other - Careers\"></head>",
+      "valid": false
+    },
+    {
+      "name": "duplicate",
+      "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel\"><meta name=\"description\" content=\"Université de Neuchâtel\"></head>",
+      "valid": false
+    },
+    {
+      "name": "unfinished-head",
+      "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel\">",
+      "valid": false
+    },
+    {
+      "name": "unfinished-body",
+      "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel\"></head><body>",
+      "valid": false
+    },
+    {
+      "name": "selfclosing-body",
+      "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel\"></head><body/>",
+      "valid": true
+    },
+    {
+      "name": "nested-head",
+      "body": "<head><head><meta name=\"description\" content=\"Université de Neuchâtel\"></head></head>",
+      "valid": false
+    },
+    {
+      "name": "double-head",
+      "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel\"></head><head></head>",
+      "valid": false
+    },
+    {
+      "name": "whole-page",
+      "body": "<html><head><meta name=\"description\" content=\"Université de Neuchâtel – Careers\"></head><body>Jobs</body></html>",
+      "valid": true
+    }
+  ],
+  "visible": [
+    {
+      "name": "visible",
+      "body": "<p>No jobs available</p>",
+      "expected": "No jobs available",
+      "valid": true
+    },
+    {
+      "name": "script",
+      "body": "<script>No jobs available</script>",
+      "expected": "No jobs available",
+      "valid": false
+    },
+    {
+      "name": "hidden",
+      "body": "<p hidden>No jobs available</p>",
+      "expected": "No jobs available",
+      "valid": false
+    },
+    {
+      "name": "style",
+      "body": "<p style='DISPLAY: none'>No jobs available</p>",
+      "expected": "No jobs available",
+      "valid": false
+    },
+    {
+      "name": "closed-details",
+      "body": "<details><p>No jobs available</p></details>",
+      "expected": "No jobs available",
+      "valid": false
+    },
+    {
+      "name": "open-details",
+      "body": "<details open><p>No jobs available</p></details>",
+      "expected": "No jobs available",
+      "valid": true
+    },
+    {
+      "name": "aria",
+      "body": "<p aria-hidden='true'>No jobs available</p>",
+      "expected": "No jobs available",
+      "valid": false
+    },
+    {
+      "name": "class",
+      "body": "<p class='visually-hidden'>No jobs available</p>",
+      "expected": "No jobs available",
+      "valid": false
+    },
+    {
+      "name": "nested",
+      "body": "<div hidden><div>x</div></div><p>No jobs available</p>",
+      "expected": "No jobs available",
+      "valid": true
+    },
+    {
+      "name": "selfclosing-hidden",
+      "body": "<div hidden/><p>No jobs available</p>",
+      "expected": "No jobs available",
+      "valid": true
+    }
+  ],
+  "discovery": [
+    {
+      "name": "strict-complete",
+      "metadata": {
+        "customer_id": "3040",
+        "listing_path": "/Jobs/3?CompanyID=32",
+        "strict_listing_contract": true,
+        "expected_employer": "Université de Neuchâtel",
+        "employer_field_id": "column_value_1184173",
+        "empty_state_text": "No jobs available"
+      },
+      "listing": "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32",
+      "responses": {
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32": {
+          "status": 200,
+          "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/1/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr><table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 2, &quot;TableFrom&quot;: 1, &quot;TableTo&quot;: 1, &quot;TableCurrentPage&quot;: 1, &quot;NextLink&quot;: {&quot;EnhancedUrl&quot;: &quot;https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&amp;tc1184173=p2&amp;_search_token1184173=123&quot;, &quot;FieldIsActive&quot;: 1}}\"></table-navigation>"
+        },
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&tc1184173=p2&_search_token1184173=123": {
+          "status": 200,
+          "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/2/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr><table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 2, &quot;TableFrom&quot;: 2, &quot;TableTo&quot;: 2, &quot;TableCurrentPage&quot;: 2}\"></table-navigation>"
+        },
+        "https://recruitingapp-3040.umantis.com/Vacancies/1/Description": {
+          "status": 200,
+          "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel - Careers\"></head>"
+        },
+        "https://recruitingapp-3040.umantis.com/Vacancies/2/Description": {
+          "status": 200,
+          "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel - Careers\"></head>"
+        }
+      },
+      "urls": [
+        "https://recruitingapp-3040.umantis.com/Vacancies/1/Description",
+        "https://recruitingapp-3040.umantis.com/Vacancies/2/Description"
+      ],
+      "error": false,
+      "calls": [
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32",
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&tc1184173=p2&_search_token1184173=123",
+        "https://recruitingapp-3040.umantis.com/Vacancies/1/Description",
+        "https://recruitingapp-3040.umantis.com/Vacancies/2/Description"
+      ]
+    },
+    {
+      "name": "strict-missing-tail",
+      "metadata": {
+        "customer_id": "3040",
+        "listing_path": "/Jobs/3?CompanyID=32",
+        "strict_listing_contract": true,
+        "expected_employer": "Université de Neuchâtel",
+        "employer_field_id": "column_value_1184173",
+        "empty_state_text": "No jobs available"
+      },
+      "listing": "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32",
+      "responses": {
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32": {
+          "status": 200,
+          "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/1/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr><table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 2, &quot;TableFrom&quot;: 1, &quot;TableTo&quot;: 1, &quot;TableCurrentPage&quot;: 1, &quot;NextLink&quot;: {&quot;EnhancedUrl&quot;: &quot;https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&amp;tc1184173=p2&amp;_search_token1184173=123&quot;, &quot;FieldIsActive&quot;: 1}}\"></table-navigation>"
+        },
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&tc1184173=p2&_search_token1184173=123": {
+          "status": 404,
+          "body": ""
+        },
+        "https://recruitingapp-3040.umantis.com/Vacancies/1/Description": {
+          "status": 200,
+          "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel - Careers\"></head>"
+        },
+        "https://recruitingapp-3040.umantis.com/Vacancies/2/Description": {
+          "status": 200,
+          "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel - Careers\"></head>"
+        }
+      },
+      "urls": null,
+      "error": true,
+      "calls": [
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32",
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&tc1184173=p2&_search_token1184173=123"
+      ]
+    },
+    {
+      "name": "strict-overlap",
+      "metadata": {
+        "customer_id": "3040",
+        "listing_path": "/Jobs/3?CompanyID=32",
+        "strict_listing_contract": true,
+        "expected_employer": "Université de Neuchâtel",
+        "employer_field_id": "column_value_1184173",
+        "empty_state_text": "No jobs available"
+      },
+      "listing": "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32",
+      "responses": {
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32": {
+          "status": 200,
+          "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/1/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr><table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 2, &quot;TableFrom&quot;: 1, &quot;TableTo&quot;: 1, &quot;TableCurrentPage&quot;: 1, &quot;NextLink&quot;: {&quot;EnhancedUrl&quot;: &quot;https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&amp;tc1184173=p2&amp;_search_token1184173=123&quot;, &quot;FieldIsActive&quot;: 1}}\"></table-navigation>"
+        },
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&tc1184173=p2&_search_token1184173=123": {
+          "status": 200,
+          "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/1/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr><table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 2, &quot;TableFrom&quot;: 2, &quot;TableTo&quot;: 2, &quot;TableCurrentPage&quot;: 2}\"></table-navigation>"
+        },
+        "https://recruitingapp-3040.umantis.com/Vacancies/1/Description": {
+          "status": 200,
+          "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel - Careers\"></head>"
+        },
+        "https://recruitingapp-3040.umantis.com/Vacancies/2/Description": {
+          "status": 200,
+          "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel - Careers\"></head>"
+        }
+      },
+      "urls": null,
+      "error": true,
+      "calls": [
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32",
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&tc1184173=p2&_search_token1184173=123"
+      ]
+    },
+    {
+      "name": "strict-changing-total",
+      "metadata": {
+        "customer_id": "3040",
+        "listing_path": "/Jobs/3?CompanyID=32",
+        "strict_listing_contract": true,
+        "expected_employer": "Université de Neuchâtel",
+        "employer_field_id": "column_value_1184173",
+        "empty_state_text": "No jobs available"
+      },
+      "listing": "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32",
+      "responses": {
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32": {
+          "status": 200,
+          "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/1/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr><table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 2, &quot;TableFrom&quot;: 1, &quot;TableTo&quot;: 1, &quot;TableCurrentPage&quot;: 1, &quot;NextLink&quot;: {&quot;EnhancedUrl&quot;: &quot;https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&amp;tc1184173=p2&amp;_search_token1184173=123&quot;, &quot;FieldIsActive&quot;: 1}}\"></table-navigation>"
+        },
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&tc1184173=p2&_search_token1184173=123": {
+          "status": 200,
+          "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/2/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr><table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 3, &quot;TableFrom&quot;: 2, &quot;TableTo&quot;: 2, &quot;TableCurrentPage&quot;: 2}\"></table-navigation>"
+        },
+        "https://recruitingapp-3040.umantis.com/Vacancies/1/Description": {
+          "status": 200,
+          "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel - Careers\"></head>"
+        },
+        "https://recruitingapp-3040.umantis.com/Vacancies/2/Description": {
+          "status": 200,
+          "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel - Careers\"></head>"
+        }
+      },
+      "urls": null,
+      "error": true,
+      "calls": [
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32",
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&tc1184173=p2&_search_token1184173=123"
+      ]
+    },
+    {
+      "name": "strict-foreign-next",
+      "metadata": {
+        "customer_id": "3040",
+        "listing_path": "/Jobs/3?CompanyID=32",
+        "strict_listing_contract": true,
+        "expected_employer": "Université de Neuchâtel",
+        "employer_field_id": "column_value_1184173",
+        "empty_state_text": "No jobs available"
+      },
+      "listing": "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32",
+      "responses": {
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32": {
+          "status": 200,
+          "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/1/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr><table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 2, &quot;TableFrom&quot;: 1, &quot;TableTo&quot;: 1, &quot;TableCurrentPage&quot;: 1, &quot;NextLink&quot;: {&quot;EnhancedUrl&quot;: &quot;https://foreign.example/Jobs/3?CompanyID=32&amp;tc1184173=p2&amp;_search_token1184173=123&quot;, &quot;FieldIsActive&quot;: 1}}\"></table-navigation>"
+        },
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&tc1184173=p2&_search_token1184173=123": {
+          "status": 200,
+          "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/2/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr><table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 2, &quot;TableFrom&quot;: 2, &quot;TableTo&quot;: 2, &quot;TableCurrentPage&quot;: 2}\"></table-navigation>"
+        },
+        "https://recruitingapp-3040.umantis.com/Vacancies/1/Description": {
+          "status": 200,
+          "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel - Careers\"></head>"
+        },
+        "https://recruitingapp-3040.umantis.com/Vacancies/2/Description": {
+          "status": 200,
+          "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel - Careers\"></head>"
+        }
+      },
+      "urls": null,
+      "error": true,
+      "calls": [
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32"
+      ]
+    },
+    {
+      "name": "strict-wrong-owner",
+      "metadata": {
+        "customer_id": "3040",
+        "listing_path": "/Jobs/3?CompanyID=32",
+        "strict_listing_contract": true,
+        "expected_employer": "Université de Neuchâtel",
+        "employer_field_id": "column_value_1184173",
+        "empty_state_text": "No jobs available"
+      },
+      "listing": "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32",
+      "responses": {
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32": {
+          "status": 200,
+          "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/1/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr><table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 2, &quot;TableFrom&quot;: 1, &quot;TableTo&quot;: 1, &quot;TableCurrentPage&quot;: 1, &quot;NextLink&quot;: {&quot;EnhancedUrl&quot;: &quot;https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&amp;tc1184173=p2&amp;_search_token1184173=123&quot;, &quot;FieldIsActive&quot;: 1}}\"></table-navigation>"
+        },
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&tc1184173=p2&_search_token1184173=123": {
+          "status": 200,
+          "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/2/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr><table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 2, &quot;TableFrom&quot;: 2, &quot;TableTo&quot;: 2, &quot;TableCurrentPage&quot;: 2}\"></table-navigation>"
+        },
+        "https://recruitingapp-3040.umantis.com/Vacancies/1/Description": {
+          "status": 200,
+          "body": "<head><meta name=\"description\" content=\"Other - Careers\"></head>"
+        },
+        "https://recruitingapp-3040.umantis.com/Vacancies/2/Description": {
+          "status": 200,
+          "body": "<head><meta name=\"description\" content=\"Other - Careers\"></head>"
+        }
+      },
+      "urls": null,
+      "error": true,
+      "calls": [
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32",
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&tc1184173=p2&_search_token1184173=123",
+        "https://recruitingapp-3040.umantis.com/Vacancies/1/Description"
+      ]
+    },
+    {
+      "name": "strict-zero",
+      "metadata": {
+        "customer_id": "3040",
+        "listing_path": "/Jobs/3?CompanyID=32",
+        "strict_listing_contract": true,
+        "expected_employer": "Université de Neuchâtel",
+        "employer_field_id": "column_value_1184173",
+        "empty_state_text": "No jobs available"
+      },
+      "listing": "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32",
+      "responses": {
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32": {
+          "status": 200,
+          "body": "<table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 0, &quot;TableFrom&quot;: 0, &quot;TableTo&quot;: 0, &quot;TableCurrentPage&quot;: 1}\"></table-navigation><p>No jobs available</p>"
+        },
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&tc1184173=p2&_search_token1184173=123": {
+          "status": 200,
+          "body": ""
+        },
+        "https://recruitingapp-3040.umantis.com/Vacancies/1/Description": {
+          "status": 200,
+          "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel - Careers\"></head>"
+        },
+        "https://recruitingapp-3040.umantis.com/Vacancies/2/Description": {
+          "status": 200,
+          "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel - Careers\"></head>"
+        }
+      },
+      "urls": [],
+      "error": false,
+      "calls": [
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32"
+      ]
+    },
+    {
+      "name": "strict-hidden-zero",
+      "metadata": {
+        "customer_id": "3040",
+        "listing_path": "/Jobs/3?CompanyID=32",
+        "strict_listing_contract": true,
+        "expected_employer": "Université de Neuchâtel",
+        "employer_field_id": "column_value_1184173",
+        "empty_state_text": "No jobs available"
+      },
+      "listing": "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32",
+      "responses": {
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32": {
+          "status": 200,
+          "body": "<table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 0, &quot;TableFrom&quot;: 0, &quot;TableTo&quot;: 0, &quot;TableCurrentPage&quot;: 1}\"></table-navigation><p hidden>No jobs available</p>"
+        },
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&tc1184173=p2&_search_token1184173=123": {
+          "status": 200,
+          "body": ""
+        },
+        "https://recruitingapp-3040.umantis.com/Vacancies/1/Description": {
+          "status": 200,
+          "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel - Careers\"></head>"
+        },
+        "https://recruitingapp-3040.umantis.com/Vacancies/2/Description": {
+          "status": 200,
+          "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel - Careers\"></head>"
+        }
+      },
+      "urls": null,
+      "error": true,
+      "calls": [
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32"
+      ]
+    },
+    {
+      "name": "legacy-complete-repeat",
+      "metadata": {
+        "customer_id": "3040",
+        "listing_path": "/Jobs/3?CompanyID=32"
+      },
+      "listing": "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32",
+      "responses": {
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32": {
+          "status": 200,
+          "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/1/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr><table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 2, &quot;TableFrom&quot;: 1, &quot;TableTo&quot;: 1, &quot;TableCurrentPage&quot;: 1, &quot;NextLink&quot;: {&quot;EnhancedUrl&quot;: &quot;https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&amp;tc1184173=p2&amp;_search_token1184173=123&quot;, &quot;FieldIsActive&quot;: 1}}\"></table-navigation>"
+        },
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&tc1184173=p2&_search_token1184173=123": {
+          "status": 200,
+          "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/2/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr><table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 2, &quot;TableFrom&quot;: 2, &quot;TableTo&quot;: 2, &quot;TableCurrentPage&quot;: 2}\"></table-navigation>"
+        },
+        "https://recruitingapp-3040.umantis.com/Vacancies/1/Description": {
+          "status": 200,
+          "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel - Careers\"></head>"
+        },
+        "https://recruitingapp-3040.umantis.com/Vacancies/2/Description": {
+          "status": 200,
+          "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel - Careers\"></head>"
+        },
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&tc1184173=p2": {
+          "status": 200,
+          "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/2/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr><table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 2, &quot;TableFrom&quot;: 2, &quot;TableTo&quot;: 2, &quot;TableCurrentPage&quot;: 2}\"></table-navigation>"
+        },
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&tc1184173=p3": {
+          "status": 200,
+          "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/2/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr><table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 2, &quot;TableFrom&quot;: 2, &quot;TableTo&quot;: 2, &quot;TableCurrentPage&quot;: 2}\"></table-navigation>"
+        }
+      },
+      "urls": [
+        "https://recruitingapp-3040.umantis.com/Vacancies/1/Description",
+        "https://recruitingapp-3040.umantis.com/Vacancies/2/Description"
+      ],
+      "error": false,
+      "calls": [
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32",
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&tc1184173=p2",
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&tc1184173=p3"
+      ]
+    },
+    {
+      "name": "legacy-terminal",
+      "metadata": {
+        "customer_id": "3040",
+        "listing_path": "/Jobs/3?CompanyID=32"
+      },
+      "listing": "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32",
+      "responses": {
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32": {
+          "status": 200,
+          "body": "<tr><td><a class=\"HSTableLinkSubTitle\" href=\"/Vacancies/1/Description/2\">Engineer</a></td><td><li><i class=\"icon-department\"></i><span class=\"column-value\">Neuchâtel <b>CH</b></span></li><li><span class=\"visually-hidden\">Employment Type:</span><span class=\"column-value\">Full time</span></li><span class=\"column-value\" id=\"column_value_1184173\">Université de Neuchâtel</span></td></tr><table-navigation initial-data-string=\"{&quot;TableNr&quot;: &quot;1184173&quot;, &quot;TableTotalLines&quot;: 2, &quot;TableFrom&quot;: 1, &quot;TableTo&quot;: 1, &quot;TableCurrentPage&quot;: 1, &quot;NextLink&quot;: {&quot;EnhancedUrl&quot;: &quot;https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&amp;tc1184173=p2&amp;_search_token1184173=123&quot;, &quot;FieldIsActive&quot;: 1}}\"></table-navigation>"
+        },
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&tc1184173=p2&_search_token1184173=123": {
+          "status": 404,
+          "body": ""
+        },
+        "https://recruitingapp-3040.umantis.com/Vacancies/1/Description": {
+          "status": 200,
+          "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel - Careers\"></head>"
+        },
+        "https://recruitingapp-3040.umantis.com/Vacancies/2/Description": {
+          "status": 200,
+          "body": "<head><meta name=\"description\" content=\"Université de Neuchâtel - Careers\"></head>"
+        },
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&tc1184173=p2": {
+          "status": 404,
+          "body": ""
+        },
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&tc1184173=p3": {
+          "status": 200,
+          "body": ""
+        }
+      },
+      "urls": [
+        "https://recruitingapp-3040.umantis.com/Vacancies/1/Description"
+      ],
+      "error": false,
+      "calls": [
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32",
+        "https://recruitingapp-3040.umantis.com/Jobs/3?CompanyID=32&tc1184173=p2"
+      ]
+    }
+  ]
+}

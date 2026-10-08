@@ -1,0 +1,66 @@
+{
+  "schema": "jobseek.go-native.source972-release/v1",
+  "version": "0.13.972",
+  "source_revision": "3c3231b6451316f3f861692ce572b7f82d60af8b",
+  "pr": 10359,
+  "reviewed_head": "d9fb4274e4c4a0d15519de126be9722b77f3469c",
+  "required_ci": "passed",
+  "crawler_deploy_gate": "passed",
+  "original_crawler_deploy_run": 37731794665,
+  "matching_renderer_deploy_run": 37732069085,
+  "incoming_cold_epoch": 228,
+  "incoming_cold_verified": true,
+  "b0_epoch": 229,
+  "supported_b0_activation": "passed",
+  "supported_ordinary_activation": "passed",
+  "ordinary_plan": "e1f5e762517c97ce664272e43181c81b654a20fc20dd9bb47753e8501de526ba",
+  "fresh_admission": {
+    "monitors": 7384,
+    "detail_boards": 2616,
+    "scheduled_owned_postings": 1469088,
+    "scheduled_posting_routes": 1496376,
+    "cached_detail_rejected_boards": 40,
+    "unsupported_detail_route_boards": 1
+  },
+  "independent_serving": {
+    "source_image_receipt_restart_verified_services": 10,
+    "healthy_endpoints": 8
+  },
+  "normal_schedule_snapshot": {
+    "observed_at": "2026-10-08T06:19:17.909878+00:00",
+    "monitor_successes": 50,
+    "detail_successes": 3,
+    "monitor_failures": 1,
+    "detail_failures": 1,
+    "claim_errors": 5,
+    "claim_errors_unchanged_from_initial": true,
+    "canonical_samples": 12,
+    "newly_admitted_provider_completions": "not observed yet"
+  },
+  "retained_receipt_followup": {
+    "completed_recurring_equal": 51,
+    "active_inflight": 1,
+    "initial_pending_receipt_recovered": true,
+    "scope": "bounded read-only progress; complete fleet conservation not established"
+  },
+  "following_release": {
+    "version": "0.13.973",
+    "pr": 10360,
+    "reviewed_head": "daf3c288251c0318297217c1c334ae03f1312d66",
+    "required_ci": "passed",
+    "installed_runtime_checks": "passed",
+    "deployment_gate": "passed",
+    "configuration_screen": 19,
+    "planned_new_monitor_ownership": 14,
+    "monitor_holdouts": [
+      "kaiser-permanente-careers",
+      "hays-careers",
+      "euronext-careers-wttj",
+      "siemens-careers",
+      "rtx-careers"
+    ],
+    "status": "outgoing source972 supported retirement started; no source973 ownership"
+  },
+  "lightpanda_stable": "1.0.0",
+  "full_migration_complete": false
+}

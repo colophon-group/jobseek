@@ -1,0 +1,1864 @@
+[
+  {
+    "name": "complete",
+    "page_id": "11111111-1111-1111-1111-111111111111",
+    "data": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer & Operations"
+                  ]
+                ],
+                "loc": [
+                  [
+                    "Paris, Zürich"
+                  ]
+                ],
+                "team": [
+                  [
+                    "Platform"
+                  ]
+                ],
+                "type": [
+                  [
+                    "Full time"
+                  ]
+                ],
+                "remote": [
+                  [
+                    "Remote"
+                  ]
+                ]
+              },
+              "content": [
+                "a",
+                "b",
+                "c",
+                "d",
+                "e"
+              ]
+            }
+          },
+          "a": {
+            "value": {
+              "type": "header",
+              "properties": {
+                "title": [
+                  [
+                    "Build <Go>",
+                    [
+                      [
+                        "b"
+                      ],
+                      [
+                        "i"
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            }
+          },
+          "b": {
+            "value": {
+              "type": "bulleted_list",
+              "properties": {
+                "title": [
+                  [
+                    "One"
+                  ]
+                ]
+              }
+            }
+          },
+          "c": {
+            "value": {
+              "type": "numbered_list",
+              "properties": {
+                "title": [
+                  [
+                    "Two"
+                  ]
+                ]
+              }
+            }
+          },
+          "d": {
+            "value": {
+              "type": "toggle",
+              "properties": {
+                "title": [
+                  [
+                    "Details"
+                  ]
+                ]
+              },
+              "content": [
+                "f",
+                "g"
+              ]
+            }
+          },
+          "e": {
+            "value": {
+              "type": "divider",
+              "properties": {
+                "title": []
+              }
+            }
+          },
+          "f": {
+            "value": {
+              "type": "bulleted_list",
+              "properties": {
+                "title": [
+                  [
+                    "Nested"
+                  ]
+                ]
+              }
+            }
+          },
+          "g": {
+            "value": {
+              "type": "quote",
+              "properties": {
+                "title": [
+                  [
+                    "Read",
+                    [
+                      [
+                        "a",
+                        "https://example.com/?x='&y=\""
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "jobs": {
+            "value": {
+              "schema": {
+                "title": {
+                  "name": "Role",
+                  "type": "title"
+                },
+                "loc": {
+                  "name": "Location",
+                  "type": "multi_select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                },
+                "type": {
+                  "name": "Employment Type",
+                  "type": "select"
+                },
+                "remote": {
+                  "name": "Remote",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "config": {},
+    "output": {
+      "title": "Engineer & Operations",
+      "description": "<h1><em><strong>Build &lt;Go&gt;</strong></em></h1>\n<ul>\n<li>One</li>\n<li>Two</li>\n</ul>\n<h3>Details</h3>\n<ul>\n<li>Nested</li>\n<blockquote><a href=\"https://example.com/?x=&#x27;&amp;y=&quot;\">Read</a></blockquote>\n</ul>\n<hr>",
+      "locations": [
+        "Paris",
+        "Zürich"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "Remote",
+      "metadata": {
+        "team": "Platform"
+      }
+    },
+    "error": false
+  },
+  {
+    "name": "double-wrapper",
+    "page_id": "11111111-1111-1111-1111-111111111111",
+    "data": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "value": {
+                "type": "page",
+                "properties": {
+                  "title": [
+                    [
+                      "Engineer & Operations"
+                    ]
+                  ],
+                  "loc": [
+                    [
+                      "Paris, Zürich"
+                    ]
+                  ],
+                  "team": [
+                    [
+                      "Platform"
+                    ]
+                  ],
+                  "type": [
+                    [
+                      "Full time"
+                    ]
+                  ],
+                  "remote": [
+                    [
+                      "Remote"
+                    ]
+                  ]
+                },
+                "content": [
+                  "a",
+                  "b",
+                  "c",
+                  "d",
+                  "e"
+                ]
+              }
+            }
+          },
+          "a": {
+            "value": {
+              "value": {
+                "type": "header",
+                "properties": {
+                  "title": [
+                    [
+                      "Build <Go>",
+                      [
+                        [
+                          "b"
+                        ],
+                        [
+                          "i"
+                        ]
+                      ]
+                    ]
+                  ]
+                }
+              }
+            }
+          },
+          "b": {
+            "value": {
+              "value": {
+                "type": "bulleted_list",
+                "properties": {
+                  "title": [
+                    [
+                      "One"
+                    ]
+                  ]
+                }
+              }
+            }
+          },
+          "c": {
+            "value": {
+              "value": {
+                "type": "numbered_list",
+                "properties": {
+                  "title": [
+                    [
+                      "Two"
+                    ]
+                  ]
+                }
+              }
+            }
+          },
+          "d": {
+            "value": {
+              "value": {
+                "type": "toggle",
+                "properties": {
+                  "title": [
+                    [
+                      "Details"
+                    ]
+                  ]
+                },
+                "content": [
+                  "f",
+                  "g"
+                ]
+              }
+            }
+          },
+          "e": {
+            "value": {
+              "value": {
+                "type": "divider",
+                "properties": {
+                  "title": []
+                }
+              }
+            }
+          },
+          "f": {
+            "value": {
+              "value": {
+                "type": "bulleted_list",
+                "properties": {
+                  "title": [
+                    [
+                      "Nested"
+                    ]
+                  ]
+                }
+              }
+            }
+          },
+          "g": {
+            "value": {
+              "value": {
+                "type": "quote",
+                "properties": {
+                  "title": [
+                    [
+                      "Read",
+                      [
+                        [
+                          "a",
+                          "https://example.com/?x='&y=\""
+                        ]
+                      ]
+                    ]
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "collection": {
+          "jobs": {
+            "value": {
+              "value": {
+                "schema": {
+                  "title": {
+                    "name": "Role",
+                    "type": "title"
+                  },
+                  "loc": {
+                    "name": "Location",
+                    "type": "multi_select"
+                  },
+                  "team": {
+                    "name": "Team",
+                    "type": "select"
+                  },
+                  "type": {
+                    "name": "Employment Type",
+                    "type": "select"
+                  },
+                  "remote": {
+                    "name": "Remote",
+                    "type": "select"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "config": {},
+    "output": {
+      "title": "Engineer & Operations",
+      "description": "<h1><em><strong>Build &lt;Go&gt;</strong></em></h1>\n<ul>\n<li>One</li>\n<li>Two</li>\n</ul>\n<h3>Details</h3>\n<ul>\n<li>Nested</li>\n<blockquote><a href=\"https://example.com/?x=&#x27;&amp;y=&quot;\">Read</a></blockquote>\n</ul>\n<hr>",
+      "locations": [
+        "Paris",
+        "Zürich"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "Remote",
+      "metadata": {
+        "team": "Platform"
+      }
+    },
+    "error": false
+  },
+  {
+    "name": "single-location",
+    "page_id": "11111111-1111-1111-1111-111111111111",
+    "data": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer & Operations"
+                  ]
+                ],
+                "loc": [
+                  [
+                    "Paris, Zürich"
+                  ]
+                ],
+                "team": [
+                  [
+                    "Platform"
+                  ]
+                ],
+                "type": [
+                  [
+                    "Full time"
+                  ]
+                ],
+                "remote": [
+                  [
+                    "Remote"
+                  ]
+                ]
+              },
+              "content": [
+                "a",
+                "b",
+                "c",
+                "d",
+                "e"
+              ]
+            }
+          },
+          "a": {
+            "value": {
+              "type": "header",
+              "properties": {
+                "title": [
+                  [
+                    "Build <Go>",
+                    [
+                      [
+                        "b"
+                      ],
+                      [
+                        "i"
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            }
+          },
+          "b": {
+            "value": {
+              "type": "bulleted_list",
+              "properties": {
+                "title": [
+                  [
+                    "One"
+                  ]
+                ]
+              }
+            }
+          },
+          "c": {
+            "value": {
+              "type": "numbered_list",
+              "properties": {
+                "title": [
+                  [
+                    "Two"
+                  ]
+                ]
+              }
+            }
+          },
+          "d": {
+            "value": {
+              "type": "toggle",
+              "properties": {
+                "title": [
+                  [
+                    "Details"
+                  ]
+                ]
+              },
+              "content": [
+                "f",
+                "g"
+              ]
+            }
+          },
+          "e": {
+            "value": {
+              "type": "divider",
+              "properties": {
+                "title": []
+              }
+            }
+          },
+          "f": {
+            "value": {
+              "type": "bulleted_list",
+              "properties": {
+                "title": [
+                  [
+                    "Nested"
+                  ]
+                ]
+              }
+            }
+          },
+          "g": {
+            "value": {
+              "type": "quote",
+              "properties": {
+                "title": [
+                  [
+                    "Read",
+                    [
+                      [
+                        "a",
+                        "https://example.com/?x='&y=\""
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "jobs": {
+            "value": {
+              "schema": {
+                "title": {
+                  "name": "Role",
+                  "type": "title"
+                },
+                "loc": {
+                  "name": "Location",
+                  "type": "select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                },
+                "type": {
+                  "name": "Employment Type",
+                  "type": "select"
+                },
+                "remote": {
+                  "name": "Remote",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "config": {},
+    "output": {
+      "title": "Engineer & Operations",
+      "description": "<h1><em><strong>Build &lt;Go&gt;</strong></em></h1>\n<ul>\n<li>One</li>\n<li>Two</li>\n</ul>\n<h3>Details</h3>\n<ul>\n<li>Nested</li>\n<blockquote><a href=\"https://example.com/?x=&#x27;&amp;y=&quot;\">Read</a></blockquote>\n</ul>\n<hr>",
+      "locations": null,
+      "employment_type": "Full time",
+      "job_location_type": "Remote",
+      "metadata": {
+        "team": "Platform"
+      }
+    },
+    "error": false
+  },
+  {
+    "name": "property-override",
+    "page_id": "11111111-1111-1111-1111-111111111111",
+    "data": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer & Operations"
+                  ]
+                ],
+                "loc": [
+                  [
+                    "Paris, Zürich"
+                  ]
+                ],
+                "team": [
+                  [
+                    "Platform"
+                  ]
+                ],
+                "type": [
+                  [
+                    "Full time"
+                  ]
+                ],
+                "remote": [
+                  [
+                    "Remote"
+                  ]
+                ]
+              },
+              "content": [
+                "a",
+                "b",
+                "c",
+                "d",
+                "e"
+              ]
+            }
+          },
+          "a": {
+            "value": {
+              "type": "header",
+              "properties": {
+                "title": [
+                  [
+                    "Build <Go>",
+                    [
+                      [
+                        "b"
+                      ],
+                      [
+                        "i"
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            }
+          },
+          "b": {
+            "value": {
+              "type": "bulleted_list",
+              "properties": {
+                "title": [
+                  [
+                    "One"
+                  ]
+                ]
+              }
+            }
+          },
+          "c": {
+            "value": {
+              "type": "numbered_list",
+              "properties": {
+                "title": [
+                  [
+                    "Two"
+                  ]
+                ]
+              }
+            }
+          },
+          "d": {
+            "value": {
+              "type": "toggle",
+              "properties": {
+                "title": [
+                  [
+                    "Details"
+                  ]
+                ]
+              },
+              "content": [
+                "f",
+                "g"
+              ]
+            }
+          },
+          "e": {
+            "value": {
+              "type": "divider",
+              "properties": {
+                "title": []
+              }
+            }
+          },
+          "f": {
+            "value": {
+              "type": "bulleted_list",
+              "properties": {
+                "title": [
+                  [
+                    "Nested"
+                  ]
+                ]
+              }
+            }
+          },
+          "g": {
+            "value": {
+              "type": "quote",
+              "properties": {
+                "title": [
+                  [
+                    "Read",
+                    [
+                      [
+                        "a",
+                        "https://example.com/?x='&y=\""
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "jobs": {
+            "value": {
+              "schema": {
+                "title": {
+                  "name": "Role",
+                  "type": "title"
+                },
+                "loc": {
+                  "name": "Location",
+                  "type": "multi_select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                },
+                "type": {
+                  "name": "Employment Type",
+                  "type": "select"
+                },
+                "remote": {
+                  "name": "Remote",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "property_map": {
+        "team": "locations",
+        "location": "metadata.team"
+      }
+    },
+    "output": {
+      "title": "Engineer & Operations",
+      "description": "<h1><em><strong>Build &lt;Go&gt;</strong></em></h1>\n<ul>\n<li>One</li>\n<li>Two</li>\n</ul>\n<h3>Details</h3>\n<ul>\n<li>Nested</li>\n<blockquote><a href=\"https://example.com/?x=&#x27;&amp;y=&quot;\">Read</a></blockquote>\n</ul>\n<hr>",
+      "locations": null,
+      "employment_type": "Full time",
+      "job_location_type": "Remote",
+      "metadata": {
+        "team": "Paris, Zürich"
+      }
+    },
+    "error": false
+  },
+  {
+    "name": "empty",
+    "page_id": "11111111-1111-1111-1111-111111111111",
+    "data": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": []
+              },
+              "content": []
+            }
+          },
+          "a": {
+            "value": {
+              "type": "header",
+              "properties": {
+                "title": [
+                  [
+                    "Build <Go>",
+                    [
+                      [
+                        "b"
+                      ],
+                      [
+                        "i"
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            }
+          },
+          "b": {
+            "value": {
+              "type": "bulleted_list",
+              "properties": {
+                "title": [
+                  [
+                    "One"
+                  ]
+                ]
+              }
+            }
+          },
+          "c": {
+            "value": {
+              "type": "numbered_list",
+              "properties": {
+                "title": [
+                  [
+                    "Two"
+                  ]
+                ]
+              }
+            }
+          },
+          "d": {
+            "value": {
+              "type": "toggle",
+              "properties": {
+                "title": [
+                  [
+                    "Details"
+                  ]
+                ]
+              },
+              "content": [
+                "f",
+                "g"
+              ]
+            }
+          },
+          "e": {
+            "value": {
+              "type": "divider",
+              "properties": {
+                "title": []
+              }
+            }
+          },
+          "f": {
+            "value": {
+              "type": "bulleted_list",
+              "properties": {
+                "title": [
+                  [
+                    "Nested"
+                  ]
+                ]
+              }
+            }
+          },
+          "g": {
+            "value": {
+              "type": "quote",
+              "properties": {
+                "title": [
+                  [
+                    "Read",
+                    [
+                      [
+                        "a",
+                        "https://example.com/?x='&y=\""
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "jobs": {
+            "value": {
+              "schema": {
+                "title": {
+                  "name": "Role",
+                  "type": "title"
+                },
+                "loc": {
+                  "name": "Location",
+                  "type": "multi_select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                },
+                "type": {
+                  "name": "Employment Type",
+                  "type": "select"
+                },
+                "remote": {
+                  "name": "Remote",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "config": {},
+    "output": {
+      "title": null,
+      "description": null,
+      "locations": null,
+      "employment_type": null,
+      "job_location_type": null,
+      "metadata": null
+    },
+    "error": false
+  },
+  {
+    "name": "property-precedence",
+    "page_id": "11111111-1111-1111-1111-111111111111",
+    "data": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer & Operations"
+                  ]
+                ],
+                "loc": [
+                  [
+                    "Paris, Zürich"
+                  ]
+                ],
+                "team": [
+                  [
+                    "Platform"
+                  ]
+                ],
+                "type": [
+                  [
+                    "Full time"
+                  ]
+                ],
+                "remote": [
+                  [
+                    "Remote"
+                  ]
+                ],
+                "later": [
+                  [
+                    "London"
+                  ]
+                ]
+              },
+              "content": [
+                "a",
+                "b",
+                "c",
+                "d",
+                "e"
+              ]
+            }
+          },
+          "a": {
+            "value": {
+              "type": "header",
+              "properties": {
+                "title": [
+                  [
+                    "Build <Go>",
+                    [
+                      [
+                        "b"
+                      ],
+                      [
+                        "i"
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            }
+          },
+          "b": {
+            "value": {
+              "type": "bulleted_list",
+              "properties": {
+                "title": [
+                  [
+                    "One"
+                  ]
+                ]
+              }
+            }
+          },
+          "c": {
+            "value": {
+              "type": "numbered_list",
+              "properties": {
+                "title": [
+                  [
+                    "Two"
+                  ]
+                ]
+              }
+            }
+          },
+          "d": {
+            "value": {
+              "type": "toggle",
+              "properties": {
+                "title": [
+                  [
+                    "Details"
+                  ]
+                ]
+              },
+              "content": [
+                "f",
+                "g"
+              ]
+            }
+          },
+          "e": {
+            "value": {
+              "type": "divider",
+              "properties": {
+                "title": []
+              }
+            }
+          },
+          "f": {
+            "value": {
+              "type": "bulleted_list",
+              "properties": {
+                "title": [
+                  [
+                    "Nested"
+                  ]
+                ]
+              }
+            }
+          },
+          "g": {
+            "value": {
+              "type": "quote",
+              "properties": {
+                "title": [
+                  [
+                    "Read",
+                    [
+                      [
+                        "a",
+                        "https://example.com/?x='&y=\""
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "jobs": {
+            "value": {
+              "schema": {
+                "title": {
+                  "name": "Role",
+                  "type": "title"
+                },
+                "loc": {
+                  "name": "Location",
+                  "type": "multi_select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                },
+                "type": {
+                  "name": "Employment Type",
+                  "type": "select"
+                },
+                "remote": {
+                  "name": "Remote",
+                  "type": "select"
+                },
+                "later": {
+                  "name": "City",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "config": {},
+    "output": {
+      "title": "Engineer & Operations",
+      "description": "<h1><em><strong>Build &lt;Go&gt;</strong></em></h1>\n<ul>\n<li>One</li>\n<li>Two</li>\n</ul>\n<h3>Details</h3>\n<ul>\n<li>Nested</li>\n<blockquote><a href=\"https://example.com/?x=&#x27;&amp;y=&quot;\">Read</a></blockquote>\n</ul>\n<hr>",
+      "locations": null,
+      "employment_type": "Full time",
+      "job_location_type": "Remote",
+      "metadata": {
+        "team": "Platform"
+      }
+    },
+    "error": false
+  },
+  {
+    "name": "scalar-property",
+    "page_id": "11111111-1111-1111-1111-111111111111",
+    "data": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer & Operations"
+                  ]
+                ],
+                "loc": [
+                  [
+                    "Paris, Zürich"
+                  ]
+                ],
+                "team": [
+                  [
+                    true
+                  ],
+                  [
+                    null
+                  ],
+                  [
+                    13
+                  ]
+                ],
+                "type": [
+                  [
+                    "Full time"
+                  ]
+                ],
+                "remote": [
+                  [
+                    "Remote"
+                  ]
+                ]
+              },
+              "content": [
+                "a",
+                "b",
+                "c",
+                "d",
+                "e"
+              ]
+            }
+          },
+          "a": {
+            "value": {
+              "type": "header",
+              "properties": {
+                "title": [
+                  [
+                    "Build <Go>",
+                    [
+                      [
+                        "b"
+                      ],
+                      [
+                        "i"
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            }
+          },
+          "b": {
+            "value": {
+              "type": "bulleted_list",
+              "properties": {
+                "title": [
+                  [
+                    "One"
+                  ]
+                ]
+              }
+            }
+          },
+          "c": {
+            "value": {
+              "type": "numbered_list",
+              "properties": {
+                "title": [
+                  [
+                    "Two"
+                  ]
+                ]
+              }
+            }
+          },
+          "d": {
+            "value": {
+              "type": "toggle",
+              "properties": {
+                "title": [
+                  [
+                    "Details"
+                  ]
+                ]
+              },
+              "content": [
+                "f",
+                "g"
+              ]
+            }
+          },
+          "e": {
+            "value": {
+              "type": "divider",
+              "properties": {
+                "title": []
+              }
+            }
+          },
+          "f": {
+            "value": {
+              "type": "bulleted_list",
+              "properties": {
+                "title": [
+                  [
+                    "Nested"
+                  ]
+                ]
+              }
+            }
+          },
+          "g": {
+            "value": {
+              "type": "quote",
+              "properties": {
+                "title": [
+                  [
+                    "Read",
+                    [
+                      [
+                        "a",
+                        "https://example.com/?x='&y=\""
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "jobs": {
+            "value": {
+              "schema": {
+                "title": {
+                  "name": "Role",
+                  "type": "title"
+                },
+                "loc": {
+                  "name": "Location",
+                  "type": "multi_select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                },
+                "type": {
+                  "name": "Employment Type",
+                  "type": "select"
+                },
+                "remote": {
+                  "name": "Remote",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "config": {},
+    "output": {
+      "title": "Engineer & Operations",
+      "description": "<h1><em><strong>Build &lt;Go&gt;</strong></em></h1>\n<ul>\n<li>One</li>\n<li>Two</li>\n</ul>\n<h3>Details</h3>\n<ul>\n<li>Nested</li>\n<blockquote><a href=\"https://example.com/?x=&#x27;&amp;y=&quot;\">Read</a></blockquote>\n</ul>\n<hr>",
+      "locations": [
+        "Paris",
+        "Zürich"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "Remote",
+      "metadata": {
+        "team": "TrueNone13"
+      }
+    },
+    "error": false
+  },
+  {
+    "name": "bad-rich-text",
+    "page_id": "11111111-1111-1111-1111-111111111111",
+    "data": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer & Operations"
+                  ]
+                ],
+                "loc": [
+                  [
+                    "Paris, Zürich"
+                  ]
+                ],
+                "team": [
+                  [
+                    "Platform"
+                  ]
+                ],
+                "type": [
+                  [
+                    "Full time"
+                  ]
+                ],
+                "remote": [
+                  [
+                    "Remote"
+                  ]
+                ]
+              },
+              "content": [
+                "a",
+                "b",
+                "c",
+                "d",
+                "e"
+              ]
+            }
+          },
+          "a": {
+            "value": {
+              "type": "header",
+              "properties": {
+                "title": [
+                  [
+                    13
+                  ]
+                ]
+              }
+            }
+          },
+          "b": {
+            "value": {
+              "type": "bulleted_list",
+              "properties": {
+                "title": [
+                  [
+                    "One"
+                  ]
+                ]
+              }
+            }
+          },
+          "c": {
+            "value": {
+              "type": "numbered_list",
+              "properties": {
+                "title": [
+                  [
+                    "Two"
+                  ]
+                ]
+              }
+            }
+          },
+          "d": {
+            "value": {
+              "type": "toggle",
+              "properties": {
+                "title": [
+                  [
+                    "Details"
+                  ]
+                ]
+              },
+              "content": [
+                "f",
+                "g"
+              ]
+            }
+          },
+          "e": {
+            "value": {
+              "type": "divider",
+              "properties": {
+                "title": []
+              }
+            }
+          },
+          "f": {
+            "value": {
+              "type": "bulleted_list",
+              "properties": {
+                "title": [
+                  [
+                    "Nested"
+                  ]
+                ]
+              }
+            }
+          },
+          "g": {
+            "value": {
+              "type": "quote",
+              "properties": {
+                "title": [
+                  [
+                    "Read",
+                    [
+                      [
+                        "a",
+                        "https://example.com/?x='&y=\""
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "jobs": {
+            "value": {
+              "schema": {
+                "title": {
+                  "name": "Role",
+                  "type": "title"
+                },
+                "loc": {
+                  "name": "Location",
+                  "type": "multi_select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                },
+                "type": {
+                  "name": "Employment Type",
+                  "type": "select"
+                },
+                "remote": {
+                  "name": "Remote",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "config": {},
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "bad-link",
+    "page_id": "11111111-1111-1111-1111-111111111111",
+    "data": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer & Operations"
+                  ]
+                ],
+                "loc": [
+                  [
+                    "Paris, Zürich"
+                  ]
+                ],
+                "team": [
+                  [
+                    "Platform"
+                  ]
+                ],
+                "type": [
+                  [
+                    "Full time"
+                  ]
+                ],
+                "remote": [
+                  [
+                    "Remote"
+                  ]
+                ]
+              },
+              "content": [
+                "a",
+                "b",
+                "c",
+                "d",
+                "e"
+              ]
+            }
+          },
+          "a": {
+            "value": {
+              "type": "header",
+              "properties": {
+                "title": [
+                  [
+                    "Build <Go>",
+                    [
+                      [
+                        "b"
+                      ],
+                      [
+                        "i"
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            }
+          },
+          "b": {
+            "value": {
+              "type": "bulleted_list",
+              "properties": {
+                "title": [
+                  [
+                    "One"
+                  ]
+                ]
+              }
+            }
+          },
+          "c": {
+            "value": {
+              "type": "numbered_list",
+              "properties": {
+                "title": [
+                  [
+                    "Two"
+                  ]
+                ]
+              }
+            }
+          },
+          "d": {
+            "value": {
+              "type": "toggle",
+              "properties": {
+                "title": [
+                  [
+                    "Details"
+                  ]
+                ]
+              },
+              "content": [
+                "f",
+                "g"
+              ]
+            }
+          },
+          "e": {
+            "value": {
+              "type": "divider",
+              "properties": {
+                "title": []
+              }
+            }
+          },
+          "f": {
+            "value": {
+              "type": "bulleted_list",
+              "properties": {
+                "title": [
+                  [
+                    "Nested"
+                  ]
+                ]
+              }
+            }
+          },
+          "g": {
+            "value": {
+              "type": "quote",
+              "properties": {
+                "title": [
+                  [
+                    "Read",
+                    [
+                      [
+                        "a",
+                        true
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "jobs": {
+            "value": {
+              "schema": {
+                "title": {
+                  "name": "Role",
+                  "type": "title"
+                },
+                "loc": {
+                  "name": "Location",
+                  "type": "multi_select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                },
+                "type": {
+                  "name": "Employment Type",
+                  "type": "select"
+                },
+                "remote": {
+                  "name": "Remote",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "config": {},
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "unknown-block",
+    "page_id": "11111111-1111-1111-1111-111111111111",
+    "data": {
+      "recordMap": {
+        "block": {
+          "11111111-1111-1111-1111-111111111111": {
+            "value": {
+              "type": "page",
+              "properties": {
+                "title": [
+                  [
+                    "Engineer & Operations"
+                  ]
+                ],
+                "loc": [
+                  [
+                    "Paris, Zürich"
+                  ]
+                ],
+                "team": [
+                  [
+                    "Platform"
+                  ]
+                ],
+                "type": [
+                  [
+                    "Full time"
+                  ]
+                ],
+                "remote": [
+                  [
+                    "Remote"
+                  ]
+                ]
+              },
+              "content": [
+                "a",
+                "b",
+                "c",
+                "d",
+                "e"
+              ]
+            }
+          },
+          "a": {
+            "value": {
+              "type": "unsupported",
+              "properties": {
+                "title": [
+                  [
+                    "Build <Go>",
+                    [
+                      [
+                        "b"
+                      ],
+                      [
+                        "i"
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            }
+          },
+          "b": {
+            "value": {
+              "type": "bulleted_list",
+              "properties": {
+                "title": [
+                  [
+                    "One"
+                  ]
+                ]
+              }
+            }
+          },
+          "c": {
+            "value": {
+              "type": "numbered_list",
+              "properties": {
+                "title": [
+                  [
+                    "Two"
+                  ]
+                ]
+              }
+            }
+          },
+          "d": {
+            "value": {
+              "type": "toggle",
+              "properties": {
+                "title": [
+                  [
+                    "Details"
+                  ]
+                ]
+              },
+              "content": [
+                "f",
+                "g"
+              ]
+            }
+          },
+          "e": {
+            "value": {
+              "type": "divider",
+              "properties": {
+                "title": []
+              }
+            }
+          },
+          "f": {
+            "value": {
+              "type": "bulleted_list",
+              "properties": {
+                "title": [
+                  [
+                    "Nested"
+                  ]
+                ]
+              }
+            }
+          },
+          "g": {
+            "value": {
+              "type": "quote",
+              "properties": {
+                "title": [
+                  [
+                    "Read",
+                    [
+                      [
+                        "a",
+                        "https://example.com/?x='&y=\""
+                      ]
+                    ]
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        "collection": {
+          "jobs": {
+            "value": {
+              "schema": {
+                "title": {
+                  "name": "Role",
+                  "type": "title"
+                },
+                "loc": {
+                  "name": "Location",
+                  "type": "multi_select"
+                },
+                "team": {
+                  "name": "Team",
+                  "type": "select"
+                },
+                "type": {
+                  "name": "Employment Type",
+                  "type": "select"
+                },
+                "remote": {
+                  "name": "Remote",
+                  "type": "select"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "config": {},
+    "output": {
+      "title": "Engineer & Operations",
+      "description": "<ul>\n<li>One</li>\n<li>Two</li>\n</ul>\n<h3>Details</h3>\n<ul>\n<li>Nested</li>\n<blockquote><a href=\"https://example.com/?x=&#x27;&amp;y=&quot;\">Read</a></blockquote>\n</ul>\n<hr>",
+      "locations": [
+        "Paris",
+        "Zürich"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "Remote",
+      "metadata": {
+        "team": "Platform"
+      }
+    },
+    "error": false
+  }
+]
