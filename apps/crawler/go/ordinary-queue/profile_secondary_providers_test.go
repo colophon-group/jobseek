@@ -51,9 +51,13 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 		config["crawler_type"], config["board_url"], config["metadata"] = provider, row[headers["board_url"]], string(encoded)
 		profile, e := InspectRichMonitor(profileBoardID, config)
 		if metadata["proxy"] == true {
-			if provider == "earcu" {
-				if e != nil || profile.Profile != "earcu.proxy-feed-items/v1" || !ProfileRequiresProxy(profile.Profile) {
-					t.Fatal("required eArcu proxy authority lost")
+			if provider == "earcu" || provider == "computrabajo" {
+				want := "earcu.proxy-feed-items/v1"
+				if provider == "computrabajo" {
+					want = "computrabajo.proxy-listing-urls/v1"
+				}
+				if e != nil || profile.Profile != want || !ProfileRequiresProxy(profile.Profile) {
+					t.Fatal("required provider proxy authority lost", provider)
 				}
 			} else if e == nil {
 				t.Fatal("configured proxy acquired direct monitor authority")
@@ -71,6 +75,18 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 		}
 		var detail WorkdayDetailProfile
 		switch provider {
+		case "computrabajo", "ycombinator":
+			o, err := api.NinthProviderOptionsFromMetadata(provider, config["board_url"], config["metadata"])
+			if err != nil {
+				t.Fatal(err)
+			}
+			source := o.Origin + "/Detail/123"
+			if provider == "ycombinator" {
+				source = o.ListingURL() + "/A1-engineer"
+			} else if o.Variant == "employer" {
+				source = o.Origin + "/ofertas-de-trabajo/oferta-de-trabajo-de-engineer-11111111111111111111111111111111"
+			}
+			detail, e = InspectJSONLDDetail(profileBoardID, config, source, Simple)
 		case "hrmos":
 			o, err := api.HRMOSOptionsFromMetadata(config["board_url"], config["metadata"])
 			if err != nil {
