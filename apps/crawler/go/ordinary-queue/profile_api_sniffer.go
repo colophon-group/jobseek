@@ -41,6 +41,9 @@ func apiSnifferMonitorEnrichment(config map[string]string) ([]string, error) {
 }
 
 func inspectAPISnifferMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
+	if _, err := FeedMonitorURLRules(config); err != nil {
+		return GreenhouseMonitorProfile{}, err
+	}
 	if config["monitor_needs_browser"] == "1" {
 		if _, err := APISnifferBrowserMonitorOptions(config); err != nil {
 			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile

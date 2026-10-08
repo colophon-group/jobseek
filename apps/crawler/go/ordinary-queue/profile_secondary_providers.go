@@ -6,7 +6,7 @@ import (
 )
 
 func SecondaryProvider(provider string) bool {
-	if provider == "beehire" || provider == "hirehive" || provider == "welcometothejungle" || provider == "computrabajo" || provider == "ycombinator" || provider == "earcu" || provider == "cvwarehouse" || provider == "woowa" || provider == "deel" || provider == "hibob" || provider == "traffit" || provider == "manatal" || provider == "hrmos" || provider == "recruiterbox" || provider == "jobs_ch" {
+	if provider == "talentbrew" || provider == "beehire" || provider == "hirehive" || provider == "welcometothejungle" || provider == "computrabajo" || provider == "ycombinator" || provider == "earcu" || provider == "cvwarehouse" || provider == "woowa" || provider == "deel" || provider == "hibob" || provider == "traffit" || provider == "manatal" || provider == "hrmos" || provider == "recruiterbox" || provider == "jobs_ch" {
 		return true
 	}
 	return provider == "dayforce" || provider == "adp" || provider == "cornerstone" || provider == "paylocity" || provider == "paycom" || provider == "rippling" || provider == "comeet" || provider == "jobvite" || provider == "softgarden" || provider == "ukg" || provider == "bamboohr" || provider == "recruiter_co_kr"
@@ -15,7 +15,7 @@ func paycomEnrichmentFields(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true})
 }
 func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
-	if config["crawler_type"] == "beehire" || config["crawler_type"] == "hirehive" || config["crawler_type"] == "welcometothejungle" || config["crawler_type"] == "earcu" || config["crawler_type"] == "cvwarehouse" || config["crawler_type"] == "woowa" || config["crawler_type"] == "deel" || config["crawler_type"] == "hibob" || config["crawler_type"] == "traffit" || config["crawler_type"] == "manatal" || config["crawler_type"] == "hrmos" || config["crawler_type"] == "recruiterbox" || config["crawler_type"] == "jobs_ch" {
+	if config["crawler_type"] == "talentbrew" || config["crawler_type"] == "beehire" || config["crawler_type"] == "hirehive" || config["crawler_type"] == "welcometothejungle" || config["crawler_type"] == "earcu" || config["crawler_type"] == "cvwarehouse" || config["crawler_type"] == "woowa" || config["crawler_type"] == "deel" || config["crawler_type"] == "hibob" || config["crawler_type"] == "traffit" || config["crawler_type"] == "manatal" || config["crawler_type"] == "hrmos" || config["crawler_type"] == "recruiterbox" || config["crawler_type"] == "jobs_ch" {
 		return monitorEnrichmentFields(config, map[string]bool{})
 	}
 	allowed := map[string]bool{"description": true}
@@ -46,6 +46,12 @@ func inspectSecondaryMonitor(boardID string, config map[string]string, md map[st
 	provider := config["crawler_type"]
 	var profile, endpoint string
 	switch provider {
+	case "talentbrew":
+		o, e := api.TalentBrewOptionsFromMetadata(config["board_url"], config["metadata"])
+		if e != nil {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		profile, endpoint = "talentbrew.listing-urls/v1", o.BoardURL
 	case "beehire", "hirehive", "welcometothejungle", "computrabajo", "ycombinator":
 		if provider != "computrabajo" && provider != "ycombinator" {
 			if e := feedRichDetailAssignment(config); e != nil {
@@ -192,6 +198,9 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 		return false
 	}
 	switch p.Provider {
+	case "talentbrew":
+		o, e := api.TalentBrewOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && p.Profile == "talentbrew.listing-urls/v1" && p.Endpoint == o.BoardURL && o.ResourceMatches(resource)
 	case "beehire", "hirehive", "welcometothejungle", "computrabajo", "ycombinator":
 		o, e := api.NinthProviderOptionsFromMetadata(p.Provider, config["board_url"], config["metadata"])
 		return e == nil && p.Profile == o.Profile() && p.Endpoint == o.ListingURL() && o.ResourceMatches(resource)
@@ -260,7 +269,7 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 }
 func SecondaryMonitorGone(config map[string]string, resource string, status int, disabled bool) bool {
 	switch config["crawler_type"] {
-	case "welcometothejungle", "ycombinator":
+	case "welcometothejungle", "ycombinator", "talentbrew":
 		return false
 	case "beehire", "hirehive", "computrabajo":
 		o, e := api.NinthProviderOptionsFromMetadata(config["crawler_type"], config["board_url"], config["metadata"])

@@ -18,94 +18,61 @@ not complete migration.
 
 ## Latest checkpoint — 2026-10-08
 
-The five-provider [PR #10356](https://github.com/colophon-group/jobseek/pull/10356)
-merged reviewed head `588dfebeff2034416a3c7cd7775252d30b556afa` as source969
-`ce951b51a5afb1479f9a1ce7d07aeebd0adcf67e`. Required CI, actual Crawler Deploy
-Gate, full native execution, browser/installed-image parity and Lightpanda checks
-passed. Its original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37712020979)
-and matching [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37712043127)
-are running. Preserve those original build identities. Source969 native ownership
-is inactive until the complete incoming release and fresh admission are verified.
+Release **0.13.970**, source `896a9d847547e7a3b86dcef26401a51f5ec2007b`,
+is deployed from its original immutable crawler and matching renderer builds.
+[PR #10356](https://github.com/colophon-group/jobseek/pull/10356) delivered twenty
+Beehire/HireHive/WTTJ/Computrabajo/Y Combinator configurations;
+[PR #10357](https://github.com/colophon-group/jobseek/pull/10357) delivered nine DOM
+and two API empty/proof configurations. Exact-head required CI, actual Crawler
+Deploy Gate, installed runtime/browser parity and Lightpanda checks passed for
+both releases. They share one incoming native activation, adding **31** monitor
+configurations over source968.
 
-Source968's supported ordinary retirement, B0 rollback and selector clearing
-succeeded. Independent cold verification passed at epoch **224**: seven base
-services running and restart-armed, six healthy endpoints, no native owners or
-tokens and retained historical receipts. This fresh closure and exact head/base
-checks preceded the source969 merge; no hold was bypassed.
+The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37714479975)
+and matching [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37714515175)
+succeeded. Independent incoming cold verification passed at epoch224 after a
+foreign administrative one-off exited naturally. Supported B0 activation and
+readback passed at **epoch225**. Fresh canonical configuration/cache and actual
+posting-route admission qualifies **7,350 monitors**, **2,616 detail boards** and
+**1,476,640 scheduled postings**. Forty detail-cache incompatibilities and one
+unsupported Eightfold route retain legacy ownership; three exclusive B0 boards
+remain separate. Ordinary staging passed; supported activation and independent
+natural-serving verification are in progress at this checkpoint. Admission
+counts are not fleet freshness or serving evidence.
 
-Source968 [PR #10355](https://github.com/colophon-group/jobseek/pull/10355) merged
-as `1676b322c6eced43601ee3ec3ed3ccd51edd850b`.
-Its original crawler/renderer rollouts succeeded and native ownership was active
-at epoch223 before retirement. It admitted 7,319 monitors, 2,616 detail boards and
-1,479,882 scheduled postings. The latest normal-schedule snapshot had 23 successful
-monitors, 54 successful details, zero claim errors and one unacknowledged monitor
-settlement. The eight new eArcu/CVWarehouse/Woowa monitor completions had not yet
-been observed; recovery, freshness and conservation remain open.
+**Lightpanda 1.0.0** remains the newest stable release, rechecked October8 against
+[official releases](https://github.com/lightpanda-io/browser/releases/tag/1.0.0).
+It is pinned to `sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e`
+with CORS enabled; both architectures passed actual service fixtures.
 
-**Lightpanda 1.0.0** is still the newest stable release, rechecked October 8,
-and remains digest-pinned with CORS enabled. The next shared DOM/API batch adds
-eleven configuration contracts. Prefer one grouped native activation after both
-compatible releases have green checks and independently verified deployments,
-avoiding an extra ownership retirement between the five-provider and shared
-proof batches. This groups seven monitor types and 31 configuration gains.
+The next grouped candidate is **0.13.971**: API item/URL filtering plus TalentBrew,
+covering **25 configurations** (seventeen API and eight TalentBrew) and **122**
+installed profiles. All eight public TalentBrew discovery and configured detail
+field probes passed. Focused SQL/Redis, Python parity and full queue/worker race checks passed.
+Six changed-contract cold-retirement scenarios passed. No candidate production authority is implied.
 
-Outgoing source967 `0f25771595d3caceab3e6c403f9cd66bdbd5d763` completed the
-supported ordinary retirement and B0 rollback. Independent cold verification
-passed at epoch **222**: seven base services running and restart-armed, six HTTP
-health endpoints, no native owners or tokens, selectors cleared, historical
-write receipts preserved. The final source968 merge used that fresh closure
-proof and exact head/base authority; no deployment hold was bypassed.
-
-Before retirement, source967 admitted **7,311 monitor boards**, **2,616 detail
-boards** and **1,483,867 scheduled postings**. Sixteen monitors were newly admitted:
-three Deel, four HiBob, three TRAFFIT and six DOM. Forty detail-cache
-incompatibilities and one actual Eightfold route retained legacy ownership;
-three exclusive B0 boards remained outside ordinary ownership. The captured
-remaining monitor census was **571**, including the incoming eight source968
-provider configurations and twenty configurations in the next five-provider
-candidate. These figures are admission evidence, not full fleet freshness.
-
-Independent active-state checks passed for ten running, restart-armed services
-and eight health endpoints. The bounded normal-schedule snapshot had zero claim
-errors, 39 successful monitors and 47 successful details; three unacknowledged
-details and one unacknowledged monitor remained, with safe settlement/failure
-phase diagnostics. One newly admitted DOM board completed an attempt; new
-Deel/HiBob/TRAFFIT normal completions were not yet observed. All 24 sampled
-native-written descriptions had nonempty title/HTML/locales, exact matching
-signed SHA256-prefix hashes, matching R2 pointers and completed uploads.
-Full recovery, freshness and queue conservation remain open. Older monitor-only
-samples contained two legacy description hash mismatches predating migration;
-they are not evidence of a native description write.
-
-Source967's shared DOM/Inline removal and overlay actions retain Python defaults,
-selector semantics, failure policy and publisher checks. Its detail fix removes
-a reproduced shared-board lock-upgrade deadlock while retaining exclusive
-posting/fence locks. Full real PostgreSQL/Redis queue and worker race suites,
-actual pinned Lightpanda service fixtures on both architectures and installed
-image parity passed. The separate ARM64 candidate/control measurement passed;
-comparable fleet-wide service cost remains unproved.
+Source968's last bounded normal-schedule snapshot had 23 successful monitors,
+54 successful details, zero claim errors and one unacknowledged monitor
+settlement. Its supported retirement, B0 rollback, selector clearing and
+independent cold224 verification passed before subsequent exact-head merges.
+The cause of that unacknowledged settlement and full recovery/freshness/
+conservation remain unproved. Prior observations are historical evidence.
 
 ## Continue delivery
 
-1. Finish source969's original immutable crawler and matching renderer rollouts;
-   independently verify incoming images, source, readiness and cold epoch224.
-   Publish the shared DOM/API candidate against the merged source and overlap its
-   CI with rollout. If it is ready promptly, merge/deploy it while native ownership
-   remains inactive, then perform one grouped fresh admission/activation.
-2. Activate/read back incoming B0, capture fresh canonical configurations, cache
-   and actual posting routes, then stage and activate one source/epoch-bound
-   ordinary plan. Verify readiness, natural scheduled work, canonical fields,
-   publisher outcomes, freshness and conservation. Source968 admitted 7,319
-   monitors, 2,616 detail boards and 1,479,882 scheduled postings; its latest
-   snapshot had 23 successful monitors, 54 successful details, zero claim errors
-   and one unacknowledged monitor settlement. Full recovery remains open.
-3. Complete the five-type Beehire/HireHive/WTTJ/Computrabajo/Y Combinator group,
-   covering all twenty registry configurations and four required proxy routes.
-   Then prioritize shared DOM/API/browser contracts with the largest remaining
-   cohorts, combining compatible provider and action changes in useful batches.
-   The source967 remaining census includes DOM213, API sniffer116, RSS17 and
-   Sitemap11. Preserve resource, proxy, browser and complete-inventory contracts;
-   never weaken admission to reduce the remaining count.
+1. Complete source970's supported ordinary activation using the staged exact
+   source/epoch/plan/projection. Independently verify installed identities,
+   readiness, natural scheduled work, canonical fields, publisher outcomes,
+   recovery, freshness and conservation; preserve the supported cold reversal.
+2. Finish the grouped API filtering/TalentBrew candidate, including full required
+   suites, changed-contract retirement and configured field evidence. Publish a
+   PR, wait for required checks and actual Crawler Deploy Gate, then use fresh
+   exact-head merge authority and the original immutable deployment workflow.
+3. Continue compatible multi-type batches with the largest remaining cohorts:
+   DOM proof/pagination/rich-row interactions, API convergence/options, RSS and
+   Sitemap contracts, plus remaining provider families. Preserve resource, proxy,
+   browser and complete-inventory contracts; use the fresh remaining census and
+   never weaken admission to reduce its count.
 4. Replace mandatory Python runtime consumers: legacy worker/browser execution,
    schema preparation, supervision/reaper/metrics and operational entrypoints.
    Reuse delivered Go sync, queue, schema, reaper, drain and exporter engines;
@@ -157,7 +124,7 @@ current Python worker's filtering: only HTTPS CVWarehouse root URLs with exactly
 one numeric `job` query qualify. Generic root/navigation filtering remains.
 Public-feed and normal-schedule production results are still required.
 
-## Next grouped candidate — five public hiring providers
+## Delivered implementation — five public hiring providers
 
 Candidate **0.13.969** ports Beehire, HireHive, Welcome to the Jungle,
 Computrabajo/PandaPe and Y Combinator together: twenty current configurations,
@@ -165,8 +132,8 @@ four required proxy routes and six immutable profiles (**121** total).
 Implementation, full native CI and installed-image/Lightpanda checks passed at
 reviewed head `588dfebeff2034416a3c7cd7775252d30b556afa` in
 [PR #10356](https://github.com/colophon-group/jobseek/pull/10356). Required CI and
-the actual Crawler Deploy Gate are green. Exact-head merge and outgoing cold224 verification passed. The original incoming
-deployments are running; production admission and serving proof remain pending.
+the actual Crawler Deploy Gate are green. Exact-head merge and outgoing cold224 verification passed. The original incoming deployments succeeded; the source970 grouped admission
+qualifies these monitors. Natural serving proof remains pending.
 
 Beehire preserves campaign-language selection, localized titles/locales, contract
 codes, location fallback and incomplete/duplicate truncation. HireHive preserves
@@ -193,13 +160,13 @@ The full local worker race suite passed (565.986s). Final-head CI passed the ful
 queue and worker suites, all fifteen configured DOM/JSON-LD detail bindings and
 browser/installed-image checks. Production serving proof remains open.
 
-## Next grouped candidate — shared DOM/API inventory proofs
+## Delivered implementation — shared DOM/API inventory proofs
 
 Candidate **0.13.970** extends two existing monitor types together. It qualifies
 nine current DOM configurations with `advertised_total`/`empty_states` and two
 API sniffer configurations with typed `empty_response` markers. This is a
-configuration-only screening gain of eleven; fresh route/cache admission and
-production ownership are still required.
+gain of eleven. Exact-source970 fresh route/cache admission and ordinary staging
+passed; supported activation and natural serving verification are in progress.
 
 DOM checks retain exact advertised counts, whitespace/case rules, required and
 forbidden links, full-match regular expressions and contradictory-marker
@@ -214,11 +181,41 @@ required-link regressions also retain the deployed Python 3.13 URL identity for
 raw Unicode, percent escapes and query-only references. Fifteen
 real PostgreSQL/Redis direct/rendered scenarios passed (8.427s): positive and
 proved-empty settlement, malformed/missing inventories, reservations and 404
-semantics. Both pure parser race suites and vet passed. The full queue race suite passed (377.626s); full worker race validation is
-running. Candidate PR/installed-image validation and production authority remain
-pending. Existing latest stable Lightpanda 1.0.0 and transport boundaries are
+semantics. Both pure parser race suites and vet passed. Full queue (377.626s) and worker
+(555.425s) race validation passed. Final-head native, installed-image/browser,
+required CI and deployment-gate checks passed; PR10357 merged and deployed. Existing latest stable Lightpanda 1.0.0 and transport boundaries are
 retained. Next prioritize compatible API filtering/convergence cohorts and
 remaining DOM interactions in multi-type batches.
+
+## Next grouped candidate — API filtering and TalentBrew
+
+Candidate **0.13.971** implements API `item_filter` include/exclude/regex/required
+identities, global deduplication and locale preference before field projection.
+The existing shared URL-policy writer applies post-discovery `url_filter` to
+direct and rendered API inventories. Intentional removals adjust totals without
+hiding upstream gaps; invalid required identities fail the complete cycle.
+Existing fields, source boundaries, publisher reservations and separate detail
+ownership remain intact.
+
+TalentBrew preserves scoped HTML links, advertised totals, pagination/AJAX tenant
+facets, fallback, retries, cookies, bounded same-origin career resources and
+Python3.13 URL joining. Unicode decimal and underscored counters match Python;
+oversized valid counters fail instead of dropping completeness evidence. Listing
+URLs schedule the existing configured detail route (seven JSON-LD, one DOM).
+No monitor titles or descriptions are invented from listing labels.
+
+Twenty-nine item-filter cases and eleven TalentBrew parse/AJAX cases match actual
+Python. Eight direct/rendered API SQL/Redis scenarios (3.840s) verify title,
+description, locations, publisher reservation, invalid identities and upstream
+gaps; six TalentBrew SQL/Redis cases (4.945s) verify separate detail scheduling,
+partial inventories, reservations, missing first pages and redirects. All25
+registry contracts and all8 configured TalentBrew detail bindings pass. All8
+public discovery probes and configured title/description/location field probes
+pass. Parser race/vet passed, including late-page preference before projection. Full
+queue (377.059s) and worker (564.539s) race suites passed; all six changed-contract
+cold-retirement checks passed (6.513s), as did six bounded transient-status
+retry scenarios (1.788s). Final-head CI and installed-image checks remain pending. See the
+[candidate evidence](evidence/go-native-api-talentbrew-candidate-2026-10-08.json).
 
 ## Operational handoff
 

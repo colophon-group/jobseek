@@ -1,0 +1,56 @@
+{
+  "observed_at": "2026-10-08",
+  "candidate_version": "0.13.971",
+  "base_revision": "896a9d847547e7a3b86dcef26401a51f5ec2007b",
+  "status": "local complete validation passed; candidate PR/final-head CI and production pending",
+  "production_owned": false,
+  "monitor_configurations": {
+    "api_sniffer": 17,
+    "talentbrew": 8
+  },
+  "installed_profiles": 122,
+  "actual_python_cases": {
+    "item_filter": 29,
+    "talentbrew_parse_and_ajax": 11
+  },
+  "local_validation": {
+    "full_api_race_seconds": 3.096,
+    "api_inventory_failure_cases": 5,
+    "all_csv_contracts": 25,
+    "configured_talentbrew_detail_bindings": 8,
+    "real_api_direct_and_rendered_sql_cases": 8,
+    "real_api_sql_race_seconds": 3.84,
+    "real_talentbrew_sql_cases": 6,
+    "real_talentbrew_sql_race_seconds": 4.945,
+    "public_talentbrew_discovery_probes": 8,
+    "public_talentbrew_configured_detail_field_probes": 8,
+    "public_detail_field_observation": "all8 HTTP200, nonempty title/description; configured JSON-LD7/DOM1; no DBwrites/ownership",
+    "full_queue": "passed377.059s; shared registry TalentBrew expectation corrected before rerun",
+    "full_worker": "passed564.539s",
+    "cold_retirement_cases": 6,
+    "cold_retirement_race_seconds": 6.513,
+    "transient_retry_cases": 6,
+    "transient_retry_race_seconds": 1.788
+  },
+  "contracts": [
+    "global raw-item filter before projection; source gap preserved",
+    "post-discovery URL filtering shared policy with direct/rendered canonical persistence",
+    "TalentBrew scoped URL-only listing; configured details remain authoritative",
+    "publisher reservation/partial failure/redirect scope/retry/cap preserved",
+    "counter Python parity and oversized valid total failure",
+    "global late-page preferred duplicate wins before projection"
+  ],
+  "lightpanda": {
+    "latest_stable": "1.0.0",
+    "release_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
+    "verified_at": "2026-10-08",
+    "image_digest": "sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e"
+  },
+  "open_completion_gates": [
+    "all enabled profiles and mandatory consumers",
+    "natural serving/recovery/freshness/conservation",
+    "comparable whole-service cost",
+    "supported cold reversal observation window",
+    "production Python/Playwright/Chromium retirement"
+  ]
+}

@@ -28,6 +28,7 @@ type Options struct {
 	TemplateFields                         map[string]any
 	Fields                                 map[string]any
 	EmptyResponse                          map[string]any
+	ItemFilter                             *ItemFilter
 	Headers                                http.Header
 	Pagination                             *Pagination
 	PathValues                             bool
@@ -36,7 +37,7 @@ type Options struct {
 	Enrichment                             []string
 }
 
-var ConfigKeys = []string{"api_url", "method", "json_path", "json_path_values", "total_path", "url_field", "url_template", "url_template_fields", "fields", "params", "post_data", "post_body", "request_headers", "headers", "pagination", "max_items", "transient_403", "transport_attempts", "browser", "render", "proxy", "skip_ssl", "ssl_verify", "wait", "timeout", "settle", "items", "score", "total", "empty_response"}
+var ConfigKeys = []string{"api_url", "method", "json_path", "json_path_values", "total_path", "url_field", "url_template", "url_template_fields", "fields", "params", "post_data", "post_body", "request_headers", "headers", "pagination", "max_items", "transient_403", "transport_attempts", "browser", "render", "proxy", "skip_ssl", "ssl_verify", "wait", "timeout", "settle", "items", "score", "total", "empty_response", "item_filter", "url_filter"}
 
 // Explicit HTTP configurations share the production client and the original
 // inventory writer. Browser captures, rotating auth, provider-specific filters
@@ -68,6 +69,15 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 		if err != nil {
 			return o, err
 		}
+	}
+	if value := m["url_filter"]; value != nil {
+		if _, err := dom.ListingOptions(dom.Object{"url_filter": value}, boardURL); err != nil {
+			return o, ErrOptions
+		}
+	}
+	o.ItemFilter, err = ItemFilterOptions(m["item_filter"])
+	if err != nil {
+		return o, err
 	}
 	if sc, ok := m["scraper_config"].(map[string]any); ok {
 		if raw, present := sc["enrich"]; present && raw != nil {

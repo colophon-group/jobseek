@@ -15,6 +15,10 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 	t.Helper()
 	proxy := strings.HasSuffix(provider, "/proxy")
 	provider = strings.Split(provider, "/")[0]
+	filteredAPI := provider == "api_sniffer_filtered"
+	if filteredAPI {
+		provider = "api_sniffer"
+	}
 	p := firstOwnershipFixture(t)
 	f, ctx := p.f, context.Background()
 	board, metadata := "https://example.com/careers", `{"scraper_type":"eightfold"}`
@@ -25,6 +29,8 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 		board, metadata = "https://fixture.jobs.cz/", `{"scraper_type":"skip"}`
 	}
 	switch provider {
+	case "talentbrew":
+		board, metadata = "https://jobs.example.com/search-jobs", `{"scraper_type":"json-ld"}`
 	case "beehire":
 		board, metadata = "https://app.beehire.com/career/fixture", `{"scraper_type":"skip"}`
 	case "hirehive":
@@ -90,6 +96,9 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 		board, metadata = "https://fixture.bamboohr.com/careers", `{"scraper_type":"skip"}`
 	case "recruiter_co_kr":
 		board, metadata = "https://fixture.recruiter.co.kr/career/home", `{"scraper_type":"skip"}`
+	}
+	if filteredAPI {
+		metadata = `{"api_url":"https://example.com/api","json_path":"jobs","url_field":"url","fields":{"title":"title"},"item_filter":{"require_regex":{"id":"[0-9]+"},"dedupe_by":["id"],"dedupe_preference":{"path":"locale","preferred_values":["en","fr"],"fallback_by":["locale"]}},"url_filter":{"exclude":"/intern/"},"scraper_type":"json-ld","scraper_config":{"enrich":["description"]}}`
 	}
 	if proxy {
 		var md map[string]any
@@ -159,7 +168,7 @@ func assertEightfoldCanonicalWatermarkCached(t *testing.T, p firstOwnerFixture) 
 }
 
 func TestRealProviderBatchColdRetirementAndEightfoldWatermarkRecovery(t *testing.T) {
-	for _, provider := range []string{"beehire", "hirehive", "welcometothejungle", "computrabajo", "computrabajo/proxy", "ycombinator", "earcu", "earcu/proxy", "cvwarehouse", "woowa", "deel", "hibob", "traffit", "manatal", "hrmos", "recruiterbox", "jobs_ch", "mokahr", "almacareer", "eightfold", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "dom", "rss", "inline", "api_sniffer", "comeet", "jobvite", "paycom", "rippling", "adp", "cornerstone", "paylocity", "paylocity/proxy", "dom/proxy", "api_sniffer/proxy", "inline/proxy", "sitemap/proxy", "eightfold/proxy", "phenom/proxy"} {
+	for _, provider := range []string{"talentbrew", "api_sniffer_filtered", "beehire", "hirehive", "welcometothejungle", "computrabajo", "computrabajo/proxy", "ycombinator", "earcu", "earcu/proxy", "cvwarehouse", "woowa", "deel", "hibob", "traffit", "manatal", "hrmos", "recruiterbox", "jobs_ch", "mokahr", "almacareer", "eightfold", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "dom", "rss", "inline", "api_sniffer", "comeet", "jobvite", "paycom", "rippling", "adp", "cornerstone", "paylocity", "paylocity/proxy", "dom/proxy", "api_sniffer/proxy", "inline/proxy", "sitemap/proxy", "eightfold/proxy", "phenom/proxy"} {
 		modes := []string{"interrupted", "committed-before-ack", "changed-setting"}
 		if strings.Split(provider, "/")[0] == "eightfold" {
 			modes = append(modes, "reaped-before-ack", "recovered-ack", "settled-cold", "save-failure", "orphan-cache")
