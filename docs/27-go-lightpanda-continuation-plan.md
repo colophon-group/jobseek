@@ -42,13 +42,22 @@ monitor configurations** across twelve direct API, eleven rendered API, eight
 direct DOM, three required-proxy DOM and one rendered DOM profiles. Their
 monitor-only plan
 `b66c009fbc694575550f9066912366ab6e598cb71d647c94f87adf96c2563ab9` and projection
-`94945721c7cc67b2efdfbd49e71628d24fbef76c` passed supported staging and independent
-staged SQL/Redis verification at epoch245. At the checkpoint time, supported
-activation is observing natural canonical lease expiry on the complete cold
-stack. Verify its complete readiness and active receipt before reporting those
-monitors as serving. Every separately scheduled detail keeps its current owner.
-This bounded cohort puts the delivered group into service without assuming the
-full-cohort Redis pressure issue is resolved.
+`94945721c7cc67b2efdfbd49e71628d24fbef76c` passed supported activation and independent
+SQL/Redis authority, ten restart-armed writers and eight health endpoints at245.
+The 21:45 UTC natural sample records fifteen successful monitors, 941 posting
+touches and zero claim errors, plus one failed monitor. Its fixed diagnostic
+`detail_enqueue: unacknowledged` identifies an ordinary enqueue consumer bug:
+both Go and Python Lua copies omit the active `cdom` producer cohort. Existing
+four board failure streaks predate this cohort's execution; the new Swissport
+failure is kept separate. The real Redis regression reproduces rejection for
+both HTTP and browser detail queues before the fix. The next delivery adds only
+`cdom` to both identical scripts, retaining the sixteen-board limit, complete
+manifest and route validation, covered-board exclusion and per-posting guard.
+Ten real Redis route/cohort cases and ten Python owner/malformed-owner cases pass.
+Supported exact-receipt ordinary retirement is underway at this checkpoint;
+verify complete restored base/B0 authority, then B0 rollback/selector clearing
+and outgoing cold246 before the corrected next release. Every board stays enabled.
+No full-cohort pressure-resolution or complete freshness claim is made.
 
 The next delivery combines **41 additional API/DOM configurations**: inert
 explicit-API `render` annotations, default `resource_policy: none`, explicit

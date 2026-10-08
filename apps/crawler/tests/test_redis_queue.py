@@ -258,6 +258,7 @@ async def test_scrape_fallback_can_enqueue_while_previous_step_is_inflight():
             "c4",
             ["browser-use-careers", "kandou-ai-careers", "eclypsium-careers", "suspect-careers"],
         ),
+        ("cdom", ["browser-use-careers", "bunq-careers", "algorized-careers"]),
     ],
 )
 async def test_off_mode_scrape_enqueue_obeys_redis_wide_go_cohort_owner(

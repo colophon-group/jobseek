@@ -61,5 +61,13 @@
     "full_ordinary_handoff": "unqualified after source980 producer deadline; speculative optimizations discarded"
   },
   "full_migration_complete": false,
-  "private_evidence_root": "/Users/Viktor/.codex/migration-evidence/go-b0-native/2026-09-30"
+  "private_evidence_root": "/Users/Viktor/.codex/migration-evidence/go-b0-native/2026-09-30",
+  "cdom_enqueue_consumer_fix": {
+    "trigger": "source981 shared35 natural monitor failed at detail_enqueue; cdom omitted from both ordinary enqueue Lua copies",
+    "production_evidence": "private source-bound natural readback at245:15 succeeded,1 failed,941 posting touches,zero claim errors",
+    "before": "real Redis regression rejects valid outside-board enqueue for cdom in both simple/browser queues",
+    "after": "cdom accepted while manifest/cardinality/route/covered-board/posting guards remain",
+    "validation": "ten real Redis cohort/worker cases plus reviewed Lua copies and existing enqueue tests PASS2.928s; ten Python owner/malformed owner cases PASS0.70s",
+    "restoration": "supported receipt-bound source981 ordinary retirement underway; independent base/B0 restoration and outgoing cold246 required"
+  }
 }
