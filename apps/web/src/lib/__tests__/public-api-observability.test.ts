@@ -22,6 +22,7 @@ vi.mock("@/lib/public-api-metrics", () => ({
   recordPublicApiMetric: mocks.recordPublicApiMetric,
 }));
 
+import { measureSearchStage } from "../search/latency";
 import { withPublicApiObservability } from "../public-api-observability";
 
 function request(headers?: HeadersInit, query = ""): NextRequest {
@@ -51,6 +52,21 @@ describe("public REST API observability", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("logs a sanitized stage profile after sending a cacheable response", async () => {
+    const observed = withPublicApiObservability("search", async () => {
+      await measureSearchStage("parse_filters", async () => undefined);
+      return new Response("PRIVATE_RESULT_CANARY", { headers: { "Vercel-CDN-Cache-Control": "public, max-age=300" } });
+    });
+    const response = await observed(request({ "x-jobseek-internal-mcp-token": "valid-private-token" }, "?q=PRIVATE_QUERY_CANARY"));
+    expect(response.headers.get("Vercel-CDN-Cache-Control")).toBe("public, max-age=300");
+    expect(response.headers.get("Server-Timing")).toBeNull();
+    expect(console.info).not.toHaveBeenCalled();
+    await drainAfter();
+    const call = vi.mocked(console.info).mock.calls.find((args) => args[0] === "public_api.search_latency")!;
+    expect(JSON.parse(call[1])).toMatchObject({ schema_version: 1, consumer: "hosted_mcp", status_class: "2xx", stages: [expect.objectContaining({ stage: "parse_filters", calls: 1 })] });
+    expect(JSON.stringify(vi.mocked(console.info).mock.calls)).not.toContain("PRIVATE_");
   });
 
   it("records feedback POST without logging submission content", async () => {

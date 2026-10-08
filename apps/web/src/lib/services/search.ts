@@ -1,4 +1,5 @@
 import "server-only";
+import { measureSearchStage } from "@/lib/search/latency";
 
 import { sql } from "drizzle-orm";
 import { cacheLife } from "next/cache";
@@ -109,7 +110,7 @@ export async function searchJobs(params: {
   offset: number;
   limit: number;
 }): Promise<SearchResponse> {
-  const userId = await getSessionUserId();
+  const userId = await measureSearchStage("session", getSessionUserId);
 
   // Enforce truncation for unauthenticated users
   if (!userId && params.offset >= ANON_MAX_COMPANIES) {
@@ -209,7 +210,7 @@ async function _listTopCompaniesImpl(
 }
 
 export async function listTopCompanies(params: TopCompaniesParams): Promise<SearchResponse> {
-  const userId = await getSessionUserId();
+  const userId = await measureSearchStage("session", getSessionUserId);
   return _listTopCompaniesImpl(params, userId);
 }
 
@@ -391,7 +392,7 @@ export async function getMorePostings(params: {
   offset: number;
   limit: number;
 }): Promise<{ postings: SearchResultPosting[]; truncated?: boolean }> {
-  const userId = await getSessionUserId();
+  const userId = await measureSearchStage("session", getSessionUserId);
 
   if (!userId && params.offset >= ANON_MAX_CARD_POSTINGS) {
     return { postings: [], truncated: true };

@@ -32,6 +32,7 @@
  *   - Structured `external_client_error` warning on every retry
  */
 
+import { recordSearchRetry } from "./latency";
 import { logExternalError } from "@/lib/safe-external-error";
 
 const RETRYABLE_NODE_CODES = new Set([
@@ -405,6 +406,7 @@ export async function withTypesenseRetry<T>(
         },
         err,
       );
+      recordSearchRetry();
       await abortableRetrySleep(delay, sleep, opts.abortSignal);
     }
   }

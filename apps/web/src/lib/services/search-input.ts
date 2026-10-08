@@ -1,4 +1,5 @@
 import "server-only";
+import { measureSearchStage } from "@/lib/search/latency";
 
 import {
   resolveLocationSlugs,
@@ -217,7 +218,7 @@ export async function parseSearchFilters(params: {
       )
     : [];
 
-  const [resolvedExplicitLocs, resolvedOccs, resolvedSens, resolvedTechs] = await Promise.all([
+  const [resolvedExplicitLocs, resolvedOccs, resolvedSens, resolvedTechs] = await measureSearchStage("resolve_filters", () => Promise.all([
     explicitLocSlugs.length > 0
       ? resolveLocationSlugs(explicitLocSlugs, params.locale)
       : Promise.resolve(new Map()),
@@ -230,7 +231,7 @@ export async function parseSearchFilters(params: {
     explicitTechSlugs.length > 0
       ? resolveTechnologySlugs(explicitTechSlugs)
       : Promise.resolve(new Map()),
-  ]);
+  ]));
 
   const unresolvedExplicitSlugs: NonNullable<
     ParsedSearchFilters["unresolvedExplicitSlugs"]
@@ -316,30 +317,29 @@ export async function parseSearchFilters(params: {
     };
   }
 
-  // All three suggest batches run in parallel. Locations use an expensive
-  // recursive CTE but are only queried for singles. Occupations are queried for
-  // ALL candidates (singles + pairs + triplets) for multi-word matching.
-  const [senResults, locResults, occResults, techResults] = await Promise.all([
+  // Four Typesense suggest batches run in parallel. Occupations use singles,
+  // pairs and triplets; the other taxonomies use singles.
+  const [senResults, locResults, occResults, techResults] = await measureSearchStage("interpret_terms", () => Promise.all([
     Promise.all(
-      singles.map((c) => suggestSeniorities({ query: c, locale: params.locale })),
+      singles.map((c) => measureSearchStage("seniority_lookup", () => suggestSeniorities({ query: c, locale: params.locale }))),
     ),
     Promise.all(
       singles.map((c) =>
-        suggestLocations({
+        measureSearchStage("location_lookup", () => suggestLocations({
           query: c,
           locale: params.locale,
           userLat: params.userLat,
           userLng: params.userLng,
-        }),
+        })),
       ),
     ),
     Promise.all(
-      allCandidates.map((c) => suggestOccupations({ query: c, locale: params.locale })),
+      allCandidates.map((c) => measureSearchStage("occupation_lookup", () => suggestOccupations({ query: c, locale: params.locale }))),
     ),
     Promise.all(
-      singles.map((c) => suggestTechnologies({ query: c, locale: params.locale })),
+      singles.map((c) => measureSearchStage("technology_lookup", () => suggestTechnologies({ query: c, locale: params.locale }))),
     ),
-  ]);
+  ]));
 
   // Build lookup maps
   const locMap = new Map<string, LocationSuggestion[]>();

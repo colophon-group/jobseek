@@ -26,6 +26,8 @@ import {
   validateResolvedPublicFilters,
 } from "../_shared";
 
+import { measureSearchStage } from "@/lib/search/latency";
+
 const MAX_COMPANIES = 5;
 const MAX_POSTINGS_PER_COMPANY = 3;
 
@@ -90,7 +92,7 @@ function parseIntegerRangeParam(
 }
 
 async function handleGet(request: NextRequest) {
-  const rl = await checkRateLimit(request);
+  const rl = await measureSearchStage("rate_limit", () => checkRateLimit(request));
   if (rl instanceof NextResponse) return rl;
 
   const sp = migrateLegacyInternshipSearchParams(request.nextUrl.searchParams);
@@ -134,7 +136,7 @@ async function handleGet(request: NextRequest) {
 
   let parsed: Awaited<ReturnType<typeof parseSearchFilters>>;
   try {
-    parsed = await parseSearchFilters({ q, loc, occ, sen, tech, wm, etype, locale });
+    parsed = await measureSearchStage("parse_filters", () => parseSearchFilters({ q, loc, occ, sen, tech, wm, etype, locale }));
   } catch (error) {
     return apiProviderUnavailableResponse(
       "public_api_search_filters",
@@ -181,9 +183,9 @@ async function handleGet(request: NextRequest) {
   let result: Awaited<ReturnType<typeof listTopCompanies>>;
   try {
     result =
-      parsed.keywords.length > 0
-        ? await searchJobs({ keywords: parsed.keywords, ...searchParams })
-        : await listTopCompanies(searchParams);
+      await measureSearchStage("provider", () => parsed.keywords.length > 0
+        ? searchJobs({ keywords: parsed.keywords, ...searchParams })
+        : listTopCompanies(searchParams));
   } catch (error) {
     return apiProviderUnavailableResponse(
       "public_api_search",

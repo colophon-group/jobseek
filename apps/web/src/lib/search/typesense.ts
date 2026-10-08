@@ -1,3 +1,4 @@
+import { measureSearchStage } from "./latency";
 import type {
   SearchResponse as TsSearchResponse,
   SearchResponseHit,
@@ -187,7 +188,7 @@ async function fetchCompaniesById(
   try {
     const client = getSearchClient();
     const result: TsSearchResponse<TypesenseCompanyDocument> =
-      await withTypesenseRetry(
+      await measureSearchStage("company_metadata", () => withTypesenseRetry(
         () =>
           client
             .collections<TypesenseCompanyDocument>("company")
@@ -198,7 +199,7 @@ async function fetchCompaniesById(
               per_page: ids.length,
             }),
         { label: "companiesById" },
-      );
+      ));
 
     return new Map(
       (result.hits ?? []).map((hit) => [hit.document.id, hit.document]),
@@ -229,7 +230,7 @@ async function fetchYearCountsFiltered(
   const client = getSearchClient();
   const yearFilter = `${POSTING_FLOW_FILTER} && first_seen_at:>${oneYearAgoUnix()} && company_id:[${companyIds.join(",")}]${filterStr ? " && " + filterStr : ""}`;
 
-  const result: TsSearchResponse<JobPostingDoc> = await withTypesenseRetry(
+  const result: TsSearchResponse<JobPostingDoc> = await measureSearchStage("year_counts", () => withTypesenseRetry(
     () =>
       client
         .collections<JobPostingDoc>("job_posting")
@@ -244,7 +245,7 @@ async function fetchYearCountsFiltered(
           per_page: 0,
         }),
     { label: "yearCountsFiltered" },
-  );
+  ));
 
   const counts = result.facet_counts?.[0]?.counts ?? [];
   return new Map(
@@ -288,7 +289,7 @@ export class TypesenseSearchProvider implements SearchProvider {
       const client = getSearchClient();
 
       // Grouped found supplies the display total without an exhaustive facet.
-      const result: TsSearchResponse<JobPostingDoc> = await withTypesenseRetry(
+      const result: TsSearchResponse<JobPostingDoc> = await measureSearchStage("main_search", () => withTypesenseRetry(
         () =>
           client
             .collections<JobPostingDoc>("job_posting")
@@ -305,7 +306,7 @@ export class TypesenseSearchProvider implements SearchProvider {
               drop_tokens_threshold: 1,
             }),
         { label: "search" },
-      );
+      ));
 
       const { groups, ...page } = readGroupedPage(result, offset, limit);
 
@@ -371,7 +372,7 @@ export class TypesenseSearchProvider implements SearchProvider {
     const activeFilter = `${POSTING_BASE_FILTER} && ${filterStr}`;
 
     // Active count facet to rank companies
-    const activeResult: TsSearchResponse<JobPostingDoc> = await withTypesenseRetry(
+    const activeResult: TsSearchResponse<JobPostingDoc> = await measureSearchStage("active_counts", () => withTypesenseRetry(
       () =>
         client
           .collections<JobPostingDoc>("job_posting")
@@ -385,7 +386,7 @@ export class TypesenseSearchProvider implements SearchProvider {
             per_page: 0,
           }),
       { label: "topCompaniesActiveCount" },
-    );
+    ));
 
     const activeFacets: FacetCount | undefined = activeResult.facet_counts?.[0];
     const totalCompanies = activeFacets?.stats?.total_values ?? 0;
@@ -412,7 +413,7 @@ export class TypesenseSearchProvider implements SearchProvider {
     // Fetch filtered year counts and postings in parallel (independent queries)
     const [yearCountMap, postingResults, companyMap] = await Promise.all([
       fetchYearCountsFiltered(companyIds, filterStr, "*"),
-      withTypesenseRetry(
+      measureSearchStage("posting_hydration", () => withTypesenseRetry(
         () =>
           client
             .collections<JobPostingDoc>("job_posting")
@@ -426,7 +427,7 @@ export class TypesenseSearchProvider implements SearchProvider {
               per_page: companyIds.length,
             }),
         { label: "topCompaniesFilteredPostings" },
-      ),
+      )),
       fetchCompaniesById(companyIds),
     ]);
 
@@ -489,7 +490,7 @@ export class TypesenseSearchProvider implements SearchProvider {
         Math.max(limit, targetCount - rankedCompanies.length),
       );
       const companyResults: TsSearchResponse<TypesenseCompanyDocument> =
-        await withTypesenseRetry(
+        await measureSearchStage("active_counts", () => withTypesenseRetry(
           () =>
             client
               .collections<TypesenseCompanyDocument>("company")
@@ -502,7 +503,7 @@ export class TypesenseSearchProvider implements SearchProvider {
                 limit: requestLimit,
               }),
           { label: "topCompaniesUnfilteredRank" },
-        );
+        ));
 
       if (rawOffset === 0) totalCompanies = companyResults.found;
       const companyHits = companyResults.hits ?? [];
@@ -518,7 +519,7 @@ export class TypesenseSearchProvider implements SearchProvider {
       const companyIds = uniqueHits.map((hit) => hit.document.id);
       if (companyIds.length > 0) {
         const postingResults: TsSearchResponse<JobPostingDoc> =
-          await withTypesenseRetry(
+          await measureSearchStage("posting_hydration", () => withTypesenseRetry(
             () =>
               client
                 .collections<JobPostingDoc>("job_posting")
@@ -532,7 +533,7 @@ export class TypesenseSearchProvider implements SearchProvider {
                   per_page: companyIds.length,
                 }),
             { label: "topCompaniesUnfilteredPostings" },
-          );
+          ));
 
         const groupedHits = (postingResults.grouped_hits ?? []) as GroupedHit[];
         const groupMap = new Map<string, GroupedHit>(
