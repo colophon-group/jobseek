@@ -48,7 +48,7 @@ const PROVIDER_BACKED_GET_PATHS = [
 
 describe("public API OpenAPI edge-rate-limit contract (#8261)", () => {
   it("documents the two rate-limit layers and cache-safe success headers", () => {
-    expect(spec.info.version).toBe("1.3.0");
+    expect(spec.info.version).toBe("1.4.0");
     expect(spec.info.description).toContain("60 requests per minute");
     expect(spec.info.description).toContain("30 requests per minute");
     expect(spec.info.description).toContain(
