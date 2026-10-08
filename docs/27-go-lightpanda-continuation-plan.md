@@ -94,7 +94,14 @@ The following batch groups **Umantis (nine), Unifr (nine) and Notion (eight)**.
 Umantis tenant options, listing rows, locale deduplication and strict navigation
 components match twenty-eight actual Python corpus cases. Runtime wiring,
 complete provider/detail contracts and production authority are still pending.
-Unifr and Notion contract research is prepared; no executable profiles are granted.
+Unifr and Notion contract research is prepared; no new executable profiles are granted.
+The same candidate switches Kaiser’s main board to existing TalentBrew discovery
+and direct JSON-LD details, and Euronext’s WTTJ board to its existing rich API
+monitor with skip details. Actual Python and Go both find 3,091 Kaiser jobs and
+one Euronext posting; three direct Kaiser samples return title, description and
+location. Current CSV queue admission checks pass (1.615s). These are candidate
+configuration changes, without production ownership; see the
+[route evidence](evidence/go-native-existing-provider-route-candidate-2026-10-08.json).
 
 ## Continue delivery
 
