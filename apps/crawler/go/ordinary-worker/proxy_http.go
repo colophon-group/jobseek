@@ -33,7 +33,7 @@ func runtimeUsesProxy(task queue.Task) bool {
 			return false
 		}
 		switch task.Config["crawler_type"] {
-		case "dom", "api_sniffer", "inline", "sitemap", "eightfold", "phenom":
+		case "dom", "api_sniffer", "inline", "sitemap", "eightfold", "phenom", "earcu", "computrabajo":
 			return true
 		}
 		return false
@@ -47,6 +47,29 @@ func runtimeUsesProxy(task queue.Task) bool {
 	}
 	options, _ := md["scraper_config"].(map[string]any)
 	return (scraper == "paylocity" || scraper == "eightfold" || scraper == "dom" || scraper == "json-ld" || scraper == "api_sniffer") && options["proxy"] == true
+}
+
+func runtimeClaimUsesProxy(ctx context.Context, authority *queue.Authority, claim *queue.Claim) (bool, error) {
+	if authority == nil || claim == nil || !claim.OwnershipBound() {
+		return false, queue.ErrConfiguration
+	}
+	if claim.Descriptor().Kind == queue.Monitor {
+		return runtimeUsesProxy(claim.Descriptor()), nil
+	}
+	if claim.Descriptor().Kind != queue.Scrape {
+		return false, queue.ErrConfiguration
+	}
+	if claim.RecoveredReceipt() != nil {
+		return false, nil // Settlement recovery performs no HTTP request.
+	}
+	// Scrape snapshots contain posting fields, not the canonical board metadata.
+	// Resolve the already-bound detail profile before choosing a sealed client;
+	// RunDetail independently revalidates it before fetching or writing.
+	detail, err := authority.ReadWorkdayDetail(ctx, claim)
+	if err != nil {
+		return false, err
+	}
+	return queue.ProfileRequiresProxy(detail.Profile().Profile), nil
 }
 
 // All endpoint authority comes from protected startup settings. Configs and

@@ -23,6 +23,16 @@ func independentDetailOwnedFixture(t *testing.T, metadata, source string, worker
 	if len(workers) == 1 {
 		worker = workers[0]
 	}
+	f, owned := independentDetailOwnedSetup(t, metadata, source, worker)
+	claim, err := owned.Claim(context.Background(), worker)
+	if err != nil || claim == nil || claim.Descriptor().ID != f.original || claim.Descriptor().Kind != queue.Scrape {
+		t.Fatal("native JSON-LD claim missing", err)
+	}
+	return f, owned, claim
+}
+
+func independentDetailOwnedSetup(t *testing.T, metadata, source string, worker queue.WorkerType) (nativePipelineFixture, *queue.Authority) {
+	t.Helper()
 	f := privatePipelineFixture(t)
 	ctx := context.Background()
 	var epoch int64
@@ -76,11 +86,8 @@ func independentDetailOwnedFixture(t *testing.T, metadata, source string, worker
 		t.Fatal(err)
 	}
 	t.Cleanup(owned.Close)
-	claim, err := owned.Claim(ctx, worker)
-	if err != nil || claim == nil || claim.Descriptor().ID != f.original || claim.Descriptor().Kind != queue.Scrape {
-		t.Fatal("native JSON-LD claim missing", err)
-	}
-	return f, owned, claim
+	return f, owned
+
 }
 
 const nativeJSONLDHTML = `<html><head><script type="application/ld+json">{"@context":"https://schema.org","@type":"JobPosting","title":"Senior Software Engineer","description":"<p>Python. Salary CHF 100000-120000 yearly. 5+ years of experience.</p>","employmentType":"FULL_TIME","jobLocation":{"@type":"Place","address":{"addressLocality":"Zurich"}}}</script></head></html>`
@@ -94,6 +101,10 @@ func TestRealProxyJSONLDDetailUsesVerifiedHTTPSharedEnrichmentAndCanonicalSettle
 func realJSONLDDetailTransportSuccess(t *testing.T, proxy bool) {
 	f, a, claim := jsonldOwnedFixture(t, proxy)
 	ctx := context.Background()
+	selectedProxy, selectErr := runtimeClaimUsesProxy(ctx, a, claim)
+	if selectErr != nil || selectedProxy != proxy {
+		t.Fatal("runtime transport lost canonical detail profile", selectedProxy, selectErr)
+	}
 	calls := 0
 	client := richPipelineHTTP(t, func(w http.ResponseWriter, r *http.Request) {
 		calls++

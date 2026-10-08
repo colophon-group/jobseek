@@ -2,7 +2,7 @@
   "observed_at": "2026-10-08",
   "candidate_version": "0.13.971",
   "base_revision": "896a9d847547e7a3b86dcef26401a51f5ec2007b",
-  "status": "local complete validation passed; candidate PR/final-head CI and production pending",
+  "status": "local complete validation passed including observed canonical proxydispatch fix; draft PR10358 final-head CI and production pending",
   "production_owned": false,
   "monitor_configurations": {
     "api_sniffer": 17,
@@ -30,7 +30,11 @@
     "cold_retirement_cases": 6,
     "cold_retirement_race_seconds": 6.513,
     "transient_retry_cases": 6,
-    "transient_retry_race_seconds": 1.788
+    "transient_retry_race_seconds": 1.788,
+    "runtime_proxy_failure_reproduced": "real proxy DOM and JSONLD selecteddirect instead of canonicalproxy",
+    "runtime_proxy_dispatch_fixed": "four real direct/proxy DOM/JSONLD canonical content+ACKcases passed",
+    "actual_executable_authenticated_proxy_canonical_write_race_seconds": 5.311,
+    "full_worker_after_observed_proxy_fix": "passed561.220s"
   },
   "contracts": [
     "global raw-item filter before projection; source gap preserved",
@@ -38,7 +42,8 @@
     "TalentBrew scoped URL-only listing; configured details remain authoritative",
     "publisher reservation/partial failure/redirect scope/retry/cap preserved",
     "counter Python parity and oversized valid total failure",
-    "global late-page preferred duplicate wins before projection"
+    "global late-page preferred duplicate wins before projection",
+    "canonical detail profile chooses sealed runtime HTTP transport; recovered receipts perform no fetch; eArcu/Computrabajo monitor proxies routed explicitly"
   ],
   "lightpanda": {
     "latest_stable": "1.0.0",
@@ -52,5 +57,7 @@
     "comparable whole-service cost",
     "supported cold reversal observation window",
     "production Python/Playwright/Chromium retirement"
-  ]
+  ],
+  "pr": 10358,
+  "candidate_status": "draft PR10358; canonical proxydispatch and eArcu/Computrabajo routing fix validated; final corrected headCI pending"
 }

@@ -36,8 +36,17 @@ readback passed at **epoch225**. Fresh canonical configuration/cache and actual
 posting-route admission qualifies **7,350 monitors**, **2,616 detail boards** and
 **1,476,640 scheduled postings**. Forty detail-cache incompatibilities and one
 unsupported Eightfold route retain legacy ownership; three exclusive B0 boards
-remain separate. Ordinary staging passed; supported activation and independent
-natural-serving verification are in progress at this checkpoint. Admission
+remain separate. Ordinary staging passed. Activation failed at final restart arming when the
+native ordinary process exited with `detail_transport: configuration`; the
+wrapper contained the lane and retained the exact pending identity. Supported
+`recover-pending` restored the whole stack. Independent proof confirmed nine
+serving services, correct immutable images/restart policies and seven healthy
+endpoints at225. Supported B0 rollback and selector clearing then passed.
+Independent cold verification passed at **epoch226**: seven base services, six
+healthy endpoints, no native owners/tokens/one-offs, cleared selectors and
+retained historical attempts. Production is serving the restored legacy stack;
+no source970 ordinary serving authority is claimed. See the
+[cold recovery evidence](evidence/go-native-source970-cold-recovery-2026-10-08.json). Admission
 counts are not fleet freshness or serving evidence.
 
 **Lightpanda 1.0.0** remains the newest stable release, rechecked October8 against
@@ -49,7 +58,9 @@ The next grouped candidate is **0.13.971**: API item/URL filtering plus TalentBr
 covering **25 configurations** (seventeen API and eight TalentBrew) and **122**
 installed profiles. All eight public TalentBrew discovery and configured detail
 field probes passed. Focused SQL/Redis, Python parity and full queue/worker race checks passed.
-Six changed-contract cold-retirement scenarios passed. No candidate production authority is implied.
+Six changed-contract cold-retirement scenarios passed. [PR #10358](https://github.com/colophon-group/jobseek/pull/10358) is draft.
+The observed runtime proxy dispatch fix passed fresh full worker validation; no
+candidate production authority is implied.
 
 Source968's last bounded normal-schedule snapshot had 23 successful monitors,
 54 successful details, zero claim errors and one unacknowledged monitor
@@ -60,10 +71,10 @@ conservation remain unproved. Prior observations are historical evidence.
 
 ## Continue delivery
 
-1. Complete source970's supported ordinary activation using the staged exact
-   source/epoch/plan/projection. Independently verify installed identities,
-   readiness, natural scheduled work, canonical fields, publisher outcomes,
-   recovery, freshness and conservation; preserve the supported cold reversal.
+1. Source970 pending recovery, supported B0 rollback/selector clearing and
+   independent cold226 verification passed. Preserve exact startup/closure
+   evidence and all write/settlement receipts. Refresh cold verification and
+   exact-head authority immediately before the corrected source971 merge.
 2. Finish the grouped API filtering/TalentBrew candidate, including full required
    suites, changed-contract retirement and configured field evidence. Publish a
    PR, wait for required checks and actual Crawler Deploy Gate, then use fresh
@@ -166,7 +177,8 @@ Candidate **0.13.970** extends two existing monitor types together. It qualifies
 nine current DOM configurations with `advertised_total`/`empty_states` and two
 API sniffer configurations with typed `empty_response` markers. This is a
 gain of eleven. Exact-source970 fresh route/cache admission and ordinary staging
-passed; supported activation and natural serving verification are in progress.
+passed; supported activation failed its final readiness gate; supported recovery, B0
+rollback/selector clearing and independent cold226 verification passed.
 
 DOM checks retain exact advertised counts, whitespace/case rules, required and
 forbidden links, full-match regular expressions and contradictory-marker
@@ -204,6 +216,16 @@ oversized valid counters fail instead of dropping completeness evidence. Listing
 URLs schedule the existing configured detail route (seven JSON-LD, one DOM).
 No monitor titles or descriptions are invented from listing labels.
 
+Source970 startup exposed a runtime dispatch bug: posting queue snapshots lack
+canonical board metadata, so metadata-based selection sent a direct client to
+an admitted proxy detail profile. Source971 now resolves the canonical bound
+detail profile before selecting its sealed client; fetching/writes independently
+revalidate it. Runtime monitor selection also includes eArcu/Computrabajo proxy
+profiles. Real proxy DOM/JSON-LD tests reproduced the old failure and pass with
+the fix. A native executable regression verifies an authenticated proxy request,
+canonical title/HTML write, queue acknowledgment and graceful drain (5.311s).
+Final-head installed-image CI runs that same regression.
+
 Twenty-nine item-filter cases and eleven TalentBrew parse/AJAX cases match actual
 Python. Eight direct/rendered API SQL/Redis scenarios (3.840s) verify title,
 description, locations, publisher reservation, invalid identities and upstream
@@ -214,7 +236,8 @@ public discovery probes and configured title/description/location field probes
 pass. Parser race/vet passed, including late-page preference before projection. Full
 queue (377.059s) and worker (564.539s) race suites passed; all six changed-contract
 cold-retirement checks passed (6.513s), as did six bounded transient-status
-retry scenarios (1.788s). Final-head CI and installed-image checks remain pending. See the
+retry scenarios (1.788s). The fresh full worker race suite passed with the observed runtime fix (561.220s).
+Final-head CI and installed-image checks remain pending. See the
 [candidate evidence](evidence/go-native-api-talentbrew-candidate-2026-10-08.json).
 
 ## Operational handoff

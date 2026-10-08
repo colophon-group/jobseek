@@ -417,7 +417,11 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		}
 		return authority.Claim(ctx, worker)
 	}, heartbeat: authority.Heartbeat, execute: func(ctx context.Context, claim *queue.Claim) (*GreenhouseClaimResult, error) {
-		if runtimeUsesProxy(claim.Descriptor()) {
+		useProxy, err := runtimeClaimUsesProxy(ctx, authority, claim)
+		if err != nil {
+			return nil, claimRunError("transport_selection", err)
+		}
+		if useProxy {
 			if claim.Descriptor().Kind == queue.Scrape {
 				return RunDetail(ctx, authority, claim, proxyHTTP, preparer.Processor, circuits, renderer)
 			}
