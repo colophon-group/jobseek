@@ -18,6 +18,41 @@ not complete migration.
 
 ## Latest checkpoint — 2026-10-08
 
+Production **0.13.980**, source `ee4d6d27f6806b22a1ec86e05c9d504364e239a1`,
+merged in [PR #10367](https://github.com/colophon-group/jobseek/pull/10367).
+Required CI and the actual Crawler Deploy Gate passed. Original crawler rollout
+`37827765892` and renderer rollout `37827922155` succeeded on attempt 1; the full
+incoming immutable stack passed independent cold242 verification. Supported B0
+activation and independent readback passed at **epoch243**. The runtime compiles
+**145 profiles** and uses checksum-pinned stable **Lightpanda 1.0.0**.
+
+Fresh source980 admission reconciled **1,515,737 scheduled posting routes** and
+selected **7,495 monitors**, **2,737 detail boards**, and **1,484,610 scheduled
+postings** after retaining three monitor holdouts. Forty-one boards with posting
+cache mismatches and one unsupported actual route retain their existing detail
+owner. All boards stay enabled. The supported wrapper staged plan
+`a9d95201edd74a1103ce5e985f813858b2a4580f720294ad1f4eb0782a66aca4` and projection
+`043a074c36676199debb9f9cd1d1c206c69f7636` at epoch243. Independent SQL verification
+and a zero-drift configuration audit passed. Supported ordinary activation is in
+progress; active ordinary authority and natural outcomes are not yet claimed.
+
+[PR #10368](https://github.com/colophon-group/jobseek/pull/10368) prepares the next
+**35-configuration API/DOM group**, including four explicit publisher field maps.
+Full initial-head queue/worker suites and required checks passed; 22 API and seven
+DOM successful public HTTP captures match original output and request contracts.
+Current-head checks, immutable delivery and route admission remain pending.
+Declared proxy and affine browser public execution still require qualification.
+
+Continue by verifying source980 activation and natural operation, delivering the
+API/DOM group through the existing complete cutover/deploy path, and porting the
+remaining shared configurations and providers in groups. Keep the full delivery
+goal active through required runtime consumers, enabled coverage, full freshness
+and conservation, comparable whole-lane cost, supported reversal and observation
+window, then retire production Python/Playwright/Chromium. Preserve useful offline
+Python and every enabled board.
+
+## Historical checkpoint — source976
+
 Release **0.13.976**, source `072160c56d744a84933097cd184a39cd37c5d9c9`,
 merged in [PR #10363](https://github.com/colophon-group/jobseek/pull/10363)
 after Required CI, the actual Crawler Deploy Gate and installed-image checks
@@ -59,7 +94,7 @@ Umantis receipt bindings; its 293 successful monitor and seven successful detail
 observations remain samples, not full freshness/conservation proof. PDF HTML/layout
 still differs from pypdf; description quality remains a migration gate.
 
-## Next grouped candidate — SEEK details and automatic API arrays
+## Historical grouped release — SEEK details and automatic API arrays
 
 Candidate **0.13.977** compiles **135 profiles**. It replaces SEEK GraphQL details
 for all six current boards and extends the existing API monitor for eleven
