@@ -1,0 +1,215 @@
+{
+  "reference": "actual Python RSS field mapping/enrichment; HTTP document boundary replaced with fixture HTML",
+  "python": "3.13.11",
+  "cases": [
+    {
+      "name": "company",
+      "config": {
+        "fetch_company": true
+      },
+      "html": "<h1 data-careersite-propertyid=\"title\">Engineer</h1><div data-careersite-propertyid=\"customfield1\"> Main </div>",
+      "input": [
+        {
+          "url": "https://example.com/us/job/1",
+          "metadata": {}
+        }
+      ],
+      "expected": [
+        {
+          "company": "Main"
+        }
+      ],
+      "calls": [
+        "https://example.com/us/job/1"
+      ],
+      "fields": {
+        "company": "customfield1"
+      },
+      "required": [],
+      "error": false
+    },
+    {
+      "name": "optional-missing",
+      "config": {
+        "fetch_company": true
+      },
+      "html": "<h1 data-careersite-propertyid=\"title\">Engineer</h1><p>Optional</p>",
+      "input": [
+        {
+          "url": "https://example.com/us/job/1",
+          "metadata": {
+            "company": "Careers"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "company": "Careers"
+        }
+      ],
+      "calls": [
+        "https://example.com/us/job/1"
+      ],
+      "fields": {
+        "company": "customfield1"
+      },
+      "required": [],
+      "error": false
+    },
+    {
+      "name": "required",
+      "config": {
+        "detail_fields": {
+          "service": "dept",
+          "adcode": "adcode"
+        }
+      },
+      "html": "<h1 data-careersite-propertyid=\"title\">Engineer</h1><div data-careersite-propertyid=\"dept\">Roads &amp; <b>Bridges</b></div><span data-careersite-propertyid=\"adcode\"> A <b> B </b> C </span>",
+      "input": [
+        {
+          "url": "https://example.com/us/job/1",
+          "metadata": {}
+        }
+      ],
+      "expected": [
+        {
+          "service": "Roads &Bridges",
+          "adcode": "ABC"
+        }
+      ],
+      "calls": [
+        "https://example.com/us/job/1"
+      ],
+      "fields": {
+        "service": "dept",
+        "adcode": "adcode"
+      },
+      "required": [
+        "adcode",
+        "service"
+      ],
+      "error": false
+    },
+    {
+      "name": "required-missing",
+      "config": {
+        "detail_fields": {
+          "service": "dept"
+        }
+      },
+      "html": "<h1 data-careersite-propertyid=\"title\">Engineer</h1><p>No property</p>",
+      "input": [
+        {
+          "url": "https://example.com/us/job/1",
+          "metadata": {}
+        }
+      ],
+      "expected": [
+        {}
+      ],
+      "calls": [
+        "https://example.com/us/job/1"
+      ],
+      "fields": {
+        "service": "dept"
+      },
+      "required": [
+        "service"
+      ],
+      "error": true
+    },
+    {
+      "name": "override-company",
+      "config": {
+        "fetch_company": true,
+        "detail_fields": {
+          "company": "dept"
+        }
+      },
+      "html": "<h1 data-careersite-propertyid=\"title\">Engineer</h1><span data-careersite-propertyid=\"customfield1\">Ignored</span><span data-careersite-propertyid=\"dept\">Roads</span>",
+      "input": [
+        {
+          "url": "https://example.com/us/job/1",
+          "metadata": {}
+        }
+      ],
+      "expected": [
+        {
+          "company": "Roads"
+        }
+      ],
+      "calls": [
+        "https://example.com/us/job/1"
+      ],
+      "fields": {
+        "company": "dept"
+      },
+      "required": [
+        "company"
+      ],
+      "error": false
+    },
+    {
+      "name": "first-property",
+      "config": {
+        "detail_fields": {
+          "service": "dept"
+        }
+      },
+      "html": "<h1 data-careersite-propertyid=\"title\">Engineer</h1><span data-careersite-propertyid=\"dept\">東京 Zürich</span><span data-careersite-propertyid=\"dept\">Ignored</span>",
+      "input": [
+        {
+          "url": "https://example.com/us/job/1",
+          "metadata": {}
+        }
+      ],
+      "expected": [
+        {
+          "service": "東京 Zürich"
+        }
+      ],
+      "calls": [
+        "https://example.com/us/job/1"
+      ],
+      "fields": {
+        "service": "dept"
+      },
+      "required": [
+        "service"
+      ],
+      "error": false
+    },
+    {
+      "name": "url-prefilter",
+      "config": {
+        "fetch_company": true,
+        "url_filter": "/us/job/"
+      },
+      "html": "<h1 data-careersite-propertyid=\"title\">Engineer</h1><span data-careersite-propertyid=\"customfield1\">Main</span>",
+      "input": [
+        {
+          "url": "https://example.com/us/job/1",
+          "metadata": {}
+        },
+        {
+          "url": "https://foreign.example/eu/job/2",
+          "metadata": {}
+        }
+      ],
+      "expected": [
+        {
+          "company": "Main"
+        },
+        {}
+      ],
+      "calls": [
+        "https://example.com/us/job/1"
+      ],
+      "fields": {
+        "company": "customfield1"
+      },
+      "required": [],
+      "error": false
+    }
+  ]
+}

@@ -25,11 +25,14 @@ func SitemapMonitorConfig(config map[string]string) (sitemap.Config, string, str
 	}
 	board, err := url.Parse(config["board_url"])
 	u, urlErr := url.Parse(root)
-	if err != nil || urlErr != nil || board.Scheme != "https" || u.Scheme != "https" || u.User != nil || u.Host == "" || u.Host != u.Hostname() || board.Host != u.Host || u.Fragment != "" || u.Opaque != "" {
+	if err != nil || urlErr != nil || board.Scheme != "https" || u.Scheme != "https" || u.User != nil || u.Host == "" || u.Host != u.Hostname() || u.Fragment != "" || u.Opaque != "" {
 		return fail()
 	}
-	if raw, exists := md["xml_attempts"]; exists && string(raw) != "1" {
-		return fail()
+	contentAttempts := 1
+	if raw, exists := md["xml_attempts"]; exists {
+		if json.Unmarshal(raw, &contentAttempts) != nil || contentAttempts < 1 || contentAttempts > 5 {
+			return fail()
+		}
 	}
 	for _, key := range []string{"proxy", "render", "skip_ssl"} {
 		if raw, exists := md[key]; exists && string(raw) != "false" && string(raw) != "null" && string(raw) != `""` {
@@ -65,7 +68,7 @@ func SitemapMonitorConfig(config map[string]string) (sitemap.Config, string, str
 			return fail()
 		}
 	}
-	c, err := sitemap.NormalizeConfig(sitemap.Config{SitemapURL: root, MaxURLs: 50_000, MaxIndexChildren: 200, MaxIndexDepth: 8, ChildMaxAttempts: 3})
+	c, err := sitemap.NormalizeConfig(sitemap.Config{SitemapURL: root, MaxURLs: 50_000, MaxIndexChildren: 200, MaxIndexDepth: 8, ChildMaxAttempts: max(3, contentAttempts), RootMaxAttempts: max(3, contentAttempts), RootContentAttempts: contentAttempts})
 	if err != nil {
 		return fail()
 	}

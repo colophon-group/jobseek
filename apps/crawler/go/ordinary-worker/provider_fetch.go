@@ -57,7 +57,7 @@ func fetchProviderStatusResource(ctx context.Context, client *http.Client, optio
 	if response.Request == nil || response.Request.URL == nil {
 		return nil, nil, queue.ErrConfiguration
 	}
-	observed := &GreenhouseResponse{endpoint: endpoint, finalURL: response.Request.URL.String(), status: response.StatusCode, location: response.Header.Get("Location")}
+	observed := &GreenhouseResponse{endpoint: endpoint, finalURL: response.Request.URL.String(), status: response.StatusCode, location: response.Header.Get("Location"), contentType: response.Header.Get("Content-Type")}
 	var statusError error
 	acceptAnyGET := len(any2xxGET) == 1 && any2xxGET[0]
 	if response.StatusCode < 200 || response.StatusCode >= 300 || body == nil && response.StatusCode != 200 && !acceptAnyGET {

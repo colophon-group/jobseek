@@ -24,6 +24,9 @@ func richResponseMatches(profile queue.GreenhouseMonitorProfile, endpoint string
 	if profile.Provider == "smartrecruiters" || profile.Provider == "workable" {
 		return queue.APIMonitorResourceMatches(profile, endpoint)
 	}
+	if queue.RSSDetailMonitorResourceMatches(profile, endpoint) {
+		return true
+	}
 	if endpoint == profile.Endpoint {
 		return true
 	}

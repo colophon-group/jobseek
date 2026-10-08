@@ -23,7 +23,7 @@ func initialMonitorResourceMatches(profile GreenhouseMonitorProfile, resource st
 		return resource == profile.Endpoint || resource == profile.Token
 	}
 	if profile.Provider == "rss" {
-		return resource == profile.Endpoint || rssProfilePageMatches(profile, resource)
+		return resource == profile.Endpoint || rssProfilePageMatches(profile, resource) || RSSDetailMonitorResourceMatches(profile, resource)
 	}
 	if profile.Provider == "phenom" {
 		return PhenomMonitorResourceMatches(profile, resource)

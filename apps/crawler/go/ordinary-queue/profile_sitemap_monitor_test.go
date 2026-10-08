@@ -37,11 +37,10 @@ func TestSitemapMonitorBindsExplicitResourceFiltersAndDetailConfig(t *testing.T)
 	}
 	for _, md := range []string{
 		`{"sitemap_url":"http://example.com/jobs.xml"}`,
-		`{"sitemap_url":"https://foreign.com/jobs.xml"}`,
 		`{"sitemap_url":"https://example.com:443/jobs.xml"}`,
 		`{"sitemap_url":"https://example.com/jobs.xml#fragment"}`,
 		`{"sitemap_url":"https://example.com/jobs.xml","xml_attempts":true}`,
-		`{"sitemap_url":"https://example.com/jobs.xml","xml_attempts":2}`,
+		`{"sitemap_url":"https://example.com/jobs.xml","xml_attempts":6}`,
 		`{"sitemap_url":"https://example.com/jobs.xml","proxy":"enabled"}`,
 		`{"sitemap_url":"https://example.com/jobs.xml","ssl_verify":false}`,
 		`{"sitemap_url":"https://example.com/jobs.xml","url_filter":{"include":"["}}`,

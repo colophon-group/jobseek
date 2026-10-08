@@ -95,7 +95,7 @@ func discoverSitemapInventory(ctx context.Context, client *http.Client, profile 
 	operationClient := *client
 	operationClient.Jar = nil
 	operationClient.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-	session := &nativeSitemapSession{client: &operationClient, endpoint: profile.Endpoint}
+	session := &nativeSitemapSession{client: &operationClient, endpoint: profile.Endpoint, maxRequests: c.RootMaxAttempts*c.RootContentAttempts + c.MaxIndexChildren*c.ChildMaxAttempts}
 	found, err := sitemap.RunWithSession(ctx, c, session)
 	result.Response = session.response
 	result.Truncated = found.Truncated
