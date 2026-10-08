@@ -1,0 +1,44 @@
+{
+  "version": "0.13.974",
+  "base_source": "ca8f700ddd97578e2b40ff3b0709680ad54fbcf5",
+  "status": "implemented candidate; no production authority",
+  "providers": [
+    "umantis"
+  ],
+  "enabled_configurations": 9,
+  "direct_configurations": 8,
+  "proxy_configurations": 1,
+  "delegated_enrichment_configurations": 3,
+  "new_profiles": [
+    "umantis.listing-urls/v1",
+    "umantis.proxy-listing-urls/v1"
+  ],
+  "contract": [
+    "tenant-bound listing and vacancy URLs",
+    "strict ranges, stable totals, token-bearing next links, unique numeric IDs",
+    "numeric locale deduplication",
+    "visible explicit zero and page-level exact employer metadata",
+    "whole inventory discarded on advertised tail/owner failure",
+    "isolated cookies, original bounded retries and publisher reservation handling",
+    "URL-only by default; partial title/location/employment fields only with configured enrichment; descriptions remain delegated"
+  ],
+  "validation": {
+    "actual_python_corpus_cases": 56,
+    "component_race_seconds": 1.32,
+    "registry_queue_race_seconds": 1.678,
+    "http_worker_race_seconds": 1.891,
+    "real_postgres_redis_worker_cases": 5,
+    "real_worker_race_seconds": 3.019,
+    "full_api_module_race_seconds": 3.783,
+    "real_executable_startup_profile_metrics_and_signal_drain_race_seconds": 4.735,
+    "queue_and_worker_vet": "pass",
+    "generator_ruff": "pass"
+  },
+  "open": [
+    "public inventory and actual field comparison",
+    "remaining grouped provider implementation",
+    "full required CI and deployment gate",
+    "merged-source fresh admission and supported production cutover",
+    "natural freshness, recovery and cost completion gates"
+  ]
+}

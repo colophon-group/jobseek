@@ -50,7 +50,7 @@ func TestNinthProviderOptionsPreserveCurrentRegistry(t *testing.T) {
 			t.Fatal("provider pagination rejected")
 		}
 	}
-	if counts["beehire"] != 1 || counts["hirehive"] != 1 || counts["welcometothejungle"] != 3 || counts["computrabajo"] != 11 || counts["ycombinator"] != 4 || proxies != 4 {
+	if counts["beehire"] != 1 || counts["hirehive"] != 1 || counts["welcometothejungle"] != 4 || counts["computrabajo"] != 11 || counts["ycombinator"] != 4 || proxies != 4 {
 		b, _ := json.Marshal(counts)
 		t.Fatal("registry routes changed", string(b), proxies)
 	}

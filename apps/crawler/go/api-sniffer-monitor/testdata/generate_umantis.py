@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+import re
 from dataclasses import asdict
 from html import escape
 from pathlib import Path
+
+import httpx
 
 from src.core.monitors import umantis
 
@@ -120,7 +124,177 @@ for listing in (
 ):
     paths.append(dict(listing=listing, expected=umantis._pagination_url(listing, "11", 2)))
 
+owners = []
+for name, body in (
+    ("owner", f'<head><meta name="description" content="{EMPLOYER} - Careers"></head>'),
+    ("body", f'<head></head><body><meta name="description" content="{EMPLOYER}"></body>'),
+    ("prefix", f'<head><meta name="description" content="{EMPLOYER} Other - Careers"></head>'),
+    (
+        "duplicate",
+        f'<head><meta name="description" content="{EMPLOYER}">'
+        f'<meta name="description" content="{EMPLOYER}"></head>',
+    ),
+    ("unfinished-head", f'<head><meta name="description" content="{EMPLOYER}">'),
+    ("unfinished-body", f'<head><meta name="description" content="{EMPLOYER}"></head><body>'),
+    ("selfclosing-body", f'<head><meta name="description" content="{EMPLOYER}"></head><body/>'),
+    ("nested-head", f'<head><head><meta name="description" content="{EMPLOYER}"></head></head>'),
+    ("double-head", f'<head><meta name="description" content="{EMPLOYER}"></head><head></head>'),
+    (
+        "whole-page",
+        f'<html><head><meta name="description" content="{EMPLOYER} – Careers"></head>'
+        "<body>Jobs</body></html>",
+    ),
+):
+    parser = umantis._DetailOwnerParser()
+    parser.feed(body)
+    parser.close()
+    valid = (
+        parser.head_count == 1
+        and parser.structurally_complete
+        and not parser.outside_head_descriptions
+        and len(parser.descriptions) == 1
+    )
+    if valid:
+        valid = umantis._normalized_identity(
+            re.split(r"\s+[-–—]\s+", parser.descriptions[0], maxsplit=1)[0]
+        ) == umantis._normalized_identity(EMPLOYER)
+    owners.append(dict(name=name, body=body, valid=valid))
+
+visible = []
+for name, body in (
+    ("visible", "<p>No jobs available</p>"),
+    ("script", "<script>No jobs available</script>"),
+    ("hidden", "<p hidden>No jobs available</p>"),
+    ("style", "<p style='DISPLAY: none'>No jobs available</p>"),
+    ("closed-details", "<details><p>No jobs available</p></details>"),
+    ("open-details", "<details open><p>No jobs available</p></details>"),
+    ("aria", "<p aria-hidden='true'>No jobs available</p>"),
+    ("class", "<p class='visually-hidden'>No jobs available</p>"),
+    ("nested", "<div hidden><div>x</div></div><p>No jobs available</p>"),
+    ("selfclosing-hidden", "<div hidden/><p>No jobs available</p>"),
+):
+    visible.append(
+        dict(
+            name=name,
+            body=body,
+            expected="No jobs available",
+            valid=umantis._has_visible_text(body, "No jobs available"),
+        )
+    )
+
+
+def nav(total, first, last, page, next_url=None):
+    payload = dict(
+        TableNr="1184173",
+        TableTotalLines=total,
+        TableFrom=first,
+        TableTo=last,
+        TableCurrentPage=page,
+    )
+    if next_url:
+        payload["NextLink"] = dict(EnhancedUrl=next_url, FieldIsActive=1)
+    return (
+        '<table-navigation initial-data-string="'
+        + escape(json.dumps(payload), quote=True)
+        + '"></table-navigation>'
+    )
+
+
+async def freeze_discovery():
+    cases = []
+    listing = BASE + "/Jobs/3?CompanyID=32"
+    next_url = BASE + "/Jobs/3?CompanyID=32&tc1184173=p2&_search_token1184173=123"
+    owner = f'<head><meta name="description" content="{EMPLOYER} - Careers"></head>'
+    first = row() + nav(2, 1, 1, 1, next_url)
+    second = row(identifier="2") + nav(2, 2, 2, 2)
+    for name, strict, first_body, tail_body, tail_status, owner_body in (
+        ("strict-complete", True, first, second, 200, owner),
+        ("strict-missing-tail", True, first, "", 404, owner),
+        ("strict-overlap", True, first, row() + nav(2, 2, 2, 2), 200, owner),
+        ("strict-changing-total", True, first, row(identifier="2") + nav(3, 2, 2, 2), 200, owner),
+        (
+            "strict-foreign-next",
+            True,
+            first.replace(BASE, "https://foreign.example"),
+            second,
+            200,
+            owner,
+        ),
+        ("strict-wrong-owner", True, first, second, 200, owner.replace(EMPLOYER, "Other")),
+        ("strict-zero", True, nav(0, 0, 0, 1) + "<p>No jobs available</p>", "", 200, owner),
+        (
+            "strict-hidden-zero",
+            True,
+            nav(0, 0, 0, 1) + "<p hidden>No jobs available</p>",
+            "",
+            200,
+            owner,
+        ),
+        ("legacy-complete-repeat", False, first, second, 200, owner),
+        ("legacy-terminal", False, first, "", 404, owner),
+    ):
+        calls = []
+        responses = {
+            listing: dict(status=200, body=first_body),
+            next_url: dict(status=tail_status, body=tail_body),
+        }
+        for identifier in ("1", "2"):
+            responses[BASE + f"/Vacancies/{identifier}/Description"] = dict(
+                status=200, body=owner_body
+            )
+        if not strict:
+            responses[BASE + "/Jobs/3?CompanyID=32&tc1184173=p2"] = dict(
+                status=tail_status, body=tail_body
+            )
+            responses[BASE + "/Jobs/3?CompanyID=32&tc1184173=p3"] = dict(status=200, body=tail_body)
+
+        def handler(request, calls=calls, responses=responses):
+            calls.append(str(request.url))
+            assert str(request.url) in responses, str(request.url)
+            response = responses[str(request.url)]
+            return httpx.Response(response["status"], text=response["body"])
+
+        metadata = dict(customer_id="3040", listing_path="/Jobs/3?CompanyID=32")
+        if strict:
+            metadata.update(
+                strict_listing_contract=True,
+                expected_employer=EMPLOYER,
+                employer_field_id=FIELD,
+                empty_state_text="No jobs available",
+            )
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            try:
+                jobs = await umantis.discover(dict(board_url=listing, metadata=metadata), client)
+                result, error = sorted(jobs), False
+            except (ValueError, httpx.HTTPStatusError):
+                result, error = None, True
+        cases.append(
+            dict(
+                name=name,
+                metadata=metadata,
+                listing=listing,
+                responses=responses,
+                urls=result,
+                error=error,
+                calls=calls,
+            )
+        )
+    return cases
+
+
+discovery = asyncio.run(freeze_discovery())
 Path(__file__).with_name("python_umantis.json").write_text(
-    json.dumps(dict(rows=rows, navigation=navigation, paths=paths), indent=2, ensure_ascii=False)
+    json.dumps(
+        dict(
+            rows=rows,
+            navigation=navigation,
+            paths=paths,
+            owners=owners,
+            visible=visible,
+            discovery=discovery,
+        ),
+        indent=2,
+        ensure_ascii=False,
+    )
     + "\n"
 )

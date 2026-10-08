@@ -18,9 +18,41 @@ not complete migration.
 
 ## Latest checkpoint — 2026-10-08
 
+Release **0.13.973**, source `ca8f700ddd97578e2b40ff3b0709680ad54fbcf5`,
+is merged and installed from its original
+[crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37740504418)
+and matching [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37740592176).
+Independent immutable renderer verification and incoming cold230 passed.
+Supported B0 stage, activation and seven-endpoint readback passed at **epoch231**.
+Fresh ordinary configuration/cache and actual posting-route admission is underway.
+Exclude monitor ownership for Kaiser, Hays, Euronext WTTJ, Siemens and RTX until
+complete inventory evidence passes; keep every board enabled and independently
+qualified detail ownership intact. Seven public Lightpanda DOM inventories passed:
+Bank of China254, Castelion90, Deloitte CE485, Celebal8, Cartier384, Tesco Bank9
+and Boeing BIA10. The other four DOM routes and RTX retain legacy monitors.
+
+The following **0.13.974** batch is rebased onto this merged source and groups
+Umantis, Unifr and Notion plus proven Kaiser/Euronext route conversions.
+Umantis now includes full listing discovery, strict pagination range/total proofs,
+locale deduplication, visible empty states and per-detail employer validation;
+worker integration keeps isolated cookies, bounded retry and publisher semantics.
+All nine configurations, including Lindt's proxy and three delegated enrichment
+contracts, qualify in focused registry tests. Fifty-six actual Python corpus cases,
+HTTP inventory/cookie/retry/partial-field tests and five real PostgreSQL/Redis
+settlement cases pass. Runtime wiring adds direct and proxy profile identities;
+public field verification, remaining grouped ports and required CI are pending.
+Candidate changes grant no production authority.
+
+The last complete ordinary activation was source972. Its supported ordinary
+retirement, B0 rollback, selector clear and independent outgoing cold230 all passed.
+An hourly Go reconciliation briefly held the mutation lock and finished naturally
+before selector clear retry2 succeeded. Historical source972 delivery evidence follows.
+
+### Prior source972 delivery
+
 Release **0.13.972**, source `3c3231b6451316f3f861692ce572b7f82d60af8b`,
 was deployed from its original immutable crawler and matching renderer builds.
-Its supported ordinary retirement has started for source973’s rollout.
+Its supported ordinary retirement completed before source973’s rollout.
 [PR #10359](https://github.com/colophon-group/jobseek/pull/10359) ports
 Intervieweb, Typify, Universia and TalentReef together: nine configurations,
 126 installed profiles. All nine public inventories and six delegated JSON-LD
@@ -66,7 +98,7 @@ Production pins
 `sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e`
 with CORS enabled; both architectures passed actual service fixtures.
 
-The next grouped candidate is **0.13.973**,
+The delivered shared-variant release is **0.13.973**,
 [PR #10360](https://github.com/colophon-group/jobseek/pull/10360): DOM rendered
 roots with HTTP pagination tails, explicit Sitemap roots/content retries and
 SuccessFactors RSS company/required property enrichment. It qualifies nineteen
@@ -83,7 +115,7 @@ leaves total approximately 93 MB. Retaining 50 MiB per file and a bounded 512 Mi
 operation produces twenty-one filtered jobs, matching actual Python's public
 inventory. Budget exhaustion regressions and changed real DOM/Sitemap settlement
 cases pass. Public Lightpanda probes completed Bank of China (254), Castelion
-(90) and Deloitte CE (485); eight other pagination boards are still being checked.
+(90) and Deloitte CE (485); Celebal, Cartier, Tesco Bank and Boeing BIA also pass; four DOM monitor holdouts remain.
 Protected proxy probes match Barclays Python/Go inventories (765). L’Oreal
 returns zero after filtering in both runtimes; its configured source points at
 PR rather than en_US jobs. RTX succeeds in Python but fails in Go; diagnosis
@@ -92,8 +124,8 @@ production ownership.
 
 The following batch groups **Umantis (nine), Unifr (nine) and Notion (eight)**.
 Umantis tenant options, listing rows, locale deduplication and strict navigation
-components match twenty-eight actual Python corpus cases. Runtime wiring,
-complete provider/detail contracts and production authority are still pending.
+components match twenty-eight actual Python corpus cases. Full discovery, worker/proxy wiring and reference/real settlement tests now pass as described above.
+Public provider/detail verification and production authority are still pending.
 Unifr and Notion contract research is prepared; no new executable profiles are granted.
 The same candidate switches Kaiser’s main board to existing TalentBrew discovery
 and direct JSON-LD details, and Euronext’s WTTJ board to its existing rich API
@@ -105,7 +137,8 @@ configuration changes, without production ownership; see the
 
 ## Continue delivery
 
-1. Complete source972 supported ordinary activation and independently verify its
+1. Complete fresh source973 ordinary admission with the five monitor holdouts,
+   then supported staging and activation; independently verify its
    exact source/images, active receipts, ten restart-armed services and eight health
    endpoints. Observe normal-schedule fields, description/R2 effects, failures,
    settlement recovery and freshness/conservation.

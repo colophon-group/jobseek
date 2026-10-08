@@ -3,6 +3,7 @@ package queue
 import "encoding/json"
 
 var httpMonitorProxyProfiles = map[string]string{
+	"umantis.listing-urls/v1":   "umantis.proxy-listing-urls/v1",
 	"dom.direct-urls/v1":        "dom.proxy-urls/v1",
 	"dom.direct-rows/v1":        "dom.proxy-rows/v1",
 	"api_sniffer.http-items/v1": "api_sniffer.proxy-http-items/v1",

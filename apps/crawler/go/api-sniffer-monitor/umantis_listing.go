@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"golang.org/x/net/html"
+	"golang.org/x/text/cases"
 )
 
 type UmantisRow struct {
@@ -28,7 +29,7 @@ var umantisTable = regexp.MustCompile(`^[1-9][0-9]{0,11}$`)
 var umantisVoid = map[string]bool{"area": true, "base": true, "br": true, "col": true, "embed": true, "hr": true, "img": true, "input": true, "link": true, "meta": true, "param": true, "source": true, "track": true, "wbr": true}
 
 func umantisIdentity(value string) string {
-	return strings.ToLower(strings.Join(strings.Fields(value), " "))
+	return cases.Fold().String(strings.Join(strings.Fields(value), " "))
 }
 
 // Token boundaries preserve the existing parser's complete nested employer
