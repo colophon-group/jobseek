@@ -1,12 +1,18 @@
 {
   "version": "jobseek.native-migration-candidate/v1",
   "candidate_version": "0.13.979",
-  "status": "Grouped implementation and pure/public qualification passed; real PostgreSQL/Redis settlement, cold retirement, broad suites, exact-head CI and production delivery pending",
+  "status": "Grouped six-profile implementation and focused, public, database and cold-history qualification passed; combined broad suites, exact-head CI and production delivery pending",
   "scope": {
     "linkedin_detail_configs": 34,
     "jazzhr_detail_configs": 20,
     "taleo_enterprise_detail_configs": 5,
-    "native_profiles": 141
+    "native_profiles": 141,
+    "monitor_configs": {
+      "linkedin": 31,
+      "taleo_business_edition": 4,
+      "practicematch_proxy": 4
+    },
+    "distinct_monitor_and_detail_configs": 98
   },
   "contracts": [
     "Independent detail ownership preserves canonical monitor routing and validates each actual posting source before fetch/write.",
@@ -39,9 +45,28 @@
       "redirect_responses": 2,
       "all_fields_and_request_counts_match": true
     },
-    "canonical_settlement_cases": "17 prepared; pending shared database availability",
-    "cold_retirement": "three added profile cases prepared; pending shared database availability",
-    "full_queue_worker": "pending"
+    "canonical_settlement_cases": {
+      "passed": 17,
+      "seconds": 6.987
+    },
+    "cold_retirement": "Six document-history/fresh-epoch cases PASS, including all three new detail profiles",
+    "full_queue_worker": "Combined source979 suites pending",
+    "workflow_version_contract_checks": 126,
+    "preceding_monitor_batch": {
+      "actual_python_cases": 155,
+      "http_cases": 43,
+      "registry_configs": 39,
+      "real_worker_cases": 11,
+      "required_proxy_transport_rejection": 1,
+      "public_outcomes": 39,
+      "public_matching": 39,
+      "complete_inventories": 38,
+      "postings": 1162,
+      "retained_failed_timeout": 1,
+      "queue_full_race_seconds": 439.568,
+      "worker_full_race_seconds": 649.559,
+      "source_head": "cc5674b15990b6097009dde3e9297639a13b6e82"
+    }
   },
   "completion_gates": "Full enabled profile coverage, natural freshness/conservation, runtime consumers, comparable whole-lane cost, supported reversal and rollback window, then production Python/Playwright/Chromium retirement remain open."
 }

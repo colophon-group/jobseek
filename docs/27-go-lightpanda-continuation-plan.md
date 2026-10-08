@@ -405,9 +405,12 @@ registry bindings pass. Same-capture public replay matches all fields and reques
 counts for 51 outcomes across 48 boards: 45 populated results and six actual
 Python empty results. Eleven boards have no active scheduled posting to sample.
 
-Real database settlement and cold reversal fixtures are prepared; broad suites,
-current-head required CI, immutable rollout and production admission remain
-pending. See the [candidate evidence](evidence/go-native-static-provider-details-candidate-2026-10-08.json).
+All 17 real database settlement cases and six document-history/cold reversal
+cases pass, including all three new detail profiles. The preceding three-monitor
+batch also passed its full queue (439.568s) and worker (649.559s) race suites.
+Deliver both batches together as **0.13.979**, with six new profiles and 98
+configurations. Combined broad suites, current-head required CI, immutable
+rollout and production admission remain pending. See the [candidate evidence](evidence/go-native-static-provider-details-candidate-2026-10-08.json).
 Finish and deliver the preceding grouped monitor batch while qualifying these
 details. Then address reusable DOM/API configuration gaps in groups: the retained
 source976 offline census found 193 unsupported DOM monitors and 86 API monitors.
