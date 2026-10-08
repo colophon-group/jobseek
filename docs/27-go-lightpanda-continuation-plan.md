@@ -45,8 +45,8 @@ profiles**. Both providers are wired through registry, HTTP execution, ownership
 canonical writes, publisher reservation and supported retirement paths.
 Eighty actual Python monitor/detail corpus cases, thirteen new real PostgreSQL/Redis
 worker cases, nine new retirement cases and actual native executable startup/drain
-checks pass. The full queue race suite passes (419.650s); full worker verification
-and required CI are pending.
+checks pass. The full queue (419.650s) and worker (629.082s) race suites pass;
+[PR #10361](https://github.com/colophon-group/jobseek/pull/10361) is open for required CI.
 
 Eight direct Umantis inventories and nine partial-field samples match Python.
 Eight delegated detail samples match existing title, description length and
@@ -152,8 +152,7 @@ configuration changes, without production ownership; see the
 
 ## Continue delivery
 
-1. Finish grouped974 full worker verification, publish its
-   PR and obtain Required CI plus the actual Crawler Deploy Gate. Merge with fresh
+1. Complete grouped974 PR #10361 Required CI and the actual Crawler Deploy Gate. Merge with fresh
    unchanged head/base, no holds and exact-head authority. Keep Lightpanda on the
    newest verified stable release and immutable digest.
 2. Quiesce and retire outgoing B0 through supported wrappers, prove cold state,
