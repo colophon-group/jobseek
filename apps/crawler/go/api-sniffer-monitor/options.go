@@ -19,7 +19,7 @@ var ErrOptions = errors.New("unsupported configured HTTP API monitor")
 
 type Pagination struct {
 	Param, Style, Location, ValueTemplate string
-	Start, Increment, MaxPages            int
+	Start, Increment, MaxPages, PageSize  int
 }
 
 type Options struct {
@@ -34,12 +34,14 @@ type Options struct {
 	PathValues                             bool
 	AutoPath                               bool
 	AutoFields                             bool
+	HTML                                   bool
+	URLRegex                               string
 	MaxItems, Attempts                     int
 	Transient403                           bool
 	Enrichment                             []string
 }
 
-var ConfigKeys = []string{"api_url", "method", "json_path", "json_path_values", "total_path", "url_field", "url_template", "url_template_fields", "fields", "params", "post_data", "post_body", "request_headers", "headers", "pagination", "max_items", "transient_403", "transport_attempts", "browser", "render", "proxy", "skip_ssl", "ssl_verify", "wait", "timeout", "settle", "items", "score", "total", "empty_response", "item_filter", "url_filter"}
+var ConfigKeys = []string{"api_url", "method", "json_path", "json_path_values", "total_path", "url_field", "url_template", "url_template_fields", "fields", "params", "post_data", "post_body", "request_headers", "headers", "pagination", "max_items", "transient_403", "transport_attempts", "browser", "render", "proxy", "skip_ssl", "ssl_verify", "wait", "timeout", "settle", "items", "score", "total", "empty_response", "item_filter", "url_filter", "resource_policy", "url_regex", "url_allowlist"}
 
 // Explicit HTTP configurations share the production client and the original
 // inventory writer. Browser captures, rotating auth, provider-specific filters
@@ -77,6 +79,15 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 			return o, ErrOptions
 		}
 	}
+	if value, exists := m["url_allowlist"]; exists {
+		pattern, ok := value.(string)
+		if !ok || pattern == "" || len(pattern) > 2048 {
+			return o, ErrOptions
+		}
+		if _, err := dom.CompileURLPattern(`\A(?:` + pattern + `)\Z`); err != nil {
+			return o, ErrOptions
+		}
+	}
 	o.ItemFilter, err = ItemFilterOptions(m["item_filter"])
 	if err != nil {
 		return o, err
@@ -99,13 +110,23 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 			}
 		}
 	}
-	for _, k := range []string{"browser", "render", "proxy", "skip_ssl"} {
+	for _, k := range []string{"browser", "proxy", "skip_ssl"} {
 		if v, exists := m[k]; exists && v != nil {
 			flag, ok := v.(bool)
 			if !ok || flag {
 				return o, ErrOptions
 			}
 		}
+	}
+	// API discovery selects browser solely from browser/api_url, matching
+	// Python; render is an inert legacy annotation on explicit API routes.
+	if v, exists := m["render"]; exists && v != nil {
+		if _, ok := v.(bool); !ok {
+			return o, ErrOptions
+		}
+	}
+	if v, exists := m["resource_policy"]; exists && v != nil && v != "none" {
+		return o, ErrOptions
 	}
 	if v, exists := m["ssl_verify"]; exists && v != nil {
 		flag, ok := v.(bool)
@@ -123,7 +144,7 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 		}
 		return nil
 	}
-	for k, dst := range map[string]*string{"api_url": &o.Endpoint, "method": &o.Method, "json_path": &o.Path, "total_path": &o.TotalPath, "url_field": &o.URLField, "url_template": &o.URLTemplate} {
+	for k, dst := range map[string]*string{"api_url": &o.Endpoint, "method": &o.Method, "json_path": &o.Path, "total_path": &o.TotalPath, "url_field": &o.URLField, "url_template": &o.URLTemplate, "url_regex": &o.URLRegex} {
 		if read(k, dst) != nil {
 			return o, ErrOptions
 		}
@@ -272,10 +293,19 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 			*dst = obj
 		}
 	}
-	if o.URLTemplate == "" && o.URLField == "" {
+	o.HTML = o.URLTemplate == "" && o.URLField == ""
+	if o.HTML {
+		// Explicit HTML paths never infer an array mapping after schema drift.
+		if o.AutoPath || o.PathValues || len(o.Fields) != 0 || len(o.TemplateFields) != 0 || o.ItemFilter != nil {
+			return o, ErrOptions
+		}
+		if _, err := htmlURLPattern(o.URLRegex); err != nil {
+			return o, ErrOptions
+		}
+	} else if o.URLRegex != "" {
 		return o, ErrOptions
 	}
-	o.AutoFields = len(o.Fields) == 0
+	o.AutoFields = !o.HTML && len(o.Fields) == 0
 	if o.URLField != "" {
 		if _, err := jmespath.Compile(o.URLField); err != nil {
 			return o, ErrOptions
@@ -321,6 +351,8 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 					pg.Increment = n
 				case "max_pages":
 					pg.MaxPages = n
+				case "page_size":
+					pg.PageSize = n
 				}
 			default:
 				return o, ErrOptions
@@ -340,6 +372,9 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 			}
 		}
 		o.Pagination = pg
+		if o.HTML && (pg.Style == "cumulative_limit" || pg.ValueTemplate != "" || pg.PageSize < 0) {
+			return o, ErrOptions
+		}
 	}
 	return o, nil
 }

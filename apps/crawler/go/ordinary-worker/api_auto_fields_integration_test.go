@@ -15,9 +15,18 @@ import (
 
 func TestRealAutomaticAPIFieldsDirectProxyAndRenderedConservation(t *testing.T) {
 	for _, route := range []string{"direct", "proxy", "rendered"} {
-		for _, mode := range []string{"rich", "url-only", "ambiguous", "empty"} {
+		for _, mode := range []string{"rich", "url-only", "ambiguous", "empty", "html", "html-empty", "html-incomplete", "html-drift", "allowlist", "boundary-rejected"} {
+			if route == "rendered" && strings.HasPrefix(mode, "html") {
+				continue
+			}
 			t.Run(route+"/"+mode, func(t *testing.T) {
 				md := `{"api_url":"https://example.com/api","json_path":"jobs","url_field":"url","scraper_type":"skip"}`
+				if mode == "allowlist" || mode == "boundary-rejected" {
+					md = `{"api_url":"https://example.com/api","json_path":"jobs","url_field":"url","scraper_type":"skip","url_allowlist":"^https://example\\.com/jobs/[a-z0-9-]+$"}`
+				}
+				if strings.HasPrefix(mode, "html") {
+					md = `{"api_url":"https://example.com/api","json_path":"html","scraper_type":"skip"}`
+				}
 				worker := queue.Simple
 				if route == "proxy" {
 					md = proxyFixtureMetadata(t, md, true)
@@ -37,6 +46,9 @@ func TestRealAutomaticAPIFieldsDirectProxyAndRenderedConservation(t *testing.T) 
 					t.Fatal(e)
 				}
 				row := map[string]any{"url": "https://example.com/jobs/" + f.company, "title": "Senior Software Engineer", "description": "<p>Build Go services in Zurich.</p>", "location": "Zurich", "employmentType": "Full-time", "workplaceType": "remote"}
+				if mode == "boundary-rejected" {
+					row["url"] = "https://example.com/other/" + f.company
+				}
 				if mode == "url-only" {
 					row = map[string]any{"url": row["url"], "identifier": "1"}
 				}
@@ -48,6 +60,19 @@ func TestRealAutomaticAPIFieldsDirectProxyAndRenderedConservation(t *testing.T) 
 					jobs = []any{}
 				}
 				body, _ := json.Marshal(map[string]any{"jobs": jobs})
+				if strings.HasPrefix(mode, "html") {
+					value := map[string]any{"html": fmt.Sprintf(`<a href="%s">Role</a>`, row["url"])}
+					if mode == "html-empty" {
+						value["html"] = ""
+					}
+					if mode == "html-incomplete" {
+						value["total"] = 10
+					}
+					if mode == "html-drift" {
+						value["html"] = []any{row}
+					}
+					body, _ = json.Marshal(value)
+				}
 				requests := 0
 				client := verifiedClaimFixtureClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					requests++
@@ -88,18 +113,18 @@ func TestRealAutomaticAPIFieldsDirectProxyAndRenderedConservation(t *testing.T) 
 				if e = f.pg.QueryRow(ctx, "SELECT consecutive_failures FROM job_board WHERE id=$1::uuid", f.board).Scan(&failures); e != nil {
 					t.Fatal(e)
 				}
-				if mode == "ambiguous" {
+				if mode == "ambiguous" || mode == "html-drift" || mode == "boundary-rejected" {
 					if inserted != 0 || missing != 0 || failures != 1 || result.Cycle.Status != "failed" {
 						t.Fatal("ambiguous map changed canonical state", inserted, missing, failures)
 					}
 					return
 				}
 				want := 1
-				if mode == "empty" {
+				if mode == "empty" || mode == "html-empty" {
 					want = 0
 				}
 				wantMissing := 1
-				if mode == "empty" {
+				if mode == "empty" || mode == "html-empty" || mode == "html-incomplete" {
 					wantMissing = 0
 				}
 				if inserted != want || missing != wantMissing || failures != 0 {

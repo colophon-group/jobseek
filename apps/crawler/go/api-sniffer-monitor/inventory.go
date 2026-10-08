@@ -200,10 +200,14 @@ func Discover(ctx context.Context, o Options, fetch Fetch, join JoinURL) (Invent
 		return result, err
 	}
 	if first == nil {
+		result.URLOnly = o.HTML
 		if len(o.EmptyResponse) > 0 || o.AutoPath {
 			return result, ErrInventory
 		}
 		return result, nil
+	}
+	if o.HTML {
+		return discoverHTML(ctx, o, first, fetch, join)
 	}
 	if o.AutoPath {
 		selected, err := first.SelectAPIArray(o.Endpoint)

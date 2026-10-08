@@ -70,11 +70,21 @@ func emptyScalarEqual(actual, expected any) bool {
 }
 
 func (d *Document) MatchesEmptyResponse(config map[string]any) (bool, error) {
+	return d.matchesEmptyResponse(config, false)
+}
+
+func (d *Document) matchesEmptyResponse(config map[string]any, allowArray bool) (bool, error) {
 	validated, err := emptyResponseOptions(config)
 	if err != nil || d == nil {
 		return false, ErrOptions
 	}
-	if _, ok := d.Value.(map[string]any); !ok {
+	switch d.Value.(type) {
+	case map[string]any:
+	case []any:
+		if !allowArray {
+			return false, nil
+		}
+	default:
 		return false, nil
 	}
 	for path, expected := range validated {

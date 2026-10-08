@@ -72,7 +72,7 @@ func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 			return c, errors.New("invalid DOM listing selector")
 		}
 		c.Selector = strings.TrimSpace(s)
-		if _, err := cascadia.Parse(c.Selector); err != nil {
+		if _, err := cascadia.ParseGroup(c.Selector); err != nil {
 			return c, err
 		}
 	}
@@ -152,7 +152,7 @@ func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 func ListingHrefs(source, selector string) ([]string, error) {
 	result := []string{}
 	if selector != "" {
-		s, err := cascadia.Parse(selector)
+		s, err := cascadia.ParseGroup(selector)
 		if err != nil {
 			return nil, err
 		}

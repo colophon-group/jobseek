@@ -20,6 +20,10 @@ func TestReviewedLuaCopiesMatchAuthority(t *testing.T) {
 			t.Fatalf("reviewed %s differs", name)
 		}
 	}
+	deadletter, err := os.ReadFile("../typesense-exporter/deadletter_enqueue.lua")
+	if err != nil || string(deadletter) != enqueueLua {
+		t.Fatal("deadletter enqueue differs from reviewed ordinary enqueue")
+	}
 }
 func TestRejectConfigurationBeforeConnecting(t *testing.T) {
 	settings := Settings{LeaseTTL: time.Minute, MaxDomains: 10}

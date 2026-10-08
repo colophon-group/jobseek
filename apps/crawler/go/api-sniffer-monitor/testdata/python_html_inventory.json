@@ -1,0 +1,1041 @@
+[
+  {
+    "name": "default-hrefs",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "html"
+    },
+    "url_only": true,
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "html": "<a href=\"/jobs/1\">Role</a><a href=\"/jobs/2\">Role</a><a href=\"/jobs/1\">Role</a><a href=\"#top\">x</a><a href=\"mailto:x\">x</a><a href=\"javascript:x\">x</a>"
+        }
+      }
+    ]
+  },
+  {
+    "name": "custom-capture",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "html",
+      "url_regex": "(?i)data-job=[\"\\'](/job/[^\"\\']+)[\"\\']"
+    },
+    "url_only": true,
+    "expected": [
+      {
+        "url": "https://careers.example.test/job/Zurich",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "html": "<div DATA-JOB=\"/job/Zurich\"><a href=\"/ignored\">x</a></div>"
+        }
+      }
+    ]
+  },
+  {
+    "name": "nested-html",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "postings.jobs",
+      "total_path": "postings.size"
+    },
+    "url_only": true,
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "postings": {
+            "jobs": "<a href=\"/jobs/1\">Role</a><a href=\"/jobs/2\">Role</a>",
+            "size": 2
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "root-list-html",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "[0].html"
+    },
+    "url_only": true,
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": [
+          {
+            "html": "<a href=\"/jobs/1\">Role</a>"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "empty-html",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "html"
+    },
+    "url_only": true,
+    "expected": [],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "html": ""
+        }
+      }
+    ]
+  },
+  {
+    "name": "initial-legitimate-tail",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "html"
+    },
+    "url_only": true,
+    "expected": [],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 404,
+        "data": {}
+      }
+    ]
+  },
+  {
+    "name": "array-root-empty-marker-True",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "[0].content.rendered",
+      "empty_response": {
+        "[0].id": 44033,
+        "[0].content.protected": false
+      }
+    },
+    "url_only": true,
+    "expected": [],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": [
+          {
+            "id": 44033,
+            "content": {
+              "rendered": "",
+              "protected": false
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "array-root-empty-marker-False",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "[0].content.rendered",
+      "empty_response": {
+        "[0].id": 44033,
+        "[0].content.protected": false
+      }
+    },
+    "error": true,
+    "error_class": "ValueError",
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": [
+          {
+            "id": 44033,
+            "content": {
+              "rendered": "",
+              "protected": true
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "explicit-empty",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "html",
+      "empty_response": {
+        "found_jobs": false
+      }
+    },
+    "url_only": true,
+    "expected": [],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "html": "",
+          "found_jobs": false
+        }
+      }
+    ]
+  },
+  {
+    "name": "unproven-empty",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "html",
+      "empty_response": {
+        "found_jobs": false
+      }
+    },
+    "error": true,
+    "error_class": "ValueError",
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 0,
+        "size": null,
+        "status": 200,
+        "data": {
+          "html": "",
+          "found_jobs": true
+        }
+      }
+    ]
+  },
+  {
+    "name": "paged-union",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "html",
+      "params": {
+        "page": 1
+      },
+      "pagination": {
+        "param_name": "page",
+        "start_value": 1,
+        "increment": 1,
+        "max_pages": 4
+      },
+      "total_path": "total"
+    },
+    "url_only": true,
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      },
+      {
+        "url": "https://careers.example.test/jobs/3",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      },
+      {
+        "url": "https://careers.example.test/jobs/4",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 1,
+        "size": null,
+        "status": 200,
+        "data": {
+          "html": "<a href=\"/jobs/1\">Role</a><a href=\"/jobs/2\">Role</a>",
+          "total": 4
+        }
+      },
+      {
+        "page": 2,
+        "size": null,
+        "status": 200,
+        "data": {
+          "html": "<a href=\"/jobs/3\">Role</a><a href=\"/jobs/4\">Role</a>",
+          "total": 4
+        }
+      }
+    ]
+  },
+  {
+    "name": "no-growth",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "html",
+      "params": {
+        "page": 1
+      },
+      "pagination": {
+        "param_name": "page",
+        "start_value": 1,
+        "increment": 1,
+        "max_pages": 4
+      }
+    },
+    "url_only": true,
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 1,
+        "size": null,
+        "status": 200,
+        "data": {
+          "html": "<a href=\"/jobs/1\">Role</a><a href=\"/jobs/2\">Role</a>"
+        }
+      },
+      {
+        "page": 2,
+        "size": null,
+        "status": 200,
+        "data": {
+          "html": "<a href=\"/jobs/2\">Role</a><a href=\"/jobs/1\">Role</a>"
+        }
+      }
+    ]
+  },
+  {
+    "name": "legitimate-tail",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "html",
+      "params": {
+        "page": 1
+      },
+      "pagination": {
+        "param_name": "page",
+        "start_value": 1,
+        "increment": 1,
+        "max_pages": 4
+      }
+    },
+    "url_only": true,
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 1,
+        "size": null,
+        "status": 200,
+        "data": {
+          "html": "<a href=\"/jobs/1\">Role</a><a href=\"/jobs/2\">Role</a>"
+        }
+      },
+      {
+        "page": 2,
+        "size": null,
+        "status": 404,
+        "data": {}
+      }
+    ]
+  },
+  {
+    "name": "empty-tail",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "html",
+      "params": {
+        "page": 1
+      },
+      "pagination": {
+        "param_name": "page",
+        "start_value": 1,
+        "increment": 1,
+        "max_pages": 4
+      }
+    },
+    "url_only": true,
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 1,
+        "size": null,
+        "status": 200,
+        "data": {
+          "html": "<a href=\"/jobs/1\">Role</a><a href=\"/jobs/2\">Role</a>"
+        }
+      },
+      {
+        "page": 2,
+        "size": null,
+        "status": 200,
+        "data": {
+          "html": " "
+        }
+      }
+    ]
+  },
+  {
+    "name": "schema-tail-advertised-gap",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "html",
+      "params": {
+        "page": 1
+      },
+      "pagination": {
+        "param_name": "page",
+        "start_value": 1,
+        "increment": 1,
+        "max_pages": 4
+      },
+      "total_path": "total"
+    },
+    "url_only": true,
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      }
+    ],
+    "truncated": true,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 1,
+        "size": null,
+        "status": 200,
+        "data": {
+          "html": "<a href=\"/jobs/1\">Role</a><a href=\"/jobs/2\">Role</a>",
+          "total": 10
+        }
+      },
+      {
+        "page": 2,
+        "size": null,
+        "status": 200,
+        "data": {
+          "html": []
+        }
+      }
+    ]
+  },
+  {
+    "name": "page-size-cap",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "html",
+      "params": {
+        "page": 1
+      },
+      "pagination": {
+        "param_name": "page",
+        "start_value": 1,
+        "increment": 1,
+        "max_pages": 2,
+        "page_size": 100
+      },
+      "total_path": "total"
+    },
+    "url_only": true,
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      },
+      {
+        "url": "https://careers.example.test/jobs/3",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      }
+    ],
+    "truncated": true,
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 1,
+        "size": null,
+        "status": 200,
+        "data": {
+          "html": "<a href=\"/jobs/1\">Role</a><a href=\"/jobs/2\">Role</a>",
+          "total": 250
+        }
+      },
+      {
+        "page": 2,
+        "size": null,
+        "status": 200,
+        "data": {
+          "html": "<a href=\"/jobs/3\">Role</a>",
+          "total": 250
+        }
+      }
+    ]
+  },
+  {
+    "name": "body-pagination",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "html",
+      "method": "POST",
+      "post_data": {
+        "page": 1
+      },
+      "pagination": {
+        "param_name": "page",
+        "start_value": 1,
+        "increment": 1,
+        "max_pages": 4,
+        "location": "body"
+      }
+    },
+    "url_only": true,
+    "expected": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": null,
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "metadata": {},
+        "extras": {}
+      }
+    ],
+    "truncated": false,
+    "calls": [
+      {
+        "method": "POST",
+        "url": "https://api.example.test/jobs",
+        "body": "{\"page\":1}",
+        "headers": {
+          "content-type": "application/json"
+        }
+      },
+      {
+        "method": "POST",
+        "url": "https://api.example.test/jobs",
+        "body": "{\"page\": 2}",
+        "headers": {
+          "content-type": "application/json"
+        }
+      },
+      {
+        "method": "POST",
+        "url": "https://api.example.test/jobs",
+        "body": "{\"page\": 3}",
+        "headers": {
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "responses": [
+      {
+        "page": 1,
+        "size": null,
+        "status": 200,
+        "data": {
+          "html": "<a href=\"/jobs/1\">Role</a>"
+        }
+      },
+      {
+        "page": 2,
+        "size": null,
+        "status": 200,
+        "data": {
+          "html": "<a href=\"/jobs/2\">Role</a>"
+        }
+      },
+      {
+        "page": 3,
+        "size": null,
+        "status": 200,
+        "data": {
+          "html": ""
+        }
+      }
+    ]
+  },
+  {
+    "name": "later-transient-discards-all",
+    "board_url": "https://careers.example.test/careers/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs",
+      "json_path": "html",
+      "params": {
+        "page": 1
+      },
+      "pagination": {
+        "param_name": "page",
+        "start_value": 1,
+        "increment": 1,
+        "max_pages": 4
+      }
+    },
+    "error": true,
+    "error_class": "PaginationFetchError",
+    "calls": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "responses": [
+      {
+        "page": 1,
+        "size": null,
+        "status": 200,
+        "data": {
+          "html": "<a href=\"/jobs/1\">Role</a><a href=\"/jobs/2\">Role</a>"
+        }
+      },
+      {
+        "page": 2,
+        "size": null,
+        "status": 503,
+        "data": {}
+      }
+    ]
+  }
+]

@@ -1,0 +1,79 @@
+{
+  "schema": "jobseek.go-migration-candidate/v1",
+  "observed_at_utc": "2026-10-08T21:36:09.437854+00:00",
+  "base_source": "eabefcff813a6fdb99cc807a53d894719a7c9ee8",
+  "candidate_version": "0.13.982",
+  "profiles": 145,
+  "additional_static_configurations": 41,
+  "static_reference_capture_source": "0.13.980 canonical capture",
+  "configuration_breakdown": {
+    "api_sniffer": 14,
+    "dom": 27
+  },
+  "controls": [
+    "inert render annotations on explicit API routes",
+    "resource_policy none on supported navigation/parser routes",
+    "explicit HTML-in-JSON URL-set discovery",
+    "DOM listing CSS selector groups",
+    "API publisher allowlist with original fenced writer rejection"
+  ],
+  "not_admitted": [
+    "HTML browser interception traversal",
+    "unimplemented resource filtering policies",
+    "unknown or malformed controls"
+  ],
+  "reference_cases": {
+    "original_python_html_http": 18,
+    "original_python_grouped_selector_http_and_processing": 6
+  },
+  "public_same_capture": {
+    "kpmg": {
+      "urls": 787,
+      "requests": 73,
+      "url_and_request_match": true,
+      "truncated_matches_original": true
+    },
+    "iiba": {
+      "urls": 0,
+      "requests": 1,
+      "array_root_explicit_empty_match": true
+    },
+    "required_proxy_and_affine_browser_public_execution": "not proven by direct HTTP captures"
+  },
+  "validation": {
+    "full_base_runtime_commit": "d68a25b14ac488a94c418b72ca37c9046d82a8ab",
+    "full_base_queue_race_seconds": 517.125,
+    "full_base_worker_race_seconds": 715.632,
+    "combined_dom_race_seconds": 2.776,
+    "combined_api_race_seconds": 5.423,
+    "combined_worker_http_race_seconds": 5.673,
+    "combined_registry_and_transport_race_seconds": 1.855,
+    "real_settlement_cases": 26,
+    "real_settlement_race_seconds": 8.855,
+    "supported_cold_reversal_cases": 45,
+    "supported_cold_reversal_race_seconds": 40.673,
+    "final_exact_head_required_ci": "required before merge"
+  },
+  "production_at_checkpoint": {
+    "source": "eabefcff813a6fdb99cc807a53d894719a7c9ee8",
+    "b0": "cdom active245 with seven independent health checks",
+    "ordinary_shared35": "staged and independently verified; supported cold activation observing natural leases",
+    "full_ordinary_handoff": "unqualified after source980 producer deadline; speculative optimizations discarded"
+  },
+  "full_migration_complete": false,
+  "private_evidence_root": "/Users/Viktor/.codex/migration-evidence/go-b0-native/2026-09-30",
+  "cdom_enqueue_consumer_fix": {
+    "trigger": "source981 shared35 natural monitor failed at detail_enqueue; cdom omitted from both ordinary enqueue Lua copies",
+    "production_evidence": "private source-bound natural readback at245:15 succeeded,1 failed,941 posting touches,zero claim errors",
+    "before": "real Redis regression rejects valid outside-board enqueue for cdom in both simple/browser queues",
+    "after": "cdom accepted while manifest/cardinality/route/covered-board/posting guards remain",
+    "validation": "ten real Redis cohort/worker cases plus reviewed Lua copies and existing enqueue tests PASS2.928s; ten Python owner/malformed owner cases PASS0.70s",
+    "restoration": "supported receipt-bound source981 ordinary retirement underway; independent base/B0 restoration and outgoing cold246 required",
+    "runtime_copies": [
+      "src/lua/enqueue_task.lua",
+      "go/ordinary-queue/enqueue_task.lua",
+      "go/typesense-exporter/deadletter_enqueue.lua"
+    ],
+    "ci_repair": "b39 Test Crawler failed only test_go_deadletters embedded copy contract; synchronized third runtime copy and extended existing Go copy-contract guard"
+  }
+}

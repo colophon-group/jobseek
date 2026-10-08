@@ -72,12 +72,12 @@ func TestSharedDOMAPICurrentRegistryPreservesDeclaredTransports(t *testing.T) {
 		if provider == "api_sniffer" {
 			if browser {
 				o, e := APISnifferBrowserMonitorOptions(config)
-				if e != nil || o.Inventory.AutoFields == explicit {
+				if e != nil || !o.Inventory.HTML && o.Inventory.AutoFields == explicit {
 					t.Fatal("automatic browser mapping not bound", e)
 				}
 			} else {
 				o, e := APISnifferMonitorOptions(config)
-				if e != nil || o.AutoFields == explicit {
+				if e != nil || !o.HTML && o.AutoFields == explicit {
 					t.Fatal("automatic HTTP mapping not bound", e)
 				}
 			}
@@ -89,8 +89,8 @@ func TestSharedDOMAPICurrentRegistryPreservesDeclaredTransports(t *testing.T) {
 		}
 		supported[provider]++
 	}
-	if explicitCount != 4 || supported["api_sniffer"] != 23 || supported["dom"] != 12 || retained["api_sniffer"] != 12 || retained["dom"] != 11 {
-		t.Fatal("registry coverage empty", supported)
+	if explicitCount != 4 || supported["api_sniffer"] != 29 || supported["dom"] != 13 || retained["api_sniffer"] != 6 || retained["dom"] != 10 {
+		t.Fatal("registry coverage changed", supported, retained)
 	}
 	t.Logf("configuration binding only; production route admission pending: supported=%v retained=%v", supported, retained)
 }

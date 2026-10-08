@@ -77,7 +77,8 @@ if task_type == "scrape" and b0_owner_type == "hash" then
         or (redis.call("HGET", b0_owner_key, "cohort") ~= "c1"
             and redis.call("HGET", b0_owner_key, "cohort") ~= "c2"
             and redis.call("HGET", b0_owner_key, "cohort") ~= "c3"
-            and redis.call("HGET", b0_owner_key, "cohort") ~= "c4")
+            and redis.call("HGET", b0_owner_key, "cohort") ~= "c4"
+            and redis.call("HGET", b0_owner_key, "cohort") ~= "cdom")
         or not owner_count or owner_count < 1 or owner_count > 16
         or redis.call("HLEN", b0_owner_key) ~= 7 + owner_count
         or not b0_safe_identifier(owner_namespace) or not b0_safe_identifier(owner_shard)

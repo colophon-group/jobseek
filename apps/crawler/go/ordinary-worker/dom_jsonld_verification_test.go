@@ -21,7 +21,13 @@ import (
 const domVerificationJob = `<script type="application/ld+json">{"@type":"JobPosting","title":"Engineer"}</script>`
 
 func TestOriginalDOMIncludeBoardAndJSONLDVerificationHTTP(t *testing.T) {
-	raw, e := os.ReadFile("../dom-detail/testdata/python_listing_verification.json")
+	testOriginalDOMVerificationHTTP(t, "../dom-detail/testdata/python_listing_verification.json", 16)
+}
+func TestOriginalDOMGroupedSelectorHTTP(t *testing.T) {
+	testOriginalDOMVerificationHTTP(t, "../dom-detail/testdata/python_selector_groups.json", 6)
+}
+func testOriginalDOMVerificationHTTP(t *testing.T, path string, count int) {
+	raw, e := os.ReadFile(path)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -39,7 +45,7 @@ func TestOriginalDOMIncludeBoardAndJSONLDVerificationHTTP(t *testing.T) {
 		DropReasons        map[string]int `json:"drop_reasons"`
 		Error              bool
 	}
-	if json.Unmarshal(raw, &cases) != nil || len(cases) != 16 {
+	if json.Unmarshal(raw, &cases) != nil || len(cases) != count {
 		t.Fatal("actual Python DOM oracle missing")
 	}
 	for _, c := range cases {
