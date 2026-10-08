@@ -323,6 +323,26 @@ func pdfTextHTML(text string) string {
 	return strings.Join(paragraphs, "\n")
 }
 
+// PDFTextHasConfiguredTitle distinguishes an explicit publisher title capture
+// from the filename/heading fallback when comparing extraction orders.
+func PDFTextHasConfiguredTitle(text string, o PDFOptions) (bool, error) {
+	if len(text) > 16<<20 || !utf8.ValidString(text) || strings.ContainsRune(text, 0) {
+		return false, ErrInventory
+	}
+	text = strings.TrimSpace(text)
+	if o.FieldsPattern != nil {
+		title, err := pdfCapture(text, o.FieldsPattern, "title", o.RepairSplitInitial)
+		if err != nil || title != "" {
+			return title != "", err
+		}
+	}
+	if o.TitleSource == "text" && o.TitlePattern != nil {
+		title, err := pdfCapture(text, o.TitlePattern, "", o.RepairSplitInitial)
+		return title != "", err
+	}
+	return o.FieldsPattern == nil, nil
+}
+
 // ParsePDFText projects the legacy PDF field contract independently of the
 // binary extraction engine. Matching is bounded by the shared regex timeout.
 func ParsePDFText(text, source string, o PDFOptions) (map[string]any, error) {

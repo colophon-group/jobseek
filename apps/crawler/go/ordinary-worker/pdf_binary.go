@@ -102,7 +102,7 @@ func extractPDFBinary(ctx context.Context, body []byte, source string, o api.PDF
 	if os.WriteFile(file, body, 0o600) != nil {
 		return nil, errPDFBinary
 	}
-	text, err := pdfCommand(ctx, 16<<20, "pdftotext", "-raw", "-enc", "UTF-8", "-nopgbrk", file, "-")
+	text, err := pdfCommand(ctx, 16<<20, "pdftotext", "-enc", "UTF-8", "-nopgbrk", file, "-")
 	if err != nil {
 		return nil, err
 	}
@@ -153,5 +153,28 @@ func extractPDFBinary(ctx context.Context, body []byte, source string, o api.PDF
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-	return api.ParsePDFText(string(text), source, o)
+	out, parseErr := api.ParsePDFText(string(text), source, o)
+	matched, matchErr := api.PDFTextHasConfiguredTitle(string(text), o)
+	if matchErr != nil {
+		return nil, matchErr
+	}
+	if !matched || parseErr != nil {
+		// Reading order restores spaces between positioned glyphs. Some column
+		// layouts preserve the configured title only in content-stream order;
+		// accept that alternative only with the same explicit title evidence.
+		raw, err := pdfCommand(ctx, 16<<20, "pdftotext", "-raw", "-enc", "UTF-8", "-nopgbrk", file, "-")
+		if err != nil {
+			return nil, err
+		}
+		rawMatched, err := api.PDFTextHasConfiguredTitle(string(raw), o)
+		if err != nil {
+			return nil, err
+		}
+		if rawMatched {
+			if rawOut, err := api.ParsePDFText(string(raw), source, o); err == nil {
+				return rawOut, nil
+			}
+		}
+	}
+	return out, parseErr
 }

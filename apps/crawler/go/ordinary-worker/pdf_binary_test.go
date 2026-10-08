@@ -7,11 +7,44 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"reflect"
 	"testing"
 
 	api "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
 )
+
+func TestNativePDFConfiguredTitleSurvivesExtractionOrder(t *testing.T) {
+	// Positioned glyphs can lose spaces in raw order; multi-column documents
+	// can split a title in reading order. Both must preserve the configured
+	// publisher capture instead of silently accepting a filename fallback.
+	for _, c := range []struct{ name, reading, raw string }{
+		{"positioned-glyphs", "Title: Research Scientist\nLocation: Nyon\n", "Title:ResearchScientist\nLocation:Nyon\n"},
+		{"columns", "Research\nTitle:\nScientist\nNyon\nLocation:\n", "Title: Research Scientist\nLocation: Nyon\n"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			dir := t.TempDir()
+			for name, value := range map[string]string{"reading": c.reading, "raw": c.raw} {
+				if err := os.WriteFile(filepath.Join(dir, name), []byte(value), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			script := "#!/bin/sh\nmode=reading\n[ \"$1\" = -raw ] && mode=raw\nexec /bin/cat \"${0%/*}/$mode\"\n"
+			if err := os.WriteFile(filepath.Join(dir, "pdftotext"), []byte(script), 0700); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("PATH", dir)
+			o, err := api.PDFOptionsFromConfig(map[string]any{"title_source": "text", "title_pattern": `(?m)^Title: (.+)$`, "location_pattern": `(?m)^Location: (.+)$`})
+			if err != nil {
+				t.Fatal(err)
+			}
+			out, err := extractPDFBinary(context.Background(), []byte("%PDF test"), "https://example.com/posting.pdf", o)
+			if err != nil || out["title"] != "Research Scientist" || !reflect.DeepEqual(out["locations"], []any{"Nyon"}) {
+				t.Fatal(out, err)
+			}
+		})
+	}
+}
 
 func TestNativePDFBinaryExtractionOCRAndBoundsMatchPython(t *testing.T) {
 	for _, name := range []string{"pdftotext", "pdfinfo", "pdftoppm", "tesseract"} {

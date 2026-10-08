@@ -67,7 +67,8 @@ match; biology/geosciences inventory drift and physics/SES missing central
 counterparts fail in both runtimes without a prefix or false zero.
 
 PDF fields use the existing Python-compatible regex engine and missing-only
-defaults. Native Poppler extracts text; opt-in Tesseract OCR retains the twenty-page,
+defaults. Native Poppler reads in layout order, using raw order only to recover a missing
+explicit configured title capture; opt-in Tesseract OCR retains the twenty-page,
 thirty-million-pixels-per-page and scale bounds. Local processes have bounded
 output/deadlines and an environment without service credentials. The HTTP path
 preserves scoped public headers, redirects, publisher reservation, and exact
@@ -76,6 +77,10 @@ cases, seven binary/OCR cases, fifty configuration checks and five real detail
 settlement cases pass. Five captured Unifr PDFs preserve three title/location
 results and two existing required-title failures. PDF HTML/layout differs from
 pypdf; this is recorded rather than claimed as byte-equivalent descriptions.
+Fifteen additional public PDFs from ten boards also match every Python title
+and location after an extraction-order fix for positioned glyphs and columns.
+The earlier five Unifr title/location/failure results remain matched. Final-head
+CI must verify the corrected image; descriptions still differ in layout.
 The first full queue run failed only the newly expanded codec fixture count;
 its exact eight-case rerun passes. The full worker race suite passes (658.715s), including actual 132-profile
 executable startup/drain and binary/OCR checks; queue/worker vet passes.

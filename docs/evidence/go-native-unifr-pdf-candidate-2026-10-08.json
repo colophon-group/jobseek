@@ -227,7 +227,202 @@
       }
     ],
     "limitation": "Paragraph/HTML layout differs from pypdf; three successful descriptions are not byte-equivalent. Required-title failures are preserved. Broader representative PDF quality remains part of full migration verification.",
-    "historical_detail_receipts": "Focused real PostgreSQL/Redis Notion/PDF retained-receipt/fresh-epoch conservation passed 3.098 seconds and final full queue race passed 417.780 seconds."
+    "historical_detail_receipts": "Focused real PostgreSQL/Redis Notion/PDF retained-receipt/fresh-epoch conservation passed 3.098 seconds and final full queue race passed 417.780 seconds.",
+    "extraction_order": "Reading order preserves positioned-glyph spaces. Raw order is accepted as an alternative only when it restores an explicit configured title capture. Both retain native process bounds and publisher/parser semantics.",
+    "broader_public_parity": {
+      "scope": "read-only public PDF captures through original transport/fingerprint rules; no production ownership",
+      "extraction": "Reading order first; raw order only when the configured title capture is absent and raw order provides that capture",
+      "additional_samples": [
+        {
+          "board": "canton-of-valais-magistracy",
+          "url": "https://www.vs.ch/documents/10166929/0/Un+poste+de+juge+suppleant_e_%28droit+civil+et+p%C3%A9nal%29.pdf/258d80a6-f6ea-7caf-af36-45d4db1f4bb5?t=1768481367757&v=1.0",
+          "sha256": "c6bcbf94717bd37925a47cb684b6b958e919d04048411c1de3337252d9639a73",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "ac-immune-careers",
+          "url": "https://www.acimmune.com/wp-content/uploads/2026/06/Analytical-Scientist-QC_2026-1.pdf",
+          "sha256": "9e7e30f40fb4127cbea12462154d26335ab770ac52c70c9ff680c0763dcecd24",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "imd-faculty",
+          "url": "https://www.imd.org/wp-content/uploads/2026/05/Faculty-Vacancy-Organizational-Behavior-Singapore-28052026.pdf",
+          "sha256": "ec6e068cb9eae4c0485725e6f77179f7854409e94335360696defebdd7414e93",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "imd-faculty",
+          "url": "https://www.imd.org/wp-content/uploads/2026/06/20260520-Faculty-Vacancy-Family-Business-Singapore.pdf",
+          "sha256": "2e294fea4a04006e089d88f742084a93683ff5fc190e908fdab0b80f34931b35",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "international-basketball-federation-hq",
+          "url": "https://assets.fiba.basketball/image/upload/documents-corporate-hr-2026.pdf?_jobseek_fp=db179c91bb18a6907aa55091",
+          "sha256": "746f738046fde8a3137a39d4b7e9718f90bd59d6163ab8da082664c88d8a99a5",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "besi-main",
+          "url": "https://www.besi.com/fileadmin/data/Jobs/Switzerland/Operational_Buyer_August_2026.pdf",
+          "sha256": "5e6bf8d57f60bf53c79f769a9ed4af66d0eaa37c46b8b096a9adebfa7f96fae5",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "besi-main",
+          "url": "https://www.besi.com/fileadmin/data/Jobs/Switzerland/DevOps_Engineer.pdf",
+          "sha256": "a71bda29bf4b10806a245d3248649f1856fec8ebee4bff34509b8063606ab1eb",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "changins-main",
+          "url": "https://www.changins.ch/_files/ugd/88badf_527944ea414849688d8e06e85f310b5a.pdf",
+          "sha256": "1677ade5241a06c1b6b97b26e75c1468d02c9ef9e45b3467a8ebe8842e6b16f0",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "wsp-careers-louis-berger",
+          "url": "https://louisbergerinternational.com/wp/wp-content/uploads/2026/04/LBI-WSP-We-are-Hiring_KRIDE_4.pdf",
+          "sha256": "c65a41cccbd9bf95c2a1198d00e66de39c904866818fd557798c256327872cc2",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "wsp-careers-louis-berger",
+          "url": "https://louisbergerinternational.com/wp/wp-content/uploads/2026/04/LBI-WSP-We-are-Hiring_Bhopal-Metro_Chief-Architect.pdf",
+          "sha256": "c08f9d444c6ea784b0bda074e660c9243bd1e9a9bc7b8ebd7cc7ffb3cc6790b9",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "university-of-arkansas-system-careers-uaeacc",
+          "url": "https://www.uaeacc.edu/plugins/show_image.php?id=5557",
+          "sha256": "fee7c226e25cfa6fdfcc2199c889109d88fe8bba014621e17245bf76cb31b6dd",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "university-of-arkansas-system-careers-uaeacc",
+          "url": "https://www.uaeacc.edu/plugins/show_image.php?id=5271",
+          "sha256": "ecb1dd9020d8dcf0d4908abe45d935c6f1ea114f2aa65cfc9a42ea9c1974bde6",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "accuray-japan",
+          "url": "https://www.accuray.com/wp-content/uploads/r06_job01.pdf",
+          "sha256": "abd205eddbdf565288b1d4241301359d6d47f43f4d910ad9385e106237ed9763",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "accuray-japan",
+          "url": "https://www.accuray.com/wp-content/uploads/Job_PM.pdf",
+          "sha256": "76eaa22fcda50ad3d58db3ec705316f7c414705cb2ae945020f0fd8ebe1cc5a9",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "echion-technologies-careers",
+          "url": "https://www.echiontech.com/s/ECH-DOC-067-Job-Description-Data-Lead.pdf",
+          "sha256": "233f8608b70d557dccb9928b17fc5e7d172a094f33fc8507f994719b1fcec834",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        }
+      ],
+      "original_unifr_samples": [
+        {
+          "board": "university-of-fribourg-law",
+          "url": "https://www.unifr.ch/ius/de/assets/public/documents/offres-emploi/20261005_Lehrauftrag-Datenschutzrecht.pdf",
+          "failure_match": true,
+          "title_match": true,
+          "locations_match": true
+        },
+        {
+          "board": "university-of-fribourg-law",
+          "url": "https://www.unifr.ch/ius/de/assets/public/documents/offres-emploi/20261007_Stellenausschreibung-Niggli.pdf",
+          "failure_match": true,
+          "title_match": true,
+          "locations_match": true
+        },
+        {
+          "board": "university-of-fribourg-law",
+          "url": "https://www.unifr.ch/ius/de/assets/public/documents/offres-emploi/UNIFR_Stelleninserat_zwei_Professuren-DE_lf_171x132mm_PRINT.pdf",
+          "failure_match": true,
+          "title_match": true,
+          "locations_match": true
+        },
+        {
+          "board": "university-of-fribourg-regional-school-service",
+          "url": "https://www.unifr.ch/rsd/de/assets/public/files/20250901_Inserat_Praktikum_SPD.pdf",
+          "failure_match": true,
+          "title_match": true,
+          "locations_match": true
+        },
+        {
+          "board": "university-of-fribourg-regional-school-service",
+          "url": "https://www.unifr.ch/rsd/de/assets/public/files/20260921_Inserat_LOG_JaunGiffersHeitenried.pdf",
+          "failure_match": true,
+          "title_match": true,
+          "locations_match": true
+        }
+      ],
+      "description_limitation": "HTML paragraphs and layout may differ from pypdf; this proof establishes title/location and existing required-title failures, not exact descriptions"
+    }
   },
   "umantis_receipt_fix": {
     "stored_metadata_preserved": true,
@@ -242,10 +437,11 @@
     "native_binary_ocr": "Seven real binary/OCR fixtures passed, including narrowed child environment in full worker suite.",
     "full_queue_worker_race": "Final full queue race passed 417.780 seconds; full worker race passed 658.715 seconds; queue/worker vet passed. Earlier codec fixture count failure was repaired and is covered by the final queue run.",
     "required_ci": "not yet submitted",
-    "full_worker_race": "Passed658.715 seconds, including actual132-profile executable startup/drain and binary/OCR; queue/worker vet passed. Historical-document conservation addition is tested separately by final queue suite.",
+    "full_worker_race": "Passed658.715 seconds, including actual132-profile executable startup/drain and binary/OCR; queue/worker vet passed. Historical-document conservation addition is tested separately by final queue suite. Subsequent extraction-order correction requires final-head CI; focused regression/binary/public checks cover it locally.",
     "full_queue_race": "Passed 417.780 seconds, including corrected eight-case codec and retained Notion/PDF receipt conservation; vet passed.",
     "public_pdf_headers": "Passed scoped public headers, inherited/set-cookie exclusion and same-origin redirect2.003s.",
-    "public_unifr_lifecycle": "Passed fixed source scope check and API vet after accepting the declared common lifecycle options."
+    "public_unifr_lifecycle": "Passed fixed source scope check and API vet after accepting the declared common lifecycle options.",
+    "final_extraction_order": "Passed PDF API race 1.543s, seven real binary/OCR and two extraction-order regressions, real PostgreSQL/Redis detail settlement race 5.403s, and API/worker vet. Final-head Required CI/installed image required."
   },
   "installed_source974": {
     "pr": 10361,
@@ -285,7 +481,8 @@
     "native975-candidate-offline-summary-2026-10-08.json": "6335869025ebf8667fe73a5c06e71b36aae80bcf9caa520a780f1b56e465a32d",
     "native-source974-postdeploy-cold232-verified1-2026-10-08.json": "7b6c3d5be7bdb6c559433c92798fd320b1f6a18cce00c56a91daea2537000064",
     "native974-supported-b0-readback-initial-2026-10-08.log": "2e80154b79a0fd16cbc3068f67b1014af912894ba64fd69b64a3e7327fdd8be7",
-    "native-source974-exact-staged-config-drift-2026-10-08.json": "c712e28ee7ea175c7a9856919bad250fb79b4265baa219096dc401b34c3ee74b"
+    "native-source974-exact-staged-config-drift-2026-10-08.json": "c712e28ee7ea175c7a9856919bad250fb79b4265baa219096dc401b34c3ee74b",
+    "native975-pdf-final-public-parity-2026-10-08.json": "b6d12b0dfca65e40ae9f46ae66cfc3f76d2f8b5358f5f76780e7aef6950fcc96"
   },
   "full_migration_complete": false,
   "next_grouped_priority": {
