@@ -1,9 +1,9 @@
 {
   "schema": "jobseek.go-migration-candidate/v1",
-  "observed_at_utc": "2026-10-08T22:37:46.294505+00:00",
+  "observed_at_utc": "2026-10-08T23:20:06.471449+00:00",
   "base_source": "cbe398d308d31bbfc731bad51210583217a919e3",
   "candidate_version": "0.13.983",
-  "state": "implemented candidate; clean serial full worker and exact-head CI pending",
+  "state": "published PR10370; corrected installed-image profile inventory; exact-head required CI pending",
   "providers": [
     "jarvi",
     "job51"
@@ -30,7 +30,7 @@
     "api_full_race": "PASS5.288s",
     "api_worker_vet": "PASS",
     "full_queue_race": "PASS538.730s",
-    "full_worker_race": "clean serial retry3 running; invalidated overlap and stale-fixture failures retained",
+    "full_worker_race": "clean serial retry3 timed out at Go default10m after600.879s; no local full pass claimed; central Required CI uses existing20m",
     "text_character_limit_cases": 2
   },
   "public_same_capture": [
@@ -67,6 +67,7 @@
     "HTTP inventory originally decoded only JSON; 51job now retains original text/JSONP parse-once and five-million-character boundary.",
     "New live adapter copied 51job stable source_identity after the shared rich-job conversion.",
     "Initial SQL assertions were corrected for established URL fallback identity and processor skill-section enrichment.",
-    "Own focused PostgreSQL check overlapped full worker startup; stopped only own test process family, independently confirmed exclusive loopback fixture, retired only its exact stale fake-source plan, and passed all ten terminal cases before serial full-worker retry."
+    "Own focused PostgreSQL check overlapped full worker startup; stopped only own test process family, independently confirmed exclusive loopback fixture, retired only its exact stale fake-source plan, and passed all ten terminal cases before serial full-worker retry.",
+    "Installed-image parity workflow still asserted145 profiles; exact ordered inventory updated to147, including Jarvi and51job. All checks must pass on the corrected head."
   ]
 }

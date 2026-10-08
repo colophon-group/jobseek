@@ -27,7 +27,12 @@ run `37854180008` and matching dormant renderer run `37854281427` both succeeded
 on attempt 1. Independent incoming source/image checks passed at cold246.
 Supported B0 activation and seven health endpoints passed at **epoch247**. Fresh
 canonical/cache admission qualifies all **76** combined API/DOM configurations
-across six transport profiles; their grouped owner stage is in progress.
+across six transport profiles. Supported grouped activation passed at epoch247;
+independent SQL/Redis authority, ten restart-armed writers and eight health
+endpoints passed. The first natural sample records 27 successful and seven failed
+monitors, 1,852 posting touches and zero claim errors. The rendered fetch failures
+need investigation; Swissport has not yet run naturally in this cohort. These
+observations do not prove full freshness.
 
 Outgoing source981 ordinary ownership retired successfully. B0 rollback was
 retried only after the original scheduled reconciliation finished, then selectors
@@ -53,14 +58,21 @@ replay, publisher/redirect/retry/concurrent failure and cancellation checks pass
 ten real SQL/Redis terminal cases and six supported cold reversals pass. Public
 same-capture replay matches all fields for **127 jobs**: Jimmy 25/one request,
 Poly 91/96 requests and PVH 11/12 requests. These are input/output and local
-ownership proofs; the candidate is implemented while the full worker suite and required CI run. The full queue race suite passed in 538.730s;
+ownership proofs; [PR #10370](https://github.com/colophon-group/jobseek/pull/10370) is published.
+Required CI and installed-image parity remain pending on the corrected head. The full queue race suite passed in 538.730s;
 the first worker run was invalidated after an overlapping local fixture check.
 Its interrupted fixture left board/plan rows; the exclusive local synthetic test
-data was reset while preserving taxonomy seeds before the clean serial retry. See [candidate evidence](evidence/go-native-jarvi-job51-candidate-2026-10-08.json).
+data was reset while preserving taxonomy seeds before the clean serial retry.
+That retry reached Go's default ten-minute timeout after 600.879 seconds; it is
+not a full-worker pass. Central Required CI runs this suite with its existing
+twenty-minute timeout. The first installed-image check found an omitted update
+to the workflow's profile inventory; its exact inventory now matches all 147
+compiled profiles. Re-run exact-head required checks after this correction. See [candidate evidence](evidence/go-native-jarvi-job51-candidate-2026-10-08.json).
 
-Continue by completing the two original source982 rollouts and incoming proof,
-then fresh B0 and grouped ordinary admission; publish the complete Jarvi/51job
-batch after validation. The remaining source981 diagnostic frontier includes
+Continue by investigating the source982 natural fetch failures and observing
+the corrected Swissport enqueue when due. Complete exact-head checks for the
+Jarvi/51job batch, supported outgoing retirement/cold reversal, immutable
+source983 delivery and fresh grouped admission. The remaining source981 diagnostic frontier includes
 154 DOM, 49 API-sniffer and 15 RSS configurations, with browser/action/pagination,
 publisher allowlist and provider-specific controls. That diagnostic is a planning
 input, not a current production coverage claim. Group related controls across
