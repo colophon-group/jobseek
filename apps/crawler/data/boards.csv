@@ -5108,6 +5108,7 @@ olam-agri,olam-agri-americas,https://recruiting.paylocity.com/recruiting/jobs/Al
 olam-agri,olam-agri-brazil,https://ogacarreiras.gupy.io/,nextdata,"{""path"": ""props.pageProps.jobs"", ""url_template"": ""https://ogacarreiras.gupy.io/jobs/{id}""}",json-ld,
 olam-agri,olam-agri-global,https://careers.olamagri.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.olamagri.com/googlefeed.xml""}",skip,
 olam-group,olam-group-global,https://careers.olamgroup.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.olamgroup.com/googlefeed.xml""}",skip,
+old-mutual,old-mutual-careers,https://oldmutual.wd3.myworkdayjobs.com/old_mutual_careers,workday,,workday,
 olema-oncology,olema-oncology-greenhouse,https://job-boards.greenhouse.io/olema,greenhouse,"{""token"": ""olema""}",skip,
 olipop,olipop-greenhouse,https://job-boards.greenhouse.io/olipop,greenhouse,"{""token"": ""olipop""}",skip,
 oliv-ai,oliv-ai-greenhouse,https://job-boards.greenhouse.io/olivai,greenhouse,"{""token"": ""olivai""}",skip,
