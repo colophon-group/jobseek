@@ -1,0 +1,446 @@
+{
+  "parsers": [
+    {
+      "name": "empty",
+      "body": "",
+      "hidden": {},
+      "urls": []
+    },
+    {
+      "name": "hidden",
+      "body": "<input id=\"facilityID\" value=\"42\"><input id=\"facilityLandingURL\" value=\"A &amp; B\">",
+      "hidden": {
+        "facilityID": "42",
+        "facilityLandingURL": "A & B"
+      },
+      "urls": []
+    },
+    {
+      "name": "initial",
+      "body": "<input id=\"facilityID\" value=\"42\"><input id=\"facilityLandingURL\" value=\"A &amp; B\"><a href=\"https://www.practicematch.com/physicians/job-details.cfm/123/role?tracking=1\">Job</a>",
+      "hidden": {
+        "facilityID": "42",
+        "facilityLandingURL": "A & B"
+      },
+      "urls": [
+        "https://www.practicematch.com/physicians/job-details.cfm/123/"
+      ]
+    },
+    {
+      "name": "duplicate",
+      "body": "<input id=\"facilityID\" value=\"42\"><input id=\"facilityLandingURL\" value=\"A &amp; B\"><a href=\"https://www.practicematch.com/physicians/job-details.cfm/123/role?tracking=1\">Job</a><a href=\"https://www.practicematch.com/physicians/job-details.cfm/123/role?tracking=1\">Job</a>",
+      "hidden": {
+        "facilityID": "42",
+        "facilityLandingURL": "A & B"
+      },
+      "urls": [
+        "https://www.practicematch.com/physicians/job-details.cfm/123/"
+      ]
+    },
+    {
+      "name": "two-hosts",
+      "body": "<a href=\"https://www.practicematch.com/physicians/job-details.cfm/1/role?tracking=1\">Job</a><a href=\"https://practicematch.com/physicians/job-details.cfm/2/role?tracking=1\">Job</a>",
+      "hidden": {},
+      "urls": [
+        "https://www.practicematch.com/physicians/job-details.cfm/1/",
+        "https://www.practicematch.com/physicians/job-details.cfm/2/"
+      ]
+    },
+    {
+      "name": "relative-ignored",
+      "body": "<a href=\"/physicians/job-details.cfm/1/\">Job</a>",
+      "hidden": {},
+      "urls": []
+    },
+    {
+      "name": "foreign",
+      "body": "<a href=\"https://evil.example/physicians/job-details.cfm/1/role?tracking=1\">Job</a>",
+      "hidden": {},
+      "urls": []
+    },
+    {
+      "name": "upper",
+      "body": "<a href=\"https://WWW.PRACTICEMATCH.COM/PHYSICIANS/job-details.cfm/1/role?tracking=1\">Job</a>",
+      "hidden": {},
+      "urls": [
+        "https://www.practicematch.com/physicians/job-details.cfm/1/"
+      ]
+    },
+    {
+      "name": "unicode-id",
+      "body": "<a href=\"https://www.practicematch.com/physicians/job-details.cfm/１２３/role?tracking=1\">Job</a>",
+      "hidden": {},
+      "urls": [
+        "https://www.practicematch.com/physicians/job-details.cfm/１２３/"
+      ]
+    },
+    {
+      "name": "encoded-id",
+      "body": "<a href=\"https://www.practicematch.com/physicians/job-details.cfm/%31/role?tracking=1\">Job</a>",
+      "hidden": {},
+      "urls": []
+    },
+    {
+      "name": "invalid-percent-suffix",
+      "body": "<a href=\"https://www.practicematch.com/physicians/job-details.cfm/1/role%zz?tracking=1\">Job</a>",
+      "hidden": {},
+      "urls": [
+        "https://www.practicematch.com/physicians/job-details.cfm/1/"
+      ]
+    },
+    {
+      "name": "empty-field-overrides",
+      "body": "<input id=\"facilityID\" value=\"42\"><input id=\"facilityLandingURL\" value=\"A &amp; B\"><input id=\"facilityID\" value=\"\">",
+      "hidden": {
+        "facilityID": "",
+        "facilityLandingURL": "A & B"
+      },
+      "urls": []
+    }
+  ],
+  "forms": [
+    {
+      "hidden": {
+        "facilityID": "42"
+      },
+      "profession": "1",
+      "page": 1,
+      "body": "facilityID=42&facilityLandingURL=&specialty=&professionID=1&keywords=&pageNum=1&state=&contactID=0&siteID=&oppIDs=0&hasMap=0&updateSpec=0"
+    },
+    {
+      "hidden": {
+        "facilityID": "42"
+      },
+      "profession": "1",
+      "page": 3,
+      "body": "facilityID=42&facilityLandingURL=&specialty=&professionID=1&keywords=&pageNum=3&state=&contactID=0&siteID=&oppIDs=0&hasMap=0&updateSpec=0"
+    },
+    {
+      "hidden": {
+        "facilityID": "42"
+      },
+      "profession": "-1",
+      "page": 1,
+      "body": "facilityID=42&facilityLandingURL=&specialty=&professionID=-1&keywords=&pageNum=1&state=&contactID=0&siteID=&oppIDs=0&hasMap=0&updateSpec=0"
+    },
+    {
+      "hidden": {
+        "facilityID": "42"
+      },
+      "profession": "-1",
+      "page": 3,
+      "body": "facilityID=42&facilityLandingURL=&specialty=&professionID=-1&keywords=&pageNum=3&state=&contactID=0&siteID=&oppIDs=0&hasMap=0&updateSpec=0"
+    },
+    {
+      "hidden": {
+        "facilityID": "a/b",
+        "facilityLandingURL": "A & B",
+        "contactID": "",
+        "oppIDs": "11,12",
+        "hasMap": "1"
+      },
+      "profession": "1",
+      "page": 1,
+      "body": "facilityID=a%2Fb&facilityLandingURL=A+%26+B&specialty=&professionID=1&keywords=&pageNum=1&state=&contactID=&siteID=&oppIDs=11%2C12&hasMap=0&updateSpec=0"
+    },
+    {
+      "hidden": {
+        "facilityID": "a/b",
+        "facilityLandingURL": "A & B",
+        "contactID": "",
+        "oppIDs": "11,12",
+        "hasMap": "1"
+      },
+      "profession": "1",
+      "page": 3,
+      "body": "facilityID=a%2Fb&facilityLandingURL=A+%26+B&specialty=&professionID=1&keywords=&pageNum=3&state=&contactID=&siteID=&oppIDs=11%2C12&hasMap=0&updateSpec=0"
+    },
+    {
+      "hidden": {
+        "facilityID": "a/b",
+        "facilityLandingURL": "A & B",
+        "contactID": "",
+        "oppIDs": "11,12",
+        "hasMap": "1"
+      },
+      "profession": "-1",
+      "page": 1,
+      "body": "facilityID=a%2Fb&facilityLandingURL=A+%26+B&specialty=&professionID=-1&keywords=&pageNum=1&state=&contactID=&siteID=&oppIDs=11%2C12&hasMap=0&updateSpec=0"
+    },
+    {
+      "hidden": {
+        "facilityID": "a/b",
+        "facilityLandingURL": "A & B",
+        "contactID": "",
+        "oppIDs": "11,12",
+        "hasMap": "1"
+      },
+      "profession": "-1",
+      "page": 3,
+      "body": "facilityID=a%2Fb&facilityLandingURL=A+%26+B&specialty=&professionID=-1&keywords=&pageNum=3&state=&contactID=&siteID=&oppIDs=11%2C12&hasMap=0&updateSpec=0"
+    }
+  ],
+  "inventories": [
+    {
+      "name": "complete",
+      "board": "https://employer.practicematch.com/employer/fixture/",
+      "metadata": {
+        "proxy": true
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://employer.practicematch.com/employer/fixture/",
+          "body": "",
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://employer.practicematch.com/employer/cfcs/landingPageUtils.cfc?method=getOppData2",
+          "body": "facilityID=42&facilityLandingURL=A+%26+B&specialty=&professionID=1&keywords=&pageNum=2&state=&contactID=0&siteID=&oppIDs=0&hasMap=0&updateSpec=0",
+          "headers": {
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Referer": "https://employer.practicematch.com/employer/fixture/",
+            "X-Requested-With": "XMLHttpRequest"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://employer.practicematch.com/employer/cfcs/landingPageUtils.cfc?method=getOppData2",
+          "body": "facilityID=42&facilityLandingURL=A+%26+B&specialty=&professionID=1&keywords=&pageNum=3&state=&contactID=0&siteID=&oppIDs=0&hasMap=0&updateSpec=0",
+          "headers": {
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Referer": "https://employer.practicematch.com/employer/fixture/",
+            "X-Requested-With": "XMLHttpRequest"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://employer.practicematch.com/employer/cfcs/landingPageUtils.cfc?method=getOppData2",
+          "body": "facilityID=42&facilityLandingURL=A+%26+B&specialty=&professionID=-1&keywords=&pageNum=1&state=&contactID=0&siteID=&oppIDs=0&hasMap=0&updateSpec=0",
+          "headers": {
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Referer": "https://employer.practicematch.com/employer/fixture/",
+            "X-Requested-With": "XMLHttpRequest"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://employer.practicematch.com/employer/cfcs/landingPageUtils.cfc?method=getOppData2",
+          "body": "facilityID=42&facilityLandingURL=A+%26+B&specialty=&professionID=-1&keywords=&pageNum=2&state=&contactID=0&siteID=&oppIDs=0&hasMap=0&updateSpec=0",
+          "headers": {
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Referer": "https://employer.practicematch.com/employer/fixture/",
+            "X-Requested-With": "XMLHttpRequest"
+          }
+        }
+      ],
+      "urls": [
+        "https://www.practicematch.com/physicians/job-details.cfm/1/",
+        "https://www.practicematch.com/physicians/job-details.cfm/2/",
+        "https://www.practicematch.com/physicians/job-details.cfm/3/"
+      ],
+      "truncated": false,
+      "failed": false
+    },
+    {
+      "name": "empty",
+      "board": "https://employer.practicematch.com/employer/fixture/",
+      "metadata": {
+        "proxy": true
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://employer.practicematch.com/employer/fixture/",
+          "body": "",
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://employer.practicematch.com/employer/cfcs/landingPageUtils.cfc?method=getOppData2",
+          "body": "facilityID=42&facilityLandingURL=A+%26+B&specialty=&professionID=1&keywords=&pageNum=1&state=&contactID=0&siteID=&oppIDs=0&hasMap=0&updateSpec=0",
+          "headers": {
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Referer": "https://employer.practicematch.com/employer/fixture/",
+            "X-Requested-With": "XMLHttpRequest"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://employer.practicematch.com/employer/cfcs/landingPageUtils.cfc?method=getOppData2",
+          "body": "facilityID=42&facilityLandingURL=A+%26+B&specialty=&professionID=-1&keywords=&pageNum=1&state=&contactID=0&siteID=&oppIDs=0&hasMap=0&updateSpec=0",
+          "headers": {
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Referer": "https://employer.practicematch.com/employer/fixture/",
+            "X-Requested-With": "XMLHttpRequest"
+          }
+        }
+      ],
+      "urls": [],
+      "truncated": false,
+      "failed": false
+    },
+    {
+      "name": "repeat",
+      "board": "https://employer.practicematch.com/employer/fixture/",
+      "metadata": {
+        "proxy": true
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://employer.practicematch.com/employer/fixture/",
+          "body": "",
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://employer.practicematch.com/employer/cfcs/landingPageUtils.cfc?method=getOppData2",
+          "body": "facilityID=42&facilityLandingURL=A+%26+B&specialty=&professionID=1&keywords=&pageNum=2&state=&contactID=0&siteID=&oppIDs=0&hasMap=0&updateSpec=0",
+          "headers": {
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Referer": "https://employer.practicematch.com/employer/fixture/",
+            "X-Requested-With": "XMLHttpRequest"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://employer.practicematch.com/employer/cfcs/landingPageUtils.cfc?method=getOppData2",
+          "body": "facilityID=42&facilityLandingURL=A+%26+B&specialty=&professionID=-1&keywords=&pageNum=1&state=&contactID=0&siteID=&oppIDs=0&hasMap=0&updateSpec=0",
+          "headers": {
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Referer": "https://employer.practicematch.com/employer/fixture/",
+            "X-Requested-With": "XMLHttpRequest"
+          }
+        }
+      ],
+      "urls": [
+        "https://www.practicematch.com/physicians/job-details.cfm/1/"
+      ],
+      "truncated": false,
+      "failed": false
+    },
+    {
+      "name": "cap",
+      "board": "https://employer.practicematch.com/employer/fixture/",
+      "metadata": {
+        "proxy": true,
+        "max_pages": 1
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://employer.practicematch.com/employer/fixture/",
+          "body": "",
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://employer.practicematch.com/employer/cfcs/landingPageUtils.cfc?method=getOppData2",
+          "body": "facilityID=42&facilityLandingURL=A+%26+B&specialty=&professionID=1&keywords=&pageNum=1&state=&contactID=0&siteID=&oppIDs=0&hasMap=0&updateSpec=0",
+          "headers": {
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Referer": "https://employer.practicematch.com/employer/fixture/",
+            "X-Requested-With": "XMLHttpRequest"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://employer.practicematch.com/employer/cfcs/landingPageUtils.cfc?method=getOppData2",
+          "body": "facilityID=42&facilityLandingURL=A+%26+B&specialty=&professionID=-1&keywords=&pageNum=1&state=&contactID=0&siteID=&oppIDs=0&hasMap=0&updateSpec=0",
+          "headers": {
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Referer": "https://employer.practicematch.com/employer/fixture/",
+            "X-Requested-With": "XMLHttpRequest"
+          }
+        }
+      ],
+      "urls": [
+        "https://www.practicematch.com/physicians/job-details.cfm/2/",
+        "https://www.practicematch.com/physicians/job-details.cfm/3/"
+      ],
+      "truncated": true,
+      "failed": false
+    },
+    {
+      "name": "missing-facility",
+      "board": "https://employer.practicematch.com/employer/fixture/",
+      "metadata": {
+        "proxy": true
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://employer.practicematch.com/employer/fixture/",
+          "body": "",
+          "headers": {}
+        }
+      ],
+      "urls": [],
+      "truncated": false,
+      "failed": true
+    },
+    {
+      "name": "late-failure",
+      "board": "https://employer.practicematch.com/employer/fixture/",
+      "metadata": {
+        "proxy": true
+      },
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://employer.practicematch.com/employer/fixture/",
+          "body": "",
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://employer.practicematch.com/employer/cfcs/landingPageUtils.cfc?method=getOppData2",
+          "body": "facilityID=42&facilityLandingURL=A+%26+B&specialty=&professionID=1&keywords=&pageNum=2&state=&contactID=0&siteID=&oppIDs=0&hasMap=0&updateSpec=0",
+          "headers": {
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Referer": "https://employer.practicematch.com/employer/fixture/",
+            "X-Requested-With": "XMLHttpRequest"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://employer.practicematch.com/employer/cfcs/landingPageUtils.cfc?method=getOppData2",
+          "body": "facilityID=42&facilityLandingURL=A+%26+B&specialty=&professionID=1&keywords=&pageNum=3&state=&contactID=0&siteID=&oppIDs=0&hasMap=0&updateSpec=0",
+          "headers": {
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Referer": "https://employer.practicematch.com/employer/fixture/",
+            "X-Requested-With": "XMLHttpRequest"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://employer.practicematch.com/employer/cfcs/landingPageUtils.cfc?method=getOppData2",
+          "body": "facilityID=42&facilityLandingURL=A+%26+B&specialty=&professionID=-1&keywords=&pageNum=1&state=&contactID=0&siteID=&oppIDs=0&hasMap=0&updateSpec=0",
+          "headers": {
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Referer": "https://employer.practicematch.com/employer/fixture/",
+            "X-Requested-With": "XMLHttpRequest"
+          }
+        }
+      ],
+      "urls": [],
+      "truncated": false,
+      "failed": true
+    }
+  ]
+}

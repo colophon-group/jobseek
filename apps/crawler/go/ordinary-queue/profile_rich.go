@@ -26,6 +26,18 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		allowed[key] = value
 	}
 	switch config["crawler_type"] {
+	case "linkedin":
+		for _, key := range []string{"company_id", "company_ids", "company_slug", "keywords", "canonical_numeric_job_urls", "source_ownership_excluded_country_codes", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+			allowed[key] = true
+		}
+	case "taleo":
+		for _, key := range []string{"host", "partition", "org", "cws", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+			allowed[key] = true
+		}
+	case "practicematch":
+		for _, key := range []string{"proxy", "max_pages", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+			allowed[key] = true
+		}
 	case "seek", "avature":
 		for _, key := range []string{"host", "advertiser_id", "listing_url", "portal_id", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true

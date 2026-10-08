@@ -33,7 +33,7 @@ func runtimeUsesProxy(task queue.Task) bool {
 			return false
 		}
 		switch task.Config["crawler_type"] {
-		case "dom", "api_sniffer", "inline", "sitemap", "eightfold", "phenom", "earcu", "computrabajo":
+		case "dom", "api_sniffer", "inline", "sitemap", "eightfold", "phenom", "earcu", "computrabajo", "practicematch":
 			return true
 		}
 		return false
