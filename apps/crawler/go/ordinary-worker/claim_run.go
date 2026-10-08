@@ -278,6 +278,8 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			}
 			return nil
 		}, renderedPage)
+	} else if profile.Provider == "unifr" {
+		discovery, fetchErr = FetchUnifrHTTP(ctx, http.client, profile, task.Config, pauseRich)
 	} else if profile.Provider == "notion" {
 		discovery, fetchErr = FetchNotionHTTP(ctx, http.client, profile, task.Config, pauseRich)
 	} else if profile.Provider == "umantis" {

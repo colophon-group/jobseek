@@ -18,55 +18,87 @@ not complete migration.
 
 ## Latest checkpoint — 2026-10-08
 
-Release **0.13.973**, source `ca8f700ddd97578e2b40ff3b0709680ad54fbcf5`,
-is merged and installed from its original
-[crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37740504418)
-and matching [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37740592176).
-Independent immutable renderer verification and incoming cold230 passed.
-Supported B0 stage, activation and seven-endpoint readback passed at **epoch231**.
-Fresh source973 admission qualified **7,398 monitors**, **2,616 detail boards**
-and **1,469,668 scheduled postings**, with five monitor holdouts. This is offline
-qualification, not current ownership. Ordinary activation failed when the B0
-producer exited with `redis/preflight` before restart arming. Supported
-`recover-pending` and independent readback restored **all nine base/B0 services**,
-seven healthy endpoints and active epoch231. The ordinary SQL plan is retired;
-its receipt and Redis projection are absent. Redis latency observed after recovery
-does not establish the earlier failure's cause. Preserve this distinction when
-resuming; do not replay the retired ordinary plan. See
-[source973 evidence](evidence/go-native-source973-release-2026-10-08.json).
+Release **0.13.974**, source `9e458ba32dc255daf5b5f100277a7d40e8436c37`,
+is merged in [PR #10361](https://github.com/colophon-group/jobseek/pull/10361).
+Required CI, the actual Crawler Deploy Gate and installed runtime checks passed
+at the reviewed head. Its original
+[crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37757954068)
+and matching [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37758239683)
+succeeded. Independent immutable-image and incoming cold232 checks passed.
+Supported B0 activation and seven-endpoint readback passed at **epoch233**.
+Fresh canonical configuration/cache and actual posting-route admission selected
+**7,410 monitor boards**, **2,622 detail boards**, and **1,466,561 scheduled
+postings** from **1,497,349 scheduled detail postings**. Three monitor holdouts
+remain: Hays, Siemens and RTX. Every board stays enabled. Ordinary ownership is
+staged with plan `6b6ecc25304a91679c375ea74be1b9d650f8d4420928190e09400ec9de816a9a`
+and projection `80bcfac46940345af75599d0731cc88fe07a4ee8`. Activation refused
+eligibility after natural lease expiry. Supported `recover-pending` and an
+independent check restored all nine base/B0 services and seven healthy endpoints.
+The ordinary receipt/projection are absent and this never-activated plan remains
+inert/staged. A comparison against the exact stored plan found four UKG boards
+whose current monitor and detail configurations differ in tenant/listing fields;
+canonical and cache agree. These current mismatches are sufficient to refuse
+eligibility. The comparison occurred after recovery and does not date each
+change. Prepare fresh admission on the next deployed source; retain the checks.
 
-Exclude monitor ownership for Kaiser, Hays, Euronext WTTJ, Siemens and RTX until
-new routes or complete inventory evidence pass on the installed source. Keep
-every board enabled and independently qualified detail ownership intact.
+This delivered batch installs **130 profiles** and groups Umantis (nine), Notion
+(eight), and the proved Kaiser/Euronext route conversions: **19 configurations**.
+The live receipt-aware admission selected all eight Notion monitors and two
+Umantis monitors. Seven Umantis boards retain Python monitor ownership because
+the source974 parser rejects their stored `_identity_migration_receipt`. The
+next batch accepts and binds that receipt without changing the stored config.
 
-The **0.13.974** batch groups **Umantis (nine)** and **Notion (eight)** with the
-proven Kaiser/Euronext route conversions: **19 configurations**, **130 installed
-profiles**. Both providers are wired through registry, HTTP execution, ownership,
-canonical writes, publisher reservation and supported retirement paths.
-Eighty actual Python monitor/detail corpus cases, thirteen new real PostgreSQL/Redis
-worker cases, nine new retirement cases and actual native executable startup/drain
-checks pass. The full queue (419.650s) and worker (629.082s) race suites pass;
-[PR #10361](https://github.com/colophon-group/jobseek/pull/10361) is open for required CI.
+Eight direct Umantis inventories and the protected Lindt inventory match Python.
+Nine partial-field samples and eight delegated detail samples preserve existing
+behavior, including four missing titles and Lindt platform boilerplate. Seven
+Notion inventories match; Kaedim's shared HTTP500 remains a failure. Thirteen
+live Notion detail samples match title, HTML and mapped properties on complete
+responses. See [Umantis evidence](evidence/go-native-umantis-candidate-2026-10-08.json)
+and [Notion evidence](evidence/go-native-notion-candidate-2026-10-08.json).
 
-Eight direct Umantis inventories and nine partial-field samples match Python.
-Eight delegated detail samples match existing title, description length and
-location behavior; four titles are absent in both runtimes and remain field-quality
-gaps. Protected Lindt Python/Go inventories also match (eleven URLs); its detail
-sample contains platform boilerplate in both runtimes. Seven Notion inventories match exactly;
-Kaedim returns HTTP500 in both runtimes and stays a failure. Thirteen live Notion
-detail samples match Python's title, escaped HTML and property mapping on the same
-complete response. Go follows continuation cursors; Moon Surgical exposes why a
-first chunk can be incomplete. Candidate changes grant no production authority.
-See [Umantis evidence](evidence/go-native-umantis-candidate-2026-10-08.json) and
-[Notion evidence](evidence/go-native-notion-candidate-2026-10-08.json).
+The **0.13.975 grouped candidate** adds **Unifr's nine monitors**, **PDF details
+across all fifty current configurations**, and the **seven Umantis receipt
+bindings**. It compiles **132 profiles** and grants no production authority.
+Unifr checks both central locales and every detail before exposing an inventory;
+department inventories retain fixed identities, deadlines and central duplicate
+proofs. Sixty-one actual Python cases and real HTTP/SQL/Redis settlement and
+retirement checks pass. Five public inventories and five comparable field samples
+match; biology/geosciences inventory drift and physics/SES missing central
+counterparts fail in both runtimes without a prefix or false zero.
 
-Unifr's nine variants and their PDF details move together to the following batch.
-This keeps grouped delivery moving while preserving the full migration objective.
+PDF fields use the existing Python-compatible regex engine and missing-only
+defaults. Native Poppler reads in layout order, using raw order only to recover a missing
+explicit configured title capture; opt-in Tesseract OCR retains the twenty-page,
+thirty-million-pixels-per-page and scale bounds. Local processes have bounded
+output/deadlines and an environment without service credentials. The HTTP path
+preserves scoped public headers, redirects, publisher reservation, and exact
+validator fingerprints before canonical writes. Seventeen actual Python field
+cases, seven binary/OCR cases, fifty configuration checks and five real detail
+settlement cases pass. Five captured Unifr PDFs preserve three title/location
+results and two existing required-title failures. PDF HTML/layout differs from
+pypdf; this is recorded rather than claimed as byte-equivalent descriptions.
+Fifteen additional public PDFs from ten boards also match every Python title
+and location after an extraction-order fix for positioned glyphs and columns.
+The earlier five Unifr title/location/failure results remain matched. Final-head
+CI must verify the corrected image; descriptions still differ in layout.
+The first full queue run failed only the newly expanded codec fixture count;
+its exact eight-case rerun passes. The full worker race suite passes (658.715s), including actual 132-profile
+executable startup/drain and binary/OCR checks; queue/worker vet passes.
+The final full queue race suite passes (417.780s), covering the corrected codec
+count and retained Notion/PDF receipt conservation. Required CI and installed-image checks remain required. See [grouped candidate evidence](evidence/go-native-unifr-pdf-candidate-2026-10-08.json).
 
-The last complete ordinary activation was source972. Its supported ordinary
-retirement, B0 rollback, selector clear and independent outgoing cold230 all passed.
-An hourly Go reconciliation briefly held the mutation lock and finished naturally
-before selector clear retry2 succeeded. Historical source972 delivery evidence follows.
+Lightpanda remains pinned to stable **1.0.0**, verified against the
+[official release](https://github.com/lightpanda-io/browser/releases/tag/1.0.0),
+with immutable browser digest
+`sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e`.
+
+Source973's ordinary attempt failed when its B0 producer exited with
+`redis/preflight`. Supported recovery restored the complete base/B0 stack and
+retired that ordinary plan. Supported outgoing B0 rollback, selector clear and
+independent cold232 passed before source974's rollout. Recovered Redis latency
+never established the earlier failure's cause. Source974 adds bounded Redis
+preflight/audit and bootstrap deadline diagnostics. Preserve the retired source973
+plan as evidence; never reactivate it. See [source973 evidence](evidence/go-native-source973-release-2026-10-08.json).
 
 ### Prior source972 delivery
 

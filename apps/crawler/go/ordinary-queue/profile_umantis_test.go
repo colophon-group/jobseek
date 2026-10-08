@@ -7,6 +7,21 @@ import (
 	"testing"
 )
 
+func TestUmantisMigrationReceiptRemainsInEffectiveBinding(t *testing.T) {
+	c := profileConfig()
+	c["crawler_type"], c["board_url"] = "umantis", "https://recruitingapp-3040.umantis.com/Jobs/All"
+	c["metadata"] = `{"customer_id":"3040","scraper_type":"skip","_identity_migration_receipt":{"source_revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","state":"applied"}}`
+	a, err := InspectRichMonitor(profileBoardID, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c["metadata"] = `{"customer_id":"3040","scraper_type":"skip","_identity_migration_receipt":{"source_revision":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","state":"applied"}}`
+	b, err := InspectRichMonitor(profileBoardID, c)
+	if err != nil || a.Endpoint != b.Endpoint || a.EffectiveConfigSHA256 == b.EffectiveConfigSHA256 {
+		t.Fatal("receipt lost from immutable configuration binding", err, a, b)
+	}
+}
+
 func TestUmantisCurrentRegistryRoutesProxyAndDelegatedEnrichment(t *testing.T) {
 	f, err := os.Open("../../data/boards.csv")
 	if err != nil {
@@ -30,6 +45,7 @@ func TestUmantisCurrentRegistryRoutesProxyAndDelegatedEnrichment(t *testing.T) {
 		if json.Unmarshal([]byte(row[h["monitor_config"]]), &md) != nil {
 			t.Fatal("monitor metadata")
 		}
+		md["_identity_migration_receipt"] = map[string]any{"source_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "provider": "umantis", "state": "applied"}
 		md["scraper_type"] = row[h["scraper_type"]]
 		var scraper any
 		if json.Unmarshal([]byte(row[h["scraper_config"]]), &scraper) != nil {

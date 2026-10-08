@@ -603,7 +603,7 @@ jobs:
         working-directory: apps/crawler
         run: |
           sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends redis-server
+          sudo apt-get install --yes --no-install-recommends redis-server poppler-utils tesseract-ocr tesseract-ocr-eng tesseract-ocr-deu
           uv sync --frozen --group dev
           uv run --frozen alembic -c src/migrations/alembic.ini upgrade head
       - name: Verify first ownership, queues and executable processing

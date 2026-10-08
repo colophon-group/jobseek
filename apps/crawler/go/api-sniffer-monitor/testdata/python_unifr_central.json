@@ -1,0 +1,233 @@
+[
+  {
+    "kind": "listing",
+    "name": "fr-valid",
+    "locale": "fr",
+    "body": "<html><head><title>Postes vacants - Offres d'emploi à l'Université de Fribourg | Service du personnel | Université de Fribourg</title></head><body><main><h2>Postes vacants - Offres d'emploi à l'Université de Fribourg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1911\"><h4 class=\"list-group-item-heading name\">Titre & texte</h4><div id=\"open1911\">Loading...</div></li></ul></main></body></html>",
+    "output": {
+      "1911": "Titre & texte"
+    },
+    "error": false
+  },
+  {
+    "kind": "listing",
+    "name": "de-valid",
+    "locale": "de",
+    "body": "<html><head><title>Offene Stellen - Stellenangebote an der Universität Freiburg | Personaldienst | Universität Freiburg</title></head><body><main><h2>Offene Stellen - Stellenangebote an der Universität Freiburg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1911\"><h4 class=\"list-group-item-heading name\">Titel</h4><div id=\"open1911\">Loading...</div></li></ul></main></body></html>",
+    "output": {
+      "1911": "Titel"
+    },
+    "error": false
+  },
+  {
+    "kind": "listing",
+    "name": "zero",
+    "locale": "fr",
+    "body": "<html><head><title>Postes vacants - Offres d'emploi à l'Université de Fribourg | Service du personnel | Université de Fribourg</title></head><body><main><h2>Postes vacants - Offres d'emploi à l'Université de Fribourg</h2><ul class=\"list-group list\"></ul></main></body></html>",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "listing",
+    "name": "duplicate",
+    "locale": "fr",
+    "body": "<html><head><title>Postes vacants - Offres d'emploi à l'Université de Fribourg | Service du personnel | Université de Fribourg</title></head><body><main><h2>Postes vacants - Offres d'emploi à l'Université de Fribourg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1911\"><h4 class=\"list-group-item-heading name\">One</h4><div id=\"open1911\">Loading...</div></li><li class=\"list-group-item\" id=\"1911\"><h4 class=\"list-group-item-heading name\">Two</h4><div id=\"open1911\">Loading...</div></li></ul></main></body></html>",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "listing",
+    "name": "pagination",
+    "locale": "fr",
+    "body": "<html><head><title>Postes vacants - Offres d'emploi à l'Université de Fribourg | Service du personnel | Université de Fribourg</title></head><body><main><h2>Postes vacants - Offres d'emploi à l'Université de Fribourg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1911\"><h4 class=\"list-group-item-heading name\">One</h4><div id=\"open1911\">Loading...</div></li></ul><a rel=\"next\">next</a></main></body></html>",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "listing",
+    "name": "bad-id",
+    "locale": "fr",
+    "body": "<html><head><title>Postes vacants - Offres d'emploi à l'Université de Fribourg | Service du personnel | Université de Fribourg</title></head><body><main><h2>Postes vacants - Offres d'emploi à l'Université de Fribourg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"0\"><h4 class=\"list-group-item-heading name\">One</h4><div id=\"open0\">Loading...</div></li></ul></main></body></html>",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "listing",
+    "name": "missing-owner",
+    "locale": "fr",
+    "body": "<html><head><title>Postes vacants - Offres d'emploi à l'Other | Service du personnel | Other</title></head><body><main><h2>Postes vacants - Offres d'emploi à l'Other</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1911\"><h4 class=\"list-group-item-heading name\">One</h4><div id=\"open1911\">Loading...</div></li></ul></main></body></html>",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "listing",
+    "name": "missing-heading",
+    "locale": "fr",
+    "body": "<html><head><title>Postes vacants - Offres d'emploi à l'Université de Fribourg | Service du personnel | Université de Fribourg</title></head><body><main><h3>Postes vacants - Offres d'emploi à l'Université de Fribourg</h3><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1911\"><h4 class=\"list-group-item-heading name\">One</h4><div id=\"open1911\">Loading...</div></li></ul></main></body></html>",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "listing",
+    "name": "double-shell",
+    "locale": "fr",
+    "body": "<html><head><title>Postes vacants - Offres d'emploi à l'Université de Fribourg | Service du personnel | Université de Fribourg</title></head><body><main><h2>Postes vacants - Offres d'emploi à l'Université de Fribourg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1911\"><h4 class=\"list-group-item-heading name\">One</h4><div id=\"open1911\">Loading...</div></li></ul><ul class=\"list-group list\"></ul></main></body></html>",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "listing",
+    "name": "blank-title",
+    "locale": "fr",
+    "body": "<html><head><title>Postes vacants - Offres d'emploi à l'Université de Fribourg | Service du personnel | Université de Fribourg</title></head><body><main><h2>Postes vacants - Offres d'emploi à l'Université de Fribourg</h2><ul class=\"list-group list\"><li class=\"list-group-item\" id=\"1911\"><h4 class=\"list-group-item-heading name\"></h4><div id=\"open1911\">Loading...</div></li></ul></main></body></html>",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "detail",
+    "name": "valid",
+    "locale": "fr",
+    "identifier": "1911",
+    "listing_title": "Researcher",
+    "today": "2026-08-26",
+    "body": "{\"id\": \"1911\", \"autorite\": \"Université\", \"fonction\": \"Researcher\", \"content\": \"<p>fr detail for 1911</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/fr/postes-vacants.html#1911\"}",
+    "output": {
+      "fonction": "Researcher",
+      "content": "<p>fr detail for 1911</p>",
+      "startpublish": "2026-08-01T00:00:00+02:00",
+      "endpublish": "2026-09-30"
+    },
+    "error": false
+  },
+  {
+    "kind": "detail",
+    "name": "numeric-id",
+    "locale": "fr",
+    "identifier": "1911",
+    "listing_title": "Researcher",
+    "today": "2026-08-26",
+    "body": "{\"id\": 1911, \"autorite\": \"Université\", \"fonction\": \"Researcher\", \"content\": \"<p>fr detail for 1911</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/fr/postes-vacants.html#1911\"}",
+    "output": {
+      "fonction": "Researcher",
+      "content": "<p>fr detail for 1911</p>",
+      "startpublish": "2026-08-01T00:00:00+02:00",
+      "endpublish": "2026-09-30"
+    },
+    "error": false
+  },
+  {
+    "kind": "detail",
+    "name": "owner",
+    "locale": "fr",
+    "identifier": "1911",
+    "listing_title": "Researcher",
+    "today": "2026-08-26",
+    "body": "{\"id\": \"1911\", \"autorite\": \"External\", \"fonction\": \"Researcher\", \"content\": \"<p>fr detail for 1911</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/fr/postes-vacants.html#1911\"}",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "detail",
+    "name": "id",
+    "locale": "fr",
+    "identifier": "1911",
+    "listing_title": "Researcher",
+    "today": "2026-08-26",
+    "body": "{\"id\": \"1912\", \"autorite\": \"Université\", \"fonction\": \"Researcher\", \"content\": \"<p>fr detail for 1911</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/fr/postes-vacants.html#1911\"}",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "detail",
+    "name": "wrong-link",
+    "locale": "fr",
+    "identifier": "1911",
+    "listing_title": "Researcher",
+    "today": "2026-08-26",
+    "body": "{\"id\": \"1911\", \"autorite\": \"Université\", \"fonction\": \"Researcher\", \"content\": \"<p>fr detail for 1911</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/de/offene-stellen.html#1911\"}",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "detail",
+    "name": "title",
+    "locale": "fr",
+    "identifier": "1911",
+    "listing_title": "Researcher",
+    "today": "2026-08-26",
+    "body": "{\"id\": \"1911\", \"autorite\": \"Université\", \"fonction\": \"Different\", \"content\": \"<p>fr detail for 1911</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/fr/postes-vacants.html#1911\"}",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "detail",
+    "name": "empty-description",
+    "locale": "fr",
+    "identifier": "1911",
+    "listing_title": "Researcher",
+    "today": "2026-08-26",
+    "body": "{\"id\": \"1911\", \"autorite\": \"Université\", \"fonction\": \"Researcher\", \"content\": \"\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/fr/postes-vacants.html#1911\"}",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "detail",
+    "name": "expired",
+    "locale": "fr",
+    "identifier": "1911",
+    "listing_title": "Researcher",
+    "today": "2026-08-26",
+    "body": "{\"id\": \"1911\", \"autorite\": \"Université\", \"fonction\": \"Researcher\", \"content\": \"<p>fr detail for 1911</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-08-01T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/fr/postes-vacants.html#1911\"}",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "detail",
+    "name": "timezone-free",
+    "locale": "fr",
+    "identifier": "1911",
+    "listing_title": "Researcher",
+    "today": "2026-08-26",
+    "body": "{\"id\": \"1911\", \"autorite\": \"Université\", \"fonction\": \"Researcher\", \"content\": \"<p>fr detail for 1911</p>\", \"startpublish\": \"2026-08-01T00:00:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/fr/postes-vacants.html#1911\"}",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "detail",
+    "name": "utc-expiry",
+    "locale": "fr",
+    "identifier": "1911",
+    "listing_title": "Researcher",
+    "today": "2026-08-26",
+    "body": "{\"id\": \"1911\", \"autorite\": \"Université\", \"fonction\": \"Researcher\", \"content\": \"<p>fr detail for 1911</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"2026-08-26T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/fr/postes-vacants.html#1911\"}",
+    "output": null,
+    "error": true
+  },
+  {
+    "kind": "detail",
+    "name": "microseconds",
+    "locale": "fr",
+    "identifier": "1911",
+    "listing_title": "Researcher",
+    "today": "2026-08-26",
+    "body": "{\"id\": \"1911\", \"autorite\": \"Université\", \"fonction\": \"Researcher\", \"content\": \"<p>fr detail for 1911</p>\", \"startpublish\": \"2026-08-01T00:00:00.010000+00:00\", \"endpublish\": \"2026-09-30T00:00:00+02:00\", \"link\": \"https://www.unifr.ch/sp/fr/postes-vacants.html#1911\"}",
+    "output": {
+      "fonction": "Researcher",
+      "content": "<p>fr detail for 1911</p>",
+      "startpublish": "2026-08-01T00:00:00.010000+00:00",
+      "endpublish": "2026-09-30"
+    },
+    "error": false
+  },
+  {
+    "kind": "detail",
+    "name": "bad-date",
+    "locale": "fr",
+    "identifier": "1911",
+    "listing_title": "Researcher",
+    "today": "2026-08-26",
+    "body": "{\"id\": \"1911\", \"autorite\": \"Université\", \"fonction\": \"Researcher\", \"content\": \"<p>fr detail for 1911</p>\", \"startpublish\": \"2026-08-01T00:00:00+02:00\", \"endpublish\": \"invalid\", \"link\": \"https://www.unifr.ch/sp/fr/postes-vacants.html#1911\"}",
+    "output": null,
+    "error": true
+  }
+]

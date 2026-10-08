@@ -28,6 +28,7 @@ RUN go test ./... \
 
 # ── Native ordinary Greenhouse worker and cold ownership command ────
 FROM go-b0-executor-build AS go-ordinary-worker-build
+RUN apk add --no-cache poppler-utils tesseract-ocr tesseract-ocr-data-eng tesseract-ocr-data-deu
 WORKDIR /workspace/apps/crawler
 COPY go/greenhouse-monitor/ go/greenhouse-monitor/
 COPY go/ashby-monitor/ go/ashby-monitor/
@@ -237,7 +238,7 @@ RUN install -d --owner=10001 --group=10001 --mode=0700 \
 # Document extraction supports legacy Word postings and opt-in OCR for image-only PDFs.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       antiword tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng \
+       antiword poppler-utils tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies (cached layer)

@@ -194,6 +194,7 @@ def ownership_projection(payload: str) -> str:
                     "jsonld.proxy-detail/v1",
                     "api_sniffer.proxy-http-detail/v1",
                     "notion.public-detail/v1",
+                    "pdf.public-detail/v1",
                 )
                 or (d["profile"] == "workday.cxs-detail/v1" and d["board_id"] not in members)
                 or (

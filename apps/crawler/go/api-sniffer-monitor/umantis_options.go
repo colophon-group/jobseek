@@ -94,7 +94,7 @@ func UmantisOptionsFromMetadata(board, raw string) (UmantisOptions, error) {
 	}
 	for key := range m {
 		switch key {
-		case "customer_id", "region", "cname", "listing_path", "strict_listing_contract", "expected_employer", "employer_field_id", "empty_state_text", "proxy", "scraper_type", "scraper_config", "suspect_streak", "recent_discovered_counts", "_confirmed_drop_candidate", "_monitor_config_fingerprint", "delist_threshold", "drop_threshold", "blast_radius_floor":
+		case "customer_id", "region", "cname", "listing_path", "strict_listing_contract", "expected_employer", "employer_field_id", "empty_state_text", "proxy", "scraper_type", "scraper_config", "suspect_streak", "recent_discovered_counts", "_confirmed_drop_candidate", "_monitor_config_fingerprint", "_identity_migration_receipt", "delist_threshold", "drop_threshold", "blast_radius_floor":
 		default:
 			return o, ErrOptions
 		}

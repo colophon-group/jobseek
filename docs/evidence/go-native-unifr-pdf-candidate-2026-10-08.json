@@ -1,0 +1,502 @@
+{
+  "schema_version": 1,
+  "candidate_version": "0.13.975",
+  "compiled_profiles": 132,
+  "authority": "Local grouped candidate only; required CI, exact-source installed proof and supported fresh cutover remain required. No candidate production ownership.",
+  "grouped_scope": {
+    "unifr_monitor_configurations": 9,
+    "pdf_detail_configurations": 50,
+    "umantis_receipt_affected_configurations": 7
+  },
+  "unifr": {
+    "actual_python_corpus_cases": 61,
+    "complete_locales_details_and_department_duplicates": true,
+    "whole_inventory_failure": true,
+    "publisher_reservation_evidence_monotonic": true,
+    "public_boards": [
+      {
+        "board": "university-of-fribourg-ami",
+        "source": "ami",
+        "status": "complete",
+        "count": 1,
+        "url_set_match": true,
+        "field_samples": [
+          {
+            "source_url": "https://www.ami.swiss/en/about-us/join/open-positions.html?_jid=styleguide-2-1",
+            "fields_match": {
+              "title": true,
+              "description": true,
+              "locations": true,
+              "language": true,
+              "metadata": true
+            },
+            "url_only": false
+          }
+        ],
+        "description_layer": "actual Python HTML normalization compared with native worker normalization"
+      },
+      {
+        "board": "university-of-fribourg-biology",
+        "source": "biology",
+        "status": "same existing failure; no prefix or false zero",
+        "count": 0
+      },
+      {
+        "board": "university-of-fribourg-careers",
+        "source": "central",
+        "status": "complete",
+        "count": 8,
+        "url_set_match": true,
+        "field_samples": [
+          {
+            "source_url": "https://www.unifr.ch/sp/fr/postes-vacants.html?_jid=1915",
+            "fields_match": {
+              "title": true,
+              "description": true,
+              "locations": true,
+              "date_posted": true,
+              "language": true,
+              "metadata": true,
+              "extras": true
+            },
+            "url_only": false
+          },
+          {
+            "source_url": "https://www.unifr.ch/sp/fr/postes-vacants.html?_jid=1916",
+            "fields_match": {
+              "title": true,
+              "description": true,
+              "locations": true,
+              "date_posted": true,
+              "language": true,
+              "metadata": true,
+              "extras": true
+            },
+            "url_only": false
+          }
+        ],
+        "description_layer": "actual Python HTML normalization compared with native worker normalization"
+      },
+      {
+        "board": "university-of-fribourg-chemistry",
+        "source": "chemistry",
+        "status": "complete",
+        "count": 2,
+        "url_set_match": true,
+        "field_samples": [
+          {
+            "source_url": "https://www.unifr.ch/chem/en/department/jobs.html?_jid=styleguide-2-1",
+            "fields_match": {
+              "title": true,
+              "description": true,
+              "locations": true,
+              "language": true,
+              "metadata": true
+            },
+            "url_only": false
+          },
+          {
+            "source_url": "https://www.unifr.ch/chem/en/department/jobs.html?_jid=styleguide-2-2",
+            "fields_match": {
+              "title": true,
+              "description": true,
+              "locations": true,
+              "language": true,
+              "metadata": true
+            },
+            "url_only": false
+          }
+        ],
+        "description_layer": "actual Python HTML normalization compared with native worker normalization"
+      },
+      {
+        "board": "university-of-fribourg-geo",
+        "source": "geosciences",
+        "status": "same existing failure; no prefix or false zero",
+        "count": 0
+      },
+      {
+        "board": "university-of-fribourg-law",
+        "source": "law",
+        "status": "complete",
+        "count": 3,
+        "url_set_match": true,
+        "field_samples": [],
+        "description_layer": "actual Python HTML normalization compared with native worker normalization"
+      },
+      {
+        "board": "university-of-fribourg-physics",
+        "source": "physics",
+        "status": "same existing failure; no prefix or false zero",
+        "count": 0
+      },
+      {
+        "board": "university-of-fribourg-regional-school-service",
+        "source": "regional-school-service",
+        "status": "complete",
+        "count": 2,
+        "url_set_match": true,
+        "field_samples": [],
+        "description_layer": "actual Python HTML normalization compared with native worker normalization"
+      },
+      {
+        "board": "university-of-fribourg-ses",
+        "source": "ses",
+        "status": "same existing failure; no prefix or false zero",
+        "count": 0
+      }
+    ],
+    "real_settlement_cases": 5,
+    "cold_retirement_cases": 3
+  },
+  "pdf": {
+    "actual_python_text_cases": 17,
+    "actual_binary_ocr_cases": 7,
+    "existing_configurations": 50,
+    "opt_in_ocr_configurations": 4,
+    "engine": "Native Poppler content stream text; Tesseract for configured empty-text OCR",
+    "body_limit_bytes": 41943040,
+    "fingerprinted_body_limit_bytes": 20971520,
+    "text_limit_bytes": 16777216,
+    "ocr_page_limit": 20,
+    "ocr_pixel_limit_per_page": 30000000,
+    "ocr_scale_range": [
+      1,
+      4
+    ],
+    "engine_deadline_seconds": 180,
+    "engine_environment": "PATH and C locale only; no service credentials",
+    "defaults_enrichment_public_headers_and_fingerprints": true,
+    "real_detail_settlement_cases": 5,
+    "cold_retirement_cases": 6,
+    "public_binary_field_comparison": [
+      {
+        "board": "university-of-fribourg-law",
+        "source_url": "https://www.unifr.ch/ius/de/assets/public/documents/offres-emploi/20261005_Lehrauftrag-Datenschutzrecht.pdf",
+        "pdf_sha256": "0baf7b77a8fd1693b6f791d21ceb4d77b3566b47118ae6ff3ed4be9a1312f124",
+        "failure_matches": true,
+        "title_location_match": true,
+        "required_title_failure": true,
+        "description_exact": null,
+        "python_description_chars": null,
+        "native_description_chars": null
+      },
+      {
+        "board": "university-of-fribourg-law",
+        "source_url": "https://www.unifr.ch/ius/de/assets/public/documents/offres-emploi/20261007_Stellenausschreibung-Niggli.pdf",
+        "pdf_sha256": "c8bf73e8ca23a8b120e589f7522a90cda908d21b5686e65e5f2f45fcb82a1bb4",
+        "failure_matches": true,
+        "title_location_match": true,
+        "required_title_failure": true,
+        "description_exact": null,
+        "python_description_chars": null,
+        "native_description_chars": null
+      },
+      {
+        "board": "university-of-fribourg-law",
+        "source_url": "https://www.unifr.ch/ius/de/assets/public/documents/offres-emploi/UNIFR_Stelleninserat_zwei_Professuren-DE_lf_171x132mm_PRINT.pdf",
+        "pdf_sha256": "f0522ea154c8e9b1eb4279443413742166893ca37d18216435c1c8c368e912df",
+        "failure_matches": true,
+        "title_location_match": true,
+        "required_title_failure": false,
+        "description_exact": false,
+        "python_description_chars": 2503,
+        "native_description_chars": 2459
+      },
+      {
+        "board": "university-of-fribourg-regional-school-service",
+        "source_url": "https://www.unifr.ch/rsd/de/assets/public/files/20250901_Inserat_Praktikum_SPD.pdf",
+        "pdf_sha256": "76aec93aa4aeb39dfb34c729aff56ff45d9a8be1b7e42219d465c124491dc4ee",
+        "failure_matches": true,
+        "title_location_match": true,
+        "required_title_failure": false,
+        "description_exact": false,
+        "python_description_chars": 1584,
+        "native_description_chars": 1541
+      },
+      {
+        "board": "university-of-fribourg-regional-school-service",
+        "source_url": "https://www.unifr.ch/rsd/de/assets/public/files/20260921_Inserat_LOG_JaunGiffersHeitenried.pdf",
+        "pdf_sha256": "226e0a0a89607ad705293e7ad1e8696cb8e1d0d7102fd598227a75c1d0a6a8c8",
+        "failure_matches": true,
+        "title_location_match": true,
+        "required_title_failure": false,
+        "description_exact": false,
+        "python_description_chars": 1964,
+        "native_description_chars": 1908
+      }
+    ],
+    "limitation": "Paragraph/HTML layout differs from pypdf; three successful descriptions are not byte-equivalent. Required-title failures are preserved. Broader representative PDF quality remains part of full migration verification.",
+    "historical_detail_receipts": "Focused real PostgreSQL/Redis Notion/PDF retained-receipt/fresh-epoch conservation passed 3.098 seconds and final full queue race passed 417.780 seconds.",
+    "extraction_order": "Reading order preserves positioned-glyph spaces. Raw order is accepted as an alternative only when it restores an explicit configured title capture. Both retain native process bounds and publisher/parser semantics.",
+    "broader_public_parity": {
+      "scope": "read-only public PDF captures through original transport/fingerprint rules; no production ownership",
+      "extraction": "Reading order first; raw order only when the configured title capture is absent and raw order provides that capture",
+      "additional_samples": [
+        {
+          "board": "canton-of-valais-magistracy",
+          "url": "https://www.vs.ch/documents/10166929/0/Un+poste+de+juge+suppleant_e_%28droit+civil+et+p%C3%A9nal%29.pdf/258d80a6-f6ea-7caf-af36-45d4db1f4bb5?t=1768481367757&v=1.0",
+          "sha256": "c6bcbf94717bd37925a47cb684b6b958e919d04048411c1de3337252d9639a73",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "ac-immune-careers",
+          "url": "https://www.acimmune.com/wp-content/uploads/2026/06/Analytical-Scientist-QC_2026-1.pdf",
+          "sha256": "9e7e30f40fb4127cbea12462154d26335ab770ac52c70c9ff680c0763dcecd24",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "imd-faculty",
+          "url": "https://www.imd.org/wp-content/uploads/2026/05/Faculty-Vacancy-Organizational-Behavior-Singapore-28052026.pdf",
+          "sha256": "ec6e068cb9eae4c0485725e6f77179f7854409e94335360696defebdd7414e93",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "imd-faculty",
+          "url": "https://www.imd.org/wp-content/uploads/2026/06/20260520-Faculty-Vacancy-Family-Business-Singapore.pdf",
+          "sha256": "2e294fea4a04006e089d88f742084a93683ff5fc190e908fdab0b80f34931b35",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "international-basketball-federation-hq",
+          "url": "https://assets.fiba.basketball/image/upload/documents-corporate-hr-2026.pdf?_jobseek_fp=db179c91bb18a6907aa55091",
+          "sha256": "746f738046fde8a3137a39d4b7e9718f90bd59d6163ab8da082664c88d8a99a5",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "besi-main",
+          "url": "https://www.besi.com/fileadmin/data/Jobs/Switzerland/Operational_Buyer_August_2026.pdf",
+          "sha256": "5e6bf8d57f60bf53c79f769a9ed4af66d0eaa37c46b8b096a9adebfa7f96fae5",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "besi-main",
+          "url": "https://www.besi.com/fileadmin/data/Jobs/Switzerland/DevOps_Engineer.pdf",
+          "sha256": "a71bda29bf4b10806a245d3248649f1856fec8ebee4bff34509b8063606ab1eb",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "changins-main",
+          "url": "https://www.changins.ch/_files/ugd/88badf_527944ea414849688d8e06e85f310b5a.pdf",
+          "sha256": "1677ade5241a06c1b6b97b26e75c1468d02c9ef9e45b3467a8ebe8842e6b16f0",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "wsp-careers-louis-berger",
+          "url": "https://louisbergerinternational.com/wp/wp-content/uploads/2026/04/LBI-WSP-We-are-Hiring_KRIDE_4.pdf",
+          "sha256": "c65a41cccbd9bf95c2a1198d00e66de39c904866818fd557798c256327872cc2",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "wsp-careers-louis-berger",
+          "url": "https://louisbergerinternational.com/wp/wp-content/uploads/2026/04/LBI-WSP-We-are-Hiring_Bhopal-Metro_Chief-Architect.pdf",
+          "sha256": "c08f9d444c6ea784b0bda074e660c9243bd1e9a9bc7b8ebd7cc7ffb3cc6790b9",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "university-of-arkansas-system-careers-uaeacc",
+          "url": "https://www.uaeacc.edu/plugins/show_image.php?id=5557",
+          "sha256": "fee7c226e25cfa6fdfcc2199c889109d88fe8bba014621e17245bf76cb31b6dd",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "university-of-arkansas-system-careers-uaeacc",
+          "url": "https://www.uaeacc.edu/plugins/show_image.php?id=5271",
+          "sha256": "ecb1dd9020d8dcf0d4908abe45d935c6f1ea114f2aa65cfc9a42ea9c1974bde6",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "accuray-japan",
+          "url": "https://www.accuray.com/wp-content/uploads/r06_job01.pdf",
+          "sha256": "abd205eddbdf565288b1d4241301359d6d47f43f4d910ad9385e106237ed9763",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "accuray-japan",
+          "url": "https://www.accuray.com/wp-content/uploads/Job_PM.pdf",
+          "sha256": "76eaa22fcda50ad3d58db3ec705316f7c414705cb2ae945020f0fd8ebe1cc5a9",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        },
+        {
+          "board": "echion-technologies-careers",
+          "url": "https://www.echiontech.com/s/ECH-DOC-067-Job-Description-Data-Lead.pdf",
+          "sha256": "233f8608b70d557dccb9928b17fc5e7d172a094f33fc8507f994719b1fcec834",
+          "native_failed": false,
+          "python_failed": false,
+          "title_match": true,
+          "locations_match": true,
+          "description_exact": false
+        }
+      ],
+      "original_unifr_samples": [
+        {
+          "board": "university-of-fribourg-law",
+          "url": "https://www.unifr.ch/ius/de/assets/public/documents/offres-emploi/20261005_Lehrauftrag-Datenschutzrecht.pdf",
+          "failure_match": true,
+          "title_match": true,
+          "locations_match": true
+        },
+        {
+          "board": "university-of-fribourg-law",
+          "url": "https://www.unifr.ch/ius/de/assets/public/documents/offres-emploi/20261007_Stellenausschreibung-Niggli.pdf",
+          "failure_match": true,
+          "title_match": true,
+          "locations_match": true
+        },
+        {
+          "board": "university-of-fribourg-law",
+          "url": "https://www.unifr.ch/ius/de/assets/public/documents/offres-emploi/UNIFR_Stelleninserat_zwei_Professuren-DE_lf_171x132mm_PRINT.pdf",
+          "failure_match": true,
+          "title_match": true,
+          "locations_match": true
+        },
+        {
+          "board": "university-of-fribourg-regional-school-service",
+          "url": "https://www.unifr.ch/rsd/de/assets/public/files/20250901_Inserat_Praktikum_SPD.pdf",
+          "failure_match": true,
+          "title_match": true,
+          "locations_match": true
+        },
+        {
+          "board": "university-of-fribourg-regional-school-service",
+          "url": "https://www.unifr.ch/rsd/de/assets/public/files/20260921_Inserat_LOG_JaunGiffersHeitenried.pdf",
+          "failure_match": true,
+          "title_match": true,
+          "locations_match": true
+        }
+      ],
+      "description_limitation": "HTML paragraphs and layout may differ from pypdf; this proof establishes title/location and existing required-title failures, not exact descriptions"
+    }
+  },
+  "umantis_receipt_fix": {
+    "stored_metadata_preserved": true,
+    "receipt_bound_in_effective_config_hash": true,
+    "canonical_all_nine_options_qualify_after_fix": true
+  },
+  "validation": {
+    "api_race_and_vet": "passed, 4.017 seconds",
+    "legacy_postgres_redis_ownership": "69 passed, 1.01 seconds; pyright and ruff passed",
+    "focused_unifr": "locale/R2 fields, failures, reservation and PDF intents passed",
+    "focused_pdf": "canonical writes, enrichment, fingerprints, redirects and reservations passed",
+    "native_binary_ocr": "Seven real binary/OCR fixtures passed, including narrowed child environment in full worker suite.",
+    "full_queue_worker_race": "Final full queue race passed 417.780 seconds; full worker race passed 658.715 seconds; queue/worker vet passed. Earlier codec fixture count failure was repaired and is covered by the final queue run.",
+    "required_ci": "not yet submitted",
+    "full_worker_race": "Passed658.715 seconds, including actual132-profile executable startup/drain and binary/OCR; queue/worker vet passed. Historical-document conservation addition is tested separately by final queue suite. Subsequent extraction-order correction requires final-head CI; focused regression/binary/public checks cover it locally.",
+    "full_queue_race": "Passed 417.780 seconds, including corrected eight-case codec and retained Notion/PDF receipt conservation; vet passed.",
+    "public_pdf_headers": "Passed scoped public headers, inherited/set-cookie exclusion and same-origin redirect2.003s.",
+    "public_unifr_lifecycle": "Passed fixed source scope check and API vet after accepting the declared common lifecycle options.",
+    "final_extraction_order": "Passed PDF API race 1.543s, seven real binary/OCR and two extraction-order regressions, real PostgreSQL/Redis detail settlement race 5.403s, and API/worker vet. Final-head Required CI/installed image required."
+  },
+  "installed_source974": {
+    "pr": 10361,
+    "source_revision": "9e458ba32dc255daf5b5f100277a7d40e8436c37",
+    "crawler_run": 37757954068,
+    "renderer_run": 37758239683,
+    "independent_cold_epoch": 232,
+    "b0_active_epoch": 233,
+    "ordinary_state": "inactive; eligibility rejection before activation; supported full recovery and independent nine-service/seven-endpoint verification passed; plan remains inert/staged",
+    "monitors": 7410,
+    "detail_boards": 2622,
+    "scheduled_owned_postings": 1466561,
+    "scheduled_detail_postings": 1497349,
+    "monitor_holdouts": [
+      "hays",
+      "siemens",
+      "rtx"
+    ],
+    "recovery_proof": "native-source974-recovered-verified1-2026-10-08.json",
+    "observed_exact_stage_drift": {
+      "unique_boards": 4,
+      "bindings": 8,
+      "provider": "ukg",
+      "metadata_keys": [
+        "listing_url",
+        "tenant",
+        "board_id",
+        "host"
+      ],
+      "canonical_cache_consistent": true,
+      "interpretation": "Four current monitor/detail bindings differ from the exact immutable staged plan; these are sufficient to refuse eligibility. Observation occurred after supported recovery, so it does not establish when each configuration changed."
+    }
+  },
+  "private_evidence_sha256": {
+    "native975-unifr-public-parity-2026-10-08.json": "6bf27adbf9d34f184a1af969999319c4c022060f2b4f82c27f16186e03b2ffd0",
+    "native975-pdf-public-field-parity-2026-10-08.json": "339c13acad5ebe22b2416c84a20944e87fb5d553cc795496fd8eb561c2fd7899",
+    "native975-candidate-offline-summary-2026-10-08.json": "6335869025ebf8667fe73a5c06e71b36aae80bcf9caa520a780f1b56e465a32d",
+    "native-source974-postdeploy-cold232-verified1-2026-10-08.json": "7b6c3d5be7bdb6c559433c92798fd320b1f6a18cce00c56a91daea2537000064",
+    "native974-supported-b0-readback-initial-2026-10-08.log": "2e80154b79a0fd16cbc3068f67b1014af912894ba64fd69b64a3e7327fdd8be7",
+    "native-source974-exact-staged-config-drift-2026-10-08.json": "c712e28ee7ea175c7a9856919bad250fb79b4265baa219096dc401b34c3ee74b",
+    "native975-pdf-final-public-parity-2026-10-08.json": "b6d12b0dfca65e40ae9f46ae66cfc3f76d2f8b5358f5f76780e7aef6950fcc96"
+  },
+  "full_migration_complete": false,
+  "next_grouped_priority": {
+    "source": "read-only canonical capture at source974 with local132-profile candidate; configuration screen only",
+    "unsupported_monitor_configurations": 453,
+    "largest_provider_groups": {
+      "dom": 193,
+      "api_sniffer": 97,
+      "linkedin": 31,
+      "rss": 15,
+      "accenture": 12,
+      "avature": 7,
+      "seek": 6
+    },
+    "next_delivery": "Group remaining shared DOM/API/RSS/sitemap options with multiple public provider ports; then replace mandatory Python runtime consumers. Complete serving/conservation/cost/reversal/window gates before retiring Python/Playwright/Chromium."
+  }
+}
