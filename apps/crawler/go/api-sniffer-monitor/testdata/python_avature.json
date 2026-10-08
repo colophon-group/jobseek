@@ -1,0 +1,589 @@
+[
+  {
+    "name": "identity-0",
+    "kind": "identity",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "output": {
+      "host": "acme.avature.net",
+      "prefix": "/careers",
+      "page": "SearchJobs"
+    },
+    "error": false
+  },
+  {
+    "name": "identity-1",
+    "kind": "identity",
+    "source": "https://acme.avature.net/careers/JobDetail/Engineer/123",
+    "output": {
+      "host": "acme.avature.net",
+      "prefix": "/careers",
+      "page": "SearchJobs"
+    },
+    "error": false
+  },
+  {
+    "name": "identity-2",
+    "kind": "identity",
+    "source": "https://acme.avature.net/careers/JobDetail?jobId=123",
+    "output": {
+      "host": "acme.avature.net",
+      "prefix": "/careers",
+      "page": "SearchJobs"
+    },
+    "error": false
+  },
+  {
+    "name": "identity-3",
+    "kind": "identity",
+    "source": "https://acme.avature.net/careers/FolderDetail/Engineer/123",
+    "output": {
+      "host": "acme.avature.net",
+      "prefix": "/careers",
+      "page": "SearchJobs"
+    },
+    "error": false
+  },
+  {
+    "name": "identity-4",
+    "kind": "identity",
+    "source": "https://acme.avature.net/en_US/jobs/PipelineDetail?pipelineId=123",
+    "output": {
+      "host": "acme.avature.net",
+      "prefix": "/en_US/jobs",
+      "page": "SearchJobsMaps"
+    },
+    "error": false
+  },
+  {
+    "name": "identity-5",
+    "kind": "identity",
+    "source": "http://acme.avature.net/careers/SearchJobs",
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "identity-6",
+    "kind": "identity",
+    "source": "https://avature.net/careers/SearchJobs",
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "identity-7",
+    "kind": "identity",
+    "source": "https://acme.avature.net/careers/SearchJobs?keyword=engineer",
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "identity-8",
+    "kind": "identity",
+    "source": "https://acme.avature.net/careers/JobDetail?jobId=0",
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "identity-9",
+    "kind": "identity",
+    "source": "https://localhost/careers/SearchJobs",
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "identity-10",
+    "kind": "identity",
+    "source": "https://127.0.0.1/careers/SearchJobs",
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "config-0",
+    "kind": "options",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "config": {},
+    "output": {
+      "board": {
+        "host": "acme.avature.net",
+        "prefix": "/careers",
+        "page": "SearchJobs"
+      },
+      "configured": false,
+      "portal_id": null
+    },
+    "error": false
+  },
+  {
+    "name": "config-1",
+    "kind": "options",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "config": {
+      "listing_url": "https://acme.avature.net/careers/SearchJobs",
+      "portal_id": "4"
+    },
+    "output": {
+      "board": {
+        "host": "acme.avature.net",
+        "prefix": "/careers",
+        "page": "SearchJobs"
+      },
+      "configured": true,
+      "portal_id": "4"
+    },
+    "error": false
+  },
+  {
+    "name": "config-2",
+    "kind": "options",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "config": {
+      "listing_url": "https://acme.avature.net/careers/SearchJobs",
+      "portal_id": 4
+    },
+    "output": {
+      "board": {
+        "host": "acme.avature.net",
+        "prefix": "/careers",
+        "page": "SearchJobs"
+      },
+      "configured": true,
+      "portal_id": "4"
+    },
+    "error": false
+  },
+  {
+    "name": "config-3",
+    "kind": "options",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "config": {
+      "listing_url": "https://acme.avature.net/careers/SearchJobs",
+      "portal_id": 0
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "config-4",
+    "kind": "options",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "config": {
+      "listing_url": "https://jobs.example.com/en_US/careers/SearchJobs",
+      "portal_id": "3"
+    },
+    "output": {
+      "board": {
+        "host": "jobs.example.com",
+        "prefix": "/en_US/careers",
+        "page": "SearchJobs"
+      },
+      "configured": true,
+      "portal_id": "3"
+    },
+    "error": false
+  },
+  {
+    "name": "normal",
+    "kind": "page",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "html": "\n        <html><head>\n          <meta content=\"4\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"SearchJobs\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs\">\n        </head><body><div class=\"list-controls__text__legend\" aria-label=\"2 results\">1-2 of 2 results</div><a class=\"job\" href=\"/careers/JobDetail/Engineer/101\">Job</a><a class=\"job\" href=\"/careers/JobDetail/Analyst/102\">Job</a></body></html>\n    ",
+    "output": {
+      "board": {
+        "host": "acme.avature.net",
+        "prefix": "/careers",
+        "page": "SearchJobs"
+      },
+      "portal_id": "4",
+      "total": 2,
+      "total_exact": true,
+      "range_start": 1,
+      "range_end": 2,
+      "jobs": {
+        "jobdetail:101": "https://acme.avature.net/careers/JobDetail/Engineer/101",
+        "jobdetail:102": "https://acme.avature.net/careers/JobDetail/Analyst/102"
+      },
+      "next_urls": []
+    },
+    "error": false
+  },
+  {
+    "name": "mixed-details",
+    "kind": "page",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "html": "\n        <html><head>\n          <meta content=\"4\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"SearchJobs\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs\">\n        </head><body><div class=\"list-controls__text__legend\" aria-label=\"3 results\">1-3 of 3 results</div><a class=\"job\" href=\"/careers/JobDetail/Engineer/101?tracking=x\">Job</a><a class=\"job\" href=\"/careers/JobDetail?jobId=102&utm=x\">Job</a><a class=\"job\" href=\"/careers/FolderDetail/Analyst/103\">Job</a><a class=\"job\" href=\"https://other.example/careers/JobDetail/Evil/104\">Job</a><li class=\"list-controls__pagination__item paginationNextLink\"><a href=\"/careers/SearchJobs/?jobRecordsPerPage=3&jobOffset=3\">Next</a></li></body></html>\n    ",
+    "output": {
+      "board": {
+        "host": "acme.avature.net",
+        "prefix": "/careers",
+        "page": "SearchJobs"
+      },
+      "portal_id": "4",
+      "total": 3,
+      "total_exact": true,
+      "range_start": 1,
+      "range_end": 3,
+      "jobs": {
+        "jobdetail:101": "https://acme.avature.net/careers/JobDetail/Engineer/101",
+        "folderdetail:103": "https://acme.avature.net/careers/FolderDetail/Analyst/103"
+      },
+      "next_urls": [
+        "https://acme.avature.net/careers/SearchJobs/?jobRecordsPerPage=3&jobOffset=3"
+      ]
+    },
+    "error": false
+  },
+  {
+    "name": "dedupe-path",
+    "kind": "page",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "html": "\n        <html><head>\n          <meta content=\"4\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"SearchJobs\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs\">\n        </head><body><div class=\"list-controls__text__legend\" aria-label=\"1 results\">1-2 of 1 results</div><a class=\"job\" href=\"/careers/JobDetail?jobId=101\">Job</a><a class=\"job\" href=\"/careers/JobDetail/Engineer/101\">Job</a></body></html>\n    ",
+    "output": {
+      "board": {
+        "host": "acme.avature.net",
+        "prefix": "/careers",
+        "page": "SearchJobs"
+      },
+      "portal_id": "4",
+      "total": 1,
+      "total_exact": true,
+      "range_start": 1,
+      "range_end": 2,
+      "jobs": {
+        "jobdetail:101": "https://acme.avature.net/careers/JobDetail/Engineer/101"
+      },
+      "next_urls": []
+    },
+    "error": false
+  },
+  {
+    "name": "lower-bound",
+    "kind": "page",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "html": "\n        <html><head>\n          <meta content=\"4\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"SearchJobs\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs\">\n        </head><body><div class=\"list-controls__text__legend\" aria-label=\"999+ results\">1-1 of 999+ results</div><a class=\"job\" href=\"/careers/JobDetail/Engineer/101\">Job</a></body></html>\n    ",
+    "output": {
+      "board": {
+        "host": "acme.avature.net",
+        "prefix": "/careers",
+        "page": "SearchJobs"
+      },
+      "portal_id": "4",
+      "total": 999,
+      "total_exact": false,
+      "range_start": 1,
+      "range_end": 1,
+      "jobs": {
+        "jobdetail:101": "https://acme.avature.net/careers/JobDetail/Engineer/101"
+      },
+      "next_urls": []
+    },
+    "error": false
+  },
+  {
+    "name": "double-escaped",
+    "kind": "page",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "html": "\n        <html><head>\n          <meta content=\"4\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"SearchJobs\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs/?jobRecordsPerPage=1&amp;amp;jobOffset=1\">\n        </head><body><div class=\"list-controls__text__legend\" aria-label=\"2 results\">2-2 of 2 results</div><a class=\"job\" href=\"/careers/JobDetail/Analyst/102\">Job</a></body></html>\n    ",
+    "output": {
+      "board": {
+        "host": "acme.avature.net",
+        "prefix": "/careers",
+        "page": "SearchJobs"
+      },
+      "portal_id": "4",
+      "total": 2,
+      "total_exact": true,
+      "range_start": 2,
+      "range_end": 2,
+      "jobs": {
+        "jobdetail:102": "https://acme.avature.net/careers/JobDetail/Analyst/102"
+      },
+      "next_urls": []
+    },
+    "error": false
+  },
+  {
+    "name": "zero",
+    "kind": "page",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "html": "\n        <html><head>\n          <meta content=\"4\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"SearchJobs\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs\">\n        </head><body><div class=\"list-controls__text__legend\" aria-label=\"0 results\">1-0 of 0 results</div></body></html>\n    ",
+    "output": {
+      "board": {
+        "host": "acme.avature.net",
+        "prefix": "/careers",
+        "page": "SearchJobs"
+      },
+      "portal_id": "4",
+      "total": 0,
+      "total_exact": true,
+      "range_start": 1,
+      "range_end": 0,
+      "jobs": {},
+      "next_urls": []
+    },
+    "error": false
+  },
+  {
+    "name": "markerless",
+    "kind": "page",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "html": "<html><body>No jobs</body></html>",
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "foreign-page",
+    "kind": "page",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "html": "\n        <html><head>\n          <meta content=\"4\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"JobDetail\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs\">\n        </head><body><div class=\"list-controls__text__legend\" aria-label=\"2 results\">1-2 of 2 results</div><a class=\"job\" href=\"/careers/JobDetail/Engineer/101\">Job</a><a class=\"job\" href=\"/careers/JobDetail/Analyst/102\">Job</a></body></html>\n    ",
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "zero-portal",
+    "kind": "page",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "html": "\n        <html><head>\n          <meta content=\"0\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"SearchJobs\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs\">\n        </head><body><div class=\"list-controls__text__legend\" aria-label=\"2 results\">1-2 of 2 results</div><a class=\"job\" href=\"/careers/JobDetail/Engineer/101\">Job</a><a class=\"job\" href=\"/careers/JobDetail/Analyst/102\">Job</a></body></html>\n    ",
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "leading-zero-portal",
+    "kind": "page",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "html": "\n        <html><head>\n          <meta content=\"004\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"SearchJobs\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs\">\n        </head><body><div class=\"list-controls__text__legend\" aria-label=\"2 results\">1-2 of 2 results</div><a class=\"job\" href=\"/careers/JobDetail/Engineer/101\">Job</a><a class=\"job\" href=\"/careers/JobDetail/Analyst/102\">Job</a></body></html>\n    ",
+    "output": {
+      "board": {
+        "host": "acme.avature.net",
+        "prefix": "/careers",
+        "page": "SearchJobs"
+      },
+      "portal_id": "4",
+      "total": 2,
+      "total_exact": true,
+      "range_start": 1,
+      "range_end": 2,
+      "jobs": {
+        "jobdetail:101": "https://acme.avature.net/careers/JobDetail/Engineer/101",
+        "jobdetail:102": "https://acme.avature.net/careers/JobDetail/Analyst/102"
+      },
+      "next_urls": []
+    },
+    "error": false
+  },
+  {
+    "name": "missing-count",
+    "kind": "page",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "html": "\n        <html><head>\n          <meta content=\"4\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"SearchJobs\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs\">\n        </head><body><a class=\"job\" href=\"/careers/JobDetail/Engineer/101\">Job</a><a class=\"job\" href=\"/careers/JobDetail/Analyst/102\">Job</a></body></html>\n    ",
+    "output": {
+      "board": {
+        "host": "acme.avature.net",
+        "prefix": "/careers",
+        "page": "SearchJobs"
+      },
+      "portal_id": "4",
+      "total": null,
+      "total_exact": false,
+      "range_start": null,
+      "range_end": null,
+      "jobs": {
+        "jobdetail:101": "https://acme.avature.net/careers/JobDetail/Engineer/101",
+        "jobdetail:102": "https://acme.avature.net/careers/JobDetail/Analyst/102"
+      },
+      "next_urls": []
+    },
+    "error": false
+  },
+  {
+    "name": "pagination-legend",
+    "kind": "page",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "html": "\n        <html><head>\n          <meta content=\"4\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"SearchJobs\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs\">\n        </head><body><div class=\"pagination__legend\" aria-label=\"2 results\">1-2 of 2 results</div><a class=\"job\" href=\"/careers/JobDetail/Engineer/101\">Job</a><a class=\"job\" href=\"/careers/JobDetail/Analyst/102\">Job</a></body></html>\n    ",
+    "output": {
+      "board": {
+        "host": "acme.avature.net",
+        "prefix": "/careers",
+        "page": "SearchJobs"
+      },
+      "portal_id": "4",
+      "total": 2,
+      "total_exact": true,
+      "range_start": 1,
+      "range_end": 2,
+      "jobs": {
+        "jobdetail:101": "https://acme.avature.net/careers/JobDetail/Engineer/101",
+        "jobdetail:102": "https://acme.avature.net/careers/JobDetail/Analyst/102"
+      },
+      "next_urls": []
+    },
+    "error": false
+  },
+  {
+    "name": "thousands",
+    "kind": "page",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "html": "\n        <html><head>\n          <meta content=\"4\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"SearchJobs\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs\">\n        </head><body><div class=\"list-controls__text__legend\" aria-label=\"1,234 results\">1-2 of 1,234 results</div><a class=\"job\" href=\"/careers/JobDetail/Engineer/101\">Job</a><a class=\"job\" href=\"/careers/JobDetail/Analyst/102\">Job</a></body></html>\n    ",
+    "output": {
+      "board": {
+        "host": "acme.avature.net",
+        "prefix": "/careers",
+        "page": "SearchJobs"
+      },
+      "portal_id": "4",
+      "total": 1234,
+      "total_exact": true,
+      "range_start": 1,
+      "range_end": 2,
+      "jobs": {
+        "jobdetail:101": "https://acme.avature.net/careers/JobDetail/Engineer/101",
+        "jobdetail:102": "https://acme.avature.net/careers/JobDetail/Analyst/102"
+      },
+      "next_urls": []
+    },
+    "error": false
+  },
+  {
+    "name": "pagination-0",
+    "kind": "pagination",
+    "source": "/careers/SearchJobs?jobOffset=6&jobRecordsPerPage=6",
+    "output": [
+      "https://acme.avature.net/careers/SearchJobs/?jobRecordsPerPage=6&jobOffset=6",
+      6
+    ],
+    "error": false
+  },
+  {
+    "name": "pagination-1",
+    "kind": "pagination",
+    "source": "https://evil.example/careers/SearchJobs?jobOffset=6&jobRecordsPerPage=6",
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "pagination-2",
+    "kind": "pagination",
+    "source": "/careers/SearchJobs?jobOffset=6&jobRecordsPerPage=6&keyword=x",
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "pagination-3",
+    "kind": "pagination",
+    "source": "/careers/SearchJobs?jobOffset=6&jobOffset=6&jobRecordsPerPage=6",
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "pagination-4",
+    "kind": "pagination",
+    "source": "/careers/SearchJobs?jobOffset=0&jobRecordsPerPage=6",
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "pagination-5",
+    "kind": "pagination",
+    "source": "/careers/SearchJobs?jobOffset=-1&jobRecordsPerPage=6",
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "two-pages",
+    "kind": "inventory",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "config": {},
+    "pages": [
+      "\n        <html><head>\n          <meta content=\"4\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"SearchJobs\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs\">\n        </head><body><div class=\"list-controls__text__legend\" aria-label=\"2 results\">1-1 of 2 results</div><a class=\"job\" href=\"/careers/JobDetail/Engineer/101\">Job</a><a class=\"paginationNextLink\" href=\"/careers/SearchJobs?jobRecordsPerPage=1&jobOffset=1\">Next</a></body></html>\n    ",
+      "\n        <html><head>\n          <meta content=\"4\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"SearchJobs\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs\">\n        </head><body><div class=\"list-controls__text__legend\" aria-label=\"2 results\">2-2 of 2 results</div><a class=\"job\" href=\"/careers/JobDetail/Analyst/102\">Job</a></body></html>\n    "
+    ],
+    "output": {
+      "urls": [
+        "https://acme.avature.net/careers/JobDetail/Analyst/102",
+        "https://acme.avature.net/careers/JobDetail/Engineer/101"
+      ],
+      "truncated": false,
+      "metadata": {
+        "listing_url": "https://acme.avature.net/careers/SearchJobs",
+        "portal_id": "4"
+      }
+    },
+    "error": false
+  },
+  {
+    "name": "total-drift",
+    "kind": "inventory",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "config": {},
+    "pages": [
+      "\n        <html><head>\n          <meta content=\"4\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"SearchJobs\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs\">\n        </head><body><div class=\"list-controls__text__legend\" aria-label=\"2 results\">1-1 of 2 results</div><a class=\"job\" href=\"/careers/JobDetail/Engineer/101\">Job</a><a class=\"paginationNextLink\" href=\"/careers/SearchJobs?jobRecordsPerPage=1&jobOffset=1\">Next</a></body></html>\n    ",
+      "\n        <html><head>\n          <meta content=\"4\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"SearchJobs\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs\">\n        </head><body><div class=\"list-controls__text__legend\" aria-label=\"3 results\">2-2 of 3 results</div><a class=\"job\" href=\"/careers/JobDetail/Analyst/102\">Job</a></body></html>\n    "
+    ],
+    "output": {
+      "urls": [
+        "https://acme.avature.net/careers/JobDetail/Analyst/102",
+        "https://acme.avature.net/careers/JobDetail/Engineer/101"
+      ],
+      "truncated": true,
+      "metadata": {
+        "listing_url": "https://acme.avature.net/careers/SearchJobs",
+        "portal_id": "4"
+      }
+    },
+    "error": false
+  },
+  {
+    "name": "late-missing-marker",
+    "kind": "inventory",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "config": {},
+    "pages": [
+      "\n        <html><head>\n          <meta content=\"4\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"SearchJobs\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs\">\n        </head><body><div class=\"list-controls__text__legend\" aria-label=\"2 results\">1-1 of 2 results</div><a class=\"job\" href=\"/careers/JobDetail/Engineer/101\">Job</a><a class=\"paginationNextLink\" href=\"/careers/SearchJobs?jobRecordsPerPage=1&jobOffset=1\">Next</a></body></html>\n    ",
+      "<html></html>"
+    ],
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "late-foreign-portal",
+    "kind": "inventory",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "config": {},
+    "pages": [
+      "\n        <html><head>\n          <meta content=\"4\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"SearchJobs\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs\">\n        </head><body><div class=\"list-controls__text__legend\" aria-label=\"2 results\">1-1 of 2 results</div><a class=\"job\" href=\"/careers/JobDetail/Engineer/101\">Job</a><a class=\"paginationNextLink\" href=\"/careers/SearchJobs?jobRecordsPerPage=1&jobOffset=1\">Next</a></body></html>\n    ",
+      "\n        <html><head>\n          <meta content=\"5\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"SearchJobs\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs\">\n        </head><body><div class=\"list-controls__text__legend\" aria-label=\"2 results\">2-2 of 2 results</div><a class=\"job\" href=\"/careers/JobDetail/Analyst/102\">Job</a></body></html>\n    "
+    ],
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "late-incomplete",
+    "kind": "inventory",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "config": {},
+    "pages": [
+      "\n        <html><head>\n          <meta content=\"4\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"SearchJobs\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs\">\n        </head><body><div class=\"list-controls__text__legend\" aria-label=\"2 results\">1-1 of 2 results</div><a class=\"job\" href=\"/careers/JobDetail/Engineer/101\">Job</a><a class=\"paginationNextLink\" href=\"/careers/SearchJobs?jobRecordsPerPage=1&jobOffset=1\">Next</a></body></html>\n    ",
+      "\n        <html><head>\n          <meta content=\"4\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"SearchJobs\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs\">\n        </head><body><div class=\"list-controls__text__legend\" aria-label=\"2 results\">2-2 of 2 results</div></body></html>\n    "
+    ],
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "late-duplicate",
+    "kind": "inventory",
+    "source": "https://acme.avature.net/careers/SearchJobs",
+    "config": {},
+    "pages": [
+      "\n        <html><head>\n          <meta content=\"4\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"SearchJobs\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs\">\n        </head><body><div class=\"list-controls__text__legend\" aria-label=\"2 results\">1-1 of 2 results</div><a class=\"job\" href=\"/careers/JobDetail/Engineer/101\">Job</a><a class=\"paginationNextLink\" href=\"/careers/SearchJobs?jobRecordsPerPage=1&jobOffset=1\">Next</a></body></html>\n    ",
+      "\n        <html><head>\n          <meta content=\"4\" name=\"avature.portal.id\">\n          <meta name=\"avature.portal.page\" content=\"SearchJobs\">\n          <meta property=\"og:url\" content=\"https://acme.avature.net/careers/SearchJobs\">\n        </head><body><div class=\"list-controls__text__legend\" aria-label=\"2 results\">2-2 of 2 results</div><a class=\"job\" href=\"/careers/JobDetail/Engineer/101\">Job</a></body></html>\n    "
+    ],
+    "output": {
+      "urls": [
+        "https://acme.avature.net/careers/JobDetail/Engineer/101"
+      ],
+      "truncated": true,
+      "metadata": {
+        "listing_url": "https://acme.avature.net/careers/SearchJobs",
+        "portal_id": "4"
+      }
+    },
+    "error": false
+  }
+]

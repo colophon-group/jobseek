@@ -26,7 +26,7 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 	counts := map[string]int{}
 	for _, row := range rows[1:] {
 		provider := row[headers["monitor_type"]]
-		if provider == "unifr" || provider == "notion" || provider == "umantis" || TenthProvider(provider) || provider == "recruiterbox" || provider == "jobs_ch" || provider == "dayforce" || provider == "adp" || provider == "cornerstone" || provider == "paylocity" || !SecondaryProvider(provider) || provider == "comeet" || provider == "jobvite" || provider == "paycom" || provider == "rippling" {
+		if provider == "seek" || provider == "avature" || provider == "unifr" || provider == "notion" || provider == "umantis" || TenthProvider(provider) || provider == "recruiterbox" || provider == "jobs_ch" || provider == "dayforce" || provider == "adp" || provider == "cornerstone" || provider == "paylocity" || !SecondaryProvider(provider) || provider == "comeet" || provider == "jobvite" || provider == "paycom" || provider == "rippling" {
 			continue
 		}
 		metadata := map[string]any{}

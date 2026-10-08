@@ -6,7 +6,7 @@ import (
 )
 
 func SecondaryProvider(provider string) bool {
-	if provider == "umantis" || provider == "notion" || provider == "unifr" {
+	if provider == "umantis" || provider == "notion" || provider == "unifr" || provider == "seek" || provider == "avature" {
 		return true
 	}
 	if TenthProvider(provider) {
@@ -21,6 +21,9 @@ func paycomEnrichmentFields(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true})
 }
 func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
+	if config["crawler_type"] == "seek" || config["crawler_type"] == "avature" {
+		return monitorEnrichmentFields(config, map[string]bool{})
+	}
 	if config["crawler_type"] == "unifr" {
 		return monitorEnrichmentFields(config, map[string]bool{})
 	}
@@ -71,6 +74,22 @@ func inspectSecondaryMonitor(boardID string, config map[string]string, md map[st
 	provider := config["crawler_type"]
 	var profile, endpoint string
 	switch provider {
+	case "seek":
+		o, e := api.SeekOptionsFromMetadata(config["board_url"], config["metadata"])
+		if e != nil {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		profile, endpoint = "seek.advertiser-urls/v1", o.PageURL(1)
+	case "avature":
+		o, e := api.AvatureOptionsFromMetadata(config["board_url"], config["metadata"])
+		if e != nil || o.PortalID == "" || !o.Configured {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		var listing, portal string
+		if json.Unmarshal(md["listing_url"], &listing) != nil || json.Unmarshal(md["portal_id"], &portal) != nil || listing != o.Board.ListingURL() || portal != o.PortalID {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		profile, endpoint = "avature.listing-urls/v1", o.Board.ListingURL()
 	case "unifr":
 		o, e := api.UnifrOptionsFromMetadata(config["board_url"], config["metadata"])
 		if e != nil {
@@ -241,6 +260,12 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 		return false
 	}
 	switch p.Provider {
+	case "seek":
+		o, e := api.SeekOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && p.Profile == "seek.advertiser-urls/v1" && p.Endpoint == o.PageURL(1) && o.ResourceMatches(resource)
+	case "avature":
+		o, e := api.AvatureOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && p.Profile == "avature.listing-urls/v1" && p.Endpoint == o.Board.ListingURL() && o.ResourceMatches(resource)
 	case "unifr":
 		o, e := api.UnifrOptionsFromMetadata(config["board_url"], config["metadata"])
 		return e == nil && p.Profile == "unifr.authoritative-items/v1" && p.Endpoint == o.URL && o.ResourceMatches(resource)
@@ -324,6 +349,11 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 }
 func SecondaryMonitorGone(config map[string]string, resource string, status int, disabled bool) bool {
 	switch config["crawler_type"] {
+	case "seek":
+		return false
+	case "avature":
+		o, e := api.AvatureOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && resource == o.Board.ListingURL() && (status == 404 || status == 410) && !disabled
 	case "intervieweb", "typify", "universia", "talentreef":
 		return tenthMonitorGone(config, resource, status, disabled)
 	case "welcometothejungle", "ycombinator", "talentbrew", "unifr":

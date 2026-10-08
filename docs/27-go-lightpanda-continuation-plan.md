@@ -18,74 +18,65 @@ not complete migration.
 
 ## Latest checkpoint — 2026-10-08
 
-Release **0.13.974**, source `9e458ba32dc255daf5b5f100277a7d40e8436c37`,
-is merged in [PR #10361](https://github.com/colophon-group/jobseek/pull/10361).
+Release **0.13.975**, source `e08a42989ad65ce556d4d1538a959a56db5a57c3`,
+is merged in [PR #10362](https://github.com/colophon-group/jobseek/pull/10362).
 Required CI, the actual Crawler Deploy Gate and installed runtime checks passed
-at the reviewed head. Its original
-[crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37757954068)
-and matching [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37758239683)
-succeeded. Independent immutable-image and incoming cold232 checks passed.
-Supported B0 activation and seven-endpoint readback passed at **epoch233**.
-Fresh canonical configuration/cache and actual posting-route admission selected
-**7,410 monitor boards**, **2,622 detail boards**, and **1,466,561 scheduled
-postings** from **1,497,349 scheduled detail postings**. Three monitor holdouts
-remain: Hays, Siemens and RTX. Every board stays enabled. Ordinary ownership is
-staged with plan `6b6ecc25304a91679c375ea74be1b9d650f8d4420928190e09400ec9de816a9a`
-and projection `80bcfac46940345af75599d0731cc88fe07a4ee8`. Activation refused
-eligibility after natural lease expiry. Supported `recover-pending` and an
-independent check restored all nine base/B0 services and seven healthy endpoints.
-The ordinary receipt/projection are absent and this never-activated plan remains
-inert/staged. A comparison against the exact stored plan found four UKG boards
-whose current monitor and detail configurations differ in tenant/listing fields;
-canonical and cache agree. These current mismatches are sufficient to refuse
-eligibility. The comparison occurred after recovery and does not date each
-change. Prepare fresh admission on the next deployed source; retain the checks.
+at head `b57489a0696134da29c153a6c9b0959c2fbaf42d`. The original
+[crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/37772644152)
+and [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/37772901951)
+succeeded. Independent immutable-image, outgoing source974 cold234, incoming
+source975 cold234 and B0 readback passed. B0 is active at **epoch235**; all seven
+checked health endpoints passed.
 
-This delivered batch installs **130 profiles** and groups Umantis (nine), Notion
-(eight), and the proved Kaiser/Euronext route conversions: **19 configurations**.
-The live receipt-aware admission selected all eight Notion monitors and two
-Umantis monitors. Seven Umantis boards retain Python monitor ownership because
-the source974 parser rejects their stored `_identity_migration_receipt`. The
-next batch accepts and binds that receipt without changing the stored config.
+This delivered batch compiles **132 profiles**: Unifr's nine monitors, PDF details
+across fifty configurations, and seven Umantis receipt bindings. Sixty-one actual
+Python Unifr cases, seventeen PDF field cases, seven binary/OCR cases and real
+SQL/Redis settlement and retirement checks passed. Five public Unifr inventories
+and field samples match; four existing source failures remain failures. Twenty
+captured PDFs preserve title/location outcomes, including existing required-title
+failures. PDF HTML/layout differs from pypdf; full description quality remains a
+migration gate. See [source975 evidence](evidence/go-native-unifr-pdf-candidate-2026-10-08.json).
 
-Eight direct Umantis inventories and the protected Lindt inventory match Python.
-Nine partial-field samples and eight delegated detail samples preserve existing
-behavior, including four missing titles and Lindt platform boilerplate. Seven
-Notion inventories match; Kaedim's shared HTTP500 remains a failure. Thirteen
-live Notion detail samples match title, HTML and mapped properties on complete
-responses. See [Umantis evidence](evidence/go-native-umantis-candidate-2026-10-08.json)
-and [Notion evidence](evidence/go-native-notion-candidate-2026-10-08.json).
+Fresh canonical/cache and actual posting-route admission at epoch235 screened
+**1,494,003 scheduled detail postings** and selected **7,426 monitor boards**,
+**2,672 detail boards**, and **1,463,368 scheduled postings**, including all fifty
+PDF configurations and 162 scheduled PDF postings. Three monitor holdouts remain:
+Hays, Siemens and RTX. Every board stays enabled. The independently checked fresh
+plan is `9a517459c1dd1558abb5abf0670742533b15cbc7978a420a4c562cedc0d87745`,
+projection `3355a6013b96b8bb9403767fde5b881e89fa57b0`. Supported ordinary activation
+is waiting for natural legacy lease expiry. Production ordinary ownership is not
+claimed at this checkpoint.
 
-The **0.13.975 grouped candidate** adds **Unifr's nine monitors**, **PDF details
-across all fifty current configurations**, and the **seven Umantis receipt
-bindings**. It compiles **132 profiles** and grants no production authority.
-Unifr checks both central locales and every detail before exposing an inventory;
-department inventories retain fixed identities, deadlines and central duplicate
-proofs. Sixty-one actual Python cases and real HTTP/SQL/Redis settlement and
-retirement checks pass. Five public inventories and five comparable field samples
-match; biology/geosciences inventory drift and physics/SES missing central
-counterparts fail in both runtimes without a prefix or false zero.
+Source974's never-activated plan remains inert/staged. Its eligibility refusal
+and subsequent supported recovery are retained evidence; current four-board UKG
+config mismatches against that exact old plan warranted fresh admission. The
+checks were retained, and the old plan is not reused.
 
-PDF fields use the existing Python-compatible regex engine and missing-only
-defaults. Native Poppler reads in layout order, using raw order only to recover a missing
-explicit configured title capture; opt-in Tesseract OCR retains the twenty-page,
-thirty-million-pixels-per-page and scale bounds. Local processes have bounded
-output/deadlines and an environment without service credentials. The HTTP path
-preserves scoped public headers, redirects, publisher reservation, and exact
-validator fingerprints before canonical writes. Seventeen actual Python field
-cases, seven binary/OCR cases, fifty configuration checks and five real detail
-settlement cases pass. Five captured Unifr PDFs preserve three title/location
-results and two existing required-title failures. PDF HTML/layout differs from
-pypdf; this is recorded rather than claimed as byte-equivalent descriptions.
-Fifteen additional public PDFs from ten boards also match every Python title
-and location after an extraction-order fix for positioned glyphs and columns.
-The earlier five Unifr title/location/failure results remain matched. Final-head
-CI must verify the corrected image; descriptions still differ in layout.
-The first full queue run failed only the newly expanded codec fixture count;
-its exact eight-case rerun passes. The full worker race suite passes (658.715s), including actual 132-profile
-executable startup/drain and binary/OCR checks; queue/worker vet passes.
-The final full queue race suite passes (417.780s), covering the corrected codec
-count and retained Notion/PDF receipt conservation. Required CI and installed-image checks remain required. See [grouped candidate evidence](evidence/go-native-unifr-pdf-candidate-2026-10-08.json).
+## Next grouped candidate — SEEK and Avature
+
+Candidate **0.13.976** compiles **134 profiles** and ports two monitor types across
+**six SEEK and seven Avature boards**. SEEK drains the exact AU/NZ advertiser API
+with stable total/page/advertiser/job-ID proofs. Avature preserves scoped portal
+HTML inventories, explicit ranges and pagination, stable detail identities and
+partial-inventory protection. Failed later pages expose no successful prefix;
+publisher reservation is checked before status and parsing, including on 503.
+Both monitors schedule the existing configured detail route without invented
+listing titles or descriptions.
+
+All thirteen captured public outcomes match Go: twelve complete inventories
+(including an authoritative empty SEEK board), and HSBC's existing missing-range
+failure. Twelve Avature detail samples match every original Python field through
+the existing native DOM route. Public portal IDs 88 (HSBC) and 23 (Unifi UK) are
+bound explicitly in the registry before admission. Settlement can confirm those
+identities, including on truncated inventories, without rewriting the installed
+ownership binding. Unbound or noncanonical identity configurations remain legacy
+until qualified. SEEK GraphQL details still need their native replacement.
+
+Ninety actual Python parser cases, thirteen registry checks, eighteen HTTP cases,
+seven real SQL/Redis worker cases and six cold-retirement cases pass. The full
+API race suite and queue/worker vet pass. Full queue/worker regressions and exact
+candidate CI/rollout remain pending. See the
+[grouped candidate evidence](evidence/go-native-seek-avature-candidate-2026-10-08.json).
 
 Lightpanda remains pinned to stable **1.0.0**, verified against the
 [official release](https://github.com/lightpanda-io/browser/releases/tag/1.0.0),

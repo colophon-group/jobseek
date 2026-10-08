@@ -1,0 +1,3560 @@
+[
+  {
+    "name": "identity-0",
+    "kind": "identity",
+    "source": "https://au.seek.com/jobs?advertiserid=9094357",
+    "config": {},
+    "output": [
+      "au.seek.com",
+      "9094357"
+    ],
+    "error": false
+  },
+  {
+    "name": "identity-1",
+    "kind": "identity",
+    "source": "https://www.seek.com.au/jobs/?advertiserid=9094357",
+    "config": {},
+    "output": [
+      "www.seek.com.au",
+      "9094357"
+    ],
+    "error": false
+  },
+  {
+    "name": "identity-2",
+    "kind": "identity",
+    "source": "https://nz.seek.com/jobs?advertiserid=22265755",
+    "config": {},
+    "output": [
+      "nz.seek.com",
+      "22265755"
+    ],
+    "error": false
+  },
+  {
+    "name": "identity-3",
+    "kind": "identity",
+    "source": "https://www.seek.co.nz/jobs?advertiserid=22265755",
+    "config": {},
+    "output": [
+      "www.seek.co.nz",
+      "22265755"
+    ],
+    "error": false
+  },
+  {
+    "name": "identity-4",
+    "kind": "identity",
+    "source": "http://au.seek.com/jobs?advertiserid=9094357",
+    "config": {},
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "identity-5",
+    "kind": "identity",
+    "source": "https://user@au.seek.com/jobs?advertiserid=9094357",
+    "config": {},
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "identity-6",
+    "kind": "identity",
+    "source": "https://au.seek.com:444/jobs?advertiserid=9094357",
+    "config": {},
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "identity-7",
+    "kind": "identity",
+    "source": "https://au.seek.com.evil.test/jobs?advertiserid=9094357",
+    "config": {},
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "identity-8",
+    "kind": "identity",
+    "source": "https://au.seek.com/jobs",
+    "config": {},
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "identity-9",
+    "kind": "identity",
+    "source": "https://au.seek.com/jobs?advertiserid=9094357&page=2",
+    "config": {},
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "identity-10",
+    "kind": "identity",
+    "source": "https://au.seek.com/jobs?advertiserid=9094357&advertiserid=9094357",
+    "config": {},
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "identity-11",
+    "kind": "identity",
+    "source": "https://au.seek.com/jobs?advertiserid=not-numeric",
+    "config": {},
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "identity-12",
+    "kind": "identity",
+    "source": "https://au.seek.com/jobs?advertiserid=9094357#fragment",
+    "config": {},
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "identity-13",
+    "kind": "identity",
+    "source": "https://au.seek.com:443/jobs?advertiserid=9094357",
+    "config": {},
+    "output": [
+      "au.seek.com",
+      "9094357"
+    ],
+    "error": false
+  },
+  {
+    "name": "configured-0",
+    "kind": "identity",
+    "source": "https://au.seek.com/jobs?advertiserid=9094357",
+    "config": {
+      "host": "www.seek.com.au",
+      "advertiser_id": "9094357"
+    },
+    "output": [
+      "au.seek.com",
+      "9094357"
+    ],
+    "error": false
+  },
+  {
+    "name": "configured-1",
+    "kind": "identity",
+    "source": "https://au.seek.com/jobs?advertiserid=9094357",
+    "config": {
+      "host": "nz.seek.com",
+      "advertiser_id": "9094357"
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "configured-2",
+    "kind": "identity",
+    "source": "https://au.seek.com/jobs?advertiserid=9094357",
+    "config": {
+      "host": "au.seek.com"
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "configured-3",
+    "kind": "identity",
+    "source": "https://au.seek.com/jobs?advertiserid=9094357",
+    "config": {
+      "advertiser_id": "9094357"
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "configured-4",
+    "kind": "identity",
+    "source": "https://au.seek.com/jobs?advertiserid=9094357",
+    "config": {
+      "host": "au.seek.com",
+      "advertiser_id": 99
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "configured-5",
+    "kind": "identity",
+    "source": "https://au.seek.com/jobs?advertiserid=9094357",
+    "config": {
+      "host": "au.seek.com",
+      "advertiser_id": "999"
+    },
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "complete",
+    "kind": "page",
+    "payload": {
+      "data": [
+        {
+          "id": "94267983",
+          "advertiser": {
+            "id": "9094357"
+          }
+        },
+        {
+          "id": "94267984",
+          "advertiser": {
+            "id": "9094357"
+          }
+        }
+      ],
+      "totalCount": 2,
+      "solMetadata": {
+        "advertiser": "9094357",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 2
+      }
+    },
+    "page": 1,
+    "output": {
+      "ids": [
+        "94267983",
+        "94267984"
+      ],
+      "total": 2
+    },
+    "error": false
+  },
+  {
+    "name": "zero",
+    "kind": "page",
+    "payload": {
+      "data": [],
+      "totalCount": 0,
+      "solMetadata": {
+        "advertiser": "9094357",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 0
+      }
+    },
+    "page": 1,
+    "output": {
+      "ids": [],
+      "total": 0
+    },
+    "error": false
+  },
+  {
+    "name": "final",
+    "kind": "page",
+    "payload": {
+      "data": [
+        {
+          "id": "94267983",
+          "advertiser": {
+            "id": "9094357"
+          }
+        }
+      ],
+      "totalCount": 101,
+      "solMetadata": {
+        "advertiser": "9094357",
+        "pageNumber": 2,
+        "pageSize": 100,
+        "totalJobCount": 101
+      }
+    },
+    "page": 2,
+    "output": {
+      "ids": [
+        "94267983"
+      ],
+      "total": 101
+    },
+    "error": false
+  },
+  {
+    "name": "missing-data",
+    "kind": "page",
+    "payload": {
+      "data": null,
+      "totalCount": 2,
+      "solMetadata": {
+        "advertiser": "9094357",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 2
+      }
+    },
+    "page": 1,
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "object-data",
+    "kind": "page",
+    "payload": {
+      "data": {},
+      "totalCount": 2,
+      "solMetadata": {
+        "advertiser": "9094357",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 2
+      }
+    },
+    "page": 1,
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "nonobject-row",
+    "kind": "page",
+    "payload": {
+      "data": [
+        1,
+        2
+      ],
+      "totalCount": 2,
+      "solMetadata": {
+        "advertiser": "9094357",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 2
+      }
+    },
+    "page": 1,
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "duplicate",
+    "kind": "page",
+    "payload": {
+      "data": [
+        {
+          "id": "1",
+          "advertiser": {
+            "id": "9094357"
+          }
+        },
+        {
+          "id": "1",
+          "advertiser": {
+            "id": "9094357"
+          }
+        }
+      ],
+      "totalCount": 2,
+      "solMetadata": {
+        "advertiser": "9094357",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 2
+      }
+    },
+    "page": 1,
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "foreign-row",
+    "kind": "page",
+    "payload": {
+      "data": [
+        {
+          "id": "1",
+          "advertiser": {
+            "id": "foreign"
+          }
+        },
+        {
+          "id": "2",
+          "advertiser": {
+            "id": "9094357"
+          }
+        }
+      ],
+      "totalCount": 2,
+      "solMetadata": {
+        "advertiser": "9094357",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 2
+      }
+    },
+    "page": 1,
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "invalid-id",
+    "kind": "page",
+    "payload": {
+      "data": [
+        {
+          "id": "a",
+          "advertiser": {
+            "id": "9094357"
+          }
+        },
+        {
+          "id": "2",
+          "advertiser": {
+            "id": "9094357"
+          }
+        }
+      ],
+      "totalCount": 2,
+      "solMetadata": {
+        "advertiser": "9094357",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 2
+      }
+    },
+    "page": 1,
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "bool-total",
+    "kind": "page",
+    "payload": {
+      "data": [
+        {
+          "id": "1",
+          "advertiser": {
+            "id": "9094357"
+          }
+        },
+        {
+          "id": "2",
+          "advertiser": {
+            "id": "9094357"
+          }
+        }
+      ],
+      "totalCount": true,
+      "solMetadata": {
+        "advertiser": "9094357",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 2
+      }
+    },
+    "page": 1,
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "float-total",
+    "kind": "page",
+    "payload": {
+      "data": [
+        {
+          "id": "1",
+          "advertiser": {
+            "id": "9094357"
+          }
+        },
+        {
+          "id": "2",
+          "advertiser": {
+            "id": "9094357"
+          }
+        }
+      ],
+      "totalCount": 2.0,
+      "solMetadata": {
+        "advertiser": "9094357",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 2
+      }
+    },
+    "page": 1,
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "negative-total",
+    "kind": "page",
+    "payload": {
+      "data": [
+        {
+          "id": "1",
+          "advertiser": {
+            "id": "9094357"
+          }
+        },
+        {
+          "id": "2",
+          "advertiser": {
+            "id": "9094357"
+          }
+        }
+      ],
+      "totalCount": -1,
+      "solMetadata": {
+        "advertiser": "9094357",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 2
+      }
+    },
+    "page": 1,
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "over-cap",
+    "kind": "page",
+    "payload": {
+      "data": [
+        {
+          "id": "1",
+          "advertiser": {
+            "id": "9094357"
+          }
+        },
+        {
+          "id": "2",
+          "advertiser": {
+            "id": "9094357"
+          }
+        }
+      ],
+      "totalCount": 50001,
+      "solMetadata": {
+        "advertiser": "9094357",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 2
+      }
+    },
+    "page": 1,
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "short",
+    "kind": "page",
+    "payload": {
+      "data": [
+        {
+          "id": "1",
+          "advertiser": {
+            "id": "9094357"
+          }
+        },
+        {
+          "id": "2",
+          "advertiser": {
+            "id": "9094357"
+          }
+        }
+      ],
+      "totalCount": 3,
+      "solMetadata": {
+        "advertiser": "9094357",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 2
+      }
+    },
+    "page": 1,
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "no-owner-proof",
+    "kind": "page",
+    "payload": {
+      "data": [
+        {
+          "id": "1",
+          "advertiser": {
+            "id": "9094357"
+          }
+        },
+        {
+          "id": "2",
+          "advertiser": {
+            "id": "9094357"
+          }
+        }
+      ],
+      "totalCount": 2,
+      "solMetadata": null
+    },
+    "page": 1,
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "metadata-advertiser-None",
+    "kind": "page",
+    "payload": {
+      "data": [
+        {
+          "id": "1",
+          "advertiser": {
+            "id": "9094357"
+          }
+        },
+        {
+          "id": "2",
+          "advertiser": {
+            "id": "9094357"
+          }
+        }
+      ],
+      "totalCount": 2,
+      "solMetadata": {
+        "advertiser": null,
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 2
+      }
+    },
+    "page": 1,
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "metadata-advertiser-999",
+    "kind": "page",
+    "payload": {
+      "data": [
+        {
+          "id": "1",
+          "advertiser": {
+            "id": "9094357"
+          }
+        },
+        {
+          "id": "2",
+          "advertiser": {
+            "id": "9094357"
+          }
+        }
+      ],
+      "totalCount": 2,
+      "solMetadata": {
+        "advertiser": 999,
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 2
+      }
+    },
+    "page": 1,
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "metadata-advertiser-foreign",
+    "kind": "page",
+    "payload": {
+      "data": [
+        {
+          "id": "1",
+          "advertiser": {
+            "id": "9094357"
+          }
+        },
+        {
+          "id": "2",
+          "advertiser": {
+            "id": "9094357"
+          }
+        }
+      ],
+      "totalCount": 2,
+      "solMetadata": {
+        "advertiser": "foreign",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 2
+      }
+    },
+    "page": 1,
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "metadata-pageNumber-2",
+    "kind": "page",
+    "payload": {
+      "data": [
+        {
+          "id": "1",
+          "advertiser": {
+            "id": "9094357"
+          }
+        },
+        {
+          "id": "2",
+          "advertiser": {
+            "id": "9094357"
+          }
+        }
+      ],
+      "totalCount": 2,
+      "solMetadata": {
+        "advertiser": "9094357",
+        "pageNumber": 2,
+        "pageSize": 100,
+        "totalJobCount": 2
+      }
+    },
+    "page": 1,
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "metadata-pageNumber-True",
+    "kind": "page",
+    "payload": {
+      "data": [
+        {
+          "id": "1",
+          "advertiser": {
+            "id": "9094357"
+          }
+        },
+        {
+          "id": "2",
+          "advertiser": {
+            "id": "9094357"
+          }
+        }
+      ],
+      "totalCount": 2,
+      "solMetadata": {
+        "advertiser": "9094357",
+        "pageNumber": true,
+        "pageSize": 100,
+        "totalJobCount": 2
+      }
+    },
+    "page": 1,
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "metadata-pageNumber-1.0",
+    "kind": "page",
+    "payload": {
+      "data": [
+        {
+          "id": "1",
+          "advertiser": {
+            "id": "9094357"
+          }
+        },
+        {
+          "id": "2",
+          "advertiser": {
+            "id": "9094357"
+          }
+        }
+      ],
+      "totalCount": 2,
+      "solMetadata": {
+        "advertiser": "9094357",
+        "pageNumber": 1.0,
+        "pageSize": 100,
+        "totalJobCount": 2
+      }
+    },
+    "page": 1,
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "metadata-pageSize-99",
+    "kind": "page",
+    "payload": {
+      "data": [
+        {
+          "id": "1",
+          "advertiser": {
+            "id": "9094357"
+          }
+        },
+        {
+          "id": "2",
+          "advertiser": {
+            "id": "9094357"
+          }
+        }
+      ],
+      "totalCount": 2,
+      "solMetadata": {
+        "advertiser": "9094357",
+        "pageNumber": 1,
+        "pageSize": 99,
+        "totalJobCount": 2
+      }
+    },
+    "page": 1,
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "metadata-pageSize-True",
+    "kind": "page",
+    "payload": {
+      "data": [
+        {
+          "id": "1",
+          "advertiser": {
+            "id": "9094357"
+          }
+        },
+        {
+          "id": "2",
+          "advertiser": {
+            "id": "9094357"
+          }
+        }
+      ],
+      "totalCount": 2,
+      "solMetadata": {
+        "advertiser": "9094357",
+        "pageNumber": 1,
+        "pageSize": true,
+        "totalJobCount": 2
+      }
+    },
+    "page": 1,
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "metadata-totalJobCount-3",
+    "kind": "page",
+    "payload": {
+      "data": [
+        {
+          "id": "1",
+          "advertiser": {
+            "id": "9094357"
+          }
+        },
+        {
+          "id": "2",
+          "advertiser": {
+            "id": "9094357"
+          }
+        }
+      ],
+      "totalCount": 2,
+      "solMetadata": {
+        "advertiser": "9094357",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 3
+      }
+    },
+    "page": 1,
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "metadata-totalJobCount-2.0",
+    "kind": "page",
+    "payload": {
+      "data": [
+        {
+          "id": "1",
+          "advertiser": {
+            "id": "9094357"
+          }
+        },
+        {
+          "id": "2",
+          "advertiser": {
+            "id": "9094357"
+          }
+        }
+      ],
+      "totalCount": 2,
+      "solMetadata": {
+        "advertiser": "9094357",
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 2.0
+      }
+    },
+    "page": 1,
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "complete-pages",
+    "kind": "inventory",
+    "source": "https://au.seek.com/jobs?advertiserid=9094357",
+    "config": {},
+    "pages": [
+      {
+        "data": [
+          {
+            "id": "1000",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1001",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1002",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1003",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1004",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1005",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1006",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1007",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1008",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1009",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1010",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1011",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1012",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1013",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1014",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1015",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1016",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1017",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1018",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1019",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1020",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1021",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1022",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1023",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1024",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1025",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1026",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1027",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1028",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1029",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1030",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1031",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1032",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1033",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1034",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1035",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1036",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1037",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1038",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1039",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1040",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1041",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1042",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1043",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1044",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1045",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1046",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1047",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1048",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1049",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1050",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1051",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1052",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1053",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1054",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1055",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1056",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1057",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1058",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1059",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1060",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1061",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1062",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1063",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1064",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1065",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1066",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1067",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1068",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1069",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1070",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1071",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1072",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1073",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1074",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1075",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1076",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1077",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1078",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1079",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1080",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1081",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1082",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1083",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1084",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1085",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1086",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1087",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1088",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1089",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1090",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1091",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1092",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1093",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1094",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1095",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1096",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1097",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1098",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1099",
+            "advertiser": {
+              "id": "9094357"
+            }
+          }
+        ],
+        "totalCount": 101,
+        "solMetadata": {
+          "advertiser": "9094357",
+          "pageNumber": 1,
+          "pageSize": 100,
+          "totalJobCount": 101
+        }
+      },
+      {
+        "data": [
+          {
+            "id": "2000",
+            "advertiser": {
+              "id": "9094357"
+            }
+          }
+        ],
+        "totalCount": 101,
+        "solMetadata": {
+          "advertiser": "9094357",
+          "pageNumber": 2,
+          "pageSize": 100,
+          "totalJobCount": 101
+        }
+      }
+    ],
+    "output": [
+      "https://au.seek.com/job/1000",
+      "https://au.seek.com/job/1001",
+      "https://au.seek.com/job/1002",
+      "https://au.seek.com/job/1003",
+      "https://au.seek.com/job/1004",
+      "https://au.seek.com/job/1005",
+      "https://au.seek.com/job/1006",
+      "https://au.seek.com/job/1007",
+      "https://au.seek.com/job/1008",
+      "https://au.seek.com/job/1009",
+      "https://au.seek.com/job/1010",
+      "https://au.seek.com/job/1011",
+      "https://au.seek.com/job/1012",
+      "https://au.seek.com/job/1013",
+      "https://au.seek.com/job/1014",
+      "https://au.seek.com/job/1015",
+      "https://au.seek.com/job/1016",
+      "https://au.seek.com/job/1017",
+      "https://au.seek.com/job/1018",
+      "https://au.seek.com/job/1019",
+      "https://au.seek.com/job/1020",
+      "https://au.seek.com/job/1021",
+      "https://au.seek.com/job/1022",
+      "https://au.seek.com/job/1023",
+      "https://au.seek.com/job/1024",
+      "https://au.seek.com/job/1025",
+      "https://au.seek.com/job/1026",
+      "https://au.seek.com/job/1027",
+      "https://au.seek.com/job/1028",
+      "https://au.seek.com/job/1029",
+      "https://au.seek.com/job/1030",
+      "https://au.seek.com/job/1031",
+      "https://au.seek.com/job/1032",
+      "https://au.seek.com/job/1033",
+      "https://au.seek.com/job/1034",
+      "https://au.seek.com/job/1035",
+      "https://au.seek.com/job/1036",
+      "https://au.seek.com/job/1037",
+      "https://au.seek.com/job/1038",
+      "https://au.seek.com/job/1039",
+      "https://au.seek.com/job/1040",
+      "https://au.seek.com/job/1041",
+      "https://au.seek.com/job/1042",
+      "https://au.seek.com/job/1043",
+      "https://au.seek.com/job/1044",
+      "https://au.seek.com/job/1045",
+      "https://au.seek.com/job/1046",
+      "https://au.seek.com/job/1047",
+      "https://au.seek.com/job/1048",
+      "https://au.seek.com/job/1049",
+      "https://au.seek.com/job/1050",
+      "https://au.seek.com/job/1051",
+      "https://au.seek.com/job/1052",
+      "https://au.seek.com/job/1053",
+      "https://au.seek.com/job/1054",
+      "https://au.seek.com/job/1055",
+      "https://au.seek.com/job/1056",
+      "https://au.seek.com/job/1057",
+      "https://au.seek.com/job/1058",
+      "https://au.seek.com/job/1059",
+      "https://au.seek.com/job/1060",
+      "https://au.seek.com/job/1061",
+      "https://au.seek.com/job/1062",
+      "https://au.seek.com/job/1063",
+      "https://au.seek.com/job/1064",
+      "https://au.seek.com/job/1065",
+      "https://au.seek.com/job/1066",
+      "https://au.seek.com/job/1067",
+      "https://au.seek.com/job/1068",
+      "https://au.seek.com/job/1069",
+      "https://au.seek.com/job/1070",
+      "https://au.seek.com/job/1071",
+      "https://au.seek.com/job/1072",
+      "https://au.seek.com/job/1073",
+      "https://au.seek.com/job/1074",
+      "https://au.seek.com/job/1075",
+      "https://au.seek.com/job/1076",
+      "https://au.seek.com/job/1077",
+      "https://au.seek.com/job/1078",
+      "https://au.seek.com/job/1079",
+      "https://au.seek.com/job/1080",
+      "https://au.seek.com/job/1081",
+      "https://au.seek.com/job/1082",
+      "https://au.seek.com/job/1083",
+      "https://au.seek.com/job/1084",
+      "https://au.seek.com/job/1085",
+      "https://au.seek.com/job/1086",
+      "https://au.seek.com/job/1087",
+      "https://au.seek.com/job/1088",
+      "https://au.seek.com/job/1089",
+      "https://au.seek.com/job/1090",
+      "https://au.seek.com/job/1091",
+      "https://au.seek.com/job/1092",
+      "https://au.seek.com/job/1093",
+      "https://au.seek.com/job/1094",
+      "https://au.seek.com/job/1095",
+      "https://au.seek.com/job/1096",
+      "https://au.seek.com/job/1097",
+      "https://au.seek.com/job/1098",
+      "https://au.seek.com/job/1099",
+      "https://au.seek.com/job/2000"
+    ],
+    "error": false
+  },
+  {
+    "name": "changed-total",
+    "kind": "inventory",
+    "source": "https://au.seek.com/jobs?advertiserid=9094357",
+    "config": {},
+    "pages": [
+      {
+        "data": [
+          {
+            "id": "1000",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1001",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1002",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1003",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1004",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1005",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1006",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1007",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1008",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1009",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1010",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1011",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1012",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1013",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1014",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1015",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1016",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1017",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1018",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1019",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1020",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1021",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1022",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1023",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1024",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1025",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1026",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1027",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1028",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1029",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1030",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1031",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1032",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1033",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1034",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1035",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1036",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1037",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1038",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1039",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1040",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1041",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1042",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1043",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1044",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1045",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1046",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1047",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1048",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1049",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1050",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1051",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1052",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1053",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1054",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1055",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1056",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1057",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1058",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1059",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1060",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1061",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1062",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1063",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1064",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1065",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1066",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1067",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1068",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1069",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1070",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1071",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1072",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1073",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1074",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1075",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1076",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1077",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1078",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1079",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1080",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1081",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1082",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1083",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1084",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1085",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1086",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1087",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1088",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1089",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1090",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1091",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1092",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1093",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1094",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1095",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1096",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1097",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1098",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1099",
+            "advertiser": {
+              "id": "9094357"
+            }
+          }
+        ],
+        "totalCount": 101,
+        "solMetadata": {
+          "advertiser": "9094357",
+          "pageNumber": 1,
+          "pageSize": 100,
+          "totalJobCount": 101
+        }
+      },
+      {
+        "data": [
+          {
+            "id": "2000",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "2001",
+            "advertiser": {
+              "id": "9094357"
+            }
+          }
+        ],
+        "totalCount": 102,
+        "solMetadata": {
+          "advertiser": "9094357",
+          "pageNumber": 2,
+          "pageSize": 100,
+          "totalJobCount": 102
+        }
+      }
+    ],
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "cross-page-duplicate",
+    "kind": "inventory",
+    "source": "https://au.seek.com/jobs?advertiserid=9094357",
+    "config": {},
+    "pages": [
+      {
+        "data": [
+          {
+            "id": "1000",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1001",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1002",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1003",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1004",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1005",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1006",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1007",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1008",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1009",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1010",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1011",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1012",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1013",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1014",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1015",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1016",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1017",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1018",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1019",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1020",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1021",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1022",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1023",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1024",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1025",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1026",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1027",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1028",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1029",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1030",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1031",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1032",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1033",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1034",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1035",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1036",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1037",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1038",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1039",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1040",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1041",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1042",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1043",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1044",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1045",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1046",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1047",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1048",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1049",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1050",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1051",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1052",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1053",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1054",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1055",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1056",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1057",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1058",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1059",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1060",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1061",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1062",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1063",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1064",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1065",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1066",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1067",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1068",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1069",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1070",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1071",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1072",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1073",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1074",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1075",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1076",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1077",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1078",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1079",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1080",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1081",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1082",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1083",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1084",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1085",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1086",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1087",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1088",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1089",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1090",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1091",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1092",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1093",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1094",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1095",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1096",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1097",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1098",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1099",
+            "advertiser": {
+              "id": "9094357"
+            }
+          }
+        ],
+        "totalCount": 101,
+        "solMetadata": {
+          "advertiser": "9094357",
+          "pageNumber": 1,
+          "pageSize": 100,
+          "totalJobCount": 101
+        }
+      },
+      {
+        "data": [
+          {
+            "id": "1000",
+            "advertiser": {
+              "id": "9094357"
+            }
+          }
+        ],
+        "totalCount": 101,
+        "solMetadata": {
+          "advertiser": "9094357",
+          "pageNumber": 2,
+          "pageSize": 100,
+          "totalJobCount": 101
+        }
+      }
+    ],
+    "output": null,
+    "error": true
+  },
+  {
+    "name": "late-invalid",
+    "kind": "inventory",
+    "source": "https://au.seek.com/jobs?advertiserid=9094357",
+    "config": {},
+    "pages": [
+      {
+        "data": [
+          {
+            "id": "1000",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1001",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1002",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1003",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1004",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1005",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1006",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1007",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1008",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1009",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1010",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1011",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1012",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1013",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1014",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1015",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1016",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1017",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1018",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1019",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1020",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1021",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1022",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1023",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1024",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1025",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1026",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1027",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1028",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1029",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1030",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1031",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1032",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1033",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1034",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1035",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1036",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1037",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1038",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1039",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1040",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1041",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1042",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1043",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1044",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1045",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1046",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1047",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1048",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1049",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1050",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1051",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1052",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1053",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1054",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1055",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1056",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1057",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1058",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1059",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1060",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1061",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1062",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1063",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1064",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1065",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1066",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1067",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1068",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1069",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1070",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1071",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1072",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1073",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1074",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1075",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1076",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1077",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1078",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1079",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1080",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1081",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1082",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1083",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1084",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1085",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1086",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1087",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1088",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1089",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1090",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1091",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1092",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1093",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1094",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1095",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1096",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1097",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1098",
+            "advertiser": {
+              "id": "9094357"
+            }
+          },
+          {
+            "id": "1099",
+            "advertiser": {
+              "id": "9094357"
+            }
+          }
+        ],
+        "totalCount": 101,
+        "solMetadata": {
+          "advertiser": "9094357",
+          "pageNumber": 1,
+          "pageSize": 100,
+          "totalJobCount": 101
+        }
+      },
+      {
+        "data": [
+          {
+            "id": "broken",
+            "advertiser": {
+              "id": "9094357"
+            }
+          }
+        ],
+        "totalCount": 101,
+        "solMetadata": {
+          "advertiser": "9094357",
+          "pageNumber": 2,
+          "pageSize": 100,
+          "totalJobCount": 101
+        }
+      }
+    ],
+    "output": null,
+    "error": true
+  }
+]

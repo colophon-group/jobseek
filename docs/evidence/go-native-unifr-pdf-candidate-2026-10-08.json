@@ -2,7 +2,7 @@
   "schema_version": 1,
   "candidate_version": "0.13.975",
   "compiled_profiles": 132,
-  "authority": "Local grouped candidate only; required CI, exact-source installed proof and supported fresh cutover remain required. No candidate production ownership.",
+  "authority": "Merged PR10362 and original immutable crawler/renderer rollouts succeeded. B0 active235 independently verified; fresh ordinary plan staged235, supported activation in progress.",
   "grouped_scope": {
     "unifr_monitor_configurations": 9,
     "pdf_detail_configurations": 50,
@@ -498,5 +498,7 @@
       "seek": 6
     },
     "next_delivery": "Group remaining shared DOM/API/RSS/sitemap options with multiple public provider ports; then replace mandatory Python runtime consumers. Complete serving/conservation/cost/reversal/window gates before retiring Python/Playwright/Chromium."
-  }
+  },
+  "source_revision": "e08a42989ad65ce556d4d1538a959a56db5a57c3",
+  "reviewed_head": "b57489a0696134da29c153a6c9b0959c2fbaf42d"
 }
