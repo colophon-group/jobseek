@@ -2,7 +2,7 @@
   "schema_version": 1,
   "candidate_version": "0.13.975",
   "compiled_profiles": 132,
-  "authority": "Local grouped candidate only; required CI, exact-source installed proof and supported fresh cutover remain required. No candidate production ownership.",
+  "authority": "Merged PR10362 and original immutable crawler/renderer rollouts succeeded. B0 and ordinary active235 independently verified; full migration completion gates remain open.",
   "grouped_scope": {
     "unifr_monitor_configurations": 9,
     "pdf_detail_configurations": 50,
@@ -498,5 +498,33 @@
       "seek": 6
     },
     "next_delivery": "Group remaining shared DOM/API/RSS/sitemap options with multiple public provider ports; then replace mandatory Python runtime consumers. Complete serving/conservation/cost/reversal/window gates before retiring Python/Playwright/Chromium."
+  },
+  "source_revision": "e08a42989ad65ce556d4d1538a959a56db5a57c3",
+  "reviewed_head": "b57489a0696134da29c153a6c9b0959c2fbaf42d",
+  "production_checkpoint": {
+    "version": "0.13.975",
+    "source_revision": "e08a42989ad65ce556d4d1538a959a56db5a57c3",
+    "routing_epoch": 235,
+    "ordinary_plan": "9a517459c1dd1558abb5abf0670742533b15cbc7978a420a4c562cedc0d87745",
+    "ordinary_projection": "3355a6013b96b8bb9403767fde5b881e89fa57b0",
+    "monitors": 7426,
+    "detail_boards": 2672,
+    "scheduled_owned_postings": 1463368,
+    "pdf_detail_configs": 50,
+    "scheduled_pdf_postings": 162,
+    "writers_verified": 10,
+    "health_status": {
+      "worker-1": 200,
+      "worker-2": 200,
+      "worker-3": 200,
+      "browser-1": 200,
+      "drain": 200,
+      "exporter": 200,
+      "lightpanda-claimant": 204,
+      "ordinary-go": 204
+    },
+    "native_natural_successful_monitors": 293,
+    "native_natural_successful_details": 7,
+    "full_freshness_conservation": "pending"
   }
 }

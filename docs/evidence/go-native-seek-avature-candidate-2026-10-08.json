@@ -1,0 +1,319 @@
+{
+  "schema_version": 1,
+  "candidate_version": "0.13.976",
+  "compiled_profiles": 134,
+  "authority": "Local grouped candidate; required CI, installed image proof and supported cutover remain required.",
+  "grouped_scope": {
+    "seek_monitor_configurations": 6,
+    "avature_monitor_configurations": 7
+  },
+  "actual_python_corpus": {
+    "seek": 49,
+    "avature": 41
+  },
+  "local_validation": {
+    "api_full_race_seconds": 4.638,
+    "registry_configuration_bindings": 13,
+    "metadata_identity_cases": 8,
+    "http_cases": 18,
+    "real_sql_redis_worker_cases": 7,
+    "real_sql_redis_worker_seconds": 4.314,
+    "cold_retirement_cases": 6,
+    "cold_retirement_seconds": 6.709,
+    "python_passed": 130,
+    "python_skipped": 9,
+    "full_queue_worker": "passed",
+    "full_queue_race_seconds": 428.762,
+    "full_worker_race_seconds": 676.952,
+    "full_worker_timeout": "25m",
+    "prior_worker_runs": "default10m timeout; local orphan fixture retired normally before clean full rerun"
+  },
+  "public_monitor_replay": [
+    {
+      "captured_responses": 109,
+      "match": true,
+      "native_count": 653,
+      "native_failed": false,
+      "provider": "avature",
+      "python_status": "complete",
+      "slug": "advocate-health-clinician-careers"
+    },
+    {
+      "captured_responses": 5,
+      "match": true,
+      "native_count": 25,
+      "native_failed": false,
+      "provider": "avature",
+      "python_status": "complete",
+      "slug": "avolta-wdf-uk"
+    },
+    {
+      "captured_responses": 12,
+      "match": true,
+      "native_count": 69,
+      "native_failed": false,
+      "provider": "avature",
+      "python_status": "complete",
+      "slug": "bmc-careers"
+    },
+    {
+      "captured_responses": 1,
+      "match": true,
+      "native_count": 7,
+      "native_failed": false,
+      "provider": "seek",
+      "python_status": "complete",
+      "slug": "caci-careers-au"
+    },
+    {
+      "captured_responses": 1,
+      "match": true,
+      "native_count": 41,
+      "native_failed": false,
+      "provider": "seek",
+      "python_status": "complete",
+      "slug": "hertz-careers-au"
+    },
+    {
+      "captured_responses": 1,
+      "match": true,
+      "native_count": 9,
+      "native_failed": false,
+      "provider": "seek",
+      "python_status": "complete",
+      "slug": "hertz-careers-nz"
+    },
+    {
+      "captured_responses": 1,
+      "match": true,
+      "native_count": 0,
+      "native_failed": true,
+      "provider": "avature",
+      "python_status": "failed",
+      "slug": "hsbc-mycareer"
+    },
+    {
+      "captured_responses": 66,
+      "match": true,
+      "native_count": 586,
+      "native_failed": false,
+      "provider": "avature",
+      "python_status": "complete",
+      "slug": "macquarie-group-global"
+    },
+    {
+      "captured_responses": 1,
+      "match": true,
+      "native_count": 39,
+      "native_failed": false,
+      "provider": "seek",
+      "python_status": "complete",
+      "slug": "securitas-australia"
+    },
+    {
+      "captured_responses": 3,
+      "match": true,
+      "native_count": 15,
+      "native_failed": false,
+      "provider": "avature",
+      "python_status": "complete",
+      "slug": "unifi-uk"
+    },
+    {
+      "captured_responses": 1,
+      "match": true,
+      "native_count": 23,
+      "native_failed": false,
+      "provider": "seek",
+      "python_status": "complete",
+      "slug": "united-rentals-australia"
+    },
+    {
+      "captured_responses": 1,
+      "match": true,
+      "native_count": 0,
+      "native_failed": false,
+      "provider": "seek",
+      "python_status": "complete",
+      "slug": "united-rentals-new-zealand"
+    },
+    {
+      "captured_responses": 11,
+      "match": true,
+      "native_count": 63,
+      "native_failed": false,
+      "provider": "avature",
+      "python_status": "complete",
+      "slug": "unops-careers"
+    }
+  ],
+  "public_detail_samples": [
+    {
+      "changed_fields": [],
+      "error": "<nil>",
+      "match": true,
+      "native_failed": false,
+      "slug": "advocate-health-clinician-careers",
+      "title": "24 Hour OB CRNA",
+      "url": "https://clinicianjobs.advocatehealth.org/careers/JobDetail/24-Hour-OB-CRNA/19157"
+    },
+    {
+      "changed_fields": [],
+      "error": "<nil>",
+      "match": true,
+      "native_failed": false,
+      "slug": "advocate-health-clinician-careers",
+      "title": "$680k - $850k Remote Overnight Radiologist- Illinois",
+      "url": "https://clinicianjobs.advocatehealth.org/careers/JobDetail/680k-850k-Remote-Overnight-Radiologist-Illinois/16757"
+    },
+    {
+      "changed_fields": [],
+      "error": "<nil>",
+      "match": true,
+      "native_failed": false,
+      "slug": "avolta-wdf-uk",
+      "title": "Customer Service Assistant",
+      "url": "https://resourcebank.avature.net/worlddutyfreejobs/JobDetail/Bristol-United-Kingdom-of-Great-Britain-and-Northern-Ireland-Customer-Service-Assistant/29301"
+    },
+    {
+      "changed_fields": [],
+      "error": "<nil>",
+      "match": true,
+      "native_failed": false,
+      "slug": "avolta-wdf-uk",
+      "title": "Customer Service Assistant",
+      "url": "https://resourcebank.avature.net/worlddutyfreejobs/JobDetail/Bristol-United-Kingdom-of-Great-Britain-and-Northern-Ireland-Customer-Service-Assistant/29302"
+    },
+    {
+      "changed_fields": [],
+      "error": "<nil>",
+      "match": true,
+      "native_failed": false,
+      "slug": "bmc-careers",
+      "title": "BMC Software - Accelerate Sales Internship Summer 2027- Houston, TX",
+      "url": "https://jobs.bmc.com/Careers/JobDetail/Accelerate-Sales-Internship-Summer-2027-Houston-TX/47505"
+    },
+    {
+      "changed_fields": [],
+      "error": "<nil>",
+      "match": true,
+      "native_failed": false,
+      "slug": "bmc-careers",
+      "title": "Account Manager - USA (East Coast Metro)",
+      "url": "https://jobs.bmc.com/Careers/JobDetail/Account-Mgr-USA/47504"
+    },
+    {
+      "changed_fields": [],
+      "error": "<nil>",
+      "match": true,
+      "native_failed": false,
+      "slug": "macquarie-group-global",
+      "title": "Senior Associate - Principal Finance Operations - Reporting",
+      "url": "https://recruitment.macquarie.com/en_US/careers/JobDetail?jobId=17717"
+    },
+    {
+      "changed_fields": [],
+      "error": "<nil>",
+      "match": true,
+      "native_failed": false,
+      "slug": "macquarie-group-global",
+      "title": "Off-cycle Internship, Coverage and Solutions, 2027",
+      "url": "https://recruitment.macquarie.com/en_US/careers/JobDetail?jobId=18304"
+    },
+    {
+      "changed_fields": [],
+      "error": "<nil>",
+      "match": true,
+      "native_failed": false,
+      "slug": "unifi-uk",
+      "title": "Aircraft Cabin Cleaner, RAF Brize Norton, Days",
+      "url": "https://ukcareers.unifiservice.com/ukcareersmarketplace/JobDetail/Aircraft-Cabin-Cleaner-BZZ-DS/13436"
+    },
+    {
+      "changed_fields": [],
+      "error": "<nil>",
+      "match": true,
+      "native_failed": false,
+      "slug": "unifi-uk",
+      "title": "Aircraft Cleaner, RAF Brize Norton, Night Shift",
+      "url": "https://ukcareers.unifiservice.com/ukcareersmarketplace/JobDetail/Aircraft-Cabin-Cleaner-BZZ-NS/13435"
+    },
+    {
+      "changed_fields": [],
+      "error": "<nil>",
+      "match": true,
+      "native_failed": false,
+      "slug": "unops-careers",
+      "title": "Administration Assistant",
+      "url": "https://careers.unops.org/careersmarketplace/JobDetail/Administration-Assistant/4611"
+    },
+    {
+      "changed_fields": [],
+      "error": "<nil>",
+      "match": true,
+      "native_failed": false,
+      "slug": "unops-careers",
+      "title": "Supply Chain Management Senior Assistant",
+      "url": "https://careers.unops.org/careersmarketplace/JobDetail/Asistente-Senior-de-Gesti-n-de-la-Cadena-de-Suministro/4655"
+    }
+  ],
+  "identity_configuration_updates": [
+    {
+      "board": "hsbc-mycareer",
+      "portal_id": "88",
+      "evidence": "first public SearchJobs page identifies portal 88; existing missing displayed range still fails both runtimes"
+    },
+    {
+      "board": "unifi-uk",
+      "portal_id": "23",
+      "evidence": "first public SearchJobs page identifies portal 23; complete 15-job inventory matches"
+    }
+  ],
+  "contracts": {
+    "no_inventory_prefix_after_failure": true,
+    "publisher_reservation_before_status_body_parser": true,
+    "bounded_retry_on_incomplete_response_body": true,
+    "partial_avature_never_delists_unseen_postings": true,
+    "avature_metadata_cannot_change_admitted_identity": true,
+    "url_only_monitors_schedule_configured_details": true
+  },
+  "remaining_detail_work": "SEEK GraphQL details remain on the existing Python scraper; Avature uses existing native DOM details when admitted. This batch migrates both monitor types.",
+  "production_baseline": {
+    "version": "0.13.975",
+    "source_revision": "e08a42989ad65ce556d4d1538a959a56db5a57c3",
+    "routing_epoch": 235,
+    "b0": "active",
+    "ordinary": "active",
+    "ordinary_plan": "9a517459c1dd1558abb5abf0670742533b15cbc7978a420a4c562cedc0d87745",
+    "projection": "3355a6013b96b8bb9403767fde5b881e89fa57b0",
+    "monitor_boards": 7426,
+    "detail_boards": 2672,
+    "scheduled_owned_postings": 1463368,
+    "writers_verified": 10,
+    "health_status": {
+      "worker-1": 200,
+      "worker-2": 200,
+      "worker-3": 200,
+      "browser-1": 200,
+      "drain": 200,
+      "exporter": 200,
+      "lightpanda-claimant": 204,
+      "ordinary-go": 204
+    },
+    "native_outcomes_at_1303_utc": [
+      "jobseek_ordinary_go_ready 1",
+      "jobseek_ordinary_go_active_claims 3",
+      "jobseek_ordinary_go_claim_errors_total 0",
+      "crawler_tasks_total{kind=\"monitor\",status=\"failed\"} 16",
+      "crawler_tasks_total{kind=\"monitor\",status=\"gone\"} 24",
+      "crawler_tasks_total{kind=\"monitor\",status=\"succeeded\"} 293",
+      "crawler_runtime_output_items_total{stage=\"monitor\",implementation=\"go\"} 11229",
+      "crawler_tasks_total{kind=\"scrape\",status=\"failed\"} 1",
+      "crawler_tasks_total{kind=\"scrape\",status=\"skipped\"} 2",
+      "crawler_tasks_total{kind=\"scrape\",status=\"succeeded\"} 7",
+      "crawler_runtime_output_items_total{stage=\"scrape\",implementation=\"go\"} 7",
+      "jobseek_ordinary_go_posting_touches_total 11136"
+    ],
+    "full_freshness_conservation": "pending"
+  }
+}

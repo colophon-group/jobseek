@@ -144,11 +144,20 @@ func (c *GreenhouseCycle) FinishSuccess(ctx context.Context, inventory Greenhous
 			return err
 		}
 		if len(inventory.MetadataUpdates) > 0 {
-			if inventory.Truncated || inventory.ProcessingFiltered != 0 || inventory.Discovered != c.processed || c.processed != len(c.identities) || c.claim.task.Config["crawler_type"] != "eightfold" {
+			var validation error
+			switch c.claim.task.Config["crawler_type"] {
+			case "eightfold":
+				if inventory.Truncated || inventory.ProcessingFiltered != 0 || inventory.Discovered != c.processed || c.processed != len(c.identities) {
+					return ErrConfiguration
+				}
+				validation = validateEightfoldWatermarkUpdate(c.claim.task.Config, md, inventory.MetadataUpdates)
+			case "avature":
+				validation = validateAvatureIdentityUpdate(c.claim.task.Config, md, inventory.MetadataUpdates)
+			default:
 				return ErrConfiguration
 			}
-			if err := validateEightfoldWatermarkUpdate(c.claim.task.Config, md, inventory.MetadataUpdates); err != nil {
-				return err
+			if validation != nil {
+				return validation
 			}
 			if err := c.patch(ctx, tx, inventory.MetadataUpdates); err != nil {
 				return err
