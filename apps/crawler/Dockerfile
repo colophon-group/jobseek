@@ -28,6 +28,7 @@ RUN go test ./... \
 
 # ── Native ordinary Greenhouse worker and cold ownership command ────
 FROM go-b0-executor-build AS go-ordinary-worker-build
+RUN apk add --no-cache poppler-utils tesseract-ocr tesseract-ocr-data-eng tesseract-ocr-data-deu
 WORKDIR /workspace/apps/crawler
 COPY go/greenhouse-monitor/ go/greenhouse-monitor/
 COPY go/ashby-monitor/ go/ashby-monitor/
