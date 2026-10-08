@@ -47,13 +47,15 @@ SQL/Redis authority, ten restart-armed writers and eight health endpoints at245.
 The 21:45 UTC natural sample records fifteen successful monitors, 941 posting
 touches and zero claim errors, plus one failed monitor. Its fixed diagnostic
 `detail_enqueue: unacknowledged` identifies an ordinary enqueue consumer bug:
-both Go and Python Lua copies omit the active `cdom` producer cohort. Existing
+the Python, ordinary Go and deadletter Go Lua copies omit the active `cdom` producer cohort. Existing
 four board failure streaks predate this cohort's execution; the new Swissport
 failure is kept separate. The real Redis regression reproduces rejection for
 both HTTP and browser detail queues before the fix. The next delivery adds only
-`cdom` to both identical scripts, retaining the sixteen-board limit, complete
+`cdom` to all three identical scripts, retaining the sixteen-board limit, complete
 manifest and route validation, covered-board exclusion and per-posting guard.
 Ten real Redis route/cohort cases and ten Python owner/malformed-owner cases pass.
+CI caught the third deadletter copy; the fixed full queue/deadletter Python
+checks and three-copy contract are required before merge.
 Supported exact-receipt ordinary retirement is underway at this checkpoint;
 verify complete restored base/B0 authority, then B0 rollback/selector clearing
 and outgoing cold246 before the corrected next release. Every board stays enabled.

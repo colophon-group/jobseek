@@ -68,6 +68,12 @@
     "before": "real Redis regression rejects valid outside-board enqueue for cdom in both simple/browser queues",
     "after": "cdom accepted while manifest/cardinality/route/covered-board/posting guards remain",
     "validation": "ten real Redis cohort/worker cases plus reviewed Lua copies and existing enqueue tests PASS2.928s; ten Python owner/malformed owner cases PASS0.70s",
-    "restoration": "supported receipt-bound source981 ordinary retirement underway; independent base/B0 restoration and outgoing cold246 required"
+    "restoration": "supported receipt-bound source981 ordinary retirement underway; independent base/B0 restoration and outgoing cold246 required",
+    "runtime_copies": [
+      "src/lua/enqueue_task.lua",
+      "go/ordinary-queue/enqueue_task.lua",
+      "go/typesense-exporter/deadletter_enqueue.lua"
+    ],
+    "ci_repair": "b39 Test Crawler failed only test_go_deadletters embedded copy contract; synchronized third runtime copy and extended existing Go copy-contract guard"
   }
 }
