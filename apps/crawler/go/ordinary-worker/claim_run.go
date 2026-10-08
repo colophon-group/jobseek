@@ -278,6 +278,8 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			}
 			return nil
 		}, renderedPage)
+	} else if queue.SmallProvider(profile.Provider) {
+		discovery, fetchErr = FetchSmallProvidersHTTP(ctx, http.client, profile, task.Config, pauseRich)
 	} else if profile.Provider == "linkedin" || profile.Provider == "taleo" || profile.Provider == "practicematch" {
 		discovery, fetchErr = FetchLinkedInTaleoPracticeMatchHTTP(ctx, http.client, profile, task.Config, pauseRich)
 	} else if profile.Provider == "seek" || profile.Provider == "avature" {

@@ -29,6 +29,12 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 		board, metadata = "https://fixture.jobs.cz/", `{"scraper_type":"skip"}`
 	}
 	switch provider {
+	case "cnstaff":
+		board, metadata = "https://tenant.cnstaff.com/recruit", `{"scraper_type":"skip"}`
+	case "jobbank104":
+		board, metadata = "https://www.104.com.tw/company/abcde", `{"scraper_type":"skip"}`
+	case "seamlesshiring":
+		board, metadata = "https://tenant.seamlesshiring.com/", `{"scraper_type":"skip"}`
 	case "linkedin":
 		board, metadata = "https://www.linkedin.com/company/acme/jobs/", `{"company_id":"42","company_slug":"acme","scraper_type":"linkedin","scraper_config":{"enrich":["description","employment_type","job_location_type"]}}`
 	case "taleo":
@@ -192,7 +198,7 @@ func assertEightfoldCanonicalWatermarkCached(t *testing.T, p firstOwnerFixture) 
 }
 
 func TestRealProviderBatchColdRetirementAndEightfoldWatermarkRecovery(t *testing.T) {
-	for _, provider := range []string{"linkedin", "taleo", "practicematch", "seek", "avature", "unifr", "umantis", "umantis/proxy", "notion", "intervieweb", "typify", "universia", "talentreef", "talentbrew", "api_sniffer_filtered", "beehire", "hirehive", "welcometothejungle", "computrabajo", "computrabajo/proxy", "ycombinator", "earcu", "earcu/proxy", "cvwarehouse", "woowa", "deel", "hibob", "traffit", "manatal", "hrmos", "recruiterbox", "jobs_ch", "mokahr", "almacareer", "eightfold", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "dom", "rss", "inline", "api_sniffer", "comeet", "jobvite", "paycom", "rippling", "adp", "cornerstone", "paylocity", "paylocity/proxy", "dom/proxy", "api_sniffer/proxy", "inline/proxy", "sitemap/proxy", "eightfold/proxy", "phenom/proxy"} {
+	for _, provider := range []string{"cnstaff", "jobbank104", "jobbank104/proxy", "seamlesshiring", "linkedin", "taleo", "practicematch", "seek", "avature", "unifr", "umantis", "umantis/proxy", "notion", "intervieweb", "typify", "universia", "talentreef", "talentbrew", "api_sniffer_filtered", "beehire", "hirehive", "welcometothejungle", "computrabajo", "computrabajo/proxy", "ycombinator", "earcu", "earcu/proxy", "cvwarehouse", "woowa", "deel", "hibob", "traffit", "manatal", "hrmos", "recruiterbox", "jobs_ch", "mokahr", "almacareer", "eightfold", "softgarden", "ukg", "bamboohr", "recruiter_co_kr", "dom", "rss", "inline", "api_sniffer", "comeet", "jobvite", "paycom", "rippling", "adp", "cornerstone", "paylocity", "paylocity/proxy", "dom/proxy", "api_sniffer/proxy", "inline/proxy", "sitemap/proxy", "eightfold/proxy", "phenom/proxy"} {
 		modes := []string{"interrupted", "committed-before-ack", "changed-setting"}
 		if strings.Split(provider, "/")[0] == "eightfold" {
 			modes = append(modes, "reaped-before-ack", "recovered-ack", "settled-cold", "save-failure", "orphan-cache")

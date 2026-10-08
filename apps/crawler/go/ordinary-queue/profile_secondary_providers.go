@@ -7,6 +7,9 @@ import (
 )
 
 func SecondaryProvider(provider string) bool {
+	if SmallProvider(provider) {
+		return true
+	}
 	if provider == "linkedin" || provider == "taleo" || provider == "practicematch" {
 		return true
 	}
@@ -25,6 +28,9 @@ func paycomEnrichmentFields(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true})
 }
 func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
+	if SmallProvider(config["crawler_type"]) {
+		return monitorEnrichmentFields(config, map[string]bool{})
+	}
 	if config["crawler_type"] == "linkedin" {
 		// Existing LinkedIn configs delegate description and employment fields
 		// to their separately scheduled detail scraper. The guest monitor keeps
@@ -72,6 +78,9 @@ func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, allowed)
 }
 func inspectSecondaryMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
+	if SmallProvider(config["crawler_type"]) {
+		return inspectSmallProviderMonitor(boardID, config, md)
+	}
 	if TenthProvider(config["crawler_type"]) {
 		return inspectTenthMonitor(boardID, config, md)
 	}
@@ -287,6 +296,10 @@ func inspectSecondaryMonitor(boardID string, config map[string]string, md map[st
 	return inspectURLOnlyMonitor(boardID, config, md, provider, profile, provider, endpoint)
 }
 func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[string]string, resource string) bool {
+	if SmallProvider(p.Provider) {
+		o, e := api.SmallProviderOptionsFromMetadata(p.Provider, config["board_url"], config["metadata"])
+		return config["crawler_type"] == p.Provider && e == nil && p.Profile == o.Profile() && p.Endpoint == o.ListingURL() && o.ResourceMatches(resource)
+	}
 	if config["crawler_type"] != p.Provider {
 		return false
 	}
@@ -388,6 +401,9 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 	return false
 }
 func SecondaryMonitorGone(config map[string]string, resource string, status int, disabled bool) bool {
+	if SmallProvider(config["crawler_type"]) {
+		return smallProviderMonitorGone(config, resource, status, disabled)
+	}
 	switch config["crawler_type"] {
 	case "linkedin", "practicematch":
 		return false
