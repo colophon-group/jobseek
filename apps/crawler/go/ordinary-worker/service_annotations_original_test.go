@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -11,6 +12,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	api "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
@@ -59,19 +61,42 @@ func runServiceAnnotationOriginalCases(t *testing.T, cases []sharedServiceOrigin
 			}
 			p := queue.GreenhouseMonitorProfile{Provider: c.Board.Provider, Endpoint: c.Board.BoardURL}
 			calls := 0
+			var requests sync.Mutex
+			used := make([]bool, len(c.Exchanges))
 			client := &http.Client{Transport: workdayDetailRoundTrip(func(r *http.Request) (*http.Response, error) {
+				requests.Lock()
+				defer requests.Unlock()
 				if calls >= len(c.Exchanges) {
-					t.Fatal("unexpected request")
+					return nil, fmt.Errorf("unexpected original-oracle request")
 				}
-				x := c.Exchanges[calls]
-				calls++
 				var body []byte
 				if r.Body != nil {
 					body, _ = io.ReadAll(r.Body)
 				}
-				if r.Method != x.Method || !sharedOriginalRequestURLEqual(r.URL.String(), x.URL) || string(body) != x.Body && !finalHTTPRequestBodyEqual("application/json", string(body), x.Body) {
-					t.Fatal("original request differs")
+				index := 0
+				for used[index] {
+					index++
 				}
+				matches := func(i int) bool {
+					x := c.Exchanges[i]
+					return r.Method == x.Method && sharedOriginalRequestURLEqual(r.URL.String(), x.URL) && (string(body) == x.Body || finalHTTPRequestBodyEqual("application/json", string(body), x.Body))
+				}
+				if !matches(index) && c.Board.Provider == "dom" && c.Board.Metadata["require_jsonld_jobposting"] == true {
+					// Independent verification requests run concurrently. Match each
+					// exact original request once; listing pagination stays ordered.
+					for i, x := range c.Exchanges {
+						if !used[i] && x.Method == "GET" && strings.Contains(x.Response.Body, `type="application/ld+json"`) && matches(i) {
+							index = i
+							break
+						}
+					}
+				}
+				if !matches(index) {
+					return nil, fmt.Errorf("original request differs")
+				}
+				x := c.Exchanges[index]
+				used[index] = true
+				calls++
 				reply := c.Response
 				status := 200
 				headers := http.Header{}
@@ -134,7 +159,7 @@ func runServiceAnnotationOriginalCases(t *testing.T, cases []sharedServiceOrigin
 					got, e = discoverAPISnifferInventory(context.Background(), client, p, config)
 				}
 			}
-			if e != nil || got.Truncated || len(got.Jobs) != len(c.Expected) || calls == 0 {
+			if e != nil || got.Truncated || len(got.Jobs) != len(c.Expected) || calls == 0 || !c.Browser && calls != len(c.Exchanges) {
 				t.Fatal("original inventory differs", e)
 			}
 			sort.Slice(got.Jobs, func(i, j int) bool { return got.Jobs[i].URL < got.Jobs[j].URL })

@@ -197,25 +197,12 @@ func ValidateListingProofs(source string, c ListingConfig, jobCount int) error {
 	}
 	text := func(node *html.Node) string { return strings.Join(strings.Fields(richRowsText(node, " ")), " ") }
 	if p.TotalPattern != nil {
-		total := -1
-		for _, node := range proofNodes(tree, p.TotalSelector) {
-			match, err := proofFullMatch(p.TotalPattern, text(node))
-			if err != nil {
-				return err
-			}
-			if match == nil {
-				continue
-			}
-			count, err := proofDecimal(match.Groups()[1].String())
-			if err != nil || total != -1 && total != count {
-				return ErrListingProof
-			}
-			total = count
-		}
-		if total < 0 || total != jobCount {
+		total, err := listingAdvertisedTotalTree(tree, p)
+		if err != nil || total == nil || *total != jobCount {
 			return ErrListingProof
 		}
 	}
+
 	matches := func(state ListingEmptyState) bool {
 		nodes := proofNodes(tree, state.Selector)
 		expected := strings.Join(strings.Fields(state.Text), " ")
@@ -293,4 +280,38 @@ func ValidateListingProofs(source string, c ListingConfig, jobCount int) error {
 		}
 	}
 	return ErrListingProof
+}
+
+// A static paginator proves the declared root total against the complete
+// deduplicated listing before independent JobPosting verification.
+func ListingAdvertisedTotal(source string, p *ListingProofs) (*int, error) {
+	if p == nil || p.TotalPattern == nil {
+		return nil, nil
+	}
+	tree, err := html.ParseWithOptions(strings.NewReader(source), html.ParseOptionEnableScripting(false))
+	if err != nil {
+		return nil, err
+	}
+	return listingAdvertisedTotalTree(tree, p)
+}
+func listingAdvertisedTotalTree(tree *html.Node, p *ListingProofs) (*int, error) {
+	total := -1
+	for _, node := range proofNodes(tree, p.TotalSelector) {
+		match, err := proofFullMatch(p.TotalPattern, strings.Join(strings.Fields(richRowsText(node, " ")), " "))
+		if err != nil {
+			return nil, err
+		}
+		if match == nil {
+			continue
+		}
+		count, err := proofDecimal(match.Groups()[1].String())
+		if err != nil || total != -1 && total != count {
+			return nil, ErrListingProof
+		}
+		total = count
+	}
+	if total < 0 {
+		return nil, ErrListingProof
+	}
+	return &total, nil
 }

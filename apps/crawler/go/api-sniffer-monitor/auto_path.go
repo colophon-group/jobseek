@@ -194,3 +194,91 @@ func (d *Document) SelectAPIArray(endpoint string) (*APIArrayCandidate, error) {
 	}
 	return &best, nil
 }
+
+// Match the original named-field priority across the first five selected rows.
+// Fallback is restricted to top-level non-artwork scalar fields.
+func (d *Document) FindURLField(items []map[string]any) string {
+	if len(items) == 0 {
+		return ""
+	}
+	sample := items[:min(5, len(items))]
+	valid := func(path string) bool {
+		for _, row := range sample {
+			v, e := Search(row, path)
+			if e != nil || !apiLooksLikeURL(v) {
+				return false
+			}
+		}
+		return true
+	}
+	best, bestPriority := "", -1
+	var walk func(map[string]any, string, int)
+	walk = func(object map[string]any, prefix string, depth int) {
+		if depth > 64 {
+			return
+		}
+		for _, key := range d.ObjectKeys(object) {
+			path := apiPathPart(key)
+			if prefix != "" {
+				path = prefix + "." + path
+			}
+			v := object[key]
+			if child, ok := v.(map[string]any); ok {
+				walk(child, path, depth+1)
+			} else if _, list := v.([]any); !list && apiURLKey.MatchString(apiIgnoreCase(key)) {
+				priority := apiURLFieldPriority(key)
+				if priority > bestPriority && priority >= 0 && valid(path) {
+					best, bestPriority = path, priority
+				}
+			}
+		}
+	}
+	walk(sample[0], "", 0)
+	if best != "" {
+		return best
+	}
+	for _, key := range d.ObjectKeys(sample[0]) {
+		if apiURLFieldPriority(key) >= 0 && valid(apiPathPart(key)) {
+			return apiPathPart(key)
+		}
+	}
+	return ""
+}
+func apiURLFieldPriority(key string) int {
+	var b strings.Builder
+	for _, r := range strings.ToLower(key) {
+		if r >= 'a' && r <= 'z' {
+			b.WriteRune(r)
+		}
+	}
+	normalized := b.String()
+	if apiArtworkKey(key) {
+		return -1
+	}
+	if strings.Contains(normalized, "canonical") {
+		return 100
+	}
+	if strings.Contains(normalized, "apply") {
+		return 10
+	}
+	for _, a := range []string{"job", "advert", "posting", "position"} {
+		for _, z := range []string{"url", "link", "href", "path", "uri"} {
+			if strings.Contains(normalized, a) && strings.Contains(normalized, z) {
+				return 95
+			}
+		}
+	}
+	if strings.Contains(normalized, "directlink") || strings.Contains(normalized, "detail") {
+		return 90
+	}
+	if strings.Contains(normalized, "url") || strings.Contains(normalized, "href") {
+		return 80
+	}
+	if strings.Contains(normalized, "link") {
+		return 70
+	}
+	if strings.Contains(normalized, "slug") || strings.Contains(normalized, "path") || strings.Contains(normalized, "uri") {
+		return 60
+	}
+	return 0
+}
