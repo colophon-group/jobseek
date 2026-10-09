@@ -89,10 +89,17 @@ owner is away. The Hetzner `jobseek-ai-filter-refresh.timer` calls
 `/api/internal/ai-filter-refresh` every minute in production. This runs on the
 existing crawler host and avoids Vercel Hobby's daily-only cron limit. The authenticated endpoint claims at most 20 eligible watchlists,
 oldest dispatch first, with PostgreSQL row locks and a 45-second dispatch floor.
-Only the next two targets are claimed at a time, within a 45-second preparation
+Only the next target is claimed at a time, within a 45-second preparation
 budget, so a timed-out invocation cannot repeatedly starve the end of its page.
 Disabled configurations, expired entitlement, preview deployments, unavailable
-credentials and either disabled execution switch contribute no work. Lost
+credentials and either disabled execution switch contribute no work. Preparation is serial,
+so a minute trigger cannot burst parallel scope scans. Two live freshness
+segments are allowed project-wide, enforced under the shared project admission
+lock; a full freshness lane also skips dispatch preparation until capacity frees.
+Count-only scope checks retain the readiness receipt and use one search per
+company batch, without sorting and hydrating UUID guard rows. Candidate row
+selection still proves UUID ordering before and after every page.
+ Lost
 Workflow dispatches retry on the next scheduled pass. The prepared revision is
 checked again so a stale dispatch cannot re-enable or overwrite an edited prompt.
 
@@ -201,8 +208,11 @@ Migration `0103_ai_filter_freshness` adds the dispatch timestamp and independent
 historical/freshness segment lanes. Apply it through the allowlisted routine
 migration workflow before deploying the refreshed web worker. Then dispatch
 `deploy-ai-filter-refresh.yml` at current main to install and activate the host
-timer. Its preflight requires the deployed web endpoint's `narrowed-refresh-v1`
-contract before changing an existing timer.
+timer. Confirm local/public Typesense health and memory headroom before activation.
+Its preflight requires the deployed web endpoint's `narrowed-refresh-v1`
+contract before changing an existing timer. Leave the timer disabled after a search
+OOM or while index recovery is in progress; a successful deployment alone does
+not prove that background matching can run safely.
 
 The Next.js Workflow SDK owns durable catch-up. Workflow code loops only over a
 bounded Node.js step; Postgres, Typesense, R2, and Jev access remain inside that

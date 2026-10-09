@@ -6,7 +6,7 @@ import { aiFilterConfiguration, aiFilterQueryVersion, aiFilterSegment } from "@/
 import { paidEntitlementCondition } from "@/lib/paid-entitlement";
 import { assertAiFilterCandidateScope } from "./candidate-loader";
 import { AiFilterEntitlementError, AiFilterNotFoundError, putAiFilterConfiguration } from "./configuration-service";
-import { canRunAiFilter, readAiFilterRuntimePolicy } from "./policy";
+import { AI_FILTER_MAX_FRESHNESS_SEGMENTS_PROJECT, canRunAiFilter, readAiFilterRuntimePolicy } from "./policy";
 import { startAiFilterCatchup } from "./workflow-trigger";
 
 const REFRESH_PAGE_SIZE = 20;
@@ -37,6 +37,7 @@ export async function claimAiFilterRefreshTargets(now: Date, limit = REFRESH_PAG
       eq(aiFilterQueryVersion.revision, aiFilterConfiguration.currentRevision),
     )).where(and(
       eq(aiFilterConfiguration.status, "enabled"),
+      sql`(SELECT count(*) FROM ${aiFilterSegment} WHERE ${aiFilterSegment.kind} = 'freshness' AND ${aiFilterSegment.status} = 'processing' AND ${aiFilterSegment.leaseExpiresAt} > ${now.toISOString()}::timestamptz) < ${AI_FILTER_MAX_FRESHNESS_SEGMENTS_PROJECT}`,
       paidEntitlementCondition(aiFilterConfiguration.ownerId, now),
       sql`(${aiFilterConfiguration.refreshRequestedAt} IS NULL OR ${aiFilterConfiguration.refreshRequestedAt} < ${new Date(now.getTime() - DISPATCH_INTERVAL_MS).toISOString()}::timestamptz)`,
       sql`NOT EXISTS (SELECT 1 FROM ${aiFilterSegment} WHERE ${aiFilterSegment.watchlistId} = ${aiFilterConfiguration.watchlistId} AND ${aiFilterSegment.kind} = 'freshness' AND ${aiFilterSegment.status} = 'processing' AND ${aiFilterSegment.leaseExpiresAt} > ${now.toISOString()}::timestamptz)`,
@@ -74,13 +75,13 @@ export async function runAiFilterRefreshSweep(input: {
   const now = input.now ?? new Date();
   const deps = input.dependencies ?? dependencies;
   const deadline = Date.now() + SWEEP_WORK_BUDGET_MS;
-  // Claim only the next two targets. A timed-out invocation must not mark a
+  // Prepare one target at a time. A timed-out invocation must not mark a
   // whole page dispatched and repeatedly starve its later watchlists.
   while (counters.claimed < REFRESH_PAGE_SIZE && Date.now() < deadline) {
-    const targets = await deps.claim(now, Math.min(2, REFRESH_PAGE_SIZE - counters.claimed));
+    const targets = await deps.claim(now, 1);
     if (!targets.length) break;
     counters.claimed += targets.length;
-    await Promise.all(targets.map(async target => {
+    for (const target of targets) {
       try {
         await deps.assertScope({
           ownerId: target.ownerId, watchlistId: target.watchlistId,
@@ -105,7 +106,7 @@ export async function runAiFilterRefreshSweep(input: {
           counters.failed += 1;
         }
       }
-    }));
+    }
   }
   // Aggregate evidence only: queries and owner IDs never reach cron logs.
   return { status: "completed" as const, ...counters };

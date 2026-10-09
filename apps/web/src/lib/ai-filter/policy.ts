@@ -135,3 +135,6 @@ export function exceedsAiFilterBudget(input: {
   }
   return total > input.limitNanodollars;
 }
+
+// Background scans must fit the shared search service, independently of paid-call capacity.
+export const AI_FILTER_MAX_FRESHNESS_SEGMENTS_PROJECT = 2;

@@ -85,6 +85,25 @@ describe.skipIf(!process.env.AI_FILTER_TEST_DATABASE_URL)("freshness execution w
     }));
   });
 
+  it("admits only two live freshness segments across owners and skips further scope preparation", async () => {
+    const first = await fixture("first-owner");
+    const second = await fixture("second-owner");
+    const third = await fixture("third-owner");
+    for (const input of [first, second]) {
+      await sql()`INSERT INTO ai_filter_segment
+        (kind,watchlist_id,owner_id,query_version_id,status,lease_owner,lease_expires_at,window_start,window_end,idempotency_key)
+        VALUES ('freshness',${input.watchlistId},${input.ownerId},${input.queryVersionId},'processing',${randomUUID()},now()+interval '5 minutes','2000-01-01',now(),${randomUUID()})`;
+    }
+    expect(await runAiFilterCatchupStep(third)).toMatchObject({ status: "busy", segmentId: null });
+    expect(await claimAiFilterRefreshTargets(new Date())).toEqual([]);
+    expect(mocks.classify).not.toHaveBeenCalled();
+    // This search-specific ceiling must not replace the existing historical limits.
+    expect(await runAiFilterCatchupStep({ ...third, kind: "historical" })).toMatchObject({ status: "caught_up" });
+    await sql()`UPDATE ai_filter_segment SET lease_expires_at=now()-interval '1 second' WHERE owner_id=${first.ownerId}`;
+    expect((await claimAiFilterRefreshTargets(new Date())).length).toBeGreaterThan(0);
+    expect(await runAiFilterCatchupStep(third)).toMatchObject({ status: "caught_up" });
+  });
+
   it("evaluates new and late-indexed postings ahead of a frozen 2200-job historical cursor", async () => {
     const input = await fixture();
     const historyId = randomUUID();

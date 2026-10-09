@@ -574,6 +574,9 @@ export async function readWatchlistCandidates(params: {
         buildBatchSafetyParams(filters),
       )
     : [params.filters];
+  // Counts consume no ordered rows. The readiness receipt still gates them;
+  // row reads retain their pre/post UUID proofs before classification.
+  const needsOrderProof = stableNewestReady && params.limit !== 0;
   const guardStableCandidateOrder = async () => {
     const guards = await Promise.all(
       filterBatches.flatMap((filters) => STABLE_CANDIDATE_GUARD_FIELDS.map((field) =>
@@ -600,7 +603,7 @@ export async function readWatchlistCandidates(params: {
     );
     for (const result of guards) assertStableCandidateGuard(result);
   };
-  if (stableNewestReady) await guardStableCandidateOrder();
+  if (needsOrderProof) await guardStableCandidateOrder();
   if (!needsBatches) {
     const result = await withTypesenseRetry(
       () =>
@@ -608,7 +611,7 @@ export async function readWatchlistCandidates(params: {
       { label: "readWatchlistCandidates", abortSignal: params.abortSignal },
     );
     assertTypesenseSearchResult(result, { expectHits: params.limit !== 0 });
-    if (stableNewestReady) await guardStableCandidateOrder();
+    if (needsOrderProof) await guardStableCandidateOrder();
     const total = result.found ?? 0;
     return {
       postings:
@@ -657,7 +660,7 @@ export async function readWatchlistCandidates(params: {
   for (const result of countResults) assertTypesenseSearchResult(result);
   const total = countResults.reduce((sum, result) => sum + (result.found ?? 0), 0);
   if (total === 0 || params.limit === 0) {
-    if (stableNewestReady) await guardStableCandidateOrder();
+    if (needsOrderProof) await guardStableCandidateOrder();
     return { postings: [], total };
   }
 
@@ -689,7 +692,7 @@ export async function readWatchlistCandidates(params: {
       return pages;
     }),
   );
-  if (stableNewestReady) await guardStableCandidateOrder();
+  if (needsOrderProof) await guardStableCandidateOrder();
   const allHits = rowResultsByBatch.flatMap((pages, batchIndex) => {
     let hitRank = 0;
     return pages.flatMap((result) =>
