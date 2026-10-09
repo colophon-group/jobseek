@@ -278,6 +278,33 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			}
 			return nil
 		}, renderedPage)
+	} else if queue.PortalHTTPProvider(profile.Provider) {
+		var emit func([]RichMonitorJob) error
+		if profile.Provider == "pageup" {
+			streamed = &queue.GreenhouseInventorySummary{}
+			emit = func(jobs []RichMonitorJob) error {
+				inventory, err := NormalizeRichInventory(ctx, task.Config["board_url"], jobs, false)
+				if err != nil {
+					return err
+				}
+				streamed.Discovered += inventory.Discovered
+				for _, count := range inventory.DropReasons {
+					streamed.ProcessingFiltered += count
+				}
+				processed, err := WriteGreenhouseInventory(ctx, cycle, preparer, inventory)
+				if processed != nil {
+					batch := processed.Batches
+					result.Batches.Inserted += batch.Inserted
+					result.Batches.Touched += batch.Touched
+					result.Batches.Relisted += batch.Relisted
+					result.Batches.Foreign += batch.Foreign
+					result.Batches.ForeignRelisted += batch.ForeignRelisted
+					result.Batches.Deduplicated += batch.Deduplicated
+				}
+				return err
+			}
+		}
+		discovery, fetchErr = FetchPortalHTTPProviders(ctx, http.client, profile, task.Config, pauseRich, emit)
 	} else if queue.FinalHTTPProvider(profile.Provider) {
 		discovery, fetchErr = FetchFinalHTTPProvidersHTTP(ctx, http.client, profile, task.Config, pauseRich)
 	} else if queue.SmallProvider(profile.Provider) {

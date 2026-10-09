@@ -16,15 +16,76 @@ whole-service CPU/RAM/density/attributable cost; and a supported cold reversal
 with its observation window. A merged candidate or synthetic benchmark does
 not complete migration.
 
-## Latest checkpoint — source985 deployed; fresh B0 activation running
+## Latest checkpoint — source986 merged; four-provider source987 qualified
 
-[PR #10372](https://github.com/colophon-group/jobseek/pull/10372) merged with the
-expected review head after fresh required checks and independent outgoing cold250.
-Its source is `bb2dd1236ae1555dfb26b2c703066994dcfc136a`, version **0.13.985**,
-with151 compiled profiles. Original crawler run `37872809888` and matching renderer
-run `37872868680` completed successfully on attempt1. Independent incoming cold250
-and renderer source/image proofs passed. Supported B0 selector staging passed and
-fresh activation is running; ordinary ownership has not yet been admitted.
+[PR #10372](https://github.com/colophon-group/jobseek/pull/10372) merged with
+fresh required checks and independent outgoing cold250. Source
+`bb2dd1236ae1555dfb26b2c703066994dcfc136a`, version **0.13.985**, has 151 compiled
+profiles. Original crawler run `37872809888` and matching renderer run `37872868680`
+completed successfully on attempt 1. Independent incoming cold250 and renderer
+source/image proofs passed. Fresh B0 and broad ordinary activation passed at
+epoch251: **7,589 monitor boards, 2,739 detail boards and 1,475,185 scheduled
+owned routes**. Independent SQL/Redis, ten-writer and eight-health verification
+passed. Initial staging refused a held mutation lock before mutation; attempt 2
+staged the exact plan after the lock released naturally.
+
+Natural samples retain successful cycles and exact committed future schedules,
+plus claim deadlines and unacknowledged settlements. One retained completion
+returned to its exact schedule through the existing reaper. Full conservation
+and freshness are not claimed. Supported broad retirement completed after natural
+leases drained. Independent restoration verifies no ordinary receipts/projection,
+a retired SQL plan, nine base/B0 services and seven health endpoints. Source-bound
+B0 rollback, selector clear and independent cold252 completed successfully. The
+first cold252 check correctly refused before selector clear: a local clear helper
+referenced the preceding archive directory and stopped before remote action. Its
+path was corrected; the independent second cold252 proof passed.
+
+[PR #10373](https://github.com/colophon-group/jobseek/pull/10373) admits six retained
+Ashby, Lever, Recruitee and SmartRecruiters configurations, version **0.13.986**,
+154 compiled profiles. It merged at `b2f5a5b3f74c7393527be0212ec6f89a9c61ddee`
+after fresh exact-head merge authority and the independent outgoing cold252 proof.
+Original immutable crawler and matching renderer deployments completed successfully
+on attempt 1 (runs `37879936584` and `37879995825`). Independent source/image,
+base stack, dark claimant, authority-absence and cold252 verification passed. The
+first verifier refused an administrative container; the second independently
+validated it as the original bounded Go cross-store reconciliation consumer, with
+exact image, command, role, containment, launcher and protected state. No consumer
+was stopped. Source986 remains base cold while the consecutive batches proceed.
+Exact head `4318e9ddbbf93c836475ddafa3340b9d61d347f2` has
+green Required CI `37874687058`, installed-image parity `37874687071` and Crawler
+Deploy Gate `37874685654`. Its initial full native suite failed a stale negative
+Recruitee fixture; a test-only repair explicitly requests unsupported enrichment
+and retains a Pinpoint negative. No runtime guard was weakened. Incoming readiness and renderer proofs now pass. Activate fresh B0 and actual-route
+ordinary ownership for the combined configuration/provider batches after the next
+qualified source deploys; retain supported quiescence and cold-proof gates.
+
+The next candidate ports **PageUp, Infoniqa, Keka and TurboHire together**, version
+**0.13.987**, six current configurations and 158 compiled profiles. All 55 actual
+original core cases and 26 inventory/failure replays pass. Real SQL/Redis proof
+covers 17 terminal cases, including PageUp's 500-job retained failure prefix and
+detail scheduling, twelve supported cold-retirement cases and actual 158-profile
+startup. Canonical HTML is frozen after actual original Python normalization and
+structured-extra appending; the first two raw-description assertion failures are
+retained, and their fixture correction changed no runtime behavior. Transport
+retries, publisher precedence, MIME, cookies/CSRF, disappearance and cancellation
+pass under race testing. Public replay matches 1,882 jobs on five healthy boards
+with zero field differences, plus the original California PageUp failure. Failure
+parity is not healthy freshness. See the [portable candidate evidence](evidence/go-native-four-portal-http-providers-candidate-2026-10-09.json).
+This candidate has no production authority. It is rebased onto actual merged
+source986 and is published as [PR #10374](https://github.com/colophon-group/jobseek/pull/10374).
+Initial installed-image parity passed, but full native CI found a missing PageUp/Infoniqa
+case in the existing shared registry detail test. It compared a zero-value binding.
+The test now invokes actual DOM detail inspectors and proves equal effective board
+SHAs for their first-party routes; focused race tests pass in 1.736 seconds. This
+changes no runtime guards. New exact-head required CI must pass before merge. Full API-module race testing passed
+in 5.482 seconds; the latest core/inventory/transport race suite passed in 4.103
+seconds, including three bounded ten-child completion/reservation/cancellation cases.
+
+The newest published stable Lightpanda release was rechecked on 2026-10-09:
+**1.0.0**, published 2026-10-02. Production uses its verified immutable renderer
+image and upstream digest. Remaining enabled configuration coverage, mandatory
+runtime/maintenance consumers, whole-lane freshness/conservation/cost, the reversal
+observation window and Python/Playwright/Chromium retirement remain open.
 
 The preceding source984 broad activation and natural observations are retained below.
 

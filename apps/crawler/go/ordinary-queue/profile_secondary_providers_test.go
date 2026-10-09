@@ -90,6 +90,16 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 		}
 		var detail WorkdayDetailProfile
 		switch provider {
+		case "pageup", "infoniqa":
+			o, err := api.PortalHTTPProviderOptionsFromMetadata(provider, config["board_url"], config["metadata"])
+			if err != nil {
+				t.Fatal(err)
+			}
+			source := o.PageUp.ListingURL() + "/job/123/fixture"
+			if provider == "infoniqa" {
+				source = o.Origin + "/hcm/jobexchange/showJobOfferDetail.do?jobOfferId=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&j=jobexchange&organizationUnitId="
+			}
+			detail, e = InspectDOMDetail(profileBoardID, config, source, Simple)
 		case "taleo":
 			o, err := api.TaleoOptionsFromMetadata(config["board_url"], config["metadata"])
 			if err != nil {

@@ -177,7 +177,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		if job51Identity && !validJob51SourceIdentity(claim.task.Config, posting.URL, posting.SourceIdentity) {
 			return nil, ErrConfiguration
 		}
-		if posting.Hybrid && profile.Provider != "beisen" && profile.Provider != "eightfold" && profile.Provider != "paycom" {
+		if posting.Hybrid && profile.Provider != "pageup" && profile.Provider != "beisen" && profile.Provider != "eightfold" && profile.Provider != "paycom" {
 			return nil, ErrConfiguration
 		}
 		// Inventory filtering/normalization is the caller's earlier stage. No
