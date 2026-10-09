@@ -16,7 +16,15 @@ whole-service CPU/RAM/density/attributable cost; and a supported cold reversal
 with its observation window. A merged candidate or synthetic benchmark does
 not complete migration.
 
-## Latest checkpoint — source984 deployed; broad handoff running
+## Latest checkpoint — source985 merged; immutable delivery running
+
+[PR #10372](https://github.com/colophon-group/jobseek/pull/10372) merged with the
+expected review head after fresh required checks and independent outgoing cold250.
+Its source is `bb2dd1236ae1555dfb26b2c703066994dcfc136a`, version **0.13.985**,
+with151 compiled profiles. Original crawler run `37872809888` and matching renderer
+run `37872868680` are queued; production delivery and fresh ownership remain pending.
+
+The preceding source984 broad activation and natural observations are retained below.
 
 [PR #10371](https://github.com/colophon-group/jobseek/pull/10371) merged at
 `9762c5c6550674fd2166e68dc4ec813f50d6cc30`, version **0.13.984**, with all exact-head
@@ -25,7 +33,7 @@ configurations and pipelines the complete B0 startup audit without changing Lua,
 namespace/owner checks or the three-second deadline. The 33 original policy
 cases, 12 real terminal cases, nine cold reversals and public field replay for
 8,784 jobs passed. Its isolated full-size audit under sixty valid legacy
-claimers passed at 691.138 ms; deployed broad readiness remains to be verified.
+claimers passed at 691.138 ms; deployed broad readiness also passed independently with the unchanged three-second deadline.
 
 Original immutable crawler run `37865838788` and matching renderer run
 `37865963658` succeeded on attempt1. Independent cold248 source/image checks
@@ -41,8 +49,19 @@ agreement and one has an unsupported actual route; they keep their current
 owner. Original exact-source staging passed with ordinary plan
 `7505c762a6ee4173b8be3bf4493570496217959fb41a45d25f76abf022fff5c7`,
 projection `911a1eda662afc3513250cb9daa131792d734dc5`, epoch249. The supported
-activation is running. Staging is not serving authority; independent readiness,
-natural freshness/conservation and comparable whole-service cost remain pending.
+activation completed on source984: independent SQL/Redis bindings, ten restart-armed
+writers and eight health endpoints passed at epoch249. Natural observation reached
+218 successful monitors,17 successful details and11,485 posting touches with zero
+claim errors. The original reaper restored Tide's committed exact recurring due
+after its retained lease expired, without replaying its monitor. Other
+unacknowledged settlements remain under observation; full freshness/conservation
+and comparable whole-service cost are not proved.
+
+Source984 full retirement, B0 rollback and selector clearing completed through
+the original supported wrappers after natural leases. Independent cold250 confirms
+all ownership receipts/projections and native tokens absent, the exact full base
+stack restored, optional actors stopped and no current-or-newer active fences.
+No locks, deadlines or lease expiry were bypassed.
 
 The preceding Jarvi/51job release983 and source982 ownership were retired and
 reversed through supported workflows. Independent cold248 verified restored base
@@ -56,7 +75,7 @@ against the official release list on 2026-10-08. The deployed upstream image is
 `lightpanda/browser@sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e`.
 See [the official release](https://github.com/lightpanda-io/browser/releases/tag/1.0.0).
 
-## Next grouped candidate — four public HTTP providers
+## Merged grouped batch — four public HTTP providers
 
 Version **0.13.985** ports **Pay-Net, NowHiring, Fenbi and Wecruit together** for
 all six current registry configurations, raising the compiled profile inventory
@@ -84,8 +103,10 @@ boards and Wecruit currently fail in the original Python code; Go matches those
 failures without publishing prefixes. These are failure-parity observations,
 not healthy inventory or freshness claims. All boards remain enabled.
 
-Exact-head Required CI, Crawler Deploy Gate, installed-image parity, immutable
-rollout and fresh ownership admission remain required before production use.
+[PR #10372](https://github.com/colophon-group/jobseek/pull/10372) has green exact-head
+Required CI, Crawler Deploy Gate, installed-image parity and both Lightpanda
+platform checks on `ac5a99a1c37e4e6d22aa0cccbe8b6b18e340858b`. Its expected-head merge passed after the outgoing cold proof; immutable rollout
+and fresh ownership admission are pending.
 See [candidate evidence](evidence/go-native-four-http-providers-candidate-2026-10-09.json).
 
 Continue in batches across the remaining enabled DOM/API/RSS controls and
@@ -93,6 +114,36 @@ provider types, resolve rendered resource/403 failures, replace mandatory Python
 service/deploy/maintenance consumers, and prove full natural freshness,
 conservation, whole-service cost and supported reversal/window before retiring
 Python, Playwright and Chromium. The full migration goal stays active.
+
+## Next grouped candidate — four retained provider configurations
+
+Version **0.13.986** admits six current configurations across **Ashby, Lever,
+Recruitee and SmartRecruiters** together, raising the compiled inventory to154.
+The first three retain JSON-LD detail settings but have no effective enrichment;
+the original rich pipeline owns their content and removes detail schedules.
+Their original metadata and browser flags remain bound. SmartRecruiters keeps
+URL-selected tenants and its original publication-URL inventory while preserving
+ignored company aliases in the configuration binding. Requested unsupported
+enrichment and canonical identity modes still fail closed.
+
+Qualification passes six actual original request/enrichment decisions, six real
+SQL/Redis complete/publisher-reserved terminal cases, twelve supported cold
+retirements and actual executable startup with154 identities. The initial cold
+runner selected the wrong module and ran no tests; that evidence is retained and
+excluded. The corrected queue runner executed all12 cases and passed. Current
+public same-capture replay matches **149 rich records and17 publication URLs**
+across all six boards with no field differences, including all returned fields
+from the original provider parsers. Canonical persistence and scheduling are
+verified separately by the real fixtures. Focused race checks and both affected
+module vet checks pass. Central full real-fixture CI, immutable delivery and
+fresh ownership are still required.
+
+See [candidate evidence](evidence/go-native-retained-provider-configs-candidate-2026-10-09.json).
+Batch the remaining enabled common DOM/API/RSS controls and remaining providers;
+then finish mandatory service/deployment/maintenance consumers, rendered resource
+and403 failures, full natural freshness/conservation, comparable whole-service
+cost, and supported reversal/window before retiring Python/Playwright/Chromium.
+These gates remain completion criteria, not grounds for delaying qualified batches.
 
 ## Historical checkpoint — source981
 

@@ -1,0 +1,108 @@
+[
+  {
+    "slug": "floryn-careers",
+    "provider": "recruitee",
+    "board_url": "https://jobs.floryn.com/",
+    "metadata": {
+      "api_base": "https://jobs.floryn.com",
+      "scraper_type": "json-ld",
+      "scraper_config": {
+        "render": false
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://jobs.floryn.com/api/offers"
+      }
+    ],
+    "enrich": null
+  },
+  {
+    "slug": "improvado-careers-sr",
+    "provider": "smartrecruiters",
+    "board_url": "https://careers.smartrecruiters.com/Improvado",
+    "metadata": {
+      "company": "Improvado",
+      "scraper_type": "smartrecruiters"
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.smartrecruiters.com/v1/companies/Improvado/postings?limit=100&offset=0"
+      }
+    ],
+    "enrich": null
+  },
+  {
+    "slug": "kaiser-permanente-smartrecruiters",
+    "provider": "smartrecruiters",
+    "board_url": "https://careers.smartrecruiters.com/KaiserPermanente3",
+    "metadata": {
+      "company": "KaiserPermanente3",
+      "scraper_type": "smartrecruiters"
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.smartrecruiters.com/v1/companies/KaiserPermanente3/postings?limit=100&offset=0"
+      }
+    ],
+    "enrich": null
+  },
+  {
+    "slug": "nord-security-main",
+    "provider": "ashby",
+    "board_url": "https://nordsecurity.com/careers",
+    "metadata": {
+      "token": "nord-security",
+      "scraper_type": "json-ld",
+      "scraper_config": {
+        "render": true,
+        "wait": "networkidle",
+        "wait_fallback": "domcontentloaded",
+        "timeout": 30000
+      }
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.ashbyhq.com/posting-api/job-board/nord-security?includeCompensation=true"
+      }
+    ],
+    "enrich": null
+  },
+  {
+    "slug": "tech-mahindra-careers-smartrecruiters",
+    "provider": "smartrecruiters",
+    "board_url": "https://careers.smartrecruiters.com/TechMahindraLtd1",
+    "metadata": {
+      "company_identifier": "TechMahindraLtd1",
+      "scraper_type": "smartrecruiters"
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.smartrecruiters.com/v1/companies/TechMahindraLtd1/postings?limit=100&offset=0"
+      }
+    ],
+    "enrich": null
+  },
+  {
+    "slug": "volta-medical-careers",
+    "provider": "lever",
+    "board_url": "https://jobs.eu.lever.co/volta-medical",
+    "metadata": {
+      "token": "volta-medical",
+      "region": "eu",
+      "scraper_type": "json-ld"
+    },
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.eu.lever.co/v0/postings/volta-medical?limit=100&skip=0"
+      }
+    ],
+    "enrich": null
+  }
+]
