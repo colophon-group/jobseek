@@ -163,6 +163,8 @@ async function handleGet(request: NextRequest) {
       : undefined;
 
   const searchParams = {
+    // The public response exposes active jobs only, including hosted MCP calls.
+    includeYearCounts: false,
     locationIds,
     occupationIds,
     seniorityIds,

@@ -1037,3 +1037,77 @@ describe.each(["server", "browser"] as const)("%s grouped keyword pages", (trans
     expect(result.degraded).toBe(true);
   });
 });
+
+
+describe.each(["server", "browser"] as const)("%s optional yearly counts", (kind) => {
+  function setup() {
+    let failYearQuery = false;
+    const respond = (collection: string, params: Record<string, unknown>) => {
+      if (collection === "company") return canonicalBlankCompanyResponse();
+      if (String(params.filter_by).includes("first_seen_at:>")) {
+        if (failYearQuery) throw new Error("unused year query must not execute");
+        return {
+          facet_counts: [{ field_name: "company_id", counts: [
+            { value: "company-a", count: 6000 },
+            { value: "company-b", count: 5000 },
+          ] }],
+        };
+      }
+      if (params.group_by === "company_id") {
+        return { ...blankCompanyGroupedResponse(), found: 2, found_docs: 9215 };
+      }
+      return { ...blankCompanyFacetResponse(), found: 9215 };
+    };
+    if (kind === "server") {
+      mocks.search.mockImplementation(respond);
+    } else {
+      vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url === "/api/typesense-key") return Response.json({
+          apiKey: "browser-key", host: "typesense.example", port: 443,
+          protocol: "https", expiresAt: Date.now() + 60_000,
+        });
+        const parsed = new URL(url);
+        const collection = parsed.pathname.match(/\/collections\/([^/]+)/)?.[1];
+        if (!collection) throw new Error("unexpected collection");
+        const params = Object.fromEntries(parsed.searchParams.entries());
+        mocks.browserCalls.push({ collection, params });
+        return Response.json(respond(collection, params));
+      }));
+    }
+    return {
+      provider: kind === "server" ? new TypesenseSearchProvider() : new TypesenseBrowserProvider(),
+      calls: kind === "server" ? mocks.calls : mocks.browserCalls,
+      failYear: () => { failYearQuery = true; },
+    };
+  }
+
+  it.each(["keyword", "filtered ranking"] as const)(
+    "preserves %s results and removes only the unused yearly query",
+    async (path) => {
+      const { provider, calls, failYear } = setup();
+      const params = { languages: ["en"], locale: "en", offset: 0, limit: 2 };
+      const run = (includeYearCounts?: boolean) => path === "keyword"
+        ? provider.search({ ...params, keywords: ["engineer"], includeYearCounts })
+        : provider.listTopCompanies({ ...params, includeYearCounts });
+      const full = await run();
+      expect(full.companies.map((c) => c.yearMatches)).toEqual([6000, 5000]);
+      const fullCalls = [...calls];
+      calls.length = 0;
+      failYear();
+      const without = await run(false);
+      expect(without.degraded).toBeUndefined();
+      expect(without.companies.map((c) => c.yearMatches)).toEqual([0, 0]);
+      const visible = (result: typeof full) => ({
+        ...result,
+        companies: result.companies.map(({ yearMatches: _, ...company }) => company),
+      });
+      expect(visible(without)).toEqual(visible(full));
+      expect(without.companies).toHaveLength(2);
+      expect(without.companies[0].company.name).toBe("Advance Auto Parts");
+      expect(calls).toEqual(fullCalls.filter((c) =>
+        !String(c.params.filter_by).includes("first_seen_at:>")));
+      expect(fullCalls).toHaveLength(calls.length + 1);
+    },
+  );
+});

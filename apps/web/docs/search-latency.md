@@ -10,8 +10,8 @@ not execute this instrumentation.
 Stages: `rate_limit`, `parse_filters`, `resolve_filters`, `interpret_terms`,
 `session`, `provider`, `main_search`, `year_counts`, `company_metadata`,
 `active_counts`, `posting_hydration`, `location_lookup`, `occupation_lookup`,
-`seniority_lookup`, `technology_lookup`. Only executed stages appear. Queries,
-cache keys, retry policy, ordering and public response contracts are preserved.
+`seniority_lookup`, `technology_lookup`. Only executed stages appear. Retry policy, ordering and public response
+contracts are preserved.
 
 - `duration_ms`: monotonic handler wall time, excluding module startup,
   response delivery and post-response metrics writes.
@@ -38,3 +38,16 @@ active counts and posting hydration for top-company requests). SDK wall versus
 reported engine time separates engine execution from the remaining combined
 transport/retry/client overhead; it cannot separate network from queueing.
 Do not sum marginal percentiles or infer zero traffic from absent fields.
+
+
+Public REST search (including hosted MCP downstream REST) passes
+`includeYearCounts: false`: its response exposes active jobs and does not use
+`yearMatches`. Keyword search and filtered top-company ranking therefore skip
+that enrichment query. Website callers retain yearly counts by default, and
+service cache keys isolate the omitted-count variant. Unfiltered ranking keeps
+its existing precomputed company counts and ordering without an extra query.
+An absent `year_counts` stage on these API paths is expected after this change.
+
+Track the optimization in #10377 and compare post-deployment origin profiles
+against the earlier baseline, separating keyword search from filtered ranking.
+Do not claim the modeled latency saving as a measured improvement before rollout.

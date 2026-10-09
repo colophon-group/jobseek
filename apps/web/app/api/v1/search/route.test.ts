@@ -96,6 +96,7 @@ describe("GET /api/v1/search", () => {
     // No keywords → listTopCompanies path
     expect(mocks.listTopCompanies).toHaveBeenCalledTimes(1);
     const call = mocks.listTopCompanies.mock.calls[0][0];
+    expect(call.includeYearCounts).toBe(false);
     expect(call.languages).toEqual([]);
     expect(call.locale).toBe("en");
     expect(call.salaryMinEur).toBeUndefined();
@@ -271,6 +272,7 @@ describe("GET /api/v1/search", () => {
     expect(mocks.searchJobs).toHaveBeenCalledTimes(1);
     expect(mocks.listTopCompanies).not.toHaveBeenCalled();
     const call = mocks.searchJobs.mock.calls[0][0];
+    expect(call.includeYearCounts).toBe(false);
     expect(call.keywords).toEqual(["engineer"]);
     expect(call.languages).toEqual(["de"]);
   });
@@ -453,6 +455,32 @@ describe("GET /api/v1/search", () => {
       { service: "typesense", operation: "public_api_search" },
       providerError,
     );
+  });
+
+  it("keeps the public payload identical when unused yearly counts are omitted", async () => {
+    const company = {
+      company: { id: "company-a", name: "Company A", slug: "company-a", icon: null },
+      activeMatches: 4,
+      postings: [{ id: "posting-a", title: "Engineer", locations: [{ name: "Zurich" }] }],
+    };
+    mocks.listTopCompanies.mockResolvedValueOnce({
+      companies: [{ ...company, yearMatches: 37 }], totalCompanies: 1,
+    }).mockResolvedValueOnce({
+      companies: [{ ...company, yearMatches: 0 }], totalCompanies: 1,
+    });
+    const before = await callRoute("?locale=en");
+    const after = await callRoute("?locale=en");
+    expect(after.res.status).toBe(200);
+    expect(after.body).toEqual(before.body);
+    expect(after.body.companies).toEqual([expect.objectContaining({
+      name: "Company A", activeJobs: 4,
+      topPostings: [expect.objectContaining({ id: "posting-a", title: "Engineer", location: "Zurich" })],
+    })]);
+    expect(JSON.stringify(after.body)).not.toContain("yearMatches");
+    expect(JSON.stringify(after.body)).not.toContain("includeYearCounts");
+    for (const header of ["Cache-Control", "Vercel-CDN-Cache-Control", "Access-Control-Allow-Origin"]) {
+      expect(after.res.headers.get(header)).toBe(before.res.headers.get(header));
+    }
   });
 
   it("does not cache a degraded search as a real empty result", async () => {

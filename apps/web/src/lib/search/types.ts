@@ -62,6 +62,7 @@ export interface SearchResultPosting {
 export interface SearchResultCompany {
   company: { id: string; name: string; slug: string; icon: string | null };
   activeMatches: number;
+  /** May be zero when year-count queries are skipped; callers must omit it. */
   yearMatches: number;
   postings: SearchResultPosting[];
 }
@@ -122,14 +123,19 @@ export interface ExperienceBucket {
   count: number;
 }
 
+export interface SearchEnrichment {
+  /** Defaults to true. False skips yearly display counts, not active eligibility. */
+  includeYearCounts?: boolean;
+}
+
 export interface SearchProvider {
-  search(params: SearchFilters & {
+  search(params: SearchFilters & SearchEnrichment & {
     keywords: string[];
     offset: number;
     limit: number;
   }): Promise<SearchResponse>;
 
-  listTopCompanies(params: SearchFilters & {
+  listTopCompanies(params: SearchFilters & SearchEnrichment & {
     offset: number;
     limit: number;
   }): Promise<SearchResponse>;

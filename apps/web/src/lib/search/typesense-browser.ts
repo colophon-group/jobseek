@@ -7,6 +7,7 @@ import {
 import type {
   PostingLocation,
   SearchFilters,
+  SearchEnrichment,
   SearchProvider,
   SearchResponse,
   SearchResultCompany,
@@ -277,7 +278,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
   }
 
   async search(
-    params: SearchFilters & { keywords: string[]; offset: number; limit: number },
+    params: SearchFilters & SearchEnrichment & { keywords: string[]; offset: number; limit: number },
   ): Promise<SearchResponse> {
     try {
       const cfg = await this.cfg();
@@ -301,7 +302,9 @@ export class TypesenseBrowserProvider implements SearchProvider {
       const companyIds = groupedHits.map((g) => g.hits[0]?.document.company_id)
         .filter((id): id is string => Boolean(id));
       const [yearMap, companyMap] = await Promise.all([
-        fetchYearCounts(cfg, companyIds, filterStr, keywords.join(" ")),
+        params.includeYearCounts === false
+          ? new Map<string, number>()
+          : fetchYearCounts(cfg, companyIds, filterStr, keywords.join(" ")),
         fetchCompaniesById(cfg, companyIds),
       ]);
 
@@ -336,7 +339,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
   }
 
   async listTopCompanies(
-    params: SearchFilters & { offset: number; limit: number },
+    params: SearchFilters & SearchEnrichment & { offset: number; limit: number },
   ): Promise<SearchResponse> {
     try {
       const cfg = await this.cfg();
@@ -345,7 +348,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
       if (filterStr.length === 0) {
         return await this.unfiltered(cfg, offset, limit);
       }
-      return await this.filtered(cfg, filterStr, offset, limit, locationIds);
+      return await this.filtered(cfg, filterStr, offset, limit, locationIds, params.includeYearCounts);
     } catch (err) {
       logExternalError(
         "error",
@@ -362,6 +365,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
     offset: number,
     limit: number,
     locationIds?: number[],
+    includeYearCounts = true,
   ): Promise<SearchResponse> {
     const activeFilter = `${POSTING_BASE_FILTER} && ${filterStr}`;
     const facetResult = await searchOne<JobPostingDoc>(cfg, "job_posting", {
@@ -389,7 +393,9 @@ export class TypesenseBrowserProvider implements SearchProvider {
     const activeMap = new Map(page.map((c) => [c.value, c.count] as [string, number]));
 
     const [yearMap, postingResults, companyMap] = await Promise.all([
-      fetchYearCounts(cfg, companyIds, filterStr, "*"),
+      includeYearCounts
+        ? fetchYearCounts(cfg, companyIds, filterStr, "*")
+        : new Map<string, number>(),
       searchOne<JobPostingDoc>(cfg, "job_posting", {
         q: "*",
         filter_by: `company_id:[${companyIds.join(",")}] && ${activeFilter}`,
