@@ -54,6 +54,9 @@ func TestAPIDetailBindsActualProviderRouteWithoutAdoptingLegacyMonitor(t *testin
 func TestAPIDetailRefusesUnimplementedConfigAndForeignRoutes(t *testing.T) {
 	for _, tc := range apiDetailCases {
 		for _, options := range []string{`{"proxy":true}`, `{"render":true}`, `{"ssl_verify":false}`, `{"defaults":{"title":"override"}}`, `{"fallback":["dom"]}`, `{"proxy":true,"proxy":false}`} {
+			if tc.name == "workable" && options == `{"proxy":true}` {
+				continue
+			}
 			c := apiDetailConfig(tc.name)
 			c["metadata"] = `{"scraper_type":"` + tc.name + `","scraper_config":` + options + `}`
 			if _, err := InspectAPIDetail(jsonldBoardID, c, tc.source, Simple); !errors.Is(err, ErrUnsupportedProfile) {

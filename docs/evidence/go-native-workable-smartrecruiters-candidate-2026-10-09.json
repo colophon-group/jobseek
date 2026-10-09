@@ -1,0 +1,70 @@
+{
+  "version": "0.13.994",
+  "observed_at_utc": "2026-10-09T12:27:57.805399+00:00",
+  "scope": "Local candidate qualification only; fresh published-head checks and deployed actual-route admission remain required",
+  "parent_source": "f726b7f095485defd656dbf861a33ae62257b5cc",
+  "crawler_version": "0.13.993",
+  "profiles": [
+    "workable.proxy-api-urls/v1",
+    "workable.proxy-api-detail/v1",
+    "smartrecruiters.canonical-items/v1"
+  ],
+  "compiled_profile_count": 165,
+  "current_registry_boards": [
+    "abm-uk",
+    "fuku-careers",
+    "vertiv-bmarko",
+    "hm-group-careers-group",
+    "nagarro-careers",
+    "swiss-medical-network-smartrecruiters"
+  ],
+  "original_monitor_and_cpu_corpus": {
+    "cases": 8,
+    "sha256": "ab558560149f919328251f77ae9a828b1b93727763cb42b5036f60752c5f8539",
+    "collector": "apps/crawler/go/ordinary-worker/testdata/collect_smart_canonical_worker.py"
+  },
+  "validation": {
+    "real_monitor_detail_cases": 20,
+    "real_monitor_detail_seconds": 20.148,
+    "real_monitor_detail_proof": "native993-grouped-workable-smart-real-terminal-verified2-2026-10-09.log",
+    "cold_retirement_cases": 12,
+    "cold_retirement_seconds": 13.465,
+    "cold_retirement_proof": "native993-grouped-workable-smart-real-cold-startup-initial3-2026-10-09.log",
+    "real_executable_startup_seconds": 7.222,
+    "real_executable_startup_proof": "native993-grouped-workable-smart-real-startup-initial4-2026-10-09.log",
+    "smartrecruiters_full_sdk_race_seconds": 2.003,
+    "ordinary_queue_full_unit_race_seconds": 28.521,
+    "ordinary_queue_postgres_optional_skipped_in_unit_run": true,
+    "worker_vet": "passed",
+    "installed_profile_expectation": "matches all165 profiles in exact order",
+    "ordinary_ownership_python": {
+      "passed": 66,
+      "optional_skipped": 9,
+      "seconds": 2.89
+    }
+  },
+  "preserved_failed_attempts": [
+    {
+      "proof": "native993-grouped-workable-smart-real-terminal-initial1-2026-10-09.log",
+      "reason": "Test used an absent results field as malformed Workable data; original provider deliberately defaults that shape to empty. Replaced the failure test payload with an invalid results list without changing the provider."
+    }
+  ],
+  "limits": [
+    "Full published-head worker race and required CI pending",
+    "Current registry binding is local eligibility; no deployed census or actual posting-route admission yet",
+    "No fresh live public Workable or SmartRecruiters samples are claimed by this candidate",
+    "RSS SuccessFactors DWR protocol was researched and remains a separate grouped batch",
+    "Full migration freshness, conservation, cost and Python retirement remain incomplete"
+  ],
+  "current_base_integration": {
+    "parent_revision": "57634b783",
+    "reason": "Includes concurrent main trace/resolver repair and grouped exporter recovery; version advanced to0.13.994",
+    "feature_implementation": "byte unchanged from7d808, already byte unchanged from fully qualified782",
+    "full_local_race": {
+      "head": "78283afa69620817cc0617deedbec48126c90dcf",
+      "result": "PASS",
+      "seconds": 863.208
+    },
+    "fresh_exact_head_checks": "pending"
+  }
+}

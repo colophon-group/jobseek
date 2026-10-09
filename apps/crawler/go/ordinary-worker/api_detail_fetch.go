@@ -98,7 +98,7 @@ func fetchAPIDetail(ctx context.Context, verified *VerifiedDirectHTTP, profile q
 				reservation.PolicyURL = &reserved.Policy
 			}
 		}
-	case "workable.api-detail/v1":
+	case "workable.api-detail/v1", "workable.proxy-api-detail/v1":
 		fetched, failure := workable.FetchDetailWithClient(ctx, profile.SourceURL, profile.APITokenOverride, &client)
 		content, err = fetched.Content, failure
 		if fetched.ErrorKind == "tdm" {

@@ -3,6 +3,7 @@ package queue
 import "encoding/json"
 
 var httpMonitorProxyProfiles = map[string]string{
+	"workable.api-urls/v1":      "workable.proxy-api-urls/v1",
 	"umantis.listing-urls/v1":   "umantis.proxy-listing-urls/v1",
 	"dom.direct-urls/v1":        "dom.proxy-urls/v1",
 	"dom.direct-rows/v1":        "dom.proxy-rows/v1",
@@ -60,7 +61,7 @@ func httpMonitorParsingConfig(config map[string]string) (map[string]string, erro
 	}
 	if proxy {
 		switch config["crawler_type"] {
-		case "dom", "api_sniffer", "inline", "sitemap", "eightfold", "phenom":
+		case "dom", "api_sniffer", "inline", "sitemap", "eightfold", "phenom", "workable":
 		default:
 			return nil, ErrUnsupportedProfile
 		}
@@ -84,7 +85,7 @@ func httpMonitorParsingConfig(config map[string]string) (map[string]string, erro
 // Transport choice is compiled into immutable profile identities; neither a
 // generic caller flag nor a runtime selector grants proxy write authority.
 func ProfileRequiresProxy(profile string) bool {
-	if profile == "jobbank104.proxy-public-items/v1" || profile == "practicematch.proxy-listing-urls/v1" {
+	if profile == workableProxyDetailProfile || profile == "jobbank104.proxy-public-items/v1" || profile == "practicematch.proxy-listing-urls/v1" {
 		return true
 	}
 	if profile == "computrabajo.proxy-listing-urls/v1" || profile == "earcu.proxy-feed-items/v1" || profile == "paylocity.proxy-embedded-items/v1" || profile == paylocityProxyDetailProfile || profile == eightfoldProxyDetailProfile || profile == domProxyDetailProfile || profile == jsonldProxyDetailProfile || profile == httpAPIProxyDetailProfile {

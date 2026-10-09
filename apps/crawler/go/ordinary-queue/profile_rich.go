@@ -172,6 +172,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 			allowed[key] = true
 		}
 	case "workable":
+		allowed["proxy"] = true
 		for _, key := range []string{"delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
 		}

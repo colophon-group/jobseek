@@ -987,6 +987,52 @@ reversal and the retirement window justify removing production Python, Playwrigh
 and Chromium. Preserve useful isolated offline Python and every enabled board.
 
 
+### 2026-10-09: source991 merged; next two provider batches advancing
+
+PR #10376 is merged as `02e8adaef88db28c8977c4df165a8e1c19ec16e5`
+(version 0.13.991). Its exact reviewed head passed Required CI, Crawler Deploy
+Gate and installed-image parity. A fresh independent source990 cold proof at
+epoch 254 confirmed healthy legacy writers, no active native plans, receipts,
+selectors or projections. The actual base advanced only through separately
+reviewed web changes; the merge audit verified that crawler/runtime/taxonomy
+inputs were unchanged, refreshed current-base authority and bound the merge to
+the reviewed head. Original whole crawler deployment 37929175948 and matching
+renderer deployment 37929281042 are building. Production source991 identity and
+reactivation must be independently verified before describing it as serving.
+The official Lightpanda releases API was rechecked at 12:19 UTC; stable 1.0.0 and
+the existing immutable upstream image remain current.
+
+PR #10383 is now based on the actual source991 squash, reviewed candidate
+`f726b7f095485defd656dbf861a33ae62257b5cc` (version 0.13.992).
+Its runtime location enum is included in the Lightpanda build. A real installed
+image failure exposed a stale 158-profile CI expectation; the repaired workflow
+expects all 162 profiles in compiled order. Fresh automatic exact-head CI and
+installed-image parity runs supersede the stopped obsolete stacked dispatches.
+
+The next grouped batch, version 0.13.993, connects Workable's required proxy
+monitor and independently selected proxy details to the existing transport
+owner. It also connects all three configured SmartRecruiters canonical modes
+(job, job/location, and canonical URL template) to existing rich preparation
+and durable identity persistence. Three new profiles bring the executable to
+165. Publisher reservations survive concurrent detail/parser failures. Posting
+IDs and prior destination aliases survive publication URL changes; localized
+fields and ordering match the original monitor and CPU boundary. All six
+current configured boards bind locally without CSV changes. Twenty real
+monitor/detail cases, twelve cold-retirement cases and executable startup
+passed against isolated PostgreSQL/Redis; full published-head verification and
+live admission remain required. Evidence is recorded in
+[evidence/go-native-workable-smartrecruiters-candidate-2026-10-09.json](evidence/go-native-workable-smartrecruiters-candidate-2026-10-09.json).
+
+Continue by verifying the supported source991 deployments and reopening the
+broad native owner through fresh B0/source/image/config/actual-route admission.
+Keep that owner serving through meaningful observations while the following
+grouped batches qualify. Merge source992 and source993 only with renewed
+exact-head checks and current operator/hold authority. RSS legacy SuccessFactors
+DWR sessions, remaining DOM/API configuration gaps and the rest of the frontier
+remain implementation work. Full freshness/conservation, comparable whole-lane
+cost, supported final reversal and the rollback window remain required before
+retiring production Python, Playwright or Chromium. The goal remains active.
+
 Source991's original crawler and renderer workflows completed successfully.
 The independent read verified crawler image `sha256:5ce94c517e3302a0469aa19b68028303ab12831d483fa1120adab52c1761bbfe`,
 browser image `sha256:7e967d476f997e8c01deb344cc16d5ae1ea15dff7c205414e585a7593143f7ae`,

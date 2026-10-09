@@ -5,7 +5,9 @@ import (
 	"crypto/sha256"
 	_ "embed"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
+	smartrecruiters "github.com/colophon-group/jobseek/apps/crawler/go/smartrecruiters-monitor"
 	"math/rand/v2"
 	"strings"
 	"time"
@@ -163,7 +165,19 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		}
 	}
 	job51Identity := profile.Provider == "job51"
-	identityEnabled := identityConfig != nil || zohoIdentity || hrIdentity || woowaIdentity || tenthIdentity || job51Identity || finalIdentity
+	smartIdentity := profile.Profile == "smartrecruiters.canonical-items/v1"
+	var smartOptions smartrecruiters.Options
+	if smartIdentity {
+		var md smartrecruiters.Object
+		if json.Unmarshal([]byte(claim.task.Config["metadata"]), &md) != nil {
+			return nil, ErrConfiguration
+		}
+		smartOptions, err = smartrecruiters.OptionsFromMetadata(claim.task.Config["board_url"], md)
+		if err != nil {
+			return nil, ErrConfiguration
+		}
+	}
+	identityEnabled := smartIdentity || identityConfig != nil || zohoIdentity || hrIdentity || woowaIdentity || tenthIdentity || job51Identity || finalIdentity
 	identities := []string{}
 	explicit := []bool{}
 	identityByURL := map[string]string{}
@@ -171,6 +185,9 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 	byURL := make(map[string]*GreenhouseRichContent, len(batch))
 	hybridByURL := map[string]bool{}
 	for _, posting := range batch {
+		if smartIdentity && !smartOptions.IdentityMatches(posting.URL, posting.SourceIdentity) {
+			return nil, ErrConfiguration
+		}
 		if finalIdentity && !finalOptions.IdentityMatches(posting.URL, posting.SourceIdentity) {
 			return nil, ErrConfiguration
 		}

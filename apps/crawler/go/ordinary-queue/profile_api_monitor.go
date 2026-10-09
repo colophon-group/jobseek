@@ -14,9 +14,8 @@ import (
 
 var workableBoardToken = regexp.MustCompile(`apply\.workable\.com/([\pL\pN_-]+)`)
 
-// These profiles keep the existing URL-only inventory and separately scheduled
-// detail contract. SmartRecruiters' opt-in requisition identities remain outside
-// this profile until the rich identity writer is integrated.
+// URL-only inventories retain separately scheduled details. Canonical
+// SmartRecruiters configurations use the existing rich durable-identity writer.
 func inspectAPIMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
 	fail := func() (GreenhouseMonitorProfile, error) { return GreenhouseMonitorProfile{}, ErrUnsupportedProfile }
 	provider := config["crawler_type"]
@@ -25,13 +24,23 @@ func inspectAPIMonitor(boardID string, config map[string]string, md map[string]j
 		return fail()
 	}
 	var token, endpoint string
+	profile := provider + ".api-urls/v1"
 	if provider == "smartrecruiters" {
 		options, err := smartrecruiters.OptionsFromMetadata(config["board_url"], metadata)
-		if err != nil || options.Identity != "" || options.Template != nil {
+		if err != nil {
 			return fail()
+		}
+		if options.Identity != "" || options.Template != nil {
+			if feedRichDetailAssignment(config) != nil {
+				return fail()
+			}
+			profile = "smartrecruiters.canonical-items/v1"
 		}
 		token, endpoint = options.Token, smartrecruiters.ListURL(options.Token)+"?limit=100&offset=0"
 	} else {
+		if raw, ok := md["proxy"]; ok && string(raw) != "true" && string(raw) != "false" && string(raw) != "null" {
+			return fail()
+		}
 		if raw, ok := md["token"]; ok && string(raw) != "null" {
 			if json.Unmarshal(raw, &token) != nil {
 				return fail()
@@ -50,7 +59,7 @@ func inspectAPIMonitor(boardID string, config map[string]string, md map[string]j
 		}
 		endpoint = "https://apply.workable.com/api/v3/accounts/" + token + "/jobs"
 	}
-	return inspectURLOnlyMonitor(boardID, config, md, provider, provider+".api-urls/v1", token, endpoint)
+	return inspectURLOnlyMonitor(boardID, config, md, provider, profile, token, endpoint)
 }
 
 // Reuse the existing configuration/transport authority and URL-only lifecycle
@@ -124,7 +133,7 @@ func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[stri
 		return fail()
 	}
 	stable, err := stableGreenhouseConfig(config, md)
-	if SecondaryProvider(provider) || provider == "mokahr" || provider == "almacareer" || provider == "eightfold" || provider == "personio" || provider == "rss" || provider == "inline" || provider == "beisen" || provider == "sitemap" || provider == "join" || provider == "dom" || provider == "api_sniffer" || provider == "oracle_hcm" || provider == "icims" || provider == "breezy" || provider == "jazzhr" || provider == "gupy" || provider == "phenom" || provider == "jobylon" || provider == "nextdata" {
+	if SecondaryProvider(provider) || provider == "mokahr" || provider == "almacareer" || provider == "eightfold" || provider == "personio" || provider == "rss" || provider == "inline" || provider == "beisen" || provider == "sitemap" || provider == "join" || provider == "dom" || provider == "api_sniffer" || provider == "oracle_hcm" || provider == "icims" || provider == "breezy" || provider == "jazzhr" || provider == "gupy" || provider == "phenom" || provider == "jobylon" || provider == "nextdata" || profile == "smartrecruiters.canonical-items/v1" {
 		// PostgreSQL jsonb and Redis may order nested filter/detail keys
 		// differently. Reuse the existing semantic configuration binding.
 		stable, err = stableJSONLDConfig(config, md)
@@ -165,8 +174,11 @@ func APIMonitorResourceMatches(p GreenhouseMonitorProfile, resource string) bool
 	if err != nil || u.Scheme != "https" || u.User != nil || u.Opaque != "" || u.Fragment != "" || u.RawPath != "" || u.Port() != "" {
 		return false
 	}
-	if p.Profile == "smartrecruiters.api-urls/v1" {
+	if p.Profile == "smartrecruiters.api-urls/v1" || p.Profile == "smartrecruiters.canonical-items/v1" {
 		base := smartrecruiters.ListURL(p.Token)
+		if p.Profile == "smartrecruiters.canonical-items/v1" && u.RawQuery == "" && strings.HasPrefix(resource, base+"/") {
+			return smartrecruiters.PublicationResourceMatches(p.Token, resource)
+		}
 		q, queryErr := url.ParseQuery(u.RawQuery)
 		if queryErr != nil {
 			return false
@@ -175,7 +187,7 @@ func APIMonitorResourceMatches(p GreenhouseMonitorProfile, resource string) bool
 		offset, err := strconv.Atoi(q.Get("offset"))
 		return u.String() == base && len(q) == 2 && len(q["limit"]) == 1 && q.Get("limit") == "100" && len(q["offset"]) == 1 && err == nil && offset >= 0 && offset <= 50000 && offset%100 == 0 && strconv.Itoa(offset) == q.Get("offset")
 	}
-	if p.Profile != "workable.api-urls/v1" || u.RawQuery != "" {
+	if p.Profile != "workable.api-urls/v1" && p.Profile != "workable.proxy-api-urls/v1" || u.RawQuery != "" {
 		return false
 	}
 	if u.Host == "www.workable.com" {

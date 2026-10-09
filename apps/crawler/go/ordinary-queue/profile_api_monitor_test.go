@@ -41,7 +41,7 @@ func TestAPIMonitorURLOnlyProfilesBindDetailConfiguration(t *testing.T) {
 			t.Fatal("browser monitor admitted as direct API")
 		}
 	}
-	for _, md := range []string{`{"canonical_identity":"job-v1"}`, `{"canonical_identity":"job-location-v1"}`, `{"canonical_job_id_url_template":"https://example.com/{jobId}"}`} {
+	for _, md := range []string{`{"canonical_identity":"invalid"}`, `{"canonical_identity":"job-v1","canonical_job_id_url_template":"https://example.com/{job_id}"}`, `{"canonical_job_id_url_template":"https://example.com/{jobId}"}`} {
 		c := apiMonitorConfig("smartrecruiters")
 		c["metadata"] = md
 		if _, err := InspectRichMonitor(profileBoardID, c); err == nil {

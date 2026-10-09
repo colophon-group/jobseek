@@ -29,10 +29,15 @@ func apiDetailPayload(provider string) string {
 }
 
 func TestRealAPIDetailUsesVerifiedHTTPSharedPersistenceAndOneShotFallback(t *testing.T) {
-	for _, mode := range []string{"smartrecruiters", "workable", "workable-markdown"} {
+	for _, mode := range []string{"smartrecruiters", "workable", "workable-markdown", "workable-proxy", "workable-proxy-markdown"} {
 		t.Run(mode, func(t *testing.T) {
-			provider := strings.TrimSuffix(mode, "-markdown")
-			f, a, claim := apiOwnedFixture(t, provider)
+			provider := strings.TrimSuffix(strings.TrimSuffix(mode, "-markdown"), "-proxy")
+			f, a, claim := func() (nativePipelineFixture, *queue.Authority, *queue.Claim) {
+				if strings.Contains(mode, "-proxy") {
+					return independentDetailOwnedFixture(t, `{"scraper_type":"workable","scraper_config":{"proxy":true}}`, "https://apply.workable.com/fixture/j/ABC123/")
+				}
+				return apiOwnedFixture(t, provider)
+			}()
 			ctx := context.Background()
 			calls := 0
 			client := richPipelineHTTP(t, func(w http.ResponseWriter, r *http.Request) {
@@ -41,13 +46,13 @@ func TestRealAPIDetailUsesVerifiedHTTPSharedPersistenceAndOneShotFallback(t *tes
 				if provider == "workable" {
 					wantHost, wantPath = "apply.workable.com", "/api/v2/accounts/fixture/jobs/ABC123"
 				}
-				if mode == "workable-markdown" && calls == 2 {
+				if strings.HasSuffix(mode, "-markdown") && calls == 2 {
 					wantPath = "/fixture/jobs/view/ABC123.md"
 				}
 				if r.Method != "GET" || r.Host != wantHost || r.URL.Path != wantPath {
 					t.Error("wrong public API request", r.Method, r.Host, r.URL.Path)
 				}
-				if mode == "workable-markdown" {
+				if strings.HasSuffix(mode, "-markdown") {
 					if calls == 1 {
 						w.WriteHeader(429)
 						return
@@ -57,13 +62,16 @@ func TestRealAPIDetailUsesVerifiedHTTPSharedPersistenceAndOneShotFallback(t *tes
 					fmt.Fprint(w, apiDetailPayload(provider))
 				}
 			})
+			if strings.Contains(mode, "-proxy") {
+				client = credentialedProxyFixture(t, client)
+			}
 			circuits, err := queue.NewHostCircuits(f.client, queue.DefaultHostCircuitSettings())
 			if err != nil {
 				t.Fatal(err)
 			}
 			result, err := RunDetail(ctx, a, claim, client, richPipelinePreparer(t, f).Processor, circuits)
 			wantCalls := 1
-			if mode == "workable-markdown" {
+			if strings.HasSuffix(mode, "-markdown") {
 				wantCalls = 2
 			}
 			if err != nil || !result.Settled || result.Cycle.Status != "succeeded" || calls != wantCalls || result.HTTP.Requests != int64(wantCalls) || result.HTTP.Responses != int64(wantCalls) {
@@ -80,7 +88,7 @@ func TestRealAPIDetailUsesVerifiedHTTPSharedPersistenceAndOneShotFallback(t *tes
 			if title != "Senior Software Engineer" || !strings.Contains(html, "Salary CHF") || currency != "CHF" || uploaded || canonicalHash != nil || pendingHash == 0 {
 				t.Fatal("API canonical fields or pending description differ")
 			}
-			if provider == "workable" && mode != "workable-markdown" && !strings.Contains(html, "Build things.") {
+			if provider == "workable" && !strings.HasSuffix(mode, "-markdown") && !strings.Contains(html, "Build things.") {
 				t.Fatal("Workable requirements lost")
 			}
 			score, err := f.r.ZScore(ctx, "scrapes_simple:"+claim.Descriptor().Domain, f.original).Result()

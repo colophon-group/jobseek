@@ -14,6 +14,7 @@ import (
 func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture {
 	t.Helper()
 	proxy := strings.HasSuffix(provider, "/proxy")
+	variant := strings.TrimPrefix(provider, "smartrecruiters/")
 	provider = strings.Split(provider, "/")[0]
 	filteredAPI := provider == "api_sniffer_filtered"
 	if filteredAPI {
@@ -41,8 +42,16 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 		board, metadata = "https://jobs.eu.lever.co/fixture", `{"token":"fixture","region":"eu","scraper_type":"json-ld"}`
 	case "recruitee":
 		board, metadata = "https://fixture.recruitee.com/", `{"scraper_type":"json-ld","scraper_config":{"render":false}}`
+	case "workable":
+		board, metadata = "https://apply.workable.com/fixture", `{"scraper_type":"workable"}`
 	case "smartrecruiters":
 		board, metadata = "https://careers.smartrecruiters.com/fixture", `{"company_identifier":"ignored-alias","scraper_type":"smartrecruiters"}`
+		if variant == "job-v1" || variant == "job-location-v1" {
+			metadata = `{"scraper_type":"skip","canonical_identity":"` + variant + `"}`
+		}
+		if variant == "template" {
+			metadata = `{"scraper_type":"skip","canonical_job_id_url_template":"https://career.hm.com/job/{job_id}/"}`
+		}
 	case "paynet":
 		board, metadata = "https://www.pay-netonline.com/PayNet/Applicant/Postings.aspx?Co=Example", `{"scraper_type":"skip"}`
 	case "pageup":

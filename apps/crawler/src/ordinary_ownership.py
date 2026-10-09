@@ -174,6 +174,7 @@ def ownership_projection(payload: str) -> str:
                     "jsonld.direct-detail/v1",
                     "smartrecruiters.api-detail/v1",
                     "workable.api-detail/v1",
+                    "workable.proxy-api-detail/v1",
                     "join.nextdata-detail/v1",
                     "dom.direct-detail/v1",
                     "dom.rendered-detail/v1",
