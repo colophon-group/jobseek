@@ -667,6 +667,30 @@ describe("scoped search key expiry", () => {
 // SearchProvider.search()
 // =====================================================================
 
+describe("optional yearly-count enrichment", () => {
+  it.each(["keyword", "filtered ranking"] as const)(
+    "preserves actual Typesense %s results without yearly enrichment",
+    async (path) => {
+      if (skipIfUnavailable()) return;
+      const params = { ...DEFAULT_FILTERS, locationIds: [LOC_NYC], offset: 0, limit: 2 };
+      const run = (includeYearCounts?: boolean) => path === "keyword"
+        ? provider.search({ ...params, keywords: ["Engineer"], includeYearCounts })
+        : provider.listTopCompanies({ ...params, includeYearCounts });
+      const full = await run();
+      const without = await run(false);
+      expect(full.companies.length).toBeGreaterThan(0);
+      expect(full.companies.some((c) => c.yearMatches > 0)).toBe(true);
+      expect(without.companies.every((c) => c.yearMatches === 0)).toBe(true);
+      const visible = (result: typeof full) => ({
+        ...result,
+        companies: result.companies.map(({ yearMatches: _, ...company }) => company),
+      });
+      expect(visible(without)).toEqual(visible(full));
+      expect(without.degraded).not.toBe(true);
+    },
+  );
+});
+
 describe("search()", () => {
   it("paginates the exact 27.1 grouped order with lookahead and explicit exhaustion", async () => {
     if (skipIfUnavailable()) return;

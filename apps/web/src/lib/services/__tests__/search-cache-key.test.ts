@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => {
   const keys: string[] = [];
   const provider = {
+    search: vi.fn(async () => ({ companies: [], totalCompanies: 0 })),
     listTopCompanies: vi.fn(async () => ({ companies: [], totalCompanies: 0 })),
   };
   return {
@@ -36,7 +37,7 @@ vi.mock("@/lib/sessionCache", () => ({
   getSessionUserId: vi.fn(async () => null),
 }));
 
-import { listTopCompaniesAnonymous } from "../search";
+import { listTopCompaniesAnonymous, listTopCompanies, searchJobs } from "../search";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -53,5 +54,35 @@ describe("search service cache keys", () => {
     });
 
     expect(mocks.keys).toEqual(["top-companies:v2:en:en:0:10"]);
+  });
+});
+
+
+describe("search enrichment propagation", () => {
+  const params = { languages: ["en"], locale: "en", offset: 0, limit: 10 };
+
+  it("separates omitted-count ranking from website cached results", async () => {
+    await listTopCompanies({ ...params, includeYearCounts: false });
+    await listTopCompaniesAnonymous(params);
+    await listTopCompaniesAnonymous({ ...params, includeYearCounts: true });
+    expect(mocks.keys).toEqual([
+      "top-companies:v2:en:en:0:10:without-year-counts",
+      "top-companies:v2:en:en:0:10",
+      "top-companies:v2:en:en:0:10",
+    ]);
+    expect(mocks.provider.listTopCompanies).toHaveBeenNthCalledWith(1, {
+      ...params, includeYearCounts: false,
+    });
+    expect(mocks.provider.listTopCompanies).toHaveBeenNthCalledWith(2, params);
+  });
+
+  it("forwards omitted-count keyword search without changing website defaults", async () => {
+    const searchParams = { ...params, keywords: ["engineer"] };
+    await searchJobs({ ...searchParams, includeYearCounts: false });
+    await searchJobs(searchParams);
+    expect(mocks.provider.search).toHaveBeenNthCalledWith(1, {
+      ...searchParams, includeYearCounts: false,
+    });
+    expect(mocks.provider.search).toHaveBeenNthCalledWith(2, searchParams);
   });
 });

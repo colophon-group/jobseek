@@ -11,6 +11,7 @@ import { groupedPageRequest, readGroupedPage } from "./typesense-grouped-page";
 import type {
   PostingLocation,
   SearchFilters,
+  SearchEnrichment,
   SearchProvider,
   SearchResponse,
   SearchResultCompany,
@@ -276,7 +277,7 @@ const SALARY_FACET_BY = `salary_eur(${SALARY_FACET_RANGES})`;
 
 export class TypesenseSearchProvider implements SearchProvider {
   async search(
-    params: SearchFilters & {
+    params: SearchFilters & SearchEnrichment & {
       keywords: string[];
       offset: number;
       limit: number;
@@ -316,7 +317,9 @@ export class TypesenseSearchProvider implements SearchProvider {
         (g: GroupedHit) => g.hits[0]?.document.company_id,
       ).filter((id): id is string => Boolean(id));
       const [yearCountMap, companyMap] = await Promise.all([
-        fetchYearCountsFiltered(companyIds, filterStr, keywords.join(" ")),
+        params.includeYearCounts === false
+          ? new Map<string, number>()
+          : fetchYearCountsFiltered(companyIds, filterStr, keywords.join(" ")),
         fetchCompaniesById(companyIds),
       ]);
 
@@ -337,7 +340,7 @@ export class TypesenseSearchProvider implements SearchProvider {
   }
 
   async listTopCompanies(
-    params: SearchFilters & { offset: number; limit: number },
+    params: SearchFilters & SearchEnrichment & { offset: number; limit: number },
   ): Promise<SearchResponse> {
     try {
       const { offset, limit, locationIds } = params;
@@ -355,6 +358,7 @@ export class TypesenseSearchProvider implements SearchProvider {
         offset,
         limit,
         locationIds,
+        params.includeYearCounts,
       );
     } catch (err) {
       logExternalError("error", { service: "typesense", operation: "list_top_companies" }, err);
@@ -367,6 +371,7 @@ export class TypesenseSearchProvider implements SearchProvider {
     offset: number,
     limit: number,
     locationIds?: number[],
+    includeYearCounts = true,
   ): Promise<SearchResponse> {
     const client = getSearchClient();
     const activeFilter = `${POSTING_BASE_FILTER} && ${filterStr}`;
@@ -412,7 +417,9 @@ export class TypesenseSearchProvider implements SearchProvider {
     );
     // Fetch filtered year counts and postings in parallel (independent queries)
     const [yearCountMap, postingResults, companyMap] = await Promise.all([
-      fetchYearCountsFiltered(companyIds, filterStr, "*"),
+      includeYearCounts
+        ? fetchYearCountsFiltered(companyIds, filterStr, "*")
+        : new Map<string, number>(),
       measureSearchStage("posting_hydration", () => withTypesenseRetry(
         () =>
           client

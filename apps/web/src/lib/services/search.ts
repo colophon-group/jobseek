@@ -94,6 +94,8 @@ async function _fetchPostingDetail(
 }
 
 export async function searchJobs(params: {
+  /** REST/MCP omit yearly display counts; website callers keep the default. */
+  includeYearCounts?: boolean;
   keywords: string[];
   locationIds?: number[];
   occupationIds?: number[];
@@ -129,6 +131,7 @@ export async function searchJobs(params: {
 }
 
 type TopCompaniesParams = {
+  includeYearCounts?: boolean;
   locationIds?: number[];
   occupationIds?: number[];
   seniorityIds?: number[];
@@ -193,8 +196,9 @@ async function _listTopCompaniesImpl(
   const langKey = [...(params.languages ?? [])].sort(canonicalStringCompare).join(",");
   let result: SearchResponse;
   if (hasNoExplicitFilters) {
+    const enrichmentKey = params.includeYearCounts === false ? ":without-year-counts" : "";
     result = await cached(
-      `top-companies:${TOP_COMPANIES_DEFAULT_CACHE_VERSION}:${params.locale}:${langKey}:${params.offset}:${params.limit}`,
+      `top-companies:${TOP_COMPANIES_DEFAULT_CACHE_VERSION}:${params.locale}:${langKey}:${params.offset}:${params.limit}${enrichmentKey}`,
       fetch,
       { ttl: CACHE_TTL_SHORT, skipIf: (r: SearchResponse) => !!r.degraded },
     );
