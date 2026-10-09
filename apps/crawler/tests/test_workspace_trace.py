@@ -338,6 +338,22 @@ def test_redaction_preserves_json_escapes_before_password_urls() -> None:
     assert trace.detect_credentials(redacted) == []
 
 
+def test_json_scanning_does_not_join_url_and_assignment_across_fields() -> None:
+    record = {"url": "https://example.test", "contact": "user:team@example.test"}
+    payload = json.dumps(record)
+    assert trace.detect_credentials(payload) == []
+    assert trace.detect_credentials(json.dumps({"arguments": payload})) == []
+
+
+def test_json_scanning_checks_token_shaped_keys_and_nested_sensitive_values() -> None:
+    token = "hf_" + "a" * 32
+    record = {token: "value", "arguments": json.dumps({"SECRET_KEY": "supersecretvalue"})}
+    assert {finding["pattern"] for finding in trace.detect_credentials(json.dumps(record))} == {
+        "huggingface_token",
+        "sensitive_assignment",
+    }
+
+
 def test_upload_trace_refuses_payload_with_credentials(monkeypatch) -> None:
     header = {"_trace_header": True, "date": "2026-07-09", "record_count": 1}
     records = [

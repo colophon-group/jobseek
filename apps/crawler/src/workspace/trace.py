@@ -111,6 +111,13 @@ def _decoded_json_scan_texts(value: Any) -> list[str]:
 
     def walk(item: Any) -> None:
         if isinstance(item, str):
+            try:
+                nested = json.loads(item)
+            except json.JSONDecodeError:
+                nested = None
+            if isinstance(nested, dict | list):
+                walk(nested)
+                return
             texts.append(item)
             return
         if isinstance(item, list):
@@ -119,6 +126,8 @@ def _decoded_json_scan_texts(value: Any) -> list[str]:
             return
         if isinstance(item, dict):
             for key, child in item.items():
+                if isinstance(key, str):
+                    texts.append(key)
                 if (
                     isinstance(key, str)
                     and _SENSITIVE_KEY_RE.fullmatch(key)
@@ -148,7 +157,9 @@ def detect_credentials(text: str) -> list[dict[str, int | str]]:
         except json.JSONDecodeError:
             decoded = None
         if decoded is not None:
-            scan_texts.extend(_decoded_json_scan_texts(decoded))
+            # JSON syntax is not content: an escaped newline plus a URL can
+            # look like a password URL spanning unrelated serialized fields.
+            scan_texts = _decoded_json_scan_texts(decoded)
 
         for scan_text in scan_texts:
             for pattern_name, pattern in _CREDENTIAL_PATTERNS:
@@ -182,13 +193,14 @@ def redact_credentials(text: str) -> tuple[str, list[dict[str, int | str]]]:
     # Redact decoded values, then serialize again. Substituting over serialized
     # JSON can consume quotes, escapes or later records (notably an incomplete
     # PEM block), leaving a payload that passes scanning but cannot be parsed.
+    lines = text.split("\n")
     try:
-        records = [json.loads(line) if line.strip() else None for line in text.split("\n")]
+        records = [json.loads(line) if line.strip() else None for line in lines]
     except json.JSONDecodeError:
         return _redact_plain_text(text), findings
     redacted_lines = [
-        json.dumps(_redact_json_value(record), ensure_ascii=False) if record is not None else ""
-        for record in records
+        json.dumps(_redact_json_value(record), ensure_ascii=False) if line.strip() else ""
+        for line, record in zip(lines, records, strict=True)
     ]
     return "\n".join(redacted_lines), findings
 
