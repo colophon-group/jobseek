@@ -1232,3 +1232,22 @@ Darwinbox/ByteDance PR #10391 is ready at reviewed head`52db6b26d5562e440a7843f7
 The next paired prototype implements Accenture's original fields and multipart/captured-body pagination together with BrassRing's original fields, stable sort/page-count/identity and required location hydration. It has55 field,4 identity,2 exact multipart,3 detail,3 captured-body-format and10 full original pagination comparisons, plus six snapshot/hydration cases; full SDK race passes9.885s. Browser/controller/worker ownership and real settlement are **not wired yet**, and no production authority is claimed. Finish both types together for all16 configured boards, then group the largest shared DOM/API frontier (125 DOM and27 API configurations) around transport, headers/encoding, pagination and clicked-detail controls. Preserve proxy, stealth and session semantics or qualify concrete replacement routes; do not ignore unsupported controls.
 
 Lightpanda1.0.0 remains the latest stable release, officially rechecked18:43:30 UTC on2026-10-09. Full sustained canonical/freshness/conservation, comparable whole-lane CPU/RAM/cost, final supported reversal and the rollback window still gate production Python/Playwright/Chromium retirement. The full migration goal remains **active and incomplete**.
+
+
+### Paired Accenture/BrassRing factory checkpoint — 2026-10-09
+
+Both pure inventory collectors and their strict browser factories are now local
+prototypes. Factory validation covers all 12 configured Accenture and four
+BrassRing boards. Accenture jobsearch/result deliberately requires the page's
+captured request body; it never substitutes the findjobs multipart request.
+BrassRing retains its TGnewUI application prefix and verifies configured
+partner/site identity. Unknown proxy, stealth, persistent-context, actions,
+headers and response-limit controls are rejected. Full API SDK race tests passed
+in 9.684 seconds after this addition, with vet and diff checks passing.
+
+No new runtime profile or queue ownership is admitted by these factories.
+Remaining paired delivery work is the held-target request capture and UI
+controller, publisher/cleanup handling, original BrassRing snapshot retry and
+location hydration, service/worker/profile wiring, real database settlement and
+cold/startup coverage, and actual pinned-Lightpanda qualification. Publish the
+paired PR only once both families meet that contract.

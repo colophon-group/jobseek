@@ -1,0 +1,82 @@
+package apisniffer
+
+import (
+	"encoding/json"
+	"net/url"
+	"strings"
+)
+
+// These factories bind the paired collectors to their configured public board.
+// A factory alone grants no renderer or queue ownership.
+func AccentureBrowserOptions(board, raw string) (AccentureOptions, BrowserReplayOptions, error) {
+	o := BrowserReplayOptions{Wait: "load", TimeoutMS: 20000, ResponseBodyLimit: 16 << 20}
+	m, e := partitionedBrowserMetadata(raw)
+	if e != nil {
+		return AccentureOptions{}, o, e
+	}
+	b, _ := json.Marshal(m)
+	a, e := AccentureOptionsFromMetadata(board, string(b))
+	if e != nil {
+		return a, o, e
+	}
+	if a.Endpoint == AccentureFindJobs {
+		r := a.FindJobsRequest(0, nil)
+		o.Inventory = Options{Endpoint: r.URL, Method: r.Method, Body: r.Body, Headers: r.Headers}
+	} else {
+		// The jobsearch variant needs the page's own captured body. Its factory
+		// deliberately does not manufacture a findjobs multipart request.
+		o.Inventory = Options{Endpoint: "https://www.accenture.com/api/accenture/" + AccentureJobSearch, Method: "POST"}
+	}
+	return a, o, nil
+}
+
+func BrassRingBrowserOptions(board, raw string) (BrassRingBoard, BrowserReplayOptions, error) {
+	o := BrowserReplayOptions{Wait: "domcontentloaded", TimeoutMS: 60000, ResponseBodyLimit: 16 << 20}
+	b, e := BrassRingBoardFromURL(board)
+	if e != nil {
+		return b, o, e
+	}
+	m, e := partitionedBrowserMetadata(raw)
+	if e != nil {
+		return b, o, e
+	}
+	for key, v := range m {
+		switch key {
+		case "partner_id", "site_id":
+			s, ok := v.(string)
+			if !ok || key == "partner_id" && s != b.PartnerID || key == "site_id" && s != b.SiteID {
+				return b, o, ErrOptions
+			}
+		case "wait":
+			s, ok := v.(string)
+			if !ok || s != "commit" && s != "domcontentloaded" && s != "load" && s != "networkidle" {
+				return b, o, ErrOptions
+			}
+			o.Wait = s
+		case "timeout":
+			n, ok := integer(v)
+			if !ok || n < 1 || n > 120000 {
+				return b, o, ErrOptions
+			}
+			o.TimeoutMS = uint64(n)
+		default:
+			return b, o, ErrOptions
+		}
+	}
+	u, _ := url.Parse(board)
+	prefix := u.Path[:strings.Index(strings.ToLower(u.Path), "/search/")]
+	u.Path, u.RawPath, u.RawQuery, u.Fragment = prefix+"/Search/Ajax/MatchedJobs", "", "", ""
+	o.Inventory = Options{Endpoint: u.String(), Method: "POST"}
+	return b, o, nil
+}
+
+func partitionedBrowserMetadata(raw string) (map[string]any, error) {
+	m, e := DecodeInlineMetadata(raw)
+	if e != nil {
+		return nil, e
+	}
+	for _, key := range []string{"scraper_type", "scraper_config", "delist_threshold", "drop_threshold", "blast_radius_floor", "suspect_streak", "recent_discovered_counts", "_monitor_config_fingerprint", "config_fingerprint", "_confirmed_drop_candidate", "_last_discovered_count", "_zero_confirmed", "_zero_confirm_count"} {
+		delete(m, key)
+	}
+	return m, nil
+}
