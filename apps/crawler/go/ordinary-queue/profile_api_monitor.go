@@ -125,7 +125,7 @@ func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[stri
 		return fail()
 	}
 	validation["metadata"] = string(body)
-	if profile == apiSnifferBrowserProfile || profile == inlineRenderedMonitorProfile || RSSRenderedProfile(profile) || profile == dayforceMonitorProfile || profile == domRenderedMonitorProfile || profile == domRenderedRowsProfile || profile == "nextdata.rendered-items/v1" || profile == "nextdata.rendered-urls/v1" {
+	if NativeBrowserProfile(profile) || profile == apiSnifferBrowserProfile || profile == inlineRenderedMonitorProfile || RSSRenderedProfile(profile) || profile == dayforceMonitorProfile || profile == domRenderedMonitorProfile || profile == domRenderedRowsProfile || profile == "nextdata.rendered-items/v1" || profile == "nextdata.rendered-urls/v1" {
 		validation["monitor_needs_browser"] = "0"
 	}
 	p, err := InspectGreenhouseMonitor(boardID, validation)

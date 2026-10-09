@@ -49,6 +49,11 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 		}
 		config := profileConfig()
 		config["crawler_type"], config["board_url"], config["metadata"] = provider, row[headers["board_url"]], string(encoded)
+		expectedWorker := Simple
+		if NativeBrowserProvider(provider) {
+			config["monitor_needs_browser"] = "1"
+			expectedWorker = Browser
+		}
 		profile, e := InspectRichMonitor(profileBoardID, config)
 		if metadata["proxy"] == true {
 			if provider == "earcu" || provider == "computrabajo" || provider == "practicematch" {
@@ -68,7 +73,7 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 			counts[provider+"_proxy_preserved"]++
 			continue
 		}
-		if e != nil || profile.Provider != provider || MonitorWorker(profile) != Simple {
+		if e != nil || profile.Provider != provider || MonitorWorker(profile) != expectedWorker {
 			t.Fatal("configured direct provider unsupported", row[headers["board_slug"]])
 		}
 		counts[provider]++

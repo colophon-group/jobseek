@@ -12,6 +12,7 @@ import (
 	"github.com/chromedp/chromedp"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	api "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
+	dom "github.com/colophon-group/jobseek/apps/crawler/go/dom-detail"
 	policy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 )
 
@@ -19,10 +20,11 @@ import (
 // Captured request credentials stay in this target, including on later pages.
 // Runtime admission still requires the service protocol and HTTP fallback.
 type apiReplayTask struct {
-	boardURL string
-	options  api.BrowserReplayOptions
-	converse func(context.Context, api.Fetch, bool) error
-	fallback api.Fetch
+	boardURL                       string
+	options                        api.BrowserReplayOptions
+	converse                       func(context.Context, api.Fetch, bool) error
+	fallback                       api.Fetch
+	nativeProvider, nativeMetadata string
 }
 
 func readReplayResponseBody(ctx context.Context, id network.RequestID) ([]byte, error) {
@@ -58,6 +60,28 @@ func executeAPIReplayConversation(ctx context.Context, task *apiReplayTask, capt
 	}
 	if err := policy.Check(signals, html, finalURL); err != nil {
 		return err
+	}
+	if task.nativeProvider != "" {
+		if task.nativeProvider == "darwinbox" {
+			classification, e := dom.ClassifyRendered(html, dom.Object{}, finalURL)
+			if e != nil || classification["classification"] != "okay" {
+				return errReplayCapture
+			}
+		}
+		capture.mu.Lock()
+		capturedFailure := capture.failure
+		capture.mu.Unlock()
+		if capturedFailure != nil {
+			return capturedFailure
+		}
+		failure := executeNativeBrowserConversation(ctx, task, finalURL)
+		capture.mu.Lock()
+		capturedFailure = capture.failure
+		capture.mu.Unlock()
+		if capturedFailure != nil {
+			return capturedFailure
+		}
+		return failure
 	}
 	timer := time.NewTimer(time.Duration(task.options.SettleMS) * time.Millisecond)
 	defer timer.Stop()

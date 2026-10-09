@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/chromedp/cdproto/runtime"
@@ -57,10 +58,10 @@ func replayFetchExpression(o api.BrowserReplayOptions, r api.Request) (string, e
 	if e != nil {
 		return "", errReplayCapture
 	}
-	return `(async(p)=>{const opts={method:p.method,headers:p.headers};if(p.body)opts.body=p.body;const r=await fetch(p.url,opts);const body=await r.text();if(body.length>2000000)throw new Error("API response limit");return {status:r.status,url:r.url,body,reservation:r.headers.get("tdm-reservation"),policy:r.headers.get("tdm-policy")};})(` + string(params) + `)`, nil
+	return `(async(p)=>{const opts={method:p.method,headers:p.headers};if(p.body)opts.body=p.body;const r=await fetch(p.url,opts);const body=await r.text();if(body.length>` + strconv.Itoa(replayBodyLimit(o)) + `)throw new Error("API response limit");return {status:r.status,url:r.url,body,reservation:r.headers.get("tdm-reservation"),policy:r.headers.get("tdm-policy")};})(` + string(params) + `)`, nil
 }
 func replayResponseDocument(o api.BrowserReplayOptions, r api.Request, response replayFetchResponse) (*api.Document, error) {
-	if len(response.Body) > replayCaptureBodyLimit {
+	if len(response.Body) > replayBodyLimit(o) {
 		return nil, errResourceLimit
 	}
 	if !o.Inventory.ResourceMatches(response.URL) {
@@ -74,7 +75,7 @@ func replayResponseDocument(o api.BrowserReplayOptions, r api.Request, response 
 		return nil, e
 	}
 	if response.Status < 200 || response.Status >= 300 {
-		return nil, errReplayCapture
+		return nil, &replayStatusError{status: response.Status}
 	}
 	document, e := api.Decode([]byte(response.Body))
 	if e != nil {
@@ -82,6 +83,11 @@ func replayResponseDocument(o api.BrowserReplayOptions, r api.Request, response 
 	}
 	return document, nil
 }
+
+type replayStatusError struct{ status int }
+
+func (*replayStatusError) Error() string { return "API browser HTTP status failed" }
+func (*replayStatusError) Unwrap() error { return errReplayCapture }
 
 func replayReflectsCredentials(headers http.Header, body string, reservation, policyURL *string) bool {
 	for name, values := range headers {
@@ -125,7 +131,7 @@ func fetchReplayCommand(ctx context.Context, o api.BrowserReplayOptions, r api.R
 		object, exception, err := runtime.Evaluate(expression).WithReturnByValue(true).WithAwaitPromise(true).Do(ctx)
 		// CDP exceptions can echo private expressions. Only fixed owned errors cross
 		// this boundary; the containing session disables raw CDP diagnostics.
-		if err != nil || exception != nil || object == nil || len(object.Value) > 4*replayCaptureBodyLimit {
+		if err != nil || exception != nil || object == nil || len(object.Value) > 4*replayBodyLimit(o) {
 			return errReplayCapture
 		}
 		if json.Unmarshal(object.Value, &response) != nil {
@@ -152,4 +158,11 @@ func replayHeaders(headers http.Header) http.Header {
 		}
 	}
 	return out
+}
+
+func replayBodyLimit(o api.BrowserReplayOptions) int {
+	if o.ResponseBodyLimit == 16<<20 {
+		return 16 << 20
+	}
+	return replayCaptureBodyLimit
 }

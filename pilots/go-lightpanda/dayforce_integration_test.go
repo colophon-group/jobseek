@@ -50,7 +50,7 @@ func (s dayforceFixtureStarter) Start(port int) (managedProcess, error) {
 	return &commandProcess{command: cmd, pgid: cmd.Process.Pid, logs: logs}, nil
 }
 
-func dayforceOriginTLS(t *testing.T) (tls.Certificate, string) {
+func dayforceOriginTLS(t *testing.T, hosts ...string) (tls.Certificate, string) {
 	t.Helper()
 	rootKey, e := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if e != nil {
@@ -69,7 +69,7 @@ func dayforceOriginTLS(t *testing.T) (tls.Certificate, string) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	leaf := &x509.Certificate{SerialNumber: big.NewInt(2), Subject: pkix.Name{CommonName: "jobs.dayforcehcm.com"}, DNSNames: []string{"jobs.dayforcehcm.com"}, NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour), KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
+	leaf := &x509.Certificate{SerialNumber: big.NewInt(2), Subject: pkix.Name{CommonName: "jobs.dayforcehcm.com"}, DNSNames: append([]string{"jobs.dayforcehcm.com"}, hosts...), NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour), KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
 	der, e := x509.CreateCertificate(rand.Reader, leaf, root, &leafKey.PublicKey, rootKey)
 	if e != nil {
 		t.Fatal(e)
@@ -81,10 +81,14 @@ func dayforceOriginTLS(t *testing.T) (tls.Certificate, string) {
 	return tls.Certificate{Certificate: [][]byte{der, rootDER}, PrivateKey: leafKey}, ca
 }
 
-func dayforceConnectProxy(t *testing.T, origin *httptest.Server) *httptest.Server {
+func dayforceConnectProxy(t *testing.T, origin *httptest.Server, hosts ...string) *httptest.Server {
 	t.Helper()
+	allowed := map[string]bool{"jobs.dayforcehcm.com:443": true}
+	for _, host := range hosts {
+		allowed[host+":443"] = true
+	}
 	return newTestLoopbackServer(t, "127.0.0.2", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "CONNECT" || r.Host != "jobs.dayforcehcm.com:443" {
+		if r.Method != "CONNECT" || !allowed[r.Host] {
 			http.Error(w, "fixture scope", 403)
 			return
 		}

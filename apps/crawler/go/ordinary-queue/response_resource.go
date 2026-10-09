@@ -19,6 +19,9 @@ func validGreenhouseResponseResource(resource string) bool {
 }
 
 func initialMonitorResourceMatches(profile GreenhouseMonitorProfile, resource string) bool {
+	if NativeBrowserProfile(profile.Profile) {
+		return apiNativeBrowserProfileResourceMatches(profile, resource)
+	}
 	if profile.Profile == "rss.hr_manager-skip/v1" || profile.Profile == "rss.hr_manager-items/v1" {
 		return resource == profile.Endpoint || resource == profile.Token
 	}

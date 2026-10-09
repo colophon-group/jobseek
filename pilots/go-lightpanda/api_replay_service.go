@@ -28,9 +28,42 @@ func (execution *runtimeV1ServiceExecution) executeAPIReplay(ctx context.Context
 	var task Task
 	var inventory api.Inventory
 	collected := false
-	task, err := newAPIReplayTask(request.BoardURL, string(request.Metadata), func(ctx context.Context, fetch api.Fetch, usingHTTP bool) error {
+	partial := false
+	var gone *replayStatusError
+	constructor := newAPIReplayTask
+	if request.Provider != "" {
+		constructor = func(board, metadata string, converse func(context.Context, api.Fetch, bool) error) (Task, error) {
+			return newNativeBrowserTask(request.Provider, board, metadata, converse)
+		}
+	}
+	task, err := constructor(request.BoardURL, string(request.Metadata), func(ctx context.Context, fetch api.Fetch, usingHTTP bool) error {
 		var err error
-		inventory, err = api.DiscoverBrowserReplay(ctx, task.APIReplay.options, fetch, api.PythonJoinURL, usingHTTP)
+		if request.Provider == "darwinbox" {
+			board, e := api.DarwinboxBoardFromURL(task.APIReplay.boardURL)
+			if e != nil {
+				return e
+			}
+			inventory, err = api.DiscoverDarwinbox(ctx, board, fetch, func(s string) (*string, error) { return &s, nil }, nil)
+			if err != nil && (!replayTerminalError(err) || errors.Is(err, context.DeadlineExceeded) && ctx.Err() == nil) {
+				if len(inventory.Jobs) > 0 {
+					partial = true
+					collected = true
+					return nil
+				}
+				if errors.As(err, &gone) && (gone.status == 404 || gone.status == 410) {
+					collected = true
+					return nil
+				}
+			}
+		} else if request.Provider == "bytedance" {
+			portal, e := api.ByteDanceOptionsFromURL(task.APIReplay.boardURL)
+			if e != nil {
+				return e
+			}
+			inventory, err = api.DiscoverByteDance(ctx, portal, fetch)
+		} else {
+			inventory, err = api.DiscoverBrowserReplay(ctx, task.APIReplay.options, fetch, api.PythonJoinURL, usingHTTP)
+		}
 		collected = err == nil
 		return err
 	})
@@ -53,11 +86,24 @@ func (execution *runtimeV1ServiceExecution) executeAPIReplay(ctx context.Context
 	if !collected || !result.apiReplaySessionSettled {
 		return response, nil
 	}
+	if gone != nil {
+		board, e := api.DarwinboxBoardFromURL(task.APIReplay.boardURL)
+		if e != nil {
+			return response, nil
+		}
+		response.Outcome = "provider_gone"
+		response.FailureURL = board.JobsURL()
+		response.FailureStatus = gone.status
+		return response, nil
+	}
 	body, err := json.Marshal(inventory)
 	if err != nil || len(body) > replay.ResponseLimit-1024 {
 		return response, nil
 	}
 	response.Outcome = "success"
+	if partial {
+		response.Outcome = "partial"
+	}
 	response.Inventory = body
 	return response, nil
 }

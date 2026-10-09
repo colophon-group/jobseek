@@ -1,0 +1,78 @@
+{
+  "version": "0.13.996",
+  "candidate_base": "0d8995e27222e9597bf219da71898e80ca7703d5",
+  "types": [
+    "darwinbox",
+    "bytedance"
+  ],
+  "compiled_profiles": 170,
+  "new_profiles": [
+    "darwinbox.session-items/v1",
+    "bytedance.partition-items/v1"
+  ],
+  "actual_registry_boards": {
+    "darwinbox": [
+      "au-small-finance-bank-careers",
+      "bupa-india-niva",
+      "pwc-careers",
+      "security-bank-careers",
+      "yes-bank-careers"
+    ],
+    "bytedance": [
+      "bytedance-careers",
+      "bytedance-careers-cn",
+      "bytedance-careers-cn-campus"
+    ]
+  },
+  "implementation": {
+    "darwinbox": "Original tenant/company URLs, fixed headers/body, same-target session cookies, rich original fields,100-row paging and validated prefix on later failure; absence suppressed for failed/truncated inventory",
+    "bytedance": "Original three portals,1000-row pages, experienced category/child partitions and authoritative counts; duplicates, overlap and incomplete inventory fail closed",
+    "execution": "Existing held Lightpanda API replay and ordinary rich writer/claim/fence/settlement; no Python monitor or CSV changes",
+    "policy": "Publisher reservations precede HTTP status/parser failures; inventory released only after existing cleanup proof",
+    "response_body_bound": "16MiB only fixed native provider factory; generic replay retains existing2MiB; metadata cannot override; inventory RPC retains8MiB"
+  },
+  "validation": {
+    "original_fields": 69,
+    "original_identities": 9,
+    "original_requests": 4,
+    "sdk_full_race_seconds": 6.334,
+    "queue_full_race_seconds": 27.51,
+    "renderer_full_race_seconds": 9.326,
+    "worker_vet_and_module_tidy": "PASS",
+    "real_postgres_redis_terminal_cases": 12,
+    "real_terminal_wall_seconds": 40.078,
+    "real_cold_cases": 6,
+    "real_cold_wall_seconds": 18.445,
+    "real_startup_profiles": 170,
+    "real_startup_wall_seconds": 24.511,
+    "earlier_real_qualification_snapshot": "002798bcbd885ca5dafe9e37c6ae724d78ac0e807558397de9948cc877e6f609",
+    "earlier_real_qualification_base": "5b96cd3126c4485b36cecb800e821cb727d0995c",
+    "qualification_scope": "Real database/queue proofs precede parent squash rebase, version/docs/test fixtures and fixed-provider response-limit repair. Writer/routing bytes unchanged after real qualification. New SDK/queue/renderer suites and bound regression pass. Exact published-head full native CI remains required.",
+    "genuine_lightpanda_cases": 7,
+    "genuine_lightpanda_status": "PENDING physical Linux image CI; local binary-dependent cases skipped"
+  },
+  "primary_public_evidence": {
+    "source": "Anonymous original global ByteDance first-page POST; publisher headers/body checked before capture",
+    "status": 200,
+    "code": 0,
+    "total": 1429,
+    "rows": 1000,
+    "response_bytes": 4194874,
+    "projected_first_page_bytes": 3401051,
+    "required_field_failures": 0,
+    "scope": "First page only; no claim of full public inventory or live Lightpanda success; raw postings retained privately and not committed"
+  },
+  "lightpanda": {
+    "latest_stable": "1.0.0",
+    "official_release": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
+    "upstream_image": "lightpanda/browser@sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e",
+    "rechecked": "2026-10-09"
+  },
+  "limitations": [
+    "Fresh published-head Required CI, installed contracts, physical Lightpanda integration and Crawler Deploy Gate required",
+    "Deployment and actual route admission pending",
+    "No new live publisher capture claimed",
+    "Full freshness/conservation, whole-lane cost and supported final reversal/rollback window remain required",
+    "Production Python/Playwright/Chromium retirement incomplete; full goal ACTIVE"
+  ]
+}

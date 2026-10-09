@@ -41,6 +41,9 @@ func (r *NativeRenderedDetails) FetchMonitor(ctx context.Context, profile queue.
 	if profile.Profile == "api_sniffer.browser-items/v1" {
 		return r.fetchAPIReplay(ctx, profile, config)
 	}
+	if queue.NativeBrowserProfile(profile.Profile) {
+		return r.fetchNativeBrowserProvider(ctx, profile, config)
+	}
 	_, options, err := queue.RenderedDOMMonitorOptions(config)
 	if profile.Provider == "inline" {
 		_, options, err = queue.RenderedInlineMonitorOptions(config)
