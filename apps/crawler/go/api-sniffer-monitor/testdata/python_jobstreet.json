@@ -1,0 +1,3990 @@
+[
+  {
+    "name": "my.jobstreet.com-complete",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://my.jobstreet.com/job/12345678",
+        "title": "Role 12345678",
+        "locations": [
+          "Simpang Ampat, Penang"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Engineering",
+            "Quality Assurance"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "my.jobstreet.com-zero",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": [],
+      "totalCount": 0,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 0
+      }
+    },
+    "expected": [],
+    "total": 0,
+    "error": false
+  },
+  {
+    "name": "my.jobstreet.com-id-2",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": 12345678,
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://my.jobstreet.com/job/12345678",
+        "title": "Role 12345678",
+        "locations": [
+          "Simpang Ampat, Penang"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Engineering",
+            "Quality Assurance"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "my.jobstreet.com-id-3",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": true,
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": null,
+    "total": null,
+    "error": true
+  },
+  {
+    "name": "my.jobstreet.com-title-4",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": null,
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": null,
+    "total": null,
+    "error": true
+  },
+  {
+    "name": "my.jobstreet.com-title-5",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "  Role   with  spaces \n",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://my.jobstreet.com/job/12345678",
+        "title": "Role with spaces",
+        "locations": [
+          "Simpang Ampat, Penang"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Engineering",
+            "Quality Assurance"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "my.jobstreet.com-salaryLabel-6",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "$4,000 to $6,000 per month",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://my.jobstreet.com/job/12345678",
+        "title": "Role 12345678",
+        "locations": [
+          "Simpang Ampat, Penang"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "base_salary": {
+          "currency": "USD",
+          "min": 6000,
+          "max": null,
+          "unit": "month"
+        },
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Engineering",
+            "Quality Assurance"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "my.jobstreet.com-salaryLabel-7",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "USD $4,000 to $6,000 per month",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://my.jobstreet.com/job/12345678",
+        "title": "Role 12345678",
+        "locations": [
+          "Simpang Ampat, Penang"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "base_salary": {
+          "currency": "USD",
+          "min": 6000,
+          "max": null,
+          "unit": "month"
+        },
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Engineering",
+            "Quality Assurance"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "my.jobstreet.com-salaryLabel-8",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "RM 8,000 – RM 12,000 per month",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://my.jobstreet.com/job/12345678",
+        "title": "Role 12345678",
+        "locations": [
+          "Simpang Ampat, Penang"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Engineering",
+            "Quality Assurance"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "my.jobstreet.com-locations-9",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Zurich"
+            },
+            {
+              "label": "Zurich"
+            },
+            {
+              "label": " "
+            },
+            null
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://my.jobstreet.com/job/12345678",
+        "title": "Role 12345678",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Engineering",
+            "Quality Assurance"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "my.jobstreet.com-locations-10",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": {},
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://my.jobstreet.com/job/12345678",
+        "title": "Role 12345678",
+        "employment_type": "Full time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Engineering",
+            "Quality Assurance"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "my.jobstreet.com-locations-11",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": "bad",
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://my.jobstreet.com/job/12345678",
+        "title": "Role 12345678",
+        "employment_type": "Full time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Engineering",
+            "Quality Assurance"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "my.jobstreet.com-workTypes-12",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            null,
+            "  Contract  ",
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://my.jobstreet.com/job/12345678",
+        "title": "Role 12345678",
+        "locations": [
+          "Simpang Ampat, Penang"
+        ],
+        "employment_type": "Contract",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Engineering",
+            "Quality Assurance"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "my.jobstreet.com-workArrangements-13",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "Hybrid"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://my.jobstreet.com/job/12345678",
+        "title": "Role 12345678",
+        "locations": [
+          "Simpang Ampat, Penang"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Engineering",
+            "Quality Assurance"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "my.jobstreet.com-employer-14",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "other",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": null,
+    "total": null,
+    "error": true
+  },
+  {
+    "name": "my.jobstreet.com-employer-15",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "companyId": "other"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": null,
+    "total": null,
+    "error": true
+  },
+  {
+    "name": "my.jobstreet.com-classifications-16",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            null,
+            {
+              "subClassification": {
+                "description": "Science"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://my.jobstreet.com/job/12345678",
+        "title": "Role 12345678",
+        "locations": [
+          "Simpang Ampat, Penang"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Science"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "my.jobstreet.com-envelope-totalCount-True",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": true,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": null,
+    "total": null,
+    "error": true
+  },
+  {
+    "name": "my.jobstreet.com-envelope-totalCount-1.0",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1.0,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": null,
+    "total": null,
+    "error": true
+  },
+  {
+    "name": "my.jobstreet.com-envelope-totalCount--1",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": -1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": null,
+    "total": null,
+    "error": true
+  },
+  {
+    "name": "my.jobstreet.com-envelope-totalCount-2",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 2,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": null,
+    "total": null,
+    "error": true
+  },
+  {
+    "name": "my.jobstreet.com-envelope-data-{}",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": {},
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": null,
+    "total": null,
+    "error": true
+  },
+  {
+    "name": "my.jobstreet.com-duplicate-id",
+    "kind": "page",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        },
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 2,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 2
+      }
+    },
+    "expected": null,
+    "total": null,
+    "error": true
+  },
+  {
+    "name": "my.jobstreet.com-detail-complete",
+    "kind": "detail",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": {
+          "job": {
+            "id": "12345678",
+            "title": "Role 12345678",
+            "content": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+            "isExpired": false,
+            "status": "Active",
+            "location": {
+              "label": "Simpang Ampat, Penang"
+            },
+            "workTypes": {
+              "label": "Full time"
+            },
+            "salary": {
+              "label": "RM 8,000 – RM 12,000 per month"
+            },
+            "advertiser": {
+              "name": "Tecan CDMO Solutions PN Sdn. Bhd."
+            },
+            "createdAt": {
+              "dateTimeUtc": "2026-08-10T05:56:10.450Z"
+            },
+            "expiresAt": {
+              "dateTimeUtc": "2026-09-09T13:59:59.999Z"
+            }
+          }
+        }
+      }
+    },
+    "expected": {
+      "title": "Role 12345678",
+      "description": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+      "locations": [
+        "Simpang Ampat, Penang"
+      ],
+      "employment_type": "Full time",
+      "date_posted": "2026-08-10T05:56:10.450Z",
+      "language": "en",
+      "metadata": {
+        "jobstreet_job_id": "12345678",
+        "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+        "expiration_date": "2026-09-09T13:59:59.999Z"
+      }
+    },
+    "error": false
+  },
+  {
+    "name": "my.jobstreet.com-detail-missing",
+    "kind": "detail",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": null
+      }
+    },
+    "expected": {},
+    "error": false
+  },
+  {
+    "name": "my.jobstreet.com-detail-id-2",
+    "kind": "detail",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": {
+          "job": {
+            "id": "foreign",
+            "title": "Role 12345678",
+            "content": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+            "isExpired": false,
+            "status": "Active",
+            "location": {
+              "label": "Simpang Ampat, Penang"
+            },
+            "workTypes": {
+              "label": "Full time"
+            },
+            "salary": {
+              "label": "RM 8,000 – RM 12,000 per month"
+            },
+            "advertiser": {
+              "name": "Tecan CDMO Solutions PN Sdn. Bhd."
+            },
+            "createdAt": {
+              "dateTimeUtc": "2026-08-10T05:56:10.450Z"
+            },
+            "expiresAt": {
+              "dateTimeUtc": "2026-09-09T13:59:59.999Z"
+            }
+          }
+        }
+      }
+    },
+    "expected": null,
+    "error": true
+  },
+  {
+    "name": "my.jobstreet.com-detail-id-3",
+    "kind": "detail",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": {
+          "job": {
+            "id": 12345678,
+            "title": "Role 12345678",
+            "content": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+            "isExpired": false,
+            "status": "Active",
+            "location": {
+              "label": "Simpang Ampat, Penang"
+            },
+            "workTypes": {
+              "label": "Full time"
+            },
+            "salary": {
+              "label": "RM 8,000 – RM 12,000 per month"
+            },
+            "advertiser": {
+              "name": "Tecan CDMO Solutions PN Sdn. Bhd."
+            },
+            "createdAt": {
+              "dateTimeUtc": "2026-08-10T05:56:10.450Z"
+            },
+            "expiresAt": {
+              "dateTimeUtc": "2026-09-09T13:59:59.999Z"
+            }
+          }
+        }
+      }
+    },
+    "expected": {
+      "title": "Role 12345678",
+      "description": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+      "locations": [
+        "Simpang Ampat, Penang"
+      ],
+      "employment_type": "Full time",
+      "date_posted": "2026-08-10T05:56:10.450Z",
+      "language": "en",
+      "metadata": {
+        "jobstreet_job_id": "12345678",
+        "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+        "expiration_date": "2026-09-09T13:59:59.999Z"
+      }
+    },
+    "error": false
+  },
+  {
+    "name": "my.jobstreet.com-detail-isExpired-4",
+    "kind": "detail",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": {
+          "job": {
+            "id": "12345678",
+            "title": "Role 12345678",
+            "content": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+            "isExpired": true,
+            "status": "Active",
+            "location": {
+              "label": "Simpang Ampat, Penang"
+            },
+            "workTypes": {
+              "label": "Full time"
+            },
+            "salary": {
+              "label": "RM 8,000 – RM 12,000 per month"
+            },
+            "advertiser": {
+              "name": "Tecan CDMO Solutions PN Sdn. Bhd."
+            },
+            "createdAt": {
+              "dateTimeUtc": "2026-08-10T05:56:10.450Z"
+            },
+            "expiresAt": {
+              "dateTimeUtc": "2026-09-09T13:59:59.999Z"
+            }
+          }
+        }
+      }
+    },
+    "expected": {},
+    "error": false
+  },
+  {
+    "name": "my.jobstreet.com-detail-isExpired-5",
+    "kind": "detail",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": {
+          "job": {
+            "id": "12345678",
+            "title": "Role 12345678",
+            "content": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+            "isExpired": "true",
+            "status": "Active",
+            "location": {
+              "label": "Simpang Ampat, Penang"
+            },
+            "workTypes": {
+              "label": "Full time"
+            },
+            "salary": {
+              "label": "RM 8,000 – RM 12,000 per month"
+            },
+            "advertiser": {
+              "name": "Tecan CDMO Solutions PN Sdn. Bhd."
+            },
+            "createdAt": {
+              "dateTimeUtc": "2026-08-10T05:56:10.450Z"
+            },
+            "expiresAt": {
+              "dateTimeUtc": "2026-09-09T13:59:59.999Z"
+            }
+          }
+        }
+      }
+    },
+    "expected": {
+      "title": "Role 12345678",
+      "description": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+      "locations": [
+        "Simpang Ampat, Penang"
+      ],
+      "employment_type": "Full time",
+      "date_posted": "2026-08-10T05:56:10.450Z",
+      "language": "en",
+      "metadata": {
+        "jobstreet_job_id": "12345678",
+        "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+        "expiration_date": "2026-09-09T13:59:59.999Z"
+      }
+    },
+    "error": false
+  },
+  {
+    "name": "my.jobstreet.com-detail-status-6",
+    "kind": "detail",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": {
+          "job": {
+            "id": "12345678",
+            "title": "Role 12345678",
+            "content": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+            "isExpired": false,
+            "status": null,
+            "location": {
+              "label": "Simpang Ampat, Penang"
+            },
+            "workTypes": {
+              "label": "Full time"
+            },
+            "salary": {
+              "label": "RM 8,000 – RM 12,000 per month"
+            },
+            "advertiser": {
+              "name": "Tecan CDMO Solutions PN Sdn. Bhd."
+            },
+            "createdAt": {
+              "dateTimeUtc": "2026-08-10T05:56:10.450Z"
+            },
+            "expiresAt": {
+              "dateTimeUtc": "2026-09-09T13:59:59.999Z"
+            }
+          }
+        }
+      }
+    },
+    "expected": {},
+    "error": false
+  },
+  {
+    "name": "my.jobstreet.com-detail-status-7",
+    "kind": "detail",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": {
+          "job": {
+            "id": "12345678",
+            "title": "Role 12345678",
+            "content": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+            "isExpired": false,
+            "status": "Expired",
+            "location": {
+              "label": "Simpang Ampat, Penang"
+            },
+            "workTypes": {
+              "label": "Full time"
+            },
+            "salary": {
+              "label": "RM 8,000 – RM 12,000 per month"
+            },
+            "advertiser": {
+              "name": "Tecan CDMO Solutions PN Sdn. Bhd."
+            },
+            "createdAt": {
+              "dateTimeUtc": "2026-08-10T05:56:10.450Z"
+            },
+            "expiresAt": {
+              "dateTimeUtc": "2026-09-09T13:59:59.999Z"
+            }
+          }
+        }
+      }
+    },
+    "expected": {},
+    "error": false
+  },
+  {
+    "name": "my.jobstreet.com-detail-title-8",
+    "kind": "detail",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": {
+          "job": {
+            "id": "12345678",
+            "title": " ",
+            "content": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+            "isExpired": false,
+            "status": "Active",
+            "location": {
+              "label": "Simpang Ampat, Penang"
+            },
+            "workTypes": {
+              "label": "Full time"
+            },
+            "salary": {
+              "label": "RM 8,000 – RM 12,000 per month"
+            },
+            "advertiser": {
+              "name": "Tecan CDMO Solutions PN Sdn. Bhd."
+            },
+            "createdAt": {
+              "dateTimeUtc": "2026-08-10T05:56:10.450Z"
+            },
+            "expiresAt": {
+              "dateTimeUtc": "2026-09-09T13:59:59.999Z"
+            }
+          }
+        }
+      }
+    },
+    "expected": null,
+    "error": true
+  },
+  {
+    "name": "my.jobstreet.com-detail-content-9",
+    "kind": "detail",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": {
+          "job": {
+            "id": "12345678",
+            "title": "Role 12345678",
+            "content": " ",
+            "isExpired": false,
+            "status": "Active",
+            "location": {
+              "label": "Simpang Ampat, Penang"
+            },
+            "workTypes": {
+              "label": "Full time"
+            },
+            "salary": {
+              "label": "RM 8,000 – RM 12,000 per month"
+            },
+            "advertiser": {
+              "name": "Tecan CDMO Solutions PN Sdn. Bhd."
+            },
+            "createdAt": {
+              "dateTimeUtc": "2026-08-10T05:56:10.450Z"
+            },
+            "expiresAt": {
+              "dateTimeUtc": "2026-09-09T13:59:59.999Z"
+            }
+          }
+        }
+      }
+    },
+    "expected": null,
+    "error": true
+  },
+  {
+    "name": "my.jobstreet.com-detail-content-10",
+    "kind": "detail",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": {
+          "job": {
+            "id": "12345678",
+            "title": "Role 12345678",
+            "content": null,
+            "isExpired": false,
+            "status": "Active",
+            "location": {
+              "label": "Simpang Ampat, Penang"
+            },
+            "workTypes": {
+              "label": "Full time"
+            },
+            "salary": {
+              "label": "RM 8,000 – RM 12,000 per month"
+            },
+            "advertiser": {
+              "name": "Tecan CDMO Solutions PN Sdn. Bhd."
+            },
+            "createdAt": {
+              "dateTimeUtc": "2026-08-10T05:56:10.450Z"
+            },
+            "expiresAt": {
+              "dateTimeUtc": "2026-09-09T13:59:59.999Z"
+            }
+          }
+        }
+      }
+    },
+    "expected": null,
+    "error": true
+  },
+  {
+    "name": "my.jobstreet.com-detail-salary-11",
+    "kind": "detail",
+    "host": "my.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": {
+          "job": {
+            "id": "12345678",
+            "title": "Role 12345678",
+            "content": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+            "isExpired": false,
+            "status": "Active",
+            "location": {
+              "label": "Simpang Ampat, Penang"
+            },
+            "workTypes": {
+              "label": "Full time"
+            },
+            "salary": {
+              "label": "$4,000 to $6,000 per month"
+            },
+            "advertiser": {
+              "name": "Tecan CDMO Solutions PN Sdn. Bhd."
+            },
+            "createdAt": {
+              "dateTimeUtc": "2026-08-10T05:56:10.450Z"
+            },
+            "expiresAt": {
+              "dateTimeUtc": "2026-09-09T13:59:59.999Z"
+            }
+          }
+        }
+      }
+    },
+    "expected": {
+      "title": "Role 12345678",
+      "description": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+      "locations": [
+        "Simpang Ampat, Penang"
+      ],
+      "employment_type": "Full time",
+      "date_posted": "2026-08-10T05:56:10.450Z",
+      "base_salary": {
+        "currency": "USD",
+        "min": 6000,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "en",
+      "metadata": {
+        "jobstreet_job_id": "12345678",
+        "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+        "expiration_date": "2026-09-09T13:59:59.999Z"
+      }
+    },
+    "error": false
+  },
+  {
+    "name": "sg.jobstreet.com-complete",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://sg.jobstreet.com/job/12345678",
+        "title": "Role 12345678",
+        "locations": [
+          "Simpang Ampat, Penang"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Engineering",
+            "Quality Assurance"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "sg.jobstreet.com-zero",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": [],
+      "totalCount": 0,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 0
+      }
+    },
+    "expected": [],
+    "total": 0,
+    "error": false
+  },
+  {
+    "name": "sg.jobstreet.com-id-2",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": 12345678,
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://sg.jobstreet.com/job/12345678",
+        "title": "Role 12345678",
+        "locations": [
+          "Simpang Ampat, Penang"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Engineering",
+            "Quality Assurance"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "sg.jobstreet.com-id-3",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": true,
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": null,
+    "total": null,
+    "error": true
+  },
+  {
+    "name": "sg.jobstreet.com-title-4",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": null,
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": null,
+    "total": null,
+    "error": true
+  },
+  {
+    "name": "sg.jobstreet.com-title-5",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "  Role   with  spaces \n",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://sg.jobstreet.com/job/12345678",
+        "title": "Role with spaces",
+        "locations": [
+          "Simpang Ampat, Penang"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Engineering",
+            "Quality Assurance"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "sg.jobstreet.com-salaryLabel-6",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "$4,000 to $6,000 per month",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://sg.jobstreet.com/job/12345678",
+        "title": "Role 12345678",
+        "locations": [
+          "Simpang Ampat, Penang"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "base_salary": {
+          "currency": "SGD",
+          "min": 6000,
+          "max": null,
+          "unit": "month"
+        },
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Engineering",
+            "Quality Assurance"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "sg.jobstreet.com-salaryLabel-7",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "USD $4,000 to $6,000 per month",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://sg.jobstreet.com/job/12345678",
+        "title": "Role 12345678",
+        "locations": [
+          "Simpang Ampat, Penang"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "base_salary": {
+          "currency": "USD",
+          "min": 6000,
+          "max": null,
+          "unit": "month"
+        },
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Engineering",
+            "Quality Assurance"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "sg.jobstreet.com-salaryLabel-8",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "RM 8,000 – RM 12,000 per month",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://sg.jobstreet.com/job/12345678",
+        "title": "Role 12345678",
+        "locations": [
+          "Simpang Ampat, Penang"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Engineering",
+            "Quality Assurance"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "sg.jobstreet.com-locations-9",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Zurich"
+            },
+            {
+              "label": "Zurich"
+            },
+            {
+              "label": " "
+            },
+            null
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://sg.jobstreet.com/job/12345678",
+        "title": "Role 12345678",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Engineering",
+            "Quality Assurance"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "sg.jobstreet.com-locations-10",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": {},
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://sg.jobstreet.com/job/12345678",
+        "title": "Role 12345678",
+        "employment_type": "Full time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Engineering",
+            "Quality Assurance"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "sg.jobstreet.com-locations-11",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": "bad",
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://sg.jobstreet.com/job/12345678",
+        "title": "Role 12345678",
+        "employment_type": "Full time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Engineering",
+            "Quality Assurance"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "sg.jobstreet.com-workTypes-12",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            null,
+            "  Contract  ",
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://sg.jobstreet.com/job/12345678",
+        "title": "Role 12345678",
+        "locations": [
+          "Simpang Ampat, Penang"
+        ],
+        "employment_type": "Contract",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Engineering",
+            "Quality Assurance"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "sg.jobstreet.com-workArrangements-13",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "Hybrid"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://sg.jobstreet.com/job/12345678",
+        "title": "Role 12345678",
+        "locations": [
+          "Simpang Ampat, Penang"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Engineering",
+            "Quality Assurance"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "sg.jobstreet.com-employer-14",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "other",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": null,
+    "total": null,
+    "error": true
+  },
+  {
+    "name": "sg.jobstreet.com-employer-15",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "companyId": "other"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": null,
+    "total": null,
+    "error": true
+  },
+  {
+    "name": "sg.jobstreet.com-classifications-16",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            null,
+            {
+              "subClassification": {
+                "description": "Science"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": [
+      {
+        "url": "https://sg.jobstreet.com/job/12345678",
+        "title": "Role 12345678",
+        "locations": [
+          "Simpang Ampat, Penang"
+        ],
+        "employment_type": "Full time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-08-10T05:56:46Z",
+        "language": "en",
+        "metadata": {
+          "jobstreet_job_id": "12345678",
+          "jobstreet_company_id": "175608148114568",
+          "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+          "classifications": [
+            "Science"
+          ]
+        }
+      }
+    ],
+    "total": 1,
+    "error": false
+  },
+  {
+    "name": "sg.jobstreet.com-envelope-totalCount-True",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": true,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": null,
+    "total": null,
+    "error": true
+  },
+  {
+    "name": "sg.jobstreet.com-envelope-totalCount-1.0",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 1.0,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": null,
+    "total": null,
+    "error": true
+  },
+  {
+    "name": "sg.jobstreet.com-envelope-totalCount--1",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": -1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": null,
+    "total": null,
+    "error": true
+  },
+  {
+    "name": "sg.jobstreet.com-envelope-totalCount-2",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 2,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": null,
+    "total": null,
+    "error": true
+  },
+  {
+    "name": "sg.jobstreet.com-envelope-data-{}",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": {},
+      "totalCount": 1,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 1
+      }
+    },
+    "expected": null,
+    "total": null,
+    "error": true
+  },
+  {
+    "name": "sg.jobstreet.com-duplicate-id",
+    "kind": "page",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": [
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        },
+        {
+          "id": "12345678",
+          "title": "Role 12345678",
+          "listingDate": "2026-08-10T05:56:46Z",
+          "locations": [
+            {
+              "label": "Simpang Ampat, Penang"
+            }
+          ],
+          "workTypes": [
+            "Full time"
+          ],
+          "workArrangements": {
+            "data": [
+              {
+                "label": {
+                  "text": "On-site"
+                }
+              }
+            ]
+          },
+          "salaryLabel": "",
+          "employer": {
+            "id": "744981",
+            "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
+            "companyId": "175608148114568"
+          },
+          "classifications": [
+            {
+              "classification": {
+                "description": "Engineering"
+              },
+              "subclassification": {
+                "description": "Quality Assurance"
+              }
+            }
+          ]
+        }
+      ],
+      "totalCount": 2,
+      "solMetadata": {
+        "pageNumber": 1,
+        "pageSize": 100,
+        "totalJobCount": 2
+      }
+    },
+    "expected": null,
+    "total": null,
+    "error": true
+  },
+  {
+    "name": "sg.jobstreet.com-detail-complete",
+    "kind": "detail",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": {
+          "job": {
+            "id": "12345678",
+            "title": "Role 12345678",
+            "content": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+            "isExpired": false,
+            "status": "Active",
+            "location": {
+              "label": "Simpang Ampat, Penang"
+            },
+            "workTypes": {
+              "label": "Full time"
+            },
+            "salary": {
+              "label": "RM 8,000 – RM 12,000 per month"
+            },
+            "advertiser": {
+              "name": "Tecan CDMO Solutions PN Sdn. Bhd."
+            },
+            "createdAt": {
+              "dateTimeUtc": "2026-08-10T05:56:10.450Z"
+            },
+            "expiresAt": {
+              "dateTimeUtc": "2026-09-09T13:59:59.999Z"
+            }
+          }
+        }
+      }
+    },
+    "expected": {
+      "title": "Role 12345678",
+      "description": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+      "locations": [
+        "Simpang Ampat, Penang"
+      ],
+      "employment_type": "Full time",
+      "date_posted": "2026-08-10T05:56:10.450Z",
+      "language": "en",
+      "metadata": {
+        "jobstreet_job_id": "12345678",
+        "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+        "expiration_date": "2026-09-09T13:59:59.999Z"
+      }
+    },
+    "error": false
+  },
+  {
+    "name": "sg.jobstreet.com-detail-missing",
+    "kind": "detail",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": null
+      }
+    },
+    "expected": {},
+    "error": false
+  },
+  {
+    "name": "sg.jobstreet.com-detail-id-2",
+    "kind": "detail",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": {
+          "job": {
+            "id": "foreign",
+            "title": "Role 12345678",
+            "content": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+            "isExpired": false,
+            "status": "Active",
+            "location": {
+              "label": "Simpang Ampat, Penang"
+            },
+            "workTypes": {
+              "label": "Full time"
+            },
+            "salary": {
+              "label": "RM 8,000 – RM 12,000 per month"
+            },
+            "advertiser": {
+              "name": "Tecan CDMO Solutions PN Sdn. Bhd."
+            },
+            "createdAt": {
+              "dateTimeUtc": "2026-08-10T05:56:10.450Z"
+            },
+            "expiresAt": {
+              "dateTimeUtc": "2026-09-09T13:59:59.999Z"
+            }
+          }
+        }
+      }
+    },
+    "expected": null,
+    "error": true
+  },
+  {
+    "name": "sg.jobstreet.com-detail-id-3",
+    "kind": "detail",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": {
+          "job": {
+            "id": 12345678,
+            "title": "Role 12345678",
+            "content": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+            "isExpired": false,
+            "status": "Active",
+            "location": {
+              "label": "Simpang Ampat, Penang"
+            },
+            "workTypes": {
+              "label": "Full time"
+            },
+            "salary": {
+              "label": "RM 8,000 – RM 12,000 per month"
+            },
+            "advertiser": {
+              "name": "Tecan CDMO Solutions PN Sdn. Bhd."
+            },
+            "createdAt": {
+              "dateTimeUtc": "2026-08-10T05:56:10.450Z"
+            },
+            "expiresAt": {
+              "dateTimeUtc": "2026-09-09T13:59:59.999Z"
+            }
+          }
+        }
+      }
+    },
+    "expected": {
+      "title": "Role 12345678",
+      "description": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+      "locations": [
+        "Simpang Ampat, Penang"
+      ],
+      "employment_type": "Full time",
+      "date_posted": "2026-08-10T05:56:10.450Z",
+      "language": "en",
+      "metadata": {
+        "jobstreet_job_id": "12345678",
+        "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+        "expiration_date": "2026-09-09T13:59:59.999Z"
+      }
+    },
+    "error": false
+  },
+  {
+    "name": "sg.jobstreet.com-detail-isExpired-4",
+    "kind": "detail",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": {
+          "job": {
+            "id": "12345678",
+            "title": "Role 12345678",
+            "content": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+            "isExpired": true,
+            "status": "Active",
+            "location": {
+              "label": "Simpang Ampat, Penang"
+            },
+            "workTypes": {
+              "label": "Full time"
+            },
+            "salary": {
+              "label": "RM 8,000 – RM 12,000 per month"
+            },
+            "advertiser": {
+              "name": "Tecan CDMO Solutions PN Sdn. Bhd."
+            },
+            "createdAt": {
+              "dateTimeUtc": "2026-08-10T05:56:10.450Z"
+            },
+            "expiresAt": {
+              "dateTimeUtc": "2026-09-09T13:59:59.999Z"
+            }
+          }
+        }
+      }
+    },
+    "expected": {},
+    "error": false
+  },
+  {
+    "name": "sg.jobstreet.com-detail-isExpired-5",
+    "kind": "detail",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": {
+          "job": {
+            "id": "12345678",
+            "title": "Role 12345678",
+            "content": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+            "isExpired": "true",
+            "status": "Active",
+            "location": {
+              "label": "Simpang Ampat, Penang"
+            },
+            "workTypes": {
+              "label": "Full time"
+            },
+            "salary": {
+              "label": "RM 8,000 – RM 12,000 per month"
+            },
+            "advertiser": {
+              "name": "Tecan CDMO Solutions PN Sdn. Bhd."
+            },
+            "createdAt": {
+              "dateTimeUtc": "2026-08-10T05:56:10.450Z"
+            },
+            "expiresAt": {
+              "dateTimeUtc": "2026-09-09T13:59:59.999Z"
+            }
+          }
+        }
+      }
+    },
+    "expected": {
+      "title": "Role 12345678",
+      "description": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+      "locations": [
+        "Simpang Ampat, Penang"
+      ],
+      "employment_type": "Full time",
+      "date_posted": "2026-08-10T05:56:10.450Z",
+      "language": "en",
+      "metadata": {
+        "jobstreet_job_id": "12345678",
+        "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+        "expiration_date": "2026-09-09T13:59:59.999Z"
+      }
+    },
+    "error": false
+  },
+  {
+    "name": "sg.jobstreet.com-detail-status-6",
+    "kind": "detail",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": {
+          "job": {
+            "id": "12345678",
+            "title": "Role 12345678",
+            "content": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+            "isExpired": false,
+            "status": null,
+            "location": {
+              "label": "Simpang Ampat, Penang"
+            },
+            "workTypes": {
+              "label": "Full time"
+            },
+            "salary": {
+              "label": "RM 8,000 – RM 12,000 per month"
+            },
+            "advertiser": {
+              "name": "Tecan CDMO Solutions PN Sdn. Bhd."
+            },
+            "createdAt": {
+              "dateTimeUtc": "2026-08-10T05:56:10.450Z"
+            },
+            "expiresAt": {
+              "dateTimeUtc": "2026-09-09T13:59:59.999Z"
+            }
+          }
+        }
+      }
+    },
+    "expected": {},
+    "error": false
+  },
+  {
+    "name": "sg.jobstreet.com-detail-status-7",
+    "kind": "detail",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": {
+          "job": {
+            "id": "12345678",
+            "title": "Role 12345678",
+            "content": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+            "isExpired": false,
+            "status": "Expired",
+            "location": {
+              "label": "Simpang Ampat, Penang"
+            },
+            "workTypes": {
+              "label": "Full time"
+            },
+            "salary": {
+              "label": "RM 8,000 – RM 12,000 per month"
+            },
+            "advertiser": {
+              "name": "Tecan CDMO Solutions PN Sdn. Bhd."
+            },
+            "createdAt": {
+              "dateTimeUtc": "2026-08-10T05:56:10.450Z"
+            },
+            "expiresAt": {
+              "dateTimeUtc": "2026-09-09T13:59:59.999Z"
+            }
+          }
+        }
+      }
+    },
+    "expected": {},
+    "error": false
+  },
+  {
+    "name": "sg.jobstreet.com-detail-title-8",
+    "kind": "detail",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": {
+          "job": {
+            "id": "12345678",
+            "title": " ",
+            "content": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+            "isExpired": false,
+            "status": "Active",
+            "location": {
+              "label": "Simpang Ampat, Penang"
+            },
+            "workTypes": {
+              "label": "Full time"
+            },
+            "salary": {
+              "label": "RM 8,000 – RM 12,000 per month"
+            },
+            "advertiser": {
+              "name": "Tecan CDMO Solutions PN Sdn. Bhd."
+            },
+            "createdAt": {
+              "dateTimeUtc": "2026-08-10T05:56:10.450Z"
+            },
+            "expiresAt": {
+              "dateTimeUtc": "2026-09-09T13:59:59.999Z"
+            }
+          }
+        }
+      }
+    },
+    "expected": null,
+    "error": true
+  },
+  {
+    "name": "sg.jobstreet.com-detail-content-9",
+    "kind": "detail",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": {
+          "job": {
+            "id": "12345678",
+            "title": "Role 12345678",
+            "content": " ",
+            "isExpired": false,
+            "status": "Active",
+            "location": {
+              "label": "Simpang Ampat, Penang"
+            },
+            "workTypes": {
+              "label": "Full time"
+            },
+            "salary": {
+              "label": "RM 8,000 – RM 12,000 per month"
+            },
+            "advertiser": {
+              "name": "Tecan CDMO Solutions PN Sdn. Bhd."
+            },
+            "createdAt": {
+              "dateTimeUtc": "2026-08-10T05:56:10.450Z"
+            },
+            "expiresAt": {
+              "dateTimeUtc": "2026-09-09T13:59:59.999Z"
+            }
+          }
+        }
+      }
+    },
+    "expected": null,
+    "error": true
+  },
+  {
+    "name": "sg.jobstreet.com-detail-content-10",
+    "kind": "detail",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": {
+          "job": {
+            "id": "12345678",
+            "title": "Role 12345678",
+            "content": null,
+            "isExpired": false,
+            "status": "Active",
+            "location": {
+              "label": "Simpang Ampat, Penang"
+            },
+            "workTypes": {
+              "label": "Full time"
+            },
+            "salary": {
+              "label": "RM 8,000 – RM 12,000 per month"
+            },
+            "advertiser": {
+              "name": "Tecan CDMO Solutions PN Sdn. Bhd."
+            },
+            "createdAt": {
+              "dateTimeUtc": "2026-08-10T05:56:10.450Z"
+            },
+            "expiresAt": {
+              "dateTimeUtc": "2026-09-09T13:59:59.999Z"
+            }
+          }
+        }
+      }
+    },
+    "expected": null,
+    "error": true
+  },
+  {
+    "name": "sg.jobstreet.com-detail-salary-11",
+    "kind": "detail",
+    "host": "sg.jobstreet.com",
+    "page": {
+      "data": {
+        "jobDetails": {
+          "job": {
+            "id": "12345678",
+            "title": "Role 12345678",
+            "content": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+            "isExpired": false,
+            "status": "Active",
+            "location": {
+              "label": "Simpang Ampat, Penang"
+            },
+            "workTypes": {
+              "label": "Full time"
+            },
+            "salary": {
+              "label": "$4,000 to $6,000 per month"
+            },
+            "advertiser": {
+              "name": "Tecan CDMO Solutions PN Sdn. Bhd."
+            },
+            "createdAt": {
+              "dateTimeUtc": "2026-08-10T05:56:10.450Z"
+            },
+            "expiresAt": {
+              "dateTimeUtc": "2026-09-09T13:59:59.999Z"
+            }
+          }
+        }
+      }
+    },
+    "expected": {
+      "title": "Role 12345678",
+      "description": "<h2>About the role</h2><p>Complete responsibilities.</p><h2>Requirements</h2><ul><li>Relevant experience</li></ul>",
+      "locations": [
+        "Simpang Ampat, Penang"
+      ],
+      "employment_type": "Full time",
+      "date_posted": "2026-08-10T05:56:10.450Z",
+      "base_salary": {
+        "currency": "SGD",
+        "min": 6000,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "en",
+      "metadata": {
+        "jobstreet_job_id": "12345678",
+        "employer": "Tecan CDMO Solutions PN Sdn. Bhd.",
+        "expiration_date": "2026-09-09T13:59:59.999Z"
+      }
+    },
+    "error": false
+  }
+]

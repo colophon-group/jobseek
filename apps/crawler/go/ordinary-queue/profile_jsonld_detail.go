@@ -116,6 +116,9 @@ func InspectJSONLDDetail(boardID string, config map[string]string, source string
 }
 
 func inspectDetailOwnership(boardID string, config map[string]string) (WorkdayDetailProfile, error) {
+	if config["crawler_type"] == "jobstreet" {
+		return inspectJobStreetDetail(boardID, config, config["board_url"], Simple, true)
+	}
 	if profile, err := inspectStaticProviderDetail(boardID, config, config["board_url"], Simple, true); err == nil {
 		return profile, nil
 	}
@@ -159,6 +162,9 @@ func inspectDetailOwnership(boardID string, config map[string]string) (WorkdayDe
 }
 
 func inspectDetail(boardID string, config map[string]string, source string, worker WorkerType) (WorkdayDetailProfile, error) {
+	if config["crawler_type"] == "jobstreet" {
+		return inspectJobStreetDetail(boardID, config, source, worker, false)
+	}
 	if profile, err := InspectStaticProviderDetail(boardID, config, source, worker); err == nil {
 		return profile, nil
 	}

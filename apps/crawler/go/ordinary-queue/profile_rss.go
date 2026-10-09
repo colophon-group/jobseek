@@ -26,6 +26,9 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 	if raw, ok := md["variant"]; ok && json.Unmarshal(raw, &variant) != nil {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
+	if preset == "successfactors" && variant == "legacy" {
+		return inspectLegacySFSessionMonitor(boardID, config, md)
+	}
 	if preset != "successfactors" && variant != "" || preset == "successfactors" && variant != "" && variant != "feed" && variant != "legacy_xml" {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}

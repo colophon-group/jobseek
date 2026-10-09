@@ -1,0 +1,2137 @@
+{
+  "parsers": [
+    {
+      "name": "initial-zero",
+      "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2={};var s3=[];var s4={};var s5={};var s6=[];var s7={};var s8={};s1.postingCount=\"0\";s1.configs=s2;s2.filters=s3;s3[0]=s4;s4.fieldName=\"customFilter_filter2\";s4.label=\"Duty Station\";s7.pagination=s8;s7.sortByColumn=\"JOB_POSTING_DATE\";s7.sortOrder=\"DESC\";s8.currentPage=1;s8.pageSize=10;s8.startRow=1;s8.endRow=10;s8.totalCount=0;s0.filters=s1;s0.results=s5;s5.postingCount=0;s5.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s5.options=s7;s5.postings=s6;dwr.engine._remoteHandleCallback('0','0',{payload:s0});",
+      "batch": 0,
+      "initial": true,
+      "expected": {
+        "filters": {
+          "postingCount": "0",
+          "configs": {
+            "filters": [
+              {
+                "fieldName": "customFilter_filter2",
+                "label": "Duty Station"
+              }
+            ]
+          }
+        },
+        "results": {
+          "postingCount": 0,
+          "detailURLPrefix": "/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=",
+          "options": {
+            "pagination": {
+              "currentPage": 1,
+              "pageSize": 10,
+              "startRow": 1,
+              "endRow": 10,
+              "totalCount": 0
+            },
+            "sortByColumn": "JOB_POSTING_DATE",
+            "sortOrder": "DESC"
+          },
+          "postings": []
+        }
+      },
+      "error": false
+    },
+    {
+      "name": "initial-one",
+      "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2={};var s3=[];var s4={};var s5={};var s6=[];var s7={};var s8={};var s9={};var s10=[];s1.postingCount=\"1\";s1.configs=s2;s2.filters=s3;s3[0]=s4;s4.fieldName=\"customFilter_filter2\";s4.label=\"Duty Station\";s7.pagination=s8;s7.sortByColumn=\"JOB_POSTING_DATE\";s7.sortOrder=\"DESC\";s8.currentPage=1;s8.pageSize=10;s8.startRow=1;s8.endRow=10;s8.totalCount=1;s0.filters=s1;s0.results=s5;s5.postingCount=1;s5.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s5.options=s7;s5.postings=s6;s9.id=1;s9.title=\"Engineer 1\";s9.defaultLocale=\"en_GB\";s9.postingDate=\"03\\/08\\/2026\";s9.otherValues=s10;s6[0]=s9;dwr.engine._remoteHandleCallback('0','0',{payload:s0});",
+      "batch": 0,
+      "initial": true,
+      "expected": {
+        "filters": {
+          "postingCount": "1",
+          "configs": {
+            "filters": [
+              {
+                "fieldName": "customFilter_filter2",
+                "label": "Duty Station"
+              }
+            ]
+          }
+        },
+        "results": {
+          "postingCount": 1,
+          "detailURLPrefix": "/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=",
+          "options": {
+            "pagination": {
+              "currentPage": 1,
+              "pageSize": 10,
+              "startRow": 1,
+              "endRow": 10,
+              "totalCount": 1
+            },
+            "sortByColumn": "JOB_POSTING_DATE",
+            "sortOrder": "DESC"
+          },
+          "postings": [
+            {
+              "id": 1,
+              "title": "Engineer 1",
+              "defaultLocale": "en_GB",
+              "postingDate": "03/08/2026",
+              "otherValues": []
+            }
+          ]
+        }
+      },
+      "error": false
+    },
+    {
+      "name": "search-zero",
+      "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};s0.postingCount=\"0\";s0.configs=s1;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=1;s7.pageSize=100;s7.startRow=1;s7.endRow=100;s7.totalCount=0;s4.postingCount=0;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;dwr.engine._remoteHandleCallback('1','0',{filters:s0,results:s4});",
+      "batch": 1,
+      "initial": false,
+      "expected": {
+        "filters": {
+          "postingCount": "0",
+          "configs": {
+            "filters": [
+              {
+                "fieldName": "customFilter_filter2",
+                "label": "Duty Station"
+              }
+            ]
+          }
+        },
+        "results": {
+          "postingCount": 0,
+          "detailURLPrefix": "/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=",
+          "options": {
+            "pagination": {
+              "currentPage": 1,
+              "pageSize": 100,
+              "startRow": 1,
+              "endRow": 100,
+              "totalCount": 0
+            },
+            "sortByColumn": "JOB_POSTING_DATE",
+            "sortOrder": "DESC"
+          },
+          "postings": []
+        }
+      },
+      "error": false
+    },
+    {
+      "name": "search-one",
+      "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};var s8={};var s9=[];var s10=[];var s11={};s0.postingCount=\"1\";s0.configs=s1;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=1;s7.pageSize=100;s7.startRow=1;s7.endRow=100;s7.totalCount=1;s4.postingCount=1;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;s8.id=123;s8.title=\"Engineer 123\";s8.defaultLocale=\"en_GB\";s8.postingDate=\"03\\/08\\/2026\";s8.otherValues=s9;s9[0]=s10;s10[0]=s11;s11.fieldId=\"filter2\";s11.longVal=null;s11.shortVal=\"Zurich - CH\";s5[0]=s8;dwr.engine._remoteHandleCallback('1','0',{filters:s0,results:s4});",
+      "batch": 1,
+      "initial": false,
+      "expected": {
+        "filters": {
+          "postingCount": "1",
+          "configs": {
+            "filters": [
+              {
+                "fieldName": "customFilter_filter2",
+                "label": "Duty Station"
+              }
+            ]
+          }
+        },
+        "results": {
+          "postingCount": 1,
+          "detailURLPrefix": "/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=",
+          "options": {
+            "pagination": {
+              "currentPage": 1,
+              "pageSize": 100,
+              "startRow": 1,
+              "endRow": 100,
+              "totalCount": 1
+            },
+            "sortByColumn": "JOB_POSTING_DATE",
+            "sortOrder": "DESC"
+          },
+          "postings": [
+            {
+              "id": 123,
+              "title": "Engineer 123",
+              "defaultLocale": "en_GB",
+              "postingDate": "03/08/2026",
+              "otherValues": [
+                [
+                  {
+                    "fieldId": "filter2",
+                    "longVal": null,
+                    "shortVal": "Zurich - CH"
+                  }
+                ]
+              ]
+            }
+          ]
+        }
+      },
+      "error": false
+    },
+    {
+      "name": "no-marker",
+      "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n\nvar s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};var s8={};var s9=[];var s10=[];var s11={};s0.postingCount=\"1\";s0.configs=s1;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=1;s7.pageSize=100;s7.startRow=1;s7.endRow=100;s7.totalCount=1;s4.postingCount=1;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;s8.id=123;s8.title=\"Engineer 123\";s8.defaultLocale=\"en_GB\";s8.postingDate=\"03\\/08\\/2026\";s8.otherValues=s9;s9[0]=s10;s10[0]=s11;s11.fieldId=\"filter2\";s11.longVal=null;s11.shortVal=\"Zurich - CH\";s5[0]=s8;dwr.engine._remoteHandleCallback('1','0',{filters:s0,results:s4});",
+      "batch": 1,
+      "initial": false,
+      "expected": null,
+      "error": true
+    },
+    {
+      "name": "bad-callback",
+      "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};var s8={};var s9=[];var s10=[];var s11={};s0.postingCount=\"1\";s0.configs=s1;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=1;s7.pageSize=100;s7.startRow=1;s7.endRow=100;s7.totalCount=1;s4.postingCount=1;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;s8.id=123;s8.title=\"Engineer 123\";s8.defaultLocale=\"en_GB\";s8.postingDate=\"03\\/08\\/2026\";s8.otherValues=s9;s9[0]=s10;s10[0]=s11;s11.fieldId=\"filter2\";s11.longVal=null;s11.shortVal=\"Zurich - CH\";s5[0]=s8;dwr.engine._remoteHandleCallback('2','0',{filters:s0,results:s4});",
+      "batch": 1,
+      "initial": false,
+      "expected": null,
+      "error": true
+    },
+    {
+      "name": "callback-tail",
+      "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};var s8={};var s9=[];var s10=[];var s11={};s0.postingCount=\"1\";s0.configs=s1;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=1;s7.pageSize=100;s7.startRow=1;s7.endRow=100;s7.totalCount=1;s4.postingCount=1;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;s8.id=123;s8.title=\"Engineer 123\";s8.defaultLocale=\"en_GB\";s8.postingDate=\"03\\/08\\/2026\";s8.otherValues=s9;s9[0]=s10;s10[0]=s11;s11.fieldId=\"filter2\";s11.longVal=null;s11.shortVal=\"Zurich - CH\";s5[0]=s8;dwr.engine._remoteHandleCallback('1','0',{filters:s0,results:s4});alert('unsafe');",
+      "batch": 1,
+      "initial": false,
+      "expected": null,
+      "error": true
+    },
+    {
+      "name": "unsupported-code",
+      "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};alert('unsafe');var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};var s8={};var s9=[];var s10=[];var s11={};s0.postingCount=\"1\";s0.configs=s1;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=1;s7.pageSize=100;s7.startRow=1;s7.endRow=100;s7.totalCount=1;s4.postingCount=1;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;s8.id=123;s8.title=\"Engineer 123\";s8.defaultLocale=\"en_GB\";s8.postingDate=\"03\\/08\\/2026\";s8.otherValues=s9;s9[0]=s10;s10[0]=s11;s11.fieldId=\"filter2\";s11.longVal=null;s11.shortVal=\"Zurich - CH\";s5[0]=s8;dwr.engine._remoteHandleCallback('1','0',{filters:s0,results:s4});",
+      "batch": 1,
+      "initial": false,
+      "expected": null,
+      "error": true
+    },
+    {
+      "name": "undeclared-reference",
+      "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};var s8={};var s9=[];var s10=[];var s11={};s0.postingCount=\"1\";s0.configs=s99999;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=1;s7.pageSize=100;s7.startRow=1;s7.endRow=100;s7.totalCount=1;s4.postingCount=1;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;s8.id=123;s8.title=\"Engineer 123\";s8.defaultLocale=\"en_GB\";s8.postingDate=\"03\\/08\\/2026\";s8.otherValues=s9;s9[0]=s10;s10[0]=s11;s11.fieldId=\"filter2\";s11.longVal=null;s11.shortVal=\"Zurich - CH\";s5[0]=s8;dwr.engine._remoteHandleCallback('1','0',{filters:s0,results:s4});",
+      "batch": 1,
+      "initial": false,
+      "expected": null,
+      "error": true
+    },
+    {
+      "name": "duplicate-declaration",
+      "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};var s8={};var s9=[];var s10=[];var s11={};s0.postingCount=\"1\";s0.configs=s1;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=1;s7.pageSize=100;s7.startRow=1;s7.endRow=100;s7.totalCount=1;s4.postingCount=1;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;s8.id=123;s8.title=\"Engineer 123\";s8.defaultLocale=\"en_GB\";s8.postingDate=\"03\\/08\\/2026\";s8.otherValues=s9;s9[0]=s10;s10[0]=s11;s11.fieldId=\"filter2\";s11.longVal=null;s11.shortVal=\"Zurich - CH\";s5[0]=s8;dwr.engine._remoteHandleCallback('1','0',{filters:s0,results:s4});",
+      "batch": 1,
+      "initial": false,
+      "expected": null,
+      "error": true
+    },
+    {
+      "name": "duplicate-property",
+      "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};var s8={};var s9=[];var s10=[];var s11={};s0.postingCount=\"1\";s0.postingCount=\"1\";s0.configs=s1;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=1;s7.pageSize=100;s7.startRow=1;s7.endRow=100;s7.totalCount=1;s4.postingCount=1;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;s8.id=123;s8.title=\"Engineer 123\";s8.defaultLocale=\"en_GB\";s8.postingDate=\"03\\/08\\/2026\";s8.otherValues=s9;s9[0]=s10;s10[0]=s11;s11.fieldId=\"filter2\";s11.longVal=null;s11.shortVal=\"Zurich - CH\";s5[0]=s8;dwr.engine._remoteHandleCallback('1','0',{filters:s0,results:s4});",
+      "batch": 1,
+      "initial": false,
+      "expected": null,
+      "error": true
+    },
+    {
+      "name": "outsize-index",
+      "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};var s8={};var s9=[];var s10=[];var s11={};s0.postingCount=\"1\";s0.configs=s1;s1.filters=s2;s2[200001]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=1;s7.pageSize=100;s7.startRow=1;s7.endRow=100;s7.totalCount=1;s4.postingCount=1;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;s8.id=123;s8.title=\"Engineer 123\";s8.defaultLocale=\"en_GB\";s8.postingDate=\"03\\/08\\/2026\";s8.otherValues=s9;s9[0]=s10;s10[0]=s11;s11.fieldId=\"filter2\";s11.longVal=null;s11.shortVal=\"Zurich - CH\";s5[0]=s8;dwr.engine._remoteHandleCallback('1','0',{filters:s0,results:s4});",
+      "batch": 1,
+      "initial": false,
+      "expected": null,
+      "error": true
+    },
+    {
+      "name": "apostrophe-escape",
+      "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};var s8={};var s9=[];var s10=[];var s11={};s0.postingCount=\"1\";s0.configs=s1;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=1;s7.pageSize=100;s7.startRow=1;s7.endRow=100;s7.totalCount=1;s4.postingCount=1;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;s8.id=123;s8.title=\"Engineer \\'123\";s8.defaultLocale=\"en_GB\";s8.postingDate=\"03\\/08\\/2026\";s8.otherValues=s9;s9[0]=s10;s10[0]=s11;s11.fieldId=\"filter2\";s11.longVal=null;s11.shortVal=\"Zurich - CH\";s5[0]=s8;dwr.engine._remoteHandleCallback('1','0',{filters:s0,results:s4});",
+      "batch": 1,
+      "initial": false,
+      "expected": {
+        "filters": {
+          "postingCount": "1",
+          "configs": {
+            "filters": [
+              {
+                "fieldName": "customFilter_filter2",
+                "label": "Duty Station"
+              }
+            ]
+          }
+        },
+        "results": {
+          "postingCount": 1,
+          "detailURLPrefix": "/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=",
+          "options": {
+            "pagination": {
+              "currentPage": 1,
+              "pageSize": 100,
+              "startRow": 1,
+              "endRow": 100,
+              "totalCount": 1
+            },
+            "sortByColumn": "JOB_POSTING_DATE",
+            "sortOrder": "DESC"
+          },
+          "postings": [
+            {
+              "id": 123,
+              "title": "Engineer '123",
+              "defaultLocale": "en_GB",
+              "postingDate": "03/08/2026",
+              "otherValues": [
+                [
+                  {
+                    "fieldId": "filter2",
+                    "longVal": null,
+                    "shortVal": "Zurich - CH"
+                  }
+                ]
+              ]
+            }
+          ]
+        }
+      },
+      "error": false
+    },
+    {
+      "name": "no-throw-prelude",
+      "body": "//#DWR-REPLY\nvar s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};var s8={};var s9=[];var s10=[];var s11={};s0.postingCount=\"1\";s0.configs=s1;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=1;s7.pageSize=100;s7.startRow=1;s7.endRow=100;s7.totalCount=1;s4.postingCount=1;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;s8.id=123;s8.title=\"Engineer 123\";s8.defaultLocale=\"en_GB\";s8.postingDate=\"03\\/08\\/2026\";s8.otherValues=s9;s9[0]=s10;s10[0]=s11;s11.fieldId=\"filter2\";s11.longVal=null;s11.shortVal=\"Zurich - CH\";s5[0]=s8;dwr.engine._remoteHandleCallback('1','0',{filters:s0,results:s4});",
+      "batch": 1,
+      "initial": false,
+      "expected": {
+        "filters": {
+          "postingCount": "1",
+          "configs": {
+            "filters": [
+              {
+                "fieldName": "customFilter_filter2",
+                "label": "Duty Station"
+              }
+            ]
+          }
+        },
+        "results": {
+          "postingCount": 1,
+          "detailURLPrefix": "/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=",
+          "options": {
+            "pagination": {
+              "currentPage": 1,
+              "pageSize": 100,
+              "startRow": 1,
+              "endRow": 100,
+              "totalCount": 1
+            },
+            "sortByColumn": "JOB_POSTING_DATE",
+            "sortOrder": "DESC"
+          },
+          "postings": [
+            {
+              "id": 123,
+              "title": "Engineer 123",
+              "defaultLocale": "en_GB",
+              "postingDate": "03/08/2026",
+              "otherValues": [
+                [
+                  {
+                    "fieldId": "filter2",
+                    "longVal": null,
+                    "shortVal": "Zurich - CH"
+                  }
+                ]
+              ]
+            }
+          ]
+        }
+      },
+      "error": false
+    }
+  ],
+  "inventories": [
+    {
+      "name": "zero",
+      "board": {
+        "board_url": "https://career5.successfactors.eu/career?company=Acme",
+        "metadata": {
+          "preset": "successfactors",
+          "variant": "legacy",
+          "host": "career5.successfactors.eu",
+          "company": "Acme"
+        }
+      },
+      "responses": [
+        {
+          "body": "<html><script>var ajaxSecKey=\"abcDEF0123%2f456%3d\";function getInitialJobSearchData(){}; careerJobSearchController; const x={companyId: \"Acme\"};</script></html>",
+          "headers": {
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "content-length": "160",
+            "content-type": "text/plain; charset=utf-8"
+          }
+        },
+        {
+          "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2={};var s3=[];var s4={};var s5={};var s6=[];var s7={};var s8={};s1.postingCount=\"0\";s1.configs=s2;s2.filters=s3;s3[0]=s4;s4.fieldName=\"customFilter_filter2\";s4.label=\"Duty Station\";s7.pagination=s8;s7.sortByColumn=\"JOB_POSTING_DATE\";s7.sortOrder=\"DESC\";s8.currentPage=1;s8.pageSize=10;s8.startRow=1;s8.endRow=10;s8.totalCount=0;s0.filters=s1;s0.results=s5;s5.postingCount=0;s5.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s5.options=s7;s5.postings=s6;dwr.engine._remoteHandleCallback('0','0',{payload:s0});",
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+          "body": "",
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://career5.successfactors.eu/xi/ajax/remoting/call/plaincall/careerJobSearchControllerProxy.getInitialJobSearchData.dwr",
+          "body": "callCount=1\npage=/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH\nhttpSessionId=\nscriptSessionId=0123456789abcdef01234567\nc0-scriptName=careerJobSearchControllerProxy\nc0-methodName=getInitialJobSearchData\nc0-id=0\nc0-e1=string:\nc0-e2=string:\nc0-e3=boolean:false\nc0-e4=string:Etc%2FUTC\nc0-param0=Object_Object:{filterOnly:reference:c0-e1,jobAlertId:reference:c0-e2,returnToList:reference:c0-e3,browserTimeZone:reference:c0-e4}\nbatchId=0\n",
+          "headers": {
+            "content-type": "text/plain",
+            "origin": "https://career5.successfactors.eu",
+            "referer": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+            "viewid": "/ui/rcmcareer/pages/careersite/career.jsp.xhtml",
+            "x-ajax-token": "abcDEF0123%2f456%3d",
+            "x-csrf-token": "abcDEF0123%2f456%3d",
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "x-sap-page-info": "companyId=Acme",
+            "x-subaction": "0"
+          }
+        }
+      ],
+      "expected": [],
+      "truncated": false,
+      "error": false
+    },
+    {
+      "name": "one",
+      "board": {
+        "board_url": "https://career5.successfactors.eu/career?company=Acme",
+        "metadata": {
+          "preset": "successfactors",
+          "variant": "legacy",
+          "host": "career5.successfactors.eu",
+          "company": "Acme"
+        }
+      },
+      "responses": [
+        {
+          "body": "<html><script>var ajaxSecKey=\"abcDEF0123%2f456%3d\";function getInitialJobSearchData(){}; careerJobSearchController; const x={companyId: \"Acme\"};</script></html>",
+          "headers": {
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "content-length": "160",
+            "content-type": "text/plain; charset=utf-8"
+          }
+        },
+        {
+          "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2={};var s3=[];var s4={};var s5={};var s6=[];var s7={};var s8={};var s9={};var s10=[];s1.postingCount=\"1\";s1.configs=s2;s2.filters=s3;s3[0]=s4;s4.fieldName=\"customFilter_filter2\";s4.label=\"Duty Station\";s7.pagination=s8;s7.sortByColumn=\"JOB_POSTING_DATE\";s7.sortOrder=\"DESC\";s8.currentPage=1;s8.pageSize=10;s8.startRow=1;s8.endRow=10;s8.totalCount=1;s0.filters=s1;s0.results=s5;s5.postingCount=1;s5.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s5.options=s7;s5.postings=s6;s9.id=1;s9.title=\"Engineer 1\";s9.defaultLocale=\"en_GB\";s9.postingDate=\"03\\/08\\/2026\";s9.otherValues=s10;s6[0]=s9;dwr.engine._remoteHandleCallback('0','0',{payload:s0});",
+          "headers": {}
+        },
+        {
+          "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};var s8={};var s9=[];var s10=[];var s11={};s0.postingCount=\"1\";s0.configs=s1;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=1;s7.pageSize=100;s7.startRow=1;s7.endRow=100;s7.totalCount=1;s4.postingCount=1;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;s8.id=123;s8.title=\"Engineer 123\";s8.defaultLocale=\"en_GB\";s8.postingDate=\"03\\/08\\/2026\";s8.otherValues=s9;s9[0]=s10;s10[0]=s11;s11.fieldId=\"filter2\";s11.longVal=null;s11.shortVal=\"Zurich - CH\";s5[0]=s8;dwr.engine._remoteHandleCallback('1','0',{filters:s0,results:s4});",
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+          "body": "",
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://career5.successfactors.eu/xi/ajax/remoting/call/plaincall/careerJobSearchControllerProxy.getInitialJobSearchData.dwr",
+          "body": "callCount=1\npage=/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH\nhttpSessionId=\nscriptSessionId=0123456789abcdef01234567\nc0-scriptName=careerJobSearchControllerProxy\nc0-methodName=getInitialJobSearchData\nc0-id=0\nc0-e1=string:\nc0-e2=string:\nc0-e3=boolean:false\nc0-e4=string:Etc%2FUTC\nc0-param0=Object_Object:{filterOnly:reference:c0-e1,jobAlertId:reference:c0-e2,returnToList:reference:c0-e3,browserTimeZone:reference:c0-e4}\nbatchId=0\n",
+          "headers": {
+            "content-type": "text/plain",
+            "origin": "https://career5.successfactors.eu",
+            "referer": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+            "viewid": "/ui/rcmcareer/pages/careersite/career.jsp.xhtml",
+            "x-ajax-token": "abcDEF0123%2f456%3d",
+            "x-csrf-token": "abcDEF0123%2f456%3d",
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "x-sap-page-info": "companyId=Acme",
+            "x-subaction": "0"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://career5.successfactors.eu/xi/ajax/remoting/call/plaincall/careerJobSearchControllerProxy.search.dwr",
+          "body": "callCount=1\npage=/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH\nhttpSessionId=\nscriptSessionId=0123456789abcdef01234567\nc0-scriptName=careerJobSearchControllerProxy\nc0-methodName=search\nc0-id=0\nc0-e1=number:1\nc0-e2=number:100\nc0-e3=Object_Object:{currentPage:reference:c0-e1,pageSize:reference:c0-e2}\nc0-e4=string:JOB_POSTING_DATE\nc0-e5=string:DESC\nc0-param0=Object_Object:{pagination:reference:c0-e3,sortByColumn:reference:c0-e4,sortOrder:reference:c0-e5}\nbatchId=1\n",
+          "headers": {
+            "content-type": "text/plain",
+            "origin": "https://career5.successfactors.eu",
+            "referer": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+            "viewid": "/ui/rcmcareer/pages/careersite/career.jsp.xhtml",
+            "x-ajax-token": "abcDEF0123%2f456%3d",
+            "x-csrf-token": "abcDEF0123%2f456%3d",
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "x-sap-page-info": "companyId=Acme",
+            "x-subaction": "0"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=123",
+          "title": "Engineer 123",
+          "locations": [
+            "Zurich - CH"
+          ],
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "123",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026",
+            "fields": {
+              "Duty Station": "Zurich - CH"
+            }
+          }
+        }
+      ],
+      "truncated": false,
+      "error": false
+    },
+    {
+      "name": "two-pages",
+      "board": {
+        "board_url": "https://career5.successfactors.eu/career?company=Acme",
+        "metadata": {
+          "preset": "successfactors",
+          "variant": "legacy",
+          "host": "career5.successfactors.eu",
+          "company": "Acme"
+        }
+      },
+      "responses": [
+        {
+          "body": "<html><script>var ajaxSecKey=\"abcDEF0123%2f456%3d\";function getInitialJobSearchData(){}; careerJobSearchController; const x={companyId: \"Acme\"};</script></html>",
+          "headers": {
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "content-length": "160",
+            "content-type": "text/plain; charset=utf-8"
+          }
+        },
+        {
+          "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2={};var s3=[];var s4={};var s5={};var s6=[];var s7={};var s8={};var s9={};var s10=[];var s11={};var s12=[];var s13={};var s14=[];var s15={};var s16=[];var s17={};var s18=[];var s19={};var s20=[];var s21={};var s22=[];var s23={};var s24=[];var s25={};var s26=[];var s27={};var s28=[];s1.postingCount=\"101\";s1.configs=s2;s2.filters=s3;s3[0]=s4;s4.fieldName=\"customFilter_filter2\";s4.label=\"Duty Station\";s7.pagination=s8;s7.sortByColumn=\"JOB_POSTING_DATE\";s7.sortOrder=\"DESC\";s8.currentPage=1;s8.pageSize=10;s8.startRow=1;s8.endRow=10;s8.totalCount=101;s0.filters=s1;s0.results=s5;s5.postingCount=101;s5.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s5.options=s7;s5.postings=s6;s9.id=1;s9.title=\"Engineer 1\";s9.defaultLocale=\"en_GB\";s9.postingDate=\"03\\/08\\/2026\";s9.otherValues=s10;s6[0]=s9;s11.id=2;s11.title=\"Engineer 2\";s11.defaultLocale=\"en_GB\";s11.postingDate=\"03\\/08\\/2026\";s11.otherValues=s12;s6[1]=s11;s13.id=3;s13.title=\"Engineer 3\";s13.defaultLocale=\"en_GB\";s13.postingDate=\"03\\/08\\/2026\";s13.otherValues=s14;s6[2]=s13;s15.id=4;s15.title=\"Engineer 4\";s15.defaultLocale=\"en_GB\";s15.postingDate=\"03\\/08\\/2026\";s15.otherValues=s16;s6[3]=s15;s17.id=5;s17.title=\"Engineer 5\";s17.defaultLocale=\"en_GB\";s17.postingDate=\"03\\/08\\/2026\";s17.otherValues=s18;s6[4]=s17;s19.id=6;s19.title=\"Engineer 6\";s19.defaultLocale=\"en_GB\";s19.postingDate=\"03\\/08\\/2026\";s19.otherValues=s20;s6[5]=s19;s21.id=7;s21.title=\"Engineer 7\";s21.defaultLocale=\"en_GB\";s21.postingDate=\"03\\/08\\/2026\";s21.otherValues=s22;s6[6]=s21;s23.id=8;s23.title=\"Engineer 8\";s23.defaultLocale=\"en_GB\";s23.postingDate=\"03\\/08\\/2026\";s23.otherValues=s24;s6[7]=s23;s25.id=9;s25.title=\"Engineer 9\";s25.defaultLocale=\"en_GB\";s25.postingDate=\"03\\/08\\/2026\";s25.otherValues=s26;s6[8]=s25;s27.id=10;s27.title=\"Engineer 10\";s27.defaultLocale=\"en_GB\";s27.postingDate=\"03\\/08\\/2026\";s27.otherValues=s28;s6[9]=s27;dwr.engine._remoteHandleCallback('0','0',{payload:s0});",
+          "headers": {}
+        },
+        {
+          "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};var s8={};var s9=[];var s10=[];var s11={};var s12={};var s13=[];var s14={};var s15=[];var s16={};var s17=[];var s18={};var s19=[];var s20={};var s21=[];var s22={};var s23=[];var s24={};var s25=[];var s26={};var s27=[];var s28={};var s29=[];var s30={};var s31=[];var s32={};var s33=[];var s34={};var s35=[];var s36={};var s37=[];var s38={};var s39=[];var s40={};var s41=[];var s42={};var s43=[];var s44={};var s45=[];var s46={};var s47=[];var s48={};var s49=[];var s50={};var s51=[];var s52={};var s53=[];var s54={};var s55=[];var s56={};var s57=[];var s58={};var s59=[];var s60={};var s61=[];var s62={};var s63=[];var s64={};var s65=[];var s66={};var s67=[];var s68={};var s69=[];var s70={};var s71=[];var s72={};var s73=[];var s74={};var s75=[];var s76={};var s77=[];var s78={};var s79=[];var s80={};var s81=[];var s82={};var s83=[];var s84={};var s85=[];var s86={};var s87=[];var s88={};var s89=[];var s90={};var s91=[];var s92={};var s93=[];var s94={};var s95=[];var s96={};var s97=[];var s98={};var s99=[];var s100={};var s101=[];var s102={};var s103=[];var s104={};var s105=[];var s106={};var s107=[];var s108={};var s109=[];var s110={};var s111=[];var s112={};var s113=[];var s114={};var s115=[];var s116={};var s117=[];var s118={};var s119=[];var s120={};var s121=[];var s122={};var s123=[];var s124={};var s125=[];var s126={};var s127=[];var s128={};var s129=[];var s130={};var s131=[];var s132={};var s133=[];var s134={};var s135=[];var s136={};var s137=[];var s138={};var s139=[];var s140={};var s141=[];var s142={};var s143=[];var s144={};var s145=[];var s146={};var s147=[];var s148={};var s149=[];var s150={};var s151=[];var s152={};var s153=[];var s154={};var s155=[];var s156={};var s157=[];var s158={};var s159=[];var s160={};var s161=[];var s162={};var s163=[];var s164={};var s165=[];var s166={};var s167=[];var s168={};var s169=[];var s170={};var s171=[];var s172={};var s173=[];var s174={};var s175=[];var s176={};var s177=[];var s178={};var s179=[];var s180={};var s181=[];var s182={};var s183=[];var s184={};var s185=[];var s186={};var s187=[];var s188={};var s189=[];var s190={};var s191=[];var s192={};var s193=[];var s194={};var s195=[];var s196={};var s197=[];var s198={};var s199=[];var s200={};var s201=[];var s202={};var s203=[];var s204={};var s205=[];var s206={};var s207=[];var s208={};var s209=[];s0.postingCount=\"101\";s0.configs=s1;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=1;s7.pageSize=100;s7.startRow=1;s7.endRow=100;s7.totalCount=101;s4.postingCount=101;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;s8.id=1;s8.title=\"Engineer 1\";s8.defaultLocale=\"en_GB\";s8.postingDate=\"03\\/08\\/2026\";s8.otherValues=s9;s9[0]=s10;s10[0]=s11;s11.fieldId=\"filter2\";s11.longVal=null;s11.shortVal=\"Zurich - CH\";s5[0]=s8;s12.id=2;s12.title=\"Engineer 2\";s12.defaultLocale=\"en_GB\";s12.postingDate=\"03\\/08\\/2026\";s12.otherValues=s13;s5[1]=s12;s14.id=3;s14.title=\"Engineer 3\";s14.defaultLocale=\"en_GB\";s14.postingDate=\"03\\/08\\/2026\";s14.otherValues=s15;s5[2]=s14;s16.id=4;s16.title=\"Engineer 4\";s16.defaultLocale=\"en_GB\";s16.postingDate=\"03\\/08\\/2026\";s16.otherValues=s17;s5[3]=s16;s18.id=5;s18.title=\"Engineer 5\";s18.defaultLocale=\"en_GB\";s18.postingDate=\"03\\/08\\/2026\";s18.otherValues=s19;s5[4]=s18;s20.id=6;s20.title=\"Engineer 6\";s20.defaultLocale=\"en_GB\";s20.postingDate=\"03\\/08\\/2026\";s20.otherValues=s21;s5[5]=s20;s22.id=7;s22.title=\"Engineer 7\";s22.defaultLocale=\"en_GB\";s22.postingDate=\"03\\/08\\/2026\";s22.otherValues=s23;s5[6]=s22;s24.id=8;s24.title=\"Engineer 8\";s24.defaultLocale=\"en_GB\";s24.postingDate=\"03\\/08\\/2026\";s24.otherValues=s25;s5[7]=s24;s26.id=9;s26.title=\"Engineer 9\";s26.defaultLocale=\"en_GB\";s26.postingDate=\"03\\/08\\/2026\";s26.otherValues=s27;s5[8]=s26;s28.id=10;s28.title=\"Engineer 10\";s28.defaultLocale=\"en_GB\";s28.postingDate=\"03\\/08\\/2026\";s28.otherValues=s29;s5[9]=s28;s30.id=11;s30.title=\"Engineer 11\";s30.defaultLocale=\"en_GB\";s30.postingDate=\"03\\/08\\/2026\";s30.otherValues=s31;s5[10]=s30;s32.id=12;s32.title=\"Engineer 12\";s32.defaultLocale=\"en_GB\";s32.postingDate=\"03\\/08\\/2026\";s32.otherValues=s33;s5[11]=s32;s34.id=13;s34.title=\"Engineer 13\";s34.defaultLocale=\"en_GB\";s34.postingDate=\"03\\/08\\/2026\";s34.otherValues=s35;s5[12]=s34;s36.id=14;s36.title=\"Engineer 14\";s36.defaultLocale=\"en_GB\";s36.postingDate=\"03\\/08\\/2026\";s36.otherValues=s37;s5[13]=s36;s38.id=15;s38.title=\"Engineer 15\";s38.defaultLocale=\"en_GB\";s38.postingDate=\"03\\/08\\/2026\";s38.otherValues=s39;s5[14]=s38;s40.id=16;s40.title=\"Engineer 16\";s40.defaultLocale=\"en_GB\";s40.postingDate=\"03\\/08\\/2026\";s40.otherValues=s41;s5[15]=s40;s42.id=17;s42.title=\"Engineer 17\";s42.defaultLocale=\"en_GB\";s42.postingDate=\"03\\/08\\/2026\";s42.otherValues=s43;s5[16]=s42;s44.id=18;s44.title=\"Engineer 18\";s44.defaultLocale=\"en_GB\";s44.postingDate=\"03\\/08\\/2026\";s44.otherValues=s45;s5[17]=s44;s46.id=19;s46.title=\"Engineer 19\";s46.defaultLocale=\"en_GB\";s46.postingDate=\"03\\/08\\/2026\";s46.otherValues=s47;s5[18]=s46;s48.id=20;s48.title=\"Engineer 20\";s48.defaultLocale=\"en_GB\";s48.postingDate=\"03\\/08\\/2026\";s48.otherValues=s49;s5[19]=s48;s50.id=21;s50.title=\"Engineer 21\";s50.defaultLocale=\"en_GB\";s50.postingDate=\"03\\/08\\/2026\";s50.otherValues=s51;s5[20]=s50;s52.id=22;s52.title=\"Engineer 22\";s52.defaultLocale=\"en_GB\";s52.postingDate=\"03\\/08\\/2026\";s52.otherValues=s53;s5[21]=s52;s54.id=23;s54.title=\"Engineer 23\";s54.defaultLocale=\"en_GB\";s54.postingDate=\"03\\/08\\/2026\";s54.otherValues=s55;s5[22]=s54;s56.id=24;s56.title=\"Engineer 24\";s56.defaultLocale=\"en_GB\";s56.postingDate=\"03\\/08\\/2026\";s56.otherValues=s57;s5[23]=s56;s58.id=25;s58.title=\"Engineer 25\";s58.defaultLocale=\"en_GB\";s58.postingDate=\"03\\/08\\/2026\";s58.otherValues=s59;s5[24]=s58;s60.id=26;s60.title=\"Engineer 26\";s60.defaultLocale=\"en_GB\";s60.postingDate=\"03\\/08\\/2026\";s60.otherValues=s61;s5[25]=s60;s62.id=27;s62.title=\"Engineer 27\";s62.defaultLocale=\"en_GB\";s62.postingDate=\"03\\/08\\/2026\";s62.otherValues=s63;s5[26]=s62;s64.id=28;s64.title=\"Engineer 28\";s64.defaultLocale=\"en_GB\";s64.postingDate=\"03\\/08\\/2026\";s64.otherValues=s65;s5[27]=s64;s66.id=29;s66.title=\"Engineer 29\";s66.defaultLocale=\"en_GB\";s66.postingDate=\"03\\/08\\/2026\";s66.otherValues=s67;s5[28]=s66;s68.id=30;s68.title=\"Engineer 30\";s68.defaultLocale=\"en_GB\";s68.postingDate=\"03\\/08\\/2026\";s68.otherValues=s69;s5[29]=s68;s70.id=31;s70.title=\"Engineer 31\";s70.defaultLocale=\"en_GB\";s70.postingDate=\"03\\/08\\/2026\";s70.otherValues=s71;s5[30]=s70;s72.id=32;s72.title=\"Engineer 32\";s72.defaultLocale=\"en_GB\";s72.postingDate=\"03\\/08\\/2026\";s72.otherValues=s73;s5[31]=s72;s74.id=33;s74.title=\"Engineer 33\";s74.defaultLocale=\"en_GB\";s74.postingDate=\"03\\/08\\/2026\";s74.otherValues=s75;s5[32]=s74;s76.id=34;s76.title=\"Engineer 34\";s76.defaultLocale=\"en_GB\";s76.postingDate=\"03\\/08\\/2026\";s76.otherValues=s77;s5[33]=s76;s78.id=35;s78.title=\"Engineer 35\";s78.defaultLocale=\"en_GB\";s78.postingDate=\"03\\/08\\/2026\";s78.otherValues=s79;s5[34]=s78;s80.id=36;s80.title=\"Engineer 36\";s80.defaultLocale=\"en_GB\";s80.postingDate=\"03\\/08\\/2026\";s80.otherValues=s81;s5[35]=s80;s82.id=37;s82.title=\"Engineer 37\";s82.defaultLocale=\"en_GB\";s82.postingDate=\"03\\/08\\/2026\";s82.otherValues=s83;s5[36]=s82;s84.id=38;s84.title=\"Engineer 38\";s84.defaultLocale=\"en_GB\";s84.postingDate=\"03\\/08\\/2026\";s84.otherValues=s85;s5[37]=s84;s86.id=39;s86.title=\"Engineer 39\";s86.defaultLocale=\"en_GB\";s86.postingDate=\"03\\/08\\/2026\";s86.otherValues=s87;s5[38]=s86;s88.id=40;s88.title=\"Engineer 40\";s88.defaultLocale=\"en_GB\";s88.postingDate=\"03\\/08\\/2026\";s88.otherValues=s89;s5[39]=s88;s90.id=41;s90.title=\"Engineer 41\";s90.defaultLocale=\"en_GB\";s90.postingDate=\"03\\/08\\/2026\";s90.otherValues=s91;s5[40]=s90;s92.id=42;s92.title=\"Engineer 42\";s92.defaultLocale=\"en_GB\";s92.postingDate=\"03\\/08\\/2026\";s92.otherValues=s93;s5[41]=s92;s94.id=43;s94.title=\"Engineer 43\";s94.defaultLocale=\"en_GB\";s94.postingDate=\"03\\/08\\/2026\";s94.otherValues=s95;s5[42]=s94;s96.id=44;s96.title=\"Engineer 44\";s96.defaultLocale=\"en_GB\";s96.postingDate=\"03\\/08\\/2026\";s96.otherValues=s97;s5[43]=s96;s98.id=45;s98.title=\"Engineer 45\";s98.defaultLocale=\"en_GB\";s98.postingDate=\"03\\/08\\/2026\";s98.otherValues=s99;s5[44]=s98;s100.id=46;s100.title=\"Engineer 46\";s100.defaultLocale=\"en_GB\";s100.postingDate=\"03\\/08\\/2026\";s100.otherValues=s101;s5[45]=s100;s102.id=47;s102.title=\"Engineer 47\";s102.defaultLocale=\"en_GB\";s102.postingDate=\"03\\/08\\/2026\";s102.otherValues=s103;s5[46]=s102;s104.id=48;s104.title=\"Engineer 48\";s104.defaultLocale=\"en_GB\";s104.postingDate=\"03\\/08\\/2026\";s104.otherValues=s105;s5[47]=s104;s106.id=49;s106.title=\"Engineer 49\";s106.defaultLocale=\"en_GB\";s106.postingDate=\"03\\/08\\/2026\";s106.otherValues=s107;s5[48]=s106;s108.id=50;s108.title=\"Engineer 50\";s108.defaultLocale=\"en_GB\";s108.postingDate=\"03\\/08\\/2026\";s108.otherValues=s109;s5[49]=s108;s110.id=51;s110.title=\"Engineer 51\";s110.defaultLocale=\"en_GB\";s110.postingDate=\"03\\/08\\/2026\";s110.otherValues=s111;s5[50]=s110;s112.id=52;s112.title=\"Engineer 52\";s112.defaultLocale=\"en_GB\";s112.postingDate=\"03\\/08\\/2026\";s112.otherValues=s113;s5[51]=s112;s114.id=53;s114.title=\"Engineer 53\";s114.defaultLocale=\"en_GB\";s114.postingDate=\"03\\/08\\/2026\";s114.otherValues=s115;s5[52]=s114;s116.id=54;s116.title=\"Engineer 54\";s116.defaultLocale=\"en_GB\";s116.postingDate=\"03\\/08\\/2026\";s116.otherValues=s117;s5[53]=s116;s118.id=55;s118.title=\"Engineer 55\";s118.defaultLocale=\"en_GB\";s118.postingDate=\"03\\/08\\/2026\";s118.otherValues=s119;s5[54]=s118;s120.id=56;s120.title=\"Engineer 56\";s120.defaultLocale=\"en_GB\";s120.postingDate=\"03\\/08\\/2026\";s120.otherValues=s121;s5[55]=s120;s122.id=57;s122.title=\"Engineer 57\";s122.defaultLocale=\"en_GB\";s122.postingDate=\"03\\/08\\/2026\";s122.otherValues=s123;s5[56]=s122;s124.id=58;s124.title=\"Engineer 58\";s124.defaultLocale=\"en_GB\";s124.postingDate=\"03\\/08\\/2026\";s124.otherValues=s125;s5[57]=s124;s126.id=59;s126.title=\"Engineer 59\";s126.defaultLocale=\"en_GB\";s126.postingDate=\"03\\/08\\/2026\";s126.otherValues=s127;s5[58]=s126;s128.id=60;s128.title=\"Engineer 60\";s128.defaultLocale=\"en_GB\";s128.postingDate=\"03\\/08\\/2026\";s128.otherValues=s129;s5[59]=s128;s130.id=61;s130.title=\"Engineer 61\";s130.defaultLocale=\"en_GB\";s130.postingDate=\"03\\/08\\/2026\";s130.otherValues=s131;s5[60]=s130;s132.id=62;s132.title=\"Engineer 62\";s132.defaultLocale=\"en_GB\";s132.postingDate=\"03\\/08\\/2026\";s132.otherValues=s133;s5[61]=s132;s134.id=63;s134.title=\"Engineer 63\";s134.defaultLocale=\"en_GB\";s134.postingDate=\"03\\/08\\/2026\";s134.otherValues=s135;s5[62]=s134;s136.id=64;s136.title=\"Engineer 64\";s136.defaultLocale=\"en_GB\";s136.postingDate=\"03\\/08\\/2026\";s136.otherValues=s137;s5[63]=s136;s138.id=65;s138.title=\"Engineer 65\";s138.defaultLocale=\"en_GB\";s138.postingDate=\"03\\/08\\/2026\";s138.otherValues=s139;s5[64]=s138;s140.id=66;s140.title=\"Engineer 66\";s140.defaultLocale=\"en_GB\";s140.postingDate=\"03\\/08\\/2026\";s140.otherValues=s141;s5[65]=s140;s142.id=67;s142.title=\"Engineer 67\";s142.defaultLocale=\"en_GB\";s142.postingDate=\"03\\/08\\/2026\";s142.otherValues=s143;s5[66]=s142;s144.id=68;s144.title=\"Engineer 68\";s144.defaultLocale=\"en_GB\";s144.postingDate=\"03\\/08\\/2026\";s144.otherValues=s145;s5[67]=s144;s146.id=69;s146.title=\"Engineer 69\";s146.defaultLocale=\"en_GB\";s146.postingDate=\"03\\/08\\/2026\";s146.otherValues=s147;s5[68]=s146;s148.id=70;s148.title=\"Engineer 70\";s148.defaultLocale=\"en_GB\";s148.postingDate=\"03\\/08\\/2026\";s148.otherValues=s149;s5[69]=s148;s150.id=71;s150.title=\"Engineer 71\";s150.defaultLocale=\"en_GB\";s150.postingDate=\"03\\/08\\/2026\";s150.otherValues=s151;s5[70]=s150;s152.id=72;s152.title=\"Engineer 72\";s152.defaultLocale=\"en_GB\";s152.postingDate=\"03\\/08\\/2026\";s152.otherValues=s153;s5[71]=s152;s154.id=73;s154.title=\"Engineer 73\";s154.defaultLocale=\"en_GB\";s154.postingDate=\"03\\/08\\/2026\";s154.otherValues=s155;s5[72]=s154;s156.id=74;s156.title=\"Engineer 74\";s156.defaultLocale=\"en_GB\";s156.postingDate=\"03\\/08\\/2026\";s156.otherValues=s157;s5[73]=s156;s158.id=75;s158.title=\"Engineer 75\";s158.defaultLocale=\"en_GB\";s158.postingDate=\"03\\/08\\/2026\";s158.otherValues=s159;s5[74]=s158;s160.id=76;s160.title=\"Engineer 76\";s160.defaultLocale=\"en_GB\";s160.postingDate=\"03\\/08\\/2026\";s160.otherValues=s161;s5[75]=s160;s162.id=77;s162.title=\"Engineer 77\";s162.defaultLocale=\"en_GB\";s162.postingDate=\"03\\/08\\/2026\";s162.otherValues=s163;s5[76]=s162;s164.id=78;s164.title=\"Engineer 78\";s164.defaultLocale=\"en_GB\";s164.postingDate=\"03\\/08\\/2026\";s164.otherValues=s165;s5[77]=s164;s166.id=79;s166.title=\"Engineer 79\";s166.defaultLocale=\"en_GB\";s166.postingDate=\"03\\/08\\/2026\";s166.otherValues=s167;s5[78]=s166;s168.id=80;s168.title=\"Engineer 80\";s168.defaultLocale=\"en_GB\";s168.postingDate=\"03\\/08\\/2026\";s168.otherValues=s169;s5[79]=s168;s170.id=81;s170.title=\"Engineer 81\";s170.defaultLocale=\"en_GB\";s170.postingDate=\"03\\/08\\/2026\";s170.otherValues=s171;s5[80]=s170;s172.id=82;s172.title=\"Engineer 82\";s172.defaultLocale=\"en_GB\";s172.postingDate=\"03\\/08\\/2026\";s172.otherValues=s173;s5[81]=s172;s174.id=83;s174.title=\"Engineer 83\";s174.defaultLocale=\"en_GB\";s174.postingDate=\"03\\/08\\/2026\";s174.otherValues=s175;s5[82]=s174;s176.id=84;s176.title=\"Engineer 84\";s176.defaultLocale=\"en_GB\";s176.postingDate=\"03\\/08\\/2026\";s176.otherValues=s177;s5[83]=s176;s178.id=85;s178.title=\"Engineer 85\";s178.defaultLocale=\"en_GB\";s178.postingDate=\"03\\/08\\/2026\";s178.otherValues=s179;s5[84]=s178;s180.id=86;s180.title=\"Engineer 86\";s180.defaultLocale=\"en_GB\";s180.postingDate=\"03\\/08\\/2026\";s180.otherValues=s181;s5[85]=s180;s182.id=87;s182.title=\"Engineer 87\";s182.defaultLocale=\"en_GB\";s182.postingDate=\"03\\/08\\/2026\";s182.otherValues=s183;s5[86]=s182;s184.id=88;s184.title=\"Engineer 88\";s184.defaultLocale=\"en_GB\";s184.postingDate=\"03\\/08\\/2026\";s184.otherValues=s185;s5[87]=s184;s186.id=89;s186.title=\"Engineer 89\";s186.defaultLocale=\"en_GB\";s186.postingDate=\"03\\/08\\/2026\";s186.otherValues=s187;s5[88]=s186;s188.id=90;s188.title=\"Engineer 90\";s188.defaultLocale=\"en_GB\";s188.postingDate=\"03\\/08\\/2026\";s188.otherValues=s189;s5[89]=s188;s190.id=91;s190.title=\"Engineer 91\";s190.defaultLocale=\"en_GB\";s190.postingDate=\"03\\/08\\/2026\";s190.otherValues=s191;s5[90]=s190;s192.id=92;s192.title=\"Engineer 92\";s192.defaultLocale=\"en_GB\";s192.postingDate=\"03\\/08\\/2026\";s192.otherValues=s193;s5[91]=s192;s194.id=93;s194.title=\"Engineer 93\";s194.defaultLocale=\"en_GB\";s194.postingDate=\"03\\/08\\/2026\";s194.otherValues=s195;s5[92]=s194;s196.id=94;s196.title=\"Engineer 94\";s196.defaultLocale=\"en_GB\";s196.postingDate=\"03\\/08\\/2026\";s196.otherValues=s197;s5[93]=s196;s198.id=95;s198.title=\"Engineer 95\";s198.defaultLocale=\"en_GB\";s198.postingDate=\"03\\/08\\/2026\";s198.otherValues=s199;s5[94]=s198;s200.id=96;s200.title=\"Engineer 96\";s200.defaultLocale=\"en_GB\";s200.postingDate=\"03\\/08\\/2026\";s200.otherValues=s201;s5[95]=s200;s202.id=97;s202.title=\"Engineer 97\";s202.defaultLocale=\"en_GB\";s202.postingDate=\"03\\/08\\/2026\";s202.otherValues=s203;s5[96]=s202;s204.id=98;s204.title=\"Engineer 98\";s204.defaultLocale=\"en_GB\";s204.postingDate=\"03\\/08\\/2026\";s204.otherValues=s205;s5[97]=s204;s206.id=99;s206.title=\"Engineer 99\";s206.defaultLocale=\"en_GB\";s206.postingDate=\"03\\/08\\/2026\";s206.otherValues=s207;s5[98]=s206;s208.id=100;s208.title=\"Engineer 100\";s208.defaultLocale=\"en_GB\";s208.postingDate=\"03\\/08\\/2026\";s208.otherValues=s209;s5[99]=s208;dwr.engine._remoteHandleCallback('1','0',{filters:s0,results:s4});",
+          "headers": {}
+        },
+        {
+          "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};var s8={};var s9=[];var s10=[];var s11={};s0.postingCount=\"101\";s0.configs=s1;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=2;s7.pageSize=100;s7.startRow=101;s7.endRow=200;s7.totalCount=101;s4.postingCount=101;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;s8.id=101;s8.title=\"Engineer 101\";s8.defaultLocale=\"en_GB\";s8.postingDate=\"03\\/08\\/2026\";s8.otherValues=s9;s9[0]=s10;s10[0]=s11;s11.fieldId=\"filter2\";s11.longVal=null;s11.shortVal=\"Zurich - CH\";s5[0]=s8;dwr.engine._remoteHandleCallback('2','0',{filters:s0,results:s4});",
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+          "body": "",
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://career5.successfactors.eu/xi/ajax/remoting/call/plaincall/careerJobSearchControllerProxy.getInitialJobSearchData.dwr",
+          "body": "callCount=1\npage=/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH\nhttpSessionId=\nscriptSessionId=0123456789abcdef01234567\nc0-scriptName=careerJobSearchControllerProxy\nc0-methodName=getInitialJobSearchData\nc0-id=0\nc0-e1=string:\nc0-e2=string:\nc0-e3=boolean:false\nc0-e4=string:Etc%2FUTC\nc0-param0=Object_Object:{filterOnly:reference:c0-e1,jobAlertId:reference:c0-e2,returnToList:reference:c0-e3,browserTimeZone:reference:c0-e4}\nbatchId=0\n",
+          "headers": {
+            "content-type": "text/plain",
+            "origin": "https://career5.successfactors.eu",
+            "referer": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+            "viewid": "/ui/rcmcareer/pages/careersite/career.jsp.xhtml",
+            "x-ajax-token": "abcDEF0123%2f456%3d",
+            "x-csrf-token": "abcDEF0123%2f456%3d",
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "x-sap-page-info": "companyId=Acme",
+            "x-subaction": "0"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://career5.successfactors.eu/xi/ajax/remoting/call/plaincall/careerJobSearchControllerProxy.search.dwr",
+          "body": "callCount=1\npage=/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH\nhttpSessionId=\nscriptSessionId=0123456789abcdef01234567\nc0-scriptName=careerJobSearchControllerProxy\nc0-methodName=search\nc0-id=0\nc0-e1=number:1\nc0-e2=number:100\nc0-e3=Object_Object:{currentPage:reference:c0-e1,pageSize:reference:c0-e2}\nc0-e4=string:JOB_POSTING_DATE\nc0-e5=string:DESC\nc0-param0=Object_Object:{pagination:reference:c0-e3,sortByColumn:reference:c0-e4,sortOrder:reference:c0-e5}\nbatchId=1\n",
+          "headers": {
+            "content-type": "text/plain",
+            "origin": "https://career5.successfactors.eu",
+            "referer": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+            "viewid": "/ui/rcmcareer/pages/careersite/career.jsp.xhtml",
+            "x-ajax-token": "abcDEF0123%2f456%3d",
+            "x-csrf-token": "abcDEF0123%2f456%3d",
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "x-sap-page-info": "companyId=Acme",
+            "x-subaction": "0"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://career5.successfactors.eu/xi/ajax/remoting/call/plaincall/careerJobSearchControllerProxy.search.dwr",
+          "body": "callCount=1\npage=/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH\nhttpSessionId=\nscriptSessionId=0123456789abcdef01234567\nc0-scriptName=careerJobSearchControllerProxy\nc0-methodName=search\nc0-id=0\nc0-e1=number:2\nc0-e2=number:100\nc0-e3=Object_Object:{currentPage:reference:c0-e1,pageSize:reference:c0-e2}\nc0-e4=string:JOB_POSTING_DATE\nc0-e5=string:DESC\nc0-param0=Object_Object:{pagination:reference:c0-e3,sortByColumn:reference:c0-e4,sortOrder:reference:c0-e5}\nbatchId=2\n",
+          "headers": {
+            "content-type": "text/plain",
+            "origin": "https://career5.successfactors.eu",
+            "referer": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+            "viewid": "/ui/rcmcareer/pages/careersite/career.jsp.xhtml",
+            "x-ajax-token": "abcDEF0123%2f456%3d",
+            "x-csrf-token": "abcDEF0123%2f456%3d",
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "x-sap-page-info": "companyId=Acme",
+            "x-subaction": "0"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=1",
+          "title": "Engineer 1",
+          "locations": [
+            "Zurich - CH"
+          ],
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "1",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026",
+            "fields": {
+              "Duty Station": "Zurich - CH"
+            }
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=2",
+          "title": "Engineer 2",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "2",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=3",
+          "title": "Engineer 3",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "3",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=4",
+          "title": "Engineer 4",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "4",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=5",
+          "title": "Engineer 5",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "5",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=6",
+          "title": "Engineer 6",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "6",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=7",
+          "title": "Engineer 7",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "7",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=8",
+          "title": "Engineer 8",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "8",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=9",
+          "title": "Engineer 9",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "9",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=10",
+          "title": "Engineer 10",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "10",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=11",
+          "title": "Engineer 11",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "11",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=12",
+          "title": "Engineer 12",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "12",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=13",
+          "title": "Engineer 13",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "13",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=14",
+          "title": "Engineer 14",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "14",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=15",
+          "title": "Engineer 15",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "15",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=16",
+          "title": "Engineer 16",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "16",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=17",
+          "title": "Engineer 17",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "17",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=18",
+          "title": "Engineer 18",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "18",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=19",
+          "title": "Engineer 19",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "19",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=20",
+          "title": "Engineer 20",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "20",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=21",
+          "title": "Engineer 21",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "21",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=22",
+          "title": "Engineer 22",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "22",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=23",
+          "title": "Engineer 23",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "23",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=24",
+          "title": "Engineer 24",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "24",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=25",
+          "title": "Engineer 25",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "25",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=26",
+          "title": "Engineer 26",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "26",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=27",
+          "title": "Engineer 27",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "27",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=28",
+          "title": "Engineer 28",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "28",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=29",
+          "title": "Engineer 29",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "29",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=30",
+          "title": "Engineer 30",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "30",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=31",
+          "title": "Engineer 31",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "31",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=32",
+          "title": "Engineer 32",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "32",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=33",
+          "title": "Engineer 33",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "33",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=34",
+          "title": "Engineer 34",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "34",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=35",
+          "title": "Engineer 35",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "35",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=36",
+          "title": "Engineer 36",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "36",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=37",
+          "title": "Engineer 37",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "37",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=38",
+          "title": "Engineer 38",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "38",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=39",
+          "title": "Engineer 39",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "39",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=40",
+          "title": "Engineer 40",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "40",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=41",
+          "title": "Engineer 41",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "41",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=42",
+          "title": "Engineer 42",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "42",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=43",
+          "title": "Engineer 43",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "43",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=44",
+          "title": "Engineer 44",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "44",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=45",
+          "title": "Engineer 45",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "45",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=46",
+          "title": "Engineer 46",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "46",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=47",
+          "title": "Engineer 47",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "47",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=48",
+          "title": "Engineer 48",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "48",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=49",
+          "title": "Engineer 49",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "49",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=50",
+          "title": "Engineer 50",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "50",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=51",
+          "title": "Engineer 51",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "51",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=52",
+          "title": "Engineer 52",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "52",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=53",
+          "title": "Engineer 53",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "53",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=54",
+          "title": "Engineer 54",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "54",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=55",
+          "title": "Engineer 55",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "55",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=56",
+          "title": "Engineer 56",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "56",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=57",
+          "title": "Engineer 57",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "57",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=58",
+          "title": "Engineer 58",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "58",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=59",
+          "title": "Engineer 59",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "59",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=60",
+          "title": "Engineer 60",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "60",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=61",
+          "title": "Engineer 61",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "61",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=62",
+          "title": "Engineer 62",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "62",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=63",
+          "title": "Engineer 63",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "63",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=64",
+          "title": "Engineer 64",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "64",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=65",
+          "title": "Engineer 65",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "65",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=66",
+          "title": "Engineer 66",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "66",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=67",
+          "title": "Engineer 67",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "67",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=68",
+          "title": "Engineer 68",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "68",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=69",
+          "title": "Engineer 69",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "69",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=70",
+          "title": "Engineer 70",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "70",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=71",
+          "title": "Engineer 71",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "71",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=72",
+          "title": "Engineer 72",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "72",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=73",
+          "title": "Engineer 73",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "73",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=74",
+          "title": "Engineer 74",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "74",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=75",
+          "title": "Engineer 75",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "75",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=76",
+          "title": "Engineer 76",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "76",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=77",
+          "title": "Engineer 77",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "77",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=78",
+          "title": "Engineer 78",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "78",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=79",
+          "title": "Engineer 79",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "79",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=80",
+          "title": "Engineer 80",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "80",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=81",
+          "title": "Engineer 81",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "81",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=82",
+          "title": "Engineer 82",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "82",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=83",
+          "title": "Engineer 83",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "83",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=84",
+          "title": "Engineer 84",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "84",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=85",
+          "title": "Engineer 85",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "85",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=86",
+          "title": "Engineer 86",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "86",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=87",
+          "title": "Engineer 87",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "87",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=88",
+          "title": "Engineer 88",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "88",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=89",
+          "title": "Engineer 89",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "89",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=90",
+          "title": "Engineer 90",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "90",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=91",
+          "title": "Engineer 91",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "91",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=92",
+          "title": "Engineer 92",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "92",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=93",
+          "title": "Engineer 93",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "93",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=94",
+          "title": "Engineer 94",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "94",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=95",
+          "title": "Engineer 95",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "95",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=96",
+          "title": "Engineer 96",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "96",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=97",
+          "title": "Engineer 97",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "97",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=98",
+          "title": "Engineer 98",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "98",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=99",
+          "title": "Engineer 99",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "99",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=100",
+          "title": "Engineer 100",
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "100",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026"
+          }
+        },
+        {
+          "url": "https://career5.successfactors.eu/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=101",
+          "title": "Engineer 101",
+          "locations": [
+            "Zurich - CH"
+          ],
+          "date_posted": "2026-08-03",
+          "language": "en",
+          "metadata": {
+            "id": "101",
+            "default_locale": "en_GB",
+            "posting_date_raw": "03/08/2026",
+            "fields": {
+              "Duty Station": "Zurich - CH"
+            }
+          }
+        }
+      ],
+      "truncated": false,
+      "error": false
+    },
+    {
+      "name": "short-later-page",
+      "board": {
+        "board_url": "https://career5.successfactors.eu/career?company=Acme",
+        "metadata": {
+          "preset": "successfactors",
+          "variant": "legacy",
+          "host": "career5.successfactors.eu",
+          "company": "Acme"
+        }
+      },
+      "responses": [
+        {
+          "body": "<html><script>var ajaxSecKey=\"abcDEF0123%2f456%3d\";function getInitialJobSearchData(){}; careerJobSearchController; const x={companyId: \"Acme\"};</script></html>",
+          "headers": {
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "content-length": "160",
+            "content-type": "text/plain; charset=utf-8"
+          }
+        },
+        {
+          "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2={};var s3=[];var s4={};var s5={};var s6=[];var s7={};var s8={};var s9={};var s10=[];var s11={};var s12=[];var s13={};var s14=[];var s15={};var s16=[];var s17={};var s18=[];var s19={};var s20=[];var s21={};var s22=[];var s23={};var s24=[];var s25={};var s26=[];var s27={};var s28=[];s1.postingCount=\"101\";s1.configs=s2;s2.filters=s3;s3[0]=s4;s4.fieldName=\"customFilter_filter2\";s4.label=\"Duty Station\";s7.pagination=s8;s7.sortByColumn=\"JOB_POSTING_DATE\";s7.sortOrder=\"DESC\";s8.currentPage=1;s8.pageSize=10;s8.startRow=1;s8.endRow=10;s8.totalCount=101;s0.filters=s1;s0.results=s5;s5.postingCount=101;s5.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s5.options=s7;s5.postings=s6;s9.id=1;s9.title=\"Engineer 1\";s9.defaultLocale=\"en_GB\";s9.postingDate=\"03\\/08\\/2026\";s9.otherValues=s10;s6[0]=s9;s11.id=2;s11.title=\"Engineer 2\";s11.defaultLocale=\"en_GB\";s11.postingDate=\"03\\/08\\/2026\";s11.otherValues=s12;s6[1]=s11;s13.id=3;s13.title=\"Engineer 3\";s13.defaultLocale=\"en_GB\";s13.postingDate=\"03\\/08\\/2026\";s13.otherValues=s14;s6[2]=s13;s15.id=4;s15.title=\"Engineer 4\";s15.defaultLocale=\"en_GB\";s15.postingDate=\"03\\/08\\/2026\";s15.otherValues=s16;s6[3]=s15;s17.id=5;s17.title=\"Engineer 5\";s17.defaultLocale=\"en_GB\";s17.postingDate=\"03\\/08\\/2026\";s17.otherValues=s18;s6[4]=s17;s19.id=6;s19.title=\"Engineer 6\";s19.defaultLocale=\"en_GB\";s19.postingDate=\"03\\/08\\/2026\";s19.otherValues=s20;s6[5]=s19;s21.id=7;s21.title=\"Engineer 7\";s21.defaultLocale=\"en_GB\";s21.postingDate=\"03\\/08\\/2026\";s21.otherValues=s22;s6[6]=s21;s23.id=8;s23.title=\"Engineer 8\";s23.defaultLocale=\"en_GB\";s23.postingDate=\"03\\/08\\/2026\";s23.otherValues=s24;s6[7]=s23;s25.id=9;s25.title=\"Engineer 9\";s25.defaultLocale=\"en_GB\";s25.postingDate=\"03\\/08\\/2026\";s25.otherValues=s26;s6[8]=s25;s27.id=10;s27.title=\"Engineer 10\";s27.defaultLocale=\"en_GB\";s27.postingDate=\"03\\/08\\/2026\";s27.otherValues=s28;s6[9]=s27;dwr.engine._remoteHandleCallback('0','0',{payload:s0});",
+          "headers": {}
+        },
+        {
+          "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};var s8={};var s9=[];var s10=[];var s11={};var s12={};var s13=[];var s14={};var s15=[];var s16={};var s17=[];var s18={};var s19=[];var s20={};var s21=[];var s22={};var s23=[];var s24={};var s25=[];var s26={};var s27=[];var s28={};var s29=[];var s30={};var s31=[];var s32={};var s33=[];var s34={};var s35=[];var s36={};var s37=[];var s38={};var s39=[];var s40={};var s41=[];var s42={};var s43=[];var s44={};var s45=[];var s46={};var s47=[];var s48={};var s49=[];var s50={};var s51=[];var s52={};var s53=[];var s54={};var s55=[];var s56={};var s57=[];var s58={};var s59=[];var s60={};var s61=[];var s62={};var s63=[];var s64={};var s65=[];var s66={};var s67=[];var s68={};var s69=[];var s70={};var s71=[];var s72={};var s73=[];var s74={};var s75=[];var s76={};var s77=[];var s78={};var s79=[];var s80={};var s81=[];var s82={};var s83=[];var s84={};var s85=[];var s86={};var s87=[];var s88={};var s89=[];var s90={};var s91=[];var s92={};var s93=[];var s94={};var s95=[];var s96={};var s97=[];var s98={};var s99=[];var s100={};var s101=[];var s102={};var s103=[];var s104={};var s105=[];var s106={};var s107=[];var s108={};var s109=[];var s110={};var s111=[];var s112={};var s113=[];var s114={};var s115=[];var s116={};var s117=[];var s118={};var s119=[];var s120={};var s121=[];var s122={};var s123=[];var s124={};var s125=[];var s126={};var s127=[];var s128={};var s129=[];var s130={};var s131=[];var s132={};var s133=[];var s134={};var s135=[];var s136={};var s137=[];var s138={};var s139=[];var s140={};var s141=[];var s142={};var s143=[];var s144={};var s145=[];var s146={};var s147=[];var s148={};var s149=[];var s150={};var s151=[];var s152={};var s153=[];var s154={};var s155=[];var s156={};var s157=[];var s158={};var s159=[];var s160={};var s161=[];var s162={};var s163=[];var s164={};var s165=[];var s166={};var s167=[];var s168={};var s169=[];var s170={};var s171=[];var s172={};var s173=[];var s174={};var s175=[];var s176={};var s177=[];var s178={};var s179=[];var s180={};var s181=[];var s182={};var s183=[];var s184={};var s185=[];var s186={};var s187=[];var s188={};var s189=[];var s190={};var s191=[];var s192={};var s193=[];var s194={};var s195=[];var s196={};var s197=[];var s198={};var s199=[];var s200={};var s201=[];var s202={};var s203=[];var s204={};var s205=[];var s206={};var s207=[];var s208={};var s209=[];s0.postingCount=\"101\";s0.configs=s1;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=1;s7.pageSize=100;s7.startRow=1;s7.endRow=100;s7.totalCount=101;s4.postingCount=101;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;s8.id=1;s8.title=\"Engineer 1\";s8.defaultLocale=\"en_GB\";s8.postingDate=\"03\\/08\\/2026\";s8.otherValues=s9;s9[0]=s10;s10[0]=s11;s11.fieldId=\"filter2\";s11.longVal=null;s11.shortVal=\"Zurich - CH\";s5[0]=s8;s12.id=2;s12.title=\"Engineer 2\";s12.defaultLocale=\"en_GB\";s12.postingDate=\"03\\/08\\/2026\";s12.otherValues=s13;s5[1]=s12;s14.id=3;s14.title=\"Engineer 3\";s14.defaultLocale=\"en_GB\";s14.postingDate=\"03\\/08\\/2026\";s14.otherValues=s15;s5[2]=s14;s16.id=4;s16.title=\"Engineer 4\";s16.defaultLocale=\"en_GB\";s16.postingDate=\"03\\/08\\/2026\";s16.otherValues=s17;s5[3]=s16;s18.id=5;s18.title=\"Engineer 5\";s18.defaultLocale=\"en_GB\";s18.postingDate=\"03\\/08\\/2026\";s18.otherValues=s19;s5[4]=s18;s20.id=6;s20.title=\"Engineer 6\";s20.defaultLocale=\"en_GB\";s20.postingDate=\"03\\/08\\/2026\";s20.otherValues=s21;s5[5]=s20;s22.id=7;s22.title=\"Engineer 7\";s22.defaultLocale=\"en_GB\";s22.postingDate=\"03\\/08\\/2026\";s22.otherValues=s23;s5[6]=s22;s24.id=8;s24.title=\"Engineer 8\";s24.defaultLocale=\"en_GB\";s24.postingDate=\"03\\/08\\/2026\";s24.otherValues=s25;s5[7]=s24;s26.id=9;s26.title=\"Engineer 9\";s26.defaultLocale=\"en_GB\";s26.postingDate=\"03\\/08\\/2026\";s26.otherValues=s27;s5[8]=s26;s28.id=10;s28.title=\"Engineer 10\";s28.defaultLocale=\"en_GB\";s28.postingDate=\"03\\/08\\/2026\";s28.otherValues=s29;s5[9]=s28;s30.id=11;s30.title=\"Engineer 11\";s30.defaultLocale=\"en_GB\";s30.postingDate=\"03\\/08\\/2026\";s30.otherValues=s31;s5[10]=s30;s32.id=12;s32.title=\"Engineer 12\";s32.defaultLocale=\"en_GB\";s32.postingDate=\"03\\/08\\/2026\";s32.otherValues=s33;s5[11]=s32;s34.id=13;s34.title=\"Engineer 13\";s34.defaultLocale=\"en_GB\";s34.postingDate=\"03\\/08\\/2026\";s34.otherValues=s35;s5[12]=s34;s36.id=14;s36.title=\"Engineer 14\";s36.defaultLocale=\"en_GB\";s36.postingDate=\"03\\/08\\/2026\";s36.otherValues=s37;s5[13]=s36;s38.id=15;s38.title=\"Engineer 15\";s38.defaultLocale=\"en_GB\";s38.postingDate=\"03\\/08\\/2026\";s38.otherValues=s39;s5[14]=s38;s40.id=16;s40.title=\"Engineer 16\";s40.defaultLocale=\"en_GB\";s40.postingDate=\"03\\/08\\/2026\";s40.otherValues=s41;s5[15]=s40;s42.id=17;s42.title=\"Engineer 17\";s42.defaultLocale=\"en_GB\";s42.postingDate=\"03\\/08\\/2026\";s42.otherValues=s43;s5[16]=s42;s44.id=18;s44.title=\"Engineer 18\";s44.defaultLocale=\"en_GB\";s44.postingDate=\"03\\/08\\/2026\";s44.otherValues=s45;s5[17]=s44;s46.id=19;s46.title=\"Engineer 19\";s46.defaultLocale=\"en_GB\";s46.postingDate=\"03\\/08\\/2026\";s46.otherValues=s47;s5[18]=s46;s48.id=20;s48.title=\"Engineer 20\";s48.defaultLocale=\"en_GB\";s48.postingDate=\"03\\/08\\/2026\";s48.otherValues=s49;s5[19]=s48;s50.id=21;s50.title=\"Engineer 21\";s50.defaultLocale=\"en_GB\";s50.postingDate=\"03\\/08\\/2026\";s50.otherValues=s51;s5[20]=s50;s52.id=22;s52.title=\"Engineer 22\";s52.defaultLocale=\"en_GB\";s52.postingDate=\"03\\/08\\/2026\";s52.otherValues=s53;s5[21]=s52;s54.id=23;s54.title=\"Engineer 23\";s54.defaultLocale=\"en_GB\";s54.postingDate=\"03\\/08\\/2026\";s54.otherValues=s55;s5[22]=s54;s56.id=24;s56.title=\"Engineer 24\";s56.defaultLocale=\"en_GB\";s56.postingDate=\"03\\/08\\/2026\";s56.otherValues=s57;s5[23]=s56;s58.id=25;s58.title=\"Engineer 25\";s58.defaultLocale=\"en_GB\";s58.postingDate=\"03\\/08\\/2026\";s58.otherValues=s59;s5[24]=s58;s60.id=26;s60.title=\"Engineer 26\";s60.defaultLocale=\"en_GB\";s60.postingDate=\"03\\/08\\/2026\";s60.otherValues=s61;s5[25]=s60;s62.id=27;s62.title=\"Engineer 27\";s62.defaultLocale=\"en_GB\";s62.postingDate=\"03\\/08\\/2026\";s62.otherValues=s63;s5[26]=s62;s64.id=28;s64.title=\"Engineer 28\";s64.defaultLocale=\"en_GB\";s64.postingDate=\"03\\/08\\/2026\";s64.otherValues=s65;s5[27]=s64;s66.id=29;s66.title=\"Engineer 29\";s66.defaultLocale=\"en_GB\";s66.postingDate=\"03\\/08\\/2026\";s66.otherValues=s67;s5[28]=s66;s68.id=30;s68.title=\"Engineer 30\";s68.defaultLocale=\"en_GB\";s68.postingDate=\"03\\/08\\/2026\";s68.otherValues=s69;s5[29]=s68;s70.id=31;s70.title=\"Engineer 31\";s70.defaultLocale=\"en_GB\";s70.postingDate=\"03\\/08\\/2026\";s70.otherValues=s71;s5[30]=s70;s72.id=32;s72.title=\"Engineer 32\";s72.defaultLocale=\"en_GB\";s72.postingDate=\"03\\/08\\/2026\";s72.otherValues=s73;s5[31]=s72;s74.id=33;s74.title=\"Engineer 33\";s74.defaultLocale=\"en_GB\";s74.postingDate=\"03\\/08\\/2026\";s74.otherValues=s75;s5[32]=s74;s76.id=34;s76.title=\"Engineer 34\";s76.defaultLocale=\"en_GB\";s76.postingDate=\"03\\/08\\/2026\";s76.otherValues=s77;s5[33]=s76;s78.id=35;s78.title=\"Engineer 35\";s78.defaultLocale=\"en_GB\";s78.postingDate=\"03\\/08\\/2026\";s78.otherValues=s79;s5[34]=s78;s80.id=36;s80.title=\"Engineer 36\";s80.defaultLocale=\"en_GB\";s80.postingDate=\"03\\/08\\/2026\";s80.otherValues=s81;s5[35]=s80;s82.id=37;s82.title=\"Engineer 37\";s82.defaultLocale=\"en_GB\";s82.postingDate=\"03\\/08\\/2026\";s82.otherValues=s83;s5[36]=s82;s84.id=38;s84.title=\"Engineer 38\";s84.defaultLocale=\"en_GB\";s84.postingDate=\"03\\/08\\/2026\";s84.otherValues=s85;s5[37]=s84;s86.id=39;s86.title=\"Engineer 39\";s86.defaultLocale=\"en_GB\";s86.postingDate=\"03\\/08\\/2026\";s86.otherValues=s87;s5[38]=s86;s88.id=40;s88.title=\"Engineer 40\";s88.defaultLocale=\"en_GB\";s88.postingDate=\"03\\/08\\/2026\";s88.otherValues=s89;s5[39]=s88;s90.id=41;s90.title=\"Engineer 41\";s90.defaultLocale=\"en_GB\";s90.postingDate=\"03\\/08\\/2026\";s90.otherValues=s91;s5[40]=s90;s92.id=42;s92.title=\"Engineer 42\";s92.defaultLocale=\"en_GB\";s92.postingDate=\"03\\/08\\/2026\";s92.otherValues=s93;s5[41]=s92;s94.id=43;s94.title=\"Engineer 43\";s94.defaultLocale=\"en_GB\";s94.postingDate=\"03\\/08\\/2026\";s94.otherValues=s95;s5[42]=s94;s96.id=44;s96.title=\"Engineer 44\";s96.defaultLocale=\"en_GB\";s96.postingDate=\"03\\/08\\/2026\";s96.otherValues=s97;s5[43]=s96;s98.id=45;s98.title=\"Engineer 45\";s98.defaultLocale=\"en_GB\";s98.postingDate=\"03\\/08\\/2026\";s98.otherValues=s99;s5[44]=s98;s100.id=46;s100.title=\"Engineer 46\";s100.defaultLocale=\"en_GB\";s100.postingDate=\"03\\/08\\/2026\";s100.otherValues=s101;s5[45]=s100;s102.id=47;s102.title=\"Engineer 47\";s102.defaultLocale=\"en_GB\";s102.postingDate=\"03\\/08\\/2026\";s102.otherValues=s103;s5[46]=s102;s104.id=48;s104.title=\"Engineer 48\";s104.defaultLocale=\"en_GB\";s104.postingDate=\"03\\/08\\/2026\";s104.otherValues=s105;s5[47]=s104;s106.id=49;s106.title=\"Engineer 49\";s106.defaultLocale=\"en_GB\";s106.postingDate=\"03\\/08\\/2026\";s106.otherValues=s107;s5[48]=s106;s108.id=50;s108.title=\"Engineer 50\";s108.defaultLocale=\"en_GB\";s108.postingDate=\"03\\/08\\/2026\";s108.otherValues=s109;s5[49]=s108;s110.id=51;s110.title=\"Engineer 51\";s110.defaultLocale=\"en_GB\";s110.postingDate=\"03\\/08\\/2026\";s110.otherValues=s111;s5[50]=s110;s112.id=52;s112.title=\"Engineer 52\";s112.defaultLocale=\"en_GB\";s112.postingDate=\"03\\/08\\/2026\";s112.otherValues=s113;s5[51]=s112;s114.id=53;s114.title=\"Engineer 53\";s114.defaultLocale=\"en_GB\";s114.postingDate=\"03\\/08\\/2026\";s114.otherValues=s115;s5[52]=s114;s116.id=54;s116.title=\"Engineer 54\";s116.defaultLocale=\"en_GB\";s116.postingDate=\"03\\/08\\/2026\";s116.otherValues=s117;s5[53]=s116;s118.id=55;s118.title=\"Engineer 55\";s118.defaultLocale=\"en_GB\";s118.postingDate=\"03\\/08\\/2026\";s118.otherValues=s119;s5[54]=s118;s120.id=56;s120.title=\"Engineer 56\";s120.defaultLocale=\"en_GB\";s120.postingDate=\"03\\/08\\/2026\";s120.otherValues=s121;s5[55]=s120;s122.id=57;s122.title=\"Engineer 57\";s122.defaultLocale=\"en_GB\";s122.postingDate=\"03\\/08\\/2026\";s122.otherValues=s123;s5[56]=s122;s124.id=58;s124.title=\"Engineer 58\";s124.defaultLocale=\"en_GB\";s124.postingDate=\"03\\/08\\/2026\";s124.otherValues=s125;s5[57]=s124;s126.id=59;s126.title=\"Engineer 59\";s126.defaultLocale=\"en_GB\";s126.postingDate=\"03\\/08\\/2026\";s126.otherValues=s127;s5[58]=s126;s128.id=60;s128.title=\"Engineer 60\";s128.defaultLocale=\"en_GB\";s128.postingDate=\"03\\/08\\/2026\";s128.otherValues=s129;s5[59]=s128;s130.id=61;s130.title=\"Engineer 61\";s130.defaultLocale=\"en_GB\";s130.postingDate=\"03\\/08\\/2026\";s130.otherValues=s131;s5[60]=s130;s132.id=62;s132.title=\"Engineer 62\";s132.defaultLocale=\"en_GB\";s132.postingDate=\"03\\/08\\/2026\";s132.otherValues=s133;s5[61]=s132;s134.id=63;s134.title=\"Engineer 63\";s134.defaultLocale=\"en_GB\";s134.postingDate=\"03\\/08\\/2026\";s134.otherValues=s135;s5[62]=s134;s136.id=64;s136.title=\"Engineer 64\";s136.defaultLocale=\"en_GB\";s136.postingDate=\"03\\/08\\/2026\";s136.otherValues=s137;s5[63]=s136;s138.id=65;s138.title=\"Engineer 65\";s138.defaultLocale=\"en_GB\";s138.postingDate=\"03\\/08\\/2026\";s138.otherValues=s139;s5[64]=s138;s140.id=66;s140.title=\"Engineer 66\";s140.defaultLocale=\"en_GB\";s140.postingDate=\"03\\/08\\/2026\";s140.otherValues=s141;s5[65]=s140;s142.id=67;s142.title=\"Engineer 67\";s142.defaultLocale=\"en_GB\";s142.postingDate=\"03\\/08\\/2026\";s142.otherValues=s143;s5[66]=s142;s144.id=68;s144.title=\"Engineer 68\";s144.defaultLocale=\"en_GB\";s144.postingDate=\"03\\/08\\/2026\";s144.otherValues=s145;s5[67]=s144;s146.id=69;s146.title=\"Engineer 69\";s146.defaultLocale=\"en_GB\";s146.postingDate=\"03\\/08\\/2026\";s146.otherValues=s147;s5[68]=s146;s148.id=70;s148.title=\"Engineer 70\";s148.defaultLocale=\"en_GB\";s148.postingDate=\"03\\/08\\/2026\";s148.otherValues=s149;s5[69]=s148;s150.id=71;s150.title=\"Engineer 71\";s150.defaultLocale=\"en_GB\";s150.postingDate=\"03\\/08\\/2026\";s150.otherValues=s151;s5[70]=s150;s152.id=72;s152.title=\"Engineer 72\";s152.defaultLocale=\"en_GB\";s152.postingDate=\"03\\/08\\/2026\";s152.otherValues=s153;s5[71]=s152;s154.id=73;s154.title=\"Engineer 73\";s154.defaultLocale=\"en_GB\";s154.postingDate=\"03\\/08\\/2026\";s154.otherValues=s155;s5[72]=s154;s156.id=74;s156.title=\"Engineer 74\";s156.defaultLocale=\"en_GB\";s156.postingDate=\"03\\/08\\/2026\";s156.otherValues=s157;s5[73]=s156;s158.id=75;s158.title=\"Engineer 75\";s158.defaultLocale=\"en_GB\";s158.postingDate=\"03\\/08\\/2026\";s158.otherValues=s159;s5[74]=s158;s160.id=76;s160.title=\"Engineer 76\";s160.defaultLocale=\"en_GB\";s160.postingDate=\"03\\/08\\/2026\";s160.otherValues=s161;s5[75]=s160;s162.id=77;s162.title=\"Engineer 77\";s162.defaultLocale=\"en_GB\";s162.postingDate=\"03\\/08\\/2026\";s162.otherValues=s163;s5[76]=s162;s164.id=78;s164.title=\"Engineer 78\";s164.defaultLocale=\"en_GB\";s164.postingDate=\"03\\/08\\/2026\";s164.otherValues=s165;s5[77]=s164;s166.id=79;s166.title=\"Engineer 79\";s166.defaultLocale=\"en_GB\";s166.postingDate=\"03\\/08\\/2026\";s166.otherValues=s167;s5[78]=s166;s168.id=80;s168.title=\"Engineer 80\";s168.defaultLocale=\"en_GB\";s168.postingDate=\"03\\/08\\/2026\";s168.otherValues=s169;s5[79]=s168;s170.id=81;s170.title=\"Engineer 81\";s170.defaultLocale=\"en_GB\";s170.postingDate=\"03\\/08\\/2026\";s170.otherValues=s171;s5[80]=s170;s172.id=82;s172.title=\"Engineer 82\";s172.defaultLocale=\"en_GB\";s172.postingDate=\"03\\/08\\/2026\";s172.otherValues=s173;s5[81]=s172;s174.id=83;s174.title=\"Engineer 83\";s174.defaultLocale=\"en_GB\";s174.postingDate=\"03\\/08\\/2026\";s174.otherValues=s175;s5[82]=s174;s176.id=84;s176.title=\"Engineer 84\";s176.defaultLocale=\"en_GB\";s176.postingDate=\"03\\/08\\/2026\";s176.otherValues=s177;s5[83]=s176;s178.id=85;s178.title=\"Engineer 85\";s178.defaultLocale=\"en_GB\";s178.postingDate=\"03\\/08\\/2026\";s178.otherValues=s179;s5[84]=s178;s180.id=86;s180.title=\"Engineer 86\";s180.defaultLocale=\"en_GB\";s180.postingDate=\"03\\/08\\/2026\";s180.otherValues=s181;s5[85]=s180;s182.id=87;s182.title=\"Engineer 87\";s182.defaultLocale=\"en_GB\";s182.postingDate=\"03\\/08\\/2026\";s182.otherValues=s183;s5[86]=s182;s184.id=88;s184.title=\"Engineer 88\";s184.defaultLocale=\"en_GB\";s184.postingDate=\"03\\/08\\/2026\";s184.otherValues=s185;s5[87]=s184;s186.id=89;s186.title=\"Engineer 89\";s186.defaultLocale=\"en_GB\";s186.postingDate=\"03\\/08\\/2026\";s186.otherValues=s187;s5[88]=s186;s188.id=90;s188.title=\"Engineer 90\";s188.defaultLocale=\"en_GB\";s188.postingDate=\"03\\/08\\/2026\";s188.otherValues=s189;s5[89]=s188;s190.id=91;s190.title=\"Engineer 91\";s190.defaultLocale=\"en_GB\";s190.postingDate=\"03\\/08\\/2026\";s190.otherValues=s191;s5[90]=s190;s192.id=92;s192.title=\"Engineer 92\";s192.defaultLocale=\"en_GB\";s192.postingDate=\"03\\/08\\/2026\";s192.otherValues=s193;s5[91]=s192;s194.id=93;s194.title=\"Engineer 93\";s194.defaultLocale=\"en_GB\";s194.postingDate=\"03\\/08\\/2026\";s194.otherValues=s195;s5[92]=s194;s196.id=94;s196.title=\"Engineer 94\";s196.defaultLocale=\"en_GB\";s196.postingDate=\"03\\/08\\/2026\";s196.otherValues=s197;s5[93]=s196;s198.id=95;s198.title=\"Engineer 95\";s198.defaultLocale=\"en_GB\";s198.postingDate=\"03\\/08\\/2026\";s198.otherValues=s199;s5[94]=s198;s200.id=96;s200.title=\"Engineer 96\";s200.defaultLocale=\"en_GB\";s200.postingDate=\"03\\/08\\/2026\";s200.otherValues=s201;s5[95]=s200;s202.id=97;s202.title=\"Engineer 97\";s202.defaultLocale=\"en_GB\";s202.postingDate=\"03\\/08\\/2026\";s202.otherValues=s203;s5[96]=s202;s204.id=98;s204.title=\"Engineer 98\";s204.defaultLocale=\"en_GB\";s204.postingDate=\"03\\/08\\/2026\";s204.otherValues=s205;s5[97]=s204;s206.id=99;s206.title=\"Engineer 99\";s206.defaultLocale=\"en_GB\";s206.postingDate=\"03\\/08\\/2026\";s206.otherValues=s207;s5[98]=s206;s208.id=100;s208.title=\"Engineer 100\";s208.defaultLocale=\"en_GB\";s208.postingDate=\"03\\/08\\/2026\";s208.otherValues=s209;s5[99]=s208;dwr.engine._remoteHandleCallback('1','0',{filters:s0,results:s4});",
+          "headers": {}
+        },
+        {
+          "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};s0.postingCount=\"101\";s0.configs=s1;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=2;s7.pageSize=100;s7.startRow=101;s7.endRow=200;s7.totalCount=101;s4.postingCount=101;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;dwr.engine._remoteHandleCallback('2','0',{filters:s0,results:s4});",
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+          "body": "",
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://career5.successfactors.eu/xi/ajax/remoting/call/plaincall/careerJobSearchControllerProxy.getInitialJobSearchData.dwr",
+          "body": "callCount=1\npage=/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH\nhttpSessionId=\nscriptSessionId=0123456789abcdef01234567\nc0-scriptName=careerJobSearchControllerProxy\nc0-methodName=getInitialJobSearchData\nc0-id=0\nc0-e1=string:\nc0-e2=string:\nc0-e3=boolean:false\nc0-e4=string:Etc%2FUTC\nc0-param0=Object_Object:{filterOnly:reference:c0-e1,jobAlertId:reference:c0-e2,returnToList:reference:c0-e3,browserTimeZone:reference:c0-e4}\nbatchId=0\n",
+          "headers": {
+            "content-type": "text/plain",
+            "origin": "https://career5.successfactors.eu",
+            "referer": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+            "viewid": "/ui/rcmcareer/pages/careersite/career.jsp.xhtml",
+            "x-ajax-token": "abcDEF0123%2f456%3d",
+            "x-csrf-token": "abcDEF0123%2f456%3d",
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "x-sap-page-info": "companyId=Acme",
+            "x-subaction": "0"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://career5.successfactors.eu/xi/ajax/remoting/call/plaincall/careerJobSearchControllerProxy.search.dwr",
+          "body": "callCount=1\npage=/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH\nhttpSessionId=\nscriptSessionId=0123456789abcdef01234567\nc0-scriptName=careerJobSearchControllerProxy\nc0-methodName=search\nc0-id=0\nc0-e1=number:1\nc0-e2=number:100\nc0-e3=Object_Object:{currentPage:reference:c0-e1,pageSize:reference:c0-e2}\nc0-e4=string:JOB_POSTING_DATE\nc0-e5=string:DESC\nc0-param0=Object_Object:{pagination:reference:c0-e3,sortByColumn:reference:c0-e4,sortOrder:reference:c0-e5}\nbatchId=1\n",
+          "headers": {
+            "content-type": "text/plain",
+            "origin": "https://career5.successfactors.eu",
+            "referer": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+            "viewid": "/ui/rcmcareer/pages/careersite/career.jsp.xhtml",
+            "x-ajax-token": "abcDEF0123%2f456%3d",
+            "x-csrf-token": "abcDEF0123%2f456%3d",
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "x-sap-page-info": "companyId=Acme",
+            "x-subaction": "0"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://career5.successfactors.eu/xi/ajax/remoting/call/plaincall/careerJobSearchControllerProxy.search.dwr",
+          "body": "callCount=1\npage=/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH\nhttpSessionId=\nscriptSessionId=0123456789abcdef01234567\nc0-scriptName=careerJobSearchControllerProxy\nc0-methodName=search\nc0-id=0\nc0-e1=number:2\nc0-e2=number:100\nc0-e3=Object_Object:{currentPage:reference:c0-e1,pageSize:reference:c0-e2}\nc0-e4=string:JOB_POSTING_DATE\nc0-e5=string:DESC\nc0-param0=Object_Object:{pagination:reference:c0-e3,sortByColumn:reference:c0-e4,sortOrder:reference:c0-e5}\nbatchId=2\n",
+          "headers": {
+            "content-type": "text/plain",
+            "origin": "https://career5.successfactors.eu",
+            "referer": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+            "viewid": "/ui/rcmcareer/pages/careersite/career.jsp.xhtml",
+            "x-ajax-token": "abcDEF0123%2f456%3d",
+            "x-csrf-token": "abcDEF0123%2f456%3d",
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "x-sap-page-info": "companyId=Acme",
+            "x-subaction": "0"
+          }
+        }
+      ],
+      "expected": null,
+      "truncated": false,
+      "error": true
+    },
+    {
+      "name": "repeated-later-id",
+      "board": {
+        "board_url": "https://career5.successfactors.eu/career?company=Acme",
+        "metadata": {
+          "preset": "successfactors",
+          "variant": "legacy",
+          "host": "career5.successfactors.eu",
+          "company": "Acme"
+        }
+      },
+      "responses": [
+        {
+          "body": "<html><script>var ajaxSecKey=\"abcDEF0123%2f456%3d\";function getInitialJobSearchData(){}; careerJobSearchController; const x={companyId: \"Acme\"};</script></html>",
+          "headers": {
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "content-length": "160",
+            "content-type": "text/plain; charset=utf-8"
+          }
+        },
+        {
+          "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2={};var s3=[];var s4={};var s5={};var s6=[];var s7={};var s8={};var s9={};var s10=[];var s11={};var s12=[];var s13={};var s14=[];var s15={};var s16=[];var s17={};var s18=[];var s19={};var s20=[];var s21={};var s22=[];var s23={};var s24=[];var s25={};var s26=[];var s27={};var s28=[];s1.postingCount=\"101\";s1.configs=s2;s2.filters=s3;s3[0]=s4;s4.fieldName=\"customFilter_filter2\";s4.label=\"Duty Station\";s7.pagination=s8;s7.sortByColumn=\"JOB_POSTING_DATE\";s7.sortOrder=\"DESC\";s8.currentPage=1;s8.pageSize=10;s8.startRow=1;s8.endRow=10;s8.totalCount=101;s0.filters=s1;s0.results=s5;s5.postingCount=101;s5.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s5.options=s7;s5.postings=s6;s9.id=1;s9.title=\"Engineer 1\";s9.defaultLocale=\"en_GB\";s9.postingDate=\"03\\/08\\/2026\";s9.otherValues=s10;s6[0]=s9;s11.id=2;s11.title=\"Engineer 2\";s11.defaultLocale=\"en_GB\";s11.postingDate=\"03\\/08\\/2026\";s11.otherValues=s12;s6[1]=s11;s13.id=3;s13.title=\"Engineer 3\";s13.defaultLocale=\"en_GB\";s13.postingDate=\"03\\/08\\/2026\";s13.otherValues=s14;s6[2]=s13;s15.id=4;s15.title=\"Engineer 4\";s15.defaultLocale=\"en_GB\";s15.postingDate=\"03\\/08\\/2026\";s15.otherValues=s16;s6[3]=s15;s17.id=5;s17.title=\"Engineer 5\";s17.defaultLocale=\"en_GB\";s17.postingDate=\"03\\/08\\/2026\";s17.otherValues=s18;s6[4]=s17;s19.id=6;s19.title=\"Engineer 6\";s19.defaultLocale=\"en_GB\";s19.postingDate=\"03\\/08\\/2026\";s19.otherValues=s20;s6[5]=s19;s21.id=7;s21.title=\"Engineer 7\";s21.defaultLocale=\"en_GB\";s21.postingDate=\"03\\/08\\/2026\";s21.otherValues=s22;s6[6]=s21;s23.id=8;s23.title=\"Engineer 8\";s23.defaultLocale=\"en_GB\";s23.postingDate=\"03\\/08\\/2026\";s23.otherValues=s24;s6[7]=s23;s25.id=9;s25.title=\"Engineer 9\";s25.defaultLocale=\"en_GB\";s25.postingDate=\"03\\/08\\/2026\";s25.otherValues=s26;s6[8]=s25;s27.id=10;s27.title=\"Engineer 10\";s27.defaultLocale=\"en_GB\";s27.postingDate=\"03\\/08\\/2026\";s27.otherValues=s28;s6[9]=s27;dwr.engine._remoteHandleCallback('0','0',{payload:s0});",
+          "headers": {}
+        },
+        {
+          "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};var s8={};var s9=[];var s10=[];var s11={};var s12={};var s13=[];var s14={};var s15=[];var s16={};var s17=[];var s18={};var s19=[];var s20={};var s21=[];var s22={};var s23=[];var s24={};var s25=[];var s26={};var s27=[];var s28={};var s29=[];var s30={};var s31=[];var s32={};var s33=[];var s34={};var s35=[];var s36={};var s37=[];var s38={};var s39=[];var s40={};var s41=[];var s42={};var s43=[];var s44={};var s45=[];var s46={};var s47=[];var s48={};var s49=[];var s50={};var s51=[];var s52={};var s53=[];var s54={};var s55=[];var s56={};var s57=[];var s58={};var s59=[];var s60={};var s61=[];var s62={};var s63=[];var s64={};var s65=[];var s66={};var s67=[];var s68={};var s69=[];var s70={};var s71=[];var s72={};var s73=[];var s74={};var s75=[];var s76={};var s77=[];var s78={};var s79=[];var s80={};var s81=[];var s82={};var s83=[];var s84={};var s85=[];var s86={};var s87=[];var s88={};var s89=[];var s90={};var s91=[];var s92={};var s93=[];var s94={};var s95=[];var s96={};var s97=[];var s98={};var s99=[];var s100={};var s101=[];var s102={};var s103=[];var s104={};var s105=[];var s106={};var s107=[];var s108={};var s109=[];var s110={};var s111=[];var s112={};var s113=[];var s114={};var s115=[];var s116={};var s117=[];var s118={};var s119=[];var s120={};var s121=[];var s122={};var s123=[];var s124={};var s125=[];var s126={};var s127=[];var s128={};var s129=[];var s130={};var s131=[];var s132={};var s133=[];var s134={};var s135=[];var s136={};var s137=[];var s138={};var s139=[];var s140={};var s141=[];var s142={};var s143=[];var s144={};var s145=[];var s146={};var s147=[];var s148={};var s149=[];var s150={};var s151=[];var s152={};var s153=[];var s154={};var s155=[];var s156={};var s157=[];var s158={};var s159=[];var s160={};var s161=[];var s162={};var s163=[];var s164={};var s165=[];var s166={};var s167=[];var s168={};var s169=[];var s170={};var s171=[];var s172={};var s173=[];var s174={};var s175=[];var s176={};var s177=[];var s178={};var s179=[];var s180={};var s181=[];var s182={};var s183=[];var s184={};var s185=[];var s186={};var s187=[];var s188={};var s189=[];var s190={};var s191=[];var s192={};var s193=[];var s194={};var s195=[];var s196={};var s197=[];var s198={};var s199=[];var s200={};var s201=[];var s202={};var s203=[];var s204={};var s205=[];var s206={};var s207=[];var s208={};var s209=[];s0.postingCount=\"101\";s0.configs=s1;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=1;s7.pageSize=100;s7.startRow=1;s7.endRow=100;s7.totalCount=101;s4.postingCount=101;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;s8.id=1;s8.title=\"Engineer 1\";s8.defaultLocale=\"en_GB\";s8.postingDate=\"03\\/08\\/2026\";s8.otherValues=s9;s9[0]=s10;s10[0]=s11;s11.fieldId=\"filter2\";s11.longVal=null;s11.shortVal=\"Zurich - CH\";s5[0]=s8;s12.id=2;s12.title=\"Engineer 2\";s12.defaultLocale=\"en_GB\";s12.postingDate=\"03\\/08\\/2026\";s12.otherValues=s13;s5[1]=s12;s14.id=3;s14.title=\"Engineer 3\";s14.defaultLocale=\"en_GB\";s14.postingDate=\"03\\/08\\/2026\";s14.otherValues=s15;s5[2]=s14;s16.id=4;s16.title=\"Engineer 4\";s16.defaultLocale=\"en_GB\";s16.postingDate=\"03\\/08\\/2026\";s16.otherValues=s17;s5[3]=s16;s18.id=5;s18.title=\"Engineer 5\";s18.defaultLocale=\"en_GB\";s18.postingDate=\"03\\/08\\/2026\";s18.otherValues=s19;s5[4]=s18;s20.id=6;s20.title=\"Engineer 6\";s20.defaultLocale=\"en_GB\";s20.postingDate=\"03\\/08\\/2026\";s20.otherValues=s21;s5[5]=s20;s22.id=7;s22.title=\"Engineer 7\";s22.defaultLocale=\"en_GB\";s22.postingDate=\"03\\/08\\/2026\";s22.otherValues=s23;s5[6]=s22;s24.id=8;s24.title=\"Engineer 8\";s24.defaultLocale=\"en_GB\";s24.postingDate=\"03\\/08\\/2026\";s24.otherValues=s25;s5[7]=s24;s26.id=9;s26.title=\"Engineer 9\";s26.defaultLocale=\"en_GB\";s26.postingDate=\"03\\/08\\/2026\";s26.otherValues=s27;s5[8]=s26;s28.id=10;s28.title=\"Engineer 10\";s28.defaultLocale=\"en_GB\";s28.postingDate=\"03\\/08\\/2026\";s28.otherValues=s29;s5[9]=s28;s30.id=11;s30.title=\"Engineer 11\";s30.defaultLocale=\"en_GB\";s30.postingDate=\"03\\/08\\/2026\";s30.otherValues=s31;s5[10]=s30;s32.id=12;s32.title=\"Engineer 12\";s32.defaultLocale=\"en_GB\";s32.postingDate=\"03\\/08\\/2026\";s32.otherValues=s33;s5[11]=s32;s34.id=13;s34.title=\"Engineer 13\";s34.defaultLocale=\"en_GB\";s34.postingDate=\"03\\/08\\/2026\";s34.otherValues=s35;s5[12]=s34;s36.id=14;s36.title=\"Engineer 14\";s36.defaultLocale=\"en_GB\";s36.postingDate=\"03\\/08\\/2026\";s36.otherValues=s37;s5[13]=s36;s38.id=15;s38.title=\"Engineer 15\";s38.defaultLocale=\"en_GB\";s38.postingDate=\"03\\/08\\/2026\";s38.otherValues=s39;s5[14]=s38;s40.id=16;s40.title=\"Engineer 16\";s40.defaultLocale=\"en_GB\";s40.postingDate=\"03\\/08\\/2026\";s40.otherValues=s41;s5[15]=s40;s42.id=17;s42.title=\"Engineer 17\";s42.defaultLocale=\"en_GB\";s42.postingDate=\"03\\/08\\/2026\";s42.otherValues=s43;s5[16]=s42;s44.id=18;s44.title=\"Engineer 18\";s44.defaultLocale=\"en_GB\";s44.postingDate=\"03\\/08\\/2026\";s44.otherValues=s45;s5[17]=s44;s46.id=19;s46.title=\"Engineer 19\";s46.defaultLocale=\"en_GB\";s46.postingDate=\"03\\/08\\/2026\";s46.otherValues=s47;s5[18]=s46;s48.id=20;s48.title=\"Engineer 20\";s48.defaultLocale=\"en_GB\";s48.postingDate=\"03\\/08\\/2026\";s48.otherValues=s49;s5[19]=s48;s50.id=21;s50.title=\"Engineer 21\";s50.defaultLocale=\"en_GB\";s50.postingDate=\"03\\/08\\/2026\";s50.otherValues=s51;s5[20]=s50;s52.id=22;s52.title=\"Engineer 22\";s52.defaultLocale=\"en_GB\";s52.postingDate=\"03\\/08\\/2026\";s52.otherValues=s53;s5[21]=s52;s54.id=23;s54.title=\"Engineer 23\";s54.defaultLocale=\"en_GB\";s54.postingDate=\"03\\/08\\/2026\";s54.otherValues=s55;s5[22]=s54;s56.id=24;s56.title=\"Engineer 24\";s56.defaultLocale=\"en_GB\";s56.postingDate=\"03\\/08\\/2026\";s56.otherValues=s57;s5[23]=s56;s58.id=25;s58.title=\"Engineer 25\";s58.defaultLocale=\"en_GB\";s58.postingDate=\"03\\/08\\/2026\";s58.otherValues=s59;s5[24]=s58;s60.id=26;s60.title=\"Engineer 26\";s60.defaultLocale=\"en_GB\";s60.postingDate=\"03\\/08\\/2026\";s60.otherValues=s61;s5[25]=s60;s62.id=27;s62.title=\"Engineer 27\";s62.defaultLocale=\"en_GB\";s62.postingDate=\"03\\/08\\/2026\";s62.otherValues=s63;s5[26]=s62;s64.id=28;s64.title=\"Engineer 28\";s64.defaultLocale=\"en_GB\";s64.postingDate=\"03\\/08\\/2026\";s64.otherValues=s65;s5[27]=s64;s66.id=29;s66.title=\"Engineer 29\";s66.defaultLocale=\"en_GB\";s66.postingDate=\"03\\/08\\/2026\";s66.otherValues=s67;s5[28]=s66;s68.id=30;s68.title=\"Engineer 30\";s68.defaultLocale=\"en_GB\";s68.postingDate=\"03\\/08\\/2026\";s68.otherValues=s69;s5[29]=s68;s70.id=31;s70.title=\"Engineer 31\";s70.defaultLocale=\"en_GB\";s70.postingDate=\"03\\/08\\/2026\";s70.otherValues=s71;s5[30]=s70;s72.id=32;s72.title=\"Engineer 32\";s72.defaultLocale=\"en_GB\";s72.postingDate=\"03\\/08\\/2026\";s72.otherValues=s73;s5[31]=s72;s74.id=33;s74.title=\"Engineer 33\";s74.defaultLocale=\"en_GB\";s74.postingDate=\"03\\/08\\/2026\";s74.otherValues=s75;s5[32]=s74;s76.id=34;s76.title=\"Engineer 34\";s76.defaultLocale=\"en_GB\";s76.postingDate=\"03\\/08\\/2026\";s76.otherValues=s77;s5[33]=s76;s78.id=35;s78.title=\"Engineer 35\";s78.defaultLocale=\"en_GB\";s78.postingDate=\"03\\/08\\/2026\";s78.otherValues=s79;s5[34]=s78;s80.id=36;s80.title=\"Engineer 36\";s80.defaultLocale=\"en_GB\";s80.postingDate=\"03\\/08\\/2026\";s80.otherValues=s81;s5[35]=s80;s82.id=37;s82.title=\"Engineer 37\";s82.defaultLocale=\"en_GB\";s82.postingDate=\"03\\/08\\/2026\";s82.otherValues=s83;s5[36]=s82;s84.id=38;s84.title=\"Engineer 38\";s84.defaultLocale=\"en_GB\";s84.postingDate=\"03\\/08\\/2026\";s84.otherValues=s85;s5[37]=s84;s86.id=39;s86.title=\"Engineer 39\";s86.defaultLocale=\"en_GB\";s86.postingDate=\"03\\/08\\/2026\";s86.otherValues=s87;s5[38]=s86;s88.id=40;s88.title=\"Engineer 40\";s88.defaultLocale=\"en_GB\";s88.postingDate=\"03\\/08\\/2026\";s88.otherValues=s89;s5[39]=s88;s90.id=41;s90.title=\"Engineer 41\";s90.defaultLocale=\"en_GB\";s90.postingDate=\"03\\/08\\/2026\";s90.otherValues=s91;s5[40]=s90;s92.id=42;s92.title=\"Engineer 42\";s92.defaultLocale=\"en_GB\";s92.postingDate=\"03\\/08\\/2026\";s92.otherValues=s93;s5[41]=s92;s94.id=43;s94.title=\"Engineer 43\";s94.defaultLocale=\"en_GB\";s94.postingDate=\"03\\/08\\/2026\";s94.otherValues=s95;s5[42]=s94;s96.id=44;s96.title=\"Engineer 44\";s96.defaultLocale=\"en_GB\";s96.postingDate=\"03\\/08\\/2026\";s96.otherValues=s97;s5[43]=s96;s98.id=45;s98.title=\"Engineer 45\";s98.defaultLocale=\"en_GB\";s98.postingDate=\"03\\/08\\/2026\";s98.otherValues=s99;s5[44]=s98;s100.id=46;s100.title=\"Engineer 46\";s100.defaultLocale=\"en_GB\";s100.postingDate=\"03\\/08\\/2026\";s100.otherValues=s101;s5[45]=s100;s102.id=47;s102.title=\"Engineer 47\";s102.defaultLocale=\"en_GB\";s102.postingDate=\"03\\/08\\/2026\";s102.otherValues=s103;s5[46]=s102;s104.id=48;s104.title=\"Engineer 48\";s104.defaultLocale=\"en_GB\";s104.postingDate=\"03\\/08\\/2026\";s104.otherValues=s105;s5[47]=s104;s106.id=49;s106.title=\"Engineer 49\";s106.defaultLocale=\"en_GB\";s106.postingDate=\"03\\/08\\/2026\";s106.otherValues=s107;s5[48]=s106;s108.id=50;s108.title=\"Engineer 50\";s108.defaultLocale=\"en_GB\";s108.postingDate=\"03\\/08\\/2026\";s108.otherValues=s109;s5[49]=s108;s110.id=51;s110.title=\"Engineer 51\";s110.defaultLocale=\"en_GB\";s110.postingDate=\"03\\/08\\/2026\";s110.otherValues=s111;s5[50]=s110;s112.id=52;s112.title=\"Engineer 52\";s112.defaultLocale=\"en_GB\";s112.postingDate=\"03\\/08\\/2026\";s112.otherValues=s113;s5[51]=s112;s114.id=53;s114.title=\"Engineer 53\";s114.defaultLocale=\"en_GB\";s114.postingDate=\"03\\/08\\/2026\";s114.otherValues=s115;s5[52]=s114;s116.id=54;s116.title=\"Engineer 54\";s116.defaultLocale=\"en_GB\";s116.postingDate=\"03\\/08\\/2026\";s116.otherValues=s117;s5[53]=s116;s118.id=55;s118.title=\"Engineer 55\";s118.defaultLocale=\"en_GB\";s118.postingDate=\"03\\/08\\/2026\";s118.otherValues=s119;s5[54]=s118;s120.id=56;s120.title=\"Engineer 56\";s120.defaultLocale=\"en_GB\";s120.postingDate=\"03\\/08\\/2026\";s120.otherValues=s121;s5[55]=s120;s122.id=57;s122.title=\"Engineer 57\";s122.defaultLocale=\"en_GB\";s122.postingDate=\"03\\/08\\/2026\";s122.otherValues=s123;s5[56]=s122;s124.id=58;s124.title=\"Engineer 58\";s124.defaultLocale=\"en_GB\";s124.postingDate=\"03\\/08\\/2026\";s124.otherValues=s125;s5[57]=s124;s126.id=59;s126.title=\"Engineer 59\";s126.defaultLocale=\"en_GB\";s126.postingDate=\"03\\/08\\/2026\";s126.otherValues=s127;s5[58]=s126;s128.id=60;s128.title=\"Engineer 60\";s128.defaultLocale=\"en_GB\";s128.postingDate=\"03\\/08\\/2026\";s128.otherValues=s129;s5[59]=s128;s130.id=61;s130.title=\"Engineer 61\";s130.defaultLocale=\"en_GB\";s130.postingDate=\"03\\/08\\/2026\";s130.otherValues=s131;s5[60]=s130;s132.id=62;s132.title=\"Engineer 62\";s132.defaultLocale=\"en_GB\";s132.postingDate=\"03\\/08\\/2026\";s132.otherValues=s133;s5[61]=s132;s134.id=63;s134.title=\"Engineer 63\";s134.defaultLocale=\"en_GB\";s134.postingDate=\"03\\/08\\/2026\";s134.otherValues=s135;s5[62]=s134;s136.id=64;s136.title=\"Engineer 64\";s136.defaultLocale=\"en_GB\";s136.postingDate=\"03\\/08\\/2026\";s136.otherValues=s137;s5[63]=s136;s138.id=65;s138.title=\"Engineer 65\";s138.defaultLocale=\"en_GB\";s138.postingDate=\"03\\/08\\/2026\";s138.otherValues=s139;s5[64]=s138;s140.id=66;s140.title=\"Engineer 66\";s140.defaultLocale=\"en_GB\";s140.postingDate=\"03\\/08\\/2026\";s140.otherValues=s141;s5[65]=s140;s142.id=67;s142.title=\"Engineer 67\";s142.defaultLocale=\"en_GB\";s142.postingDate=\"03\\/08\\/2026\";s142.otherValues=s143;s5[66]=s142;s144.id=68;s144.title=\"Engineer 68\";s144.defaultLocale=\"en_GB\";s144.postingDate=\"03\\/08\\/2026\";s144.otherValues=s145;s5[67]=s144;s146.id=69;s146.title=\"Engineer 69\";s146.defaultLocale=\"en_GB\";s146.postingDate=\"03\\/08\\/2026\";s146.otherValues=s147;s5[68]=s146;s148.id=70;s148.title=\"Engineer 70\";s148.defaultLocale=\"en_GB\";s148.postingDate=\"03\\/08\\/2026\";s148.otherValues=s149;s5[69]=s148;s150.id=71;s150.title=\"Engineer 71\";s150.defaultLocale=\"en_GB\";s150.postingDate=\"03\\/08\\/2026\";s150.otherValues=s151;s5[70]=s150;s152.id=72;s152.title=\"Engineer 72\";s152.defaultLocale=\"en_GB\";s152.postingDate=\"03\\/08\\/2026\";s152.otherValues=s153;s5[71]=s152;s154.id=73;s154.title=\"Engineer 73\";s154.defaultLocale=\"en_GB\";s154.postingDate=\"03\\/08\\/2026\";s154.otherValues=s155;s5[72]=s154;s156.id=74;s156.title=\"Engineer 74\";s156.defaultLocale=\"en_GB\";s156.postingDate=\"03\\/08\\/2026\";s156.otherValues=s157;s5[73]=s156;s158.id=75;s158.title=\"Engineer 75\";s158.defaultLocale=\"en_GB\";s158.postingDate=\"03\\/08\\/2026\";s158.otherValues=s159;s5[74]=s158;s160.id=76;s160.title=\"Engineer 76\";s160.defaultLocale=\"en_GB\";s160.postingDate=\"03\\/08\\/2026\";s160.otherValues=s161;s5[75]=s160;s162.id=77;s162.title=\"Engineer 77\";s162.defaultLocale=\"en_GB\";s162.postingDate=\"03\\/08\\/2026\";s162.otherValues=s163;s5[76]=s162;s164.id=78;s164.title=\"Engineer 78\";s164.defaultLocale=\"en_GB\";s164.postingDate=\"03\\/08\\/2026\";s164.otherValues=s165;s5[77]=s164;s166.id=79;s166.title=\"Engineer 79\";s166.defaultLocale=\"en_GB\";s166.postingDate=\"03\\/08\\/2026\";s166.otherValues=s167;s5[78]=s166;s168.id=80;s168.title=\"Engineer 80\";s168.defaultLocale=\"en_GB\";s168.postingDate=\"03\\/08\\/2026\";s168.otherValues=s169;s5[79]=s168;s170.id=81;s170.title=\"Engineer 81\";s170.defaultLocale=\"en_GB\";s170.postingDate=\"03\\/08\\/2026\";s170.otherValues=s171;s5[80]=s170;s172.id=82;s172.title=\"Engineer 82\";s172.defaultLocale=\"en_GB\";s172.postingDate=\"03\\/08\\/2026\";s172.otherValues=s173;s5[81]=s172;s174.id=83;s174.title=\"Engineer 83\";s174.defaultLocale=\"en_GB\";s174.postingDate=\"03\\/08\\/2026\";s174.otherValues=s175;s5[82]=s174;s176.id=84;s176.title=\"Engineer 84\";s176.defaultLocale=\"en_GB\";s176.postingDate=\"03\\/08\\/2026\";s176.otherValues=s177;s5[83]=s176;s178.id=85;s178.title=\"Engineer 85\";s178.defaultLocale=\"en_GB\";s178.postingDate=\"03\\/08\\/2026\";s178.otherValues=s179;s5[84]=s178;s180.id=86;s180.title=\"Engineer 86\";s180.defaultLocale=\"en_GB\";s180.postingDate=\"03\\/08\\/2026\";s180.otherValues=s181;s5[85]=s180;s182.id=87;s182.title=\"Engineer 87\";s182.defaultLocale=\"en_GB\";s182.postingDate=\"03\\/08\\/2026\";s182.otherValues=s183;s5[86]=s182;s184.id=88;s184.title=\"Engineer 88\";s184.defaultLocale=\"en_GB\";s184.postingDate=\"03\\/08\\/2026\";s184.otherValues=s185;s5[87]=s184;s186.id=89;s186.title=\"Engineer 89\";s186.defaultLocale=\"en_GB\";s186.postingDate=\"03\\/08\\/2026\";s186.otherValues=s187;s5[88]=s186;s188.id=90;s188.title=\"Engineer 90\";s188.defaultLocale=\"en_GB\";s188.postingDate=\"03\\/08\\/2026\";s188.otherValues=s189;s5[89]=s188;s190.id=91;s190.title=\"Engineer 91\";s190.defaultLocale=\"en_GB\";s190.postingDate=\"03\\/08\\/2026\";s190.otherValues=s191;s5[90]=s190;s192.id=92;s192.title=\"Engineer 92\";s192.defaultLocale=\"en_GB\";s192.postingDate=\"03\\/08\\/2026\";s192.otherValues=s193;s5[91]=s192;s194.id=93;s194.title=\"Engineer 93\";s194.defaultLocale=\"en_GB\";s194.postingDate=\"03\\/08\\/2026\";s194.otherValues=s195;s5[92]=s194;s196.id=94;s196.title=\"Engineer 94\";s196.defaultLocale=\"en_GB\";s196.postingDate=\"03\\/08\\/2026\";s196.otherValues=s197;s5[93]=s196;s198.id=95;s198.title=\"Engineer 95\";s198.defaultLocale=\"en_GB\";s198.postingDate=\"03\\/08\\/2026\";s198.otherValues=s199;s5[94]=s198;s200.id=96;s200.title=\"Engineer 96\";s200.defaultLocale=\"en_GB\";s200.postingDate=\"03\\/08\\/2026\";s200.otherValues=s201;s5[95]=s200;s202.id=97;s202.title=\"Engineer 97\";s202.defaultLocale=\"en_GB\";s202.postingDate=\"03\\/08\\/2026\";s202.otherValues=s203;s5[96]=s202;s204.id=98;s204.title=\"Engineer 98\";s204.defaultLocale=\"en_GB\";s204.postingDate=\"03\\/08\\/2026\";s204.otherValues=s205;s5[97]=s204;s206.id=99;s206.title=\"Engineer 99\";s206.defaultLocale=\"en_GB\";s206.postingDate=\"03\\/08\\/2026\";s206.otherValues=s207;s5[98]=s206;s208.id=100;s208.title=\"Engineer 100\";s208.defaultLocale=\"en_GB\";s208.postingDate=\"03\\/08\\/2026\";s208.otherValues=s209;s5[99]=s208;dwr.engine._remoteHandleCallback('1','0',{filters:s0,results:s4});",
+          "headers": {}
+        },
+        {
+          "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};var s8={};var s9=[];var s10=[];var s11={};s0.postingCount=\"101\";s0.configs=s1;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=2;s7.pageSize=100;s7.startRow=101;s7.endRow=200;s7.totalCount=101;s4.postingCount=101;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;s8.id=1;s8.title=\"Engineer 1\";s8.defaultLocale=\"en_GB\";s8.postingDate=\"03\\/08\\/2026\";s8.otherValues=s9;s9[0]=s10;s10[0]=s11;s11.fieldId=\"filter2\";s11.longVal=null;s11.shortVal=\"Zurich - CH\";s5[0]=s8;dwr.engine._remoteHandleCallback('2','0',{filters:s0,results:s4});",
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+          "body": "",
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://career5.successfactors.eu/xi/ajax/remoting/call/plaincall/careerJobSearchControllerProxy.getInitialJobSearchData.dwr",
+          "body": "callCount=1\npage=/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH\nhttpSessionId=\nscriptSessionId=0123456789abcdef01234567\nc0-scriptName=careerJobSearchControllerProxy\nc0-methodName=getInitialJobSearchData\nc0-id=0\nc0-e1=string:\nc0-e2=string:\nc0-e3=boolean:false\nc0-e4=string:Etc%2FUTC\nc0-param0=Object_Object:{filterOnly:reference:c0-e1,jobAlertId:reference:c0-e2,returnToList:reference:c0-e3,browserTimeZone:reference:c0-e4}\nbatchId=0\n",
+          "headers": {
+            "content-type": "text/plain",
+            "origin": "https://career5.successfactors.eu",
+            "referer": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+            "viewid": "/ui/rcmcareer/pages/careersite/career.jsp.xhtml",
+            "x-ajax-token": "abcDEF0123%2f456%3d",
+            "x-csrf-token": "abcDEF0123%2f456%3d",
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "x-sap-page-info": "companyId=Acme",
+            "x-subaction": "0"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://career5.successfactors.eu/xi/ajax/remoting/call/plaincall/careerJobSearchControllerProxy.search.dwr",
+          "body": "callCount=1\npage=/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH\nhttpSessionId=\nscriptSessionId=0123456789abcdef01234567\nc0-scriptName=careerJobSearchControllerProxy\nc0-methodName=search\nc0-id=0\nc0-e1=number:1\nc0-e2=number:100\nc0-e3=Object_Object:{currentPage:reference:c0-e1,pageSize:reference:c0-e2}\nc0-e4=string:JOB_POSTING_DATE\nc0-e5=string:DESC\nc0-param0=Object_Object:{pagination:reference:c0-e3,sortByColumn:reference:c0-e4,sortOrder:reference:c0-e5}\nbatchId=1\n",
+          "headers": {
+            "content-type": "text/plain",
+            "origin": "https://career5.successfactors.eu",
+            "referer": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+            "viewid": "/ui/rcmcareer/pages/careersite/career.jsp.xhtml",
+            "x-ajax-token": "abcDEF0123%2f456%3d",
+            "x-csrf-token": "abcDEF0123%2f456%3d",
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "x-sap-page-info": "companyId=Acme",
+            "x-subaction": "0"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://career5.successfactors.eu/xi/ajax/remoting/call/plaincall/careerJobSearchControllerProxy.search.dwr",
+          "body": "callCount=1\npage=/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH\nhttpSessionId=\nscriptSessionId=0123456789abcdef01234567\nc0-scriptName=careerJobSearchControllerProxy\nc0-methodName=search\nc0-id=0\nc0-e1=number:2\nc0-e2=number:100\nc0-e3=Object_Object:{currentPage:reference:c0-e1,pageSize:reference:c0-e2}\nc0-e4=string:JOB_POSTING_DATE\nc0-e5=string:DESC\nc0-param0=Object_Object:{pagination:reference:c0-e3,sortByColumn:reference:c0-e4,sortOrder:reference:c0-e5}\nbatchId=2\n",
+          "headers": {
+            "content-type": "text/plain",
+            "origin": "https://career5.successfactors.eu",
+            "referer": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+            "viewid": "/ui/rcmcareer/pages/careersite/career.jsp.xhtml",
+            "x-ajax-token": "abcDEF0123%2f456%3d",
+            "x-csrf-token": "abcDEF0123%2f456%3d",
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "x-sap-page-info": "companyId=Acme",
+            "x-subaction": "0"
+          }
+        }
+      ],
+      "expected": null,
+      "truncated": false,
+      "error": true
+    },
+    {
+      "name": "changed-total",
+      "board": {
+        "board_url": "https://career5.successfactors.eu/career?company=Acme",
+        "metadata": {
+          "preset": "successfactors",
+          "variant": "legacy",
+          "host": "career5.successfactors.eu",
+          "company": "Acme"
+        }
+      },
+      "responses": [
+        {
+          "body": "<html><script>var ajaxSecKey=\"abcDEF0123%2f456%3d\";function getInitialJobSearchData(){}; careerJobSearchController; const x={companyId: \"Acme\"};</script></html>",
+          "headers": {
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "content-length": "160",
+            "content-type": "text/plain; charset=utf-8"
+          }
+        },
+        {
+          "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2={};var s3=[];var s4={};var s5={};var s6=[];var s7={};var s8={};var s9={};var s10=[];var s11={};var s12=[];var s13={};var s14=[];var s15={};var s16=[];var s17={};var s18=[];var s19={};var s20=[];var s21={};var s22=[];var s23={};var s24=[];var s25={};var s26=[];var s27={};var s28=[];s1.postingCount=\"101\";s1.configs=s2;s2.filters=s3;s3[0]=s4;s4.fieldName=\"customFilter_filter2\";s4.label=\"Duty Station\";s7.pagination=s8;s7.sortByColumn=\"JOB_POSTING_DATE\";s7.sortOrder=\"DESC\";s8.currentPage=1;s8.pageSize=10;s8.startRow=1;s8.endRow=10;s8.totalCount=101;s0.filters=s1;s0.results=s5;s5.postingCount=101;s5.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s5.options=s7;s5.postings=s6;s9.id=1;s9.title=\"Engineer 1\";s9.defaultLocale=\"en_GB\";s9.postingDate=\"03\\/08\\/2026\";s9.otherValues=s10;s6[0]=s9;s11.id=2;s11.title=\"Engineer 2\";s11.defaultLocale=\"en_GB\";s11.postingDate=\"03\\/08\\/2026\";s11.otherValues=s12;s6[1]=s11;s13.id=3;s13.title=\"Engineer 3\";s13.defaultLocale=\"en_GB\";s13.postingDate=\"03\\/08\\/2026\";s13.otherValues=s14;s6[2]=s13;s15.id=4;s15.title=\"Engineer 4\";s15.defaultLocale=\"en_GB\";s15.postingDate=\"03\\/08\\/2026\";s15.otherValues=s16;s6[3]=s15;s17.id=5;s17.title=\"Engineer 5\";s17.defaultLocale=\"en_GB\";s17.postingDate=\"03\\/08\\/2026\";s17.otherValues=s18;s6[4]=s17;s19.id=6;s19.title=\"Engineer 6\";s19.defaultLocale=\"en_GB\";s19.postingDate=\"03\\/08\\/2026\";s19.otherValues=s20;s6[5]=s19;s21.id=7;s21.title=\"Engineer 7\";s21.defaultLocale=\"en_GB\";s21.postingDate=\"03\\/08\\/2026\";s21.otherValues=s22;s6[6]=s21;s23.id=8;s23.title=\"Engineer 8\";s23.defaultLocale=\"en_GB\";s23.postingDate=\"03\\/08\\/2026\";s23.otherValues=s24;s6[7]=s23;s25.id=9;s25.title=\"Engineer 9\";s25.defaultLocale=\"en_GB\";s25.postingDate=\"03\\/08\\/2026\";s25.otherValues=s26;s6[8]=s25;s27.id=10;s27.title=\"Engineer 10\";s27.defaultLocale=\"en_GB\";s27.postingDate=\"03\\/08\\/2026\";s27.otherValues=s28;s6[9]=s27;dwr.engine._remoteHandleCallback('0','0',{payload:s0});",
+          "headers": {}
+        },
+        {
+          "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};var s8={};var s9=[];var s10=[];var s11={};var s12={};var s13=[];var s14={};var s15=[];var s16={};var s17=[];var s18={};var s19=[];var s20={};var s21=[];var s22={};var s23=[];var s24={};var s25=[];var s26={};var s27=[];var s28={};var s29=[];var s30={};var s31=[];var s32={};var s33=[];var s34={};var s35=[];var s36={};var s37=[];var s38={};var s39=[];var s40={};var s41=[];var s42={};var s43=[];var s44={};var s45=[];var s46={};var s47=[];var s48={};var s49=[];var s50={};var s51=[];var s52={};var s53=[];var s54={};var s55=[];var s56={};var s57=[];var s58={};var s59=[];var s60={};var s61=[];var s62={};var s63=[];var s64={};var s65=[];var s66={};var s67=[];var s68={};var s69=[];var s70={};var s71=[];var s72={};var s73=[];var s74={};var s75=[];var s76={};var s77=[];var s78={};var s79=[];var s80={};var s81=[];var s82={};var s83=[];var s84={};var s85=[];var s86={};var s87=[];var s88={};var s89=[];var s90={};var s91=[];var s92={};var s93=[];var s94={};var s95=[];var s96={};var s97=[];var s98={};var s99=[];var s100={};var s101=[];var s102={};var s103=[];var s104={};var s105=[];var s106={};var s107=[];var s108={};var s109=[];var s110={};var s111=[];var s112={};var s113=[];var s114={};var s115=[];var s116={};var s117=[];var s118={};var s119=[];var s120={};var s121=[];var s122={};var s123=[];var s124={};var s125=[];var s126={};var s127=[];var s128={};var s129=[];var s130={};var s131=[];var s132={};var s133=[];var s134={};var s135=[];var s136={};var s137=[];var s138={};var s139=[];var s140={};var s141=[];var s142={};var s143=[];var s144={};var s145=[];var s146={};var s147=[];var s148={};var s149=[];var s150={};var s151=[];var s152={};var s153=[];var s154={};var s155=[];var s156={};var s157=[];var s158={};var s159=[];var s160={};var s161=[];var s162={};var s163=[];var s164={};var s165=[];var s166={};var s167=[];var s168={};var s169=[];var s170={};var s171=[];var s172={};var s173=[];var s174={};var s175=[];var s176={};var s177=[];var s178={};var s179=[];var s180={};var s181=[];var s182={};var s183=[];var s184={};var s185=[];var s186={};var s187=[];var s188={};var s189=[];var s190={};var s191=[];var s192={};var s193=[];var s194={};var s195=[];var s196={};var s197=[];var s198={};var s199=[];var s200={};var s201=[];var s202={};var s203=[];var s204={};var s205=[];var s206={};var s207=[];var s208={};var s209=[];s0.postingCount=\"101\";s0.configs=s1;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=1;s7.pageSize=100;s7.startRow=1;s7.endRow=100;s7.totalCount=101;s4.postingCount=101;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;s8.id=1;s8.title=\"Engineer 1\";s8.defaultLocale=\"en_GB\";s8.postingDate=\"03\\/08\\/2026\";s8.otherValues=s9;s9[0]=s10;s10[0]=s11;s11.fieldId=\"filter2\";s11.longVal=null;s11.shortVal=\"Zurich - CH\";s5[0]=s8;s12.id=2;s12.title=\"Engineer 2\";s12.defaultLocale=\"en_GB\";s12.postingDate=\"03\\/08\\/2026\";s12.otherValues=s13;s5[1]=s12;s14.id=3;s14.title=\"Engineer 3\";s14.defaultLocale=\"en_GB\";s14.postingDate=\"03\\/08\\/2026\";s14.otherValues=s15;s5[2]=s14;s16.id=4;s16.title=\"Engineer 4\";s16.defaultLocale=\"en_GB\";s16.postingDate=\"03\\/08\\/2026\";s16.otherValues=s17;s5[3]=s16;s18.id=5;s18.title=\"Engineer 5\";s18.defaultLocale=\"en_GB\";s18.postingDate=\"03\\/08\\/2026\";s18.otherValues=s19;s5[4]=s18;s20.id=6;s20.title=\"Engineer 6\";s20.defaultLocale=\"en_GB\";s20.postingDate=\"03\\/08\\/2026\";s20.otherValues=s21;s5[5]=s20;s22.id=7;s22.title=\"Engineer 7\";s22.defaultLocale=\"en_GB\";s22.postingDate=\"03\\/08\\/2026\";s22.otherValues=s23;s5[6]=s22;s24.id=8;s24.title=\"Engineer 8\";s24.defaultLocale=\"en_GB\";s24.postingDate=\"03\\/08\\/2026\";s24.otherValues=s25;s5[7]=s24;s26.id=9;s26.title=\"Engineer 9\";s26.defaultLocale=\"en_GB\";s26.postingDate=\"03\\/08\\/2026\";s26.otherValues=s27;s5[8]=s26;s28.id=10;s28.title=\"Engineer 10\";s28.defaultLocale=\"en_GB\";s28.postingDate=\"03\\/08\\/2026\";s28.otherValues=s29;s5[9]=s28;s30.id=11;s30.title=\"Engineer 11\";s30.defaultLocale=\"en_GB\";s30.postingDate=\"03\\/08\\/2026\";s30.otherValues=s31;s5[10]=s30;s32.id=12;s32.title=\"Engineer 12\";s32.defaultLocale=\"en_GB\";s32.postingDate=\"03\\/08\\/2026\";s32.otherValues=s33;s5[11]=s32;s34.id=13;s34.title=\"Engineer 13\";s34.defaultLocale=\"en_GB\";s34.postingDate=\"03\\/08\\/2026\";s34.otherValues=s35;s5[12]=s34;s36.id=14;s36.title=\"Engineer 14\";s36.defaultLocale=\"en_GB\";s36.postingDate=\"03\\/08\\/2026\";s36.otherValues=s37;s5[13]=s36;s38.id=15;s38.title=\"Engineer 15\";s38.defaultLocale=\"en_GB\";s38.postingDate=\"03\\/08\\/2026\";s38.otherValues=s39;s5[14]=s38;s40.id=16;s40.title=\"Engineer 16\";s40.defaultLocale=\"en_GB\";s40.postingDate=\"03\\/08\\/2026\";s40.otherValues=s41;s5[15]=s40;s42.id=17;s42.title=\"Engineer 17\";s42.defaultLocale=\"en_GB\";s42.postingDate=\"03\\/08\\/2026\";s42.otherValues=s43;s5[16]=s42;s44.id=18;s44.title=\"Engineer 18\";s44.defaultLocale=\"en_GB\";s44.postingDate=\"03\\/08\\/2026\";s44.otherValues=s45;s5[17]=s44;s46.id=19;s46.title=\"Engineer 19\";s46.defaultLocale=\"en_GB\";s46.postingDate=\"03\\/08\\/2026\";s46.otherValues=s47;s5[18]=s46;s48.id=20;s48.title=\"Engineer 20\";s48.defaultLocale=\"en_GB\";s48.postingDate=\"03\\/08\\/2026\";s48.otherValues=s49;s5[19]=s48;s50.id=21;s50.title=\"Engineer 21\";s50.defaultLocale=\"en_GB\";s50.postingDate=\"03\\/08\\/2026\";s50.otherValues=s51;s5[20]=s50;s52.id=22;s52.title=\"Engineer 22\";s52.defaultLocale=\"en_GB\";s52.postingDate=\"03\\/08\\/2026\";s52.otherValues=s53;s5[21]=s52;s54.id=23;s54.title=\"Engineer 23\";s54.defaultLocale=\"en_GB\";s54.postingDate=\"03\\/08\\/2026\";s54.otherValues=s55;s5[22]=s54;s56.id=24;s56.title=\"Engineer 24\";s56.defaultLocale=\"en_GB\";s56.postingDate=\"03\\/08\\/2026\";s56.otherValues=s57;s5[23]=s56;s58.id=25;s58.title=\"Engineer 25\";s58.defaultLocale=\"en_GB\";s58.postingDate=\"03\\/08\\/2026\";s58.otherValues=s59;s5[24]=s58;s60.id=26;s60.title=\"Engineer 26\";s60.defaultLocale=\"en_GB\";s60.postingDate=\"03\\/08\\/2026\";s60.otherValues=s61;s5[25]=s60;s62.id=27;s62.title=\"Engineer 27\";s62.defaultLocale=\"en_GB\";s62.postingDate=\"03\\/08\\/2026\";s62.otherValues=s63;s5[26]=s62;s64.id=28;s64.title=\"Engineer 28\";s64.defaultLocale=\"en_GB\";s64.postingDate=\"03\\/08\\/2026\";s64.otherValues=s65;s5[27]=s64;s66.id=29;s66.title=\"Engineer 29\";s66.defaultLocale=\"en_GB\";s66.postingDate=\"03\\/08\\/2026\";s66.otherValues=s67;s5[28]=s66;s68.id=30;s68.title=\"Engineer 30\";s68.defaultLocale=\"en_GB\";s68.postingDate=\"03\\/08\\/2026\";s68.otherValues=s69;s5[29]=s68;s70.id=31;s70.title=\"Engineer 31\";s70.defaultLocale=\"en_GB\";s70.postingDate=\"03\\/08\\/2026\";s70.otherValues=s71;s5[30]=s70;s72.id=32;s72.title=\"Engineer 32\";s72.defaultLocale=\"en_GB\";s72.postingDate=\"03\\/08\\/2026\";s72.otherValues=s73;s5[31]=s72;s74.id=33;s74.title=\"Engineer 33\";s74.defaultLocale=\"en_GB\";s74.postingDate=\"03\\/08\\/2026\";s74.otherValues=s75;s5[32]=s74;s76.id=34;s76.title=\"Engineer 34\";s76.defaultLocale=\"en_GB\";s76.postingDate=\"03\\/08\\/2026\";s76.otherValues=s77;s5[33]=s76;s78.id=35;s78.title=\"Engineer 35\";s78.defaultLocale=\"en_GB\";s78.postingDate=\"03\\/08\\/2026\";s78.otherValues=s79;s5[34]=s78;s80.id=36;s80.title=\"Engineer 36\";s80.defaultLocale=\"en_GB\";s80.postingDate=\"03\\/08\\/2026\";s80.otherValues=s81;s5[35]=s80;s82.id=37;s82.title=\"Engineer 37\";s82.defaultLocale=\"en_GB\";s82.postingDate=\"03\\/08\\/2026\";s82.otherValues=s83;s5[36]=s82;s84.id=38;s84.title=\"Engineer 38\";s84.defaultLocale=\"en_GB\";s84.postingDate=\"03\\/08\\/2026\";s84.otherValues=s85;s5[37]=s84;s86.id=39;s86.title=\"Engineer 39\";s86.defaultLocale=\"en_GB\";s86.postingDate=\"03\\/08\\/2026\";s86.otherValues=s87;s5[38]=s86;s88.id=40;s88.title=\"Engineer 40\";s88.defaultLocale=\"en_GB\";s88.postingDate=\"03\\/08\\/2026\";s88.otherValues=s89;s5[39]=s88;s90.id=41;s90.title=\"Engineer 41\";s90.defaultLocale=\"en_GB\";s90.postingDate=\"03\\/08\\/2026\";s90.otherValues=s91;s5[40]=s90;s92.id=42;s92.title=\"Engineer 42\";s92.defaultLocale=\"en_GB\";s92.postingDate=\"03\\/08\\/2026\";s92.otherValues=s93;s5[41]=s92;s94.id=43;s94.title=\"Engineer 43\";s94.defaultLocale=\"en_GB\";s94.postingDate=\"03\\/08\\/2026\";s94.otherValues=s95;s5[42]=s94;s96.id=44;s96.title=\"Engineer 44\";s96.defaultLocale=\"en_GB\";s96.postingDate=\"03\\/08\\/2026\";s96.otherValues=s97;s5[43]=s96;s98.id=45;s98.title=\"Engineer 45\";s98.defaultLocale=\"en_GB\";s98.postingDate=\"03\\/08\\/2026\";s98.otherValues=s99;s5[44]=s98;s100.id=46;s100.title=\"Engineer 46\";s100.defaultLocale=\"en_GB\";s100.postingDate=\"03\\/08\\/2026\";s100.otherValues=s101;s5[45]=s100;s102.id=47;s102.title=\"Engineer 47\";s102.defaultLocale=\"en_GB\";s102.postingDate=\"03\\/08\\/2026\";s102.otherValues=s103;s5[46]=s102;s104.id=48;s104.title=\"Engineer 48\";s104.defaultLocale=\"en_GB\";s104.postingDate=\"03\\/08\\/2026\";s104.otherValues=s105;s5[47]=s104;s106.id=49;s106.title=\"Engineer 49\";s106.defaultLocale=\"en_GB\";s106.postingDate=\"03\\/08\\/2026\";s106.otherValues=s107;s5[48]=s106;s108.id=50;s108.title=\"Engineer 50\";s108.defaultLocale=\"en_GB\";s108.postingDate=\"03\\/08\\/2026\";s108.otherValues=s109;s5[49]=s108;s110.id=51;s110.title=\"Engineer 51\";s110.defaultLocale=\"en_GB\";s110.postingDate=\"03\\/08\\/2026\";s110.otherValues=s111;s5[50]=s110;s112.id=52;s112.title=\"Engineer 52\";s112.defaultLocale=\"en_GB\";s112.postingDate=\"03\\/08\\/2026\";s112.otherValues=s113;s5[51]=s112;s114.id=53;s114.title=\"Engineer 53\";s114.defaultLocale=\"en_GB\";s114.postingDate=\"03\\/08\\/2026\";s114.otherValues=s115;s5[52]=s114;s116.id=54;s116.title=\"Engineer 54\";s116.defaultLocale=\"en_GB\";s116.postingDate=\"03\\/08\\/2026\";s116.otherValues=s117;s5[53]=s116;s118.id=55;s118.title=\"Engineer 55\";s118.defaultLocale=\"en_GB\";s118.postingDate=\"03\\/08\\/2026\";s118.otherValues=s119;s5[54]=s118;s120.id=56;s120.title=\"Engineer 56\";s120.defaultLocale=\"en_GB\";s120.postingDate=\"03\\/08\\/2026\";s120.otherValues=s121;s5[55]=s120;s122.id=57;s122.title=\"Engineer 57\";s122.defaultLocale=\"en_GB\";s122.postingDate=\"03\\/08\\/2026\";s122.otherValues=s123;s5[56]=s122;s124.id=58;s124.title=\"Engineer 58\";s124.defaultLocale=\"en_GB\";s124.postingDate=\"03\\/08\\/2026\";s124.otherValues=s125;s5[57]=s124;s126.id=59;s126.title=\"Engineer 59\";s126.defaultLocale=\"en_GB\";s126.postingDate=\"03\\/08\\/2026\";s126.otherValues=s127;s5[58]=s126;s128.id=60;s128.title=\"Engineer 60\";s128.defaultLocale=\"en_GB\";s128.postingDate=\"03\\/08\\/2026\";s128.otherValues=s129;s5[59]=s128;s130.id=61;s130.title=\"Engineer 61\";s130.defaultLocale=\"en_GB\";s130.postingDate=\"03\\/08\\/2026\";s130.otherValues=s131;s5[60]=s130;s132.id=62;s132.title=\"Engineer 62\";s132.defaultLocale=\"en_GB\";s132.postingDate=\"03\\/08\\/2026\";s132.otherValues=s133;s5[61]=s132;s134.id=63;s134.title=\"Engineer 63\";s134.defaultLocale=\"en_GB\";s134.postingDate=\"03\\/08\\/2026\";s134.otherValues=s135;s5[62]=s134;s136.id=64;s136.title=\"Engineer 64\";s136.defaultLocale=\"en_GB\";s136.postingDate=\"03\\/08\\/2026\";s136.otherValues=s137;s5[63]=s136;s138.id=65;s138.title=\"Engineer 65\";s138.defaultLocale=\"en_GB\";s138.postingDate=\"03\\/08\\/2026\";s138.otherValues=s139;s5[64]=s138;s140.id=66;s140.title=\"Engineer 66\";s140.defaultLocale=\"en_GB\";s140.postingDate=\"03\\/08\\/2026\";s140.otherValues=s141;s5[65]=s140;s142.id=67;s142.title=\"Engineer 67\";s142.defaultLocale=\"en_GB\";s142.postingDate=\"03\\/08\\/2026\";s142.otherValues=s143;s5[66]=s142;s144.id=68;s144.title=\"Engineer 68\";s144.defaultLocale=\"en_GB\";s144.postingDate=\"03\\/08\\/2026\";s144.otherValues=s145;s5[67]=s144;s146.id=69;s146.title=\"Engineer 69\";s146.defaultLocale=\"en_GB\";s146.postingDate=\"03\\/08\\/2026\";s146.otherValues=s147;s5[68]=s146;s148.id=70;s148.title=\"Engineer 70\";s148.defaultLocale=\"en_GB\";s148.postingDate=\"03\\/08\\/2026\";s148.otherValues=s149;s5[69]=s148;s150.id=71;s150.title=\"Engineer 71\";s150.defaultLocale=\"en_GB\";s150.postingDate=\"03\\/08\\/2026\";s150.otherValues=s151;s5[70]=s150;s152.id=72;s152.title=\"Engineer 72\";s152.defaultLocale=\"en_GB\";s152.postingDate=\"03\\/08\\/2026\";s152.otherValues=s153;s5[71]=s152;s154.id=73;s154.title=\"Engineer 73\";s154.defaultLocale=\"en_GB\";s154.postingDate=\"03\\/08\\/2026\";s154.otherValues=s155;s5[72]=s154;s156.id=74;s156.title=\"Engineer 74\";s156.defaultLocale=\"en_GB\";s156.postingDate=\"03\\/08\\/2026\";s156.otherValues=s157;s5[73]=s156;s158.id=75;s158.title=\"Engineer 75\";s158.defaultLocale=\"en_GB\";s158.postingDate=\"03\\/08\\/2026\";s158.otherValues=s159;s5[74]=s158;s160.id=76;s160.title=\"Engineer 76\";s160.defaultLocale=\"en_GB\";s160.postingDate=\"03\\/08\\/2026\";s160.otherValues=s161;s5[75]=s160;s162.id=77;s162.title=\"Engineer 77\";s162.defaultLocale=\"en_GB\";s162.postingDate=\"03\\/08\\/2026\";s162.otherValues=s163;s5[76]=s162;s164.id=78;s164.title=\"Engineer 78\";s164.defaultLocale=\"en_GB\";s164.postingDate=\"03\\/08\\/2026\";s164.otherValues=s165;s5[77]=s164;s166.id=79;s166.title=\"Engineer 79\";s166.defaultLocale=\"en_GB\";s166.postingDate=\"03\\/08\\/2026\";s166.otherValues=s167;s5[78]=s166;s168.id=80;s168.title=\"Engineer 80\";s168.defaultLocale=\"en_GB\";s168.postingDate=\"03\\/08\\/2026\";s168.otherValues=s169;s5[79]=s168;s170.id=81;s170.title=\"Engineer 81\";s170.defaultLocale=\"en_GB\";s170.postingDate=\"03\\/08\\/2026\";s170.otherValues=s171;s5[80]=s170;s172.id=82;s172.title=\"Engineer 82\";s172.defaultLocale=\"en_GB\";s172.postingDate=\"03\\/08\\/2026\";s172.otherValues=s173;s5[81]=s172;s174.id=83;s174.title=\"Engineer 83\";s174.defaultLocale=\"en_GB\";s174.postingDate=\"03\\/08\\/2026\";s174.otherValues=s175;s5[82]=s174;s176.id=84;s176.title=\"Engineer 84\";s176.defaultLocale=\"en_GB\";s176.postingDate=\"03\\/08\\/2026\";s176.otherValues=s177;s5[83]=s176;s178.id=85;s178.title=\"Engineer 85\";s178.defaultLocale=\"en_GB\";s178.postingDate=\"03\\/08\\/2026\";s178.otherValues=s179;s5[84]=s178;s180.id=86;s180.title=\"Engineer 86\";s180.defaultLocale=\"en_GB\";s180.postingDate=\"03\\/08\\/2026\";s180.otherValues=s181;s5[85]=s180;s182.id=87;s182.title=\"Engineer 87\";s182.defaultLocale=\"en_GB\";s182.postingDate=\"03\\/08\\/2026\";s182.otherValues=s183;s5[86]=s182;s184.id=88;s184.title=\"Engineer 88\";s184.defaultLocale=\"en_GB\";s184.postingDate=\"03\\/08\\/2026\";s184.otherValues=s185;s5[87]=s184;s186.id=89;s186.title=\"Engineer 89\";s186.defaultLocale=\"en_GB\";s186.postingDate=\"03\\/08\\/2026\";s186.otherValues=s187;s5[88]=s186;s188.id=90;s188.title=\"Engineer 90\";s188.defaultLocale=\"en_GB\";s188.postingDate=\"03\\/08\\/2026\";s188.otherValues=s189;s5[89]=s188;s190.id=91;s190.title=\"Engineer 91\";s190.defaultLocale=\"en_GB\";s190.postingDate=\"03\\/08\\/2026\";s190.otherValues=s191;s5[90]=s190;s192.id=92;s192.title=\"Engineer 92\";s192.defaultLocale=\"en_GB\";s192.postingDate=\"03\\/08\\/2026\";s192.otherValues=s193;s5[91]=s192;s194.id=93;s194.title=\"Engineer 93\";s194.defaultLocale=\"en_GB\";s194.postingDate=\"03\\/08\\/2026\";s194.otherValues=s195;s5[92]=s194;s196.id=94;s196.title=\"Engineer 94\";s196.defaultLocale=\"en_GB\";s196.postingDate=\"03\\/08\\/2026\";s196.otherValues=s197;s5[93]=s196;s198.id=95;s198.title=\"Engineer 95\";s198.defaultLocale=\"en_GB\";s198.postingDate=\"03\\/08\\/2026\";s198.otherValues=s199;s5[94]=s198;s200.id=96;s200.title=\"Engineer 96\";s200.defaultLocale=\"en_GB\";s200.postingDate=\"03\\/08\\/2026\";s200.otherValues=s201;s5[95]=s200;s202.id=97;s202.title=\"Engineer 97\";s202.defaultLocale=\"en_GB\";s202.postingDate=\"03\\/08\\/2026\";s202.otherValues=s203;s5[96]=s202;s204.id=98;s204.title=\"Engineer 98\";s204.defaultLocale=\"en_GB\";s204.postingDate=\"03\\/08\\/2026\";s204.otherValues=s205;s5[97]=s204;s206.id=99;s206.title=\"Engineer 99\";s206.defaultLocale=\"en_GB\";s206.postingDate=\"03\\/08\\/2026\";s206.otherValues=s207;s5[98]=s206;s208.id=100;s208.title=\"Engineer 100\";s208.defaultLocale=\"en_GB\";s208.postingDate=\"03\\/08\\/2026\";s208.otherValues=s209;s5[99]=s208;dwr.engine._remoteHandleCallback('1','0',{filters:s0,results:s4});",
+          "headers": {}
+        },
+        {
+          "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};var s8={};var s9=[];var s10=[];var s11={};s0.postingCount=\"102\";s0.configs=s1;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=2;s7.pageSize=100;s7.startRow=101;s7.endRow=200;s7.totalCount=102;s4.postingCount=102;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;s8.id=101;s8.title=\"Engineer 101\";s8.defaultLocale=\"en_GB\";s8.postingDate=\"03\\/08\\/2026\";s8.otherValues=s9;s9[0]=s10;s10[0]=s11;s11.fieldId=\"filter2\";s11.longVal=null;s11.shortVal=\"Zurich - CH\";s5[0]=s8;dwr.engine._remoteHandleCallback('2','0',{filters:s0,results:s4});",
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+          "body": "",
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://career5.successfactors.eu/xi/ajax/remoting/call/plaincall/careerJobSearchControllerProxy.getInitialJobSearchData.dwr",
+          "body": "callCount=1\npage=/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH\nhttpSessionId=\nscriptSessionId=0123456789abcdef01234567\nc0-scriptName=careerJobSearchControllerProxy\nc0-methodName=getInitialJobSearchData\nc0-id=0\nc0-e1=string:\nc0-e2=string:\nc0-e3=boolean:false\nc0-e4=string:Etc%2FUTC\nc0-param0=Object_Object:{filterOnly:reference:c0-e1,jobAlertId:reference:c0-e2,returnToList:reference:c0-e3,browserTimeZone:reference:c0-e4}\nbatchId=0\n",
+          "headers": {
+            "content-type": "text/plain",
+            "origin": "https://career5.successfactors.eu",
+            "referer": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+            "viewid": "/ui/rcmcareer/pages/careersite/career.jsp.xhtml",
+            "x-ajax-token": "abcDEF0123%2f456%3d",
+            "x-csrf-token": "abcDEF0123%2f456%3d",
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "x-sap-page-info": "companyId=Acme",
+            "x-subaction": "0"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://career5.successfactors.eu/xi/ajax/remoting/call/plaincall/careerJobSearchControllerProxy.search.dwr",
+          "body": "callCount=1\npage=/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH\nhttpSessionId=\nscriptSessionId=0123456789abcdef01234567\nc0-scriptName=careerJobSearchControllerProxy\nc0-methodName=search\nc0-id=0\nc0-e1=number:1\nc0-e2=number:100\nc0-e3=Object_Object:{currentPage:reference:c0-e1,pageSize:reference:c0-e2}\nc0-e4=string:JOB_POSTING_DATE\nc0-e5=string:DESC\nc0-param0=Object_Object:{pagination:reference:c0-e3,sortByColumn:reference:c0-e4,sortOrder:reference:c0-e5}\nbatchId=1\n",
+          "headers": {
+            "content-type": "text/plain",
+            "origin": "https://career5.successfactors.eu",
+            "referer": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+            "viewid": "/ui/rcmcareer/pages/careersite/career.jsp.xhtml",
+            "x-ajax-token": "abcDEF0123%2f456%3d",
+            "x-csrf-token": "abcDEF0123%2f456%3d",
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "x-sap-page-info": "companyId=Acme",
+            "x-subaction": "0"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://career5.successfactors.eu/xi/ajax/remoting/call/plaincall/careerJobSearchControllerProxy.search.dwr",
+          "body": "callCount=1\npage=/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH\nhttpSessionId=\nscriptSessionId=0123456789abcdef01234567\nc0-scriptName=careerJobSearchControllerProxy\nc0-methodName=search\nc0-id=0\nc0-e1=number:2\nc0-e2=number:100\nc0-e3=Object_Object:{currentPage:reference:c0-e1,pageSize:reference:c0-e2}\nc0-e4=string:JOB_POSTING_DATE\nc0-e5=string:DESC\nc0-param0=Object_Object:{pagination:reference:c0-e3,sortByColumn:reference:c0-e4,sortOrder:reference:c0-e5}\nbatchId=2\n",
+          "headers": {
+            "content-type": "text/plain",
+            "origin": "https://career5.successfactors.eu",
+            "referer": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+            "viewid": "/ui/rcmcareer/pages/careersite/career.jsp.xhtml",
+            "x-ajax-token": "abcDEF0123%2f456%3d",
+            "x-csrf-token": "abcDEF0123%2f456%3d",
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "x-sap-page-info": "companyId=Acme",
+            "x-subaction": "0"
+          }
+        }
+      ],
+      "expected": null,
+      "truncated": false,
+      "error": true
+    },
+    {
+      "name": "foreign-detail",
+      "board": {
+        "board_url": "https://career5.successfactors.eu/career?company=Acme",
+        "metadata": {
+          "preset": "successfactors",
+          "variant": "legacy",
+          "host": "career5.successfactors.eu",
+          "company": "Acme"
+        }
+      },
+      "responses": [
+        {
+          "body": "<html><script>var ajaxSecKey=\"abcDEF0123%2f456%3d\";function getInitialJobSearchData(){}; careerJobSearchController; const x={companyId: \"Acme\"};</script></html>",
+          "headers": {
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "content-length": "160",
+            "content-type": "text/plain; charset=utf-8"
+          }
+        },
+        {
+          "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2={};var s3=[];var s4={};var s5={};var s6=[];var s7={};var s8={};var s9={};var s10=[];s1.postingCount=\"1\";s1.configs=s2;s2.filters=s3;s3[0]=s4;s4.fieldName=\"customFilter_filter2\";s4.label=\"Duty Station\";s7.pagination=s8;s7.sortByColumn=\"JOB_POSTING_DATE\";s7.sortOrder=\"DESC\";s8.currentPage=1;s8.pageSize=10;s8.startRow=1;s8.endRow=10;s8.totalCount=1;s0.filters=s1;s0.results=s5;s5.postingCount=1;s5.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s5.options=s7;s5.postings=s6;s9.id=1;s9.title=\"Engineer 1\";s9.defaultLocale=\"en_GB\";s9.postingDate=\"03\\/08\\/2026\";s9.otherValues=s10;s6[0]=s9;dwr.engine._remoteHandleCallback('0','0',{payload:s0});",
+          "headers": {}
+        },
+        {
+          "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};var s8={};var s9=[];var s10=[];var s11={};s0.postingCount=\"1\";s0.configs=s1;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=1;s7.pageSize=100;s7.startRow=1;s7.endRow=100;s7.totalCount=1;s4.postingCount=1;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Foreign&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;s8.id=123;s8.title=\"Engineer 123\";s8.defaultLocale=\"en_GB\";s8.postingDate=\"03\\/08\\/2026\";s8.otherValues=s9;s9[0]=s10;s10[0]=s11;s11.fieldId=\"filter2\";s11.longVal=null;s11.shortVal=\"Zurich - CH\";s5[0]=s8;dwr.engine._remoteHandleCallback('1','0',{filters:s0,results:s4});",
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+          "body": "",
+          "headers": {}
+        },
+        {
+          "method": "POST",
+          "url": "https://career5.successfactors.eu/xi/ajax/remoting/call/plaincall/careerJobSearchControllerProxy.getInitialJobSearchData.dwr",
+          "body": "callCount=1\npage=/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH\nhttpSessionId=\nscriptSessionId=0123456789abcdef01234567\nc0-scriptName=careerJobSearchControllerProxy\nc0-methodName=getInitialJobSearchData\nc0-id=0\nc0-e1=string:\nc0-e2=string:\nc0-e3=boolean:false\nc0-e4=string:Etc%2FUTC\nc0-param0=Object_Object:{filterOnly:reference:c0-e1,jobAlertId:reference:c0-e2,returnToList:reference:c0-e3,browserTimeZone:reference:c0-e4}\nbatchId=0\n",
+          "headers": {
+            "content-type": "text/plain",
+            "origin": "https://career5.successfactors.eu",
+            "referer": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+            "viewid": "/ui/rcmcareer/pages/careersite/career.jsp.xhtml",
+            "x-ajax-token": "abcDEF0123%2f456%3d",
+            "x-csrf-token": "abcDEF0123%2f456%3d",
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "x-sap-page-info": "companyId=Acme",
+            "x-subaction": "0"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://career5.successfactors.eu/xi/ajax/remoting/call/plaincall/careerJobSearchControllerProxy.search.dwr",
+          "body": "callCount=1\npage=/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH\nhttpSessionId=\nscriptSessionId=0123456789abcdef01234567\nc0-scriptName=careerJobSearchControllerProxy\nc0-methodName=search\nc0-id=0\nc0-e1=number:1\nc0-e2=number:100\nc0-e3=Object_Object:{currentPage:reference:c0-e1,pageSize:reference:c0-e2}\nc0-e4=string:JOB_POSTING_DATE\nc0-e5=string:DESC\nc0-param0=Object_Object:{pagination:reference:c0-e3,sortByColumn:reference:c0-e4,sortOrder:reference:c0-e5}\nbatchId=1\n",
+          "headers": {
+            "content-type": "text/plain",
+            "origin": "https://career5.successfactors.eu",
+            "referer": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+            "viewid": "/ui/rcmcareer/pages/careersite/career.jsp.xhtml",
+            "x-ajax-token": "abcDEF0123%2f456%3d",
+            "x-csrf-token": "abcDEF0123%2f456%3d",
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "x-sap-page-info": "companyId=Acme",
+            "x-subaction": "0"
+          }
+        }
+      ],
+      "expected": null,
+      "truncated": false,
+      "error": true
+    },
+    {
+      "name": "bad-bootstrap",
+      "board": {
+        "board_url": "https://career5.successfactors.eu/career?company=Acme",
+        "metadata": {
+          "preset": "successfactors",
+          "variant": "legacy",
+          "host": "career5.successfactors.eu",
+          "company": "Acme"
+        }
+      },
+      "responses": [
+        {
+          "body": "<html><script>var missingSecKey=\"abcDEF0123%2f456%3d\";function getInitialJobSearchData(){}; careerJobSearchController; const x={companyId: \"Acme\"};</script></html>",
+          "headers": {
+            "x-event-id": "EVENT-RCM-CAREER-test-12345678",
+            "content-length": "160",
+            "content-type": "text/plain; charset=utf-8"
+          }
+        },
+        {
+          "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2={};var s3=[];var s4={};var s5={};var s6=[];var s7={};var s8={};var s9={};var s10=[];s1.postingCount=\"1\";s1.configs=s2;s2.filters=s3;s3[0]=s4;s4.fieldName=\"customFilter_filter2\";s4.label=\"Duty Station\";s7.pagination=s8;s7.sortByColumn=\"JOB_POSTING_DATE\";s7.sortOrder=\"DESC\";s8.currentPage=1;s8.pageSize=10;s8.startRow=1;s8.endRow=10;s8.totalCount=1;s0.filters=s1;s0.results=s5;s5.postingCount=1;s5.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s5.options=s7;s5.postings=s6;s9.id=1;s9.title=\"Engineer 1\";s9.defaultLocale=\"en_GB\";s9.postingDate=\"03\\/08\\/2026\";s9.otherValues=s10;s6[0]=s9;dwr.engine._remoteHandleCallback('0','0',{payload:s0});",
+          "headers": {}
+        },
+        {
+          "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};var s8={};var s9=[];var s10=[];var s11={};s0.postingCount=\"1\";s0.configs=s1;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=1;s7.pageSize=100;s7.startRow=1;s7.endRow=100;s7.totalCount=1;s4.postingCount=1;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;s8.id=123;s8.title=\"Engineer 123\";s8.defaultLocale=\"en_GB\";s8.postingDate=\"03\\/08\\/2026\";s8.otherValues=s9;s9[0]=s10;s10[0]=s11;s11.fieldId=\"filter2\";s11.longVal=null;s11.shortVal=\"Zurich - CH\";s5[0]=s8;dwr.engine._remoteHandleCallback('1','0',{filters:s0,results:s4});",
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+          "body": "",
+          "headers": {}
+        }
+      ],
+      "expected": null,
+      "truncated": false,
+      "error": true
+    },
+    {
+      "name": "bad-event",
+      "board": {
+        "board_url": "https://career5.successfactors.eu/career?company=Acme",
+        "metadata": {
+          "preset": "successfactors",
+          "variant": "legacy",
+          "host": "career5.successfactors.eu",
+          "company": "Acme"
+        }
+      },
+      "responses": [
+        {
+          "body": "<html><script>var ajaxSecKey=\"abcDEF0123%2f456%3d\";function getInitialJobSearchData(){}; careerJobSearchController; const x={companyId: \"Acme\"};</script></html>",
+          "headers": {
+            "x-event-id": "bad",
+            "content-length": "160",
+            "content-type": "text/plain; charset=utf-8"
+          }
+        },
+        {
+          "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2={};var s3=[];var s4={};var s5={};var s6=[];var s7={};var s8={};var s9={};var s10=[];s1.postingCount=\"1\";s1.configs=s2;s2.filters=s3;s3[0]=s4;s4.fieldName=\"customFilter_filter2\";s4.label=\"Duty Station\";s7.pagination=s8;s7.sortByColumn=\"JOB_POSTING_DATE\";s7.sortOrder=\"DESC\";s8.currentPage=1;s8.pageSize=10;s8.startRow=1;s8.endRow=10;s8.totalCount=1;s0.filters=s1;s0.results=s5;s5.postingCount=1;s5.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s5.options=s7;s5.postings=s6;s9.id=1;s9.title=\"Engineer 1\";s9.defaultLocale=\"en_GB\";s9.postingDate=\"03\\/08\\/2026\";s9.otherValues=s10;s6[0]=s9;dwr.engine._remoteHandleCallback('0','0',{payload:s0});",
+          "headers": {}
+        },
+        {
+          "body": "throw 'allowScriptTagRemoting is false.';\n//#DWR-INSERT\n//#DWR-REPLY\nvar s0={};var s1={};var s2=[];var s3={};var s4={};var s5=[];var s6={};var s7={};var s8={};var s9=[];var s10=[];var s11={};s0.postingCount=\"1\";s0.configs=s1;s1.filters=s2;s2[0]=s3;s3.fieldName=\"customFilter_filter2\";s3.label=\"Duty Station\";s6.pagination=s7;s6.sortByColumn=\"JOB_POSTING_DATE\";s6.sortOrder=\"DESC\";s7.currentPage=1;s7.pageSize=100;s7.startRow=1;s7.endRow=100;s7.totalCount=1;s4.postingCount=1;s4.detailURLPrefix=\"\\/career?career_ns=job_listing&company=Acme&navBarLevel=JOB_SEARCH&rcm_site_locale=en_GB&career_job_req_id=\";s4.options=s6;s4.postings=s5;s8.id=123;s8.title=\"Engineer 123\";s8.defaultLocale=\"en_GB\";s8.postingDate=\"03\\/08\\/2026\";s8.otherValues=s9;s9[0]=s10;s10[0]=s11;s11.fieldId=\"filter2\";s11.longVal=null;s11.shortVal=\"Zurich - CH\";s5[0]=s8;dwr.engine._remoteHandleCallback('1','0',{filters:s0,results:s4});",
+          "headers": {}
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://career5.successfactors.eu/career?company=Acme&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH",
+          "body": "",
+          "headers": {}
+        }
+      ],
+      "expected": null,
+      "truncated": false,
+      "error": true
+    }
+  ]
+}
