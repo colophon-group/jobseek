@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "prototype_base_source": "ce4964b76a76a99cd839b14c3608033846ccf7bd",
+  "paired_scope": {
+    "accenture_boards": 12,
+    "brassring_boards": 4
+  },
+  "complete_accenture_us_snapshot": {
+    "observed_at": "2026-10-09T21:40:57.834335+00:00",
+    "advertised_total": 952,
+    "unique_identities": true,
+    "public_pages": [
+      {
+        "offset": 0,
+        "response_bytes": 17246762,
+        "body_sha256": "634ec4154e9d5501a3fb7fef45d86ae232df4312ebd9d62040998d6c82a9afe8"
+      },
+      {
+        "offset": 500,
+        "response_bytes": 13539363,
+        "body_sha256": "6cdc99a427e03c3b11d6a320a7fb48da5b851488361a3c1d8a2cbde7dddec74f"
+      }
+    ],
+    "pure_go_original_parity": {
+      "complete_inventory_projected_bytes": 5283000,
+      "fits_existing_8MiB_inventory_frame": true,
+      "largest_row_bytes": 25986,
+      "original_field_mismatches": 0,
+      "original_multipart_requests_identical": true,
+      "requests": 2,
+      "rows": 952,
+      "scope": "complete anonymous direct-HTTP snapshot replay through the pure Go collector; no physical renderer, writer or serving claim",
+      "truncated": false
+    }
+  },
+  "limits": {
+    "fixed_accenture_response_bytes": 33554432,
+    "generic_replay_response_bytes": 2000000,
+    "inventory_frame_bytes": 8388608,
+    "metadata_override": "rejected"
+  },
+  "proof_limits": [
+    "anonymous direct HTTP plus pure collector replay",
+    "Accenture US complete only; India partition completeness and other boards unproved",
+    "BrassRing browser clicks and hydration still require integration",
+    "no physical renderer, writer or serving authority claim"
+  ],
+  "next_steps": [
+    "finish both original held-session capture/UI drivers together",
+    "bind both providers to ordinary profiles and rich writer",
+    "exercise real terminal/cold settlement and physical pinned-Lightpanda cases",
+    "rebase onto the deployed administrative fix and reserve actual next VERSION",
+    "publish both providers together through required checks and original whole rollout"
+  ]
+}

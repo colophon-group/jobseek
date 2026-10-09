@@ -1339,3 +1339,29 @@ canonical/cache and actual scheduled-posting-route admission, then use original
 B0 stage/activate at259 and ordinary stage/activate. Independently verify serving
 authority and the newly migrated Darwinbox/ByteDance outcomes. No local mutation
 or deployment is running at this checkpoint. Full migration remains ACTIVE.
+
+
+### Paired full US inventory and current staging blocker — 2026-10-09
+
+A fresh complete anonymous Accenture US capture has952 unique jobs across the
+original offsets0/500. Raw pages are17,246,762 and13,539,363 bytes. The pure Go
+collector makes exactly both original multipart requests and matches every
+original Python field with zero differences. Its complete projection is5,283,000
+bytes, within the unchanged8MiB inventory frame. Keep the existing framing for
+this board; the fixed32MiB response bound covers both pages. This direct-HTTP
+replay establishes neither a physical Lightpanda nor serving outcome. India
+partition completeness and the remaining boards still need actual qualification.
+Sanitized evidence is in [the paired snapshot](evidence/go-native-accenture-brassring-public-inventory-2026-10-09.json).
+
+Source996 B0 is now active259, with full original-route admission covering7,678
+monitors/2,746 detail boards/1,484,140 scheduled postings. Ordinary staging hit
+the original15s administrative snapshot budget and left no ordinary ownership.
+PR#10392 reserves0.13.997 for its narrow admin-only30s transaction/40s CLI fix;
+runtime15s limits remain intact. Its complete private PostgreSQL/Redis queue race
+passes663.428s and both real staging CLI tests pass5.036s. Observed Docker Hub
+pull limits required verified identical-digest build/CI mirrors; final head
+82f5a4c1c63bdccc021050c71d0ef51b362f16ed is in fresh required/physical CI.
+Supported B0 reversal/cold260 precedes merge and original full rollout. This
+paired prototype's earlier997 reservation is superseded: rebase and bump to the
+actual next version after that delivery. Finish both Accenture/BrassRing browser
+drivers, worker profiles and settlement together. Full migration remains active.
