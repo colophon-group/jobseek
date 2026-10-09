@@ -101,6 +101,19 @@ describe("notification delivery boundaries", () => {
     expect(email.text).toContain(age);
     expect(email.text).not.toContain("https://assets.example/icon.png");
   });
+  it.each(["webp", "svg"])("uses the PNG endpoint for project company artwork (%s)", extension => {
+    const icon = `https://jobseek-assets.colophon-group.org/companies/msc/icon.${extension}`;
+    const item = { ...plan.displayPostings[0]!, company: { ...plan.displayPostings[0]!.company, icon } };
+    const email = renderNotificationEmail({ plan: { ...plan, displayPostings: [item] }, locale: "en", origin: "https://jseek.co", unsubscribeUrl: "https://jseek.co/unsubscribe" });
+    const document = new DOMParser().parseFromString(email.html, "text/html");
+    const image = document.querySelector("img")!;
+    const url = new URL(image.getAttribute("src")!);
+    expect(url.origin).toBe("https://jseek.co");
+    expect(url.pathname).toBe("/api/notifications/company-icon/v1.png");
+    expect(url.searchParams.get("src")).toBe(icon);
+    expect(image.getAttribute("width")).toBe("32");
+    expect(image.getAttribute("height")).toBe("32");
+  });
   it.each([null, "javascript:alert(1)", "data:image/svg+xml,<svg/>", "https://user:pass@example.com/icon.png", "not a url"])("uses initials for an unavailable or unsafe company icon (%s)", icon => {
     const item = { ...plan.displayPostings[0]!, firstSeenAt: "invalid", company: { ...plan.displayPostings[0]!.company, name: '<A & B>', icon } };
     const email = renderNotificationEmail({ plan: { ...plan, displayPostings: [item] }, locale: "en", origin: "https://jseek.co", unsubscribeUrl: "https://jseek.co/unsubscribe" });
