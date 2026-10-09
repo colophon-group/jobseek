@@ -47,7 +47,11 @@ func TestPartitionedBrowserFactoriesAllConfiguredBoards(t *testing.T) {
 					t.Fatal("provider application path lost")
 				}
 			}
-			if err != nil || o.ResponseBodyLimit != 16<<20 {
+			expectedLimit := 16 << 20
+			if provider == "accenture" {
+				expectedLimit = 32 << 20
+			}
+			if err != nil || o.ResponseBodyLimit != expectedLimit {
 				t.Fatal("configured board refused", err)
 			}
 			var m map[string]any

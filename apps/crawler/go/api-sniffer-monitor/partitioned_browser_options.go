@@ -9,7 +9,9 @@ import (
 // These factories bind the paired collectors to their configured public board.
 // A factory alone grants no renderer or queue ownership.
 func AccentureBrowserOptions(board, raw string) (AccentureOptions, BrowserReplayOptions, error) {
-	o := BrowserReplayOptions{Wait: "networkidle", WaitFallback: "domcontentloaded", TransportRetries: 1, TimeoutMS: 30000, ResponseBodyLimit: 16 << 20}
+	// The configured US board's original 500-row first page is 17,246,836
+	// bytes. This fixed provider bound is not configurable through metadata.
+	o := BrowserReplayOptions{Wait: "networkidle", WaitFallback: "domcontentloaded", TransportRetries: 1, TimeoutMS: 30000, ResponseBodyLimit: 32 << 20}
 	m, e := partitionedBrowserMetadata(raw)
 	if e != nil {
 		return AccentureOptions{}, o, e

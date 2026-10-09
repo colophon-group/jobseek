@@ -1306,3 +1306,17 @@ Angular/search-results markers; UI snapshot/hydration execution is still pending
 Full migration remains ACTIVE. Finish the paired browser controllers and all16
 board settlement/physical qualification, then batch the largest shared DOM/API
 frontier. Full freshness/conservation/cost and Python retirement remain outstanding.
+
+
+Paired prototype follow-up: the original Accenture US500-row public response is
+17,246,836 bytes, exceeding16MiB. All500 rows match original fields with zero
+differences and project to3,030,477 bytes;50-row chunks peak at318,488 bytes.
+The fixed Accenture factory and existing fetch/capture bridge now accept32MiB.
+BrassRing and the existing Darwinbox/ByteDance factories retain16MiB, generic
+replay retains2MiB, and metadata overrides remain rejected. The fixed32MiB
+upper bound is tested; unknown larger internal limits revert to the generic cap.
+Focused original/factory SDK race tests passed4.731s; renderer body-limit race
+checks passed2.110s. VERSION0.13.997 reserves the next paired delivery. No new
+profiles are installed and no paired runtime ownership is admitted yet. The
+service constructor, held capture/UI/hydration, worker bindings, actual complete
+inventory sizing, real settlement and physical qualification are still required.
