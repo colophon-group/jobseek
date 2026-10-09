@@ -7,8 +7,10 @@ import (
 )
 
 type FinalHTTPProviderOptions struct {
-	Provider, BoardURL, Origin, Tenant, Kind string
-	RecruitTypes                             []int
+	Provider, BoardURL, Origin, Tenant, Kind                                              string
+	RecruitTypes                                                                          []int
+	ClientID, DaysBack, SnapshotAttempts, SemanticZeroAttempts, PageSize                  int
+	Currency, SalaryUnit, Language, APIKey, SegmentID, JobURLTemplate, Locale, CareerPage string
 }
 
 func FinalHTTPProviderOptionsFromMetadata(provider, board, raw string) (FinalHTTPProviderOptions, error) {
@@ -30,6 +32,10 @@ func FinalHTTPProviderOptionsFromMetadata(provider, board, raw string) (FinalHTT
 	o.Origin = "https://" + strings.ToLower(u.Host)
 	allowed := map[string]bool{}
 	switch provider {
+	case "curately", "inploi", "jobconvo":
+		if err = groupedHTTPOptions(&o, u, m, allowed); err != nil {
+			return o, err
+		}
 	case "paynet":
 		o.Tenant, err = PayNetCompanyFromURL(board)
 		if err != nil {
@@ -106,6 +112,9 @@ func FinalHTTPProviderOptionsFromMetadata(provider, board, raw string) (FinalHTT
 }
 
 func (o FinalHTTPProviderOptions) IdentityMatches(source, identity string) bool {
+	if o.Provider == "curately" || o.Provider == "inploi" || o.Provider == "jobconvo" {
+		return identity == "" && o.groupedJobMatches(source)
+	}
 	if !explicitNextdataIdentity.MatchString(identity) {
 		return false
 	}
@@ -148,10 +157,27 @@ func (o FinalHTTPProviderOptions) IdentityMatches(source, identity string) bool 
 	return false
 }
 
-func (o FinalHTTPProviderOptions) Profile() string { return o.Provider + ".public-items/v1" }
+func (o FinalHTTPProviderOptions) Profile() string {
+	if o.Provider == "jobconvo" {
+		return "jobconvo.listing-urls/v1"
+	}
+	return o.Provider + ".public-items/v1"
+}
 
 func (o FinalHTTPProviderOptions) ListingURL() string {
 	switch o.Provider {
+	case "curately":
+		if o.ClientID > 0 {
+			return CuratelySearchURL
+		}
+		return CuratelyAPIBase + "/getByShortName/" + o.Tenant
+	case "inploi":
+		if o.APIKey != "" && o.SegmentID != "" {
+			return InploiSearchRequest(o.APIKey, o.SegmentID, 1, o.PageSize).URL
+		}
+		return o.BoardURL
+	case "jobconvo":
+		return o.BoardURL
 	case "paynet":
 		return PayNetAPIURL + "?company_id=" + url.QueryEscape(o.Tenant)
 	case "nowhiring":
@@ -170,6 +196,10 @@ func (o FinalHTTPProviderOptions) ResourceMatches(source string) bool {
 		return false
 	}
 	switch o.Provider {
+	case "curately":
+		return source == CuratelySearchURL || source == CuratelyAPIBase+"/getByShortName/"+o.Tenant
+	case "inploi", "jobconvo":
+		return o.groupedResourceMatches(source)
 	case "paynet":
 		return source == o.ListingURL()
 	case "nowhiring":

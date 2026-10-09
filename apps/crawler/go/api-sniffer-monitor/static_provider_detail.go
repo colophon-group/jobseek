@@ -38,6 +38,12 @@ func StaticProviderDetailOptionsForSource(provider, source string) (StaticProvid
 	}
 	host := strings.ToLower(u.Hostname())
 	switch provider {
+	case "jobconvo":
+		request, _, err := JobConvoDetailRequest(source, "pt-br")
+		if err != nil {
+			return o, err
+		}
+		o.Endpoint = request.URL
 	case "linkedin":
 		if !linkedInHost(host) || u.Port() != "" {
 			return o, ErrOptions

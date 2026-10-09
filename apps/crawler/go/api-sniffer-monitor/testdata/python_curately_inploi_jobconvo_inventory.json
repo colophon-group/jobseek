@@ -1,0 +1,1670 @@
+[
+  {
+    "provider": "curately",
+    "mode": "rich",
+    "board": {
+      "board_url": "https://careers.curately.ai/jobs/example",
+      "metadata": {
+        "client_id": 6,
+        "currency": "USD",
+        "salary_unit": "hour",
+        "language": "en"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":0,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":1,\"List\":[{\"jobId\":1,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"}]}",
+        "status": 200
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+        "title": "Engineer",
+        "description": "<p>Build & test</p>",
+        "locations": [
+          "Boston, MA, 02110"
+        ],
+        "employment_type": "part_time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-09",
+        "base_salary": {
+          "currency": "USD",
+          "min": 45,
+          "max": 55.5,
+          "unit": "hour"
+        },
+        "language": "en",
+        "metadata": {
+          "id": 1,
+          "client_name": "Example",
+          "estimated_start_date": "2026-11-01",
+          "job_hours_code": 2,
+          "job_type_code": 1,
+          "work_type_code": 3
+        }
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "curately",
+    "mode": "bootstrap",
+    "board": {
+      "board_url": "https://careers.curately.ai/jobs/example",
+      "metadata": {
+        "currency": "USD",
+        "salary_unit": "hour",
+        "language": "en"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.curately.ai/QADemoCurately/getByShortName/example",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"shortName\":\"example\",\"clientId\":6}",
+        "status": 200
+      },
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":0,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":1,\"List\":[{\"jobId\":1,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"}]}",
+        "status": 200
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+        "title": "Engineer",
+        "description": "<p>Build & test</p>",
+        "locations": [
+          "Boston, MA, 02110"
+        ],
+        "employment_type": "part_time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-09",
+        "base_salary": {
+          "currency": "USD",
+          "min": 45,
+          "max": 55.5,
+          "unit": "hour"
+        },
+        "language": "en",
+        "metadata": {
+          "id": 1,
+          "client_name": "Example",
+          "estimated_start_date": "2026-11-01",
+          "job_hours_code": 2,
+          "job_type_code": 1,
+          "work_type_code": 3
+        }
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "curately",
+    "mode": "empty",
+    "board": {
+      "board_url": "https://careers.curately.ai/jobs/example",
+      "metadata": {
+        "client_id": 6,
+        "currency": "USD",
+        "salary_unit": "hour",
+        "language": "en"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":0,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":0,\"List\":[]}",
+        "status": 200
+      }
+    ],
+    "jobs": [],
+    "truncated": false
+  },
+  {
+    "provider": "curately",
+    "mode": "paged",
+    "board": {
+      "board_url": "https://careers.curately.ai/jobs/example",
+      "metadata": {
+        "client_id": 6,
+        "currency": "USD",
+        "salary_unit": "hour",
+        "language": "en"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":0,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":3,\"List\":[{\"jobId\":1,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"},{\"jobId\":2,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"}]}",
+        "status": 200
+      },
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":2,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":3,\"List\":[{\"jobId\":3,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"}]}",
+        "status": 200
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+        "title": "Engineer",
+        "description": "<p>Build & test</p>",
+        "locations": [
+          "Boston, MA, 02110"
+        ],
+        "employment_type": "part_time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-09",
+        "base_salary": {
+          "currency": "USD",
+          "min": 45,
+          "max": 55.5,
+          "unit": "hour"
+        },
+        "language": "en",
+        "metadata": {
+          "id": 1,
+          "client_name": "Example",
+          "estimated_start_date": "2026-11-01",
+          "job_hours_code": 2,
+          "job_type_code": 1,
+          "work_type_code": 3
+        }
+      },
+      {
+        "url": "https://careers.curately.ai/jobs/example/apply-job/2/job",
+        "title": "Engineer",
+        "description": "<p>Build & test</p>",
+        "locations": [
+          "Boston, MA, 02110"
+        ],
+        "employment_type": "part_time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-09",
+        "base_salary": {
+          "currency": "USD",
+          "min": 45,
+          "max": 55.5,
+          "unit": "hour"
+        },
+        "language": "en",
+        "metadata": {
+          "id": 2,
+          "client_name": "Example",
+          "estimated_start_date": "2026-11-01",
+          "job_hours_code": 2,
+          "job_type_code": 1,
+          "work_type_code": 3
+        }
+      },
+      {
+        "url": "https://careers.curately.ai/jobs/example/apply-job/3/job",
+        "title": "Engineer",
+        "description": "<p>Build & test</p>",
+        "locations": [
+          "Boston, MA, 02110"
+        ],
+        "employment_type": "part_time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-09",
+        "base_salary": {
+          "currency": "USD",
+          "min": 45,
+          "max": 55.5,
+          "unit": "hour"
+        },
+        "language": "en",
+        "metadata": {
+          "id": 3,
+          "client_name": "Example",
+          "estimated_start_date": "2026-11-01",
+          "job_hours_code": 2,
+          "job_type_code": 1,
+          "work_type_code": 3
+        }
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "curately",
+    "mode": "semantic-zero",
+    "board": {
+      "board_url": "https://careers.curately.ai/jobs/example",
+      "metadata": {
+        "client_id": 6,
+        "currency": "USD",
+        "salary_unit": "hour",
+        "language": "en"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":0,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":3,\"List\":[{\"jobId\":1,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"},{\"jobId\":2,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"}]}",
+        "status": 200
+      },
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":2,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":0,\"List\":[]}",
+        "status": 200
+      },
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":2,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":3,\"List\":[{\"jobId\":3,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"}]}",
+        "status": 200
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+        "title": "Engineer",
+        "description": "<p>Build & test</p>",
+        "locations": [
+          "Boston, MA, 02110"
+        ],
+        "employment_type": "part_time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-09",
+        "base_salary": {
+          "currency": "USD",
+          "min": 45,
+          "max": 55.5,
+          "unit": "hour"
+        },
+        "language": "en",
+        "metadata": {
+          "id": 1,
+          "client_name": "Example",
+          "estimated_start_date": "2026-11-01",
+          "job_hours_code": 2,
+          "job_type_code": 1,
+          "work_type_code": 3
+        }
+      },
+      {
+        "url": "https://careers.curately.ai/jobs/example/apply-job/2/job",
+        "title": "Engineer",
+        "description": "<p>Build & test</p>",
+        "locations": [
+          "Boston, MA, 02110"
+        ],
+        "employment_type": "part_time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-09",
+        "base_salary": {
+          "currency": "USD",
+          "min": 45,
+          "max": 55.5,
+          "unit": "hour"
+        },
+        "language": "en",
+        "metadata": {
+          "id": 2,
+          "client_name": "Example",
+          "estimated_start_date": "2026-11-01",
+          "job_hours_code": 2,
+          "job_type_code": 1,
+          "work_type_code": 3
+        }
+      },
+      {
+        "url": "https://careers.curately.ai/jobs/example/apply-job/3/job",
+        "title": "Engineer",
+        "description": "<p>Build & test</p>",
+        "locations": [
+          "Boston, MA, 02110"
+        ],
+        "employment_type": "part_time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-09",
+        "base_salary": {
+          "currency": "USD",
+          "min": 45,
+          "max": 55.5,
+          "unit": "hour"
+        },
+        "language": "en",
+        "metadata": {
+          "id": 3,
+          "client_name": "Example",
+          "estimated_start_date": "2026-11-01",
+          "job_hours_code": 2,
+          "job_type_code": 1,
+          "work_type_code": 3
+        }
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "curately",
+    "mode": "snapshot-change",
+    "board": {
+      "board_url": "https://careers.curately.ai/jobs/example",
+      "metadata": {
+        "client_id": 6,
+        "currency": "USD",
+        "salary_unit": "hour",
+        "language": "en"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":0,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":3,\"List\":[{\"jobId\":1,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"},{\"jobId\":2,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"}]}",
+        "status": 200
+      },
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":2,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":4,\"List\":[{\"jobId\":3,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"}]}",
+        "status": 200
+      },
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":0,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":3,\"List\":[{\"jobId\":1,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"},{\"jobId\":2,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"}]}",
+        "status": 200
+      },
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":2,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":3,\"List\":[{\"jobId\":3,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"}]}",
+        "status": 200
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+        "title": "Engineer",
+        "description": "<p>Build & test</p>",
+        "locations": [
+          "Boston, MA, 02110"
+        ],
+        "employment_type": "part_time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-09",
+        "base_salary": {
+          "currency": "USD",
+          "min": 45,
+          "max": 55.5,
+          "unit": "hour"
+        },
+        "language": "en",
+        "metadata": {
+          "id": 1,
+          "client_name": "Example",
+          "estimated_start_date": "2026-11-01",
+          "job_hours_code": 2,
+          "job_type_code": 1,
+          "work_type_code": 3
+        }
+      },
+      {
+        "url": "https://careers.curately.ai/jobs/example/apply-job/2/job",
+        "title": "Engineer",
+        "description": "<p>Build & test</p>",
+        "locations": [
+          "Boston, MA, 02110"
+        ],
+        "employment_type": "part_time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-09",
+        "base_salary": {
+          "currency": "USD",
+          "min": 45,
+          "max": 55.5,
+          "unit": "hour"
+        },
+        "language": "en",
+        "metadata": {
+          "id": 2,
+          "client_name": "Example",
+          "estimated_start_date": "2026-11-01",
+          "job_hours_code": 2,
+          "job_type_code": 1,
+          "work_type_code": 3
+        }
+      },
+      {
+        "url": "https://careers.curately.ai/jobs/example/apply-job/3/job",
+        "title": "Engineer",
+        "description": "<p>Build & test</p>",
+        "locations": [
+          "Boston, MA, 02110"
+        ],
+        "employment_type": "part_time",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-09",
+        "base_salary": {
+          "currency": "USD",
+          "min": 45,
+          "max": 55.5,
+          "unit": "hour"
+        },
+        "language": "en",
+        "metadata": {
+          "id": 3,
+          "client_name": "Example",
+          "estimated_start_date": "2026-11-01",
+          "job_hours_code": 2,
+          "job_type_code": 1,
+          "work_type_code": 3
+        }
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "curately",
+    "mode": "duplicate",
+    "board": {
+      "board_url": "https://careers.curately.ai/jobs/example",
+      "metadata": {
+        "client_id": 6,
+        "currency": "USD",
+        "salary_unit": "hour",
+        "language": "en"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":0,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":2,\"List\":[{\"jobId\":1,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"},{\"jobId\":1,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"}]}",
+        "status": 200
+      },
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":0,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":2,\"List\":[{\"jobId\":1,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"},{\"jobId\":1,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"}]}",
+        "status": 200
+      },
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":0,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":2,\"List\":[{\"jobId\":1,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"},{\"jobId\":1,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"}]}",
+        "status": 200
+      }
+    ],
+    "error": true,
+    "original_error": "_SnapshotChanged"
+  },
+  {
+    "provider": "curately",
+    "mode": "gap",
+    "board": {
+      "board_url": "https://careers.curately.ai/jobs/example",
+      "metadata": {
+        "client_id": 6,
+        "currency": "USD",
+        "salary_unit": "hour",
+        "language": "en"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":0,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":2,\"List\":[]}",
+        "status": 200
+      },
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":0,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":2,\"List\":[]}",
+        "status": 200
+      },
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":0,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":2,\"List\":[]}",
+        "status": 200
+      }
+    ],
+    "error": true,
+    "original_error": "_SnapshotChanged"
+  },
+  {
+    "provider": "curately",
+    "mode": "wrong-client",
+    "board": {
+      "board_url": "https://careers.curately.ai/jobs/example",
+      "metadata": {
+        "client_id": 6,
+        "currency": "USD",
+        "salary_unit": "hour",
+        "language": "en"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":0,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":1,\"List\":[{\"jobId\":1,\"clientId\":7,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"}]}",
+        "status": 200
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "curately",
+    "mode": "invalid-row",
+    "board": {
+      "board_url": "https://careers.curately.ai/jobs/example",
+      "metadata": {
+        "client_id": 6,
+        "currency": "USD",
+        "salary_unit": "hour",
+        "language": "en"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":0,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":1,\"List\":[null]}",
+        "status": 200
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "curately",
+    "mode": "invalid-title",
+    "board": {
+      "board_url": "https://careers.curately.ai/jobs/example",
+      "metadata": {
+        "client_id": 6,
+        "currency": "USD",
+        "salary_unit": "hour",
+        "language": "en"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":0,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":1,\"List\":[{\"jobId\":1,\"clientId\":6,\"jobTitle\":\" \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"}]}",
+        "status": 200
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "curately",
+    "mode": "inactive",
+    "board": {
+      "board_url": "https://careers.curately.ai/jobs/example",
+      "metadata": {
+        "client_id": 6,
+        "currency": "USD",
+        "salary_unit": "hour",
+        "language": "en"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":0,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":1,\"List\":[{\"jobId\":1,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":0,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"}]}",
+        "status": 200
+      }
+    ],
+    "jobs": [],
+    "truncated": false
+  },
+  {
+    "provider": "curately",
+    "mode": "boolean-total",
+    "board": {
+      "board_url": "https://careers.curately.ai/jobs/example",
+      "metadata": {
+        "client_id": 6,
+        "currency": "USD",
+        "salary_unit": "hour",
+        "language": "en"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":0,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":true,\"Status\":200,\"TotalSize\":true,\"List\":[{\"jobId\":1,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"}]}",
+        "status": 200
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "curately",
+    "mode": "bad-envelope",
+    "board": {
+      "board_url": "https://careers.curately.ai/jobs/example",
+      "metadata": {
+        "client_id": 6,
+        "currency": "USD",
+        "salary_unit": "hour",
+        "language": "en"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.curately.ai/QADemoCurately/sovrenjobsearch",
+        "method": "POST",
+        "request_body": "{\"query\":\"\",\"city\":\"\",\"state\":\"\",\"zipcode\":\"\",\"radius\":\"30\",\"daysback\":\"180\",\"jobHours\":\"\",\"isRemote\":false,\"jobType\":\"\",\"clientids\":\"6\",\"next\":0,\"type\":\"\"}",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json"
+        },
+        "body": "{\"Success\":false,\"Status\":200,\"TotalSize\":1,\"List\":[{\"jobId\":1,\"clientId\":6,\"jobTitle\":\" Engineer \",\"publicJobDescr\":\"<p>Build & test</p>\",\"workCity\":\" Boston \",\"workState\":\" MA \",\"workZipcode\":\" 02110 \",\"status\":1,\"jobType\":1,\"jobHours\":2,\"workType\":3,\"createDate\":\"2026-10-09\",\"payrateMin\":45,\"payrateMax\":55.5,\"clientName\":\"Example\",\"estStartDate\":\"2026-11-01\"}]}",
+        "status": 200
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "inploi",
+    "mode": "rich",
+    "board": {
+      "board_url": "https://careers.example.com/search",
+      "metadata": {
+        "api_key": "pk_synthetic_example",
+        "segment_id": "123",
+        "page_size": 2
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.inploi.com/search/results?filters%5Bsegment_ids%5D%5B0%5D=123&query=&page=1&per_page=2",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "x-publishable-key": "pk_synthetic_example"
+        },
+        "body": "{\"data\":[{\"id\":1,\"title\":\" Engineer \",\"town\":\" London \",\"city\":\"London\",\"country\":\" UK \",\"location_type\":\"Onsite (5 Days per Week)\",\"contract_type\":\"Permanent\",\"pay_min\":\"35,000\",\"pay_max\":\"45,000\",\"pay_currency\":\"GBP\",\"pay_type\":\"annual\",\"external_ref\":\"ref\",\"company_name\":\"Example\",\"category\":\"Engineering\",\"custom_data\":{\"open_date\":\"2026-10-09\",\"expiry_date\":\"2027-01-01\"}}],\"pagination\":{\"total\":1,\"current_page\":1,\"last_page\":1}}",
+        "status": 200
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.example.com/job/1",
+        "title": "Engineer",
+        "locations": [
+          "London, UK"
+        ],
+        "employment_type": "Permanent",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-09",
+        "base_salary": {
+          "currency": "GBP",
+          "min": 35000,
+          "max": 45000,
+          "unit": "year"
+        },
+        "metadata": {
+          "id": 1,
+          "external_ref": "ref",
+          "company_name": "Example",
+          "category": "Engineering",
+          "valid_through": "2027-01-01"
+        }
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "inploi",
+    "mode": "detect",
+    "board": {
+      "board_url": "https://careers.example.com/search",
+      "metadata": {
+        "segment_id": "123",
+        "page_size": 2
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://careers.example.com/search",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "inploi pk_synthetic_example \"segment_ids\",\"segment\",\"123\"",
+        "status": 200
+      },
+      {
+        "url": "https://api.inploi.com/search/results?filters%5Bsegment_ids%5D%5B0%5D=123&query=&page=1&per_page=1",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "x-publishable-key": "pk_synthetic_example"
+        },
+        "body": "{\"data\":[{\"id\":1,\"title\":\" Engineer \",\"town\":\" London \",\"city\":\"London\",\"country\":\" UK \",\"location_type\":\"Onsite (5 Days per Week)\",\"contract_type\":\"Permanent\",\"pay_min\":\"35,000\",\"pay_max\":\"45,000\",\"pay_currency\":\"GBP\",\"pay_type\":\"annual\",\"external_ref\":\"ref\",\"company_name\":\"Example\",\"category\":\"Engineering\",\"custom_data\":{\"open_date\":\"2026-10-09\",\"expiry_date\":\"2027-01-01\"}}],\"pagination\":{\"total\":3,\"current_page\":1,\"last_page\":3}}",
+        "status": 200
+      },
+      {
+        "url": "https://api.inploi.com/search/results?filters%5Bsegment_ids%5D%5B0%5D=123&query=&page=1&per_page=2",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "x-publishable-key": "pk_synthetic_example"
+        },
+        "body": "{\"data\":[{\"id\":1,\"title\":\" Engineer \",\"town\":\" London \",\"city\":\"London\",\"country\":\" UK \",\"location_type\":\"Onsite (5 Days per Week)\",\"contract_type\":\"Permanent\",\"pay_min\":\"35,000\",\"pay_max\":\"45,000\",\"pay_currency\":\"GBP\",\"pay_type\":\"annual\",\"external_ref\":\"ref\",\"company_name\":\"Example\",\"category\":\"Engineering\",\"custom_data\":{\"open_date\":\"2026-10-09\",\"expiry_date\":\"2027-01-01\"}},{\"id\":2,\"title\":\" Engineer \",\"town\":\" London \",\"city\":\"London\",\"country\":\" UK \",\"location_type\":\"Onsite (5 Days per Week)\",\"contract_type\":\"Permanent\",\"pay_min\":\"35,000\",\"pay_max\":\"45,000\",\"pay_currency\":\"GBP\",\"pay_type\":\"annual\",\"external_ref\":\"ref\",\"company_name\":\"Example\",\"category\":\"Engineering\",\"custom_data\":{\"open_date\":\"2026-10-09\",\"expiry_date\":\"2027-01-01\"}}],\"pagination\":{\"total\":3,\"current_page\":1,\"last_page\":2}}",
+        "status": 200
+      },
+      {
+        "url": "https://api.inploi.com/search/results?filters%5Bsegment_ids%5D%5B0%5D=123&query=&page=2&per_page=2",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "x-publishable-key": "pk_synthetic_example"
+        },
+        "body": "{\"data\":[{\"id\":3,\"title\":\" Engineer \",\"town\":\" London \",\"city\":\"London\",\"country\":\" UK \",\"location_type\":\"Onsite (5 Days per Week)\",\"contract_type\":\"Permanent\",\"pay_min\":\"35,000\",\"pay_max\":\"45,000\",\"pay_currency\":\"GBP\",\"pay_type\":\"annual\",\"external_ref\":\"ref\",\"company_name\":\"Example\",\"category\":\"Engineering\",\"custom_data\":{\"open_date\":\"2026-10-09\",\"expiry_date\":\"2027-01-01\"}}],\"pagination\":{\"total\":3,\"current_page\":2,\"last_page\":2}}",
+        "status": 200
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.example.com/job/1",
+        "title": "Engineer",
+        "locations": [
+          "London, UK"
+        ],
+        "employment_type": "Permanent",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-09",
+        "base_salary": {
+          "currency": "GBP",
+          "min": 35000,
+          "max": 45000,
+          "unit": "year"
+        },
+        "metadata": {
+          "id": 1,
+          "external_ref": "ref",
+          "company_name": "Example",
+          "category": "Engineering",
+          "valid_through": "2027-01-01"
+        }
+      },
+      {
+        "url": "https://careers.example.com/job/2",
+        "title": "Engineer",
+        "locations": [
+          "London, UK"
+        ],
+        "employment_type": "Permanent",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-09",
+        "base_salary": {
+          "currency": "GBP",
+          "min": 35000,
+          "max": 45000,
+          "unit": "year"
+        },
+        "metadata": {
+          "id": 2,
+          "external_ref": "ref",
+          "company_name": "Example",
+          "category": "Engineering",
+          "valid_through": "2027-01-01"
+        }
+      },
+      {
+        "url": "https://careers.example.com/job/3",
+        "title": "Engineer",
+        "locations": [
+          "London, UK"
+        ],
+        "employment_type": "Permanent",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-09",
+        "base_salary": {
+          "currency": "GBP",
+          "min": 35000,
+          "max": 45000,
+          "unit": "year"
+        },
+        "metadata": {
+          "id": 3,
+          "external_ref": "ref",
+          "company_name": "Example",
+          "category": "Engineering",
+          "valid_through": "2027-01-01"
+        }
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "inploi",
+    "mode": "empty",
+    "board": {
+      "board_url": "https://careers.example.com/search",
+      "metadata": {
+        "api_key": "pk_synthetic_example",
+        "segment_id": "123",
+        "page_size": 2
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.inploi.com/search/results?filters%5Bsegment_ids%5D%5B0%5D=123&query=&page=1&per_page=2",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "x-publishable-key": "pk_synthetic_example"
+        },
+        "body": "{\"data\":[],\"pagination\":{\"total\":0,\"current_page\":1,\"last_page\":1}}",
+        "status": 200
+      }
+    ],
+    "jobs": [],
+    "truncated": false
+  },
+  {
+    "provider": "inploi",
+    "mode": "paged",
+    "board": {
+      "board_url": "https://careers.example.com/search",
+      "metadata": {
+        "api_key": "pk_synthetic_example",
+        "segment_id": "123",
+        "page_size": 2
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.inploi.com/search/results?filters%5Bsegment_ids%5D%5B0%5D=123&query=&page=1&per_page=2",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "x-publishable-key": "pk_synthetic_example"
+        },
+        "body": "{\"data\":[{\"id\":1,\"title\":\" Engineer \",\"town\":\" London \",\"city\":\"London\",\"country\":\" UK \",\"location_type\":\"Onsite (5 Days per Week)\",\"contract_type\":\"Permanent\",\"pay_min\":\"35,000\",\"pay_max\":\"45,000\",\"pay_currency\":\"GBP\",\"pay_type\":\"annual\",\"external_ref\":\"ref\",\"company_name\":\"Example\",\"category\":\"Engineering\",\"custom_data\":{\"open_date\":\"2026-10-09\",\"expiry_date\":\"2027-01-01\"}},{\"id\":2,\"title\":\" Engineer \",\"town\":\" London \",\"city\":\"London\",\"country\":\" UK \",\"location_type\":\"Onsite (5 Days per Week)\",\"contract_type\":\"Permanent\",\"pay_min\":\"35,000\",\"pay_max\":\"45,000\",\"pay_currency\":\"GBP\",\"pay_type\":\"annual\",\"external_ref\":\"ref\",\"company_name\":\"Example\",\"category\":\"Engineering\",\"custom_data\":{\"open_date\":\"2026-10-09\",\"expiry_date\":\"2027-01-01\"}}],\"pagination\":{\"total\":3,\"current_page\":1,\"last_page\":2}}",
+        "status": 200
+      },
+      {
+        "url": "https://api.inploi.com/search/results?filters%5Bsegment_ids%5D%5B0%5D=123&query=&page=2&per_page=2",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "x-publishable-key": "pk_synthetic_example"
+        },
+        "body": "{\"data\":[{\"id\":3,\"title\":\" Engineer \",\"town\":\" London \",\"city\":\"London\",\"country\":\" UK \",\"location_type\":\"Onsite (5 Days per Week)\",\"contract_type\":\"Permanent\",\"pay_min\":\"35,000\",\"pay_max\":\"45,000\",\"pay_currency\":\"GBP\",\"pay_type\":\"annual\",\"external_ref\":\"ref\",\"company_name\":\"Example\",\"category\":\"Engineering\",\"custom_data\":{\"open_date\":\"2026-10-09\",\"expiry_date\":\"2027-01-01\"}}],\"pagination\":{\"total\":3,\"current_page\":2,\"last_page\":2}}",
+        "status": 200
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.example.com/job/1",
+        "title": "Engineer",
+        "locations": [
+          "London, UK"
+        ],
+        "employment_type": "Permanent",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-09",
+        "base_salary": {
+          "currency": "GBP",
+          "min": 35000,
+          "max": 45000,
+          "unit": "year"
+        },
+        "metadata": {
+          "id": 1,
+          "external_ref": "ref",
+          "company_name": "Example",
+          "category": "Engineering",
+          "valid_through": "2027-01-01"
+        }
+      },
+      {
+        "url": "https://careers.example.com/job/2",
+        "title": "Engineer",
+        "locations": [
+          "London, UK"
+        ],
+        "employment_type": "Permanent",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-09",
+        "base_salary": {
+          "currency": "GBP",
+          "min": 35000,
+          "max": 45000,
+          "unit": "year"
+        },
+        "metadata": {
+          "id": 2,
+          "external_ref": "ref",
+          "company_name": "Example",
+          "category": "Engineering",
+          "valid_through": "2027-01-01"
+        }
+      },
+      {
+        "url": "https://careers.example.com/job/3",
+        "title": "Engineer",
+        "locations": [
+          "London, UK"
+        ],
+        "employment_type": "Permanent",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-09",
+        "base_salary": {
+          "currency": "GBP",
+          "min": 35000,
+          "max": 45000,
+          "unit": "year"
+        },
+        "metadata": {
+          "id": 3,
+          "external_ref": "ref",
+          "company_name": "Example",
+          "category": "Engineering",
+          "valid_through": "2027-01-01"
+        }
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "inploi",
+    "mode": "changed-total",
+    "board": {
+      "board_url": "https://careers.example.com/search",
+      "metadata": {
+        "api_key": "pk_synthetic_example",
+        "segment_id": "123",
+        "page_size": 2
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.inploi.com/search/results?filters%5Bsegment_ids%5D%5B0%5D=123&query=&page=1&per_page=2",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "x-publishable-key": "pk_synthetic_example"
+        },
+        "body": "{\"data\":[{\"id\":1,\"title\":\" Engineer \",\"town\":\" London \",\"city\":\"London\",\"country\":\" UK \",\"location_type\":\"Onsite (5 Days per Week)\",\"contract_type\":\"Permanent\",\"pay_min\":\"35,000\",\"pay_max\":\"45,000\",\"pay_currency\":\"GBP\",\"pay_type\":\"annual\",\"external_ref\":\"ref\",\"company_name\":\"Example\",\"category\":\"Engineering\",\"custom_data\":{\"open_date\":\"2026-10-09\",\"expiry_date\":\"2027-01-01\"}},{\"id\":2,\"title\":\" Engineer \",\"town\":\" London \",\"city\":\"London\",\"country\":\" UK \",\"location_type\":\"Onsite (5 Days per Week)\",\"contract_type\":\"Permanent\",\"pay_min\":\"35,000\",\"pay_max\":\"45,000\",\"pay_currency\":\"GBP\",\"pay_type\":\"annual\",\"external_ref\":\"ref\",\"company_name\":\"Example\",\"category\":\"Engineering\",\"custom_data\":{\"open_date\":\"2026-10-09\",\"expiry_date\":\"2027-01-01\"}}],\"pagination\":{\"total\":3,\"current_page\":1,\"last_page\":2}}",
+        "status": 200
+      },
+      {
+        "url": "https://api.inploi.com/search/results?filters%5Bsegment_ids%5D%5B0%5D=123&query=&page=2&per_page=2",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "x-publishable-key": "pk_synthetic_example"
+        },
+        "body": "{\"data\":[{\"id\":3,\"title\":\" Engineer \",\"town\":\" London \",\"city\":\"London\",\"country\":\" UK \",\"location_type\":\"Onsite (5 Days per Week)\",\"contract_type\":\"Permanent\",\"pay_min\":\"35,000\",\"pay_max\":\"45,000\",\"pay_currency\":\"GBP\",\"pay_type\":\"annual\",\"external_ref\":\"ref\",\"company_name\":\"Example\",\"category\":\"Engineering\",\"custom_data\":{\"open_date\":\"2026-10-09\",\"expiry_date\":\"2027-01-01\"}}],\"pagination\":{\"total\":4,\"current_page\":2,\"last_page\":2}}",
+        "status": 200
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "inploi",
+    "mode": "duplicate",
+    "board": {
+      "board_url": "https://careers.example.com/search",
+      "metadata": {
+        "api_key": "pk_synthetic_example",
+        "segment_id": "123",
+        "page_size": 2
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.inploi.com/search/results?filters%5Bsegment_ids%5D%5B0%5D=123&query=&page=1&per_page=2",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "x-publishable-key": "pk_synthetic_example"
+        },
+        "body": "{\"data\":[{\"id\":123,\"title\":\" Engineer \",\"town\":\" London \",\"city\":\"London\",\"country\":\" UK \",\"location_type\":\"Onsite (5 Days per Week)\",\"contract_type\":\"Permanent\",\"pay_min\":\"35,000\",\"pay_max\":\"45,000\",\"pay_currency\":\"GBP\",\"pay_type\":\"annual\",\"external_ref\":\"ref\",\"company_name\":\"Example\",\"category\":\"Engineering\",\"custom_data\":{\"open_date\":\"2026-10-09\",\"expiry_date\":\"2027-01-01\"}},{\"id\":123,\"title\":\" Engineer \",\"town\":\" London \",\"city\":\"London\",\"country\":\" UK \",\"location_type\":\"Onsite (5 Days per Week)\",\"contract_type\":\"Permanent\",\"pay_min\":\"35,000\",\"pay_max\":\"45,000\",\"pay_currency\":\"GBP\",\"pay_type\":\"annual\",\"external_ref\":\"ref\",\"company_name\":\"Example\",\"category\":\"Engineering\",\"custom_data\":{\"open_date\":\"2026-10-09\",\"expiry_date\":\"2027-01-01\"}}],\"pagination\":{\"total\":2,\"current_page\":1,\"last_page\":1}}",
+        "status": 200
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.example.com/job/123",
+        "title": "Engineer",
+        "locations": [
+          "London, UK"
+        ],
+        "employment_type": "Permanent",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-09",
+        "base_salary": {
+          "currency": "GBP",
+          "min": 35000,
+          "max": 45000,
+          "unit": "year"
+        },
+        "metadata": {
+          "id": 123,
+          "external_ref": "ref",
+          "company_name": "Example",
+          "category": "Engineering",
+          "valid_through": "2027-01-01"
+        }
+      }
+    ],
+    "truncated": true
+  },
+  {
+    "provider": "inploi",
+    "mode": "mixed-invalid",
+    "board": {
+      "board_url": "https://careers.example.com/search",
+      "metadata": {
+        "api_key": "pk_synthetic_example",
+        "segment_id": "123",
+        "page_size": 2
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.inploi.com/search/results?filters%5Bsegment_ids%5D%5B0%5D=123&query=&page=1&per_page=2",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "x-publishable-key": "pk_synthetic_example"
+        },
+        "body": "{\"data\":[{\"id\":123,\"title\":\" Engineer \",\"town\":\" London \",\"city\":\"London\",\"country\":\" UK \",\"location_type\":\"Onsite (5 Days per Week)\",\"contract_type\":\"Permanent\",\"pay_min\":\"35,000\",\"pay_max\":\"45,000\",\"pay_currency\":\"GBP\",\"pay_type\":\"annual\",\"external_ref\":\"ref\",\"company_name\":\"Example\",\"category\":\"Engineering\",\"custom_data\":{\"open_date\":\"2026-10-09\",\"expiry_date\":\"2027-01-01\"}},null],\"pagination\":{\"total\":2,\"current_page\":1,\"last_page\":1}}",
+        "status": 200
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.example.com/job/123",
+        "title": "Engineer",
+        "locations": [
+          "London, UK"
+        ],
+        "employment_type": "Permanent",
+        "job_location_type": "onsite",
+        "date_posted": "2026-10-09",
+        "base_salary": {
+          "currency": "GBP",
+          "min": 35000,
+          "max": 45000,
+          "unit": "year"
+        },
+        "metadata": {
+          "id": 123,
+          "external_ref": "ref",
+          "company_name": "Example",
+          "category": "Engineering",
+          "valid_through": "2027-01-01"
+        }
+      }
+    ],
+    "truncated": true
+  },
+  {
+    "provider": "inploi",
+    "mode": "invalid-row",
+    "board": {
+      "board_url": "https://careers.example.com/search",
+      "metadata": {
+        "api_key": "pk_synthetic_example",
+        "segment_id": "123",
+        "page_size": 2
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.inploi.com/search/results?filters%5Bsegment_ids%5D%5B0%5D=123&query=&page=1&per_page=2",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "x-publishable-key": "pk_synthetic_example"
+        },
+        "body": "{\"data\":[null],\"pagination\":{\"total\":1,\"current_page\":1,\"last_page\":1}}",
+        "status": 200
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "inploi",
+    "mode": "invalid-title",
+    "board": {
+      "board_url": "https://careers.example.com/search",
+      "metadata": {
+        "api_key": "pk_synthetic_example",
+        "segment_id": "123",
+        "page_size": 2
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.inploi.com/search/results?filters%5Bsegment_ids%5D%5B0%5D=123&query=&page=1&per_page=2",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "x-publishable-key": "pk_synthetic_example"
+        },
+        "body": "{\"data\":[{\"id\":1,\"title\":\" \",\"town\":\" London \",\"city\":\"London\",\"country\":\" UK \",\"location_type\":\"Onsite (5 Days per Week)\",\"contract_type\":\"Permanent\",\"pay_min\":\"35,000\",\"pay_max\":\"45,000\",\"pay_currency\":\"GBP\",\"pay_type\":\"annual\",\"external_ref\":\"ref\",\"company_name\":\"Example\",\"category\":\"Engineering\",\"custom_data\":{\"open_date\":\"2026-10-09\",\"expiry_date\":\"2027-01-01\"}}],\"pagination\":{\"total\":1,\"current_page\":1,\"last_page\":1}}",
+        "status": 200
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "inploi",
+    "mode": "gap",
+    "board": {
+      "board_url": "https://careers.example.com/search",
+      "metadata": {
+        "api_key": "pk_synthetic_example",
+        "segment_id": "123",
+        "page_size": 2
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.inploi.com/search/results?filters%5Bsegment_ids%5D%5B0%5D=123&query=&page=1&per_page=2",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "x-publishable-key": "pk_synthetic_example"
+        },
+        "body": "{\"data\":[],\"pagination\":{\"total\":1,\"current_page\":1,\"last_page\":1}}",
+        "status": 200
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "inploi",
+    "mode": "boolean-total",
+    "board": {
+      "board_url": "https://careers.example.com/search",
+      "metadata": {
+        "api_key": "pk_synthetic_example",
+        "segment_id": "123",
+        "page_size": 2
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.inploi.com/search/results?filters%5Bsegment_ids%5D%5B0%5D=123&query=&page=1&per_page=2",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "x-publishable-key": "pk_synthetic_example"
+        },
+        "body": "{\"data\":[{\"id\":1,\"title\":\" Engineer \",\"town\":\" London \",\"city\":\"London\",\"country\":\" UK \",\"location_type\":\"Onsite (5 Days per Week)\",\"contract_type\":\"Permanent\",\"pay_min\":\"35,000\",\"pay_max\":\"45,000\",\"pay_currency\":\"GBP\",\"pay_type\":\"annual\",\"external_ref\":\"ref\",\"company_name\":\"Example\",\"category\":\"Engineering\",\"custom_data\":{\"open_date\":\"2026-10-09\",\"expiry_date\":\"2027-01-01\"}}],\"pagination\":{\"total\":true,\"current_page\":1,\"last_page\":1}}",
+        "status": 200
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "inploi",
+    "mode": "wrong-page",
+    "board": {
+      "board_url": "https://careers.example.com/search",
+      "metadata": {
+        "api_key": "pk_synthetic_example",
+        "segment_id": "123",
+        "page_size": 2
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://api.inploi.com/search/results?filters%5Bsegment_ids%5D%5B0%5D=123&query=&page=1&per_page=2",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "x-publishable-key": "pk_synthetic_example"
+        },
+        "body": "{\"data\":[{\"id\":1,\"title\":\" Engineer \",\"town\":\" London \",\"city\":\"London\",\"country\":\" UK \",\"location_type\":\"Onsite (5 Days per Week)\",\"contract_type\":\"Permanent\",\"pay_min\":\"35,000\",\"pay_max\":\"45,000\",\"pay_currency\":\"GBP\",\"pay_type\":\"annual\",\"external_ref\":\"ref\",\"company_name\":\"Example\",\"category\":\"Engineering\",\"custom_data\":{\"open_date\":\"2026-10-09\",\"expiry_date\":\"2027-01-01\"}}],\"pagination\":{\"total\":1,\"current_page\":2,\"last_page\":1}}",
+        "status": 200
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "rich",
+    "board": {
+      "board_url": "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/",
+      "metadata": {
+        "locale": "pt-br",
+        "career_page": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "<table id=\"tbl\"><tr class=\"joblist\"><td><a href=\"https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/?career_page=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\">Engineer</a></td></tr></table><ul class=\"pagination\"><li class=\"active\">1</li></ul>",
+        "status": 200
+      }
+    ],
+    "jobs": [
+      "https://app.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/"
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "empty",
+    "board": {
+      "board_url": "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/",
+      "metadata": {
+        "locale": "pt-br",
+        "career_page": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "<table id=\"tbl\"></table><ul class=\"pagination\"><li class=\"active\">1</li></ul>",
+        "status": 200
+      }
+    ],
+    "jobs": [],
+    "truncated": false
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "paged",
+    "board": {
+      "board_url": "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/",
+      "metadata": {
+        "locale": "pt-br",
+        "career_page": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "<table id=\"tbl\"><tr class=\"joblist\"><td><a href=\"https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/?career_page=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\">Engineer</a></td></tr></table><ul class=\"pagination\"><li class=\"active\">1</li><li><a href=\"?page=2\">2</a></li></ul>",
+        "status": 200
+      },
+      {
+        "url": "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/?page=2",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "<table id=\"tbl\"><tr class=\"joblist\"><td><a href=\"https://jobs.jobconvo.com/job/engineer/22222222-2222-3333-4444-555555555555/?career_page=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\">Engineer</a></td></tr></table><ul class=\"pagination\"><li class=\"active\">2</li><li><a href=\"?page=2\">2</a></li></ul>",
+        "status": 200
+      }
+    ],
+    "jobs": [
+      "https://app.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/",
+      "https://app.jobconvo.com/job/engineer/22222222-2222-3333-4444-555555555555/"
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "duplicate",
+    "board": {
+      "board_url": "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/",
+      "metadata": {
+        "locale": "pt-br",
+        "career_page": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "<table id=\"tbl\"><tr class=\"joblist\"><td><a href=\"https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/?career_page=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\">Engineer</a></td></tr><tr class=\"joblist\"><td><a href=\"https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/?career_page=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\">Engineer</a></td></tr></table><ul class=\"pagination\"><li class=\"active\">1</li></ul>",
+        "status": 200
+      }
+    ],
+    "jobs": [
+      "https://app.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/"
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "missing-table",
+    "board": {
+      "board_url": "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/",
+      "metadata": {
+        "locale": "pt-br",
+        "career_page": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "<table id=\"other\"></table><ul class=\"pagination\"><li class=\"active\">1</li></ul>",
+        "status": 200
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "missing-pagination",
+    "board": {
+      "board_url": "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/",
+      "metadata": {
+        "locale": "pt-br",
+        "career_page": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "<table id=\"tbl\"><tr class=\"joblist\"><td><a href=\"https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/?career_page=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\">Engineer</a></td></tr></table>",
+        "status": 200
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "wrong-page",
+    "board": {
+      "board_url": "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/",
+      "metadata": {
+        "locale": "pt-br",
+        "career_page": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "<table id=\"tbl\"><tr class=\"joblist\"><td><a href=\"https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/?career_page=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\">Engineer</a></td></tr></table><ul class=\"pagination\"><li class=\"active\">2</li></ul>",
+        "status": 200
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "wrong-career",
+    "board": {
+      "board_url": "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/",
+      "metadata": {
+        "locale": "pt-br",
+        "career_page": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "<table id=\"tbl\"><tr class=\"joblist\"><td><a href=\"https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/?career_page=00000000-0000-0000-0000-000000000000\">Engineer</a></td></tr></table><ul class=\"pagination\"><li class=\"active\">1</li></ul>",
+        "status": 200
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "escape",
+    "board": {
+      "board_url": "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/",
+      "metadata": {
+        "locale": "pt-br",
+        "career_page": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "<table id=\"tbl\"><tr class=\"joblist\"><td><a href=\"https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/?career_page=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\">Engineer</a></td></tr></table><ul class=\"pagination\"><li class=\"active\">1</li><li><a href=\"https://evil.example/?page=2\">2</a></li></ul>",
+        "status": 200
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "bad-tail",
+    "board": {
+      "board_url": "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/",
+      "metadata": {
+        "locale": "pt-br",
+        "career_page": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "<table id=\"tbl\"><tr class=\"joblist\"><td><a href=\"https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/?career_page=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\">Engineer</a></td></tr></table><ul class=\"pagination\"><li class=\"active\">1</li><li><a href=\"?page=2\">2</a></li></ul>",
+        "status": 200
+      },
+      {
+        "url": "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/?page=2",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "<table id=\"tbl\"><tr class=\"joblist\"><td><a href=\"https://jobs.jobconvo.com/job/engineer/22222222-2222-3333-4444-555555555555/?career_page=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\">Engineer</a></td></tr></table><ul class=\"pagination\"><li class=\"active\">2</li><li><a href=\"?page=2\">2</a></li></ul>",
+        "status": 404
+      }
+    ],
+    "error": true,
+    "original_error": "PaginationFetchError"
+  }
+]

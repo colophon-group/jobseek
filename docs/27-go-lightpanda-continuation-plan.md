@@ -54,9 +54,17 @@ and four URL-writer repair/relist/routing/fence cases also pass. Final head `525
 race (761.771s), Required CI37892107754, actual Crawler Deploy Gate37892106548
 and installed image parity37892107696. PR #10375 merged at
 `cf4370ab2202d52a9468f7fa21be96f835ece6a6` after independent outgoing cold252
-readback. Original crawler rollout37913413487 is in progress; matching renderer
-rollout37913436345 succeeded and independently read back its immutable image.
-Production source987 remains crawler authority until incoming verification.
+readback. Original crawler rollout37913413487 and renderer rollout37913436345 succeeded.
+Independent image/source readback, all-writer health, SQL ownership and Redis
+routing checks pass for source `cf4370ab2202d52a9468f7fa21be96f835ece6a6`.
+Supported full-cohort activation completed at unchanged B0 epoch253 after the
+existing legacy SQL leases expired. Fresh actual-route admission covers 7,638
+monitors and 2,739 detail boards with 1,468,351 scheduled owned postings; 42
+cache-mismatch boards and one unsupported Eightfold detail route remain with
+their existing owner. The initial natural observation completed 83 monitors
+and 215 details: 82 monitor schedules exactly matched canonical SQL in Redis
+and one completion was still in flight. Claim/detail failures are retained;
+these observations do not establish full freshness or global conservation.
 See [fetch/identity evidence](evidence/go-native-shared-inventory-options-candidate-2026-10-09.json)
 and the component evidence below. Deployment, fresh routing authority, natural
 conservation/freshness and full Python retirement remain open.
@@ -83,9 +91,53 @@ single-page proof references, fifteen supported cold-retirement cases and actual
 158-profile executable startup pass. API/DOM SDK and queue unit race suites pass.
 The new original-oracle helper also accounts for concurrent independent JSON-LD
 requests without weakening exact request shape/count or pagination order.
-Full exact-head CI, installed-image parity, immutable rollout and fresh actual-route
-admission remain required. No public capture or natural production freshness is
+Published head `ffab5fb2b37ebfdd243239289f520d78e9789961` in
+[PR #10376](https://github.com/colophon-group/jobseek/pull/10376) passed full local
+worker race (882.933s), Required CI37914770473, Crawler Deploy Gate37914770799,
+installed image parity37914770494 and both Lightpanda pilots37914770688.
+Immutable rollout and fresh actual-route admission remain required. No public capture or natural production freshness is
 claimed. See the [candidate evidence](evidence/go-native-shared-listing-contracts-candidate-2026-10-09.json).
+
+## Next grouped provider batch — Curately, Inploi and JobConvo
+
+Candidate **0.13.992** ports three configured public HTTP monitor types together
+and the paired JobConvo detail API, using the existing worker, scheduler,
+publisher checks and PostgreSQL/Redis lifecycle. Four added compiled profiles
+bring the executable catalog to 162. Curately preserves tenant/client identity,
+stable job URLs, inactive filtering, semantic-zero retries and whole-snapshot
+restarts. Inploi preserves positional pagination, invalid/duplicate truncation,
+structured salary/location fields and independently scheduled JSON-LD description
+enrichment. JobConvo validates the authoritative HTML table, active paginator,
+career-page identity and complete advertised-page graph; its independent detail
+API preserves the original one-shot status and content behavior.
+
+Original Python oracles freeze 119 field cases, 36 complete inventory/request
+traces and twelve detail request cases. Full SDK race, worker HTTP/publisher/retry/
+cancellation parity and current registry/transport/detail binding checks pass.
+Twenty-five real monitor terminal cases and nine independent detail cases pass;
+partial or failed inventories preserve existing postings and ordinary URL source
+identities, and terminal schedules/leases settle. Fifteen supported cold-retirement
+cases pass. Actual 162-profile executable startup, metrics, signal drain and
+wrong projection refusal pass; queue unit race (31.350s), vet and Python ownership
+unit checks pass. The original description-enrichment oracle includes JobConvo
+qualifications after benefits. Full exact-head CI, installed
+image parity and incoming production admission remain qualification gates.
+
+Live original captures return 2,451 complete Inploi jobs after the Compass Group
+config binds `page_size=100`, the public API's declared limit; its previous 5,000
+default was rejected with HTTP422. JobConvo returns eleven jobs through its valid
+first-party alternate-host/default-port redirect. Curately currently refuses
+unsupported upstream status values; preserve that refusal and do not publish a
+successful prefix or infer absence. Go matches the same live responses, complete fields, every request exchange
+and refusal boundary across all three providers.
+
+Keep the currently deployed broad cohort serving while this grouped batch is
+qualified. Advance remaining unsupported DOM/API/inline/RSS configurations and
+provider types in meaningful groups, then complete runtime consumers, comparable
+whole-lane resource/cost observation, full freshness/conservation and supported
+reversal before retiring production Python. Lightpanda remains pinned to the
+latest verified stable **1.0.0**; recheck stable releases before each rollout.
+See [grouped provider evidence](evidence/go-native-curately-inploi-jobconvo-candidate-2026-10-09.json).
 
 ## Component qualification — explicit HTTP TLS settings across three monitor types
 

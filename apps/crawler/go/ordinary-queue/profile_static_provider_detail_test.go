@@ -25,7 +25,7 @@ func TestStaticProviderDetailCanonicalRegistryBindings(t *testing.T) {
 	counts := map[string]int{}
 	for _, row := range rows[1:] {
 		scraper := row[h["scraper_type"]]
-		want := map[string]string{"linkedin": linkedInDetailProfile, "jazzhr": jazzHRDetailProfile, "taleo": taleoEnterpriseDetailProfile}[scraper]
+		want := map[string]string{"linkedin": linkedInDetailProfile, "jazzhr": jazzHRDetailProfile, "taleo": taleoEnterpriseDetailProfile, "jobconvo": jobConvoDetailProfile}[scraper]
 		if want == "" {
 			continue
 		}
@@ -50,6 +50,9 @@ func TestStaticProviderDetailCanonicalRegistryBindings(t *testing.T) {
 				t.Fatal(p, err)
 			}
 			source := p.Endpoint
+			if scraper == "jobconvo" {
+				source = "https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/"
+			}
 			if scraper == "linkedin" {
 				source = "https://ch.linkedin.com/jobs/view/engineer-123?tracking=1"
 			}
@@ -60,7 +63,7 @@ func TestStaticProviderDetailCanonicalRegistryBindings(t *testing.T) {
 			if scraper == "linkedin" && actual.Domain != "ch.linkedin.com" {
 				t.Fatal("localized posting domain replaced by guest endpoint", actual.Domain)
 			}
-			if raw := row[h["scraper_config"]]; raw != "" && !reflect.DeepEqual(actual.EnrichmentFields, []string{"description", "employment_type", "job_location_type"}) {
+			if raw := row[h["scraper_config"]]; raw != "" && scraper == "linkedin" && !reflect.DeepEqual(actual.EnrichmentFields, []string{"description", "employment_type", "job_location_type"}) {
 				t.Fatal("selected fields changed", actual.EnrichmentFields)
 			}
 			if _, err := InspectStaticProviderDetail(profileBoardID, c, source, Browser); err == nil {
@@ -87,7 +90,7 @@ func TestStaticProviderDetailCanonicalRegistryBindings(t *testing.T) {
 		})
 		counts[scraper]++
 	}
-	if !reflect.DeepEqual(counts, map[string]int{"linkedin": 34, "jazzhr": 20, "taleo": 5}) {
+	if !reflect.DeepEqual(counts, map[string]int{"linkedin": 34, "jazzhr": 20, "taleo": 5, "jobconvo": 1}) {
 		t.Fatal("registry changed", counts)
 	}
 }

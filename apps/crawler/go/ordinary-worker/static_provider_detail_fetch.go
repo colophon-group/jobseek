@@ -6,10 +6,12 @@ import (
 	"io"
 	"math/rand/v2"
 	"net/http"
+	"strings"
 	"time"
 
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	api "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
+	enrichment "github.com/colophon-group/jobseek/apps/crawler/go/job-enrichment"
 	jsonld "github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail"
 	executor "github.com/colophon-group/jobseek/apps/crawler/go/lightpanda-b0-executor"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
@@ -18,7 +20,10 @@ import (
 
 // Follow the existing public redirect contract while checking publisher signals
 // on each response, including redirects, status failures and incomplete bodies.
-func staticProviderDetailPage(ctx context.Context, client *http.Client, endpoint string, limit int64) ([]byte, int, string, *policy.Reservation, error) {
+func staticProviderDetailPage(ctx context.Context, client *http.Client, endpoint string, limit int64, singleRequest ...api.Request) ([]byte, int, string, *policy.Reservation, error) {
+	if len(singleRequest) > 1 || len(singleRequest) == 1 && (singleRequest[0].URL != endpoint || singleRequest[0].Method != "GET" || singleRequest[0].Body != "") {
+		return nil, 0, endpoint, nil, queue.ErrConfiguration
+	}
 	sealed := *client
 	sealed.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	current := endpoint
@@ -29,6 +34,11 @@ func staticProviderDetailPage(ctx context.Context, client *http.Client, endpoint
 		}
 		request.Header.Set("User-Agent", ordinaryUserAgent)
 		request.Header.Set("Accept", ordinaryAccept)
+		if len(singleRequest) == 1 {
+			for key, value := range singleRequest[0].Headers {
+				request.Header[key] = append([]string{}, value...)
+			}
+		}
 		response, failure := sealed.Do(request)
 		if response == nil {
 			return nil, 0, current, nil, failure
@@ -62,6 +72,9 @@ func staticProviderDetailPage(ctx context.Context, client *http.Client, endpoint
 			return nil, status, current, nil, failure
 		}
 		if status == 301 || status == 302 || status == 303 || status == 307 || status == 308 {
+			if len(singleRequest) == 1 {
+				return raw, status, current, nil, nil
+			}
 			location := response.Header.Get("Location")
 			if location == "" {
 				return raw, status, current, nil, nil
@@ -77,6 +90,53 @@ func staticProviderDetailPage(ctx context.Context, client *http.Client, endpoint
 		return []byte(jsonld.DecodeDocument(raw, response.Header.Get("Content-Type"))), status, current, nil, nil
 	}
 	return nil, 0, current, nil, &DiscoveryError{Kind: "redirect"}
+}
+
+func fetchJobConvoDetail(ctx context.Context, client *http.Client, p queue.WorkdayDetailProfile) (map[string]any, *policy.Reservation, error) {
+	request, id, err := api.JobConvoDetailRequest(p.SourceURL, p.APILocale)
+	if err != nil || client == nil || p.Profile != "jobconvo.public-detail/v1" || p.Endpoint != request.URL {
+		return nil, nil, queue.ErrConfiguration
+	}
+	requestCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	raw, status, _, reserved, err := staticProviderDetailPage(requestCtx, client, p.Endpoint, 25_000_000, request)
+	if reserved != nil {
+		return nil, reserved, nil
+	}
+	if ctx.Err() != nil {
+		return nil, nil, ctx.Err()
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	if status != 200 {
+		return nil, nil, executor.ErrEmptyResult
+	}
+	d, err := api.Decode(raw)
+	if err != nil {
+		return nil, nil, err
+	}
+	row, ok := d.Value.(map[string]any)
+	if !ok {
+		return nil, nil, executor.ErrEmptyResult
+	}
+	observed, _ := row["id"].(string)
+	if strings.ToLower(observed) != id {
+		return nil, nil, executor.ErrEmptyResult
+	}
+	fields := api.JobConvoDetailFields(row)
+	// Original JobContent normalizes a textual salary on construction.
+	if text, ok := row["salary"].(string); ok {
+		salary, err := enrichment.Salary(text, nil)
+		if err != nil {
+			return nil, nil, err
+		}
+		delete(fields, "base_salary")
+		if salary != nil && salary.Parsed != nil {
+			fields["base_salary"] = salary.Parsed
+		}
+	}
+	return fields, nil, nil
 }
 
 func fetchStaticProviderDetail(ctx context.Context, client *http.Client, p queue.WorkdayDetailProfile, wait func(context.Context, time.Duration) error) (map[string]any, *policy.Reservation, error) {

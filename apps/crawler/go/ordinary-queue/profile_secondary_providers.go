@@ -31,7 +31,10 @@ func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
 	if PortalHTTPProvider(config["crawler_type"]) {
 		return portalMonitorEnrichment(config)
 	}
-	if FinalHTTPProvider(config["crawler_type"]) || SmallProvider(config["crawler_type"]) {
+	if FinalHTTPProvider(config["crawler_type"]) {
+		return finalHTTPMonitorEnrichment(config)
+	}
+	if SmallProvider(config["crawler_type"]) {
 		return monitorEnrichmentFields(config, map[string]bool{})
 	}
 	if config["crawler_type"] == "linkedin" {

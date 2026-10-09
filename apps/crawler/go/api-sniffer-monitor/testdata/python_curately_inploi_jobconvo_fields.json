@@ -1,0 +1,5503 @@
+[
+  {
+    "provider": "curately",
+    "mode": "rich",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "jobId-null",
+    "row": {
+      "jobId": null,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "error": true
+  },
+  {
+    "provider": "curately",
+    "mode": "jobId-blank",
+    "row": {
+      "jobId": "",
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "error": true
+  },
+  {
+    "provider": "curately",
+    "mode": "clientId-null",
+    "row": {
+      "jobId": 1,
+      "clientId": null,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "clientId-blank",
+    "row": {
+      "jobId": 1,
+      "clientId": "",
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "jobTitle-null",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": null,
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "error": true
+  },
+  {
+    "provider": "curately",
+    "mode": "jobTitle-blank",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": "",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "error": true
+  },
+  {
+    "provider": "curately",
+    "mode": "publicJobDescr-null",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": null,
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "error": true
+  },
+  {
+    "provider": "curately",
+    "mode": "publicJobDescr-blank",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "error": true
+  },
+  {
+    "provider": "curately",
+    "mode": "workCity-null",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": null,
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "workCity-blank",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": "",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "workState-null",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": null,
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "workState-blank",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": "",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "workZipcode-null",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": null,
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "workZipcode-blank",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": "",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "status-null",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": null,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "status-blank",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": "",
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "error": true
+  },
+  {
+    "provider": "curately",
+    "mode": "jobType-null",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": null,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "jobType-blank",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": "",
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": "",
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "jobHours-null",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": null,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "full_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "jobHours-blank",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": "",
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "full_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": "",
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "workType-null",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": null,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "workType-blank",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": "",
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": ""
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "createDate-null",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": null,
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "createDate-blank",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "payrateMin-null",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": null,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": null,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "payrateMin-blank",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": "",
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": null,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "payrateMax-null",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": null,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": null,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "payrateMax-blank",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": "",
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": null,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "clientName-null",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": null,
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "clientName-blank",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "estStartDate-null",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": null
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "estStartDate-blank",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": ""
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "inactive",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 0,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": null
+  },
+  {
+    "provider": "curately",
+    "mode": "unknown-status",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 99,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "error": true
+  },
+  {
+    "provider": "curately",
+    "mode": "remote",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": null,
+      "workState": null,
+      "workZipcode": null,
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 1,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Remote"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "remote",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 1
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "bool-id",
+    "row": {
+      "jobId": true,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "error": true
+  },
+  {
+    "provider": "curately",
+    "mode": "string-id",
+    "row": {
+      "jobId": "0123",
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/123/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 123,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "string-status",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": "1",
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "string-work",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": "1",
+      "createDate": "2026-10-09",
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": "1"
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "numeric-date",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": 123,
+      "payrateMin": 45,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "base_salary": {
+        "currency": "USD",
+        "min": 45,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "curately",
+    "mode": "bool-pay",
+    "row": {
+      "jobId": 1,
+      "clientId": 6,
+      "jobTitle": " Engineer ",
+      "publicJobDescr": "<p>Build & test</p>",
+      "workCity": " Boston ",
+      "workState": " MA ",
+      "workZipcode": " 02110 ",
+      "status": 1,
+      "jobType": 1,
+      "jobHours": 2,
+      "workType": 3,
+      "createDate": "2026-10-09",
+      "payrateMin": true,
+      "payrateMax": 55.5,
+      "clientName": "Example",
+      "estStartDate": "2026-11-01"
+    },
+    "expected": {
+      "url": "https://careers.curately.ai/jobs/example/apply-job/1/job",
+      "title": "Engineer",
+      "description": "<p>Build & test</p>",
+      "locations": [
+        "Boston, MA, 02110"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": null,
+        "max": 55.5,
+        "unit": "hour"
+      },
+      "language": "en",
+      "metadata": {
+        "id": 1,
+        "client_name": "Example",
+        "estimated_start_date": "2026-11-01",
+        "job_hours_code": 2,
+        "job_type_code": 1,
+        "work_type_code": 3
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "rich",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "id-null",
+    "row": {
+      "id": null,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": null
+  },
+  {
+    "provider": "inploi",
+    "mode": "id-blank",
+    "row": {
+      "id": "",
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": null
+  },
+  {
+    "provider": "inploi",
+    "mode": "title-null",
+    "row": {
+      "id": 123,
+      "title": null,
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": null
+  },
+  {
+    "provider": "inploi",
+    "mode": "title-blank",
+    "row": {
+      "id": 123,
+      "title": "",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": null
+  },
+  {
+    "provider": "inploi",
+    "mode": "town-null",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": null,
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "town-blank",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": "",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "city-null",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": null,
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "city-blank",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "country-null",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": null,
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "country-blank",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": "",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "location_type-null",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": null,
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "location_type-blank",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "contract_type-null",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": null,
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "contract_type-blank",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "pay_min-null",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": null,
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": null,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "pay_min-blank",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": null,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "pay_max-null",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": null,
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": null,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "pay_max-blank",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": null,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "pay_currency-null",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": null,
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": null,
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "pay_currency-blank",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": null,
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "pay_type-null",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": null,
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": null
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "pay_type-blank",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": null
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "external_ref-null",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": null,
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "external_ref-blank",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "company_name-null",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": null,
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "company_name-blank",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "category-null",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": null,
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "category-blank",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "custom_data-null",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": null
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "custom_data-blank",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": ""
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "remote",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": "Remote",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "location",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "Remote, London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "remote",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "masked",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      },
+      "pay_mask": true
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "hidden",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      },
+      "pay_display": false
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "single-pay",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": null,
+      "pay_max": null,
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      },
+      "pay": "22.5"
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 22.5,
+        "max": 22.5,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "bool-pay",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": true,
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/123",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": null,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": 123,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "inploi",
+    "mode": "bad-location",
+    "row": {
+      "id": 123,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": 1,
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "error": true
+  },
+  {
+    "provider": "inploi",
+    "mode": "bool-id",
+    "row": {
+      "id": true,
+      "title": " Engineer ",
+      "town": " London ",
+      "city": "London",
+      "country": " UK ",
+      "location_type": "Onsite (5 Days per Week)",
+      "contract_type": "Permanent",
+      "pay_min": "35,000",
+      "pay_max": "45,000",
+      "pay_currency": "GBP",
+      "pay_type": "annual",
+      "external_ref": "ref",
+      "company_name": "Example",
+      "category": "Engineering",
+      "custom_data": {
+        "open_date": "2026-10-09",
+        "expiry_date": "2027-01-01"
+      }
+    },
+    "expected": {
+      "url": "https://careers.example.com/job/True",
+      "title": "Engineer",
+      "locations": [
+        "London, UK"
+      ],
+      "employment_type": "Permanent",
+      "job_location_type": "onsite",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "GBP",
+        "min": 35000,
+        "max": 45000,
+        "unit": "year"
+      },
+      "metadata": {
+        "id": true,
+        "external_ref": "ref",
+        "company_name": "Example",
+        "category": "Engineering",
+        "valid_through": "2027-01-01"
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "rich",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "id-null",
+    "row": {
+      "id": null,
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "id-blank",
+    "row": {
+      "id": "",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "title-null",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": null,
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "title-blank",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": "",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": "",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "description-null",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": null,
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "description-blank",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "requirements-null",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": null,
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "requirements-blank",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "benefits-null",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": null,
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "benefits-blank",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "city-null",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": null,
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "city-blank",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": "",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "state-null",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": null,
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "state-blank",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "country-null",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": null,
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "country-blank",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": "",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "employment-null",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": null,
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "employment-blank",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "type_work_location-null",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": null,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "type_work_location-blank",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": "",
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "pub_date-null",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": null,
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "pub_date-blank",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "company_language-null",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": null,
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "company_language-blank",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "salary-null",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": null,
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "salary-blank",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": "",
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "company-null",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": null,
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "company-blank",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "deadline-null",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": null,
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "deadline-blank",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "level-null",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": null,
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "level-blank",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "status-null",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": null
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior"
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "status-blank",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": ""
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior"
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "string-remote",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": "2",
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "remote",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "bool-work",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": true,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "unknown-work",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 99,
+      "pub_date": "2026-10-09",
+      "company_language": "PT-BR",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  },
+  {
+    "provider": "jobconvo",
+    "mode": "invalid-language",
+    "row": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "title": " Engineer ",
+      "description": "<p>Build</p>",
+      "requirements": "<p>Care</p>",
+      "benefits": "<p>Learn</p>",
+      "city": " São Paulo ",
+      "state": "São Paulo",
+      "country": " Brazil ",
+      "employment": "Full time",
+      "type_work_location": 1,
+      "pub_date": "2026-10-09",
+      "company_language": "English",
+      "salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "company": "Example",
+      "deadline": "2027-01-01",
+      "level": "Senior",
+      "status": 0
+    },
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    }
+  }
+]

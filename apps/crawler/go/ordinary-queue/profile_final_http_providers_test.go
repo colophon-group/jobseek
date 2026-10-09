@@ -56,7 +56,7 @@ func TestFinalHTTPProvidersCurrentRegistryAndTransportAuthority(t *testing.T) {
 		}
 		counts[provider]++
 	}
-	if !reflect.DeepEqual(counts, map[string]int{"paynet": 2, "nowhiring": 1, "fenbi": 2, "wecruit": 1}) {
+	if !reflect.DeepEqual(counts, map[string]int{"paynet": 2, "nowhiring": 1, "fenbi": 2, "wecruit": 1, "curately": 1, "inploi": 1, "jobconvo": 1}) {
 		t.Fatal("registry count changed", counts)
 	}
 }
