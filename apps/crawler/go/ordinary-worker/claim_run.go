@@ -456,7 +456,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 	if fetchErr != nil {
 		var prefix *rssStreamPrefixError
 		prefixRules, ruleErr := queue.FeedMonitorURLRules(task.Config)
-		if profile.Provider == "rss" && task.Worker == queue.Simple && errors.As(fetchErr, &prefix) && len(discovery.Jobs) > 0 && ruleErr == nil && !prefixRules.HasCollision() {
+		if (profile.Provider == "rss" && task.Worker == queue.Simple || profile.Profile == "darwinbox.session-items/v1" && task.Worker == queue.Browser) && errors.As(fetchErr, &prefix) && len(discovery.Jobs) > 0 && ruleErr == nil && !prefixRules.HasCollision() {
 			processed, _, rejected, err := writeFeedPolicyInventory(ctx, cycle, preparer, task.Config, discovery)
 			if processed != nil {
 				result.Batches = processed.Batches

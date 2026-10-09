@@ -1,0 +1,2249 @@
+{
+  "fields": [
+    {
+      "provider": "darwinbox",
+      "name": "complete",
+      "row": {
+        "id": "job0001",
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 1700000000,
+        "is_remote": 0
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Role 1",
+        "description": "<p>Description 1</p>",
+        "locations": [
+          "Pune, India"
+        ],
+        "date_posted": "2023-11-14",
+        "metadata": {
+          "id": "job0001"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "non-object",
+      "row": null,
+      "expected": null
+    },
+    {
+      "provider": "darwinbox",
+      "name": "id-2",
+      "row": {
+        "id": 17,
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 1700000000,
+        "is_remote": 0
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/17",
+        "title": "Role 1",
+        "description": "<p>Description 1</p>",
+        "locations": [
+          "Pune, India"
+        ],
+        "date_posted": "2023-11-14",
+        "metadata": {
+          "id": "17"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "id-3",
+      "row": {
+        "id": true,
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 1700000000,
+        "is_remote": 0
+      },
+      "expected": null
+    },
+    {
+      "provider": "darwinbox",
+      "name": "id-4",
+      "row": {
+        "id": 1.0,
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 1700000000,
+        "is_remote": 0
+      },
+      "expected": null
+    },
+    {
+      "provider": "darwinbox",
+      "name": "id-5",
+      "row": {
+        "id": "bad.id",
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 1700000000,
+        "is_remote": 0
+      },
+      "expected": null
+    },
+    {
+      "provider": "darwinbox",
+      "name": "id-6",
+      "row": {
+        "id": "  JOB_x-9  ",
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 1700000000,
+        "is_remote": 0
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/JOB_x-9",
+        "title": "Role 1",
+        "description": "<p>Description 1</p>",
+        "locations": [
+          "Pune, India"
+        ],
+        "date_posted": "2023-11-14",
+        "metadata": {
+          "id": "JOB_x-9"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "title-7",
+      "row": {
+        "id": "job0001",
+        "title": "  Data  Engineer \n",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 1700000000,
+        "is_remote": 0
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Data Engineer",
+        "description": "<p>Description 1</p>",
+        "locations": [
+          "Pune, India"
+        ],
+        "date_posted": "2023-11-14",
+        "metadata": {
+          "id": "job0001"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "title-8",
+      "row": {
+        "id": "job0001",
+        "title": null,
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 1700000000,
+        "is_remote": 0
+      },
+      "expected": null
+    },
+    {
+      "provider": "darwinbox",
+      "name": "title-9",
+      "row": {
+        "id": "job0001",
+        "title": "",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 1700000000,
+        "is_remote": 0
+      },
+      "expected": null
+    },
+    {
+      "provider": "darwinbox",
+      "name": "jd-10",
+      "row": {
+        "id": "job0001",
+        "title": "Role 1",
+        "jd": null,
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 1700000000,
+        "is_remote": 0
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Role 1",
+        "locations": [
+          "Pune, India"
+        ],
+        "date_posted": "2023-11-14",
+        "metadata": {
+          "id": "job0001"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "jd-11",
+      "row": {
+        "id": "job0001",
+        "title": "Role 1",
+        "jd": 17,
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 1700000000,
+        "is_remote": 0
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Role 1",
+        "locations": [
+          "Pune, India"
+        ],
+        "date_posted": "2023-11-14",
+        "metadata": {
+          "id": "job0001"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "posted_on-12",
+      "row": {
+        "id": "job0001",
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": "1700000000000",
+        "is_remote": 0
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Role 1",
+        "description": "<p>Description 1</p>",
+        "locations": [
+          "Pune, India"
+        ],
+        "date_posted": "2023-11-14",
+        "metadata": {
+          "id": "job0001"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "posted_on-13",
+      "row": {
+        "id": "job0001",
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 1700000000000,
+        "is_remote": 0
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Role 1",
+        "description": "<p>Description 1</p>",
+        "locations": [
+          "Pune, India"
+        ],
+        "date_posted": "2023-11-14",
+        "metadata": {
+          "id": "job0001"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "posted_on-14",
+      "row": {
+        "id": "job0001",
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": true,
+        "is_remote": 0
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Role 1",
+        "description": "<p>Description 1</p>",
+        "locations": [
+          "Pune, India"
+        ],
+        "metadata": {
+          "id": "job0001"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "posted_on-15",
+      "row": {
+        "id": "job0001",
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": -1700000000,
+        "is_remote": 0
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Role 1",
+        "description": "<p>Description 1</p>",
+        "locations": [
+          "Pune, India"
+        ],
+        "date_posted": "1916-02-18",
+        "metadata": {
+          "id": "job0001"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "posted_on-16",
+      "row": {
+        "id": "job0001",
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 9999999999999999,
+        "is_remote": 0
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Role 1",
+        "description": "<p>Description 1</p>",
+        "locations": [
+          "Pune, India"
+        ],
+        "metadata": {
+          "id": "job0001"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "posted_on-17",
+      "row": {
+        "id": "job0001",
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": "bad",
+        "is_remote": 0
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Role 1",
+        "description": "<p>Description 1</p>",
+        "locations": [
+          "Pune, India"
+        ],
+        "metadata": {
+          "id": "job0001"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "created_on-18",
+      "row": {
+        "id": "job0001",
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": null,
+        "is_remote": 0,
+        "created_on": "2024-03-06T08:00:00+05:30"
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Role 1",
+        "description": "<p>Description 1</p>",
+        "locations": [
+          "Pune, India"
+        ],
+        "date_posted": "2024-03-06",
+        "metadata": {
+          "id": "job0001"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "tool_tip_locations-19",
+      "row": {
+        "id": "job0001",
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune",
+          "PUNE",
+          null,
+          "  Zurich  ",
+          ""
+        ],
+        "posted_on": 1700000000,
+        "is_remote": 0
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Role 1",
+        "description": "<p>Description 1</p>",
+        "locations": [
+          "Pune",
+          "Zurich"
+        ],
+        "date_posted": "2023-11-14",
+        "metadata": {
+          "id": "job0001"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "tool_tip_locations-20",
+      "row": {
+        "id": "job0001",
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          null
+        ],
+        "posted_on": 1700000000,
+        "is_remote": 0
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Role 1",
+        "description": "<p>Description 1</p>",
+        "date_posted": "2023-11-14",
+        "metadata": {
+          "id": "job0001"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "tool_tip_locations-21",
+      "row": {
+        "id": "job0001",
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [],
+        "posted_on": 1700000000,
+        "is_remote": 0,
+        "officelocations_without_area": [
+          "  Singapore "
+        ]
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Role 1",
+        "description": "<p>Description 1</p>",
+        "locations": [
+          "Singapore"
+        ],
+        "date_posted": "2023-11-14",
+        "metadata": {
+          "id": "job0001"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "is_remote-22",
+      "row": {
+        "id": "job0001",
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 1700000000,
+        "is_remote": " yes "
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Role 1",
+        "description": "<p>Description 1</p>",
+        "locations": [
+          "Pune, India"
+        ],
+        "job_location_type": "remote",
+        "date_posted": "2023-11-14",
+        "metadata": {
+          "id": "job0001"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "is_remote-23",
+      "row": {
+        "id": "job0001",
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 1700000000,
+        "is_remote": 1
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Role 1",
+        "description": "<p>Description 1</p>",
+        "locations": [
+          "Pune, India"
+        ],
+        "job_location_type": "remote",
+        "date_posted": "2023-11-14",
+        "metadata": {
+          "id": "job0001"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "is_remote-24",
+      "row": {
+        "id": "job0001",
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 1700000000,
+        "is_remote": 1.0
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Role 1",
+        "description": "<p>Description 1</p>",
+        "locations": [
+          "Pune, India"
+        ],
+        "job_location_type": "remote",
+        "date_posted": "2023-11-14",
+        "metadata": {
+          "id": "job0001"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "is_remote-25",
+      "row": {
+        "id": "job0001",
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 1700000000,
+        "is_remote": "false"
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Role 1",
+        "description": "<p>Description 1</p>",
+        "locations": [
+          "Pune, India"
+        ],
+        "date_posted": "2023-11-14",
+        "metadata": {
+          "id": "job0001"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "emp_type_name-26",
+      "row": {
+        "id": "job0001",
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 1700000000,
+        "is_remote": 0,
+        "emp_type_name": "  Full   time "
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Role 1",
+        "description": "<p>Description 1</p>",
+        "locations": [
+          "Pune, India"
+        ],
+        "employment_type": "Full time",
+        "date_posted": "2023-11-14",
+        "metadata": {
+          "id": "job0001"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "internal_job_code-27",
+      "row": {
+        "id": "job0001",
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 1700000000,
+        "is_remote": 0,
+        "internal_job_code": "Code 17"
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Role 1",
+        "description": "<p>Description 1</p>",
+        "locations": [
+          "Pune, India"
+        ],
+        "date_posted": "2023-11-14",
+        "metadata": {
+          "id": "job0001",
+          "job_code": "Code 17"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "department_name_only-28",
+      "row": {
+        "id": "job0001",
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 1700000000,
+        "is_remote": 0,
+        "department_name_only": "Engineering"
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Role 1",
+        "description": "<p>Description 1</p>",
+        "locations": [
+          "Pune, India"
+        ],
+        "date_posted": "2023-11-14",
+        "metadata": {
+          "id": "job0001",
+          "department": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "experience-29",
+      "row": {
+        "id": "job0001",
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 1700000000,
+        "is_remote": 0,
+        "experience": "3 years"
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Role 1",
+        "description": "<p>Description 1</p>",
+        "locations": [
+          "Pune, India"
+        ],
+        "date_posted": "2023-11-14",
+        "metadata": {
+          "id": "job0001",
+          "experience": "3 years"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "salary_range-30",
+      "row": {
+        "id": "job0001",
+        "title": "Role 1",
+        "jd": "&lt;p&gt;Description 1&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 1700000000,
+        "is_remote": 0,
+        "salary_range": "INR 10-20L"
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0001",
+        "title": "Role 1",
+        "description": "<p>Description 1</p>",
+        "locations": [
+          "Pune, India"
+        ],
+        "date_posted": "2023-11-14",
+        "metadata": {
+          "id": "job0001",
+          "salary_range": "INR 10-20L"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "alternate-title",
+      "row": {
+        "id": "job0002",
+        "title": null,
+        "jd": "&lt;p&gt;Description 2&lt;/p&gt;",
+        "tool_tip_locations": [
+          "Pune, India"
+        ],
+        "posted_on": 1700000000,
+        "is_remote": 0,
+        "designation_display_name": "  Alternative Role  "
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0002",
+        "title": "Alternative Role",
+        "description": "<p>Description 2</p>",
+        "locations": [
+          "Pune, India"
+        ],
+        "date_posted": "2023-11-14",
+        "metadata": {
+          "id": "job0002"
+        }
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "name": "multiple-locations",
+      "row": {
+        "id": "job0003",
+        "title": "Role 3",
+        "jd": "&lt;p&gt;Description 3&lt;/p&gt;",
+        "tool_tip_locations": [],
+        "posted_on": 1700000000,
+        "is_remote": 0,
+        "locations": "Multiple locations"
+      },
+      "expected": {
+        "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job0003",
+        "title": "Role 3",
+        "description": "<p>Description 3</p>",
+        "date_posted": "2023-11-14",
+        "metadata": {
+          "id": "job0003"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "en",
+      "name": "complete",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://joinbytedance.com/search/123",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "en",
+      "name": "id-1",
+      "row": {
+        "id": 123,
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://joinbytedance.com/search/123",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "en",
+      "name": "title-2",
+      "row": {
+        "id": "123",
+        "title": null,
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://joinbytedance.com/search/123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "en",
+      "name": "description-3",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": null,
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://joinbytedance.com/search/123",
+        "title": "Engineer 123",
+        "description": "<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "en",
+      "name": "requirement-4",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": null,
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://joinbytedance.com/search/123",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "en",
+      "name": "city_info-5",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": null,
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://joinbytedance.com/search/123",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "en",
+      "name": "city_info-6",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "Zurich",
+          "parent": {
+            "en_name": "Zurich"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://joinbytedance.com/search/123",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "en",
+      "name": "recruit_type-7",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "name": "Contract"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://joinbytedance.com/search/123",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Contract",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "en",
+      "name": "job_category-8",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": null,
+        "create_time": 1700000000,
+        "job_type": {
+          "name": "Science"
+        }
+      },
+      "expected": {
+        "url": "https://joinbytedance.com/search/123",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Science"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "en",
+      "name": "create_time-9",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": null
+      },
+      "expected": {
+        "url": "https://joinbytedance.com/search/123",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "en",
+      "name": "create_time-10",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": "2024-01-03"
+      },
+      "expected": {
+        "url": "https://joinbytedance.com/search/123",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "2024-01-03",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "en",
+      "name": "create_time-11",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": true
+      },
+      "expected": {
+        "url": "https://joinbytedance.com/search/123",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "True",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "society",
+      "name": "complete",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/experienced/position/123/detail",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "society",
+      "name": "id-1",
+      "row": {
+        "id": 123,
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/experienced/position/123/detail",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "society",
+      "name": "title-2",
+      "row": {
+        "id": "123",
+        "title": null,
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/experienced/position/123/detail",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "society",
+      "name": "description-3",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": null,
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/experienced/position/123/detail",
+        "title": "Engineer 123",
+        "description": "<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "society",
+      "name": "requirement-4",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": null,
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/experienced/position/123/detail",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "society",
+      "name": "city_info-5",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": null,
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/experienced/position/123/detail",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "society",
+      "name": "city_info-6",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "Zurich",
+          "parent": {
+            "en_name": "Zurich"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/experienced/position/123/detail",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "society",
+      "name": "recruit_type-7",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "name": "Contract"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/experienced/position/123/detail",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Contract",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "society",
+      "name": "job_category-8",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": null,
+        "create_time": 1700000000,
+        "job_type": {
+          "name": "Science"
+        }
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/experienced/position/123/detail",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Science"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "society",
+      "name": "create_time-9",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": null
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/experienced/position/123/detail",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "society",
+      "name": "create_time-10",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": "2024-01-03"
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/experienced/position/123/detail",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "2024-01-03",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "society",
+      "name": "create_time-11",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": true
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/experienced/position/123/detail",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "True",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "campus",
+      "name": "complete",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/campus/position/123/detail",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "campus",
+      "name": "id-1",
+      "row": {
+        "id": 123,
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/campus/position/123/detail",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "campus",
+      "name": "title-2",
+      "row": {
+        "id": "123",
+        "title": null,
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/campus/position/123/detail",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "campus",
+      "name": "description-3",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": null,
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/campus/position/123/detail",
+        "title": "Engineer 123",
+        "description": "<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "campus",
+      "name": "requirement-4",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": null,
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/campus/position/123/detail",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "campus",
+      "name": "city_info-5",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": null,
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/campus/position/123/detail",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "campus",
+      "name": "city_info-6",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "Zurich",
+          "parent": {
+            "en_name": "Zurich"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/campus/position/123/detail",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "campus",
+      "name": "recruit_type-7",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "name": "Contract"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": 1700000000
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/campus/position/123/detail",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Contract",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "campus",
+      "name": "job_category-8",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": null,
+        "create_time": 1700000000,
+        "job_type": {
+          "name": "Science"
+        }
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/campus/position/123/detail",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "1700000000",
+        "metadata": {
+          "team": "Science"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "campus",
+      "name": "create_time-9",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": null
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/campus/position/123/detail",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "campus",
+      "name": "create_time-10",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": "2024-01-03"
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/campus/position/123/detail",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "2024-01-03",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "campus",
+      "name": "create_time-11",
+      "row": {
+        "id": "123",
+        "title": "Engineer 123",
+        "description": "Build products",
+        "requirement": "Write reliable software",
+        "city_info": {
+          "en_name": "San Jose",
+          "parent": {
+            "en_name": "California"
+          }
+        },
+        "recruit_type": {
+          "en_name": "Regular"
+        },
+        "job_category": {
+          "en_name": "Engineering"
+        },
+        "create_time": true
+      },
+      "expected": {
+        "url": "https://jobs.bytedance.com/campus/position/123/detail",
+        "title": "Engineer 123",
+        "description": "<h3>Responsibilities</h3>Build products<h3>Requirements</h3>Write reliable software",
+        "locations": [
+          "San Jose, California"
+        ],
+        "employment_type": "Regular",
+        "date_posted": "True",
+        "metadata": {
+          "team": "Engineering"
+        }
+      }
+    }
+  ],
+  "identities": [
+    {
+      "url": "https://airtel.darwinbox.in/ms/candidate/careers",
+      "expected": {
+        "host": "airtel.darwinbox.in",
+        "company_id": "main"
+      }
+    },
+    {
+      "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers",
+      "expected": {
+        "host": "airtel.darwinbox.in",
+        "company_id": "main"
+      }
+    },
+    {
+      "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/job1",
+      "expected": {
+        "host": "airtel.darwinbox.in",
+        "company_id": "main"
+      }
+    },
+    {
+      "url": "https://acme.darwinbox.com/ms/candidate/graduate/careers",
+      "expected": {
+        "host": "acme.darwinbox.com",
+        "company_id": "graduate"
+      }
+    },
+    {
+      "url": "http://airtel.darwinbox.in/ms/candidate/careers",
+      "expected": null
+    },
+    {
+      "url": "https://api.darwinbox.in/ms/candidate/careers",
+      "expected": null
+    },
+    {
+      "url": "https://airtel.darwinbox.in.evil.test/ms/candidate/careers",
+      "expected": null
+    },
+    {
+      "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers?country=in",
+      "expected": null
+    },
+    {
+      "url": "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/bad.id",
+      "expected": null
+    }
+  ],
+  "requests": [
+    {
+      "provider": "bytedance",
+      "portal": "en",
+      "body": {
+        "recruitment_id_list": [],
+        "job_category_id_list": [
+          "rd"
+        ],
+        "subject_id_list": [],
+        "location_code_list": [],
+        "keyword": "",
+        "limit": 1000,
+        "offset": 2000
+      },
+      "headers": {
+        "accept": "application/json, text/plain, */*",
+        "content-type": "application/json",
+        "website-path": "en",
+        "portal-platform": "pc",
+        "x-tt-env": "boe_epam_api"
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "society",
+      "body": {
+        "keyword": "",
+        "limit": 1000,
+        "offset": 2000,
+        "job_category_id_list": [
+          "rd"
+        ],
+        "tag_id_list": [],
+        "location_code_list": [],
+        "subject_id_list": [],
+        "recruitment_id_list": [],
+        "portal_type": 2,
+        "job_function_id_list": [],
+        "storefront_id_list": [],
+        "portal_entrance": 1
+      },
+      "headers": {
+        "accept": "application/json, text/plain, */*",
+        "content-type": "application/json",
+        "website-path": "society",
+        "portal-platform": "pc",
+        "portal-channel": "office"
+      }
+    },
+    {
+      "provider": "bytedance",
+      "portal": "campus",
+      "body": {
+        "keyword": "",
+        "limit": 1000,
+        "offset": 2000,
+        "job_category_id_list": [
+          "rd"
+        ],
+        "tag_id_list": [],
+        "location_code_list": [],
+        "subject_id_list": [],
+        "recruitment_id_list": [],
+        "portal_type": 3,
+        "job_function_id_list": [],
+        "storefront_id_list": [],
+        "portal_entrance": 1
+      },
+      "headers": {
+        "accept": "application/json, text/plain, */*",
+        "content-type": "application/json",
+        "website-path": "campus",
+        "portal-platform": "pc",
+        "portal-channel": "campus"
+      }
+    },
+    {
+      "provider": "darwinbox",
+      "body": {
+        "companyId": "main",
+        "page": 2,
+        "sort_option": "new",
+        "limit": 100
+      },
+      "headers": {
+        "accept": "application/json",
+        "authorization": "undefined",
+        "content-type": "application/json",
+        "x-requested-with": "XMLHttpRequest"
+      }
+    }
+  ],
+  "normalizations": {
+    "&lt;p&gt;Description 1&lt;/p&gt;": "<p>Description 1</p>",
+    "&lt;p&gt;Description 2&lt;/p&gt;": "<p>Description 2</p>",
+    "&lt;p&gt;Description 3&lt;/p&gt;": "<p>Description 3</p>"
+  }
+}

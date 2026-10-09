@@ -34,6 +34,7 @@ type replayCapture struct {
 	mu        sync.Mutex
 	endpoint  *url.URL
 	method    string
+	bodyLimit int
 	pending   map[network.RequestID]replayPending
 	completed chan network.RequestID
 	failure   error
@@ -49,7 +50,7 @@ func newReplayCapture(o api.BrowserReplayOptions) (*replayCapture, error) {
 	if e != nil || endpoint.Host == "" || endpoint.User != nil || endpoint.Scheme != "https" && endpoint.Scheme != "http" || o.Inventory.Method != "GET" && o.Inventory.Method != "POST" {
 		return nil, errReplayCapture
 	}
-	return &replayCapture{endpoint: endpoint, method: o.Inventory.Method, pending: map[network.RequestID]replayPending{}, completed: make(chan network.RequestID, replayCaptureLimit)}, nil
+	return &replayCapture{endpoint: endpoint, method: o.Inventory.Method, bodyLimit: replayBodyLimit(o), pending: map[network.RequestID]replayPending{}, completed: make(chan network.RequestID, replayCaptureLimit)}, nil
 }
 func (c *replayCapture) matches(source, method string) bool {
 	u, e := url.Parse(source)
@@ -120,7 +121,7 @@ func (c *replayCapture) observe(event any) {
 		if !ok || !pending.response {
 			return
 		}
-		if e.EncodedDataLength > replayCaptureBodyLimit {
+		if e.EncodedDataLength > float64(c.bodyLimit) {
 			c.failure = errResourceLimit
 			return
 		}
@@ -171,7 +172,7 @@ func (c *replayCapture) exchanges(ctx context.Context, read func(context.Context
 				continue
 			}
 			bytes += len(body)
-			if len(body) > replayCaptureBodyLimit || bytes > 16*replayCaptureBodyLimit {
+			if len(body) > c.bodyLimit || bytes > 16*c.bodyLimit {
 				return nil, errResourceLimit
 			}
 			var reservation, policyURL *string

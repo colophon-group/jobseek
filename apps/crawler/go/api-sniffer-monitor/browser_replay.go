@@ -48,6 +48,7 @@ func DiscoverBrowserReplay(ctx context.Context, o BrowserReplayOptions, fetch Fe
 // Admission must also require the affine capture/fetch controller; these options
 // alone never authorize a browser profile or replace its legacy owner.
 type BrowserReplayOptions struct {
+	ResponseBodyLimit   int // Fixed native provider factory only; never metadata-controlled.
 	Inventory           Options
 	Wait                string
 	TimeoutMS, SettleMS uint64
