@@ -44,12 +44,20 @@ path was corrected; the independent second cold252 proof passed.
 Ashby, Lever, Recruitee and SmartRecruiters configurations, version **0.13.986**,
 154 compiled profiles. It merged at `b2f5a5b3f74c7393527be0212ec6f89a9c61ddee`
 after fresh exact-head merge authority and the independent outgoing cold252 proof.
-Original immutable crawler and matching renderer deployments are underway. Exact head `4318e9ddbbf93c836475ddafa3340b9d61d347f2` has
+Original immutable crawler and matching renderer deployments completed successfully
+on attempt 1 (runs `37879936584` and `37879995825`). Independent source/image,
+base stack, dark claimant, authority-absence and cold252 verification passed. The
+first verifier refused an administrative container; the second independently
+validated it as the original bounded Go cross-store reconciliation consumer, with
+exact image, command, role, containment, launcher and protected state. No consumer
+was stopped. Source986 remains base cold while the consecutive batches proceed.
+Exact head `4318e9ddbbf93c836475ddafa3340b9d61d347f2` has
 green Required CI `37874687058`, installed-image parity `37874687071` and Crawler
 Deploy Gate `37874685654`. Its initial full native suite failed a stale negative
 Recruitee fixture; a test-only repair explicitly requests unsupported enrichment
-and retains a Pinpoint negative. No runtime guard was weakened. Incoming source/image/whole-stack readiness and renderer proofs remain required
-before fresh B0 and actual-route ordinary admission.
+and retains a Pinpoint negative. No runtime guard was weakened. Incoming readiness and renderer proofs now pass. Activate fresh B0 and actual-route
+ordinary ownership for the combined configuration/provider batches after the next
+qualified source deploys; retain supported quiescence and cold-proof gates.
 
 The next candidate ports **PageUp, Infoniqa, Keka and TurboHire together**, version
 **0.13.987**, six current configurations and 158 compiled profiles. All 55 actual
@@ -64,7 +72,12 @@ pass under race testing. Public replay matches 1,882 jobs on five healthy boards
 with zero field differences, plus the original California PageUp failure. Failure
 parity is not healthy freshness. See the [portable candidate evidence](evidence/go-native-four-portal-http-providers-candidate-2026-10-09.json).
 This candidate has no production authority. It is rebased onto actual merged
-source986; publish its PR and run required CI. Full API-module race testing passed
+source986 and is published as [PR #10374](https://github.com/colophon-group/jobseek/pull/10374).
+Initial installed-image parity passed, but full native CI found a missing PageUp/Infoniqa
+case in the existing shared registry detail test. It compared a zero-value binding.
+The test now invokes actual DOM detail inspectors and proves equal effective board
+SHAs for their first-party routes; focused race tests pass in 1.736 seconds. This
+changes no runtime guards. New exact-head required CI must pass before merge. Full API-module race testing passed
 in 5.482 seconds; the latest core/inventory/transport race suite passed in 4.103
 seconds, including three bounded ten-child completion/reservation/cancellation cases.
 

@@ -123,7 +123,17 @@
     "test_repair": "Original raw monitor HTML omits appended structured extras. The first two real terminal attempts are retained as failures; the fixture now freezes canonical HTML using actual original normalize_description_html and enrich_description outside the monitor exception handler. This correction changed no runtime semantics.",
     "full_api_module_race_seconds": 5.482,
     "turbohire_child_cases": 3,
-    "turbohire_children": "Ten-child bounded batches; completed12, reserved-child cancels and joins first10, cancelled parent joins first10; no failure prefix or second batch."
+    "turbohire_children": "Ten-child bounded batches; completed12, reserved-child cancels and joins first10, cancelled parent joins first10; no failure prefix or second batch.",
+    "initial_ci_failure": {
+      "run": 37880155320,
+      "job": 113657954976,
+      "test": "TestSecondaryProvidersCurrentRegistryConfigurationCoverage",
+      "reason": "The existing shared registry test had no PageUp/Infoniqa detail switch cases, then compared a zero-value detail binding.",
+      "repair": "Add actual PageUp and Infoniqa first-party URL cases through InspectDOMDetail and compare their effective board SHA to the actual monitor profile. No runtime admission or parser guard changed.",
+      "focused_registry_and_portal_race_seconds": 1.736,
+      "full_worker_ci": "initial native job stopped after failed full queue suite; worker CI not yet verified at the repair head",
+      "required_ci": "new exact-head run required"
+    }
   },
   "private_proof_sha256": {
     "native987-portal-http-real-terminal-verified4-2026-10-09.log": "e3c1944f02fd9e280f0d2b6bba5fba34d398d91ab9272edcb13a61151964dc00",
