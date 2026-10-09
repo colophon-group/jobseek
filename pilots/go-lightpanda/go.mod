@@ -6,12 +6,12 @@ require (
 	github.com/chromedp/cdproto v0.0.0-20250724212937-08a3db8b4327
 	github.com/chromedp/chromedp v0.14.2
 	github.com/colophon-group/jobseek/apps/crawler/contracts v0.0.0
+	github.com/colophon-group/jobseek/apps/crawler/go/dom-detail v0.0.0
 	google.golang.org/protobuf v1.36.10
 )
 
 require (
 	github.com/andybalholm/cascadia v1.3.3 // indirect
-	github.com/colophon-group/jobseek/apps/crawler/go/dom-detail v0.0.0 // indirect
 	github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail v0.0.0 // indirect
 	github.com/dlclark/regexp2/v2 v2.8.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect

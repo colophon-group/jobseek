@@ -49,7 +49,12 @@
     "earlier_real_qualification_base": "5b96cd3126c4485b36cecb800e821cb727d0995c",
     "qualification_scope": "Real database/queue proofs precede parent squash rebase, version/docs/test fixtures and fixed-provider response-limit repair. Writer/routing bytes unchanged after real qualification. New SDK/queue/renderer suites and bound regression pass. Exact published-head full native CI remains required.",
     "genuine_lightpanda_cases": 7,
-    "genuine_lightpanda_status": "PENDING physical Linux image CI; local binary-dependent cases skipped"
+    "genuine_lightpanda_status": "PENDING physical Linux image CI; local binary-dependent cases skipped",
+    "full_native_worker_race": "PASS against exclusive synthetic PostgreSQL/Redis",
+    "full_native_worker_race_head": "0e20c9c692a65f5ae8d1d37f095c28ac21957f0b",
+    "full_native_worker_race_wall_seconds": 824.011,
+    "density_race_after_service_test_build_tags": "PASS8.970s",
+    "initial_physical_CI_failure": "Stopped before browser build: direct DOM dependency marked indirect; fixed classification. Local density compile also exposed missing service-only test tags; both repaired. Fresh published-head CI required."
   },
   "primary_public_evidence": {
     "source": "Anonymous original global ByteDance first-page POST; publisher headers/body checked before capture",
@@ -60,7 +65,21 @@
     "response_bytes": 4194874,
     "projected_first_page_bytes": 3401051,
     "required_field_failures": 0,
-    "scope": "First page only; no claim of full public inventory or live Lightpanda success; raw postings retained privately and not committed"
+    "scope": "First page only; no claim of full public inventory or live Lightpanda success; raw postings retained privately and not committed",
+    "complete_inventory_followup": {
+      "total": 1430,
+      "rows": 1430,
+      "requests": 2,
+      "page_bytes": [
+        4195037,
+        1865168
+      ],
+      "projected_inventory_bytes": 4933303,
+      "original_python_field_mismatches": 0,
+      "fits_existing_8MiB_RPC": true,
+      "observed_at_utc": "2026-10-09T18:33:30.661140+00:00",
+      "scope": "Anonymous direct HTTP full inventory replayed through Go pagination and compared with original Python; no real Lightpanda/live serving success claimed"
+    }
   },
   "lightpanda": {
     "latest_stable": "1.0.0",
