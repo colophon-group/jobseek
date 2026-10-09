@@ -3,7 +3,7 @@
   "observed_at_utc": "2026-10-09T01:58:35.827988+00:00",
   "candidate_version": "0.13.986",
   "prototype_parent_review_head": "ac5a99a1c37e4e6d22aa0cccbe8b6b18e340858b",
-  "state": "locally qualified on actual merged source985; publication and exact-head required CI pending",
+  "state": "local qualification passed; initial central CI caught stale tenant rejection expectation; corrected focused cases pass; fresh exact-head CI required",
   "providers": [
     "ashby",
     "lever",
@@ -118,5 +118,12 @@
   ],
   "production_authority": "pending exact-head required CI, immutable deployment and fresh actual-route ownership admission",
   "full_migration_complete": false,
-  "base_source": "bb2dd1236ae1555dfb26b2c703066994dcfc136a"
+  "base_source": "bb2dd1236ae1555dfb26b2c703066994dcfc136a",
+  "initial_ci": {
+    "workflow_run": 37873051903,
+    "native_job": 113635391951,
+    "result": "FAIL TestTenantProfilesRejectUnwiredDetailTransportAndConfiguration: old Recruitee no-enrichment JSON-LD rejection contradicts the intended original rich behavior",
+    "repair": "Retain negative test for unsupported description enrichment, and retain Pinpoint no-enrichment JSON-LD rejection; no runtime guard changed",
+    "full_native_worker_suite": "not reached on initial run because queue test failed"
+  }
 }

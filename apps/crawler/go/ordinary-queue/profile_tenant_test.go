@@ -48,7 +48,8 @@ func TestTenantProfilesRejectUnwiredDetailTransportAndConfiguration(t *testing.T
 		{"recruitee", `{"scraper_type":"skip","api_base":"https://secret@api.example.com"}`},
 		{"recruitee", `{"scraper_type":"skip","api_base":"https://example.com?x=1"}`},
 		{"recruitee", `{"scraper_type":"skip","api_base":"http://example.com"}`},
-		{"recruitee", `{"scraper_type":"json-ld","slug":"fixture"}`},
+		{"pinpoint", `{"scraper_type":"json-ld","slug":"fixture"}`},
+		{"recruitee", `{"scraper_type":"json-ld","slug":"fixture","scraper_config":{"enrich":["description"]}}`},
 		{"recruitee", `{"scraper_type":"skip","slug":"fixture","scraper_config":{"enrich":["description"]}}`},
 	} {
 		config := profileConfig()

@@ -16,13 +16,15 @@ whole-service CPU/RAM/density/attributable cost; and a supported cold reversal
 with its observation window. A merged candidate or synthetic benchmark does
 not complete migration.
 
-## Latest checkpoint — source985 merged; immutable delivery running
+## Latest checkpoint — source985 deployed; fresh B0 activation running
 
 [PR #10372](https://github.com/colophon-group/jobseek/pull/10372) merged with the
 expected review head after fresh required checks and independent outgoing cold250.
 Its source is `bb2dd1236ae1555dfb26b2c703066994dcfc136a`, version **0.13.985**,
 with151 compiled profiles. Original crawler run `37872809888` and matching renderer
-run `37872868680` are queued; production delivery and fresh ownership remain pending.
+run `37872868680` completed successfully on attempt1. Independent incoming cold250
+and renderer source/image proofs passed. Supported B0 selector staging passed and
+fresh activation is running; ordinary ownership has not yet been admitted.
 
 The preceding source984 broad activation and natural observations are retained below.
 
@@ -105,8 +107,8 @@ not healthy inventory or freshness claims. All boards remain enabled.
 
 [PR #10372](https://github.com/colophon-group/jobseek/pull/10372) has green exact-head
 Required CI, Crawler Deploy Gate, installed-image parity and both Lightpanda
-platform checks on `ac5a99a1c37e4e6d22aa0cccbe8b6b18e340858b`. Its expected-head merge passed after the outgoing cold proof; immutable rollout
-and fresh ownership admission are pending.
+platform checks on `ac5a99a1c37e4e6d22aa0cccbe8b6b18e340858b`. Its expected-head merge passed after the outgoing cold proof and both immutable
+rollouts passed. Fresh B0/ordinary ownership admission is pending.
 See [candidate evidence](evidence/go-native-four-http-providers-candidate-2026-10-09.json).
 
 Continue in batches across the remaining enabled DOM/API/RSS controls and
@@ -135,8 +137,10 @@ public same-capture replay matches **149 rich records and17 publication URLs**
 across all six boards with no field differences, including all returned fields
 from the original provider parsers. Canonical persistence and scheduling are
 verified separately by the real fixtures. Focused race checks and both affected
-module vet checks pass. Central full real-fixture CI, immutable delivery and
-fresh ownership are still required.
+module vet checks pass. Central CI caught one stale Recruitee rejection assertion after the queue fixtures
+ran; it now checks explicit unsupported description enrichment while retaining
+Pinpoint's rejected profile. Focused tenant/rich cases pass after the test-only
+repair. Fresh full real-fixture CI, immutable delivery and ownership are required.
 
 See [candidate evidence](evidence/go-native-retained-provider-configs-candidate-2026-10-09.json).
 Batch the remaining enabled common DOM/API/RSS controls and remaining providers;
