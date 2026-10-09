@@ -5,6 +5,8 @@ export async function runCatchupStep(input: {
   watchlistId: string;
   leaseOwner: string;
   demandTargetOffset: number;
+  kind?: "historical" | "freshness";
+  queryVersionId?: string;
 }): Promise<AiFilterCatchupStepResult> {
   "use step";
 

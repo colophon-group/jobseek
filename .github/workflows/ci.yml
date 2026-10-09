@@ -1487,6 +1487,20 @@ jobs:
           pnpm --filter @jobseek/web exec vitest run
           src/lib/services/__tests__/notification-delivery-pg.test.ts
 
+      - name: Verify narrowed refresh host trigger
+        run: |
+          python3 -m unittest discover -s scripts -p 'test_ai_filter_refresh.py'
+          bash -n deploy/ai-filter-refresh/install-host.sh deploy/ai-filter-refresh/deploy-remote.sh
+          systemd-analyze verify deploy/systemd/jobseek-ai-filter-refresh.service deploy/systemd/jobseek-ai-filter-refresh.timer
+
+      - name: Verify narrowed freshness transactions against PostgreSQL
+        env:
+          PGPASSWORD: postgres
+          AI_FILTER_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/jobseek_ai_filter_fixture
+        run: |
+          psql -h 127.0.0.1 -U postgres -c 'CREATE DATABASE jobseek_ai_filter_fixture'
+          pnpm --filter @jobseek/web exec vitest run src/lib/ai-filter/refresh-pg.test.ts
+
       - name: Verify Stripe billing transactions against PostgreSQL
         env:
           PGPASSWORD: postgres

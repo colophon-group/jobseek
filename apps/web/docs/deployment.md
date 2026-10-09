@@ -73,3 +73,26 @@ function getClient() {
 ```
 
 Next.js evaluates server modules during `Collecting page data` at build time. A top-level constructor that requires an API key will crash the build even if the key is set in Vercel — because turbo didn't forward it.
+
+### Continuous narrowed watchlist refresh
+
+Apply `0103_ai_filter_freshness` with the protected routine migration workflow
+before deploying this revision. A dedicated `AI_FILTER_REFRESH_SECRET` protects the
+`/api/internal/ai-filter-refresh` scheduler endpoint; the existing AI switches, credential,
+entitlement, budgets and concurrency limits also gate background execution.
+Enabled saved narrowing requests authorize ongoing matching while owners are away.
+Verify a new eligible job receives a persisted decision without visiting its
+watchlist. Large existing backlogs clear in bounded newest-first batches rather
+than delaying new arrivals behind historical pagination.
+
+Production uses Vercel Hobby. Its cron facility cannot run every minute, so
+`deploy-ai-filter-refresh.yml` installs a minute systemd timer on the existing
+Hetzner crawler host after the web deployment. This uses existing protected SSH credentials and a root-only systemd credential file; it does not
+change plans or restart crawler writers. The manual workflow binds to current
+main, and its host preflight requires the deployed `narrowed-refresh-v1` endpoint.
+
+Before the web deployment, provision one random `AI_FILTER_REFRESH_SECRET` in
+both the production Vercel project and the production GitHub environment. Turbo
+forwards it in both web build tasks. The existing sensitive `CRON_SECRET` cannot
+be read back and is retained for the other internal endpoints. The dedicated
+refresh bearer grants access only to refresh dispatch.
