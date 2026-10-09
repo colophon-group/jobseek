@@ -1011,7 +1011,7 @@ test("Python fleet comparator stays locked to its production authorities", () =>
     /^FROM public\.ecr\.aws\/docker\/library\/(python:[^ ]+@sha256:[0-9a-f]{64}) AS base$/m,
   );
   const comparatorBase = pythonFleetDockerfile.match(
-    /^ARG PYTHON_IMAGE=(python:[^ ]+@sha256:[0-9a-f]{64})$/m,
+    /^ARG PYTHON_IMAGE=public\.ecr\.aws\/docker\/library\/(python:[^ ]+@sha256:[0-9a-f]{64})$/m,
   );
   assert.ok(crawlerBase, "crawler Python base must remain digest-pinned");
   assert.ok(comparatorBase, "comparator Python base must remain digest-pinned");

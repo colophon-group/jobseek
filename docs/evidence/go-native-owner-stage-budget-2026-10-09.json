@@ -159,6 +159,30 @@
       "actionlint": "passed",
       "ruff": "passed",
       "diff_check": "passed"
+    },
+    "sitemap_shadow_mirror": {
+      "observed": "required HTTP sitemap ARM64 shadow build failed at Docker Hub auth504",
+      "compiler_manifest": {
+        "observed_at_utc": "2026-10-09T21:45:02.313150+00:00",
+        "image": "public.ecr.aws/docker/library/golang:1.24.7-alpine3.22",
+        "expected": "sha256:fc2cff6625f3c1c92e6c85938ac5bd09034ad0d4bc2dfb08278020b68540dbb5",
+        "actual": "sha256:fc2cff6625f3c1c92e6c85938ac5bd09034ad0d4bc2dfb08278020b68540dbb5",
+        "status": 200,
+        "identical": true
+      },
+      "change": "preserve all pinned compiler/comparator inputs through official ECR; configure the already pinned builder to consult the Google-managed Docker Hub cache for remaining inputs before its original source",
+      "local_validation": {
+        "workflow_runtime_contract_tests": 125,
+        "density_controller_tests": 89,
+        "actionlint": "passed",
+        "diff_check": "passed"
+      },
+      "physical_preceding_head": {
+        "head": "82f5a4c1c63bdccc021050c71d0ef51b362f16ed",
+        "run": 37994697001,
+        "amd64_and_arm64_pinned_cases": "passed; later density image build failed Docker Hub auth",
+        "scope": "partial prior-head evidence; renew complete exact-head workflow"
+      }
     }
   }
 }

@@ -1,5 +1,11 @@
 # Go and Lightpanda migration delivery plan
 
+Current checkpoint, 2026-10-09: production is source996 (`ce4964b76a76a99cd839b14c3608033846ccf7bd`), version0.13.996, with B0 active at epoch259 and the base fleet healthy. Ordinary Go ownership is absent: full-cohort staging exceeded its15s snapshot budget. [PR#10392](https://github.com/colophon-group/jobseek/pull/10392) delivers the bounded admin-only fix as0.13.997; runtime15s limits remain intact. Real queue/CLI checks pass; exact-head required CI, installed-image parity and both physical Lightpanda architectures remain required. Docker Hub429/auth failures are handled with verified unchanged image digests. Lightpanda1.0.0 is the latest stable release.
+
+The next delivery steps are supported B0 reversal/selector clear and complete cold260 verification, fresh merge authority, original whole crawler/renderer rollout, fresh full admission and activation. Retain the entire7,678-monitor/2,746-detail cohort. Then finish Accenture and BrassRing together (16 boards), followed by remaining DOM/API configurations and provider groups. The source996 census has207 boards outside the ordinary cohort: DOM127, API-sniffer27, the paired providers16 and other types37. These counts include B0-owned boards and cache/route rejections; they are not a missing-engine count. Full conservation/freshness, whole-lane cost, supported reversal and the rollback window still gate retiring production Python/Playwright/Chromium. The goal remains active.
+
+Historical checkpoints follow.
+
 Updated 2026-10-09. Delivery remains the full migration; it is incomplete.
 
 ## Delivery objective
