@@ -53,8 +53,9 @@
       "caller100ms deadline rollsbackplan",
       "originalqueue stateunchanged"
     ],
-    "broader_checks": "fresh full private-PG queue race running with the existing CI20m budget; previous local run reached default10m timeout",
-    "real_cli_race_seconds": 5.036
+    "broader_checks": "full queue race passed with required real PG/Redis; real staging/inspection CLI tests passed; fresh required CI and physical renderer/image checks still required",
+    "real_cli_race_seconds": 5.036,
+    "full_private_pg_queue_race_seconds": 663.428
   },
   "ci_registry_recovery": {
     "observed": "multiple CI fixture initializations and installed-image builds hit Docker Hub unauthenticated pull limits; installed-image retry repeated 429",
@@ -115,6 +116,47 @@
     "local_validation": {
       "workflow_and_runtime_contract_tests": 125,
       "production_image_pin_and_python_base_tests": 5,
+      "ruff": "passed",
+      "diff_check": "passed"
+    },
+    "remaining_image_routes": {
+      "observed": "new head native fixtures initialized and tests executed; Redis persistence one-offs still used Docker Hub, Buildx bootstrap also failed before image build",
+      "builder": {
+        "image": "mirror.gcr.io/moby/buildkit",
+        "requested": "buildx-stable-1",
+        "status": 200,
+        "digest": "sha256:cec9f139f45e93c5c69c60f8b07cfad9f43f4ef6b6a6cd917527fea5ff2e3dea",
+        "is_index": "application/vnd.oci.image.index.v1+json",
+        "identical": null
+      },
+      "renderer_lightpanda": {
+        "image": "mirror.gcr.io/lightpanda/browser",
+        "requested": "sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e",
+        "status": 200,
+        "digest": "sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e",
+        "is_index": "application/vnd.oci.image.index.v1+json",
+        "identical": true
+      },
+      "renderer_debian": {
+        "observed_at_utc": "2026-10-09T21:37:12.456771+00:00",
+        "image": "public.ecr.aws/docker/library/debian",
+        "expected": "sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132",
+        "actual": "sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132",
+        "status": 200,
+        "identical": true
+      },
+      "change": "route persistence one-offs to same Redis pin; pin the observed default buildx-stable-1 bootstrap cache manifest for CI/original rollout workflows; renderer uses identical pinned Go/Debian ECR inputs and unchanged Lightpanda source digest through observed cache",
+      "lightpanda_binary_checks": "existing exact release, architecture and binary hashes remain required"
+    },
+    "final_local_validation": {
+      "workflow_and_runtime_contract_tests": 125,
+      "renderer_deploy_and_image_pin_tests": {
+        "passed": 76,
+        "skipped": 24,
+        "scope": "local contract tests; Docker-only physical cases run in CI"
+      },
+      "release_source_and_architecture_pin_test": "passed",
+      "actionlint": "passed",
       "ruff": "passed",
       "diff_check": "passed"
     }

@@ -1125,3 +1125,13 @@ serves the identical Typesense manifest. Both real native staging/inspection CLI
 tests pass5.036s on a fresh private database. The full queue rerun uses CI's20m
 budget after the first command hit Go's default10m suite limit. Complete fresh
 head CI and installed image parity before supported reversal and merge.
+
+The complete real PostgreSQL/Redis queue race suite passed663.428s with the
+correct20m test budget. Fresh native CI also passes fixture initialization and
+executes queue/worker checks. Its Redis persistence one-offs and Buildx bootstrap
+revealed additional direct Docker Hub pulls. Route the former through the same
+Redis pin and pin the observed default stable builder cache manifest in CI and
+original deploy workflows. Renderer Go/Debian mirrors match their unchanged
+digests; the observed cache serves the exact Lightpanda1.0.0 source digest, with
+original binary/architecture verification intact. Renew fresh head checks and
+physical renderer qualification; no production native-owner change has occurred.

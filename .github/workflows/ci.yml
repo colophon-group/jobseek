@@ -302,6 +302,8 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: image=mirror.gcr.io/moby/buildkit@sha256:cec9f139f45e93c5c69c60f8b07cfad9f43f4ef6b6a6cd917527fea5ff2e3dea
 
       - name: Build ARM64 production shadow image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -445,7 +447,7 @@ jobs:
           docker run --detach --name "$redis_container" \
             --publish 127.0.0.1:6380:6379 \
             --mount "type=volume,source=$redis_volume,target=/data" \
-            redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241 \
+            public.ecr.aws/docker/library/redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241 \
             redis-server --save "" >/dev/null
           wait_for_redis
           LIGHTPANDA_B0_INTEGRATION_REDIS_URL=redis://127.0.0.1:6380/15 \
@@ -455,7 +457,7 @@ jobs:
           docker run --detach --name "$redis_container" \
             --publish 127.0.0.1:6380:6379 \
             --mount "type=volume,source=$redis_volume,target=/data" \
-            redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241 \
+            public.ecr.aws/docker/library/redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241 \
             redis-server --save "" >/dev/null
           wait_for_redis
           LIGHTPANDA_B0_INTEGRATION_REDIS_URL=redis://127.0.0.1:6380/15 \
@@ -774,6 +776,8 @@ jobs:
           echo "base_sha=$parent_one" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: image=mirror.gcr.io/moby/buildkit@sha256:cec9f139f45e93c5c69c60f8b07cfad9f43f4ef6b6a6cd917527fea5ff2e3dea
 
       - name: Guard exact slim image build context
         env:
