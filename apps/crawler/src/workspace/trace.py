@@ -111,6 +111,13 @@ def _decoded_json_scan_texts(value: Any) -> list[str]:
 
     def walk(item: Any) -> None:
         if isinstance(item, str):
+            try:
+                nested = json.loads(item)
+            except json.JSONDecodeError:
+                nested = None
+            if isinstance(nested, dict | list):
+                walk(nested)
+                return
             texts.append(item)
             return
         if isinstance(item, list):
@@ -119,6 +126,8 @@ def _decoded_json_scan_texts(value: Any) -> list[str]:
             return
         if isinstance(item, dict):
             for key, child in item.items():
+                if isinstance(key, str):
+                    texts.append(key)
                 if (
                     isinstance(key, str)
                     and _SENSITIVE_KEY_RE.fullmatch(key)
@@ -139,14 +148,18 @@ def detect_credentials(text: str) -> list[dict[str, int | str]]:
     """
     findings: list[dict[str, int | str]] = []
     seen: set[tuple[str, int]] = set()
-    for line_number, line in enumerate(text.splitlines(), start=1):
+    # Decode complete JSONL records even when a string contains Unicode line
+    # separators, so escaped credential assignments still reach the scanner.
+    for line_number, line in enumerate(text.split("\n"), start=1):
         scan_texts = [line]
         try:
             decoded = json.loads(line)
         except json.JSONDecodeError:
             decoded = None
         if decoded is not None:
-            scan_texts.extend(_decoded_json_scan_texts(decoded))
+            # JSON syntax is not content: an escaped newline plus a URL can
+            # look like a password URL spanning unrelated serialized fields.
+            scan_texts = _decoded_json_scan_texts(decoded)
 
         for scan_text in scan_texts:
             for pattern_name, pattern in _CREDENTIAL_PATTERNS:
@@ -177,6 +190,50 @@ def redact_credentials(text: str) -> tuple[str, list[dict[str, int | str]]]:
     if not findings:
         return text, []
 
+    # Redact decoded values, then serialize again. Substituting over serialized
+    # JSON can consume quotes, escapes or later records (notably an incomplete
+    # PEM block), leaving a payload that passes scanning but cannot be parsed.
+    lines = text.split("\n")
+    try:
+        records = [json.loads(line) if line.strip() else None for line in lines]
+    except json.JSONDecodeError:
+        return _redact_plain_text(text), findings
+    redacted_lines = [
+        json.dumps(_redact_json_value(record), ensure_ascii=False) if line.strip() else ""
+        for line, record in zip(lines, records, strict=True)
+    ]
+    return "\n".join(redacted_lines), findings
+
+
+def _redact_json_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        cleaned = {}
+        for key, child in value.items():
+            if (
+                _SENSITIVE_KEY_RE.fullmatch(key)
+                and isinstance(child, str | int | float | bool)
+                and len(_sensitive_assignment_value(str(child))) >= 8
+                and _sensitive_assignment_value(str(child)).lower() not in _TOKEN_PLACEHOLDERS
+            ):
+                cleaned[key] = _REDACTED_CREDENTIAL
+            else:
+                cleaned[key] = _redact_json_value(child)
+        return cleaned
+    if isinstance(value, list):
+        return [_redact_json_value(child) for child in value]
+    if isinstance(value, str):
+        try:
+            nested = json.loads(value)
+        except json.JSONDecodeError:
+            nested = None
+        if isinstance(nested, dict | list):
+            return json.dumps(_redact_json_value(nested), ensure_ascii=False)
+        return _redact_plain_text(value)
+    return value
+
+
+def _redact_plain_text(text: str) -> str:
+
     # Remove the complete PEM payload, not merely the detector's header
     # anchor. The expression also handles an incomplete block by consuming to
     # the end of the projected string.
@@ -200,7 +257,7 @@ def redact_credentials(text: str) -> tuple[str, list[dict[str, int | str]]]:
 
         redacted = pattern.sub(_redact_assignment, redacted)
 
-    return redacted, findings
+    return redacted
 
 
 def _slug_pattern(slug: str) -> str:

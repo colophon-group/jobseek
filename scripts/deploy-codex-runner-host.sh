@@ -549,6 +549,10 @@ main() {
   ensure_document_extraction_runtime
   update_repo
   sync_crawler_runtime
+  # Recover the old shared-home smoke traces under the held deployment lock,
+  # preserving their original bytes and hash manifests outside the session store.
+  as_runner "${REPO_DIR}/apps/crawler/.venv/bin/python" \
+    "${REPO_DIR}/scripts/codex-agent-smoke.py" --archive-legacy-sessions
   ensure_codex_cli
   install_privileged_runtime
   install_maintenance_contract

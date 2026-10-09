@@ -281,6 +281,18 @@ def test_downloaded_bundle_validation_is_strict(tmp_path: Path) -> None:
         _validate_downloaded_bundle_file(invalid_manifest, "manifest.json")
 
 
+@pytest.mark.parametrize("separator", ["\u0085", "\u2028", "\u2029"])
+def test_jsonl_preserves_unicode_separators_in_record_content(
+    tmp_path: Path, separator: str
+) -> None:
+    path = tmp_path / "trajectory.jsonl"
+    records = [{"text": f"before{separator}after"}, {"text": "second record"}]
+    path.write_text("".join(json.dumps(record, ensure_ascii=False) + "\n" for record in records))
+
+    assert _read_jsonl(path) == (records, 0, 0)
+    _validate_downloaded_bundle_file(path, "trajectory.jsonl")
+
+
 def test_batch_delete_patterns_are_scoped_to_current_runs(tmp_path: Path) -> None:
     upload_root = tmp_path / "upload"
     (upload_root / "gold" / "run-1").mkdir(parents=True)

@@ -196,7 +196,9 @@ def _read_jsonl(path: Path) -> tuple[list[dict[str, Any]], int, int]:
     records: list[dict[str, Any]] = []
     invalid = 0
     recovered = 0
-    lines = path.read_text(errors="replace").splitlines()
+    # JSONL records are separated by LF. Unicode separators inside JSON strings
+    # are valid content and must survive projection without newline recovery.
+    lines = path.read_text(errors="replace").split("\n")
     index = 0
     while index < len(lines):
         line = lines[index]
@@ -1440,7 +1442,7 @@ def prune_hf_dataset_cache(
 def _validate_downloaded_bundle_file(path: Path, relative_path: str) -> None:
     """Validate the downloaded representation, not only its checksum."""
     if relative_path.endswith(".jsonl"):
-        for line_number, line in enumerate(path.read_text(errors="strict").splitlines(), start=1):
+        for line_number, line in enumerate(path.read_text(errors="strict").split("\n"), start=1):
             if not line.strip():
                 continue
             try:
