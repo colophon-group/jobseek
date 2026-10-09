@@ -16,7 +16,8 @@ func TestRealOwnedConfiguredAPIWritesRichContentAndConservesQueue(t *testing.T) 
 func TestRealProxyConfiguredAPIWritesRichContentAndConservesQueue(t *testing.T) {
 	realAPIRichTransportCases(t, true)
 }
-func realAPIRichTransportCases(t *testing.T, proxy bool) {
+func realAPIRichTransportCases(t *testing.T, proxy bool, annotations ...bool) {
+	annotated := len(annotations) > 0 && annotations[0]
 	for _, method := range []string{"GET", "POST"} {
 		t.Run(method, func(t *testing.T) {
 			metadata := map[string]any{"api_url": "https://example.com/api?page=1", "method": method, "json_path": "jobs", "url_field": "url", "fields": map[string]any{"title": "name", "description": "body", "locations": "city", "employment_type": "employment", "job_location_type": "workplace", "skills": "skills", "responsibilities": "tasks"}, "scraper_type": "json-ld", "request_headers": map[string]any{"X-Required": "fixture"}, "pagination": map[string]any{"param_name": "page", "start_value": 1, "max_pages": 2}}
@@ -29,7 +30,7 @@ func realAPIRichTransportCases(t *testing.T, proxy bool) {
 				metadata["proxy"] = true
 			}
 			raw, _ := json.Marshal(metadata)
-			f := privateRichPipelineFixture(t, "api_sniffer", string(raw))
+			f := privateRichPipelineFixture(t, "api_sniffer", sharedAnnotationFixtureMetadata(t, string(raw), annotated))
 			ctx := context.Background()
 			claim, circuits := claimFixture(t, f)
 			preparer := richPipelinePreparer(t, f)
@@ -87,7 +88,8 @@ func TestRealOwnedConfiguredAPIFailurePolicyAndTotalGapProtectExistingJobs(t *te
 func TestRealProxyConfiguredAPIFailurePolicyAndTotalGapProtectExistingJobs(t *testing.T) {
 	realAPIFailureTransportCases(t, true)
 }
-func realAPIFailureTransportCases(t *testing.T, proxy bool) {
+func realAPIFailureTransportCases(t *testing.T, proxy bool, annotations ...bool) {
+	annotated := len(annotations) > 0 && annotations[0]
 	for _, mode := range []string{"later503", "laterMalformed", "laterReserved", "probeReserved", "totalGap", "cap", "first404"} {
 		t.Run(mode, func(t *testing.T) {
 			endpoint := "https://example.com/api?page=1"
@@ -102,7 +104,7 @@ func realAPIFailureTransportCases(t *testing.T, proxy bool) {
 				metadata["proxy"] = true
 			}
 			raw, _ := json.Marshal(metadata)
-			f := privateRichPipelineFixture(t, "api_sniffer", string(raw))
+			f := privateRichPipelineFixture(t, "api_sniffer", sharedAnnotationFixtureMetadata(t, string(raw), annotated))
 			ctx := context.Background()
 			claim, circuits := claimFixture(t, f)
 			calls := 0

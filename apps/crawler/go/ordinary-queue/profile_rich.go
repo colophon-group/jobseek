@@ -188,7 +188,14 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 	default:
 		return nil, ErrUnsupportedProfile
 	}
-	return profileMetadataFields(config["metadata"], allowed)
+	if sharedServiceAnnotationProvider(config["crawler_type"]) {
+		allowed["defaults"], allowed["rescrape_policy"] = true, true
+	}
+	md, err := profileMetadataFields(config["metadata"], allowed)
+	if err == nil && sharedServiceAnnotationProvider(config["crawler_type"]) {
+		err = validateSharedServiceAnnotations(md)
+	}
+	return md, err
 }
 
 // InspectRichMonitor admits only the existing complete API/skip contracts.

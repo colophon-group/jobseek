@@ -1,0 +1,90 @@
+{
+  "schema": "jobseek.go-migration-candidate/v1",
+  "observed_at_utc": "2026-10-09T04:28:08.492540+00:00",
+  "candidate_version": "0.13.988",
+  "prototype_parent_review_head": "7ee22107d0e75b49bcc8f92a69e13a1bd8ec6802",
+  "state": "local qualification passed; full exact-head CI, immutable deployment and fresh canonical-route ownership admission pending",
+  "providers": [
+    "dom",
+    "api_sniffer",
+    "sitemap"
+  ],
+  "compiled_profiles": 158,
+  "current_registry_configurations": 7,
+  "behavior": [
+    "Retain original root defaults annotations without applying them to monitor extraction; independent scraper defaults remain unchanged.",
+    "Admit only the original never rescrape policy, retaining complete immutable board binding. Existing canonical success SQL suppresses future scrapes; first and relisted jobs retain detail work.",
+    "Correct browser API replay without a declared field map to original URL-only discovery. HTTP automatic field mapping is unchanged."
+  ],
+  "local_proofs": {
+    "actual_original_current_config_outputs": 7,
+    "real_sql_redis_direct_and_authenticated_proxy_terminal_cases": 36,
+    "supported_cold_retirement_cases": 15,
+    "never_first_relisted_and_successful_detail_cases": 4,
+    "browser_rpc_inventory_first_and_relisted_detail_cases": 2,
+    "api_full_race": "PASS6.102s",
+    "browser_focused_race": "PASS1.376s",
+    "queue_registry_and_guard_focused_race": "PASS2.047s",
+    "worker_original_and_public_same_capture_race": "PASS2.532s",
+    "affected_three_module_vet": "PASS",
+    "full_local_queue_worker_suites": "not run; mandatory central CI remains required",
+    "real_executable_startup": "PASS; actual158 compiled profiles and version0.13.988"
+  },
+  "public_same_capture": {
+    "healthy_boards": 5,
+    "raw_monitor_urls_and_records": 1932,
+    "field_and_request_shape_differences": 0,
+    "scope": "Original monitor outputs before downstream URL filters; raw sitemap counts are not canonical posting counts. Empty extras/metadata map equivalent to absent. Browser Uber and required-proxy Unitree have original synthetic and real transport/queue proof only; no public natural freshness claimed.",
+    "boards": [
+      {
+        "name": "citadel-securities-global",
+        "status": "complete",
+        "jobs": 82,
+        "requests": 1,
+        "proof": "native988-shared-annotations-public-citadel-securities-global-initial1-2026-10-09.json"
+      },
+      {
+        "name": "cyberbit-rangeforce-bamboohr",
+        "status": "complete",
+        "jobs": 1,
+        "requests": 1,
+        "proof": "native988-shared-annotations-public-cyberbit-rangeforce-bamboohr-initial1-2026-10-09.json"
+      },
+      {
+        "name": "molecubes-careers",
+        "status": "complete",
+        "jobs": 1,
+        "requests": 1,
+        "proof": "native988-shared-annotations-public-molecubes-careers-initial1-2026-10-09.json"
+      },
+      {
+        "name": "mutable-tactics-careers-ef",
+        "status": "complete",
+        "jobs": 1683,
+        "requests": 1,
+        "proof": "native988-shared-annotations-public-mutable-tactics-careers-ef-initial1-2026-10-09.json"
+      },
+      {
+        "name": "sophia-genetics-careers",
+        "status": "complete",
+        "jobs": 165,
+        "requests": 1,
+        "proof": "native988-shared-annotations-public-sophia-genetics-careers-initial1-2026-10-09.json"
+      }
+    ]
+  },
+  "private_proof_sha256": {
+    "native988-shared-annotations-real-terminal-verified1-2026-10-09.log": "72ce35fa6d688caa6e7500389a5c56a5204cf285394672d56780f465b9244c87",
+    "native988-shared-annotations-real-cold-verified2-2026-10-09.log": "a02c53ac968f03203c471990fbfc0736e8d40c931e88077d5e02e6e09674cd1d",
+    "native988-shared-annotations-real-never-verified2-2026-10-09.log": "98173ff732a20f38412758011150a5f498077f03f383b4f04e9412859c499e22",
+    "native988-shared-annotations-real-browser-verified5-2026-10-09.log": "818fbf10149af122d2bd927673c1bed2e98c53c93d84e36ecea0fecf136cab40",
+    "native988-shared-annotations-real-startup-verified6-2026-10-09.log": "21e4df9d50d481cc8d3328dadf90306634ad912848a2549e354a653db45fe78f"
+  },
+  "limitations": [
+    "Root annotation admission does not qualify unsupported independent scraper settings.",
+    "Source987 merged after green Required CI, deployment gate and installed-image parity. Original immutable crawler and matching renderer rollout are underway; production native ownership remains absent at cold252.",
+    "Every production Python consumer, remaining unsupported configuration, full natural freshness/conservation/cost and supported reversal/window must still be replaced or proven before final retirement."
+  ],
+  "full_migration_complete": false,
+  "candidate_base_revision": "a9e2f4cb20c6d9bd5a26ef7c515127cd06cd654b"
+}

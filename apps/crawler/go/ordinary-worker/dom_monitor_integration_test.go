@@ -15,10 +15,11 @@ func TestRealOwnedDOMCompleteInventoryRetryGoneAndPolicy(t *testing.T) {
 func TestRealProxyDOMCompleteInventoryRetryGoneAndPolicy(t *testing.T) {
 	realDOMTransportCases(t, true)
 }
-func realDOMTransportCases(t *testing.T, proxy bool) {
+func realDOMTransportCases(t *testing.T, proxy bool, annotations ...bool) {
+	annotated := len(annotations) > 0 && annotations[0]
 	for _, mode := range []string{"success", "retry429", "empty", "retry403", "gone404", "gone410", "challenge", "header", "meta", "redirect_header"} {
 		t.Run(mode, func(t *testing.T) {
-			f := privateRichPipelineFixture(t, "dom", proxyFixtureMetadata(t, `{"url_filter":{"include":"/jobs/\\w+","exclude":"intern"},"scraper_type":"json-ld"}`, proxy))
+			f := privateRichPipelineFixture(t, "dom", proxyFixtureMetadata(t, sharedAnnotationFixtureMetadata(t, `{"url_filter":{"include":"/jobs/\\w+","exclude":"intern"},"scraper_type":"json-ld"}`, annotated), proxy))
 			ctx := context.Background()
 			if _, err := f.pg.Exec(ctx, "UPDATE job_posting SET missing_count=3 WHERE id=$1::uuid", f.original); err != nil {
 				t.Fatal(err)

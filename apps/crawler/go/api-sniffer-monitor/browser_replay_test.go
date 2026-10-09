@@ -183,3 +183,24 @@ func TestBrowserReplayPaginationCapsMatchPython(t *testing.T) {
 		}
 	}
 }
+
+func TestBrowserReplayUndeclaredFieldsRetainOriginalURLOnlyInventory(t *testing.T) {
+	for _, explicit := range []bool{false, true} {
+		t.Run(fmt.Sprint(explicit), func(t *testing.T) {
+			raw := `{"browser":true,"api_url":"https://example.com/api","json_path":"jobs","url_field":"url","rescrape_policy":"never","defaults":{"title":"must not replace source"}}`
+			if explicit {
+				raw = strings.TrimSuffix(raw, "}") + `,"fields":{"title":"title"}}`
+			}
+			o, e := BrowserReplayOptionsFromMetadata("https://example.com/careers", raw)
+			if e != nil || o.Inventory.AutoFields {
+				t.Fatal("browser inferred fields", e)
+			}
+			result, e := DiscoverBrowserReplay(context.Background(), o, func(context.Context, Request) (*Document, error) {
+				return Decode([]byte(`{"jobs":[{"url":"https://example.com/jobs/1","title":"Actual title"}]}`))
+			}, func(_, reference string) (string, error) { return reference, nil }, false)
+			if e != nil || len(result.Jobs) != 1 || result.URLOnly == explicit || explicit && (result.Jobs[0].Title != "Actual title") || !explicit && result.Jobs[0].Title != nil {
+				t.Fatal("original declared-field behavior changed", e, result)
+			}
+		})
+	}
+}

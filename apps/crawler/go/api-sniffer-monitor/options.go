@@ -41,7 +41,7 @@ type Options struct {
 	Enrichment                             []string
 }
 
-var ConfigKeys = []string{"api_url", "method", "json_path", "json_path_values", "total_path", "url_field", "url_template", "url_template_fields", "fields", "params", "post_data", "post_body", "request_headers", "headers", "pagination", "max_items", "transient_403", "transport_attempts", "browser", "render", "proxy", "skip_ssl", "ssl_verify", "wait", "timeout", "settle", "items", "score", "total", "empty_response", "item_filter", "url_filter", "resource_policy", "url_regex", "url_allowlist"}
+var ConfigKeys = []string{"api_url", "method", "json_path", "json_path_values", "total_path", "url_field", "url_template", "url_template_fields", "fields", "params", "post_data", "post_body", "request_headers", "headers", "pagination", "max_items", "transient_403", "transport_attempts", "browser", "render", "proxy", "skip_ssl", "ssl_verify", "wait", "timeout", "settle", "items", "score", "total", "empty_response", "item_filter", "url_filter", "resource_policy", "url_regex", "url_allowlist", "defaults", "rescrape_policy"}
 
 // Explicit HTTP configurations share the production client and the original
 // inventory writer. Browser captures, rotating auth, provider-specific filters
@@ -67,6 +67,17 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 		if !allowed[k] {
 			return o, ErrOptions
 		}
+	}
+	// Root defaults are retained annotations in the original API monitor,
+	// distinct from field-expression defaults. Detail scheduling owns the
+	// canonical rescrape policy; these values do not alter API requests/fields.
+	if value, present := m["defaults"]; present {
+		if _, ok := value.(map[string]any); !ok {
+			return o, ErrOptions
+		}
+	}
+	if value, present := m["rescrape_policy"]; present && value != "never" {
+		return o, ErrOptions
 	}
 	if value, exists := m["empty_response"]; exists && value != nil {
 		o.EmptyResponse, err = emptyResponseOptions(value)

@@ -32,13 +32,16 @@ func DiscoverBrowserReplay(ctx context.Context, o BrowserReplayOptions, fetch Fe
 		inventory.Pagination = &pagination
 	}
 	initial := true
-	return Discover(ctx, inventory, func(call context.Context, request Request) (*Document, error) {
+	result, failure := Discover(ctx, inventory, func(call context.Context, request Request) (*Document, error) {
 		if initial {
 			initial = false
 			return first, nil
 		}
 		return fetch(call, request)
 	}, join)
+	// Original browser replay returns URLs when fields are not declared.
+	result.URLOnly = len(o.Inventory.Fields) == 0
+	return result, failure
 }
 
 // BrowserReplayOptions retains the existing inventory parser and page requests.
@@ -102,6 +105,9 @@ func BrowserReplayOptionsFromMetadata(boardURL, raw string) (BrowserReplayOption
 	if e != nil {
 		return o, e
 	}
+	// HTTP discovery infers fields; original browser replay only uses an
+	// explicit field map. Preserve URL-only inventory and detail scheduling.
+	o.Inventory.AutoFields = false
 	if o.Inventory.HTML {
 		// HTML browser interception has a different original traversal contract.
 		return o, ErrOptions

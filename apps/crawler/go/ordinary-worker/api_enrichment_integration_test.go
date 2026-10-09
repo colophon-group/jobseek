@@ -9,6 +9,10 @@ import (
 )
 
 func TestRealConfiguredAPIEnrichmentSchedulesDetailsAndPreservesScrapedContent(t *testing.T) {
+	realAPIEnrichmentTransportCases(t, false)
+}
+
+func realAPIEnrichmentTransportCases(t *testing.T, annotated bool) {
 	for _, mode := range []string{"new", "touched", "relisted"} {
 		t.Run(mode, func(t *testing.T) {
 			md := map[string]any{"api_url": "https://example.com/api", "json_path": "jobs", "url_field": "url", "fields": map[string]any{"title": "name", "description": "body"}, "scraper_type": "json-ld", "scraper_config": map[string]any{"enrich": []string{"description"}}}
@@ -16,7 +20,7 @@ func TestRealConfiguredAPIEnrichmentSchedulesDetailsAndPreservesScrapedContent(t
 			if e != nil {
 				t.Fatal(e)
 			}
-			f := privateRichPipelineFixture(t, "api_sniffer", string(raw))
+			f := privateRichPipelineFixture(t, "api_sniffer", sharedAnnotationFixtureMetadata(t, string(raw), annotated))
 			ctx := context.Background()
 			source := "https://example.com/job/" + f.company + "/delegated"
 			if mode != "new" {

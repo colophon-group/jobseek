@@ -16,7 +16,33 @@ whole-service CPU/RAM/density/attributable cost; and a supported cold reversal
 with its observation window. A merged candidate or synthetic benchmark does
 not complete migration.
 
-## Latest checkpoint — source986 merged; four-provider source987 qualified
+## Next grouped candidate — shared DOM, API and sitemap service annotations
+
+Candidate **0.13.988** qualifies seven current configurations across **DOM,
+API and sitemap** using the existing 158 compiled profiles. Root `defaults`
+remain original monitor annotations, distinct from independent scraper defaults;
+`rescrape_policy` admits only `never`. Both stay in immutable configuration
+bindings. Existing canonical detail-success SQL removes future work after success,
+while first and relisted jobs retain their detail schedules.
+
+The original browser oracle exposed an existing replay mismatch: fieldless browser
+API configurations inferred fields in Go, whereas Python returns URLs. This batch
+preserves original URL-only discovery and its detail scheduling; HTTP automatic
+mapping and explicitly declared browser fields keep their original behavior.
+
+Seven current original Python monitor oracles, all registry bindings and rejection
+guards pass. Real SQL/Redis proof covers 36 direct/authenticated-proxy terminal
+cases, 15 supported cold-retirement cases, four first/relisted/successful-detail
+policy cases and two browser RPC inventory/detail scheduling cases. Five healthy
+public captures match 1,932 raw monitor URLs/records before downstream filters,
+with no field or request-shape differences. Those raw sitemap totals are not
+posting counts. Uber browser and Unitree required-proxy qualification uses original
+synthetic and real runtime transport/queue proof; no public natural freshness is
+claimed. API full race, focused queue/worker/browser race and three module vet
+checks pass. Full exact-head CI, immutable deployment and fresh canonical-route
+ownership admission remain pending. See the [candidate evidence](evidence/go-native-shared-service-annotations-candidate-2026-10-09.json).
+
+## Latest checkpoint — source987 merged; shared three-type source988 qualified
 
 [PR #10372](https://github.com/colophon-group/jobseek/pull/10372) merged with
 fresh required checks and independent outgoing cold250. Source
@@ -59,7 +85,7 @@ and retains a Pinpoint negative. No runtime guard was weakened. Incoming readine
 ordinary ownership for the combined configuration/provider batches after the next
 qualified source deploys; retain supported quiescence and cold-proof gates.
 
-The next candidate ports **PageUp, Infoniqa, Keka and TurboHire together**, version
+The merged source987 ports **PageUp, Infoniqa, Keka and TurboHire together**, version
 **0.13.987**, six current configurations and 158 compiled profiles. All 55 actual
 original core cases and 26 inventory/failure replays pass. Real SQL/Redis proof
 covers 17 terminal cases, including PageUp's 500-job retained failure prefix and
@@ -86,6 +112,16 @@ The newest published stable Lightpanda release was rechecked on 2026-10-09:
 image and upstream digest. Remaining enabled configuration coverage, mandatory
 runtime/maintenance consumers, whole-lane freshness/conservation/cost, the reversal
 observation window and Python/Playwright/Chromium retirement remain open.
+
+Exact source987 head `7ee22107d0e75b49bcc8f92a69e13a1bd8ec6802` now has
+green full CI `37881786339`, installed-image parity `37881786338` and actual
+deployment gate `37881784758`. Fresh source986 cold252 and head/base-bound
+merge authority passed. PR #10374 merged at
+`a9e2f4cb20c6d9bd5a26ef7c515127cd06cd654b`. Original crawler rollout
+`37884037001` and its guarded matching renderer dispatch are underway.
+Native ownership remains absent. Admit and activate the next combined batch only
+after the original browser replay parity correction in source988 is deployed;
+retain complete supported cutover and incoming independent verification.
 
 The preceding source984 broad activation and natural observations are retained below.
 
