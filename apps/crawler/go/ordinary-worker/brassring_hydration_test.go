@@ -73,7 +73,7 @@ func TestBrassRingHydrationCannotPublishIncompleteOrForeignDetails(t *testing.T)
 			}
 			if mode == "reserved" {
 				var reserved *policy.Reservation
-				if !errors.As(err, &reserved) {
+				if !errors.As(err, &reserved) || got.Response == nil || !got.Response.reserved || got.Response.finalURL != reserved.URL {
 					t.Fatal("publisher reservation lost", err)
 				}
 			}

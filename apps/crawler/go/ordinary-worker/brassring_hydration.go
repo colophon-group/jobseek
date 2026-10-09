@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -9,6 +10,7 @@ import (
 
 	api "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
+	policy "github.com/colophon-group/jobseek/apps/crawler/go/publisher-policy"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -60,10 +62,12 @@ func hydrateBrassRingSnapshot(ctx context.Context, client *http.Client, board st
 	snapshot.Jobs = append([]RichMonitorJob(nil), snapshot.Jobs...)
 	group, call := errgroup.WithContext(ctx)
 	group.SetLimit(8)
+	observations := make([]*GreenhouseResponse, len(snapshot.Jobs))
 	for _, i := range missing {
 		group.Go(func() error {
 			job := &snapshot.Jobs[i]
-			body, _, err := fetchProviderResource(call, &op, scope, job.URL, nil, nil, 16<<20)
+			body, observed, err := fetchProviderResource(call, &op, scope, job.URL, nil, nil, 16<<20)
+			observations[i] = observed
 			if err != nil {
 				return err
 			}
@@ -72,6 +76,15 @@ func hydrateBrassRingSnapshot(ctx context.Context, client *http.Client, board st
 		})
 	}
 	if err := group.Wait(); err != nil {
+		var reserved *policy.Reservation
+		if errors.As(err, &reserved) {
+			for _, observed := range observations {
+				if observed != nil && observed.reserved && observed.finalURL == reserved.URL {
+					empty.Response = observed
+					break
+				}
+			}
+		}
 		return empty, err
 	}
 	if ctx.Err() != nil {

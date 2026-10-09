@@ -15,8 +15,8 @@ import (
 
 func TestRealNativeBrowserProviderCanonicalSettlement(t *testing.T) {
 	for _, provider := range []string{"darwinbox", "bytedance", "brassring"} {
-		for _, mode := range []string{"complete", "truncated", "partial", "reserved", "failed", "wrong-binding", "gone", "hydration-failed"} {
-			if provider != "darwinbox" && (mode == "partial" || mode == "gone") || provider != "brassring" && mode == "hydration-failed" {
+		for _, mode := range []string{"complete", "truncated", "partial", "reserved", "failed", "wrong-binding", "gone", "hydration-failed", "hydration-reserved"} {
+			if provider != "darwinbox" && (mode == "partial" || mode == "gone") || provider != "brassring" && (mode == "hydration-failed" || mode == "hydration-reserved") {
 				continue
 			}
 			t.Run(provider+"/"+mode, func(t *testing.T) {
@@ -42,6 +42,11 @@ func TestRealNativeBrowserProviderCanonicalSettlement(t *testing.T) {
 					}
 					if mode == "hydration-failed" {
 						fmt.Fprint(w, "<html>Missing preload</html>")
+						return
+					}
+					if mode == "hydration-reserved" {
+						w.Header().Set("TDM-Reservation", "1")
+						fmt.Fprint(w, "unparseable reserved detail")
 						return
 					}
 					body, _ := json.Marshal(map[string]any{"JobId": "1", "Jobdetails": map[string]any{"JobDetailQuestions": []map[string]string{{"VerityZone": "formtext8", "AnswerValue": "Zurich"}}}})
@@ -119,7 +124,7 @@ func TestRealNativeBrowserProviderCanonicalSettlement(t *testing.T) {
 					if inserted != 0 {
 						t.Fatal("failed inventory wrote jobs")
 					}
-					if mode == "reserved" && (!reserved || failures != 0) {
+					if (mode == "reserved" || mode == "hydration-reserved") && (!reserved || failures != 0) {
 						t.Fatal("publisher outcome changed")
 					}
 					if (mode == "failed" || mode == "wrong-binding" || mode == "hydration-failed") && (failures != 1 || missing != 0) {
