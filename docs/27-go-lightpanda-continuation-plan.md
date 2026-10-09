@@ -1365,3 +1365,22 @@ Supported B0 reversal/cold260 precedes merge and original full rollout. This
 paired prototype's earlier997 reservation is superseded: rebase and bump to the
 actual next version after that delivery. Finish both Accenture/BrassRing browser
 drivers, worker profiles and settlement together. Full migration remains active.
+
+
+Eight additional configured Accenture findjobs sites (AU/CA/CH/DE/GB/IT/JP/SG)
+now have complete anonymous public snapshots. All1,726 jobs match every original
+Python field and all eight requests exactly in the pure Go collector. Each full
+projection fits the existing8MiB frame; GB is largest at2,079,428 bytes. Together
+with US this establishes nine complete public snapshots and2,678 matching jobs.
+Prefer proven Go HTTP/API for these fixed findjobs variants. India completeness
+and the BR/FR captured-jobsearch variants remain unproved; those qualifications
+and original BrassRing UI/network capture still gate the combined delivery.
+
+The ADM BrassRing public UI exposes556 results over12 pages. Search control
+`clearResumeJobsBtn`, sort control`sortBy-button`, the second alphabetical option
+and committed page2 (`.pagewise-pagination[aria-current="page"]`) were observed
+in a generic browser. The temporary tab was closed. This is UI control evidence,
+not network inventory, Lightpanda, writer or serving proof. PR#10392 latest head
+55638c07746d8d22001f9105c055792b56484272 now passes full physical Lightpanda on
+both architectures and installed-image parity. Required native CI is still
+finishing; production remains source996/B0active259 before supported handoff.

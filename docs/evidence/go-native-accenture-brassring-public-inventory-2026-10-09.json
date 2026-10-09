@@ -46,10 +46,110 @@
     "no physical renderer, writer or serving authority claim"
   ],
   "next_steps": [
-    "finish both original held-session capture/UI drivers together",
+    "qualify India completeness and both captured-jobsearch variants; use proven Go HTTP/API where possible and finish the original BrassRing held-session UI driver",
     "bind both providers to ordinary profiles and rich writer",
     "exercise real terminal/cold settlement and physical pinned-Lightpanda cases",
     "rebase onto the deployed administrative fix and reserve actual next VERSION",
     "publish both providers together through required checks and original whole rollout"
-  ]
+  ],
+  "additional_eight_complete_snapshots": {
+    "jobs": 1726,
+    "results": [
+      {
+        "complete_inventory_projected_bytes": 1538845,
+        "fits_existing_8MiB_frame": true,
+        "jobs": 275,
+        "original_field_mismatches": 0,
+        "original_request_mismatches": 0,
+        "requests": 1,
+        "slug": "accenture-careers-au"
+      },
+      {
+        "complete_inventory_projected_bytes": 1164302,
+        "fits_existing_8MiB_frame": true,
+        "jobs": 212,
+        "original_field_mismatches": 0,
+        "original_request_mismatches": 0,
+        "requests": 1,
+        "slug": "accenture-careers-ca"
+      },
+      {
+        "complete_inventory_projected_bytes": 71105,
+        "fits_existing_8MiB_frame": true,
+        "jobs": 22,
+        "original_field_mismatches": 0,
+        "original_request_mismatches": 0,
+        "requests": 1,
+        "slug": "accenture-careers-ch"
+      },
+      {
+        "complete_inventory_projected_bytes": 802724,
+        "fits_existing_8MiB_frame": true,
+        "jobs": 230,
+        "original_field_mismatches": 0,
+        "original_request_mismatches": 0,
+        "requests": 1,
+        "slug": "accenture-careers-de"
+      },
+      {
+        "complete_inventory_projected_bytes": 2079428,
+        "fits_existing_8MiB_frame": true,
+        "jobs": 352,
+        "original_field_mismatches": 0,
+        "original_request_mismatches": 0,
+        "requests": 1,
+        "slug": "accenture-careers-gb"
+      },
+      {
+        "complete_inventory_projected_bytes": 637901,
+        "fits_existing_8MiB_frame": true,
+        "jobs": 156,
+        "original_field_mismatches": 0,
+        "original_request_mismatches": 0,
+        "requests": 1,
+        "slug": "accenture-careers-it"
+      },
+      {
+        "complete_inventory_projected_bytes": 934951,
+        "fits_existing_8MiB_frame": true,
+        "jobs": 309,
+        "original_field_mismatches": 0,
+        "original_request_mismatches": 0,
+        "requests": 1,
+        "slug": "accenture-careers-jp"
+      },
+      {
+        "complete_inventory_projected_bytes": 487313,
+        "fits_existing_8MiB_frame": true,
+        "jobs": 170,
+        "original_field_mismatches": 0,
+        "original_request_mismatches": 0,
+        "requests": 1,
+        "slug": "accenture-careers-sg"
+      }
+    ],
+    "scope": "complete bounded anonymous direct-HTTP inventories through pure Go collector; no Lightpanda, writer or serving claim",
+    "sites": 8
+  },
+  "brassring_adm_controls": {
+    "observed_at_utc": "2026-10-09T21:54:49.978542+00:00",
+    "board": "adm-us",
+    "url": "https://sjobs.brassring.com/TGnewUI/Search/Home/Home?partnerid=25416&siteid=5998",
+    "engine": "Codex in-app browser, generic Chromium UI; not Lightpanda",
+    "observations": {
+      "initial_search_button_id": "clearResumeJobsBtn",
+      "search_result_count": 556,
+      "page_count": 12,
+      "initial_sort": "Date",
+      "alphabetical_option_position": 2,
+      "sort_button_id": "sortBy-button",
+      "selected_sort": "Alphabetical",
+      "committed_next_page": 2,
+      "current_page_button_classes": "pagewise-pagination ng-binding ng-scope primaryButton",
+      "current_page_button_aria_current": "page",
+      "top_and_bottom_pagination_visible": true
+    },
+    "scope": "public read-only search/sort/next-page controls; no network JSON capture, complete inventory, Lightpanda, writer or serving claim",
+    "cleanup": "temporary tab closed"
+  }
 }
