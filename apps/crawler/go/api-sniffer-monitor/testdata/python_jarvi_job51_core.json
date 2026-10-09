@@ -1,0 +1,1400 @@
+[
+  {
+    "name": "rich",
+    "provider": "jarvi",
+    "operation": "fields",
+    "inputs": {
+      "row": {
+        "id": "offer-id",
+        "shortId": "j123",
+        "name": "Fallback title",
+        "publishedAt": "2026-10-08",
+        "updatedAt": "2026-10-09",
+        "fieldsValues": [
+          {
+            "field": {
+              "purpose": "joboffer_title"
+            },
+            "value": " Développeur &amp; Straße Ι "
+          },
+          {
+            "field": {
+              "purpose": "joboffer_company_description"
+            },
+            "value": "<p>Company</p>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_description"
+            },
+            "value": "<div>Build</div>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_profile_description"
+            },
+            "value": "<p>Localisation : Genève - Contrat : CDI</p>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_is_fulltime"
+            },
+            "value": "TRUE"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_remote_days_per_week"
+            },
+            "value": "2,5"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_is_public"
+            },
+            "value": "true"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_per_year_min"
+            },
+            "value": "50000,50"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_per_year_max"
+            },
+            "value": "70000"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_min_years_of_experience"
+            },
+            "value": "3"
+          }
+        ]
+      },
+      "board": "https://fixture.invalid/careers?z=last&a=first&z=again&q=old&blank=#fragment",
+      "currency": "CHF"
+    },
+    "expected": {
+      "url": "https://fixture.invalid/careers?z=last&a=first&z=again&q=j123%2Fdeveloppeur--strasse",
+      "title": "Développeur & Straße Ι",
+      "description": "<p>Company</p>\n<div>Build</div>\n<p>Localisation : Genève - Contrat : CDI</p>",
+      "locations": [
+        "Genève"
+      ],
+      "employment_type": "full_time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-08",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 50000.5,
+        "max": 70000,
+        "unit": "year"
+      },
+      "extras": {
+        "responsibilities": "<div>Build</div>",
+        "qualifications": "<p>Localisation : Genève - Contrat : CDI</p>"
+      },
+      "metadata": {
+        "source_id": "offer-id",
+        "short_id": "j123",
+        "updated_at": "2026-10-09",
+        "minimum_years_experience": 3
+      }
+    }
+  },
+  {
+    "name": "no-title",
+    "provider": "jarvi",
+    "operation": "fields",
+    "inputs": {
+      "row": {
+        "id": "offer-id",
+        "shortId": "j123",
+        "name": "",
+        "publishedAt": "2026-10-08",
+        "updatedAt": "2026-10-09",
+        "fieldsValues": []
+      },
+      "board": "https://fixture.invalid/careers?z=last&a=first&z=again&q=old&blank=#fragment",
+      "currency": "CHF"
+    },
+    "expected": null
+  },
+  {
+    "name": "numeric-id",
+    "provider": "jarvi",
+    "operation": "fields",
+    "inputs": {
+      "row": {
+        "id": "offer-id",
+        "shortId": 123,
+        "name": "Fallback title",
+        "publishedAt": "2026-10-08",
+        "updatedAt": "2026-10-09",
+        "fieldsValues": [
+          {
+            "field": {
+              "purpose": "joboffer_title"
+            },
+            "value": " Développeur &amp; Straße Ι "
+          },
+          {
+            "field": {
+              "purpose": "joboffer_company_description"
+            },
+            "value": "<p>Company</p>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_description"
+            },
+            "value": "<div>Build</div>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_profile_description"
+            },
+            "value": "<p>Localisation : Genève - Contrat : CDI</p>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_is_fulltime"
+            },
+            "value": "TRUE"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_remote_days_per_week"
+            },
+            "value": "2,5"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_is_public"
+            },
+            "value": "true"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_per_year_min"
+            },
+            "value": "50000,50"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_per_year_max"
+            },
+            "value": "70000"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_min_years_of_experience"
+            },
+            "value": "3"
+          }
+        ]
+      },
+      "board": "https://fixture.invalid/careers?z=last&a=first&z=again&q=old&blank=#fragment",
+      "currency": "CHF"
+    },
+    "expected": null
+  },
+  {
+    "name": "fallback-title",
+    "provider": "jarvi",
+    "operation": "fields",
+    "inputs": {
+      "row": {
+        "id": "offer-id",
+        "shortId": "j123",
+        "name": "Fallback title",
+        "publishedAt": "2026-10-08",
+        "updatedAt": "2026-10-09",
+        "fieldsValues": []
+      },
+      "board": "https://fixture.invalid/careers?z=last&a=first&z=again&q=old&blank=#fragment",
+      "currency": "CHF"
+    },
+    "expected": {
+      "url": "https://fixture.invalid/careers?z=last&a=first&z=again&q=j123%2Ffallback-title",
+      "title": "Fallback title",
+      "date_posted": "2026-10-08",
+      "metadata": {
+        "source_id": "offer-id",
+        "short_id": "j123",
+        "updated_at": "2026-10-09"
+      }
+    }
+  },
+  {
+    "name": "locations",
+    "provider": "jarvi",
+    "operation": "fields",
+    "inputs": {
+      "row": {
+        "id": "offer-id",
+        "shortId": "j123",
+        "name": "Fallback title",
+        "publishedAt": "2026-10-08",
+        "updatedAt": "2026-10-09",
+        "fieldsValues": [
+          {
+            "field": {
+              "purpose": "joboffer_title"
+            },
+            "value": " Développeur &amp; Straße Ι "
+          },
+          {
+            "field": {
+              "purpose": "joboffer_company_description"
+            },
+            "value": "<p>Company</p>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_description"
+            },
+            "value": "<div>Build</div>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_profile_description"
+            },
+            "value": "<p>Localisation : Genève - Contrat : CDI</p>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_is_fulltime"
+            },
+            "value": "TRUE"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_remote_days_per_week"
+            },
+            "value": "2,5"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_is_public"
+            },
+            "value": "true"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_per_year_min"
+            },
+            "value": "50000,50"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_per_year_max"
+            },
+            "value": "70000"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_min_years_of_experience"
+            },
+            "value": "3"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_location"
+            },
+            "value": null,
+            "location": {
+              "formattedAddress": "Genève"
+            }
+          },
+          {
+            "field": {
+              "purpose": "joboffer_location"
+            },
+            "value": null,
+            "location": {
+              "formattedAddress": "Genève"
+            }
+          },
+          {
+            "field": {
+              "purpose": "joboffer_location"
+            },
+            "value": null,
+            "location": {
+              "search": "Paris"
+            }
+          }
+        ]
+      },
+      "board": "https://fixture.invalid/careers?z=last&a=first&z=again&q=old&blank=#fragment",
+      "currency": "CHF"
+    },
+    "expected": {
+      "url": "https://fixture.invalid/careers?z=last&a=first&z=again&q=j123%2Fdeveloppeur--strasse",
+      "title": "Développeur & Straße Ι",
+      "description": "<p>Company</p>\n<div>Build</div>\n<p>Localisation : Genève - Contrat : CDI</p>",
+      "locations": [
+        "Genève",
+        "Paris"
+      ],
+      "employment_type": "full_time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-08",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 50000.5,
+        "max": 70000,
+        "unit": "year"
+      },
+      "extras": {
+        "responsibilities": "<div>Build</div>",
+        "qualifications": "<p>Localisation : Genève - Contrat : CDI</p>"
+      },
+      "metadata": {
+        "source_id": "offer-id",
+        "short_id": "j123",
+        "updated_at": "2026-10-09",
+        "minimum_years_experience": 3
+      }
+    }
+  },
+  {
+    "name": "whitespace-locations",
+    "provider": "jarvi",
+    "operation": "fields",
+    "inputs": {
+      "row": {
+        "id": "offer-id",
+        "shortId": "j123",
+        "name": "Fallback title",
+        "publishedAt": "2026-10-08",
+        "updatedAt": "2026-10-09",
+        "fieldsValues": [
+          {
+            "field": {
+              "purpose": "joboffer_title"
+            },
+            "value": " Développeur &amp; Straße Ι "
+          },
+          {
+            "field": {
+              "purpose": "joboffer_company_description"
+            },
+            "value": "<p>Company</p>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_description"
+            },
+            "value": "<div>Build</div>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_profile_description"
+            },
+            "value": "<p>Localisation : Genève - Contrat : CDI</p>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_is_fulltime"
+            },
+            "value": "TRUE"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_remote_days_per_week"
+            },
+            "value": "2,5"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_is_public"
+            },
+            "value": "true"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_per_year_min"
+            },
+            "value": "50000,50"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_per_year_max"
+            },
+            "value": "70000"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_min_years_of_experience"
+            },
+            "value": "3"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_location"
+            },
+            "value": null,
+            "location": {
+              "formattedAddress": " Genève "
+            }
+          },
+          {
+            "field": {
+              "purpose": "joboffer_location"
+            },
+            "value": null,
+            "location": {
+              "formattedAddress": " Genève "
+            }
+          },
+          {
+            "field": {
+              "purpose": "joboffer_location"
+            },
+            "value": null,
+            "location": {
+              "search": "Paris"
+            }
+          }
+        ]
+      },
+      "board": "https://fixture.invalid/careers?z=last&a=first&z=again&q=old&blank=#fragment",
+      "currency": "CHF"
+    },
+    "expected": {
+      "url": "https://fixture.invalid/careers?z=last&a=first&z=again&q=j123%2Fdeveloppeur--strasse",
+      "title": "Développeur & Straße Ι",
+      "description": "<p>Company</p>\n<div>Build</div>\n<p>Localisation : Genève - Contrat : CDI</p>",
+      "locations": [
+        "Genève",
+        "Genève",
+        "Paris"
+      ],
+      "employment_type": "full_time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-08",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 50000.5,
+        "max": 70000,
+        "unit": "year"
+      },
+      "extras": {
+        "responsibilities": "<div>Build</div>",
+        "qualifications": "<p>Localisation : Genève - Contrat : CDI</p>"
+      },
+      "metadata": {
+        "source_id": "offer-id",
+        "short_id": "j123",
+        "updated_at": "2026-10-09",
+        "minimum_years_experience": 3
+      }
+    }
+  },
+  {
+    "name": "choice",
+    "provider": "jarvi",
+    "operation": "fields",
+    "inputs": {
+      "row": {
+        "id": "offer-id",
+        "shortId": "j123",
+        "name": "Fallback title",
+        "publishedAt": "2026-10-08",
+        "updatedAt": "2026-10-09",
+        "fieldsValues": [
+          {
+            "field": {
+              "purpose": "joboffer_title"
+            },
+            "value": " Développeur &amp; Straße Ι "
+          },
+          {
+            "field": {
+              "purpose": "joboffer_company_description"
+            },
+            "value": "<p>Company</p>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_description"
+            },
+            "value": "<div>Build</div>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_profile_description"
+            },
+            "value": "<p>Localisation : Genève - Contrat : CDI</p>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_is_fulltime"
+            },
+            "value": "TRUE"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_remote_days_per_week"
+            },
+            "value": "2,5"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_is_public"
+            },
+            "value": "true"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_per_year_min"
+            },
+            "value": "50000,50"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_per_year_max"
+            },
+            "value": "70000"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_min_years_of_experience"
+            },
+            "value": "3"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_contract_type"
+            },
+            "value": null,
+            "fieldValue": {
+              "technicalValue": "contract",
+              "name": "CDD"
+            }
+          }
+        ]
+      },
+      "board": "https://fixture.invalid/careers?z=last&a=first&z=again&q=old&blank=#fragment",
+      "currency": "CHF"
+    },
+    "expected": {
+      "url": "https://fixture.invalid/careers?z=last&a=first&z=again&q=j123%2Fdeveloppeur--strasse",
+      "title": "Développeur & Straße Ι",
+      "description": "<p>Company</p>\n<div>Build</div>\n<p>Localisation : Genève - Contrat : CDI</p>",
+      "locations": [
+        "Genève"
+      ],
+      "employment_type": "contract",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-08",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 50000.5,
+        "max": 70000,
+        "unit": "year"
+      },
+      "extras": {
+        "responsibilities": "<div>Build</div>",
+        "qualifications": "<p>Localisation : Genève - Contrat : CDI</p>"
+      },
+      "metadata": {
+        "source_id": "offer-id",
+        "short_id": "j123",
+        "updated_at": "2026-10-09",
+        "minimum_years_experience": 3
+      }
+    }
+  },
+  {
+    "name": "private-salary",
+    "provider": "jarvi",
+    "operation": "fields",
+    "inputs": {
+      "row": {
+        "id": "offer-id",
+        "shortId": "j123",
+        "name": "Fallback title",
+        "publishedAt": "2026-10-08",
+        "updatedAt": "2026-10-09",
+        "fieldsValues": [
+          {
+            "field": {
+              "purpose": "joboffer_title"
+            },
+            "value": " Développeur &amp; Straße Ι "
+          },
+          {
+            "field": {
+              "purpose": "joboffer_company_description"
+            },
+            "value": "<p>Company</p>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_description"
+            },
+            "value": "<div>Build</div>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_profile_description"
+            },
+            "value": "<p>Localisation : Genève - Contrat : CDI</p>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_is_fulltime"
+            },
+            "value": "TRUE"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_remote_days_per_week"
+            },
+            "value": "2,5"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_per_year_min"
+            },
+            "value": "50000,50"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_per_year_max"
+            },
+            "value": "70000"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_min_years_of_experience"
+            },
+            "value": "3"
+          }
+        ]
+      },
+      "board": "https://fixture.invalid/careers?z=last&a=first&z=again&q=old&blank=#fragment",
+      "currency": "CHF"
+    },
+    "expected": {
+      "url": "https://fixture.invalid/careers?z=last&a=first&z=again&q=j123%2Fdeveloppeur--strasse",
+      "title": "Développeur & Straße Ι",
+      "description": "<p>Company</p>\n<div>Build</div>\n<p>Localisation : Genève - Contrat : CDI</p>",
+      "locations": [
+        "Genève"
+      ],
+      "employment_type": "full_time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-08",
+      "extras": {
+        "responsibilities": "<div>Build</div>",
+        "qualifications": "<p>Localisation : Genève - Contrat : CDI</p>"
+      },
+      "metadata": {
+        "source_id": "offer-id",
+        "short_id": "j123",
+        "updated_at": "2026-10-09",
+        "minimum_years_experience": 3
+      }
+    }
+  },
+  {
+    "name": "bad-number",
+    "provider": "jarvi",
+    "operation": "fields",
+    "inputs": {
+      "row": {
+        "id": "offer-id",
+        "shortId": "j123",
+        "name": "Fallback title",
+        "publishedAt": "2026-10-08",
+        "updatedAt": "2026-10-09",
+        "fieldsValues": [
+          {
+            "field": {
+              "purpose": "joboffer_title"
+            },
+            "value": " Développeur &amp; Straße Ι "
+          },
+          {
+            "field": {
+              "purpose": "joboffer_company_description"
+            },
+            "value": "<p>Company</p>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_description"
+            },
+            "value": "<div>Build</div>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_profile_description"
+            },
+            "value": "<p>Localisation : Genève - Contrat : CDI</p>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_is_fulltime"
+            },
+            "value": "TRUE"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_remote_days_per_week"
+            },
+            "value": "2,5"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_is_public"
+            },
+            "value": "true"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_per_year_min"
+            },
+            "value": "unknown"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_per_year_max"
+            },
+            "value": "unknown"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_min_years_of_experience"
+            },
+            "value": "3"
+          }
+        ]
+      },
+      "board": "https://fixture.invalid/careers?z=last&a=first&z=again&q=old&blank=#fragment",
+      "currency": "CHF"
+    },
+    "expected": {
+      "url": "https://fixture.invalid/careers?z=last&a=first&z=again&q=j123%2Fdeveloppeur--strasse",
+      "title": "Développeur & Straße Ι",
+      "description": "<p>Company</p>\n<div>Build</div>\n<p>Localisation : Genève - Contrat : CDI</p>",
+      "locations": [
+        "Genève"
+      ],
+      "employment_type": "full_time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-08",
+      "extras": {
+        "responsibilities": "<div>Build</div>",
+        "qualifications": "<p>Localisation : Genève - Contrat : CDI</p>"
+      },
+      "metadata": {
+        "source_id": "offer-id",
+        "short_id": "j123",
+        "updated_at": "2026-10-09",
+        "minimum_years_experience": 3
+      }
+    }
+  },
+  {
+    "name": "no-short-id",
+    "provider": "jarvi",
+    "operation": "fields",
+    "inputs": {
+      "row": {
+        "id": "offer-id",
+        "shortId": "",
+        "name": "Fallback title",
+        "publishedAt": "2026-10-08",
+        "updatedAt": "2026-10-09",
+        "fieldsValues": [
+          {
+            "field": {
+              "purpose": "joboffer_title"
+            },
+            "value": " Développeur &amp; Straße Ι "
+          },
+          {
+            "field": {
+              "purpose": "joboffer_company_description"
+            },
+            "value": "<p>Company</p>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_description"
+            },
+            "value": "<div>Build</div>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_profile_description"
+            },
+            "value": "<p>Localisation : Genève - Contrat : CDI</p>"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_is_fulltime"
+            },
+            "value": "TRUE"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_remote_days_per_week"
+            },
+            "value": "2,5"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_is_public"
+            },
+            "value": "true"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_per_year_min"
+            },
+            "value": "50000,50"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_salary_per_year_max"
+            },
+            "value": "70000"
+          },
+          {
+            "field": {
+              "purpose": "joboffer_min_years_of_experience"
+            },
+            "value": "3"
+          }
+        ]
+      },
+      "board": "https://fixture.invalid/careers?z=last&a=first&z=again&q=old&blank=#fragment",
+      "currency": "CHF"
+    },
+    "expected": {
+      "url": "https://fixture.invalid/careers?z=last&a=first&z=again&q=offer-id%2Fdeveloppeur--strasse",
+      "title": "Développeur & Straße Ι",
+      "description": "<p>Company</p>\n<div>Build</div>\n<p>Localisation : Genève - Contrat : CDI</p>",
+      "locations": [
+        "Genève"
+      ],
+      "employment_type": "full_time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-08",
+      "base_salary": {
+        "currency": "CHF",
+        "min": 50000.5,
+        "max": 70000,
+        "unit": "year"
+      },
+      "extras": {
+        "responsibilities": "<div>Build</div>",
+        "qualifications": "<p>Localisation : Genève - Contrat : CDI</p>"
+      },
+      "metadata": {
+        "source_id": "offer-id",
+        "updated_at": "2026-10-09",
+        "minimum_years_experience": 3
+      }
+    }
+  },
+  {
+    "name": "empty-description",
+    "provider": "jarvi",
+    "operation": "fields",
+    "inputs": {
+      "row": {
+        "id": "offer-id",
+        "shortId": "j123",
+        "name": "Fallback title",
+        "publishedAt": "2026-10-08",
+        "updatedAt": "2026-10-09",
+        "fieldsValues": [
+          {
+            "field": {
+              "purpose": "joboffer_title"
+            },
+            "value": "Engineer"
+          }
+        ]
+      },
+      "board": "https://fixture.invalid/careers?z=last&a=first&z=again&q=old&blank=#fragment",
+      "currency": "CHF"
+    },
+    "expected": {
+      "url": "https://fixture.invalid/careers?z=last&a=first&z=again&q=j123%2Fengineer",
+      "title": "Engineer",
+      "date_posted": "2026-10-08",
+      "metadata": {
+        "source_id": "offer-id",
+        "short_id": "j123",
+        "updated_at": "2026-10-09"
+      }
+    }
+  },
+  {
+    "name": "unicode",
+    "provider": "jarvi",
+    "operation": "fields",
+    "inputs": {
+      "row": {
+        "id": "offer-id",
+        "shortId": "j123",
+        "name": "Fallback title",
+        "publishedAt": "2026-10-08",
+        "updatedAt": "2026-10-09",
+        "fieldsValues": [
+          {
+            "field": {
+              "purpose": "joboffer_title"
+            },
+            "value": "Straße İstanbul 中文 Engineer"
+          }
+        ]
+      },
+      "board": "https://fixture.invalid/careers?z=last&a=first&z=again&q=old&blank=#fragment",
+      "currency": "CHF"
+    },
+    "expected": {
+      "url": "https://fixture.invalid/careers?z=last&a=first&z=again&q=j123%2Fstrasse-istanbul--engineer",
+      "title": "Straße İstanbul 中文 Engineer",
+      "date_posted": "2026-10-08",
+      "metadata": {
+        "source_id": "offer-id",
+        "short_id": "j123",
+        "updated_at": "2026-10-09"
+      }
+    }
+  },
+  {
+    "name": "embed",
+    "provider": "jarvi",
+    "operation": "embed",
+    "inputs": {
+      "page": "<div data-sdk='jarvi' data-public-api-key='public_fixture_key' data-currency='chf'>"
+    },
+    "expected": {
+      "public_api_key": "public_fixture_key",
+      "currency": "CHF"
+    }
+  },
+  {
+    "name": "embed",
+    "provider": "jarvi",
+    "operation": "embed",
+    "inputs": {
+      "page": "<div data-sdk=\"JARVI\" data-public-api-key=\"fixture&amp;key\">"
+    },
+    "expected": {
+      "public_api_key": "fixture&key"
+    }
+  },
+  {
+    "name": "embed",
+    "provider": "jarvi",
+    "operation": "embed",
+    "inputs": {
+      "page": "<div data-public-api-key='fixture'>"
+    },
+    "expected": null
+  },
+  {
+    "name": "embed",
+    "provider": "jarvi",
+    "operation": "embed",
+    "inputs": {
+      "page": "<div data-sdk='jarvi'>"
+    },
+    "expected": null
+  },
+  {
+    "name": "embed",
+    "provider": "jarvi",
+    "operation": "embed",
+    "inputs": {
+      "page": "<div data-sdk='jarvi\" data-public-api-key='fixture'>"
+    },
+    "expected": null
+  },
+  {
+    "name": "list-sign",
+    "provider": "job51",
+    "operation": "list-request",
+    "inputs": {
+      "ctmid": 12345,
+      "page": 1
+    },
+    "expected": "https://coapi.51job.com/job_list.php?key=1&sign=87dfb959292ed7f2abe9fde4ad184be7&params=%7B%22ctmid%22%3A12345%2C%22pagesize%22%3A20%2C%22pagenum%22%3A1%2C%22jobarea%22%3A%22%22%2C%22issuedate%22%3A%22%22%2C%22keyword%22%3A%22%22%2C%22divid%22%3A%22%22%2C%22poscode%22%3A%22%22%7D"
+  },
+  {
+    "name": "list-sign",
+    "provider": "job51",
+    "operation": "list-request",
+    "inputs": {
+      "ctmid": 12345,
+      "page": 2
+    },
+    "expected": "https://coapi.51job.com/job_list.php?key=1&sign=e80e9b9225e60a447df1ff39a92d8313&params=%7B%22ctmid%22%3A12345%2C%22pagesize%22%3A20%2C%22pagenum%22%3A2%2C%22jobarea%22%3A%22%22%2C%22issuedate%22%3A%22%22%2C%22keyword%22%3A%22%22%2C%22divid%22%3A%22%22%2C%22poscode%22%3A%22%22%7D"
+  },
+  {
+    "name": "list-sign",
+    "provider": "job51",
+    "operation": "list-request",
+    "inputs": {
+      "ctmid": 12345,
+      "page": 2500
+    },
+    "expected": "https://coapi.51job.com/job_list.php?key=1&sign=3864819fd7be5b48dbbbde9098b0b461&params=%7B%22ctmid%22%3A12345%2C%22pagesize%22%3A20%2C%22pagenum%22%3A2500%2C%22jobarea%22%3A%22%22%2C%22issuedate%22%3A%22%22%2C%22keyword%22%3A%22%22%2C%22divid%22%3A%22%22%2C%22poscode%22%3A%22%22%7D"
+  },
+  {
+    "name": "detail-sign",
+    "provider": "job51",
+    "operation": "detail-request",
+    "inputs": {
+      "id": "000123"
+    },
+    "expected": "https://coapi.51job.com/job_detail.php?key=1&sign=4520c391d7150dfbdf4bc14a0ff3c4bd&params=%7B%22jobid%22%3A%22000123%22%7D"
+  },
+  {
+    "name": "detail-sign",
+    "provider": "job51",
+    "operation": "detail-request",
+    "inputs": {
+      "id": "12345678901234567890"
+    },
+    "expected": "https://coapi.51job.com/job_detail.php?key=1&sign=6b0bc9164b9810e1e57c80d47f122917&params=%7B%22jobid%22%3A%2212345678901234567890%22%7D"
+  },
+  {
+    "name": "jsonp",
+    "provider": "job51",
+    "operation": "jsonp",
+    "inputs": {
+      "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"totalnum\":\"0\",\"joblist\":[]}})"
+    },
+    "expected": {
+      "totalnum": "0",
+      "joblist": []
+    }
+  },
+  {
+    "name": "jsonp",
+    "provider": "job51",
+    "operation": "jsonp",
+    "inputs": {
+      "body": "jsoncallback({\"status\":\"0\",\"resultbody\":{}})"
+    },
+    "error": true
+  },
+  {
+    "name": "jsonp",
+    "provider": "job51",
+    "operation": "jsonp",
+    "inputs": {
+      "body": "jsoncallback({\"status\":\"1\",\"resultbody\":[]})"
+    },
+    "error": true
+  },
+  {
+    "name": "jsonp",
+    "provider": "job51",
+    "operation": "jsonp",
+    "inputs": {
+      "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{}});"
+    },
+    "error": true
+  },
+  {
+    "name": "rich",
+    "provider": "job51",
+    "operation": "fields",
+    "inputs": {
+      "row": {
+        "jobid": "000123",
+        "ctmid": "12345",
+        "jobname": " 工程師 ",
+        "jobinfo": "<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>",
+        "jobareaname": " 上海 ",
+        "term": " 全职 ",
+        "issuedate": "2026-10-08 12:00:00",
+        "jkeyword": " Python Go Python ",
+        "coname": " 公司 ",
+        "divname": " 平台 ",
+        "address": "地址",
+        "funtype": "技术",
+        "workyearname": "三年",
+        "degreefrom": "本科",
+        "providesalarname": "面议",
+        "jobwelf": "假期"
+      },
+      "ctmid": 12345,
+      "id": "000123"
+    },
+    "expected": {
+      "url": "https://jobs.51job.com/all/000123.html",
+      "title": "工程師",
+      "description": "开发<br><br>任职要求：<strong>経験</strong>",
+      "locations": [
+        "上海"
+      ],
+      "employment_type": "全职",
+      "date_posted": "2026-10-08",
+      "language": "zh",
+      "extras": {
+        "skills": [
+          "Python",
+          "Go"
+        ],
+        "responsibilities": "开发",
+        "qualifications": "<strong>経験</strong>"
+      },
+      "metadata": {
+        "id": "000123",
+        "employer": "公司",
+        "department": "平台",
+        "address": "地址",
+        "job_function": "技术",
+        "experience": "三年",
+        "education": "本科",
+        "salary_label": "面议",
+        "benefits": "假期"
+      },
+      "source_identity": "job51:12345:000123"
+    }
+  },
+  {
+    "name": "wrong-employer",
+    "provider": "job51",
+    "operation": "fields",
+    "inputs": {
+      "row": {
+        "jobid": "000123",
+        "ctmid": "12346",
+        "jobname": " 工程師 ",
+        "jobinfo": "<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>",
+        "jobareaname": " 上海 ",
+        "term": " 全职 ",
+        "issuedate": "2026-10-08 12:00:00",
+        "jkeyword": " Python Go Python ",
+        "coname": " 公司 ",
+        "divname": " 平台 ",
+        "address": "地址",
+        "funtype": "技术",
+        "workyearname": "三年",
+        "degreefrom": "本科",
+        "providesalarname": "面议",
+        "jobwelf": "假期"
+      },
+      "ctmid": 12345,
+      "id": "000123"
+    },
+    "error": true
+  },
+  {
+    "name": "wrong-id",
+    "provider": "job51",
+    "operation": "fields",
+    "inputs": {
+      "row": {
+        "jobid": "123",
+        "ctmid": "12345",
+        "jobname": " 工程師 ",
+        "jobinfo": "<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>",
+        "jobareaname": " 上海 ",
+        "term": " 全职 ",
+        "issuedate": "2026-10-08 12:00:00",
+        "jkeyword": " Python Go Python ",
+        "coname": " 公司 ",
+        "divname": " 平台 ",
+        "address": "地址",
+        "funtype": "技术",
+        "workyearname": "三年",
+        "degreefrom": "本科",
+        "providesalarname": "面议",
+        "jobwelf": "假期"
+      },
+      "ctmid": 12345,
+      "id": "000123"
+    },
+    "error": true
+  },
+  {
+    "name": "empty-title",
+    "provider": "job51",
+    "operation": "fields",
+    "inputs": {
+      "row": {
+        "jobid": "000123",
+        "ctmid": "12345",
+        "jobname": " ",
+        "jobinfo": "<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>",
+        "jobareaname": " 上海 ",
+        "term": " 全职 ",
+        "issuedate": "2026-10-08 12:00:00",
+        "jkeyword": " Python Go Python ",
+        "coname": " 公司 ",
+        "divname": " 平台 ",
+        "address": "地址",
+        "funtype": "技术",
+        "workyearname": "三年",
+        "degreefrom": "本科",
+        "providesalarname": "面议",
+        "jobwelf": "假期"
+      },
+      "ctmid": 12345,
+      "id": "000123"
+    },
+    "error": true
+  },
+  {
+    "name": "empty-description",
+    "provider": "job51",
+    "operation": "fields",
+    "inputs": {
+      "row": {
+        "jobid": "000123",
+        "ctmid": "12345",
+        "jobname": " 工程師 ",
+        "jobinfo": "<script>private</script>",
+        "jobareaname": " 上海 ",
+        "term": " 全职 ",
+        "issuedate": "2026-10-08 12:00:00",
+        "jkeyword": " Python Go Python ",
+        "coname": " 公司 ",
+        "divname": " 平台 ",
+        "address": "地址",
+        "funtype": "技术",
+        "workyearname": "三年",
+        "degreefrom": "本科",
+        "providesalarname": "面议",
+        "jobwelf": "假期"
+      },
+      "ctmid": 12345,
+      "id": "000123"
+    },
+    "error": true
+  },
+  {
+    "name": "no-qualification",
+    "provider": "job51",
+    "operation": "fields",
+    "inputs": {
+      "row": {
+        "jobid": "000123",
+        "ctmid": "12345",
+        "jobname": " 工程師 ",
+        "jobinfo": "<p>Build</p>",
+        "jobareaname": " 上海 ",
+        "term": " 全职 ",
+        "issuedate": "2026-10-08 12:00:00",
+        "jkeyword": " Python Go Python ",
+        "coname": " 公司 ",
+        "divname": " 平台 ",
+        "address": "地址",
+        "funtype": "技术",
+        "workyearname": "三年",
+        "degreefrom": "本科",
+        "providesalarname": "面议",
+        "jobwelf": "假期"
+      },
+      "ctmid": 12345,
+      "id": "000123"
+    },
+    "expected": {
+      "url": "https://jobs.51job.com/all/000123.html",
+      "title": "工程師",
+      "description": "<p>Build</p>",
+      "locations": [
+        "上海"
+      ],
+      "employment_type": "全职",
+      "date_posted": "2026-10-08",
+      "language": "zh",
+      "extras": {
+        "skills": [
+          "Python",
+          "Go"
+        ],
+        "responsibilities": "<p>Build</p>"
+      },
+      "metadata": {
+        "id": "000123",
+        "employer": "公司",
+        "department": "平台",
+        "address": "地址",
+        "job_function": "技术",
+        "experience": "三年",
+        "education": "本科",
+        "salary_label": "面议",
+        "benefits": "假期"
+      },
+      "source_identity": "job51:12345:000123"
+    }
+  },
+  {
+    "name": "alternate-location",
+    "provider": "job51",
+    "operation": "fields",
+    "inputs": {
+      "row": {
+        "jobid": "000123",
+        "ctmid": "12345",
+        "jobname": " 工程師 ",
+        "jobinfo": "<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>",
+        "jobareaname": "",
+        "term": " 全职 ",
+        "issuedate": "2026-10-08 12:00:00",
+        "jkeyword": " Python Go Python ",
+        "coname": " 公司 ",
+        "divname": " 平台 ",
+        "address": "地址",
+        "funtype": "技术",
+        "workyearname": "三年",
+        "degreefrom": "本科",
+        "providesalarname": "面议",
+        "jobwelf": "假期",
+        "workareaname": "北京"
+      },
+      "ctmid": 12345,
+      "id": "000123"
+    },
+    "expected": {
+      "url": "https://jobs.51job.com/all/000123.html",
+      "title": "工程師",
+      "description": "开发<br><br>任职要求：<strong>経験</strong>",
+      "locations": [
+        "北京"
+      ],
+      "employment_type": "全职",
+      "date_posted": "2026-10-08",
+      "language": "zh",
+      "extras": {
+        "skills": [
+          "Python",
+          "Go"
+        ],
+        "responsibilities": "开发",
+        "qualifications": "<strong>経験</strong>"
+      },
+      "metadata": {
+        "id": "000123",
+        "employer": "公司",
+        "department": "平台",
+        "address": "地址",
+        "job_function": "技术",
+        "experience": "三年",
+        "education": "本科",
+        "salary_label": "面议",
+        "benefits": "假期"
+      },
+      "source_identity": "job51:12345:000123"
+    }
+  }
+]

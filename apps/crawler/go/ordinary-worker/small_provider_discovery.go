@@ -7,7 +7,9 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
+	"unicode/utf8"
 
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	api "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
@@ -23,6 +25,14 @@ func FetchSmallProvidersHTTP(ctx context.Context, client *http.Client, p queue.G
 	if e != nil || client == nil || wait == nil || config["monitor_needs_browser"] != "0" || p.Profile != o.Profile() || p.Endpoint != o.ListingURL() {
 		return out, queue.ErrConfiguration
 	}
+	var responseMu sync.Mutex
+	observe := func(response *GreenhouseResponse) {
+		responseMu.Lock()
+		defer responseMu.Unlock()
+		if out.Response == nil || !out.Response.reserved {
+			out.Response = response
+		}
+	}
 	sealed := *client
 	sealed.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	fetch := func(ctx context.Context, r api.Request) ([]byte, error) {
@@ -30,7 +40,7 @@ func FetchSmallProvidersHTTP(ctx context.Context, client *http.Client, p queue.G
 			return nil, queue.ErrConfiguration
 		}
 		attempts := 3
-		if o.Provider == "seamlesshiring" {
+		if o.Provider == "seamlesshiring" || o.Provider == "jarvi" {
 			attempts = 1
 		}
 		current, redirects := r.URL, 0
@@ -63,7 +73,6 @@ func FetchSmallProvidersHTTP(ctx context.Context, client *http.Client, p queue.G
 				}
 				status = response.StatusCode
 				observed := &GreenhouseResponse{endpoint: r.URL, finalURL: final, status: status, location: response.Header.Get("Location"), contentType: response.Header.Get("Content-Type")}
-				out.Response = observed
 				reservation, policyURL := response.Header.Get("TDM-Reservation"), response.Header.Get("TDM-Policy")
 				signals := &runtimev1.ResourcePolicySignals{TdmReservationHeader: &reservation, TdmPolicyHeader: &policyURL}
 				check := func(source string) error {
@@ -77,6 +86,7 @@ func FetchSmallProvidersHTTP(ctx context.Context, client *http.Client, p queue.G
 					return err
 				}
 				if e = check(""); e != nil {
+					observe(observed)
 					response.Body.Close()
 					cancel()
 					return nil, e
@@ -89,9 +99,11 @@ func FetchSmallProvidersHTTP(ctx context.Context, client *http.Client, p queue.G
 					return nil, &DiscoveryError{Kind: "body_limit"}
 				}
 				if e = check(jsonld.DecodeDocument(body, response.Header.Get("Content-Type"))); e != nil {
+					observe(observed)
 					cancel()
 					return nil, e
 				}
+				observe(observed)
 				cancel()
 				if readErr == nil && (status == 301 || status == 302 || status == 303 || status == 307 || status == 308) {
 					base, _ := url.Parse(current)
@@ -104,6 +116,14 @@ func FetchSmallProvidersHTTP(ctx context.Context, client *http.Client, p queue.G
 					continue
 				}
 				if readErr == nil && (status == 200 || o.Provider == "seamlesshiring" && status >= 200 && status < 300) {
+					// Python retries transport/empty text, then parses JSONP once.
+					if o.Provider == "job51" && len(body) != 0 {
+						text := jsonld.DecodeDocument(body, response.Header.Get("Content-Type"))
+						if utf8.RuneCountInString(text) > 5_000_000 {
+							text = string([]rune(text)[:5_000_000])
+						}
+						return []byte(text), nil
+					}
 					d, err := api.Decode(body)
 					if err == nil {
 						if _, ok := d.Value.(map[string]any); ok {
@@ -132,7 +152,7 @@ func FetchSmallProvidersHTTP(ctx context.Context, client *http.Client, p queue.G
 					return nil, &DiscoveryError{Kind: "body_failed", cause: readErr}
 				}
 				kind := "json_page_failed"
-				if o.Provider != "seamlesshiring" && (status == 404 || status == 410) {
+				if o.Provider != "seamlesshiring" && o.Provider != "jarvi" && (status == 404 || status == 410) {
 					kind = "provider_gone"
 				}
 				return nil, &DiscoveryError{Kind: kind, Status: status}
@@ -161,6 +181,9 @@ func FetchSmallProvidersHTTP(ctx context.Context, client *http.Client, p queue.G
 		job, err := secondaryRichJob(field)
 		if err != nil {
 			return RichDiscovery{Response: out.Response}, err
+		}
+		if o.Provider == "job51" {
+			job.SourceIdentity, _ = field["source_identity"].(string)
 		}
 		out.Jobs = append(out.Jobs, job)
 	}

@@ -154,7 +154,8 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		}
 	}
 	tenthIdentity := profile.Provider == "universia" || profile.Provider == "talentreef"
-	identityEnabled := identityConfig != nil || zohoIdentity || hrIdentity || woowaIdentity || tenthIdentity
+	job51Identity := profile.Provider == "job51"
+	identityEnabled := identityConfig != nil || zohoIdentity || hrIdentity || woowaIdentity || tenthIdentity || job51Identity
 	identities := []string{}
 	explicit := []bool{}
 	identityByURL := map[string]string{}
@@ -162,6 +163,9 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 	byURL := make(map[string]*GreenhouseRichContent, len(batch))
 	hybridByURL := map[string]bool{}
 	for _, posting := range batch {
+		if job51Identity && !validJob51SourceIdentity(claim.task.Config, posting.URL, posting.SourceIdentity) {
+			return nil, ErrConfiguration
+		}
 		if posting.Hybrid && profile.Provider != "beisen" && profile.Provider != "eightfold" && profile.Provider != "paycom" {
 			return nil, ErrConfiguration
 		}

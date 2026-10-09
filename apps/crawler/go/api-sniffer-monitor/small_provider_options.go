@@ -9,6 +9,8 @@ import (
 type SmallProviderOptions struct {
 	Provider, BoardURL, Origin, Tenant string
 	Proxy                              bool
+	PublicKey, Currency                string
+	CTMID                              int64
 }
 
 var smallTenant = regexp.MustCompile(`^[a-z0-9-]+$`)
@@ -28,6 +30,28 @@ func SmallProviderOptionsFromMetadata(provider, board, raw string) (SmallProvide
 	o.Origin = "https://" + host
 	allowed := map[string]bool{}
 	switch provider {
+	case "jarvi":
+		allowed["public_api_key"], allowed["currency"] = true, true
+		var ok bool
+		o.PublicKey, ok = m["public_api_key"].(string)
+		if !ok || o.PublicKey == "" || len(o.PublicKey) > 4096 || strings.ContainsAny(o.PublicKey, "\r\n\x00") {
+			return o, ErrOptions
+		}
+		if value, present := m["currency"]; present {
+			o.Currency, ok = value.(string)
+			if !ok {
+				return o, ErrOptions
+			}
+		}
+	case "job51":
+		if _, err := Job51BoardOrigin(board); err != nil {
+			return o, ErrOptions
+		}
+		allowed["ctmid"] = true
+		o.CTMID, err = job51Int(m["ctmid"])
+		if err != nil || o.CTMID < 1 || o.CTMID > 999_999_999_999 {
+			return o, ErrOptions
+		}
 	case "cnstaff":
 		if !strings.HasSuffix(host, ".cnstaff.com") || host == "cnstaff.com" || strings.TrimRight(u.Path, "/") != "/recruit" {
 			return o, ErrOptions
@@ -91,6 +115,10 @@ func SmallProviderOptionsFromMetadata(provider, board, raw string) (SmallProvide
 
 func (o SmallProviderOptions) Profile() string {
 	switch o.Provider {
+	case "jarvi":
+		return "jarvi.public-items/v1"
+	case "job51":
+		return "job51.public-items/v1"
 	case "cnstaff":
 		return "cnstaff.public-items/v1"
 	case "jobbank104":
@@ -106,6 +134,14 @@ func (o SmallProviderOptions) Profile() string {
 
 func (o SmallProviderOptions) ListingURL() string {
 	switch o.Provider {
+	case "jarvi":
+		return JarviOffersURL
+	case "job51":
+		request, err := Job51ListRequest(o.CTMID, 1)
+		if err != nil {
+			return ""
+		}
+		return request.URL
 	case "cnstaff":
 		return o.Origin + "/recruit"
 	case "jobbank104":
@@ -120,6 +156,50 @@ func (o SmallProviderOptions) ResourceMatches(raw string) bool {
 	u, err := url.Parse(raw)
 	if err != nil || u.User != nil || u.Fragment != "" || u.Scheme != "https" || u.Port() != "" && u.Port() != "443" {
 		return false
+	}
+	if o.Provider == "jarvi" {
+		return raw == JarviOffersURL
+	}
+	if o.Provider == "job51" {
+		query, err := url.ParseQuery(u.RawQuery)
+		if err != nil || len(query) != 3 || query.Get("key") != "1" {
+			return false
+		}
+		for _, values := range query {
+			if len(values) != 1 {
+				return false
+			}
+		}
+		d, err := Decode([]byte(query.Get("params")))
+		if err != nil {
+			return false
+		}
+		params, ok := d.Value.(map[string]any)
+		if !ok {
+			return false
+		}
+		var request Request
+		switch u.Path {
+		case "/job_list.php":
+			ctmid, e := job51Int(params["ctmid"])
+			if e != nil || ctmid != o.CTMID {
+				return false
+			}
+			page, e := job51Int(params["pagenum"])
+			if e != nil {
+				return false
+			}
+			request, err = Job51ListRequest(ctmid, int(page))
+		case "/job_detail.php":
+			id, ok := params["jobid"].(string)
+			if !ok {
+				return false
+			}
+			request, err = Job51DetailRequest(id)
+		default:
+			return false
+		}
+		return err == nil && request.URL == raw
 	}
 	u.RawQuery = ""
 	return u.String() == o.ListingURL()

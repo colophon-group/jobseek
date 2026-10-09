@@ -1,0 +1,1444 @@
+[
+  {
+    "provider": "jarvi",
+    "mode": "rich",
+    "board": {
+      "board_url": "https://fixture.invalid/careers",
+      "metadata": {
+        "public_api_key": "public_fixture_key",
+        "currency": "CHF"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://functions.prod.jarvi.tech/v1/public-api/rest/v2/offers?limit=50000",
+        "body": "{\"data\":[{\"id\":\"offer-id\",\"shortId\":\"j123\",\"name\":\"Fallback title\",\"publishedAt\":\"2026-10-08\",\"updatedAt\":\"2026-10-09\",\"fieldsValues\":[{\"field\":{\"purpose\":\"joboffer_title\"},\"value\":\" Développeur &amp; Straße Ι \"},{\"field\":{\"purpose\":\"joboffer_company_description\"},\"value\":\"<p>Company</p>\"},{\"field\":{\"purpose\":\"joboffer_description\"},\"value\":\"<div>Build</div>\"},{\"field\":{\"purpose\":\"joboffer_profile_description\"},\"value\":\"<p>Localisation : Genève - Contrat : CDI</p>\"},{\"field\":{\"purpose\":\"joboffer_is_fulltime\"},\"value\":\"TRUE\"},{\"field\":{\"purpose\":\"joboffer_remote_days_per_week\"},\"value\":\"2,5\"},{\"field\":{\"purpose\":\"joboffer_salary_is_public\"},\"value\":\"true\"},{\"field\":{\"purpose\":\"joboffer_salary_per_year_min\"},\"value\":\"50000,50\"},{\"field\":{\"purpose\":\"joboffer_salary_per_year_max\"},\"value\":\"70000\"},{\"field\":{\"purpose\":\"joboffer_min_years_of_experience\"},\"value\":\"3\"}]}],\"total\":1}",
+        "key": "public_fixture_key"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://fixture.invalid/careers?q=j123%2Fdeveloppeur--strasse",
+        "title": "Développeur & Straße Ι",
+        "description": "<p>Company</p>\n<div>Build</div>\n<p>Localisation : Genève - Contrat : CDI</p>",
+        "locations": [
+          "Genève"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": {
+          "currency": "CHF",
+          "min": 50000.5,
+          "max": 70000,
+          "unit": "year"
+        },
+        "extras": {
+          "responsibilities": "<div>Build</div>",
+          "qualifications": "<p>Localisation : Genève - Contrat : CDI</p>"
+        },
+        "metadata": {
+          "source_id": "offer-id",
+          "short_id": "j123",
+          "updated_at": "2026-10-09",
+          "minimum_years_experience": 3
+        }
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "jarvi",
+    "mode": "empty",
+    "board": {
+      "board_url": "https://fixture.invalid/careers",
+      "metadata": {
+        "public_api_key": "public_fixture_key",
+        "currency": "CHF"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://functions.prod.jarvi.tech/v1/public-api/rest/v2/offers?limit=50000",
+        "body": "{\"data\":[],\"total\":0}",
+        "key": "public_fixture_key"
+      }
+    ],
+    "jobs": [],
+    "truncated": false
+  },
+  {
+    "provider": "jarvi",
+    "mode": "invalid-row",
+    "board": {
+      "board_url": "https://fixture.invalid/careers",
+      "metadata": {
+        "public_api_key": "public_fixture_key",
+        "currency": "CHF"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://functions.prod.jarvi.tech/v1/public-api/rest/v2/offers?limit=50000",
+        "body": "{\"data\":[\"invalid\",null,42],\"total\":1}",
+        "key": "public_fixture_key"
+      }
+    ],
+    "jobs": [],
+    "truncated": true
+  },
+  {
+    "provider": "jarvi",
+    "mode": "skip-title",
+    "board": {
+      "board_url": "https://fixture.invalid/careers",
+      "metadata": {
+        "public_api_key": "public_fixture_key",
+        "currency": "CHF"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://functions.prod.jarvi.tech/v1/public-api/rest/v2/offers?limit=50000",
+        "body": "{\"data\":[{\"id\":\"offer-id\",\"shortId\":\"j123\",\"name\":\"\",\"publishedAt\":\"2026-10-08\",\"updatedAt\":\"2026-10-09\",\"fieldsValues\":[]}],\"total\":1}",
+        "key": "public_fixture_key"
+      }
+    ],
+    "jobs": [],
+    "truncated": false
+  },
+  {
+    "provider": "jarvi",
+    "mode": "advertised-gap",
+    "board": {
+      "board_url": "https://fixture.invalid/careers",
+      "metadata": {
+        "public_api_key": "public_fixture_key",
+        "currency": "CHF"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://functions.prod.jarvi.tech/v1/public-api/rest/v2/offers?limit=50000",
+        "body": "{\"data\":[{\"id\":\"offer-id\",\"shortId\":\"j123\",\"name\":\"Fallback title\",\"publishedAt\":\"2026-10-08\",\"updatedAt\":\"2026-10-09\",\"fieldsValues\":[{\"field\":{\"purpose\":\"joboffer_title\"},\"value\":\" Développeur &amp; Straße Ι \"},{\"field\":{\"purpose\":\"joboffer_company_description\"},\"value\":\"<p>Company</p>\"},{\"field\":{\"purpose\":\"joboffer_description\"},\"value\":\"<div>Build</div>\"},{\"field\":{\"purpose\":\"joboffer_profile_description\"},\"value\":\"<p>Localisation : Genève - Contrat : CDI</p>\"},{\"field\":{\"purpose\":\"joboffer_is_fulltime\"},\"value\":\"TRUE\"},{\"field\":{\"purpose\":\"joboffer_remote_days_per_week\"},\"value\":\"2,5\"},{\"field\":{\"purpose\":\"joboffer_salary_is_public\"},\"value\":\"true\"},{\"field\":{\"purpose\":\"joboffer_salary_per_year_min\"},\"value\":\"50000,50\"},{\"field\":{\"purpose\":\"joboffer_salary_per_year_max\"},\"value\":\"70000\"},{\"field\":{\"purpose\":\"joboffer_min_years_of_experience\"},\"value\":\"3\"}]}],\"total\":2}",
+        "key": "public_fixture_key"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://fixture.invalid/careers?q=j123%2Fdeveloppeur--strasse",
+        "title": "Développeur & Straße Ι",
+        "description": "<p>Company</p>\n<div>Build</div>\n<p>Localisation : Genève - Contrat : CDI</p>",
+        "locations": [
+          "Genève"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": {
+          "currency": "CHF",
+          "min": 50000.5,
+          "max": 70000,
+          "unit": "year"
+        },
+        "extras": {
+          "responsibilities": "<div>Build</div>",
+          "qualifications": "<p>Localisation : Genève - Contrat : CDI</p>"
+        },
+        "metadata": {
+          "source_id": "offer-id",
+          "short_id": "j123",
+          "updated_at": "2026-10-09",
+          "minimum_years_experience": 3
+        }
+      }
+    ],
+    "truncated": true
+  },
+  {
+    "provider": "jarvi",
+    "mode": "string-total",
+    "board": {
+      "board_url": "https://fixture.invalid/careers",
+      "metadata": {
+        "public_api_key": "public_fixture_key",
+        "currency": "CHF"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://functions.prod.jarvi.tech/v1/public-api/rest/v2/offers?limit=50000",
+        "body": "{\"data\":[{\"id\":\"offer-id\",\"shortId\":\"j123\",\"name\":\"Fallback title\",\"publishedAt\":\"2026-10-08\",\"updatedAt\":\"2026-10-09\",\"fieldsValues\":[{\"field\":{\"purpose\":\"joboffer_title\"},\"value\":\" Développeur &amp; Straße Ι \"},{\"field\":{\"purpose\":\"joboffer_company_description\"},\"value\":\"<p>Company</p>\"},{\"field\":{\"purpose\":\"joboffer_description\"},\"value\":\"<div>Build</div>\"},{\"field\":{\"purpose\":\"joboffer_profile_description\"},\"value\":\"<p>Localisation : Genève - Contrat : CDI</p>\"},{\"field\":{\"purpose\":\"joboffer_is_fulltime\"},\"value\":\"TRUE\"},{\"field\":{\"purpose\":\"joboffer_remote_days_per_week\"},\"value\":\"2,5\"},{\"field\":{\"purpose\":\"joboffer_salary_is_public\"},\"value\":\"true\"},{\"field\":{\"purpose\":\"joboffer_salary_per_year_min\"},\"value\":\"50000,50\"},{\"field\":{\"purpose\":\"joboffer_salary_per_year_max\"},\"value\":\"70000\"},{\"field\":{\"purpose\":\"joboffer_min_years_of_experience\"},\"value\":\"3\"}]}],\"total\":\"2\"}",
+        "key": "public_fixture_key"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://fixture.invalid/careers?q=j123%2Fdeveloppeur--strasse",
+        "title": "Développeur & Straße Ι",
+        "description": "<p>Company</p>\n<div>Build</div>\n<p>Localisation : Genève - Contrat : CDI</p>",
+        "locations": [
+          "Genève"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": {
+          "currency": "CHF",
+          "min": 50000.5,
+          "max": 70000,
+          "unit": "year"
+        },
+        "extras": {
+          "responsibilities": "<div>Build</div>",
+          "qualifications": "<p>Localisation : Genève - Contrat : CDI</p>"
+        },
+        "metadata": {
+          "source_id": "offer-id",
+          "short_id": "j123",
+          "updated_at": "2026-10-09",
+          "minimum_years_experience": 3
+        }
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "jarvi",
+    "mode": "float-total",
+    "board": {
+      "board_url": "https://fixture.invalid/careers",
+      "metadata": {
+        "public_api_key": "public_fixture_key",
+        "currency": "CHF"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://functions.prod.jarvi.tech/v1/public-api/rest/v2/offers?limit=50000",
+        "body": "{\"data\":[{\"id\":\"offer-id\",\"shortId\":\"j123\",\"name\":\"Fallback title\",\"publishedAt\":\"2026-10-08\",\"updatedAt\":\"2026-10-09\",\"fieldsValues\":[{\"field\":{\"purpose\":\"joboffer_title\"},\"value\":\" Développeur &amp; Straße Ι \"},{\"field\":{\"purpose\":\"joboffer_company_description\"},\"value\":\"<p>Company</p>\"},{\"field\":{\"purpose\":\"joboffer_description\"},\"value\":\"<div>Build</div>\"},{\"field\":{\"purpose\":\"joboffer_profile_description\"},\"value\":\"<p>Localisation : Genève - Contrat : CDI</p>\"},{\"field\":{\"purpose\":\"joboffer_is_fulltime\"},\"value\":\"TRUE\"},{\"field\":{\"purpose\":\"joboffer_remote_days_per_week\"},\"value\":\"2,5\"},{\"field\":{\"purpose\":\"joboffer_salary_is_public\"},\"value\":\"true\"},{\"field\":{\"purpose\":\"joboffer_salary_per_year_min\"},\"value\":\"50000,50\"},{\"field\":{\"purpose\":\"joboffer_salary_per_year_max\"},\"value\":\"70000\"},{\"field\":{\"purpose\":\"joboffer_min_years_of_experience\"},\"value\":\"3\"}]}],\"total\":2.0}",
+        "key": "public_fixture_key"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://fixture.invalid/careers?q=j123%2Fdeveloppeur--strasse",
+        "title": "Développeur & Straße Ι",
+        "description": "<p>Company</p>\n<div>Build</div>\n<p>Localisation : Genève - Contrat : CDI</p>",
+        "locations": [
+          "Genève"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": {
+          "currency": "CHF",
+          "min": 50000.5,
+          "max": 70000,
+          "unit": "year"
+        },
+        "extras": {
+          "responsibilities": "<div>Build</div>",
+          "qualifications": "<p>Localisation : Genève - Contrat : CDI</p>"
+        },
+        "metadata": {
+          "source_id": "offer-id",
+          "short_id": "j123",
+          "updated_at": "2026-10-09",
+          "minimum_years_experience": 3
+        }
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "jarvi",
+    "mode": "boolean-total",
+    "board": {
+      "board_url": "https://fixture.invalid/careers",
+      "metadata": {
+        "public_api_key": "public_fixture_key",
+        "currency": "CHF"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://functions.prod.jarvi.tech/v1/public-api/rest/v2/offers?limit=50000",
+        "body": "{\"data\":[],\"total\":true}",
+        "key": "public_fixture_key"
+      }
+    ],
+    "jobs": [],
+    "truncated": true
+  },
+  {
+    "provider": "jarvi",
+    "mode": "huge-total",
+    "board": {
+      "board_url": "https://fixture.invalid/careers",
+      "metadata": {
+        "public_api_key": "public_fixture_key",
+        "currency": "CHF"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://functions.prod.jarvi.tech/v1/public-api/rest/v2/offers?limit=50000",
+        "body": "{\"data\":[{\"id\":\"offer-id\",\"shortId\":\"j123\",\"name\":\"Fallback title\",\"publishedAt\":\"2026-10-08\",\"updatedAt\":\"2026-10-09\",\"fieldsValues\":[{\"field\":{\"purpose\":\"joboffer_title\"},\"value\":\" Développeur &amp; Straße Ι \"},{\"field\":{\"purpose\":\"joboffer_company_description\"},\"value\":\"<p>Company</p>\"},{\"field\":{\"purpose\":\"joboffer_description\"},\"value\":\"<div>Build</div>\"},{\"field\":{\"purpose\":\"joboffer_profile_description\"},\"value\":\"<p>Localisation : Genève - Contrat : CDI</p>\"},{\"field\":{\"purpose\":\"joboffer_is_fulltime\"},\"value\":\"TRUE\"},{\"field\":{\"purpose\":\"joboffer_remote_days_per_week\"},\"value\":\"2,5\"},{\"field\":{\"purpose\":\"joboffer_salary_is_public\"},\"value\":\"true\"},{\"field\":{\"purpose\":\"joboffer_salary_per_year_min\"},\"value\":\"50000,50\"},{\"field\":{\"purpose\":\"joboffer_salary_per_year_max\"},\"value\":\"70000\"},{\"field\":{\"purpose\":\"joboffer_min_years_of_experience\"},\"value\":\"3\"}]}],\"total\":10000000000000000000000000}",
+        "key": "public_fixture_key"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://fixture.invalid/careers?q=j123%2Fdeveloppeur--strasse",
+        "title": "Développeur & Straße Ι",
+        "description": "<p>Company</p>\n<div>Build</div>\n<p>Localisation : Genève - Contrat : CDI</p>",
+        "locations": [
+          "Genève"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-10-08",
+        "base_salary": {
+          "currency": "CHF",
+          "min": 50000.5,
+          "max": 70000,
+          "unit": "year"
+        },
+        "extras": {
+          "responsibilities": "<div>Build</div>",
+          "qualifications": "<p>Localisation : Genève - Contrat : CDI</p>"
+        },
+        "metadata": {
+          "source_id": "offer-id",
+          "short_id": "j123",
+          "updated_at": "2026-10-09",
+          "minimum_years_experience": 3
+        }
+      }
+    ],
+    "truncated": true
+  },
+  {
+    "provider": "jarvi",
+    "mode": "missing-data",
+    "board": {
+      "board_url": "https://fixture.invalid/careers",
+      "metadata": {
+        "public_api_key": "public_fixture_key",
+        "currency": "CHF"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://functions.prod.jarvi.tech/v1/public-api/rest/v2/offers?limit=50000",
+        "body": "{\"total\":1}",
+        "key": "public_fixture_key"
+      }
+    ],
+    "error": true
+  },
+  {
+    "provider": "job51",
+    "mode": "rich",
+    "board": {
+      "board_url": "https://campus.51job.com/fixture/job.html",
+      "metadata": {
+        "ctmid": 12345
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://coapi.51job.com/job_list.php?key=1&sign=87dfb959292ed7f2abe9fde4ad184be7&params=%7B%22ctmid%22%3A12345%2C%22pagesize%22%3A20%2C%22pagenum%22%3A1%2C%22jobarea%22%3A%22%22%2C%22issuedate%22%3A%22%22%2C%22keyword%22%3A%22%22%2C%22divid%22%3A%22%22%2C%22poscode%22%3A%22%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"totalnum\":\"2\",\"joblist\":[{\"jobid\":\"1\"},{\"jobid\":\"2\"}]}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=8c23f39d31f77f52d986bd7008e80568&params=%7B%22jobid%22%3A%221%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"1\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=db8ecba10c4122a6ad21cf0ab95a735b&params=%7B%22jobid%22%3A%222%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"2\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://jobs.51job.com/all/1.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "1",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:1"
+      },
+      {
+        "url": "https://jobs.51job.com/all/2.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "2",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:2"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "job51",
+    "mode": "empty",
+    "board": {
+      "board_url": "https://campus.51job.com/fixture/job.html",
+      "metadata": {
+        "ctmid": 12345
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://coapi.51job.com/job_list.php?key=1&sign=87dfb959292ed7f2abe9fde4ad184be7&params=%7B%22ctmid%22%3A12345%2C%22pagesize%22%3A20%2C%22pagenum%22%3A1%2C%22jobarea%22%3A%22%22%2C%22issuedate%22%3A%22%22%2C%22keyword%22%3A%22%22%2C%22divid%22%3A%22%22%2C%22poscode%22%3A%22%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"totalnum\":\"0\",\"joblist\":[]}})"
+      }
+    ],
+    "jobs": [],
+    "truncated": false
+  },
+  {
+    "provider": "job51",
+    "mode": "paged",
+    "board": {
+      "board_url": "https://campus.51job.com/fixture/job.html",
+      "metadata": {
+        "ctmid": 12345
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://coapi.51job.com/job_list.php?key=1&sign=87dfb959292ed7f2abe9fde4ad184be7&params=%7B%22ctmid%22%3A12345%2C%22pagesize%22%3A20%2C%22pagenum%22%3A1%2C%22jobarea%22%3A%22%22%2C%22issuedate%22%3A%22%22%2C%22keyword%22%3A%22%22%2C%22divid%22%3A%22%22%2C%22poscode%22%3A%22%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"totalnum\":\"23\",\"joblist\":[{\"jobid\":\"1\"},{\"jobid\":\"2\"},{\"jobid\":\"3\"},{\"jobid\":\"4\"},{\"jobid\":\"5\"},{\"jobid\":\"6\"},{\"jobid\":\"7\"},{\"jobid\":\"8\"},{\"jobid\":\"9\"},{\"jobid\":\"10\"},{\"jobid\":\"11\"},{\"jobid\":\"12\"},{\"jobid\":\"13\"},{\"jobid\":\"14\"},{\"jobid\":\"15\"},{\"jobid\":\"16\"},{\"jobid\":\"17\"},{\"jobid\":\"18\"},{\"jobid\":\"19\"},{\"jobid\":\"20\"}]}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_list.php?key=1&sign=e80e9b9225e60a447df1ff39a92d8313&params=%7B%22ctmid%22%3A12345%2C%22pagesize%22%3A20%2C%22pagenum%22%3A2%2C%22jobarea%22%3A%22%22%2C%22issuedate%22%3A%22%22%2C%22keyword%22%3A%22%22%2C%22divid%22%3A%22%22%2C%22poscode%22%3A%22%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"totalnum\":\"23\",\"joblist\":[{\"jobid\":\"21\"},{\"jobid\":\"22\"},{\"jobid\":\"23\"}]}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=8c23f39d31f77f52d986bd7008e80568&params=%7B%22jobid%22%3A%221%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"1\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=db8ecba10c4122a6ad21cf0ab95a735b&params=%7B%22jobid%22%3A%222%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"2\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=1d86eae75c85abfd8aff7761c0d0bc1c&params=%7B%22jobid%22%3A%223%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"3\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=14f86df9b9d8ade144c61694d9c8b8d2&params=%7B%22jobid%22%3A%224%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"4\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=93c5c685ffed0165e79ea7b0c2f5f700&params=%7B%22jobid%22%3A%225%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"5\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=a65ebe9f2baf2548574a2ebefe73f52b&params=%7B%22jobid%22%3A%226%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"6\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=26c8d4e724f3e8c7a90963d032d92f37&params=%7B%22jobid%22%3A%227%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"7\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=5676705339ee615f98f754d4cd91ea56&params=%7B%22jobid%22%3A%228%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"8\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=b708fb7a439a6260f1e90bfdc64a20f4&params=%7B%22jobid%22%3A%229%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"9\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=009f466a3409a71a80c72d163f9040af&params=%7B%22jobid%22%3A%2210%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"10\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=2c0fe9c8416c1a8171e4801753b147ff&params=%7B%22jobid%22%3A%2211%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"11\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=3bb02beab45825cf044e7388452ab8b7&params=%7B%22jobid%22%3A%2212%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"12\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=52b0eb7789316c06427b8a7f4542cbee&params=%7B%22jobid%22%3A%2213%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"13\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=82cc85f94e98057f1456346071cd2496&params=%7B%22jobid%22%3A%2214%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"14\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=ddbb09a38ff48eefaf09524596dd9558&params=%7B%22jobid%22%3A%2215%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"15\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=c3be57d9ad90515f96088af05cfa4574&params=%7B%22jobid%22%3A%2216%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"16\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=4a577dffe2fe447c7925f24595129189&params=%7B%22jobid%22%3A%2217%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"17\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=9d3916b6b2245a60f78f11837ccff027&params=%7B%22jobid%22%3A%2218%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"18\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=0fe570ef7fbf8bdec54c3a7b9d6a574e&params=%7B%22jobid%22%3A%2219%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"19\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=757f4ed76627e0f9c7d35bda6ffb0390&params=%7B%22jobid%22%3A%2220%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"20\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=a44a8fe82bddff55762ffff353b4a016&params=%7B%22jobid%22%3A%2221%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"21\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=142b6b7ec1c6fde384d15159b956bbc6&params=%7B%22jobid%22%3A%2222%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"22\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=2b9fc3f1dfcc62c462a747cd76436433&params=%7B%22jobid%22%3A%2223%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"23\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://jobs.51job.com/all/1.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "1",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:1"
+      },
+      {
+        "url": "https://jobs.51job.com/all/2.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "2",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:2"
+      },
+      {
+        "url": "https://jobs.51job.com/all/3.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "3",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:3"
+      },
+      {
+        "url": "https://jobs.51job.com/all/4.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "4",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:4"
+      },
+      {
+        "url": "https://jobs.51job.com/all/5.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "5",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:5"
+      },
+      {
+        "url": "https://jobs.51job.com/all/6.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "6",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:6"
+      },
+      {
+        "url": "https://jobs.51job.com/all/7.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "7",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:7"
+      },
+      {
+        "url": "https://jobs.51job.com/all/8.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "8",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:8"
+      },
+      {
+        "url": "https://jobs.51job.com/all/9.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "9",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:9"
+      },
+      {
+        "url": "https://jobs.51job.com/all/10.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "10",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:10"
+      },
+      {
+        "url": "https://jobs.51job.com/all/11.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "11",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:11"
+      },
+      {
+        "url": "https://jobs.51job.com/all/12.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "12",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:12"
+      },
+      {
+        "url": "https://jobs.51job.com/all/13.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "13",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:13"
+      },
+      {
+        "url": "https://jobs.51job.com/all/14.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "14",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:14"
+      },
+      {
+        "url": "https://jobs.51job.com/all/15.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "15",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:15"
+      },
+      {
+        "url": "https://jobs.51job.com/all/16.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "16",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:16"
+      },
+      {
+        "url": "https://jobs.51job.com/all/17.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "17",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:17"
+      },
+      {
+        "url": "https://jobs.51job.com/all/18.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "18",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:18"
+      },
+      {
+        "url": "https://jobs.51job.com/all/19.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "19",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:19"
+      },
+      {
+        "url": "https://jobs.51job.com/all/20.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "20",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:20"
+      },
+      {
+        "url": "https://jobs.51job.com/all/21.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "21",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:21"
+      },
+      {
+        "url": "https://jobs.51job.com/all/22.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "22",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:22"
+      },
+      {
+        "url": "https://jobs.51job.com/all/23.html",
+        "title": "工程師",
+        "description": "开发<br><br>任职要求：<strong>経験</strong>",
+        "locations": [
+          "上海"
+        ],
+        "employment_type": "全职",
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "skills": [
+            "Python",
+            "Go"
+          ],
+          "responsibilities": "开发",
+          "qualifications": "<strong>経験</strong>"
+        },
+        "metadata": {
+          "id": "23",
+          "employer": "公司",
+          "department": "平台",
+          "address": "地址",
+          "job_function": "技术",
+          "experience": "三年",
+          "education": "本科",
+          "salary_label": "面议",
+          "benefits": "假期"
+        },
+        "source_identity": "job51:12345:23"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "job51",
+    "mode": "duplicate-id",
+    "board": {
+      "board_url": "https://campus.51job.com/fixture/job.html",
+      "metadata": {
+        "ctmid": 12345
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://coapi.51job.com/job_list.php?key=1&sign=87dfb959292ed7f2abe9fde4ad184be7&params=%7B%22ctmid%22%3A12345%2C%22pagesize%22%3A20%2C%22pagenum%22%3A1%2C%22jobarea%22%3A%22%22%2C%22issuedate%22%3A%22%22%2C%22keyword%22%3A%22%22%2C%22divid%22%3A%22%22%2C%22poscode%22%3A%22%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"totalnum\":\"2\",\"joblist\":[{\"jobid\":\"1\"},{\"jobid\":\"1\"}]}})"
+      }
+    ],
+    "error": true
+  },
+  {
+    "provider": "job51",
+    "mode": "invalid-id",
+    "board": {
+      "board_url": "https://campus.51job.com/fixture/job.html",
+      "metadata": {
+        "ctmid": 12345
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://coapi.51job.com/job_list.php?key=1&sign=87dfb959292ed7f2abe9fde4ad184be7&params=%7B%22ctmid%22%3A12345%2C%22pagesize%22%3A20%2C%22pagenum%22%3A1%2C%22jobarea%22%3A%22%22%2C%22issuedate%22%3A%22%22%2C%22keyword%22%3A%22%22%2C%22divid%22%3A%22%22%2C%22poscode%22%3A%22%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"totalnum\":\"2\",\"joblist\":[{\"jobid\":\"bad\"},{\"jobid\":\"2\"}]}})"
+      }
+    ],
+    "error": true
+  },
+  {
+    "provider": "job51",
+    "mode": "changed-total",
+    "board": {
+      "board_url": "https://campus.51job.com/fixture/job.html",
+      "metadata": {
+        "ctmid": 12345
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://coapi.51job.com/job_list.php?key=1&sign=87dfb959292ed7f2abe9fde4ad184be7&params=%7B%22ctmid%22%3A12345%2C%22pagesize%22%3A20%2C%22pagenum%22%3A1%2C%22jobarea%22%3A%22%22%2C%22issuedate%22%3A%22%22%2C%22keyword%22%3A%22%22%2C%22divid%22%3A%22%22%2C%22poscode%22%3A%22%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"totalnum\":\"23\",\"joblist\":[{\"jobid\":\"1\"},{\"jobid\":\"2\"},{\"jobid\":\"3\"},{\"jobid\":\"4\"},{\"jobid\":\"5\"},{\"jobid\":\"6\"},{\"jobid\":\"7\"},{\"jobid\":\"8\"},{\"jobid\":\"9\"},{\"jobid\":\"10\"},{\"jobid\":\"11\"},{\"jobid\":\"12\"},{\"jobid\":\"13\"},{\"jobid\":\"14\"},{\"jobid\":\"15\"},{\"jobid\":\"16\"},{\"jobid\":\"17\"},{\"jobid\":\"18\"},{\"jobid\":\"19\"},{\"jobid\":\"20\"}]}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_list.php?key=1&sign=e80e9b9225e60a447df1ff39a92d8313&params=%7B%22ctmid%22%3A12345%2C%22pagesize%22%3A20%2C%22pagenum%22%3A2%2C%22jobarea%22%3A%22%22%2C%22issuedate%22%3A%22%22%2C%22keyword%22%3A%22%22%2C%22divid%22%3A%22%22%2C%22poscode%22%3A%22%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"totalnum\":\"24\",\"joblist\":[{\"jobid\":\"21\"},{\"jobid\":\"22\"},{\"jobid\":\"23\"}]}})"
+      }
+    ],
+    "error": true
+  },
+  {
+    "provider": "job51",
+    "mode": "later-short",
+    "board": {
+      "board_url": "https://campus.51job.com/fixture/job.html",
+      "metadata": {
+        "ctmid": 12345
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://coapi.51job.com/job_list.php?key=1&sign=87dfb959292ed7f2abe9fde4ad184be7&params=%7B%22ctmid%22%3A12345%2C%22pagesize%22%3A20%2C%22pagenum%22%3A1%2C%22jobarea%22%3A%22%22%2C%22issuedate%22%3A%22%22%2C%22keyword%22%3A%22%22%2C%22divid%22%3A%22%22%2C%22poscode%22%3A%22%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"totalnum\":\"23\",\"joblist\":[{\"jobid\":\"1\"},{\"jobid\":\"2\"},{\"jobid\":\"3\"},{\"jobid\":\"4\"},{\"jobid\":\"5\"},{\"jobid\":\"6\"},{\"jobid\":\"7\"},{\"jobid\":\"8\"},{\"jobid\":\"9\"},{\"jobid\":\"10\"},{\"jobid\":\"11\"},{\"jobid\":\"12\"},{\"jobid\":\"13\"},{\"jobid\":\"14\"},{\"jobid\":\"15\"},{\"jobid\":\"16\"},{\"jobid\":\"17\"},{\"jobid\":\"18\"},{\"jobid\":\"19\"},{\"jobid\":\"20\"}]}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_list.php?key=1&sign=e80e9b9225e60a447df1ff39a92d8313&params=%7B%22ctmid%22%3A12345%2C%22pagesize%22%3A20%2C%22pagenum%22%3A2%2C%22jobarea%22%3A%22%22%2C%22issuedate%22%3A%22%22%2C%22keyword%22%3A%22%22%2C%22divid%22%3A%22%22%2C%22poscode%22%3A%22%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"totalnum\":\"23\",\"joblist\":[{\"jobid\":\"21\"},{\"jobid\":\"22\"}]}})"
+      }
+    ],
+    "error": true
+  },
+  {
+    "provider": "job51",
+    "mode": "first-short",
+    "board": {
+      "board_url": "https://campus.51job.com/fixture/job.html",
+      "metadata": {
+        "ctmid": 12345
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://coapi.51job.com/job_list.php?key=1&sign=87dfb959292ed7f2abe9fde4ad184be7&params=%7B%22ctmid%22%3A12345%2C%22pagesize%22%3A20%2C%22pagenum%22%3A1%2C%22jobarea%22%3A%22%22%2C%22issuedate%22%3A%22%22%2C%22keyword%22%3A%22%22%2C%22divid%22%3A%22%22%2C%22poscode%22%3A%22%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"totalnum\":\"2\",\"joblist\":[{\"jobid\":\"1\"}]}})"
+      }
+    ],
+    "error": true
+  },
+  {
+    "provider": "job51",
+    "mode": "wrong-employer",
+    "board": {
+      "board_url": "https://campus.51job.com/fixture/job.html",
+      "metadata": {
+        "ctmid": 12345
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://coapi.51job.com/job_list.php?key=1&sign=87dfb959292ed7f2abe9fde4ad184be7&params=%7B%22ctmid%22%3A12345%2C%22pagesize%22%3A20%2C%22pagenum%22%3A1%2C%22jobarea%22%3A%22%22%2C%22issuedate%22%3A%22%22%2C%22keyword%22%3A%22%22%2C%22divid%22%3A%22%22%2C%22poscode%22%3A%22%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"totalnum\":\"2\",\"joblist\":[{\"jobid\":\"1\"},{\"jobid\":\"2\"}]}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=8c23f39d31f77f52d986bd7008e80568&params=%7B%22jobid%22%3A%221%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"1\",\"ctmid\":\"12346\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=db8ecba10c4122a6ad21cf0ab95a735b&params=%7B%22jobid%22%3A%222%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"2\",\"ctmid\":\"12346\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      }
+    ],
+    "error": true
+  },
+  {
+    "provider": "job51",
+    "mode": "wrong-detail-id",
+    "board": {
+      "board_url": "https://campus.51job.com/fixture/job.html",
+      "metadata": {
+        "ctmid": 12345
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://coapi.51job.com/job_list.php?key=1&sign=87dfb959292ed7f2abe9fde4ad184be7&params=%7B%22ctmid%22%3A12345%2C%22pagesize%22%3A20%2C%22pagenum%22%3A1%2C%22jobarea%22%3A%22%22%2C%22issuedate%22%3A%22%22%2C%22keyword%22%3A%22%22%2C%22divid%22%3A%22%22%2C%22poscode%22%3A%22%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"totalnum\":\"2\",\"joblist\":[{\"jobid\":\"1\"},{\"jobid\":\"2\"}]}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=8c23f39d31f77f52d986bd7008e80568&params=%7B%22jobid%22%3A%221%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"999\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=db8ecba10c4122a6ad21cf0ab95a735b&params=%7B%22jobid%22%3A%222%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"999\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<div>开发<br><br>任职要求：<strong>経験</strong><script>private</script></div>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      }
+    ],
+    "error": true
+  },
+  {
+    "provider": "job51",
+    "mode": "missing-description",
+    "board": {
+      "board_url": "https://campus.51job.com/fixture/job.html",
+      "metadata": {
+        "ctmid": 12345
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://coapi.51job.com/job_list.php?key=1&sign=87dfb959292ed7f2abe9fde4ad184be7&params=%7B%22ctmid%22%3A12345%2C%22pagesize%22%3A20%2C%22pagenum%22%3A1%2C%22jobarea%22%3A%22%22%2C%22issuedate%22%3A%22%22%2C%22keyword%22%3A%22%22%2C%22divid%22%3A%22%22%2C%22poscode%22%3A%22%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"totalnum\":\"2\",\"joblist\":[{\"jobid\":\"1\"},{\"jobid\":\"2\"}]}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=8c23f39d31f77f52d986bd7008e80568&params=%7B%22jobid%22%3A%221%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"1\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<script>private</script>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      },
+      {
+        "url": "https://coapi.51job.com/job_detail.php?key=1&sign=db8ecba10c4122a6ad21cf0ab95a735b&params=%7B%22jobid%22%3A%222%22%7D",
+        "body": "jsoncallback({\"status\":\"1\",\"resultbody\":{\"jobid\":\"2\",\"ctmid\":\"12345\",\"jobname\":\" 工程師 \",\"jobinfo\":\"<script>private</script>\",\"jobareaname\":\" 上海 \",\"term\":\" 全职 \",\"issuedate\":\"2026-10-08 12:00:00\",\"jkeyword\":\" Python Go Python \",\"coname\":\" 公司 \",\"divname\":\" 平台 \",\"address\":\"地址\",\"funtype\":\"技术\",\"workyearname\":\"三年\",\"degreefrom\":\"本科\",\"providesalarname\":\"面议\",\"jobwelf\":\"假期\"}})"
+      }
+    ],
+    "error": true
+  }
+]
