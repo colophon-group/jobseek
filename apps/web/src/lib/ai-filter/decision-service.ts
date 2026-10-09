@@ -80,7 +80,7 @@ export async function listAiFilterDecisions(input: {
     .limit(1);
   if (!resource) throw new AiFilterNotFoundError();
 
-  const [rows, [bucketCount], [latestSegment], [historicalFoundation]] = await Promise.all([
+  const [rows, [bucketCount], [historicalFoundation]] = await Promise.all([
     db
       .select({
         decisionId: aiFilterDecision.id,
@@ -117,21 +117,6 @@ export async function listAiFilterDecisions(input: {
             sql`COALESCE(${aiFilterDecision.userOverride}, ${aiFilterDecision.modelDecision}) = ${input.bucket}`,
           ))
       : Promise.resolve([{ total: 0 }]),
-    input.persistedOnly
-      ? Promise.resolve([])
-      : db
-          .select({
-            status: aiFilterSegment.status,
-            windowStart: aiFilterSegment.windowStart,
-            windowEnd: aiFilterSegment.windowEnd,
-          })
-          .from(aiFilterSegment)
-          .where(and(
-            eq(aiFilterSegment.watchlistId, input.watchlistId),
-            eq(aiFilterSegment.queryVersionId, resource.queryVersionId),
-          ))
-          .orderBy(desc(aiFilterSegment.createdAt))
-          .limit(1),
     input.persistedOnly
       ? Promise.resolve([])
       : db
@@ -174,12 +159,10 @@ export async function listAiFilterDecisions(input: {
   }
 
   const caughtUpCoversQueryHorizon = Boolean(
-    latestSegment?.status === "caught_up" &&
     historicalFoundation &&
     resource.lastCaughtUpAt &&
     resource.lastSweepAt &&
-    resource.lastCaughtUpAt.getTime() >= resource.horizonEndsAt.getTime() &&
-    latestSegment.windowEnd.getTime() >= resource.horizonEndsAt.getTime(),
+    resource.lastCaughtUpAt.getTime() >= resource.horizonEndsAt.getTime(),
   );
 
   return {

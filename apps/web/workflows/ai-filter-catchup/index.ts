@@ -5,6 +5,8 @@ export type AiFilterCatchupWorkflowInput = Readonly<{
   watchlistId: string;
   leaseOwner: string;
   demandTargetOffset: number;
+  kind?: "historical" | "freshness";
+  queryVersionId?: string;
 }>;
 
 export async function aiFilterCatchupWorkflow(

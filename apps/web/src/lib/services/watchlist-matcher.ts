@@ -491,6 +491,7 @@ export async function readWatchlistCandidates(params: {
   /** Server-only classifier projection; omitted from ordinary product reads. */
   includeClassifierMetadata?: boolean;
   excludeTdmReserved?: boolean;
+  excludePostingIds?: readonly string[];
   abortSignal?: AbortSignal;
 }): Promise<{ postings: WatchlistPostingEntry[]; total: number }> {
   const order = params.order ?? "interactive";
@@ -516,12 +517,14 @@ export async function readWatchlistCandidates(params: {
       order,
       stableNewestReady,
       excludeTdmReserved: params.excludeTdmReserved,
+      excludePostingIds: params.excludePostingIds,
     });
   const searchParams = buildParams(params.filters);
   const buildWindowSearchParams = (
     filters: WatchlistCandidateFilters,
     offset: number,
     limit: number,
+    includeExclusions = true,
   ) => {
     const {
       page: _page,
@@ -535,6 +538,7 @@ export async function readWatchlistCandidates(params: {
       order,
       stableNewestReady,
       excludeTdmReserved: params.excludeTdmReserved,
+      excludePostingIds: includeExclusions ? params.excludePostingIds : undefined,
     });
     return { ...candidateSearchParams, offset, limit };
   };
@@ -546,13 +550,25 @@ export async function readWatchlistCandidates(params: {
       filters,
       TYPESENSE_BATCH_SAFETY_OFFSET,
       TYPESENSE_MAX_PAGE_SIZE,
+      false,
     );
   const needsBatches =
     !params.filters.anyCompany &&
     params.filters.companyIds.length > 0 &&
     (params.filters.companyIds.length > COMPANY_BATCH_SIZE ||
-      !isTypesenseQueryStringSafe(buildBatchSafetyParams(params.filters)));
+      (!params.excludePostingIds?.length && !isTypesenseQueryStringSafe(buildBatchSafetyParams(params.filters))));
   const client = getSearchClient();
+  const search = async (query: TypesenseQueryParams) => {
+    if (!params.excludePostingIds?.length) {
+      return client.collections("job_posting").documents().search(query, { abortSignal: params.abortSignal });
+    }
+    const response = await client.multiSearch.perform({
+      searches: [{ collection: "job_posting", ...query }],
+    }, {}, { abortSignal: params.abortSignal });
+    const result = response.results?.[0];
+    if (!result || "error" in result) throw malformedTypesenseResponseError();
+    return result;
+  };
   const filterBatches = needsBatches
     ? batchesForFilters(params.filters, (filters) =>
         buildBatchSafetyParams(filters),
@@ -563,7 +579,7 @@ export async function readWatchlistCandidates(params: {
       filterBatches.flatMap((filters) => STABLE_CANDIDATE_GUARD_FIELDS.map((field) =>
         withTypesenseRetry(
           () =>
-            client.collections("job_posting").documents().search(
+            search(
               stableCandidateGuardParams(buildWatchlistCandidateSearchParams({
                 filters,
                 offset: 0,
@@ -572,8 +588,8 @@ export async function readWatchlistCandidates(params: {
                 order,
                 stableNewestReady,
                 excludeTdmReserved: params.excludeTdmReserved,
+                excludePostingIds: params.excludePostingIds,
               }), field),
-              { abortSignal: params.abortSignal },
             ),
           {
             label: "readWatchlistCandidates.stable-order-guard",
@@ -588,10 +604,7 @@ export async function readWatchlistCandidates(params: {
   if (!needsBatches) {
     const result = await withTypesenseRetry(
       () =>
-        client
-          .collections("job_posting")
-          .documents()
-          .search(directSearchParams, { abortSignal: params.abortSignal }),
+        search(directSearchParams),
       { label: "readWatchlistCandidates", abortSignal: params.abortSignal },
     );
     assertTypesenseSearchResult(result, { expectHits: params.limit !== 0 });
@@ -613,7 +626,7 @@ export async function readWatchlistCandidates(params: {
   }
 
   const needed = params.offset + params.limit;
-  if (filterBatches.some((filters) => !isTypesenseQueryStringSafe(
+  if (!params.excludePostingIds?.length && filterBatches.some((filters) => !isTypesenseQueryStringSafe(
     buildBatchSafetyParams(filters),
   ))) {
     throw new Error("watchlist Typesense query exceeds GET limit");
@@ -622,7 +635,7 @@ export async function readWatchlistCandidates(params: {
     filterBatches.map((filters) =>
       withTypesenseRetry(
         () =>
-          client.collections("job_posting").documents().search(
+          search(
             buildWatchlistCandidateSearchParams({
               filters,
               offset: 0,
@@ -631,8 +644,8 @@ export async function readWatchlistCandidates(params: {
               order,
               stableNewestReady,
               excludeTdmReserved: params.excludeTdmReserved,
+              excludePostingIds: params.excludePostingIds,
             }),
-            { abortSignal: params.abortSignal },
           ),
         {
           label: "readWatchlistCandidates.batched.count",
@@ -658,10 +671,7 @@ export async function readWatchlistCandidates(params: {
         );
         const result = await withTypesenseRetry(
           () =>
-            client.collections("job_posting").documents().search(
-              buildWindowSearchParams(filters, batchOffset, requestLimit),
-              { abortSignal: params.abortSignal },
-            ),
+            search(buildWindowSearchParams(filters, batchOffset, requestLimit)),
           {
             label: "readWatchlistCandidates.batched.rows",
             abortSignal: params.abortSignal,

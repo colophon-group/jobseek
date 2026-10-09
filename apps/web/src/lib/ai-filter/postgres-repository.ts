@@ -9,6 +9,7 @@ import {
   inArray,
   isNull,
   lt,
+  lte,
   ne,
   or,
   sql,
@@ -158,6 +159,22 @@ async function assertExecutionClaim(
   if (new Set(claims.map((claim) => claim.cacheKey)).size !== input.cacheKeys.length) {
     throw new AiFilterRepositoryError("AI filter cache claim was lost before spend");
   }
+}
+
+function renewExpiredDecision(now: Date) {
+  return {
+    target: [aiFilterDecision.watchlistId, aiFilterDecision.queryVersionId, aiFilterDecision.candidateId, aiFilterDecision.contentIdentity],
+    set: {
+      segmentId: sql`excluded.segment_id`,
+      cacheKey: sql`excluded.cache_key`,
+      modelDecision: sql`excluded.model_decision`,
+      decidedAt: sql`excluded.decided_at`,
+      expiresAt: sql`excluded.expires_at`,
+      updatedAt: sql`excluded.updated_at`,
+    },
+    // Retain owner overrides, and never overwrite an unexpired concurrent result.
+    setWhere: lte(aiFilterDecision.expiresAt, now),
+  };
 }
 
 function candidatePairKey(candidateId: string, contentIdentity: string): string {
@@ -406,12 +423,18 @@ export class PostgresAiFilterExecutionRepository
             failureCode: null,
             leaseOwner: input.context.leaseOwner,
             leaseExpiresAt,
+            expiresAt: new Date(candidate.expiresAt),
             updatedAt: input.now,
           })
           .where(and(
             eq(aiFilterGlobalCache.cacheKey, candidate.cacheKey),
-            gt(aiFilterGlobalCache.expiresAt, input.now),
             or(
+              // An expired ready entry is a new semantic evaluation. Never
+              // steal a live pending lease, even if its cache TTL expired.
+              and(
+                lte(aiFilterGlobalCache.expiresAt, input.now),
+                ne(aiFilterGlobalCache.status, "pending"),
+              ),
               and(
                 eq(aiFilterGlobalCache.status, "pending"),
                 lt(aiFilterGlobalCache.leaseExpiresAt, input.now),
@@ -468,7 +491,7 @@ export class PostgresAiFilterExecutionRepository
       decidedAt: input.now,
       expiresAt: new Date(binding.expiresAt),
       updatedAt: input.now,
-    }))).onConflictDoNothing();
+    }))).onConflictDoUpdate(renewExpiredDecision(input.now));
   }
 
   async reserveBudget(
@@ -651,7 +674,7 @@ export class PostgresAiFilterExecutionRepository
           decidedAt: input.now,
           expiresAt: new Date(binding.expiresAt),
           updatedAt: input.now,
-        }).onConflictDoNothing();
+        }).onConflictDoUpdate(renewExpiredDecision(input.now));
       }
       await this.reconcileAccounts(tx, {
         ownerId: input.context.ownerId,

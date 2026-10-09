@@ -199,6 +199,8 @@ export async function putAiFilterConfiguration(input: {
   watchlistId: string;
   query: unknown;
   candidateLanguages?: readonly string[];
+  /** Background work cannot re-enable a disabled or replaced configuration. */
+  expectedEnabledQueryVersionId?: string;
   now?: Date;
 }): Promise<AiFilterOwnerState> {
   const now = input.now ?? new Date();
@@ -239,6 +241,11 @@ export async function putAiFilterConfiguration(input: {
         ))
         .limit(1);
       if (!currentQuery) throw new Error("AI filter current query version is missing");
+      if (input.expectedEnabledQueryVersionId && (
+        configuration.status !== "enabled" || currentQuery.id !== input.expectedEnabledQueryVersionId
+      )) {
+        throw new AiFilterNotFoundError();
+      }
       const classifierVersionChanged =
         currentQuery.model !== JEV_MODEL ||
         currentQuery.promptVersion !== AI_FILTER_PROMPT_VERSION ||
@@ -338,6 +345,7 @@ export async function putAiFilterConfiguration(input: {
       return;
     }
 
+    if (input.expectedEnabledQueryVersionId) throw new AiFilterNotFoundError();
     const configurationId = randomUUID();
     const queryVersionId = randomUUID();
     const end = aiFilterHorizonEnd(now);
@@ -568,17 +576,16 @@ export async function getAiFilterOwnerState(input: {
     const entitled = await activeEntitlement(tx, input.ownerId, now);
     const enabled = configuration.status === "enabled";
     const caughtUpCoversQueryHorizon = Boolean(
-      latestSegment?.status === "caught_up" &&
       historicalFoundation &&
       configuration.lastCaughtUpAt &&
       configuration.lastSweepAt &&
-      configuration.lastCaughtUpAt.getTime() >= queryVersion.horizonEndsAt.getTime() &&
-      latestSegment.windowEnd.getTime() >= queryVersion.horizonEndsAt.getTime(),
+      configuration.lastCaughtUpAt.getTime() >= queryVersion.horizonEndsAt.getTime(),
     );
-    const effectiveSegmentStatus =
-      latestSegment?.status === "caught_up" && !caughtUpCoversQueryHorizon
-        ? "completed"
-        : latestSegment?.status ?? null;
+    // Completed coverage can belong to either lane. A later old historical
+    // segment must not hide the completed refresh or regress its watermark.
+    const effectiveSegmentStatus = caughtUpCoversQueryHorizon
+      ? "caught_up"
+      : latestSegment?.status === "caught_up" ? "completed" : latestSegment?.status ?? null;
     return Object.freeze({
       watchlistId: input.watchlistId,
       enabled,
@@ -589,7 +596,7 @@ export async function getAiFilterOwnerState(input: {
       status: publicStatus(
         enabled,
         effectiveSegmentStatus,
-        latestSegment?.stopReason ?? null,
+        caughtUpCoversQueryHorizon ? null : latestSegment?.stopReason ?? null,
       ),
       counts: Object.freeze({
         accepted: counts?.accepted ?? 0,

@@ -55,7 +55,11 @@ language scope always comes from the owner and cannot be changed by the viewer.
 - Independent database, page, state, and count reads are parallelized.
 - Accepted pages hydrate only requested IDs through one Typesense query; the
   total is a Postgres aggregate, not an all-result hydration fan-out.
-- A cached accepted page is consumed before reconcile is considered.
+- A cached accepted page is consumed before owner-driven historical reconcile is considered.
+- The Hetzner minute timer keeps enabled narrowed feeds fresh while owners are away; shared reads remain side-effect free.
+- Reopening the narrowed view or returning to its tab reads the first accepted
+  page, including feeds previously marked caught up; changed pages reset the
+  cursor and concurrent resume reads coalesce.
 - Owner decisions and state share one response; foreground polling is bounded
   at 1.5 seconds and safe GETs abort on scope change or unmount.
 - Durable Jev work runs in Workflow in at most ten 50-candidate steps per

@@ -1058,6 +1058,7 @@ export const aiFilterConfiguration = pgTable(
     disabledAt: timestamp("disabled_at", { withTimezone: true }),
     lastCaughtUpAt: timestamp("last_caught_up_at", { withTimezone: true }),
     lastSweepAt: timestamp("last_sweep_at", { withTimezone: true }),
+    refreshRequestedAt: timestamp("refresh_requested_at", { withTimezone: true }),
   },
   (table) => [
     index("ai_filter_configuration_owner_idx").on(table.ownerId),
@@ -1123,6 +1124,8 @@ export const aiFilterQueryVersion = pgTable(
 export const aiFilterSegment = pgTable(
   "ai_filter_segment",
   {
+    kind: text("kind", { enum: ["historical", "freshness"] })
+      .default("historical").notNull(),
     id: uuid("id").defaultRandom().primaryKey(),
     watchlistId: uuid("watchlist_id")
       .notNull()
@@ -1174,8 +1177,9 @@ export const aiFilterSegment = pgTable(
     ),
     index("ai_filter_segment_resume_idx").on(table.status, table.updatedAt),
     uniqueIndex("ai_filter_segment_active_watchlist_uidx")
-      .on(table.watchlistId)
+      .on(table.watchlistId, table.kind)
       .where(sql`status IN ('pending', 'processing', 'paused_entitlement', 'paused_budget', 'paused_provider', 'paused_kill')`),
+    check("ai_filter_segment_kind_check", sql`${table.kind} IN ('historical', 'freshness')`),
     check(
       "ai_filter_segment_cursor_check",
       sql`${table.cursor} >= 0 AND ${table.cursor} <= 50`,

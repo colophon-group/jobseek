@@ -77,33 +77,56 @@ Description HTML is bounded, normalized, and supplemented with indexed job
 facts. Missing description objects fall back to bounded title and indexed
 metadata instead of making otherwise valid jobs disappear.
 
-## Demand-driven historical evaluation
+## Continuous freshness and historical evaluation
 
 Each immutable query revision describes the full active historical horizon,
 starting at `2000-01-01T00:00:00.000Z` and ending at a whole-second boundary.
 This is a selection boundary, not an instruction to evaluate the entire feed
 at setup time.
 
-The initial configuration writes state but does not walk 10,000 jobs. Opening
-or scrolling the narrowed surface requests a 500-candidate runway beyond the
-current candidate cursor. A Workflow execution may run at most ten durable
-50-candidate steps for that demand. More work begins only when the result
-surface needs it. The horizon end advances in one-minute freshness buckets so
-new jobs can be reconciled without creating a new revision or empty segment on
-every poll.
+An enabled saved request authorizes continuous matching, including while its
+owner is away. The Hetzner `jobseek-ai-filter-refresh.timer` calls
+`/api/internal/ai-filter-refresh` every minute in production. This runs on the
+existing crawler host and avoids Vercel Hobby's daily-only cron limit. The authenticated endpoint claims at most 20 eligible watchlists,
+oldest dispatch first, with PostgreSQL row locks and a 45-second dispatch floor.
+Only the next two targets are claimed at a time, within a 45-second preparation
+budget, so a timed-out invocation cannot repeatedly starve the end of its page.
+Disabled configurations, expired entitlement, preview deployments, unavailable
+credentials and either disabled execution switch contribute no work. Lost
+Workflow dispatches retry on the next scheduled pass. The prepared revision is
+checked again so a stale dispatch cannot re-enable or overwrite an edited prompt.
 
-Before requesting more work, the client reads the persisted accepted page. A
-complete cached page causes no reconcile request. One reconcile mutation starts
-or joins durable work; one consolidated decisions response returns both the
-accepted page and current owner state. Foreground polling is bounded and uses a
-1.5-second interval. Background state polling uses a five-second interval and
-stops after 24 reads; hidden tabs suspend reads. The former duplicate
-decisions/state polling loops and
-automatic full-history cascade are intentionally absent.
+Each refresh Workflow runs at most ten 50-candidate segments. It reads the full
+active scope newest first and excludes current, unexpired decisions **before**
+Typesense pagination. Each segment starts at offset zero in the remaining set;
+new arrivals take priority even during a large initial backlog. This also covers
+late indexing/enrichment of jobs whose `first_seen_at` is older than the last
+refresh, and renews expired decisions. The exclusion set is bounded at 50,000
+UUIDs and is sent in a POST search body, including stable-order guards and
+company fanout. Oversized exclusions or a scope outside the existing 1–10,000
+candidate boundary fail closed. The classifier, semantic cache, TDM policy,
+spend reservations and configured budgets remain the execution boundary.
 
-Reads never start paid work. The only execution trigger is the owner-authorized
-reconcile path. Refreshes, reconnects, shared views, event reads, and ordinary
-decision reads are side-effect free.
+Under normal load, new searchable jobs begin evaluation on the next minute's
+pass and appear after classification. Initial/changed requests and backlogs may
+need multiple passes; provider failures, budget limits, capacity and scheduler
+jitter can delay completion. The endpoint emits only aggregate dispatch counts.
+The original historical cursor remains available for owner-driven paging, in a
+separate segment lane. An old historical segment cannot block the refresh lane
+or move its completed coverage backwards. Both lanes share the existing per-owner
+and project concurrency limits. Opening or scrolling can still request a bounded
+500-candidate historical runway, but freshness does not depend on those actions.
+
+Reads remain side-effect free. Returning owners and shared viewers read persisted
+accepted decisions through the ordinary page bootstrap. Reopening a narrowed
+drawer, refocusing a visible tab, or restoring it from the browser cache reloads
+the first persisted accepted page with a safe GET, even when `hasMore` was false.
+React Activity route restoration also reloads after reconnecting its effects.
+Changed results restart the accepted cursor; concurrent resume events coalesce
+and late responses abort on scope changes. A complete cached page needs no
+reconcile request. Foreground progress polling remains bounded at 1.5
+seconds, with five-second background state polling while work is active and no
+reads in hidden tabs. No paid work is started by a shared viewer or GET request.
 
 ## Why Postgres owns the cache
 
@@ -158,7 +181,7 @@ maximum-description decisions before global cache reuse. A 500-candidate runway
 costs at most about `$0.035` at the conservative observed bound. These are
 estimates, not quotas.
 
-Fairness defaults are one active segment per watchlist (database constraint),
+Fairness defaults are one active segment per watchlist and lane (database constraint),
 two active segments per user, and 20 active project segments. Jev calls inside
 a segment are serial. Feature, route, credential, entitlement, project-budget,
 and provider failures pause before unsafe work or further paid calls.
@@ -174,6 +197,13 @@ historical active jobs can be evaluated lazily. `0094` persists the exact
 candidate language scope on each query version so it can be included in the
 hard-filter fingerprint.
 
+Migration `0103_ai_filter_freshness` adds the dispatch timestamp and independent
+historical/freshness segment lanes. Apply it through the allowlisted routine
+migration workflow before deploying the refreshed web worker. Then dispatch
+`deploy-ai-filter-refresh.yml` at current main to install and activate the host
+timer. Its preflight requires the deployed web endpoint's `narrowed-refresh-v1`
+contract before changing an existing timer.
+
 The Next.js Workflow SDK owns durable catch-up. Workflow code loops only over a
 bounded Node.js step; Postgres, Typesense, R2, and Jev access remain inside that
 step. Ambiguous provider transport failure is charged conservatively and is
@@ -185,6 +215,7 @@ Required runtime configuration:
 AI_FILTER_ENABLED=true
 AI_FILTER_JEV_1_13_0_ENABLED=true
 AI_FILTER_CACHE_HMAC_SECRET=<at least 32 bytes>
+AI_FILTER_REFRESH_SECRET=<dedicated random bearer, shared with the host timer>
 TYPESAFE_AI_TOKEN=<secret>
 
 # Optional monthly ceilings and fairness controls
@@ -217,6 +248,7 @@ unauthorized access share a not-found boundary.
 
 | Operation | Authorization and behavior |
 |---|---|
+| `GET /api/internal/ai-filter-refresh` | Scheduler bearer only; production-only bounded background Workflow dispatch |
 | `GET /api/web/watchlists/{id}/ai-filter/estimate` | Owner only; entitled owners receive candidate count, cost range, and monthly spend; ineligible owners receive entitlement and spend without an extra search count |
 | `PUT /api/web/watchlists/{id}/ai-filter` | Owner only; validate 1-10,000 candidate scope and enable/replace query |
 | `DELETE /api/web/watchlists/{id}/ai-filter` | Owner only; disable and cooperatively cancel new work |
@@ -238,8 +270,8 @@ The web path is designed around fewer invocations and bounded active CPU:
 - owner decisions and progress return from one endpoint invocation;
 - polling is bounded, cancellable for safe GETs, and suspended while a
   foreground load is active or the browser tab is hidden;
-- background prefetch starts one 500-candidate demand per visible result cursor,
-  not an automatic loop through the full horizon; and
+- owner prefetch starts one 500-candidate demand per visible result cursor;
+- minute refresh dispatch claims at most 20 watchlists and starts bounded workflows; and
 - long-running provider work runs in Workflow rather than holding a route
   invocation open.
 
@@ -256,3 +288,45 @@ privacy/legal workstream in this release. Notifications remain independent of
 narrowed decisions. Making notification delivery consume Jev results requires a
 separate delivery and readiness contract; notification matching must never
 silently become an execution trigger.
+
+## Freshness verification
+
+- `pnpm exec vitest run src/lib/ai-filter src/lib/services/__tests__/watchlist-matcher.test.ts app/api/internal/ai-filter-refresh`
+- `AI_FILTER_TEST_DATABASE_URL=postgresql://…@127.0.0.1:PORT/jobseek_ai_filter_fixture pnpm exec vitest run src/lib/ai-filter/refresh-pg.test.ts`
+
+The PostgreSQL suite requires an explicit localhost database ending in `_fixture`
+and recreates its public schema. It applies the real AI migrations and exercises
+separate lanes, duplicate scheduler/worker claims, expiry renewal, disabled and
+obsolete prompts, returned accepted results and late-indexed arrivals. Only the
+external search, mining-policy and classifier surfaces are replaced. CI runs it
+against a dedicated PostgreSQL 17 fixture. For production acceptance, require
+successful minute trigger/dispatch logs and a decision for a newly indexed eligible job
+without opening or scrolling its narrowed watchlist; a scheduled dispatch alone
+is not completion evidence.
+
+### Host scheduling and rollback
+
+The host runner performs one fixed-URL HTTPS request with a 55-second timeout,
+rejects redirects and oversized responses, and logs only aggregate counters.
+Systemd uses `DynamicUser` and `LoadCredential`; the bearer source is root-owned
+mode 0600 under `/etc/jobseek-ai-filter-refresh`. The runner has no Docker socket
+or database credentials. A single oneshot service prevents overlapping host
+triggers; PostgreSQL dispatch claims, leases and the semantic cache handle an
+ambiguous/lost response and duplicate requests.
+
+The manual deployment workflow binds an owner dispatch to current main and uses
+host-key-pinned SSH and the dedicated protected `AI_FILTER_REFRESH_SECRET`.
+Provision the same random value in the production GitHub environment and Vercel
+project before deploying the web revision. It authorizes only this endpoint and
+is separate from the existing, unreadable sensitive Vercel cron credential.
+Credentials move over SSH stdin, never command arguments or logs. The
+installer records the revision, verifies the web contract before changing host
+state, and restores the prior timer/files on a failed installation. It does not
+restart crawler writers or any other timers. Rotate the host credential by
+rerunning the same deployment workflow after rotating the shared `AI_FILTER_REFRESH_SECRET`.
+
+Check `systemctl is-active jobseek-ai-filter-refresh.timer` and bounded
+`journalctl -u jobseek-ai-filter-refresh.service` evidence. Stop and disable only
+`jobseek-ai-filter-refresh.timer` to roll back background scheduling; owner-driven
+matching remains available. Roll back web code only to a compatible reviewed
+revision, leaving the additive migration intact.

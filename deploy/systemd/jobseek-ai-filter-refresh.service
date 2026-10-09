@@ -1,0 +1,28 @@
+[Unit]
+Description=Refresh saved narrowed Jobseek watchlists
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/etc/jobseek-ai-filter-refresh/refresh-bearer
+
+[Service]
+Type=oneshot
+DynamicUser=true
+LoadCredential=refresh-bearer:/etc/jobseek-ai-filter-refresh/refresh-bearer
+ExecStart=/usr/bin/python3 /usr/local/lib/jobseek-ai-filter-refresh/runner.py
+TimeoutStartSec=65s
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectClock=true
+ProtectControlGroups=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+InaccessiblePaths=-/var/run/docker.sock
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=

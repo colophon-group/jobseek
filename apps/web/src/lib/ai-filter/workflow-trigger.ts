@@ -9,6 +9,8 @@ export async function startAiFilterCatchup(input: {
   ownerId: string;
   watchlistId: string;
   demandTargetOffset: number;
+  kind?: "historical" | "freshness";
+  queryVersionId?: string;
 }): Promise<{ runId: string }> {
   const run = await start(aiFilterCatchupWorkflow, [{
     ...input,

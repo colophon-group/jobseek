@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, gt, inArray } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -383,8 +383,23 @@ export async function loadAiFilterCandidatePage(input: {
   dependencies?: CandidateLoaderDependencies;
   /** Repair mode: scan past candidates that already have a durable decision. */
   excludeDecidedForQueryVersionId?: string;
+  /** Refresh reads exclude durable decisions before newest-first pagination. */
+  onlyUndecidedForQueryVersionId?: string;
 }): Promise<AiFilterCandidatePage> {
   const { compiled, locale } = await ownedMatcher(input.ownerId, input.watchlistId);
+  let excludePostingIds: string[] | undefined;
+  if (input.onlyUndecidedForQueryVersionId) {
+    const rows = await db.selectDistinct({ candidateId: aiFilterDecision.candidateId })
+      .from(aiFilterDecision).where(and(
+        eq(aiFilterDecision.ownerId, input.ownerId),
+        eq(aiFilterDecision.watchlistId, input.watchlistId),
+        eq(aiFilterDecision.queryVersionId, input.onlyUndecidedForQueryVersionId),
+        gt(aiFilterDecision.expiresAt, new Date()),
+      )).limit(50_001);
+    if (rows.length > 50_000) throw new AiFilterCandidateLoadError("search_unavailable");
+    excludePostingIds = rows.map(row => row.candidateId);
+  }
+  const expiresAt = new Date(Date.now() + 30 * DAY_MS);
   const fetchImpl = input.dependencies?.fetch ?? fetch;
   const getDetail = input.dependencies?.getPostingDetail ?? getPostingDetail;
   const normalizeCandidate = async (
@@ -429,7 +444,6 @@ export async function loadAiFilterCandidatePage(input: {
             : candidate.classifierMetadata?.descriptionLocale ?? "und",
         });
         const postingFirstSeenAt = new Date(candidate.firstSeenAt);
-        const expiresAt = new Date(input.windowEnd.getTime() + 30 * DAY_MS);
         if (!Number.isFinite(postingFirstSeenAt.getTime())) {
           return null;
         }
@@ -460,7 +474,8 @@ export async function loadAiFilterCandidatePage(input: {
         window: { windowStart: input.windowStart, windowEnd: input.windowEnd },
         order: "newest",
         requireStableOrder: true,
-      excludeTdmReserved: true,
+        excludeTdmReserved: true,
+        excludePostingIds,
         includeClassifierMetadata: true,
         abortSignal: input.signal,
       });

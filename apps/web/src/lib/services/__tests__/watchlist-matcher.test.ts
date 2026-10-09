@@ -896,3 +896,26 @@ describe("matchCompiledWatchlistsInWindow", () => {
     ]);
   });
 });
+
+
+describe("refresh candidate body transport", () => {
+  it("uses POST for large decision exclusions and stable-order guards", async () => {
+    const excluded = Array.from({ length: 500 }, (_, index) => makeUuid(index));
+    const newest = makeUuid(501);
+    mocks.multiSearch.mockImplementation(async ({ searches }) => ({
+      results: searches.map((search: { sort_by: string }) => isGuardSort(search.sort_by)
+        ? { found: 0, hits: [] }
+        : { found: 1, hits: [posting(newest, 1_700_000_000)] }),
+    }));
+    const result = await readWatchlistCandidates({
+      filters: { anyCompany: true, companyIds: [] }, offset: 0, limit: 50,
+      order: "newest", requireStableOrder: true, excludePostingIds: excluded,
+    });
+    expect(result.postings.map(post => post.id)).toEqual([newest]);
+    expect(mocks.singleSearch).not.toHaveBeenCalled();
+    expect(mocks.multiSearch).toHaveBeenCalled();
+    for (const [body] of mocks.multiSearch.mock.calls) {
+      expect(body.searches[0].filter_by).toContain(`id:!=[${excluded.join(",")}]`);
+    }
+  });
+});

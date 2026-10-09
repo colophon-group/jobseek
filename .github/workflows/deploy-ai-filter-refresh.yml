@@ -1,0 +1,58 @@
+name: Deploy Narrowed Refresh Timer (Hetzner)
+
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: Exact current main SHA after the freshness migration and web deployment
+        required: true
+        type: string
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+concurrency:
+  group: jobseek-ai-filter-refresh-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - name: Bind owner dispatch to current main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ inputs.revision }}
+          DISPATCH_SHA: ${{ github.sha }}
+          DISPATCH_REF: ${{ github.ref }}
+          ACTOR: ${{ github.actor }}
+          TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+        run: |
+          set -euo pipefail
+          test "$DISPATCH_REF" = refs/heads/main
+          test "$ACTOR" = viktor-shcherb
+          test "$TRIGGERING_ACTOR" = viktor-shcherb
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = "$DISPATCH_SHA"
+          test "$(gh api repos/colophon-group/jobseek/branches/main --jq .commit.sha)" = "$EXPECTED_SHA"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.revision }}
+          persist-credentials: false
+      - name: Validate the timer and credential transport
+        run: |
+          bash -n deploy/ai-filter-refresh/install-host.sh deploy/ai-filter-refresh/deploy-remote.sh
+          python3 -m unittest discover -s scripts -p 'test_ai_filter_refresh.py'
+          systemd-analyze verify deploy/systemd/jobseek-ai-filter-refresh.service deploy/systemd/jobseek-ai-filter-refresh.timer
+      - name: Install and activate the bounded HTTP timer over pinned SSH
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
+          AI_FILTER_REFRESH_SECRET: ${{ secrets.AI_FILTER_REFRESH_SECRET }}
+          EXPECTED_SHA: ${{ inputs.revision }}
+        run: bash deploy/ai-filter-refresh/deploy-remote.sh "$EXPECTED_SHA"

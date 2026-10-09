@@ -1,0 +1,11 @@
+[Unit]
+Description=Keep narrowed Jobseek watchlists fresh every minute
+
+[Timer]
+OnCalendar=*-*-* *:*:00
+AccuracySec=1s
+Persistent=true
+Unit=jobseek-ai-filter-refresh.service
+
+[Install]
+WantedBy=timers.target

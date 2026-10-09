@@ -185,3 +185,22 @@ it("restricts mining queries without removing postings from ordinary search", ()
   expect(buildWatchlistCandidateSearchParams(params).filter_by).not.toContain("tdm_reserved");
   expect(buildWatchlistCandidateSearchParams({ ...params, excludeTdmReserved: true }).filter_by).toContain("tdm_reserved:!=true");
 });
+
+describe("background narrowing exclusions", () => {
+  it("excludes existing decisions before the page cap, retaining hard constraints", () => {
+    const search = buildWatchlistCandidateSearchParams({
+      filters: { companyIds: [], anyCompany: true, locationIds: [42], languages: ["en"] },
+      offset: 0, limit: 50, excludePostingIds: [companyId], excludeTdmReserved: true,
+    });
+    expect(search.filter_by).toContain(`id:!=[${companyId}]`);
+    expect(search.filter_by).toContain("location_ids:[42]");
+    expect(search.filter_by).toContain("locales:[en,_none]");
+    expect(search.filter_by).toContain("tdm_reserved:!=true");
+  });
+  it("rejects filter injection in refresh IDs", () => {
+    expect(() => buildWatchlistCandidateSearchParams({
+      filters: { companyIds: [], anyCompany: true }, offset: 0, limit: 50,
+      excludePostingIds: ["x] || is_active:true"],
+    })).toThrow();
+  });
+});
