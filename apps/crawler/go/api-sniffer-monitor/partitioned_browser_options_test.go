@@ -35,6 +35,9 @@ func TestPartitionedBrowserFactoriesAllConfiguredBoards(t *testing.T) {
 			if provider == "accenture" {
 				var a AccentureOptions
 				a, o, err = AccentureBrowserOptions(board, raw)
+				if o.Wait != "networkidle" || o.WaitFallback != "domcontentloaded" || o.TransportRetries != 1 || o.TimeoutMS != 30000 {
+					t.Fatal("original shared-browser defaults lost")
+				}
 				if a.Endpoint == AccentureJobSearch && o.Inventory.Body != "" {
 					t.Fatal("captured request manufactured")
 				}
@@ -72,7 +75,7 @@ func TestPartitionedBrowserFactoriesAllConfiguredBoards(t *testing.T) {
 
 func TestBrassRingFactoryIdentityAndNavigationBounds(t *testing.T) {
 	board := "https://sjobs.brassring.com/TGnewUI/Search/Home/Home?partnerid=25416&siteid=5998"
-	for _, raw := range []string{`{"partner_id":"9"}`, `{"site_id":"9"}`, `{"wait":"unknown"}`, `{"timeout":0}`, `{"timeout":120001}`, `{"timeout":true}`} {
+	for _, raw := range []string{`{"partner_id":"9"}`, `{"site_id":"9"}`, `{"wait":"unknown"}`, `{"wait_fallback":"unknown"}`, `{"timeout":0}`, `{"timeout":120001}`, `{"timeout":true}`} {
 		if _, _, e := BrassRingBrowserOptions(board, raw); e == nil {
 			t.Fatal("invalid identity/navigation admitted", raw)
 		}
@@ -80,5 +83,9 @@ func TestBrassRingFactoryIdentityAndNavigationBounds(t *testing.T) {
 	_, o, e := BrassRingBrowserOptions(board, `{"wait":"networkidle","timeout":90000}`)
 	if e != nil || o.Wait != "networkidle" || o.TimeoutMS != 90000 {
 		t.Fatal("original navigation controls lost", e)
+	}
+	_, o, e = BrassRingBrowserOptions(board, `{"wait_fallback":null}`)
+	if e != nil || o.WaitFallback != "" || o.TransportRetries != 1 {
+		t.Fatal("explicit fallback disable lost", e)
 	}
 }

@@ -9,7 +9,7 @@ import (
 // These factories bind the paired collectors to their configured public board.
 // A factory alone grants no renderer or queue ownership.
 func AccentureBrowserOptions(board, raw string) (AccentureOptions, BrowserReplayOptions, error) {
-	o := BrowserReplayOptions{Wait: "load", TimeoutMS: 20000, ResponseBodyLimit: 16 << 20}
+	o := BrowserReplayOptions{Wait: "networkidle", WaitFallback: "domcontentloaded", TransportRetries: 1, TimeoutMS: 30000, ResponseBodyLimit: 16 << 20}
 	m, e := partitionedBrowserMetadata(raw)
 	if e != nil {
 		return AccentureOptions{}, o, e
@@ -31,7 +31,7 @@ func AccentureBrowserOptions(board, raw string) (AccentureOptions, BrowserReplay
 }
 
 func BrassRingBrowserOptions(board, raw string) (BrassRingBoard, BrowserReplayOptions, error) {
-	o := BrowserReplayOptions{Wait: "domcontentloaded", TimeoutMS: 60000, ResponseBodyLimit: 16 << 20}
+	o := BrowserReplayOptions{Wait: "domcontentloaded", WaitFallback: "domcontentloaded", TransportRetries: 1, TimeoutMS: 60000, ResponseBodyLimit: 16 << 20}
 	b, e := BrassRingBoardFromURL(board)
 	if e != nil {
 		return b, o, e
@@ -59,6 +59,16 @@ func BrassRingBrowserOptions(board, raw string) (BrassRingBoard, BrowserReplayOp
 				return b, o, ErrOptions
 			}
 			o.TimeoutMS = uint64(n)
+		case "wait_fallback":
+			if v == nil {
+				o.WaitFallback = ""
+				continue
+			}
+			s, ok := v.(string)
+			if !ok || s != "commit" && s != "domcontentloaded" && s != "load" && s != "networkidle" {
+				return b, o, ErrOptions
+			}
+			o.WaitFallback = s
 		default:
 			return b, o, ErrOptions
 		}

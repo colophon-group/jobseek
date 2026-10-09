@@ -1251,3 +1251,10 @@ controller, publisher/cleanup handling, original BrassRing snapshot retry and
 location hydration, service/worker/profile wiring, real database settlement and
 cold/startup coverage, and actual pinned-Lightpanda qualification. Publish the
 paired PR only once both families meet that contract.
+
+The paired factories also retain the original shared navigation contract:
+Accenture networkidle/30 seconds, domcontentloaded fallback and one transport
+retry; BrassRing domcontentloaded/60 seconds with validated wait/timeout and
+explicit fallback-disable controls. These factory values still require the
+held-target controller adapter before admission. Full SDK race validation passed
+again in 9.693 seconds after preserving these defaults.
