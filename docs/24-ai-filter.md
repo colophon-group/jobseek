@@ -121,6 +121,7 @@ Reads remain side-effect free. Returning owners and shared viewers read persiste
 accepted decisions through the ordinary page bootstrap. Reopening a narrowed
 drawer, refocusing a visible tab, or restoring it from the browser cache reloads
 the first persisted accepted page with a safe GET, even when `hasMore` was false.
+React Activity route restoration also reloads after reconnecting its effects.
 Changed results restart the accepted cursor; concurrent resume events coalesce
 and late responses abort on scope changes. A complete cached page needs no
 reconcile request. Foreground progress polling remains bounded at 1.5

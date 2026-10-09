@@ -1,3 +1,4 @@
+import { Activity } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import "@/test-utils/lingui-mock";
@@ -809,6 +810,33 @@ describe("returning to continuously refreshed narrowed results", () => {
     const { rerender } = render(<WatchlistJobList {...props} resultMode="broad" />);
     expect(fetchMock).not.toHaveBeenCalled();
     rerender(<WatchlistJobList {...props} resultMode="narrowed" />);
+    expect(await screen.findByText("Fresh background match")).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("refreshes the mounted drawer when its scope becomes ready on reopening", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => response());
+    vi.stubGlobal("fetch", fetchMock);
+    const { rerender } = render(
+      <WatchlistJobList {...props} resultMode="narrowed" aiFilterScopeReady={false} />,
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+    rerender(<WatchlistJobList {...props} resultMode="narrowed" aiFilterScopeReady />);
+    expect(await screen.findByText("Fresh background match")).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("reloads results when Next.js restores a preserved route through React Activity", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => response());
+    vi.stubGlobal("fetch", fetchMock);
+    const view = (mode: "visible" | "hidden") => (
+      <Activity mode={mode}><WatchlistJobList {...props} resultMode="narrowed" /></Activity>
+    );
+    const { rerender } = render(view("visible"));
+    expect(screen.getByText("Old narrowed match")).toBeTruthy();
+    expect(fetchMock).not.toHaveBeenCalled();
+    rerender(view("hidden"));
+    rerender(view("visible"));
     expect(await screen.findByText("Fresh background match")).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledOnce();
   });

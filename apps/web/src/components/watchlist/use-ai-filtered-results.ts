@@ -161,7 +161,7 @@ export function useAiFilteredResults(input: {
   const pendingScrollTopRef = useRef<number | null>(null);
   const readAbortRef = useRef<AbortController | null>(null);
   const resumeReadRef = useRef<AbortController | null>(null);
-  const previouslyActiveRef = useRef(input.active);
+  const previouslyReadyRef = useRef(input.active && input.scopeReady);
   const totalRef = useRef(total);
   totalRef.current = total;
   postingsRef.current = postings;
@@ -428,9 +428,10 @@ export function useAiFilteredResults(input: {
   ]);
 
   useEffect(() => {
-    const reopening = input.active && !previouslyActiveRef.current;
-    previouslyActiveRef.current = input.active;
-    if (!input.active) return;
+    const ready = input.active && input.scopeReady;
+    const reopening = ready && !previouslyReadyRef.current;
+    previouslyReadyRef.current = ready;
+    if (!ready) return;
     if (reopening && postingsRef.current.length) void refreshPersistedPage();
     const onVisibilityChange = () => {
       if (document.hidden) {
@@ -448,6 +449,9 @@ export function useAiFilteredResults(input: {
     window.addEventListener("focus", onFocus);
     window.addEventListener("pageshow", onPageShow);
     return () => {
+      // React can disconnect/reconnect a cached route without remounting it.
+      // Treat that return like reopening the drawer, too.
+      previouslyReadyRef.current = false;
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("pageshow", onPageShow);
