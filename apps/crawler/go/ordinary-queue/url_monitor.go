@@ -31,7 +31,7 @@ type URLOnlyBatchResult struct {
 // first owner's company and board when discoveries race.
 const urlOnlyInsertSQL = `INSERT INTO job_posting
  (company_id,board_id,source_url,first_seen_at,last_seen_at,next_scrape_at,is_active,titles,locales)
- SELECT $1::uuid,$2::uuid,u.url,now(),now(),now(),true,'{}','{}'
+ SELECT $1::uuid,$2::uuid,u.url,now(),now(),CASE WHEN $4::boolean THEN NULL ELSE now() END,true,'{}','{}'
  FROM unnest($3::text[]) AS u(url)
  ON CONFLICT(source_url) DO NOTHING RETURNING id::text,source_url`
 
@@ -57,7 +57,14 @@ func (a *Authority) WriteURLOnlyBatch(ctx context.Context, claim *Claim, urls []
 		_, err := a.Write(ctx, claim, false, func(ctx context.Context, tx pgx.Tx) error {
 			var reserved bool
 			var company string
-			if err := tx.QueryRow(ctx, "SELECT company_id::text,tdm_reserved FROM job_board WHERE id=$1::uuid", claim.task.ID).Scan(&company, &reserved); err != nil {
+			var skipNoScrape bool
+			// Match Python's explicit skip/no-nonempty-enrichment insert/enqueue
+			// policy from the fresh canonical row under the unchanged write fence.
+			if err := tx.QueryRow(ctx, `SELECT company_id::text,tdm_reserved,
+    COALESCE(metadata->>'scraper_type'='skip',false) AND
+    CASE WHEN jsonb_typeof(metadata#>'{scraper_config,enrich}')='array'
+     THEN jsonb_array_length(metadata#>'{scraper_config,enrich}')=0 ELSE true END
+    FROM job_board WHERE id=$1::uuid`, claim.task.ID).Scan(&company, &reserved, &skipNoScrape); err != nil {
 				return err
 			}
 			if reserved {
@@ -125,7 +132,7 @@ func (a *Authority) WriteURLOnlyBatch(ctx context.Context, claim *Claim, urls []
 				}
 			}
 			if len(newURLs) > 0 {
-				rows, err := tx.Query(ctx, urlOnlyInsertSQL, company, claim.task.ID, newURLs)
+				rows, err := tx.Query(ctx, urlOnlyInsertSQL, company, claim.task.ID, newURLs, skipNoScrape)
 				if err != nil {
 					return err
 				}
@@ -149,7 +156,7 @@ func (a *Authority) WriteURLOnlyBatch(ctx context.Context, claim *Claim, urls []
 				}
 				result.Deduplicated = len(newURLs) - result.Inserted
 			}
-			if len(detailIDs) == 0 {
+			if skipNoScrape || len(detailIDs) == 0 {
 				return nil
 			}
 			// Foreign relists keep the canonical board's detail routing. A board

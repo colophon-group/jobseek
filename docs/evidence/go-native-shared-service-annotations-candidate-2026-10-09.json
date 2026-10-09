@@ -3,7 +3,7 @@
   "observed_at_utc": "2026-10-09T04:28:08.492540+00:00",
   "candidate_version": "0.13.988",
   "prototype_parent_review_head": "7ee22107d0e75b49bcc8f92a69e13a1bd8ec6802",
-  "state": "local qualification passed; full exact-head CI, immutable deployment and fresh canonical-route ownership admission pending",
+  "state": "local component qualification passed; initial full CI exposed stale rendered inference assertions; corrected original URL-only and skip insert/enqueue behavior passes39 combined real cases; fresh exact-head full CI required",
   "providers": [
     "dom",
     "api_sniffer",
@@ -86,5 +86,6 @@
     "Every production Python consumer, remaining unsupported configuration, full natural freshness/conservation/cost and supported reversal/window must still be replaced or proven before final retirement."
   ],
   "full_migration_complete": false,
-  "candidate_base_revision": "a9e2f4cb20c6d9bd5a26ef7c515127cd06cd654b"
+  "candidate_base_revision": "a9e2f4cb20c6d9bd5a26ef7c515127cd06cd654b",
+  "component_of_combined_candidate_version": "0.13.989"
 }

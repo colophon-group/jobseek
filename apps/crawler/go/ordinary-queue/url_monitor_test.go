@@ -8,8 +8,17 @@ import (
 	"time"
 )
 
+func urlOnlyDetailClaimFixture(t *testing.T) (authorityFixture, *Authority, *Claim) {
+	t.Helper()
+	// Detail intent tests use an actual URL monitor with an independent scraper.
+	// The rich Greenhouse fixture declares skip and must suppress such work.
+	p := firstProviderBatchFixture(t, "dom")
+	a, claim := firstRetirementClaim(t, p)
+	return p.f, a, claim
+}
+
 func TestRealOwnedURLOnlyMonitorInsertRepairRetryBudgetAndRelist(t *testing.T) {
-	f, a, claim := richClaimFixture(t)
+	f, a, claim := urlOnlyDetailClaimFixture(t)
 	ctx := context.Background()
 	cycle, err := a.BeginGreenhouseCycle(ctx, claim)
 	if err != nil {
@@ -98,7 +107,7 @@ func TestRealOwnedURLOnlyMonitorInsertRepairRetryBudgetAndRelist(t *testing.T) {
 }
 
 func TestRealOwnedURLOnlyForeignRelistPreservesCanonicalDetailRouting(t *testing.T) {
-	f, a, claim := richClaimFixture(t)
+	f, a, claim := urlOnlyDetailClaimFixture(t)
 	ctx := context.Background()
 	board, id := ordinaryID(t), ordinaryID(t)
 	raw := "https://fixture.invalid/jobs/" + id

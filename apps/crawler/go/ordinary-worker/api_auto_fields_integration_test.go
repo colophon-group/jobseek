@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/redis/go-redis/v9"
 	"net/http"
 	"strings"
 	"testing"
@@ -134,12 +135,20 @@ func TestRealAutomaticAPIFieldsDirectProxyAndRenderedConservation(t *testing.T) 
 					// Original browser replay without a declared field map preserves URLs.
 					// Conflicting field names do not affect a URL-only listing; explicit
 					// browser fields have separate canonical-content regression coverage.
-					var emptyFields bool
+					var emptyFields, noDetailDue bool
+					var insertedID string
 					var descriptions int
-					e = f.pg.QueryRow(ctx, `SELECT COALESCE(cardinality(p.titles),0)=0 AND COALESCE(cardinality(p.location_ids),0)=0 AND p.employment_type IS NULL AND p.description_r2_hash IS NULL,(SELECT count(*) FROM descriptions d WHERE d.posting_id=p.id) FROM job_posting p WHERE p.board_id=$1::uuid AND p.id<>$2::uuid`, f.board, f.original).Scan(&emptyFields, &descriptions)
-					if e != nil || !emptyFields || descriptions != 0 || len(f.r.Keys(ctx, "ft_scrapes_*").Val()) != 0 {
+					e = f.pg.QueryRow(ctx, `SELECT p.id::text,p.next_scrape_at IS NULL,COALESCE(cardinality(p.titles),0)=0 AND COALESCE(cardinality(p.location_ids),0)=0 AND p.employment_type IS NULL AND p.description_r2_hash IS NULL,(SELECT count(*) FROM descriptions d WHERE d.posting_id=p.id) FROM job_posting p WHERE p.board_id=$1::uuid AND p.id<>$2::uuid`, f.board, f.original).Scan(&insertedID, &noDetailDue, &emptyFields, &descriptions)
+					if e != nil || !emptyFields || !noDetailDue || descriptions != 0 {
 						t.Fatal("original URL-only browser inventory inferred fields or scheduled explicit skip scraper", e)
 					}
+					// Existing fixture work is unrelated; verify only this inserted row.
+					for _, key := range []string{"ft_scrapes_simple:example.com", "scrapes_simple:example.com"} {
+						if e := f.r.ZScore(ctx, key, insertedID).Err(); e != redis.Nil {
+							t.Fatal("explicit skip scraper acquired detail queue work", e)
+						}
+					}
+
 				}
 
 				if mode == "rich" && route != "rendered" {

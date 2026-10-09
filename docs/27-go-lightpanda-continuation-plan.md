@@ -16,6 +16,28 @@ whole-service CPU/RAM/density/attributable cost; and a supported cold reversal
 with its observation window. A merged candidate or synthetic benchmark does
 not complete migration.
 
+## Combined review batch — twenty-three configurations across four types
+
+[PR #10375](https://github.com/colophon-group/jobseek/pull/10375) now combines the
+annotation/browser correction and explicit HTTP TLS cohort as **0.13.989**,
+**23 configurations across DOM, API, inline and sitemap**, with 158 compiled
+profiles. Both component proof sets are retained; one fresh CI/deployment cycle
+covers the combined change.
+
+Initial component CI `37884325254` failed two historical rendered API inference
+expectations. Actual Python browser replay without declared fields returns URLs.
+The corrected row-specific check also exposed URL-stub insert/enqueue ignoring an
+explicit skip scraper. Go now follows the original fresh canonical skip/no-enrich
+policy for those inserts and prevents placeholder detail work. HTTP inference and
+ambiguity checks, explicit browser content and first/relisted normal detail work
+remain covered. Normal URL writer tests use an independent DOM scraper rather
+than the rich fixture that declares skip. All 39 combined real SQL/Redis terminal
+cases and 24 cold-retirement cases plus URL writer repair/relist/foreign/fence
+references pass. Initial nullable-array, global-queue and compile assertion
+failures remain preserved. An intermediate test head was pushed after a shell
+continued beyond an assertion failure; only a fully repaired final head with
+fresh required checks may merge. New exact-head full CI is required.
+
 ## Next grouped candidate — explicit HTTP TLS settings across three monitor types
 
 Candidate **0.13.989** qualifies sixteen existing HTTP configurations together:
@@ -66,7 +88,7 @@ claimed. API full race, focused queue/worker/browser race and three module vet
 checks pass. Full exact-head CI, immutable deployment and fresh canonical-route
 ownership admission remain pending. See the [candidate evidence](evidence/go-native-shared-service-annotations-candidate-2026-10-09.json).
 
-## Latest checkpoint — source987 merged; shared three-type source988 qualified
+## Latest checkpoint — source987 deployed; combined four-type source989 qualified
 
 [PR #10372](https://github.com/colophon-group/jobseek/pull/10372) merged with
 fresh required checks and independent outgoing cold250. Source
@@ -145,8 +167,8 @@ merge authority passed. PR #10374 merged at
 `37884037001` and matching renderer rollout `37884097793` succeeded on attempt 1.
 Independent incoming exact source/images, whole base stack, cold252 and renderer
 verification passed at 04:44 UTC; no one-off administrative consumers remain.
-Native ownership remains absent. Source988 is published as [PR #10375](https://github.com/colophon-group/jobseek/pull/10375); its initial full CI `37884325254` failed in native execution; preserve the original log and repair the actual cause before fresh checks, installed-image parity `37884325243` and deployment gate `37884323962` pass. Admit and activate the next combined batch only
-after the original browser replay parity correction in source988 is deployed;
+Native ownership remains absent. The shared component is grouped with the TLS cohort in [PR #10375](https://github.com/colophon-group/jobseek/pull/10375); its initial full CI `37884325254` failed in native execution; preserve the original log and repair the actual cause before fresh checks, installed-image parity `37884325243` and deployment gate `37884323962` pass. Admit and activate the next combined batch only
+after the original browser replay parity correction in combined source989 is deployed;
 retain complete supported cutover and incoming independent verification.
 
 The preceding source984 broad activation and natural observations are retained below.
