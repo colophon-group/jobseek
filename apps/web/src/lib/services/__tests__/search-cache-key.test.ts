@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => {
   };
   return {
     keys,
+    dbLoads: { count: 0 },
     provider,
     cached: vi.fn(async (key: string, fetcher: () => Promise<unknown>) => {
       keys.push(key);
@@ -20,7 +21,10 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({
   cacheLife: vi.fn(),
 }));
-vi.mock("@/db", () => ({ db: { execute: vi.fn() } }));
+vi.mock("@/db", () => {
+  mocks.dbLoads.count += 1;
+  return { db: { execute: vi.fn() } };
+});
 vi.mock("drizzle-orm", () => ({ sql: vi.fn() }));
 vi.mock("@/lib/cache", () => ({ cached: mocks.cached }));
 vi.mock("@/lib/cache-ttl", () => ({
@@ -54,6 +58,7 @@ describe("search service cache keys", () => {
     });
 
     expect(mocks.keys).toEqual(["top-companies:v2:en:en:0:10"]);
+    expect(mocks.dbLoads.count).toBe(0);
   });
 });
 

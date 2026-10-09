@@ -51,3 +51,25 @@ An absent `year_counts` stage on these API paths is expected after this change.
 Track the optimization in #10377 and compare post-deployment origin profiles
 against the earlier baseline, separating keyword search from filtered ranking.
 Do not claim the modeled latency saving as a measured improvement before rollout.
+
+
+Search providers project only the document fields needed by posting mapping and
+company-metadata fallback, and disable unused title highlighting. Taxonomy alias
+highlighting stays enabled. The ten-hit group budget is retained: later hits can
+supply fallback company identity when canonical metadata is absent.
+
+Semantic parsing starts explicit slug resolution and free-text suggestions
+concurrently. Known work-mode spans skip suggestions they cannot consume, while
+candidate windows retain their original word positions. Input complexity remains
+a conservative upper bound. Session lookup imports Better Auth only after a
+session cookie and Redis miss; SQL/Drizzle loads only for currency-rate rendering.
+Anonymous search therefore avoids their eager module initialization.
+
+The follow-up for #10378–#10380 has three validation scopes: public read-only query
+comparisons, a parser harness with controlled I/O delays, and fresh local Node
+imports of the built route. These are distinct from natural Vercel origin latency.
+Query projection consistently reduced response bytes; engine timing was noisy and
+is not a guaranteed speedup. The roughly 3.8-second first-response remainder from
+the earlier probe is still not attributable wholly to module loading. Compare
+client TTFB/body completion against new profiles after deployment before claiming
+a cold-start fix. Keep backend version/schema/ranking and query-cache policy unchanged.

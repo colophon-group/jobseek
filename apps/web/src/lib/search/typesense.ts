@@ -1,3 +1,4 @@
+import { POSTING_RESULT_PARAMETERS } from "./typesense-result-fields";
 import { measureSearchStage } from "./latency";
 import type {
   SearchResponse as TsSearchResponse,
@@ -302,6 +303,7 @@ export class TypesenseSearchProvider implements SearchProvider {
               sort_by: "_text_match:desc,first_seen_at:desc",
               group_by: "company_id",
               group_limit: 10,
+              ...POSTING_RESULT_PARAMETERS,
               ...groupedPageRequest(offset, limit),
               typo_tokens_threshold: 1,
               drop_tokens_threshold: 1,
@@ -430,6 +432,7 @@ export class TypesenseSearchProvider implements SearchProvider {
               filter_by: `company_id:[${companyIds.join(",")}] && ${activeFilter}`,
               group_by: "company_id",
               group_limit: 10,
+              ...POSTING_RESULT_PARAMETERS,
               sort_by: "first_seen_at:desc",
               per_page: companyIds.length,
             }),
@@ -536,6 +539,7 @@ export class TypesenseSearchProvider implements SearchProvider {
                   filter_by: `company_id:[${companyIds.join(",")}] && ${POSTING_BASE_FILTER}`,
                   group_by: "company_id",
                   group_limit: 10,
+                  ...POSTING_RESULT_PARAMETERS,
                   sort_by: "first_seen_at:desc",
                   per_page: companyIds.length,
                 }),

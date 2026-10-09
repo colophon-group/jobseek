@@ -22,7 +22,7 @@ import {
   parseEmploymentTypeParam,
   parseWorkModeParam,
 } from "@/lib/search/query-params";
-import { tokenizeSemanticSearchQuery } from "@/lib/search/semantic-query";
+import { tokenizeSemanticSearchQuery, type TokenizedSemanticSearchQuery } from "@/lib/search/semantic-query";
 import type { EmploymentType, SelectedLocation, WorkMode } from "@/lib/search/types";
 
 export interface ParsedSearchFilters {
@@ -162,6 +162,57 @@ function wordInMultiWordOccupation(
   return false;
 }
 
+/** Skip only spans guaranteed to be consumed by the existing work-mode passes. */
+function semanticLookupCandidates(tokenized: TokenizedSemanticSearchQuery) {
+  const singles = new Set<string>();
+  const occupations = new Set<string>();
+  for (const words of tokenized.segmentWords) {
+    const consumed = words.map(() => false);
+    for (const size of [3, 2]) {
+      for (let i = 0; i <= words.length - size; i++) {
+        if (consumed.slice(i, i + size).some(Boolean)) continue;
+        if (WORK_MODE_MULTI_TOKEN[words.slice(i, i + size).join(" ").toLowerCase()]) {
+          for (let j = i; j < i + size; j++) consumed[j] = true;
+        }
+      }
+    }
+    words.forEach((word, i) => {
+      if (WORK_MODE_SINGLE_TOKEN[word.toLowerCase()]) consumed[i] = true;
+      if (!consumed[i]) { singles.add(word); occupations.add(word); }
+    });
+    for (const size of words.length <= 10 ? [2, 3] : [2]) {
+      for (let i = 0; i <= words.length - size; i++) {
+        if (!consumed.slice(i, i + size).some(Boolean)) {
+          occupations.add(words.slice(i, i + size).join(" "));
+        }
+      }
+    }
+  }
+  return { singles, occupations };
+}
+
+async function lookupSemanticTerms(
+  tokenized: TokenizedSemanticSearchQuery,
+  params: { locale: string; qmode?: "literal"; userLat?: number; userLng?: number },
+): Promise<[TaxonomySuggestion[][], LocationSuggestion[][], TaxonomySuggestion[][], TaxonomySuggestion[][]]> {
+  if (params.qmode === "literal" || tokenized.singles.length === 0) return [[], [], [], []];
+  const candidates = semanticLookupCandidates(tokenized);
+  if (candidates.singles.size === 0) {
+    return [tokenized.singles.map(() => []), tokenized.singles.map(() => []),
+      tokenized.allCandidates.map(() => []), tokenized.singles.map(() => [])];
+  }
+  return measureSearchStage("interpret_terms", () => Promise.all([
+    Promise.all(tokenized.singles.map((query) => candidates.singles.has(query)
+      ? measureSearchStage("seniority_lookup", () => suggestSeniorities({ query, locale: params.locale })) : [])),
+    Promise.all(tokenized.singles.map((query) => candidates.singles.has(query)
+      ? measureSearchStage("location_lookup", () => suggestLocations({ query, locale: params.locale, userLat: params.userLat, userLng: params.userLng })) : [])),
+    Promise.all(tokenized.allCandidates.map((query) => candidates.occupations.has(query)
+      ? measureSearchStage("occupation_lookup", () => suggestOccupations({ query, locale: params.locale })) : [])),
+    Promise.all(tokenized.singles.map((query) => candidates.singles.has(query)
+      ? measureSearchStage("technology_lookup", () => suggestTechnologies({ query, locale: params.locale })) : [])),
+  ]));
+}
+
 export async function parseSearchFilters(params: {
   q?: string;
   /** Preserve residual keywords from an already routed whole-query proposal. */
@@ -218,7 +269,10 @@ export async function parseSearchFilters(params: {
       )
     : [];
 
-  const [resolvedExplicitLocs, resolvedOccs, resolvedSens, resolvedTechs] = await measureSearchStage("resolve_filters", () => Promise.all([
+  const tokenized = tokenizeSemanticSearchQuery(params.q ?? "");
+  // Slug resolution and free-text suggestions have no data dependency.
+  const [resolved, interpreted] = await Promise.all([
+    measureSearchStage("resolve_filters", () => Promise.all([
     explicitLocSlugs.length > 0
       ? resolveLocationSlugs(explicitLocSlugs, params.locale)
       : Promise.resolve(new Map()),
@@ -231,7 +285,10 @@ export async function parseSearchFilters(params: {
     explicitTechSlugs.length > 0
       ? resolveTechnologySlugs(explicitTechSlugs)
       : Promise.resolve(new Map()),
-  ]));
+    ])),
+    lookupSemanticTerms(tokenized, params),
+  ]);
+  const [resolvedExplicitLocs, resolvedOccs, resolvedSens, resolvedTechs] = resolved;
 
   const unresolvedExplicitSlugs: NonNullable<
     ParsedSearchFilters["unresolvedExplicitSlugs"]
@@ -301,9 +358,7 @@ export async function parseSearchFilters(params: {
   const technologyIds = new Set(technologies.map((t) => t.id));
 
   // --- Word-level tokenization ---
-  const { segmentWords, singles, allCandidates } = tokenizeSemanticSearchQuery(
-    params.q ?? "",
-  );
+  const { segmentWords, singles, allCandidates } = tokenized;
   if (singles.length === 0) {
     return {
       keywords: [],
@@ -317,29 +372,7 @@ export async function parseSearchFilters(params: {
     };
   }
 
-  // Four Typesense suggest batches run in parallel. Occupations use singles,
-  // pairs and triplets; the other taxonomies use singles.
-  const [senResults, locResults, occResults, techResults] = await measureSearchStage("interpret_terms", () => Promise.all([
-    Promise.all(
-      singles.map((c) => measureSearchStage("seniority_lookup", () => suggestSeniorities({ query: c, locale: params.locale }))),
-    ),
-    Promise.all(
-      singles.map((c) =>
-        measureSearchStage("location_lookup", () => suggestLocations({
-          query: c,
-          locale: params.locale,
-          userLat: params.userLat,
-          userLng: params.userLng,
-        })),
-      ),
-    ),
-    Promise.all(
-      allCandidates.map((c) => measureSearchStage("occupation_lookup", () => suggestOccupations({ query: c, locale: params.locale }))),
-    ),
-    Promise.all(
-      singles.map((c) => measureSearchStage("technology_lookup", () => suggestTechnologies({ query: c, locale: params.locale }))),
-    ),
-  ]));
+  const [senResults, locResults, occResults, techResults] = interpreted;
 
   // Build lookup maps
   const locMap = new Map<string, LocationSuggestion[]>();
