@@ -1258,3 +1258,51 @@ retry; BrassRing domcontentloaded/60 seconds with validated wait/timeout and
 explicit fallback-disable controls. These factory values still require the
 held-target controller adapter before admission. Full SDK race validation passed
 again in 9.693 seconds after preserving these defaults.
+
+
+### Authoritative transition after source995 — 2026-10-09 20:19 UTC
+
+Source995 served the admitted 7,670 monitor / 2,746 detail board cohort. Its
+19:49 observation recorded 114 naturally completed monitor claims and 94 detail
+claims with eight healthy endpoints and sampled exact retained schedules.
+Failed-detail diagnostics remain unclassified; this is not full freshness proof.
+
+The original ordinary wrapper retired that owner successfully. Independent
+source/image, receipt/projection absence and full base/B0 restoration checks
+passed. Original B0 rollback restored 24 ready tasks, dropped zero terminal
+tasks and left zero write fences. Selector clear and independent complete cold
+reversal passed at epoch258, preserving retained audit fences and schedules.
+
+PR #10391 was then head-bound merged from reviewed52db6b26d5562e440a7843f7629217e93ed42c08
+against exact7eb25bb7e43c3b594100803d12cd124dc5736d95 to
+ce4964b76a76a99cd839b14c3608033846ccf7bd. Current-head Required CI37975852615
+(including actual Native ordinary execution), installed contracts37975856467,
+physical pinned-Lightpanda AMD64/ARM64 qualification37976070141, and Crawler
+Deploy Gate37975750943 all passed. No deployment holds were open.
+
+Original whole-crawler deployment37985084996 is in progress. Matching renderer
+workflow37985143171 succeeded and was independently verified at immutable image
+`ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:23a3be01487152ddaaf038decf3fad14e795ca512621fb8143f83abe184fb86f`.
+Source996 crawler deployment identity, full cold readiness, fresh canonical/cache
+and actual-posting-route admission, and supported Go ownership activation remain
+pending. Do not claim incoming serving coverage before those checks complete.
+The incoming code has170 profiles, adding all five Darwinbox and three ByteDance
+boards. Lightpanda remains the latest stable1.0.0, bound to the verified digest.
+
+The paired Accenture/BrassRing local prototype is rebased onto merged source996
+with unchanged runtime bytes across that rebase. Its all16-board strict factories
+and original navigation settings pass full SDK race9.693s plus vet/diff checks.
+A fresh anonymous Accenture India first page contains500 jobs /7,519,977 response
+bytes. Actual Go projection matches every original Python field (zero differences)
+and produces2,275,340 bytes; ten50-row chunks peak at305,586 bytes, with the
+largest row20,394 bytes. The reported total10000 is not proven complete inventory.
+These are direct-HTTP first-page observations, not browser or production writer
+qualification. The next controller must preserve original initial-sequence,
+partition, prefix, policy and cleanup semantics while using existing rich chunk
+writing and bounded renderer framing where real inventory size requires it.
+BrassRing public ADM and Progress Rail listings return200 and retain the expected
+Angular/search-results markers; UI snapshot/hydration execution is still pending.
+
+Full migration remains ACTIVE. Finish the paired browser controllers and all16
+board settlement/physical qualification, then batch the largest shared DOM/API
+frontier. Full freshness/conservation/cost and Python retirement remain outstanding.
