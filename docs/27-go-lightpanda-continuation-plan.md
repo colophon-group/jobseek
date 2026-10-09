@@ -1320,3 +1320,22 @@ checks passed2.110s. VERSION0.13.997 reserves the next paired delivery. No new
 profiles are installed and no paired runtime ownership is admitted yet. The
 service constructor, held capture/UI/hydration, worker bindings, actual complete
 inventory sizing, real settlement and physical qualification are still required.
+
+
+### Source996 deployment verified — 2026-10-09 20:28 UTC
+
+Original whole-crawler run37985084996 and matching renderer37985143171 both
+succeeded. Independent selected identities and complete incoming cold258 checks
+passed. Active source is `ce4964b76a76a99cd839b14c3608033846ccf7bd` in generation
+`release-ce4964b76a76a99cd839b14c3608033846ccf7bd.zywVcI`. Crawler image is
+`ghcr.io/colophon-group/jobseek-crawler@sha256:3a1b56330ae41f3e1a36085775324c947c85aa7e0840c089f048c7483357500d`; browser image is
+`ghcr.io/colophon-group/jobseek-crawler-browser@sha256:73b5b2668584a5ee2e509ebd13456577f8a1cc8dfce5d8c09033065bceb730cd`. Renderer23a3be… was verified
+independently above. The full base fleet is healthy and restart-armed; outgoing
+ordinary/B0 receipts and routing projections are absent, selectors are cleared,
+and native actors remain cold. Historical audit receipts are preserved.
+
+Source996 Go ownership is not yet staged or active. Next refresh source-bound
+canonical/cache and actual scheduled-posting-route admission, then use original
+B0 stage/activate at259 and ordinary stage/activate. Independently verify serving
+authority and the newly migrated Darwinbox/ByteDance outcomes. No local mutation
+or deployment is running at this checkpoint. Full migration remains ACTIVE.
