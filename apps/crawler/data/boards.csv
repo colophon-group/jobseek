@@ -1758,7 +1758,7 @@ compass-group,compass-group-germany,https://karriere.compass-group.de/job-finder
 compass-group,compass-group-north-america,https://jobs.compassgroupcareers.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.compassgroupcareers.com/googlefeed.xml""}",skip,
 compass-group,compass-group-norway,https://jobb.compass-group.no/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://jobb.compass-group.no/jobs.rss""}",skip,
 compass-group,compass-group-sweden,https://ledigajobb.compass-group.se/,sitemap,"{""sitemap_url"": ""https://ledigajobb.compass-group.se/sitemap.xml"", ""url_filter"": ""/jobs/\\d+-""}",dom,"{""steps"": [{""text"": ""Plats"", ""offset"": 1, ""field"": ""locations"", ""from"": 0}, {""tag"": ""h1"", ""field"": ""title""}, {""field"": ""description"", ""html"": true, ""stop"": ""Ansvarig rekryterare""}]}"
-compass-group,compass-group-uk-ireland,https://jobs.compass-group.co.uk/search,inploi,"{""api_key"": ""pk_edce29b92c2773898c482851"", ""segment_id"": ""248""}",json-ld,"{""enrich"": [""description""]}"
+compass-group,compass-group-uk-ireland,https://jobs.compass-group.co.uk/search,inploi,"{""api_key"":""pk_edce29b92c2773898c482851"",""segment_id"":""248"",""page_size"":100}",json-ld,"{""enrich"": [""description""]}"
 compass-pathways,compass-pathways-greenhouse,https://job-boards.eu.greenhouse.io/compasspathways,greenhouse,"{""token"": ""compasspathways""}",skip,
 compeer-financial,compeer-financial-greenhouse,https://job-boards.greenhouse.io/compeerfinancial,greenhouse,"{""token"": ""compeerfinancial""}",skip,
 compliancy-group-llc,compliancy-group-llc-greenhouse,https://job-boards.greenhouse.io/compliancygroupllc,greenhouse,"{""token"": ""compliancygroupllc""}",skip,

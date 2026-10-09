@@ -38,6 +38,9 @@ func FetchFinalHTTPProvidersHTTP(ctx context.Context, client *http.Client, p que
 		if !o.ResourceMatches(r.URL) || (r.Method != "GET" && r.Method != "POST") || (o.Provider == "paynet" || o.Provider == "fenbi") && (r.Method != "GET" || r.Body != "") || o.Provider == "wecruit" && r.Method != "POST" || o.Provider == "nowhiring" && ((r.URL == "https://nowhiring.com/api/jobs/search") != (r.Method == "POST")) {
 			return nil, queue.ErrConfiguration
 		}
+		if (o.Provider == "inploi" || o.Provider == "jobconvo") && (r.Method != "GET" || r.Body != "") || o.Provider == "curately" && ((r.URL == api.CuratelySearchURL) != (r.Method == "POST")) {
+			return nil, queue.ErrConfiguration
+		}
 		attempts := 3
 		if o.Provider == "nowhiring" || o.Provider == "fenbi" {
 			attempts = 1
@@ -98,6 +101,9 @@ func FetchFinalHTTPProvidersHTTP(ctx context.Context, client *http.Client, p que
 				if o.Provider == "wecruit" {
 					limit = 10_000_000
 				}
+				if o.Provider == "jobconvo" {
+					limit = 4 << 20
+				}
 				body, readErr = io.ReadAll(io.LimitReader(response.Body, limit+1))
 				response.Body.Close()
 				observed.bytes = len(body)
@@ -115,7 +121,10 @@ func FetchFinalHTTPProvidersHTTP(ctx context.Context, client *http.Client, p que
 				if readErr == nil && (status == 301 || status == 302 || status == 303 || status == 307 || status == 308) {
 					base, _ := url.Parse(current)
 					next, err := base.Parse(response.Header.Get("Location"))
-					if err != nil || redirects >= 20 || !o.ResourceMatches(next.String()) {
+					if err == nil && o.Provider == "jobconvo" && next.Scheme == "https" && next.Port() == "443" {
+						next.Host = next.Hostname()
+					}
+					if err != nil || redirects >= 20 || !o.ResourceMatches(next.String()) || o.Provider == "inploi" && next.Host != base.Host || o.Provider == "curately" && next.Path != base.Path {
 						return nil, queue.ErrConfiguration
 					}
 					current = next.String()
@@ -128,10 +137,16 @@ func FetchFinalHTTPProvidersHTTP(ctx context.Context, client *http.Client, p que
 					continue
 				}
 				if readErr == nil && (status == 200 || o.Provider == "paynet" && status == 201 || (o.Provider == "nowhiring" || o.Provider == "fenbi") && status >= 200 && status < 300) {
-					if o.Provider == "fenbi" {
+					if o.Provider == "fenbi" || (o.Provider == "jobconvo" || o.Provider == "inploi" && !strings.HasPrefix(r.URL, api.InploiAPIURL+"?")) && len(body) > 0 {
 						return []byte(jsonld.DecodeDocument(body, response.Header.Get("Content-Type"))), nil
 					}
-					if o.Provider == "paynet" {
+					if o.Provider == "curately" || o.Provider == "inploi" {
+						if d, err := api.Decode(body); err == nil {
+							if _, ok := d.Value.(map[string]any); ok {
+								return body, nil
+							}
+						}
+					} else if o.Provider == "paynet" {
 						// The original JSON-page helper retries parsing and shape errors.
 						if d, err := api.Decode(body); err == nil {
 							if _, ok := d.Value.([]any); ok {
@@ -158,7 +173,7 @@ func FetchFinalHTTPProvidersHTTP(ctx context.Context, client *http.Client, p que
 					return nil, &DiscoveryError{Kind: "body_failed", cause: readErr}
 				}
 				kind := "json_page_failed"
-				if o.Provider == "nowhiring" && r.URL == o.ListingURL() && (status == 404 || status == 410) {
+				if (o.Provider == "nowhiring" || o.Provider == "jobconvo" || o.Provider == "curately" && o.ClientID == 0) && r.URL == o.ListingURL() && (status == 404 || status == 410) {
 					kind = "provider_gone"
 				}
 				return nil, &DiscoveryError{Kind: kind, Status: status}
@@ -177,6 +192,23 @@ func FetchFinalHTTPProvidersHTTP(ctx context.Context, client *http.Client, p que
 	var fields []map[string]any
 	var truncated bool
 	switch o.Provider {
+	case "curately":
+		fields, truncated, e = api.DiscoverCurately(ctx, o, fetch, wait)
+	case "inploi":
+		fields, truncated, e = api.DiscoverInploi(ctx, o, fetch)
+	case "jobconvo":
+		var urls []string
+		urls, e = api.DiscoverJobConvo(ctx, o, fetch)
+		if e != nil {
+			return out, e
+		}
+		for _, source := range urls {
+			if !o.IdentityMatches(source, "") {
+				return RichDiscovery{Response: out.Response}, queue.ErrConfiguration
+			}
+			out.Jobs = append(out.Jobs, RichMonitorJob{URL: source})
+		}
+		return out, nil
 	case "paynet":
 		fields, truncated, e = api.DiscoverPayNet(ctx, o.BoardURL, fetch)
 	case "nowhiring":

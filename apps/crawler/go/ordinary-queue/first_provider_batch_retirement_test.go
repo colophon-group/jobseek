@@ -29,6 +29,12 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 		board, metadata = "https://fixture.jobs.cz/", `{"scraper_type":"skip"}`
 	}
 	switch provider {
+	case "curately":
+		board, metadata = "https://careers.curately.ai/jobs/example", `{"client_id":6,"scraper_type":"skip"}`
+	case "inploi":
+		board, metadata = "https://careers.example.com/search", `{"api_key":"pk_synthetic_example","segment_id":"123","scraper_type":"json-ld","scraper_config":{"enrich":["description"]}}`
+	case "jobconvo":
+		board, metadata = "https://jobs.jobconvo.com/pt-br/careers/Example/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/", `{"scraper_type":"jobconvo","scraper_config":{"locale":"pt-br"}}`
 	case "ashby":
 		board, metadata = "https://example.com/careers", `{"token":"fixture","scraper_type":"json-ld","scraper_config":{"render":true,"wait":"networkidle","timeout":30000}}`
 	case "lever":

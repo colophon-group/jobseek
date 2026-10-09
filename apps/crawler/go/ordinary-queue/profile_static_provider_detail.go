@@ -15,6 +15,7 @@ import (
 const linkedInDetailProfile = "linkedin.guest-detail/v1"
 const jazzHRDetailProfile = "jazzhr.public-detail/v1"
 const taleoEnterpriseDetailProfile = "taleo.enterprise-detail/v1"
+const jobConvoDetailProfile = "jobconvo.public-detail/v1"
 
 // These detail scrapers are independent of the canonical board's monitor.
 // Every claimed posting is resolved against its actual source before I/O.
@@ -42,16 +43,27 @@ func inspectStaticProviderDetail(boardID string, config map[string]string, sourc
 	if json.Unmarshal(metadata["scraper_type"], &scraper) != nil {
 		return fail()
 	}
-	profile := map[string]string{"linkedin": linkedInDetailProfile, "jazzhr": jazzHRDetailProfile, "taleo": taleoEnterpriseDetailProfile}[scraper]
+	profile := map[string]string{"linkedin": linkedInDetailProfile, "jazzhr": jazzHRDetailProfile, "taleo": taleoEnterpriseDetailProfile, "jobconvo": jobConvoDetailProfile}[scraper]
 	if profile == "" {
 		return fail()
 	}
+	locale := "pt-br"
 	if raw, ok := metadata["scraper_config"]; ok && string(raw) != "null" {
-		fields, err := profileMetadataFields(string(raw), map[string]bool{"enrich": true})
+		allowed := map[string]bool{"enrich": true}
+		if scraper == "jobconvo" {
+			allowed = map[string]bool{"locale": true}
+		}
+		fields, err := profileMetadataFields(string(raw), allowed)
 		if err != nil {
 			return fail()
 		}
-		if scraper != "linkedin" && len(fields) != 0 {
+		if scraper == "jobconvo" {
+			if value, present := fields["locale"]; present {
+				if json.Unmarshal(value, &locale) != nil {
+					return fail()
+				}
+			}
+		} else if scraper != "linkedin" && len(fields) != 0 {
 			return fail()
 		}
 	}
@@ -60,7 +72,7 @@ func inspectStaticProviderDetail(boardID string, config map[string]string, sourc
 		return fail()
 	}
 	if ownership {
-		source = map[string]string{"linkedin": "https://www.linkedin.com/jobs/view/1", "jazzhr": "https://fixture.applytojob.com/apply/jobs/details/1", "taleo": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=1"}[scraper]
+		source = map[string]string{"linkedin": "https://www.linkedin.com/jobs/view/1", "jazzhr": "https://fixture.applytojob.com/apply/jobs/details/1", "taleo": "https://fixture.taleo.net/careersection/2/jobdetail.ftl?job=1", "jobconvo": "https://app.jobconvo.com/job/fixture/11111111-2222-3333-4444-555555555555/"}[scraper]
 	}
 	if !utf8.ValidString(source) || strings.ContainsRune(source, 0) {
 		return fail()
@@ -69,6 +81,13 @@ func inspectStaticProviderDetail(boardID string, config map[string]string, sourc
 	posting, parseErr := url.Parse(source)
 	if err != nil || parseErr != nil {
 		return fail()
+	}
+	if scraper == "jobconvo" {
+		request, _, err := api.JobConvoDetailRequest(source, locale)
+		if err != nil {
+			return fail()
+		}
+		options.Endpoint = request.URL
 	}
 	stable, err := stableJSONLDConfig(config, metadata)
 	if err != nil {
@@ -85,6 +104,9 @@ func inspectStaticProviderDetail(boardID string, config map[string]string, sourc
 	// Queue ownership follows the posting's existing source domain. LinkedIn's
 	// fixed www guest endpoint may differ from a localized posting host.
 	p := WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: options.Endpoint, Domain: strings.ToLower(posting.Hostname()), Profile: profile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), EnrichmentFields: enrich}
+	if scraper == "jobconvo" {
+		p.APILocale = strings.ToLower(locale)
+	}
 	if ownership {
 		p.SourceURL = config["board_url"]
 		p.Domain = "*"

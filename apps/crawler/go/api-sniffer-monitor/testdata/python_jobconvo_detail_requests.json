@@ -1,0 +1,336 @@
+[
+  {
+    "mode": "rich",
+    "source": "https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/",
+    "config": {
+      "locale": "pt-br"
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://app.jobconvo.com/pt-br/api/job/11111111-2222-3333-4444-555555555555/engineer/",
+        "accept": "application/json",
+        "status": 200,
+        "body": "{\"id\":\"11111111-2222-3333-4444-555555555555\",\"title\":\" Engineer \",\"description\":\"<p>Build</p>\",\"requirements\":\"<p>Care</p>\",\"benefits\":\"<p>Learn</p>\",\"city\":\" São Paulo \",\"state\":\"São Paulo\",\"country\":\" Brazil \",\"employment\":\"Full time\",\"type_work_location\":1,\"pub_date\":\"2026-10-09\",\"company_language\":\"PT-BR\",\"salary\":{\"currency\":\"BRL\",\"min\":100,\"max\":null,\"unit\":\"month\"},\"company\":\"Example\",\"deadline\":\"2027-01-01\",\"level\":\"Senior\",\"status\":0}"
+      }
+    ],
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    },
+    "processed_description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>\n<h3>Qualifications</h3>\n<p>Care</p>"
+  },
+  {
+    "mode": "locale-en",
+    "source": "https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/",
+    "config": {
+      "locale": "en"
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://app.jobconvo.com/en/api/job/11111111-2222-3333-4444-555555555555/engineer/",
+        "accept": "application/json",
+        "status": 200,
+        "body": "{\"id\":\"11111111-2222-3333-4444-555555555555\",\"title\":\" Engineer \",\"description\":\"<p>Build</p>\",\"requirements\":\"<p>Care</p>\",\"benefits\":\"<p>Learn</p>\",\"city\":\" São Paulo \",\"state\":\"São Paulo\",\"country\":\" Brazil \",\"employment\":\"Full time\",\"type_work_location\":1,\"pub_date\":\"2026-10-09\",\"company_language\":\"PT-BR\",\"salary\":{\"currency\":\"BRL\",\"min\":100,\"max\":null,\"unit\":\"month\"},\"company\":\"Example\",\"deadline\":\"2027-01-01\",\"level\":\"Senior\",\"status\":0}"
+      }
+    ],
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "BRL",
+        "min": 100,
+        "max": null,
+        "unit": "month"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    },
+    "processed_description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>\n<h3>Qualifications</h3>\n<p>Care</p>"
+  },
+  {
+    "mode": "wrong-id",
+    "source": "https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/",
+    "config": {
+      "locale": "pt-br"
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://app.jobconvo.com/pt-br/api/job/11111111-2222-3333-4444-555555555555/engineer/",
+        "accept": "application/json",
+        "status": 200,
+        "body": "{\"id\":\"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\",\"title\":\" Engineer \",\"description\":\"<p>Build</p>\",\"requirements\":\"<p>Care</p>\",\"benefits\":\"<p>Learn</p>\",\"city\":\" São Paulo \",\"state\":\"São Paulo\",\"country\":\" Brazil \",\"employment\":\"Full time\",\"type_work_location\":1,\"pub_date\":\"2026-10-09\",\"company_language\":\"PT-BR\",\"salary\":{\"currency\":\"BRL\",\"min\":100,\"max\":null,\"unit\":\"month\"},\"company\":\"Example\",\"deadline\":\"2027-01-01\",\"level\":\"Senior\",\"status\":0}"
+      }
+    ],
+    "expected": {},
+    "processed_description": null
+  },
+  {
+    "mode": "wrong-shape",
+    "source": "https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/",
+    "config": {
+      "locale": "pt-br"
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://app.jobconvo.com/pt-br/api/job/11111111-2222-3333-4444-555555555555/engineer/",
+        "accept": "application/json",
+        "status": 200,
+        "body": "[]"
+      }
+    ],
+    "expected": {},
+    "processed_description": null
+  },
+  {
+    "mode": "invalid-json",
+    "source": "https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/",
+    "config": {
+      "locale": "pt-br"
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://app.jobconvo.com/pt-br/api/job/11111111-2222-3333-4444-555555555555/engineer/",
+        "accept": "application/json",
+        "status": 200,
+        "body": "{"
+      }
+    ],
+    "error": true,
+    "original_error": "JSONDecodeError"
+  },
+  {
+    "mode": "404",
+    "source": "https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/",
+    "config": {
+      "locale": "pt-br"
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://app.jobconvo.com/pt-br/api/job/11111111-2222-3333-4444-555555555555/engineer/",
+        "accept": "application/json",
+        "status": 404,
+        "body": "{\"id\":\"11111111-2222-3333-4444-555555555555\",\"title\":\" Engineer \",\"description\":\"<p>Build</p>\",\"requirements\":\"<p>Care</p>\",\"benefits\":\"<p>Learn</p>\",\"city\":\" São Paulo \",\"state\":\"São Paulo\",\"country\":\" Brazil \",\"employment\":\"Full time\",\"type_work_location\":1,\"pub_date\":\"2026-10-09\",\"company_language\":\"PT-BR\",\"salary\":{\"currency\":\"BRL\",\"min\":100,\"max\":null,\"unit\":\"month\"},\"company\":\"Example\",\"deadline\":\"2027-01-01\",\"level\":\"Senior\",\"status\":0}"
+      }
+    ],
+    "expected": {},
+    "processed_description": null
+  },
+  {
+    "mode": "410",
+    "source": "https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/",
+    "config": {
+      "locale": "pt-br"
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://app.jobconvo.com/pt-br/api/job/11111111-2222-3333-4444-555555555555/engineer/",
+        "accept": "application/json",
+        "status": 410,
+        "body": "{\"id\":\"11111111-2222-3333-4444-555555555555\",\"title\":\" Engineer \",\"description\":\"<p>Build</p>\",\"requirements\":\"<p>Care</p>\",\"benefits\":\"<p>Learn</p>\",\"city\":\" São Paulo \",\"state\":\"São Paulo\",\"country\":\" Brazil \",\"employment\":\"Full time\",\"type_work_location\":1,\"pub_date\":\"2026-10-09\",\"company_language\":\"PT-BR\",\"salary\":{\"currency\":\"BRL\",\"min\":100,\"max\":null,\"unit\":\"month\"},\"company\":\"Example\",\"deadline\":\"2027-01-01\",\"level\":\"Senior\",\"status\":0}"
+      }
+    ],
+    "expected": {},
+    "processed_description": null
+  },
+  {
+    "mode": "503",
+    "source": "https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/",
+    "config": {
+      "locale": "pt-br"
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://app.jobconvo.com/pt-br/api/job/11111111-2222-3333-4444-555555555555/engineer/",
+        "accept": "application/json",
+        "status": 503,
+        "body": "{\"id\":\"11111111-2222-3333-4444-555555555555\",\"title\":\" Engineer \",\"description\":\"<p>Build</p>\",\"requirements\":\"<p>Care</p>\",\"benefits\":\"<p>Learn</p>\",\"city\":\" São Paulo \",\"state\":\"São Paulo\",\"country\":\" Brazil \",\"employment\":\"Full time\",\"type_work_location\":1,\"pub_date\":\"2026-10-09\",\"company_language\":\"PT-BR\",\"salary\":{\"currency\":\"BRL\",\"min\":100,\"max\":null,\"unit\":\"month\"},\"company\":\"Example\",\"deadline\":\"2027-01-01\",\"level\":\"Senior\",\"status\":0}"
+      }
+    ],
+    "expected": {},
+    "processed_description": null
+  },
+  {
+    "mode": "302",
+    "source": "https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/",
+    "config": {
+      "locale": "pt-br"
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://app.jobconvo.com/pt-br/api/job/11111111-2222-3333-4444-555555555555/engineer/",
+        "accept": "application/json",
+        "status": 302,
+        "body": "{\"id\":\"11111111-2222-3333-4444-555555555555\",\"title\":\" Engineer \",\"description\":\"<p>Build</p>\",\"requirements\":\"<p>Care</p>\",\"benefits\":\"<p>Learn</p>\",\"city\":\" São Paulo \",\"state\":\"São Paulo\",\"country\":\" Brazil \",\"employment\":\"Full time\",\"type_work_location\":1,\"pub_date\":\"2026-10-09\",\"company_language\":\"PT-BR\",\"salary\":{\"currency\":\"BRL\",\"min\":100,\"max\":null,\"unit\":\"month\"},\"company\":\"Example\",\"deadline\":\"2027-01-01\",\"level\":\"Senior\",\"status\":0}"
+      }
+    ],
+    "expected": {},
+    "processed_description": null
+  },
+  {
+    "mode": "salary-text",
+    "source": "https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/",
+    "config": {
+      "locale": "pt-br"
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://app.jobconvo.com/pt-br/api/job/11111111-2222-3333-4444-555555555555/engineer/",
+        "accept": "application/json",
+        "status": 200,
+        "body": "{\"id\":\"11111111-2222-3333-4444-555555555555\",\"title\":\" Engineer \",\"description\":\"<p>Build</p>\",\"requirements\":\"<p>Care</p>\",\"benefits\":\"<p>Learn</p>\",\"city\":\" São Paulo \",\"state\":\"São Paulo\",\"country\":\" Brazil \",\"employment\":\"Full time\",\"type_work_location\":1,\"pub_date\":\"2026-10-09\",\"company_language\":\"PT-BR\",\"salary\":\"R$ 100 per month\",\"company\":\"Example\",\"deadline\":\"2027-01-01\",\"level\":\"Senior\",\"status\":0}"
+      }
+    ],
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    },
+    "processed_description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>\n<h3>Qualifications</h3>\n<p>Care</p>"
+  },
+  {
+    "mode": "salary-unknown",
+    "source": "https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/",
+    "config": {
+      "locale": "pt-br"
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://app.jobconvo.com/pt-br/api/job/11111111-2222-3333-4444-555555555555/engineer/",
+        "accept": "application/json",
+        "status": 200,
+        "body": "{\"id\":\"11111111-2222-3333-4444-555555555555\",\"title\":\" Engineer \",\"description\":\"<p>Build</p>\",\"requirements\":\"<p>Care</p>\",\"benefits\":\"<p>Learn</p>\",\"city\":\" São Paulo \",\"state\":\"São Paulo\",\"country\":\" Brazil \",\"employment\":\"Full time\",\"type_work_location\":1,\"pub_date\":\"2026-10-09\",\"company_language\":\"PT-BR\",\"salary\":\"negotiable\",\"company\":\"Example\",\"deadline\":\"2027-01-01\",\"level\":\"Senior\",\"status\":0}"
+      }
+    ],
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    },
+    "processed_description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>\n<h3>Qualifications</h3>\n<p>Care</p>"
+  },
+  {
+    "mode": "salary-range",
+    "source": "https://jobs.jobconvo.com/job/engineer/11111111-2222-3333-4444-555555555555/",
+    "config": {
+      "locale": "pt-br"
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://app.jobconvo.com/pt-br/api/job/11111111-2222-3333-4444-555555555555/engineer/",
+        "accept": "application/json",
+        "status": 200,
+        "body": "{\"id\":\"11111111-2222-3333-4444-555555555555\",\"title\":\" Engineer \",\"description\":\"<p>Build</p>\",\"requirements\":\"<p>Care</p>\",\"benefits\":\"<p>Learn</p>\",\"city\":\" São Paulo \",\"state\":\"São Paulo\",\"country\":\" Brazil \",\"employment\":\"Full time\",\"type_work_location\":1,\"pub_date\":\"2026-10-09\",\"company_language\":\"PT-BR\",\"salary\":\"$100,000–$120,000 per year\",\"company\":\"Example\",\"deadline\":\"2027-01-01\",\"level\":\"Senior\",\"status\":0}"
+      }
+    ],
+    "expected": {
+      "title": " Engineer ",
+      "description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>",
+      "locations": [
+        "São Paulo, Brazil"
+      ],
+      "employment_type": "Full time",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "USD",
+        "min": 100000,
+        "max": 120000,
+        "unit": "year"
+      },
+      "language": "pt",
+      "extras": {
+        "qualifications": "<p>Care</p>"
+      },
+      "metadata": {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "company": "Example",
+        "deadline": "2027-01-01",
+        "level": "Senior",
+        "status": 0
+      }
+    },
+    "processed_description": "<p>Build</p>\n<h3>Benefits</h3>\n<p>Learn</p>\n<h3>Qualifications</h3>\n<p>Care</p>"
+  }
+]

@@ -1,0 +1,134 @@
+{
+  "schema": "jobseek-native-migration-candidate/v1",
+  "version": "0.13.993",
+  "prototype_base": "ffab5fb2b37ebfdd243239289f520d78e9789961",
+  "providers": [
+    "curately",
+    "inploi",
+    "jobconvo"
+  ],
+  "new_compiled_profiles": [
+    "curately.public-items/v1",
+    "inploi.public-items/v1",
+    "jobconvo.listing-urls/v1",
+    "jobconvo.public-detail/v1"
+  ],
+  "compiled_profile_count": 162,
+  "actual_registry_configs": 3,
+  "original_fixtures": [
+    {
+      "path": "apps/crawler/go/api-sniffer-monitor/testdata/python_curately_inploi_jobconvo_fields.json",
+      "sha256": "8825cd0658e31e61f784907e2b4d0cc10ed329e8f6a61061a71a49866d5fa585"
+    },
+    {
+      "path": "apps/crawler/go/api-sniffer-monitor/testdata/python_curately_inploi_jobconvo_inventory.json",
+      "sha256": "03136889a7c3a08d59daa86e23dd01deb799b370c26bedd4582207f9eb4dd503"
+    },
+    {
+      "path": "apps/crawler/go/api-sniffer-monitor/testdata/python_jobconvo_detail_requests.json",
+      "sha256": "bdb65e3b6a2ed6d5d1fde7ed18c9db8d726105182104db503b57ea9bf36818bd"
+    },
+    {
+      "path": "apps/crawler/go/api-sniffer-monitor/provider_location_types.json",
+      "sha256": "91be8541c1e457681926f9e65425d7b772ff1926ecd7a53f5e02c795e6ab3c6a"
+    }
+  ],
+  "local_verification": {
+    "api_sdk_race_seconds": 6.976,
+    "original_field_cases": 119,
+    "original_inventory_cases": 36,
+    "original_detail_request_cases": 12,
+    "real_monitor_terminal_cases": 25,
+    "real_detail_terminal_cases": 9,
+    "cold_retirement_cases": 15,
+    "prototype_proofs": [
+      {
+        "name": "native992-grouped-http-real-terminal-verified2-2026-10-09.log",
+        "sha256": "985e15157b806f12aa78a1ed01f1ba8f57b39b3acb980fbd50c6af1166435b4a"
+      },
+      {
+        "name": "native992-grouped-http-real-detail-verified4-2026-10-09.log",
+        "sha256": "03beff43d630142de9e6ea0ed0b468db52083a29028ec0d2855a7c5fafb8c8e9"
+      },
+      {
+        "name": "native992-grouped-http-real-cold-initial5-2026-10-09.log",
+        "sha256": "42f9c92fbb11011a547f690c0e90673688a613cdcfd4554cd9f781afe700d1bd"
+      },
+      {
+        "name": "native992-grouped-http-real-terminal-verified7-2026-10-09.log",
+        "sha256": "1753707686db64dab66d31b5d9317ff81c0075cb87f38f7de6a94c7202feca08"
+      },
+      {
+        "name": "native992-grouped-http-real-startup-initial6-2026-10-09.log",
+        "sha256": "e040d1f8497d440f2f759aac51d76b21c9a034dec8a0f6f07e44f0000c2af9e7"
+      }
+    ],
+    "queue_unit_race_seconds": 31.35,
+    "startup": "PASS actual 162-profile executable, metrics, signal drain and wrong projection refusal",
+    "worker_vet": "PASS",
+    "python_ownership": "65 passed; 9 optional skipped",
+    "same_capture_public_http_parity": "PASS all three, complete exchange accounting; 9.081s"
+  },
+  "preserved_failed_iterations": [
+    "terminal initial1: original Curately duplicate refusal was incorrectly expected to succeed; corrected fixture expectation only",
+    "detail initial3: assertion omitted original qualifications description enrichment; actual Python enrichment oracle added",
+    "public initial1: response observer read a streaming GET request before buffering; bounded retry preserved original response headers",
+    "public comparison initial1: valid JobConvo redirect used app host and explicit default TLS port; resource binding and HTTPX port normalization corrected without widening provider identity",
+    "Go Lightpanda Pilot37924014025: runtime enum JSON lived under testdata and was absent from the explicit image copy list; moved the unchanged asset to module runtime assets and copied it into the pilot image"
+  ],
+  "qualification_limits": [
+    "prototype source; full reviewed-head worker race and Required CI pending",
+    "installed image parity, immutable deployment and fresh incoming actual-route admission pending",
+    "no full natural freshness/conservation, comparable attributable cost or production Python retirement claim"
+  ],
+  "public_observation": {
+    "scope": "PASS actual Python captures and same-response Go full-field/request/terminal outcome comparison",
+    "curately": {
+      "outcome": "original refusal on unsupported status values after two successful API pages; no inventory prefix promoted"
+    },
+    "inploi": {
+      "before": "HTTP 422: public API rejects per_page greater than 100",
+      "repair": "single Compass Group CSV config sets page_size=100",
+      "after": "complete 2451 jobs, not truncated; original full pagination capture"
+    },
+    "jobconvo": {
+      "outcome": "complete 11 jobs, not truncated",
+      "qualified_redirect": "alternate first-party listing host and explicit default 443 normalized like HTTPX"
+    },
+    "limits": "current upstream Curately refusal is preserved; no public successful Curately inventory claimed"
+  },
+  "runtime_exporter_recovery": {
+    "scope": "Observed production bulk deadline after original source991 rollout; candidate repair still requires exact-head CI and source992 whole rollout",
+    "observed_source": "02e8adaef88db28c8977c4df165a8e1c19ec16e5",
+    "observed_health": "worker/browser/drain200, exporter503; TypeSensehealth1 and metrics GET200 in0.117s",
+    "diagnostic": "native991-postdeploy-exporter-diagnostic-initial1-2026-10-09.json",
+    "old_http_deadline_seconds": 10,
+    "new_bounded_import_client_seconds": 120,
+    "existing_backfill_client_seconds": 120,
+    "health_probe_seconds": 3,
+    "cursor_rule": "Every positional acknowledgement must be proved before saving the fenced batch cursor; transport/cancellation failure keeps it pinned",
+    "regression": "Real 11-second delayed complete acknowledgements, parent cancellation, and independent three-second health deadline passed; full package race passed.",
+    "full_exporter_package_race": {
+      "result": "passed",
+      "seconds": 17.331,
+      "optional_postgres_not_requested": true
+    }
+  },
+  "generated_census_repair": {
+    "failed_required_ci": 37929530390,
+    "reason": "Inploi page_size CSV repair changed boards input hash; committed offline census was stale",
+    "regenerated_census_sha256": "2a75f47d20e7fc5ed43afd1f0714da9849974d16c316ef580000ba401ffd49f3",
+    "data_validation": "passed",
+    "census_tests": {
+      "passed": 57,
+      "seconds": 1.33
+    }
+  },
+  "requalification_after_concurrent_runtime_merge": {
+    "base": "3d940cee963cfa9c443e88cbc91989b2da376916",
+    "preserved_grouped_go_implementation": "byte unchanged from 2b4afa0b899395aad1052d9b02277f6383e42851",
+    "reason": "Concurrent trace/resolver release consumed0.13.992; candidate includes that source and advances to0.13.993",
+    "exact_head_ci": "pending renewed checks; prior-head tests are historical evidence",
+    "production_recovery": "not yet proved"
+  }
+}
