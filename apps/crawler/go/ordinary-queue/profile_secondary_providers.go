@@ -7,7 +7,7 @@ import (
 )
 
 func SecondaryProvider(provider string) bool {
-	if PortalHTTPProvider(provider) || FinalHTTPProvider(provider) || SmallProvider(provider) {
+	if provider == "jobstreet" || PortalHTTPProvider(provider) || FinalHTTPProvider(provider) || SmallProvider(provider) {
 		return true
 	}
 	if provider == "linkedin" || provider == "taleo" || provider == "practicematch" {
@@ -28,6 +28,9 @@ func paycomEnrichmentFields(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true})
 }
 func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
+	if config["crawler_type"] == "jobstreet" {
+		return jobStreetEnrichment(config)
+	}
 	if PortalHTTPProvider(config["crawler_type"]) {
 		return portalMonitorEnrichment(config)
 	}
@@ -84,6 +87,9 @@ func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, allowed)
 }
 func inspectSecondaryMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
+	if config["crawler_type"] == "jobstreet" {
+		return inspectJobStreetMonitor(boardID, config, md)
+	}
 	if PortalHTTPProvider(config["crawler_type"]) {
 		return inspectPortalHTTPMonitor(boardID, config, md)
 	}
@@ -324,6 +330,9 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 		return false
 	}
 	switch p.Provider {
+	case "jobstreet":
+		o, e := api.JobStreetOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && p.Profile == jobStreetMonitorProfile && p.Endpoint == o.PageRequest(1).URL && o.ResourceMatches(resource)
 	case "linkedin":
 		o, e := api.LinkedInOptionsFromMetadata(config["board_url"], config["metadata"])
 		return e == nil && p.Profile == "linkedin.guest-items/v1" && p.Endpoint == api.LinkedInListingRequest(strings.Join(o.CompanyIDs, ","), "", 0).URL && o.ResourceMatches(resource)

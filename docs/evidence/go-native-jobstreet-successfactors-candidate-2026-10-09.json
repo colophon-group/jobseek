@@ -1,0 +1,63 @@
+{
+  "version": "0.13.995",
+  "base_before_parent_squash": "0ab3628b266b8db3c13a25ead53c1c0866b0c715",
+  "types": [
+    "jobstreet",
+    "rss.successfactors-legacy"
+  ],
+  "compiled_profiles": 168,
+  "new_profiles": [
+    "jobstreet.company-items/v1",
+    "jobstreet.graphql-detail/v1",
+    "rss.successfactors-legacy-session-items/v1"
+  ],
+  "actual_registry_boards": {
+    "jobstreet": [
+      "ehl-group-singapore-jobstreet",
+      "sbm-management-services-singapore",
+      "tecan-jobstreet"
+    ],
+    "legacy_successfactors": [
+      "johns-hopkins-health-system-careers",
+      "transports-publics-genevois-successfactors",
+      "university-of-lausanne-careers"
+    ]
+  },
+  "implementation": {
+    "jobstreet": "Fixed employer list, original GraphQL detail query, complete pagination, original currency rules and explicit detail enrichment",
+    "successfactors": "Original cookie/session bootstrap and DWR requests; restricted data assignment interpreter without JavaScript evaluation; count/prefix/page validation,1024 truncation, validated100-job prefix retained on later failure",
+    "routing": "Existing claim, rich writer, detail writer, publisher reservation, schedules and cutover wrappers; no new transport platform"
+  },
+  "validation": {
+    "original_jobstreet_cases": 70,
+    "original_legacy_parser_cases": 14,
+    "original_legacy_inventory_cases": 9,
+    "sdk_full_race_seconds": 6.726,
+    "worker_https_cases": "JobStreet original fields and GraphQL; legacy cookie/session/prefix; header reservation precedence PASS3.177s",
+    "actual_registry_profiles": "All six real configured boards PASS1.776s",
+    "real_postgres_redis_cases": 12,
+    "real_postgres_redis_go_seconds": 7.52,
+    "real_postgres_redis_wall_seconds": 22.089,
+    "cold_cases": 6,
+    "cold_go_seconds": 6.669,
+    "cold_wall_seconds": 12.218,
+    "startup_profiles": 168,
+    "startup_wall_seconds": 7.002,
+    "qualified_working_tree_snapshot_sha256": "3382148328de67728d7b19bc0a19e5d2d441d8acd324acc43f1991e383a8efe9",
+    "python_routing_reader": {
+      "passed": 67,
+      "optional_skipped": 9
+    },
+    "queue_initial_failure": "Registry coverage test lacked newly supported JobStreet detail branch; added actual detail inspector branch; renewed full queue suite pending; renewed full queue race PASS27.532s",
+    "queue_full_race_seconds": 27.532,
+    "worker_vet": "PASS",
+    "sdk_queue_worker_module_tidy": "PASS"
+  },
+  "limits": [
+    "Fresh full worker race and exact-head CI pending",
+    "No new live publisher capture claimed",
+    "New Go graph materialization rejects cycles and bounds nesting/output before projection",
+    "Production rollout and actual admission remain pending; no new native activation",
+    "Full migration, comparable cost/freshness and Python retirement remain incomplete"
+  ]
+}

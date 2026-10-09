@@ -90,6 +90,8 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 		}
 		var detail WorkdayDetailProfile
 		switch provider {
+		case "jobstreet":
+			detail, e = inspectDetailOwnership(profileBoardID, config)
 		case "pageup", "infoniqa":
 			o, err := api.PortalHTTPProviderOptionsFromMetadata(provider, config["board_url"], config["metadata"])
 			if err != nil {

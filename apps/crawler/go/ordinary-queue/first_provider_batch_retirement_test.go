@@ -14,6 +14,7 @@ import (
 func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture {
 	t.Helper()
 	proxy := strings.HasSuffix(provider, "/proxy")
+	legacySession := provider == "rss/legacy-session"
 	variant := strings.TrimPrefix(provider, "smartrecruiters/")
 	provider = strings.Split(provider, "/")[0]
 	filteredAPI := provider == "api_sniffer_filtered"
@@ -30,6 +31,8 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 		board, metadata = "https://fixture.jobs.cz/", `{"scraper_type":"skip"}`
 	}
 	switch provider {
+	case "jobstreet":
+		board, metadata = "https://my.jobstreet.com/companies/tecan-cdmo-solutions-pn-175608148114568/jobs", `{"host":"my.jobstreet.com","company_id":"175608148114568","organisation_id":"744981","scraper_type":"jobstreet","scraper_config":{"enrich":["title","description","locations","employment_type","date_posted","base_salary"]}}`
 	case "curately":
 		board, metadata = "https://careers.curately.ai/jobs/example", `{"client_id":6,"scraper_type":"skip"}`
 	case "inploi":
@@ -155,6 +158,10 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 	case "dom":
 		metadata = `{"url_filter":"/jobs/","pagination":{"param_name":"page","max_pages":3},"url_transform":{"find":"\\?tracking=.*$","replace":""},"scraper_type":"json-ld"}`
 	case "rss":
+		if legacySession {
+			board, metadata = "https://career5.successfactors.eu/career?company=Acme", `{"preset":"successfactors","variant":"legacy","scraper_type":"dom","scraper_config":{"steps":[{"field":"description","html":true}],"enrich":["description"]}}`
+			break
+		}
 		metadata = `{"preset":"generic","feed_url":"https://example.com/feed","scraper_type":"skip"}`
 	case "inline":
 		metadata = `{"steps":[{"tag":"h2","field":"title"}],"fetch_urls":[{"url":"https://example.com/alternate","headers":{"X-No-Cache":"true"}}],"scraper_type":"skip"}`

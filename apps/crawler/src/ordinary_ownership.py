@@ -197,6 +197,7 @@ def ownership_projection(payload: str) -> str:
                     "notion.public-detail/v1",
                     "pdf.public-detail/v1",
                     "seek.graphql-detail/v1",
+                    "jobstreet.graphql-detail/v1",
                     "linkedin.guest-detail/v1",
                     "jazzhr.public-detail/v1",
                     "taleo.enterprise-detail/v1",

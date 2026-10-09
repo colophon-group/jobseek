@@ -137,6 +137,12 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 			return nil, err
 		}
 	}
+	if profile.Profile == legacySFSessionProfile {
+		enrich, err = monitorEnrichmentFields(claim.task.Config, map[string]bool{"description": true, "locations": true})
+		if err != nil {
+			return nil, err
+		}
+	}
 	var identityConfig *apisniffer.NextdataIdentity
 	if profile.Provider == "nextdata" {
 		o, err := NextdataMonitorOptions(claim.task.Config)
@@ -194,7 +200,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		if job51Identity && !validJob51SourceIdentity(claim.task.Config, posting.URL, posting.SourceIdentity) {
 			return nil, ErrConfiguration
 		}
-		if posting.Hybrid && profile.Provider != "pageup" && profile.Provider != "beisen" && profile.Provider != "eightfold" && profile.Provider != "paycom" {
+		if posting.Hybrid && profile.Profile != legacySFSessionProfile && profile.Provider != "pageup" && profile.Provider != "beisen" && profile.Provider != "eightfold" && profile.Provider != "paycom" {
 			return nil, ErrConfiguration
 		}
 		// Inventory filtering/normalization is the caller's earlier stage. No
