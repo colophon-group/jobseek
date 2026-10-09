@@ -22,15 +22,21 @@ vi.mock("next/headers", () => ({
   cookies: vi.fn(),
 }));
 
+// Track initialization separately from per-test call mocks.
+const authLoad = vi.hoisted(() => ({ count: 0 }));
+
 // Mock Better Auth
 const mockGetSession = vi.fn();
-vi.mock("@/lib/auth", () => ({
+vi.mock("@/lib/auth", () => {
+  authLoad.count += 1;
+  return {
   auth: {
     api: {
       getSession: (...args: unknown[]) => mockGetSession(...args),
     },
   },
-}));
+};
+});
 
 // Mock react cache to pass through
 vi.mock("react", () => ({
@@ -61,6 +67,7 @@ describe("getSession", () => {
     mockHeadersGet.mockReturnValue("");
     const result = await getSession();
     expect(result).toBeNull();
+    expect(authLoad.count).toBe(0);
     // No cache lookup attempted without a token.
     expect(mockKvGet).not.toHaveBeenCalled();
   });
@@ -78,6 +85,7 @@ describe("getSession", () => {
     // Key shape preserved: raw `session:<token>` (no `cache:` prefix).
     expect(mockKvGet).toHaveBeenCalledWith("session:abc123");
     expect(mockGetSession).not.toHaveBeenCalled();
+    expect(authLoad.count).toBe(0);
   });
 
   it("falls back to DB on Redis cache miss and writes through with the session TTL", async () => {

@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
+import type { auth } from "@/lib/auth";
 import { kvDelete, kvGet, kvMget, kvScan, kvSet } from "@/lib/cache";
 import { logExternalError } from "@/lib/safe-external-error";
 
@@ -42,6 +42,8 @@ async function fetchSessionFromHeaders(
   // Cache miss — fetch from DB via Better Auth
   let result: SessionResult;
   try {
+    // Anonymous requests and cached sessions do not initialize the auth graph.
+    const { auth } = await import("@/lib/auth");
     result = await auth.api.getSession({ headers: headersList });
   } catch {
     // DB unavailable (e.g. statement timeout) — treat as unauthenticated

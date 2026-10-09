@@ -243,3 +243,40 @@ describe("parseSearchFilters — explicit slug resolution contract (#6132)", () 
     });
   });
 });
+
+
+describe("semantic lookup scheduling", () => {
+  it("starts semantic suggestions before explicit slug resolution completes", async () => {
+    let finish!: (value: Map<string, unknown>) => void;
+    const pending = new Promise<Map<string, unknown>>((resolve) => { finish = resolve; });
+    mocks.resolveLocationSlugs.mockReturnValueOnce(pending);
+    const result = parseSearchFilters({ q: "compiler", loc: "berlin", locale: "en" });
+    await Promise.resolve();
+    expect(mocks.suggestLocations).toHaveBeenCalledWith(expect.objectContaining({ query: "compiler" }));
+    expect(mocks.suggestOccupations).toHaveBeenCalledWith(expect.objectContaining({ query: "compiler" }));
+    expect(mocks.suggestSeniorities).toHaveBeenCalledWith(expect.objectContaining({ query: "compiler" }));
+    expect(mocks.suggestTechnologies).toHaveBeenCalledWith(expect.objectContaining({ query: "compiler" }));
+    finish(new Map());
+    expect((await result).keywords).toEqual(["compiler"]);
+  });
+
+  it.each(["remote", "work from home", "in office", "hybrid"])(
+    "does no taxonomy I/O for known work-mode query %s", async (q) => {
+      const result = await parseSearchFilters({ q, locale: "en" });
+      expect(result.workMode).toHaveLength(1);
+      expect(result.keywords).toEqual([]);
+      expect(mocks.suggestLocations).not.toHaveBeenCalled();
+      expect(mocks.suggestOccupations).not.toHaveBeenCalled();
+      expect(mocks.suggestSeniorities).not.toHaveBeenCalled();
+      expect(mocks.suggestTechnologies).not.toHaveBeenCalled();
+    },
+  );
+
+  it("retains a word needed outside a work-mode phrase without bridging consumed spans", async () => {
+    const result = await parseSearchFilters({ q: "home,work from home,engineer remote compiler", locale: "en" });
+    expect(result.keywords).toEqual(["home", "engineer", "compiler"]);
+    expect(result.workMode).toEqual(["remote"]);
+    expect(mocks.suggestLocations.mock.calls.map(([p]) => p.query)).toEqual(["home", "engineer", "compiler"]);
+    expect(mocks.suggestOccupations.mock.calls.map(([p]) => p.query)).toEqual(["home", "engineer", "compiler"]);
+  });
+});

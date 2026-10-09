@@ -44,7 +44,7 @@ export function tokenizeSemanticSearchQuery(
   };
 }
 
-/** Exact fan-out dimensions used by the canonical semantic parser. */
+/** Conservative fan-out bound; known work-mode spans can skip semantic lookups. */
 export function getSemanticSearchQueryComplexity(input: string): {
   uniqueTerms: number;
   occupationCandidates: number;

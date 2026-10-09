@@ -1,9 +1,7 @@
 import "server-only";
 import { measureSearchStage } from "@/lib/search/latency";
 
-import { sql } from "drizzle-orm";
 import { cacheLife } from "next/cache";
-import { db } from "@/db";
 import { getSearchProvider } from "@/lib/search";
 import type { SearchResponse, SearchResultPosting, HistogramFilters, WorkMode } from "@/lib/search";
 import { cached } from "@/lib/cache";
@@ -292,6 +290,8 @@ function fallbackCurrencyRates(): CurrencyRate[] {
 async function _fetchCurrencyRates(): Promise<CurrencyRate[]> {
   "use cache";
   cacheLife("hours");
+  // Currency rendering needs SQL; public search does not. Load it on demand.
+  const [{ sql }, { db }] = await Promise.all([import("drizzle-orm"), import("@/db")]);
   const rows = await withDbRetry(
     () =>
       db.execute<{ [key: string]: unknown; currency: string; to_eur: string }>(
