@@ -755,3 +755,89 @@ describe("WatchlistJobList matching results", () => {
     expect(decisionUrls.some((url) => url.includes("offset=54"))).toBe(false);
   });
 });
+
+
+describe("returning to continuously refreshed narrowed results", () => {
+  const old = posting("old", "Old narrowed match");
+  const fresh = posting("fresh", "Fresh background match");
+  const state = aiState({
+    status: "caught_up",
+    counts: { accepted: 1, rejected: 0, total: 1 },
+  });
+  const props = {
+    ...baseProps,
+    aiFilterState: state,
+    initialAiAcceptedPage: {
+      postings: [old], total: 1, nextOffset: 1, hasMore: false,
+    },
+    aiFilterScopeKey: "scope-1",
+  };
+  const response = () => ({
+    ok: true,
+    json: async () => ({
+      decisions: [{ posting: fresh }],
+      total: 1,
+      nextOffset: 1,
+      hasMore: false,
+      state,
+    }),
+  } as Response);
+
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  it("loads fresh persisted matches when a caught-up tab becomes visible without starting Jev", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => response());
+    vi.stubGlobal("fetch", fetchMock);
+    const hidden = vi.spyOn(document, "hidden", "get").mockReturnValue(false);
+    render(<WatchlistJobList {...props} resultMode="narrowed" />);
+    expect(screen.getByText("Old narrowed match")).toBeTruthy();
+    hidden.mockReturnValue(true);
+    act(() => document.dispatchEvent(new Event("visibilitychange")));
+    expect(fetchMock).not.toHaveBeenCalled();
+    hidden.mockReturnValue(false);
+    act(() => document.dispatchEvent(new Event("visibilitychange")));
+    expect(await screen.findByText("Fresh background match")).toBeTruthy();
+    expect(screen.queryByText("Old narrowed match")).toBeNull();
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0]?.[0]).toContain("offset=0");
+    expect(fetchMock.mock.calls[0]?.[1]?.method).toBeUndefined();
+  });
+
+  it("refreshes a reopened caught-up drawer even when hasMore is false", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => response());
+    vi.stubGlobal("fetch", fetchMock);
+    const { rerender } = render(<WatchlistJobList {...props} resultMode="broad" />);
+    expect(fetchMock).not.toHaveBeenCalled();
+    rerender(<WatchlistJobList {...props} resultMode="narrowed" />);
+    expect(await screen.findByText("Fresh background match")).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("coalesces focus and browser-cache restoration while a resume read is pending", async () => {
+    let finish!: (value: Response) => void;
+    const fetchMock = vi.fn(() => new Promise<Response>((resolve) => { finish = resolve; }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<WatchlistJobList {...props} resultMode="narrowed" />);
+    const restored = new Event("pageshow");
+    Object.defineProperty(restored, "persisted", { value: true });
+    act(() => {
+      window.dispatchEvent(restored);
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(fetchMock).toHaveBeenCalledOnce();
+    await act(async () => { finish(response()); });
+    expect(screen.getByText("Fresh background match")).toBeTruthy();
+  });
+
+  it("does not replace a newer scope with a late resume response", async () => {
+    let finish!: (value: Response) => void;
+    const fetchMock = vi.fn(() => new Promise<Response>((resolve) => { finish = resolve; }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { rerender } = render(<WatchlistJobList {...props} resultMode="narrowed" />);
+    act(() => window.dispatchEvent(new Event("focus")));
+    rerender(<WatchlistJobList {...props} resultMode="broad" />);
+    await act(async () => { finish(response()); });
+    expect(screen.queryByText("Fresh background match")).toBeNull();
+    expect(screen.getByText("Raw candidate")).toBeTruthy();
+  });
+});

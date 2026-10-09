@@ -118,8 +118,12 @@ and project concurrency limits. Opening or scrolling can still request a bounded
 500-candidate historical runway, but freshness does not depend on those actions.
 
 Reads remain side-effect free. Returning owners and shared viewers read persisted
-accepted decisions through the ordinary page bootstrap. A complete cached page
-needs no reconcile request. Foreground progress polling remains bounded at 1.5
+accepted decisions through the ordinary page bootstrap. Reopening a narrowed
+drawer, refocusing a visible tab, or restoring it from the browser cache reloads
+the first persisted accepted page with a safe GET, even when `hasMore` was false.
+Changed results restart the accepted cursor; concurrent resume events coalesce
+and late responses abort on scope changes. A complete cached page needs no
+reconcile request. Foreground progress polling remains bounded at 1.5
 seconds, with five-second background state polling while work is active and no
 reads in hidden tabs. No paid work is started by a shared viewer or GET request.
 

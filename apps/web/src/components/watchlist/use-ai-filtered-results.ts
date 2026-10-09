@@ -160,6 +160,10 @@ export function useAiFilteredResults(input: {
   const prefetchKeyRef = useRef("");
   const pendingScrollTopRef = useRef<number | null>(null);
   const readAbortRef = useRef<AbortController | null>(null);
+  const resumeReadRef = useRef<AbortController | null>(null);
+  const previouslyActiveRef = useRef(input.active);
+  const totalRef = useRef(total);
+  totalRef.current = total;
   postingsRef.current = postings;
   stateRef.current = input.state;
 
@@ -173,6 +177,8 @@ export function useAiFilteredResults(input: {
   const loadMore = useCallback(async () => {
     const current = stateRef.current;
     if (!input.active || !current?.enabled || !input.scopeReady || loadingRef.current) return;
+    resumeReadRef.current?.abort();
+    resumeReadRef.current = null;
     const generation = generationRef.current;
     const readAbort = new AbortController();
     readAbortRef.current?.abort();
@@ -355,17 +361,47 @@ export function useAiFilteredResults(input: {
   const queryVersionId = input.state?.queryVersionId ?? null;
   const enabled = input.state?.enabled === true;
 
-  useEffect(() => {
-    if (!input.active) return;
-    const onVisibilityChange = () => {
-      if (!document.hidden) setVisibilityEpoch((epoch) => epoch + 1);
-    };
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
-  }, [input.active]);
+  const refreshPersistedPage = useCallback(async () => {
+    if (!input.active || !input.scopeReady || !stateRef.current?.enabled ||
+      document.hidden || loadingRef.current || resumeReadRef.current) return;
+    const controller = new AbortController();
+    resumeReadRef.current = controller;
+    const generation = generationRef.current;
+    try {
+      const page = await readAcceptedPage(input.watchlistId, 0, BATCH, controller.signal);
+      if (controller.signal.aborted || generationRef.current !== generation) return;
+      const refreshed = page.decisions.map(decision => decision.posting);
+      const changed = refreshed.some((post, index) => postingsRef.current[index]?.id !== post.id) ||
+        (page.total != null && page.total !== totalRef.current) ||
+        (!page.hasMore && refreshed.length !== postingsRef.current.length) ||
+        (page.state && page.state.queryVersionId !== stateRef.current?.queryVersionId);
+      if (changed) {
+        // Restart from the authoritative first page. Reusing an old offset
+        // after new matches arrive can skip jobs inserted ahead of that cursor.
+        cursorRef.current = page.nextOffset;
+        postingsRef.current = refreshed;
+        setPostings(refreshed);
+        setHasMore(page.hasMore);
+      }
+      if (page.total != null) setTotal(page.total);
+      if (page.state) {
+        stateRef.current = page.state;
+        input.onStateChange?.(page.state);
+        setEvaluated(page.state.counts.total);
+      }
+      setUnavailable(false);
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      logExternalError("warn", { service: "external_http", operation: "watchlist_matching_resume" }, error);
+    } finally {
+      if (resumeReadRef.current === controller) resumeReadRef.current = null;
+    }
+  }, [input.active, input.onStateChange, input.scopeReady, input.watchlistId]);
+
   useEffect(() => () => readAbortRef.current?.abort(), []);
   useEffect(() => {
     generationRef.current += 1;
+    resumeReadRef.current?.abort();
     readAbortRef.current?.abort();
     readAbortRef.current = null;
     const nextPostings = initialPage?.postings ?? [];
@@ -390,6 +426,35 @@ export function useAiFilteredResults(input: {
     input.scopeKey,
     queryVersionId,
   ]);
+
+  useEffect(() => {
+    const reopening = input.active && !previouslyActiveRef.current;
+    previouslyActiveRef.current = input.active;
+    if (!input.active) return;
+    if (reopening && postingsRef.current.length) void refreshPersistedPage();
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        resumeReadRef.current?.abort();
+        return;
+      }
+      setVisibilityEpoch(epoch => epoch + 1);
+      void refreshPersistedPage();
+    };
+    const onFocus = () => { void refreshPersistedPage(); };
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) void refreshPersistedPage();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("pageshow", onPageShow);
+      resumeReadRef.current?.abort();
+      resumeReadRef.current = null;
+    };
+  }, [input.active, refreshPersistedPage]);
 
   useEffect(() => {
     if (
