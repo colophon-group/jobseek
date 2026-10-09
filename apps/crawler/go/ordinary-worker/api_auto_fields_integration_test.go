@@ -113,7 +113,7 @@ func TestRealAutomaticAPIFieldsDirectProxyAndRenderedConservation(t *testing.T) 
 				if e = f.pg.QueryRow(ctx, "SELECT consecutive_failures FROM job_board WHERE id=$1::uuid", f.board).Scan(&failures); e != nil {
 					t.Fatal(e)
 				}
-				if mode == "ambiguous" || mode == "html-drift" || mode == "boundary-rejected" {
+				if mode == "ambiguous" && route != "rendered" || mode == "html-drift" || mode == "boundary-rejected" {
 					if inserted != 0 || missing != 0 || failures != 1 || result.Cycle.Status != "failed" {
 						t.Fatal("ambiguous map changed canonical state", inserted, missing, failures)
 					}
@@ -130,7 +130,19 @@ func TestRealAutomaticAPIFieldsDirectProxyAndRenderedConservation(t *testing.T) 
 				if inserted != want || missing != wantMissing || failures != 0 {
 					t.Fatal("complete inventory conservation", inserted, missing, failures, want)
 				}
-				if mode == "rich" {
+				if route == "rendered" && want == 1 {
+					// Original browser replay without a declared field map preserves URLs.
+					// Conflicting field names do not affect a URL-only listing; explicit
+					// browser fields have separate canonical-content regression coverage.
+					var emptyFields bool
+					var descriptions int
+					e = f.pg.QueryRow(ctx, `SELECT COALESCE(cardinality(p.titles),0)=0 AND COALESCE(cardinality(p.location_ids),0)=0 AND p.employment_type IS NULL AND p.description_r2_hash IS NULL,(SELECT count(*) FROM descriptions d WHERE d.posting_id=p.id) FROM job_posting p WHERE p.board_id=$1::uuid AND p.id<>$2::uuid`, f.board, f.original).Scan(&emptyFields, &descriptions)
+					if e != nil || !emptyFields || descriptions != 0 || len(f.r.Keys(ctx, "ft_scrapes_*").Val()) != 0 {
+						t.Fatal("original URL-only browser inventory inferred fields or scheduled explicit skip scraper", e)
+					}
+				}
+
+				if mode == "rich" && route != "rendered" {
 					var title, description, employment string
 					var locations []int32
 					var locationTypes []string
