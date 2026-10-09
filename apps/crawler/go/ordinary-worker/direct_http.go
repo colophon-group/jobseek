@@ -21,15 +21,17 @@ import (
 const directOperationTimeout = 30 * time.Second
 
 type DirectHTTPConfig struct {
-	// Supply the pinned deployment CA bundle. No system-store or insecure
+	// Supply the pinned deployment CA bundle. No system-store or implicit insecure
 	// fallback is substituted for the Python client's certifi trust roots.
 	CABundlePEM []byte
 	// Frozen trusted startup allowlist, never board/probe data. The eventual
 	// runtime must derive it from protected operator/deployment configuration.
 	InternalHosts []string
 	// Workday's API needs HTTP/2 negotiation. This is a compiled runtime
-	// transport choice; board metadata cannot change trust or proxy policy.
+	// transport choice; the explicit sealed SkipSSL client retains that protocol choice.
 	EnableHTTP2 bool
+	// Explicit canonical HTTP monitor exception; no retry/fallback can enable it.
+	SkipSSL bool
 }
 
 // VerifiedDirectHTTP seals the process-owned client used by the native claim
@@ -38,6 +40,7 @@ type DirectHTTPConfig struct {
 type VerifiedHTTP struct {
 	client        *http.Client
 	proxyRequired bool
+	skipSSL       bool
 }
 
 // Keep existing direct callers source-compatible while the compiled profile
@@ -49,7 +52,7 @@ func NewVerifiedDirectHTTP(config DirectHTTPConfig) (*VerifiedDirectHTTP, error)
 	if err != nil {
 		return nil, err
 	}
-	return &VerifiedDirectHTTP{client: client}, nil
+	return &VerifiedDirectHTTP{client: client, skipSSL: config.SkipSSL}, nil
 }
 
 func (c *VerifiedDirectHTTP) CloseIdleConnections() {
@@ -80,7 +83,7 @@ func NewDirectHTTP(config DirectHTTPConfig) (*http.Client, error) {
 	transport.dial = (&net.Dialer{Timeout: directOperationTimeout, KeepAlive: 30 * time.Second}).DialContext
 	transport.inner = &http.Transport{
 		Proxy: nil, DialContext: transport.dialContext, ForceAttemptHTTP2: false,
-		TLSClientConfig:     &tls.Config{RootCAs: roots, SessionTicketsDisabled: true, NextProtos: []string{"http/1.1"}},
+		TLSClientConfig:     &tls.Config{RootCAs: roots, InsecureSkipVerify: config.SkipSSL, SessionTicketsDisabled: true, NextProtos: []string{"http/1.1"}},
 		TLSNextProto:        map[string]func(string, *tls.Conn) http.RoundTripper{},
 		TLSHandshakeTimeout: directOperationTimeout, MaxConnsPerHost: 100,
 		MaxIdleConns: 20, MaxIdleConnsPerHost: 20, IdleConnTimeout: 5 * time.Second,

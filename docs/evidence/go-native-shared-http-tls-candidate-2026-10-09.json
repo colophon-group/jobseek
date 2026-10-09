@@ -1,0 +1,155 @@
+{
+  "schema": "jobseek.go-migration-candidate/v1",
+  "observed_at_utc": "2026-10-09T05:00:13.801634+00:00",
+  "candidate_version": "0.13.989",
+  "prototype_parent_review_head": "d45875dbf6d30533e15c7bb9a9c32209792a84d8",
+  "state": "combined four-type candidate with shared annotations, original browser URL-only replay and explicit skip URL-stub scheduling; local qualification passed; fresh exact-head full CI required",
+  "providers": [
+    "dom",
+    "inline",
+    "sitemap"
+  ],
+  "compiled_profiles": 158,
+  "configs": 16,
+  "current_csv_configs": 15,
+  "retained_learned_sitemap_configs": 1,
+  "transport": "Explicit direct HTTP-only skip_ssl, immutable canonical hash and exact sealed client matching; verified clients retain trust; no certificate-failure fallback; no proxy/browser/detail TLS exception admission",
+  "local_proofs": {
+    "actual_original_python_client_for_and_tls_contexts": 16,
+    "existing_original_ssl_and_client_for_tests": 7,
+    "real_tls_http1_and_http2_default_verification_exception_and_network_policy": "PASS1.916s",
+    "registry_and_guard_race": "PASS2.347s",
+    "real_sql_redis_success_and_publisher_precedence_cases": 6,
+    "supported_cold_retirement_cases": 9,
+    "actual_executable_client_selection_cases": 3,
+    "actual_158_profile_startup": "PASS;version0.13.989",
+    "worker_vet_before_final_test_addition": "PASS",
+    "queue_vet": "PASS",
+    "full_local_suites": "not run; mandatory central CI required",
+    "worker_original_core_and_tls_focused_race": "PASS8.477s",
+    "api_original_inline_focused_race": "PASS1.547s",
+    "final_worker_vet": "PASS",
+    "combined_automatic_http_url_only_browser_declared_browser_and_tls_terminal_cases": 39,
+    "combined_cold_retirement_and_url_writer_reference": "PASS22.780s;24 retirement cases plus normal URL writer repair/relist/foreign/fence cases"
+  },
+  "original_config_selectors": [
+    {
+      "slug": "assa-abloy-careers-china-entrance",
+      "provider": "inline"
+    },
+    {
+      "slug": "bilfinger-isp-poland",
+      "provider": "dom"
+    },
+    {
+      "slug": "csl-careers",
+      "provider": "sitemap"
+    },
+    {
+      "slug": "european-free-trade-association-legacy-recruitment",
+      "provider": "dom"
+    },
+    {
+      "slug": "pld-space-careers",
+      "provider": "sitemap"
+    },
+    {
+      "slug": "pwc-careers-jp-advisory",
+      "provider": "dom"
+    },
+    {
+      "slug": "pwc-careers-jp-assurance",
+      "provider": "dom"
+    },
+    {
+      "slug": "pwc-careers-jp-business-assurance",
+      "provider": "dom"
+    },
+    {
+      "slug": "pwc-careers-jp-business-transformation",
+      "provider": "dom"
+    },
+    {
+      "slug": "pwc-careers-jp-consulting",
+      "provider": "dom"
+    },
+    {
+      "slug": "pwc-careers-jp-corporate",
+      "provider": "dom"
+    },
+    {
+      "slug": "pwc-careers-jp-legal",
+      "provider": "dom"
+    },
+    {
+      "slug": "pwc-careers-jp-risk-advisory",
+      "provider": "dom"
+    },
+    {
+      "slug": "pwc-careers-jp-strategy",
+      "provider": "dom"
+    },
+    {
+      "slug": "pwc-careers-jp-tax",
+      "provider": "dom"
+    },
+    {
+      "slug": "thales-dis-bps-germany",
+      "provider": "dom"
+    }
+  ],
+  "private_proof_sha256": {
+    "native989-shared-http-tls-real-terminal-verified2-2026-10-09.log": "78b139c7c1772944219c48a03a15f851bd944fc53a1e404e8df1c52dd5a4c8ca",
+    "native989-shared-http-tls-real-cold-verified3-2026-10-09.log": "404ef2a9191889199e220f42b063faa79f591a0bc634b4d9b8a1509b132e196c",
+    "native989-shared-http-tls-real-startup-verified4-2026-10-09.log": "efe6f39cc3bea867fc943fdf1a995234608029f4c4f69052956f41c2eee6a94e",
+    "native989-combined-real-terminal-verified10-2026-10-09.log": "3cfb236456b5d2a5f9f802688ebe3813a566a1861f0abf47536db2534e44024e",
+    "native989-combined-real-cold-verified11-2026-10-09.log": "e0d7b3956fadc8d1ac270635cc28d00f9cb8d80297d34035e1ed84fa2fc3d3b5"
+  },
+  "latest_stable_lightpanda": {
+    "observed_at_utc": "2026-10-09T04:53:11.341375+00:00",
+    "selection": "newest published non-draft non-prerelease semantic stable release; mutable nightly/latest aliases excluded",
+    "tag": "1.0.0",
+    "published_at": "2026-10-02T10:12:01Z",
+    "release_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
+    "release_id": 401714696
+  },
+  "limitations": [
+    "PLD Space requires the original retained learned sitemap root https://www.pldspace.com/en/sitemap.xml; CSV sync preserves this runtime key. Bare CSV auto-discovery is not qualified.",
+    "One ArcelorMittal browser skip_ssl configuration remains unsupported by this HTTP proof.",
+    "Private fixture compile failure attempt1 and corrected TLS trust-fixture expectations are retained; no runtime default verification guard was weakened.",
+    "Public healthy inventory/freshness, immutable deployment, actual-route ownership and full-service cost/conservation/reversal/window remain separate gates."
+  ],
+  "full_migration_complete": false,
+  "candidate_base_revision": "a9e2f4cb20c6d9bd5a26ef7c515127cd06cd654b",
+  "combined_candidate_configurations": 23,
+  "combined_providers": [
+    "dom",
+    "api_sniffer",
+    "inline",
+    "sitemap"
+  ],
+  "initial_component_ci_failure": {
+    "run": 37884325254,
+    "job": 113670996008,
+    "head": "d45875dbf6d30533e15c7bb9a9c32209792a84d8",
+    "cause": "stale rendered inference expectations; corrected row-specific URL-only checks exposed URL-stub insert/enqueue ignoring explicit skip",
+    "failure_log_sha256": "92cbbb77fcecc4fecc0a1883d3f95b6b86050c82d91cd2dd293b9ec28c2dfbf6",
+    "resolution": "Retain HTTP inference/ambiguity and explicit browser content tests; preserve original URL-only outputs and canonical explicit-skip insert/enqueue behavior; normal URL-only detail writer tests now use an independent DOM scraper fixture"
+  },
+  "component_of_combined_candidate_version": "0.13.990",
+  "combined_candidate_configs": 37,
+  "combined_pr": 10375,
+  "latest_failed_ci": {
+    "run": 37889031239,
+    "head": "7a9b7f6fab2f8fcaeb077eff3731124ec3c981ae",
+    "native_job": 113686113063,
+    "failure_count": 5,
+    "cause": "Legacy URL-only DOM policy and direct Computrabajo fixtures declared skip while expecting independent detail intents; final intended-delegation fixtures declare JSON-LD. Explicit skip/no-detail regressions remain unchanged.",
+    "private_log_sha256": "7e113f6f4b13d20f4cb771a5e74108711e6e54dfe3750f77e8518f03ee3ca87e"
+  },
+  "combined_repaired_terminal_cases": 115,
+  "combined_repaired_terminal_log_sha256": "79b1762c49e314427b806ae26c2fbf1fef73d0fe04a5845f8fb8ba1a4a240f53",
+  "combined_repaired_cold_retirement_cases": 36,
+  "combined_repaired_url_writer_cases": 4,
+  "combined_repaired_cold_log_sha256": "a85ad13e13ad08fb98cbc233fa78ad5ba0fe4adfdb17ac6265a847ff09d5a88a"
+}

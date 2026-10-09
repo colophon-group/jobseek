@@ -1,0 +1,96 @@
+{
+  "schema": "go-native-shared-inventory-options-candidate/v1",
+  "date": "2026-10-09",
+  "status": "LOCALLY_QUALIFIED_CANDIDATE_NOT_PRODUCTION_AUTHORITY",
+  "version": "0.13.990",
+  "parent_review_head": "7a9b7f6fab2f8fcaeb077eff3731124ec3c981ae",
+  "compiled_profiles": 158,
+  "new_configs": 14,
+  "monitor_types": [
+    "dom",
+    "api_sniffer"
+  ],
+  "boards": [
+    "adidas-korea-retail",
+    "arcelormittal-south-africa",
+    "bae-systems-prismatic",
+    "carrefour-france-careers-fr-match",
+    "cox-careers-eu",
+    "nexthop-ai-careers",
+    "roboa-careers",
+    "salesforce-careers",
+    "securitas-france",
+    "sinopec-careers-ca",
+    "softbank-career",
+    "u-blox-careers",
+    "vertiv-data-racks",
+    "vertiv-data-racks-general"
+  ],
+  "contracts": {
+    "dom_alternate_listing_read": "Five explicit static single-page href configs; fetch and relative-link base use the transformed read URL; canonical board/posting identity and downstream URL transforms stay bound. Publisher reservations and primary gone signals bind the actual configured read resource.",
+    "api_slug_fields": "Three declared field-path lists use the existing NFKD/ASCII slug implementation and original URL-template fallback; direct and browser replay retain fields.",
+    "api_root_enrich": "Six legacy root annotations remain in immutable metadata and do not assign detail work; independent scraper_config.enrich keeps its existing contract."
+  },
+  "verification": {
+    "original_current_config_oracle": {
+      "cases": 14,
+      "path": "apps/crawler/go/ordinary-worker/testdata/python_shared_inventory_options.json",
+      "sha256": "579b5c3a60c2b9679331b84e6ff35e066d78dc2b99ce52ac3c1028a313c0dd35",
+      "collector_reproduction": "PASS",
+      "synthetic_request_secrets": "Public Algolia key/app identity and retained Cox form token replaced before executing the actual original monitor; no live values committed.",
+      "browser_scope": "Actual original monitor on captured synthetic exchanges and empty replay tail; no public browser success or production freshness claim."
+    },
+    "real_terminal_cases": 33,
+    "real_terminal_breakdown": {
+      "dom_direct_proxy_complete_retry_failure_gone_policy": 20,
+      "api_root_enrich_GET_POST_direct_proxy": 4,
+      "api_slug_direct_proxy_rendered_complete_policy_failure": 9
+    },
+    "real_cold_retirement_cases": 12,
+    "actual_executable_startup_profiles": 158,
+    "queue_unit_suite": "PASS; real PostgreSQL qualification is separately the required twelve cases",
+    "api_sdk_unit_suite": "PASS",
+    "dom_sdk_unit_suite": "PASS",
+    "queue_worker_vet": "PASS",
+    "private_log_sha256": {
+      "native990-shared-inventory-real-terminal-verified4-2026-10-09.log": "9eecfc792369f19b593633eec1d9b74b5d139914e672153883d80fede65075d8",
+      "native990-shared-inventory-real-cold-initial3-2026-10-09.log": "d5a881412b1a26d2a0d5305ca9ca37fdfff8dd00c8f24dcde147903ea0979e49",
+      "native990-shared-inventory-real-startup-verified5-2026-10-09.log": "9e3aaade11ac2ea1980af4fe55248340e24aa7da7e8231d539d9889e46dcb651"
+    }
+  },
+  "preserved_failed_attempts": [
+    "Initial request comparator treated case-insensitive host spelling as unequal; comparator now normalizes hosts only, preserving method/path/query/body checks.",
+    "Initial alternate-read admission accepted a private literal; final admission rejects private/loopback/link-local addresses and existing verified transport retains full DNS guards.",
+    "Initial malformed API assertion expected one request; existing bounded JSON-parse retry performs three HTTP requests. Final tests retain that behavior."
+  ],
+  "planning_only": {
+    "capture_source": "bb2dd1236ae1555dfb26b2c703066994dcfc136a",
+    "capture_epoch": 251,
+    "static_eligible": 7641,
+    "remaining_unsupported": 244,
+    "no_live_authority": true
+  },
+  "remaining": [
+    "Fresh exact-head full CI and installed image parity",
+    "Merge on the deployed combined source989 base",
+    "Original immutable whole-service crawler and matching renderer deployment",
+    "Fresh canonical config/route admission and natural production conservation/freshness",
+    "Remaining effective configs, mandatory Python consumers, whole-lane cost and reversal/rollback window before retirement"
+  ],
+  "component_of_combined_candidate_version": "0.13.990",
+  "combined_candidate_configs": 37,
+  "combined_pr": 10375,
+  "latest_failed_ci": {
+    "run": 37889031239,
+    "head": "7a9b7f6fab2f8fcaeb077eff3731124ec3c981ae",
+    "native_job": 113686113063,
+    "failure_count": 5,
+    "cause": "Legacy URL-only DOM policy and direct Computrabajo fixtures declared skip while expecting independent detail intents; final intended-delegation fixtures declare JSON-LD. Explicit skip/no-detail regressions remain unchanged.",
+    "private_log_sha256": "7e113f6f4b13d20f4cb771a5e74108711e6e54dfe3750f77e8518f03ee3ca87e"
+  },
+  "combined_repaired_terminal_cases": 115,
+  "combined_repaired_terminal_log_sha256": "79b1762c49e314427b806ae26c2fbf1fef73d0fe04a5845f8fb8ba1a4a240f53",
+  "combined_repaired_cold_retirement_cases": 36,
+  "combined_repaired_url_writer_cases": 4,
+  "combined_repaired_cold_log_sha256": "a85ad13e13ad08fb98cbc233fa78ad5ba0fe4adfdb17ac6265a847ff09d5a88a"
+}

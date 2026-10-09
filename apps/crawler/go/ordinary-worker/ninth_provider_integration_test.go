@@ -12,7 +12,11 @@ func TestRealNinthProvidersCanonicalWritesPolicyAndPartialSettlement(t *testing.
 		for _, mode := range []string{"success", "reserved", "partial"} {
 			t.Run(provider+"/"+mode, func(t *testing.T) {
 				typ := strings.Split(provider, "/")[0]
-				f := privateRichPipelineFixtureURL(t, typ, ninthFixtureMetadata(provider), ninthFixtureSource(provider))
+				metadata := ninthFixtureMetadata(provider)
+				if typ == "computrabajo" {
+					metadata = strings.Replace(metadata, `"scraper_type":"skip"`, `"scraper_type":"json-ld"`, 1)
+				}
+				f := privateRichPipelineFixtureURL(t, typ, metadata, ninthFixtureSource(provider))
 				ctx := context.Background()
 				claim, circuits := claimFixture(t, f)
 				var requests atomic.Int32

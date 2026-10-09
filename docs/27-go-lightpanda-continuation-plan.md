@@ -16,7 +16,97 @@ whole-service CPU/RAM/density/attributable cost; and a supported cold reversal
 with its observation window. A merged candidate or synthetic benchmark does
 not complete migration.
 
-## Latest checkpoint — source986 merged; four-provider source987 qualified
+## Combined review batch — thirty-seven configurations across four types
+
+[PR #10375](https://github.com/colophon-group/jobseek/pull/10375) combines all three
+qualified components as **0.13.990**: **37 configurations across DOM, API, inline
+and sitemap**, with 158 compiled profiles. The twenty-three-config annotation/TLS
+batch and following fourteen-config fetch/identity batch share one fresh final CI
+and immutable deployment cycle.
+
+The fourteen-config component covers five alternate DOM listing reads, three API
+slug-field templates and six legacy root `enrich` annotations. Alternate reads use
+the configured read URL for relative links and policy/disappearance evidence while
+keeping canonical board identity and downstream URL transformations. Root API
+`enrich` is inert in the original monitor; only independent `scraper_config.enrich`
+assigns detail work. Its original fourteen-case oracle, real terminal33/cold12 and
+158-profile executable startup pass; API/DOM SDK and queue unit suites and vet pass.
+The old source985 configuration capture yields 7,641 static eligible configurations
+and 244 unsupported configs; this is planning evidence, not fresh admission.
+No public browser success or natural production freshness is claimed.
+
+Initial component CI37884325254 failed two historical browser-inference assertions.
+Actual Python browser replay without declared fields returns URLs. A repaired check
+also exposed URL-stub insert/enqueue ignoring fresh canonical explicit skip/no-enrich
+policy. Go now suppresses that placeholder work while preserving HTTP inference,
+explicit browser fields and normal first/relisted detail scheduling. Normal URL
+writer fixtures now declare a real independent scraper rather than skip.
+
+Combined CI37889031239 then passed the full queue suite but failed five additional
+worker fixtures: four URL-only DOM policy cases and one direct Computrabajo case
+still declared skip while asserting delegated detail work. Those intended delegation
+fixtures now declare JSON-LD, matching the already passing proxy case. The explicit
+skip/no-detail regressions remain covered. Both failed CI runs and local failed
+iterations are retained. The corrected combined terminal115 cases pass, including
+the entire twenty-five-case shared policy cohort and eighteen-case ninth-provider
+cohort that exposed the old fixture mismatch. Thirty-six cold-retirement cases
+and four URL-writer repair/relist/routing/fence cases also pass. All component qualification remains evidence; only the
+repaired final head with fresh full CI and installed-image checks may merge.
+See [fetch/identity evidence](evidence/go-native-shared-inventory-options-candidate-2026-10-09.json)
+and the component evidence below. Deployment, fresh routing authority, natural
+conservation/freshness and full Python retirement remain open.
+
+## Component qualification — explicit HTTP TLS settings across three monitor types
+
+Candidate **0.13.989** qualifies sixteen existing HTTP configurations together:
+thirteen DOM, one inline and two sitemap monitors. Fifteen are fully explicit in
+CSV; PLD Space binds its original retained learned sitemap URL, which CSV sync
+preserves. This qualification does not add bare CSV sitemap auto-discovery.
+One ArcelorMittal browser configuration retains its original owner because the
+HTTP transport proof does not cover its browser TLS setting.
+
+The original `skip_ssl` setting selects a distinct sealed HTTP client through
+canonical immutable configuration. Ordinary clients keep certificate verification;
+certificate failures never select the exception automatically. Publisher policy,
+DNS/private-network guards, cancellation/budgets, existing native HTTP protocol choices
+and independent detail transport remain intact. Proxy, browser and detail TLS
+exceptions remain unsupported.
+
+Actual original Python client selection and TLS contexts match all sixteen
+configurations; seven existing original client/SSL tests pass. Real TLS handshakes
+cover HTTP/1.1 and HTTP/2, normal trust and explicit exceptions. Six real SQL/Redis
+complete/reserved cycles, nine supported cold-retirement cases, three actual
+executable transport-selection cases and 158-profile startup pass. Focused
+registry/guard race and queue/worker vet checks pass. Original core-output regression checks and final affected-module vet pass. Full exact-head CI and immutable
+source-bound deployment/ownership remain required. See the [candidate evidence](evidence/go-native-shared-http-tls-candidate-2026-10-09.json).
+
+## Component qualification — shared DOM, API and sitemap service annotations
+
+Candidate **0.13.988** qualifies seven current configurations across **DOM,
+API and sitemap** using the existing 158 compiled profiles. Root `defaults`
+remain original monitor annotations, distinct from independent scraper defaults;
+`rescrape_policy` admits only `never`. Both stay in immutable configuration
+bindings. Existing canonical detail-success SQL removes future work after success,
+while first and relisted jobs retain their detail schedules.
+
+The original browser oracle exposed an existing replay mismatch: fieldless browser
+API configurations inferred fields in Go, whereas Python returns URLs. This batch
+preserves original URL-only discovery and its detail scheduling; HTTP automatic
+mapping and explicitly declared browser fields keep their original behavior.
+
+Seven current original Python monitor oracles, all registry bindings and rejection
+guards pass. Real SQL/Redis proof covers 36 direct/authenticated-proxy terminal
+cases, 15 supported cold-retirement cases, four first/relisted/successful-detail
+policy cases and two browser RPC inventory/detail scheduling cases. Five healthy
+public captures match 1,932 raw monitor URLs/records before downstream filters,
+with no field or request-shape differences. Those raw sitemap totals are not
+posting counts. Uber browser and Unitree required-proxy qualification uses original
+synthetic and real runtime transport/queue proof; no public natural freshness is
+claimed. API full race, focused queue/worker/browser race and three module vet
+checks pass. Full exact-head CI, immutable deployment and fresh canonical-route
+ownership admission remain pending. See the [candidate evidence](evidence/go-native-shared-service-annotations-candidate-2026-10-09.json).
+
+## Latest checkpoint — source987 deployed; combined four-type source989 qualified
 
 [PR #10372](https://github.com/colophon-group/jobseek/pull/10372) merged with
 fresh required checks and independent outgoing cold250. Source
@@ -59,7 +149,7 @@ and retains a Pinpoint negative. No runtime guard was weakened. Incoming readine
 ordinary ownership for the combined configuration/provider batches after the next
 qualified source deploys; retain supported quiescence and cold-proof gates.
 
-The next candidate ports **PageUp, Infoniqa, Keka and TurboHire together**, version
+The merged source987 ports **PageUp, Infoniqa, Keka and TurboHire together**, version
 **0.13.987**, six current configurations and 158 compiled profiles. All 55 actual
 original core cases and 26 inventory/failure replays pass. Real SQL/Redis proof
 covers 17 terminal cases, including PageUp's 500-job retained failure prefix and
@@ -86,6 +176,18 @@ The newest published stable Lightpanda release was rechecked on 2026-10-09:
 image and upstream digest. Remaining enabled configuration coverage, mandatory
 runtime/maintenance consumers, whole-lane freshness/conservation/cost, the reversal
 observation window and Python/Playwright/Chromium retirement remain open.
+
+Exact source987 head `7ee22107d0e75b49bcc8f92a69e13a1bd8ec6802` now has
+green full CI `37881786339`, installed-image parity `37881786338` and actual
+deployment gate `37881784758`. Fresh source986 cold252 and head/base-bound
+merge authority passed. PR #10374 merged at
+`a9e2f4cb20c6d9bd5a26ef7c515127cd06cd654b`. Original crawler rollout
+`37884037001` and matching renderer rollout `37884097793` succeeded on attempt 1.
+Independent incoming exact source/images, whole base stack, cold252 and renderer
+verification passed at 04:44 UTC; no one-off administrative consumers remain.
+Native ownership remains absent. The shared component is grouped with the TLS cohort in [PR #10375](https://github.com/colophon-group/jobseek/pull/10375); its initial full CI `37884325254` failed in native execution; preserve the original log and repair the actual cause before fresh checks, installed-image parity `37884325243` and deployment gate `37884323962` pass. Admit and activate the next combined batch only
+after the original browser replay parity correction in combined source989 is deployed;
+retain complete supported cutover and incoming independent verification.
 
 The preceding source984 broad activation and natural observations are retained below.
 

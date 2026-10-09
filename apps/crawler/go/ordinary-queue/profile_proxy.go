@@ -17,23 +17,61 @@ var httpMonitorProxyProfiles = map[string]string{
 // client own transport. Only the proven HTTP families may separate proxy=true
 // here; browser settings and every other option still pass their strict parser.
 // The original configuration remains the claim and ownership hash input.
+// MonitorSkipsSSL preserves the original explicit HTTP-only exception. Browser
+// and proxy exceptions need separate transport proof and remain unsupported.
+func MonitorSkipsSSL(config map[string]string) (bool, error) {
+	md, err := profileMetadataFields(config["metadata"], nil)
+	if err != nil {
+		return false, err
+	}
+	raw, present := md["skip_ssl"]
+	if !present || string(raw) == "null" || string(raw) == `""` {
+		return false, nil
+	}
+	var skip bool
+	if json.Unmarshal(raw, &skip) != nil {
+		return false, ErrUnsupportedProfile
+	}
+	if !skip {
+		return false, nil
+	}
+	if config["monitor_needs_browser"] != "0" || string(md["proxy"]) == "true" {
+		return false, ErrUnsupportedProfile
+	}
+	switch config["crawler_type"] {
+	case "dom", "inline", "sitemap":
+		return true, nil
+	}
+	return false, ErrUnsupportedProfile
+}
+
 func httpMonitorParsingConfig(config map[string]string) (map[string]string, error) {
 	md, err := profileMetadataFields(config["metadata"], nil)
 	if err != nil {
 		return nil, err
 	}
-	if string(md["proxy"]) != "true" {
+	skip, err := MonitorSkipsSSL(config)
+	if err != nil {
+		return nil, err
+	}
+	proxy := string(md["proxy"]) == "true"
+	if !skip && !proxy {
 		return config, nil
 	}
-	switch config["crawler_type"] {
-	case "dom", "api_sniffer", "inline", "sitemap", "eightfold", "phenom":
-	default:
-		return nil, ErrUnsupportedProfile
+	if proxy {
+		switch config["crawler_type"] {
+		case "dom", "api_sniffer", "inline", "sitemap", "eightfold", "phenom":
+		default:
+			return nil, ErrUnsupportedProfile
+		}
+		if config["monitor_needs_browser"] != "0" {
+			return nil, ErrUnsupportedProfile
+		}
+		md["proxy"] = json.RawMessage("false")
 	}
-	if config["monitor_needs_browser"] != "0" {
-		return nil, ErrUnsupportedProfile
+	if skip {
+		md["skip_ssl"] = json.RawMessage("false")
 	}
-	md["proxy"] = json.RawMessage("false")
 	body, err := json.Marshal(md)
 	if err != nil {
 		return nil, ErrUnsupportedProfile
