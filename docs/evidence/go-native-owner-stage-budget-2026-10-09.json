@@ -1,0 +1,188 @@
+{
+  "schema_version": 1,
+  "source_revision": "ce4964b76a76a99cd839b14c3608033846ccf7bd",
+  "production_observation": {
+    "ordinary_stage_result": "deadline; transaction rolled back, no source996 plans or active routing/receipts",
+    "full_admitted_cohort": {
+      "monitor_boards": 7678,
+      "detail_boards": 2746,
+      "scheduled_postings": 1484140
+    },
+    "first_activity": {
+      "observed_at": "2026-10-09T21:01:25.389668+00:00",
+      "activities": [
+        {
+          "state": "active",
+          "wait_type": "Lock",
+          "wait": "advisory",
+          "transaction_age_seconds": 0.051204,
+          "query_class": "advisory_barrier"
+        }
+      ]
+    },
+    "last_activity": {
+      "observed_at": "2026-10-09T21:01:40.598351+00:00",
+      "activities": [
+        {
+          "state": "active",
+          "wait_type": null,
+          "wait": null,
+          "transaction_age_seconds": 15.260647,
+          "query_class": "plan_insert"
+        }
+      ]
+    },
+    "snapshot_processing": "ClientRead following board snapshot from txage2.6s through14.4s; planinsert observed at15.26s; original txbudget15s",
+    "source996_b0": "active259; independentfullbasehealth200/204; ordinaryreceipt/projectionabsent",
+    "proof_scope": "original supported production staging and bounded readonly PGactivity; no incoming ordinary serving authority claimed"
+  },
+  "change": {
+    "stage_readback_transaction_seconds": 30,
+    "stage_readback_sql_idle_seconds": 30,
+    "runtime_transaction_and_sql_idle_seconds": 15,
+    "whole_admin_seconds": 40,
+    "original_wrapper_seconds": 45,
+    "stage_only_no_activation_or_redis_projection_grant": true
+  },
+  "validation": {
+    "real_pg_delayed_snapshot_race_seconds": 32.644,
+    "checks": [
+      "16s snapshot persists onlystaged plan",
+      "runtime effect remainscancelled at15s",
+      "pooledruntime SQLidle remains15s",
+      "caller100ms deadline rollsbackplan",
+      "originalqueue stateunchanged"
+    ],
+    "broader_checks": "full queue race passed with required real PG/Redis; real staging/inspection CLI tests passed; fresh required CI and physical renderer/image checks still required",
+    "real_cli_race_seconds": 5.036,
+    "full_private_pg_queue_race_seconds": 663.428
+  },
+  "ci_registry_recovery": {
+    "observed": "multiple CI fixture initializations and installed-image builds hit Docker Hub unauthenticated pull limits; installed-image retry repeated 429",
+    "change": "official Docker ECR mirror for unchanged pinned Go/Python/PostgreSQL/Redis inputs; existing production PostgreSQL16 and Typesense27.1 digests replace unpinned CI tags; Typesense uses the observed Google-managed cache",
+    "manifest_proofs": [
+      {
+        "image": "golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56",
+        "status": 200,
+        "expected": "sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56",
+        "received": null,
+        "actual": "sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56",
+        "identical": true
+      },
+      {
+        "image": "postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193",
+        "status": 200,
+        "expected": "sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193",
+        "received": null,
+        "actual": "sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193",
+        "identical": true
+      },
+      {
+        "image": "python:3.13.15-slim-trixie@sha256:7ce4b6dfe35e55397b7cda544f8a13f191b7ae28dc5aad71fe664dbc9bc2623f",
+        "status": 200,
+        "expected": "sha256:7ce4b6dfe35e55397b7cda544f8a13f191b7ae28dc5aad71fe664dbc9bc2623f",
+        "received": null,
+        "actual": "sha256:7ce4b6dfe35e55397b7cda544f8a13f191b7ae28dc5aad71fe664dbc9bc2623f",
+        "identical": true
+      },
+      {
+        "image": "redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241",
+        "status": 200,
+        "expected": "sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241",
+        "received": null,
+        "actual": "sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241",
+        "identical": true
+      },
+      {
+        "image": "public.ecr.aws/docker/library/postgres",
+        "expected": "sha256:20edbde7749f822887a1a022ad526fde0a47d6b2be9a8364433605cf65099416",
+        "status": 200,
+        "actual": "sha256:20edbde7749f822887a1a022ad526fde0a47d6b2be9a8364433605cf65099416",
+        "identical": true
+      },
+      {
+        "image": "mirror.gcr.io/typesense/typesense",
+        "expected": "sha256:5c12af89130b8ee0be11541321ba8a3a7c7a538d7c6cd95e0409dc2d75ca6455",
+        "status": 200,
+        "actual": "sha256:5c12af89130b8ee0be11541321ba8a3a7c7a538d7c6cd95e0409dc2d75ca6455",
+        "identical": true
+      }
+    ],
+    "proof_scope": "GET response bytes sha256 equals every existing pinned digest; full CI execution remains required",
+    "primary_sources": [
+      "https://www.docker.com/blog/news-from-aws-reinvent-docker-official-images-on-amazon-ecr-public/",
+      "https://docs.cloud.google.com/artifact-registry/docs/pull-cached-dockerhub-images"
+    ],
+    "local_validation": {
+      "workflow_and_runtime_contract_tests": 125,
+      "production_image_pin_and_python_base_tests": 5,
+      "ruff": "passed",
+      "diff_check": "passed"
+    },
+    "remaining_image_routes": {
+      "observed": "new head native fixtures initialized and tests executed; Redis persistence one-offs still used Docker Hub, Buildx bootstrap also failed before image build",
+      "builder": {
+        "image": "mirror.gcr.io/moby/buildkit",
+        "requested": "buildx-stable-1",
+        "status": 200,
+        "digest": "sha256:cec9f139f45e93c5c69c60f8b07cfad9f43f4ef6b6a6cd917527fea5ff2e3dea",
+        "is_index": "application/vnd.oci.image.index.v1+json",
+        "identical": null
+      },
+      "renderer_lightpanda": {
+        "image": "mirror.gcr.io/lightpanda/browser",
+        "requested": "sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e",
+        "status": 200,
+        "digest": "sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e",
+        "is_index": "application/vnd.oci.image.index.v1+json",
+        "identical": true
+      },
+      "renderer_debian": {
+        "observed_at_utc": "2026-10-09T21:37:12.456771+00:00",
+        "image": "public.ecr.aws/docker/library/debian",
+        "expected": "sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132",
+        "actual": "sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132",
+        "status": 200,
+        "identical": true
+      },
+      "change": "route persistence one-offs to same Redis pin; pin the observed default buildx-stable-1 bootstrap cache manifest for CI/original rollout workflows; renderer uses identical pinned Go/Debian ECR inputs and unchanged Lightpanda source digest through observed cache",
+      "lightpanda_binary_checks": "existing exact release, architecture and binary hashes remain required"
+    },
+    "final_local_validation": {
+      "workflow_and_runtime_contract_tests": 125,
+      "renderer_deploy_and_image_pin_tests": {
+        "passed": 76,
+        "skipped": 24,
+        "scope": "local contract tests; Docker-only physical cases run in CI"
+      },
+      "release_source_and_architecture_pin_test": "passed",
+      "actionlint": "passed",
+      "ruff": "passed",
+      "diff_check": "passed"
+    },
+    "sitemap_shadow_mirror": {
+      "observed": "required HTTP sitemap ARM64 shadow build failed at Docker Hub auth504",
+      "compiler_manifest": {
+        "observed_at_utc": "2026-10-09T21:45:02.313150+00:00",
+        "image": "public.ecr.aws/docker/library/golang:1.24.7-alpine3.22",
+        "expected": "sha256:fc2cff6625f3c1c92e6c85938ac5bd09034ad0d4bc2dfb08278020b68540dbb5",
+        "actual": "sha256:fc2cff6625f3c1c92e6c85938ac5bd09034ad0d4bc2dfb08278020b68540dbb5",
+        "status": 200,
+        "identical": true
+      },
+      "change": "preserve all pinned compiler/comparator inputs through official ECR; configure the already pinned builder to consult the Google-managed Docker Hub cache for remaining inputs before its original source",
+      "local_validation": {
+        "workflow_runtime_contract_tests": 125,
+        "density_controller_tests": 89,
+        "actionlint": "passed",
+        "diff_check": "passed"
+      },
+      "physical_preceding_head": {
+        "head": "82f5a4c1c63bdccc021050c71d0ef51b362f16ed",
+        "run": 37994697001,
+        "amd64_and_arm64_pinned_cases": "passed; later density image build failed Docker Hub auth",
+        "scope": "partial prior-head evidence; renew complete exact-head workflow"
+      }
+    }
+  }
+}

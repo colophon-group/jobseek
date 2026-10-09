@@ -1277,7 +1277,8 @@ def test_renderer_library_contexts_include_embedded_assets() -> None:
 def test_service_builder_is_patch_and_digest_pinned() -> None:
     dockerfile = (ROOT / "pilots/go-lightpanda/Dockerfile").read_text(encoding="utf-8")
     assert re.search(
-        r"^ARG GO_IMAGE=golang:1\.26\.4-alpine3\.22@sha256:[0-9a-f]{64}$",
+        r"^ARG GO_IMAGE=public\.ecr\.aws/docker/library/"
+        r"golang:1\.26\.4-alpine3\.22@sha256:[0-9a-f]{64}$",
         dockerfile,
         re.MULTILINE,
     )

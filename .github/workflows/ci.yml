@@ -302,6 +302,11 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: image=mirror.gcr.io/moby/buildkit@sha256:cec9f139f45e93c5c69c60f8b07cfad9f43f4ef6b6a6cd917527fea5ff2e3dea
+          buildkitd-config-inline: |
+            [registry."docker.io"]
+              mirrors = ["mirror.gcr.io"]
 
       - name: Build ARM64 production shadow image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
@@ -370,7 +375,7 @@ jobs:
         working-directory: apps/crawler/go/lightpanda-b0-supervisor
     services:
       redis:
-        image: redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
+        image: public.ecr.aws/docker/library/redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
         ports:
           - 6379:6379
         options: >-
@@ -445,7 +450,7 @@ jobs:
           docker run --detach --name "$redis_container" \
             --publish 127.0.0.1:6380:6379 \
             --mount "type=volume,source=$redis_volume,target=/data" \
-            redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241 \
+            public.ecr.aws/docker/library/redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241 \
             redis-server --save "" >/dev/null
           wait_for_redis
           LIGHTPANDA_B0_INTEGRATION_REDIS_URL=redis://127.0.0.1:6380/15 \
@@ -455,7 +460,7 @@ jobs:
           docker run --detach --name "$redis_container" \
             --publish 127.0.0.1:6380:6379 \
             --mount "type=volume,source=$redis_volume,target=/data" \
-            redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241 \
+            public.ecr.aws/docker/library/redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241 \
             redis-server --save "" >/dev/null
           wait_for_redis
           LIGHTPANDA_B0_INTEGRATION_REDIS_URL=redis://127.0.0.1:6380/15 \
@@ -469,7 +474,7 @@ jobs:
     timeout-minutes: 15
     services:
       postgres:
-        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        image: public.ecr.aws/docker/library/postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
         ports:
           - 5432:5432
         env:
@@ -482,7 +487,7 @@ jobs:
           --health-timeout 5s
           --health-retries 12
       redis:
-        image: redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
+        image: public.ecr.aws/docker/library/redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
         ports:
           - 6384:6379
         options: >-
@@ -571,7 +576,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        image: public.ecr.aws/docker/library/postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
         ports: [5432:5432]
         env:
           POSTGRES_USER: crawler
@@ -625,7 +630,7 @@ jobs:
         working-directory: apps/crawler/go/r2-drain
     services:
       postgres:
-        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        image: public.ecr.aws/docker/library/postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
         env:
           POSTGRES_USER: crawler
           POSTGRES_PASSWORD: crawler
@@ -686,7 +691,7 @@ jobs:
     timeout-minutes: 10
     services:
       postgres:
-        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        image: public.ecr.aws/docker/library/postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
         env:
           POSTGRES_USER: crawler
           POSTGRES_PASSWORD: crawler
@@ -727,7 +732,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        image: public.ecr.aws/docker/library/postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
         env:
           POSTGRES_USER: crawler
           POSTGRES_PASSWORD: crawler
@@ -740,7 +745,7 @@ jobs:
           --health-timeout 5s
           --health-retries 12
       redis:
-        image: redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
+        image: public.ecr.aws/docker/library/redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
         ports:
           - 6379:6379
         options: >-
@@ -774,6 +779,11 @@ jobs:
           echo "base_sha=$parent_one" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: image=mirror.gcr.io/moby/buildkit@sha256:cec9f139f45e93c5c69c60f8b07cfad9f43f4ef6b6a6cd917527fea5ff2e3dea
+          buildkitd-config-inline: |
+            [registry."docker.io"]
+              mirrors = ["mirror.gcr.io"]
 
       - name: Guard exact slim image build context
         env:
@@ -1444,7 +1454,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:17-alpine
+        image: public.ecr.aws/docker/library/postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
         env:
           POSTGRES_DB: jobseek_notification_fixture
           POSTGRES_PASSWORD: postgres
@@ -1529,7 +1539,7 @@ jobs:
     timeout-minutes: 20
     services:
       postgres:
-        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        image: public.ecr.aws/docker/library/postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
         env:
           POSTGRES_DB: jobseek_company_reference_ci_fixture
           POSTGRES_PASSWORD: postgres
@@ -1584,7 +1594,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       typesense:
-        image: typesense/typesense:27.1
+        image: mirror.gcr.io/typesense/typesense:27.1@sha256:5c12af89130b8ee0be11541321ba8a3a7c7a538d7c6cd95e0409dc2d75ca6455
         ports:
           - 8108:8108
         options: --tmpfs /data:rw
@@ -1771,7 +1781,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       typesense:
-        image: typesense/typesense:27.1
+        image: mirror.gcr.io/typesense/typesense:27.1@sha256:5c12af89130b8ee0be11541321ba8a3a7c7a538d7c6cd95e0409dc2d75ca6455
         ports:
           - 8108:8108
         options: --tmpfs /data:rw
@@ -1835,7 +1845,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: public.ecr.aws/docker/library/postgres:16-alpine@sha256:20edbde7749f822887a1a022ad526fde0a47d6b2be9a8364433605cf65099416
         ports:
           - 5432:5432
         env:
@@ -1990,7 +2000,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:17-alpine
+        image: public.ecr.aws/docker/library/postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
         env:
           POSTGRES_DB: jobseek_auth_fixture
           POSTGRES_PASSWORD: postgres

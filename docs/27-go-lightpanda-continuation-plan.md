@@ -1,5 +1,11 @@
 # Go and Lightpanda migration delivery plan
 
+Current checkpoint, 2026-10-09: production is source996 (`ce4964b76a76a99cd839b14c3608033846ccf7bd`), version0.13.996, with B0 active at epoch259 and the base fleet healthy. Ordinary Go ownership is absent: full-cohort staging exceeded its15s snapshot budget. [PR#10392](https://github.com/colophon-group/jobseek/pull/10392) delivers the bounded admin-only fix as0.13.997; runtime15s limits remain intact. Real queue/CLI checks pass; exact-head required CI, installed-image parity and both physical Lightpanda architectures remain required. Docker Hub429/auth failures are handled with verified unchanged image digests. Lightpanda1.0.0 is the latest stable release.
+
+The next delivery steps are supported B0 reversal/selector clear and complete cold260 verification, fresh merge authority, original whole crawler/renderer rollout, fresh full admission and activation. Retain the entire7,678-monitor/2,746-detail cohort. Then finish Accenture and BrassRing together (16 boards), followed by remaining DOM/API configurations and provider groups. The source996 census has207 boards outside the ordinary cohort: DOM127, API-sniffer27, the paired providers16 and other types37. These counts include B0-owned boards and cache/route rejections; they are not a missing-engine count. Full conservation/freshness, whole-lane cost, supported reversal and the rollback window still gate retiring production Python/Playwright/Chromium. The goal remains active.
+
+Historical checkpoints follow.
+
 Updated 2026-10-09. Delivery remains the full migration; it is incomplete.
 
 ## Delivery objective
@@ -1083,3 +1089,55 @@ Seven physical pinned-Lightpanda session cases are included in both architecture
 Source994 (`66c1a05df0fcd6db42c5709653c8c61b05adfe21`, Workable/SmartRecruiters) is deployed through original whole crawler37962603419 and matching renderer37962775624, with independent image/health/cold readiness at epoch256. Both native owners remain closed. JobStreet/legacy SuccessFactors PR #10389 is based on that source; corrected CI37972145536 executes native jobs, whereas the earlier generic dispatch skipped them and is not accepted. After995 passes fresh merge authority and supported deployment, perform one fresh native admission covering both batches. Continue grouped remaining DOM/API/provider ports while observing the native owner. Lightpanda1.0.0 remains the latest stable release, freshly rechecked on the official releases page. Full freshness/conservation, comparable whole-lane cost, final reversal and rollback window still gate production Python/Playwright/Chromium retirement. The migration goal remains active and incomplete.
 
 Source996 reviewed head`0e20c9c692a65f5ae8d1d37f095c28ac21957f0b` now passes the full native worker race suite against isolated real PostgreSQL/Redis (824.011s wall). The subsequent fixes only classify the existing DOM import as direct and exclude service-only tests from the density build. Density race passes8.970s; fresh exact-head CI and physical Lightpanda builds still require renewal. A fresh complete anonymous global ByteDance capture contains1,430 jobs; Go requests both pages, matches every original Python field with zero differences, and projects4,933,303 bytes within the unchanged8MiB inventory RPC bound. This is public direct-HTTP capture replay evidence, not a live Lightpanda or serving proof.
+
+
+### Source996 full-cohort staging deadline — 2026-10-09
+
+Source996 B0 is independently ACTIVE at259 with the restored base fleet healthy.
+Exact-source actual-route admission covers7,678 monitor boards (all5 Darwinbox
+and3 ByteDance),2,746 detail boards and1,484,140 scheduled postings. All1,515,780
+candidate scheduled routes were reconciled;41 stale posting-cache boards and1
+incompatible route retain legacy ownership. Canonical/cacheboard config mismatches0.
+
+Original full-cohort staging attempts1,2,4 hit the15s transaction deadline;
+attempt3 properly rejected an existing production mutation lock. A bounded
+PGactivity observation caught~2s advisory wait, client-side snapshot processing
+through14.4s, then plan insertion at15.26s. The transaction rolled back. Independent
+readback verifies no source996 ordinary plan, receipt or active projection.
+
+The narrow next release reservesVERSION0.13.997 to give only staged-plan
+administration30s transactions and transaction-local SQLidle caps; ordinary runtime
+transaction/idle caps remain15s. Whole admin work is40s within the original45s
+wrapper. Lease/epoch/row barriers, exactsource/config checks, staged-only authority
+and caller cancellation are preserved. A real privatePG/Redis race regression
+passed32.644s, verifying a16s snapshot, runtime15s cancellation, no pooled idle-cap
+leak, caller100ms cancellation, and unchanged queue state. Full queue/realCLI checks
+and required CI are pending. See docs/evidence/go-native-owner-stage-budget-2026-10-09.json.
+
+Do not reduce the admitted cohort to fit the old timer. Finish and qualify this
+administrative fix, then supportedB0 reversal/completecold260 precedes its merge
+and whole rollout; refresh full admission and activate the complete native owner.
+The paired Accenture/BrassRing prototype remains local on source996; after this
+release rebase it, reserve the next version and finish both browser/controllers,
+real settlement and physical qualification together. Full migration remainsACTIVE.
+
+Required CI initially failed during Docker Hub fixture pulls, before native tests;
+installed image retry repeated429. All four official pinned inputs (Go/Python/
+PostgreSQL17/Redis) were fetched from Docker's official ECR mirror and hashed to
+exactly the existing digests. Use those digest-preserving mirrors for crawler
+builds and CI; previously unpinned PostgreSQL16/17 and Typesense27.1 fixtures now
+use the existing repository production pins. The observed Google-managed cache
+serves the identical Typesense manifest. Both real native staging/inspection CLI
+tests pass5.036s on a fresh private database. The full queue rerun uses CI's20m
+budget after the first command hit Go's default10m suite limit. Complete fresh
+head CI and installed image parity before supported reversal and merge.
+
+The complete real PostgreSQL/Redis queue race suite passed663.428s with the
+correct20m test budget. Fresh native CI also passes fixture initialization and
+executes queue/worker checks. Its Redis persistence one-offs and Buildx bootstrap
+revealed additional direct Docker Hub pulls. Route the former through the same
+Redis pin and pin the observed default stable builder cache manifest in CI and
+original deploy workflows. Renderer Go/Debian mirrors match their unchanged
+digests; the observed cache serves the exact Lightpanda1.0.0 source digest, with
+original binary/architecture verification intact. Renew fresh head checks and
+physical renderer qualification; no production native-owner change has occurred.

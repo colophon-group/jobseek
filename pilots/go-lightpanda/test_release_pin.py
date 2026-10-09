@@ -19,7 +19,7 @@ class ReleasePinTest(unittest.TestCase):
             f"ARG LIGHTPANDA_IMAGE={image['repository']}@{image['index_digest']}\n",
             dockerfile,
         )
-        self.assertIn("FROM ${LIGHTPANDA_IMAGE} AS lightpanda-source", dockerfile)
+        self.assertIn("FROM mirror.gcr.io/${LIGHTPANDA_IMAGE} AS lightpanda-source", dockerfile)
         self.assertIn(
             f"COPY --from=lightpanda-source {image['binary_path']} /usr/local/bin/lightpanda",
             dockerfile,

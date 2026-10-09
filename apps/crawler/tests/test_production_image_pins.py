@@ -101,7 +101,7 @@ def test_production_build_inputs_are_digest_pinned() -> None:
     crawler = (ROOT / "apps/crawler/Dockerfile").read_text(encoding="utf-8")
     shim = (ROOT / "apps/murmur-shim/Dockerfile").read_text(encoding="utf-8")
 
-    assert "FROM python:3.13.15-slim-trixie@sha256:" in crawler
+    assert "FROM public.ecr.aws/docker/library/python:3.13.15-slim-trixie@sha256:" in crawler
     assert "ghcr.io/astral-sh/uv:0.12.3@sha256:" in crawler
     assert "ghcr.io/astral-sh/uv:latest" not in crawler
     assert "ARG NODE_IMAGE=node:22.23.2-trixie-slim@sha256:" in shim

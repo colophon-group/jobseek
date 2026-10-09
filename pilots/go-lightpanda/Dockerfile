@@ -1,5 +1,5 @@
 ARG LIGHTPANDA_IMAGE=lightpanda/browser@sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e
-ARG GO_IMAGE=golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56
+ARG GO_IMAGE=public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56
 FROM ${GO_IMAGE} AS go-source
 
 # The primary build context remains this pilot directory. The caller supplies
@@ -43,9 +43,9 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH="${TARGETARCH}" go build \
     -tags densitybench -trimpath -ldflags="-s -w" \
     -o /out/go-lightpanda-density .
 
-FROM ${LIGHTPANDA_IMAGE} AS lightpanda-source
+FROM mirror.gcr.io/${LIGHTPANDA_IMAGE} AS lightpanda-source
 
-FROM debian:trixie-20260824-slim@sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132 AS lightpanda
+FROM public.ecr.aws/docker/library/debian:trixie-20260824-slim@sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132 AS lightpanda
 
 LABEL org.jobseek.lightpanda.release="1.0.0"
 COPY lightpanda-release.json /usr/local/share/jobseek/lightpanda-release.json

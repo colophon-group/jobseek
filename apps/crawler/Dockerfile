@@ -1,5 +1,5 @@
 # ── Stage 0: Go-owned Lightpanda B0 supervisor ──────────────────────
-FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS lightpanda-b0-build
+FROM public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS lightpanda-b0-build
 
 WORKDIR /workspace/apps/crawler
 COPY contracts/ contracts/
@@ -12,7 +12,7 @@ RUN go test ./... \
        -o /out/lightpanda-b0-supervisor .
 
 # ── Inactive native Go Lightpanda B0 database executor ──────────────
-FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-b0-executor-build
+FROM public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-b0-executor-build
 WORKDIR /workspace/apps/crawler
 COPY contracts/ contracts/
 COPY data/ data/
@@ -57,7 +57,7 @@ RUN test "${#CRAWLER_SOURCE_REVISION}" -eq 40 \
        -o /out/go-ordinary-worker ./cmd/live
 
 # ── Independent Go R2 description drain ─────────────────────────────
-FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-r2-drain-build
+FROM public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-r2-drain-build
 WORKDIR /workspace/apps/crawler/go/r2-drain
 COPY go/r2-drain/ ./
 RUN go test ./... \
@@ -65,7 +65,7 @@ RUN go test ./... \
        -o /out/go-r2-drain .
 
 # ── Default-off Go Typesense posting exporter ────────────────────────
-FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-typesense-exporter-build
+FROM public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-typesense-exporter-build
 WORKDIR /workspace/apps/crawler/go/typesense-exporter
 COPY contracts/ /workspace/apps/crawler/contracts/
 COPY go/typesense-exporter/ ./
@@ -85,7 +85,7 @@ RUN go test ./... \
        -o /out/go-typesense-exporter .
 
 # ── Default-off Go sitemap URL monitor ───────────────────────────────
-FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-sitemap-build
+FROM public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-sitemap-build
 WORKDIR /workspace/apps/crawler/go/sitemap-monitor
 COPY go/sitemap-monitor/ ./
 RUN go test ./... \
@@ -93,7 +93,7 @@ RUN go test ./... \
        -o /out/sitemap-monitor-live ./cmd/live
 
 # ── Default-off, single-origin Go Workday list monitor ──────────────
-FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-workday-build
+FROM public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-workday-build
 WORKDIR /workspace/apps/crawler/go/workday-monitor
 COPY go/workday-monitor/ ./
 RUN go test ./... \
@@ -103,7 +103,7 @@ RUN go test ./... \
        -o /out/workday-detail-live ./cmd/detail-live
 
 # ── Default-off, single-origin Go Greenhouse rich monitor ───────────
-FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-greenhouse-build
+FROM public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-greenhouse-build
 WORKDIR /workspace/apps/crawler/go/greenhouse-monitor
 COPY go/greenhouse-monitor/ ./
 RUN go test ./... \
@@ -111,14 +111,14 @@ RUN go test ./... \
        -o /out/greenhouse-monitor-live ./cmd/live
 
 # ── Default-off Go Ashby rich monitor ────────────────────────────────
-FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-ashby-build
+FROM public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-ashby-build
 WORKDIR /workspace/apps/crawler/go/ashby-monitor
 COPY go/ashby-monitor/ ./
 RUN go test ./... \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
        -o /out/ashby-monitor-live ./cmd/live
 # ── Default-off Go Lever rich monitor ────────────────────────────────
-FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-lever-build
+FROM public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-lever-build
 WORKDIR /workspace/apps/crawler/go/lever-monitor
 COPY go/lever-monitor/ ./
 RUN go test ./... \
@@ -126,7 +126,7 @@ RUN go test ./... \
        -o /out/lever-monitor-live ./cmd/live
 
 # ── Go JOIN inventory and configured Next.js detail extraction ───────
-FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-join-build
+FROM public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-join-build
 WORKDIR /workspace/apps/crawler/go/join-monitor
 COPY go/join-monitor/ ./
 RUN go test ./... \
@@ -134,7 +134,7 @@ RUN go test ./... \
        -o /out/join-monitor-live ./cmd/live
 
 # Shared JSON-LD parser and direct detail transport.
-FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-jsonld-build
+FROM public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-jsonld-build
 WORKDIR /workspace/apps/crawler/go/jsonld-detail
 COPY go/jsonld-detail/ ./
 RUN go test ./... \
@@ -142,7 +142,7 @@ RUN go test ./... \
        -o /out/jsonld-detail-live ./cmd/live
 
 # Shared DOM extractor and verified direct HTTP transport.
-FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-dom-build
+FROM public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-dom-build
 WORKDIR /workspace/apps/crawler/go/dom-detail
 COPY go/dom-detail/ ./
 COPY go/jsonld-detail/ ../jsonld-detail/
@@ -153,7 +153,7 @@ RUN go test ./... \
        -o /out/dom-detail-fetch ./cmd/fetch
 
 # ── Default-off Go Recruitee rich monitor ────────────────────────────
-FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-recruitee-build
+FROM public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-recruitee-build
 WORKDIR /workspace/apps/crawler/go/recruitee-monitor
 COPY go/recruitee-monitor/ ./
 RUN go test ./... \
@@ -161,7 +161,7 @@ RUN go test ./... \
        -o /out/recruitee-monitor-live ./cmd/live
 
 # Shared resident occupation/seniority/technology matching.
-FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-job-enrichment-build
+FROM public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-job-enrichment-build
 WORKDIR /workspace/apps/crawler/go/job-enrichment
 COPY go/job-enrichment/ ./
 RUN --mount=type=cache,target=/root/.cache/go-build \
@@ -169,14 +169,14 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/location-resolver ./cmd/location
 
 # Default-off SmartRecruiters monitor/detail extraction.
-FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-smartrecruiters-build
+FROM public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-smartrecruiters-build
 WORKDIR /workspace/apps/crawler/go/smartrecruiters-monitor
 COPY go/smartrecruiters-monitor/ ./
 RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" \
       -o /out/smartrecruiters-monitor-live ./cmd/live
 
-FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-workable-build
+FROM public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-workable-build
 WORKDIR /workspace/apps/crawler/go/workable-monitor
 COPY go/workable-monitor/ ./
 RUN go test ./... \
@@ -186,7 +186,7 @@ RUN go test ./... \
        -o /out/workable-detail-live ./cmd/detail-live
 
 # ── Default-off Go Pinpoint rich monitor ─────────────────────────────
-FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-pinpoint-build
+FROM public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-pinpoint-build
 WORKDIR /workspace/apps/crawler/go/pinpoint-monitor
 COPY go/pinpoint-monitor/ ./
 RUN go test ./... \
@@ -194,7 +194,7 @@ RUN go test ./... \
        -o /out/pinpoint-monitor-live ./cmd/live
 
 # ── Default-off Go Booking page-one API monitor ──────────────────────
-FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-booking-api-build
+FROM public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-booking-api-build
 WORKDIR /workspace/apps/crawler/go/booking-api-monitor
 COPY go/booking-api-monitor/ ./
 RUN go test ./... \
@@ -202,7 +202,7 @@ RUN go test ./... \
        -o /out/booking-api-monitor-live ./cmd/live
 
 # ── Default-off Go Teamtailor rich RSS monitor ───────────────────────
-FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-teamtailor-rss-build
+FROM public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-teamtailor-rss-build
 WORKDIR /workspace/apps/crawler/go/teamtailor-rss-monitor
 COPY go/teamtailor-rss-monitor/ ./
 RUN go test ./... \
@@ -210,7 +210,7 @@ RUN go test ./... \
        -o /out/teamtailor-rss-monitor-live ./cmd/live
 
 # ── Default-off Go SuccessFactors direct Google RSS monitor ──────────
-FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-successfactors-rss-build
+FROM public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-successfactors-rss-build
 WORKDIR /workspace/apps/crawler/go/successfactors-rss-monitor
 COPY go/successfactors-rss-monitor/ ./
 RUN go test ./... \
@@ -218,7 +218,7 @@ RUN go test ./... \
        -o /out/successfactors-rss-monitor-live ./cmd/live
 
 # ── Default-off Go Personio XML/HTML rich monitor ────────────────────
-FROM golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-personio-build
+FROM public.ecr.aws/docker/library/golang:1.26.4-alpine3.22@sha256:727cfc3c40be55cd1bc9a4a059406b28a059857e3be752aa9d09531e12c20c56 AS go-personio-build
 WORKDIR /workspace/apps/crawler/go/personio-monitor
 COPY go/personio-monitor/ ./
 RUN go test ./... \
@@ -226,7 +226,7 @@ RUN go test ./... \
        -o /out/personio-monitor-live ./cmd/live
 
 # ── Stage 1: Slim base (Python + deps, no Playwright) ────────────────
-FROM python:3.13.15-slim-trixie@sha256:7ce4b6dfe35e55397b7cda544f8a13f191b7ae28dc5aad71fe664dbc9bc2623f AS base
+FROM public.ecr.aws/docker/library/python:3.13.15-slim-trixie@sha256:7ce4b6dfe35e55397b7cda544f8a13f191b7ae28dc5aad71fe664dbc9bc2623f AS base
 
 COPY --from=ghcr.io/astral-sh/uv:0.12.3@sha256:2d890623d310b57771ce840f0da5eed5fc6d657da05ffaa45d82797b53fa3abc /uv /uvx /bin/
 
