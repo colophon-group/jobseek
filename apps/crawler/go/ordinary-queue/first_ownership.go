@@ -131,7 +131,7 @@ func firstOwnershipPlan(ctx context.Context, pool *pgxpool.Pool, client *Client,
  SELECT p.routing_epoch,m->>'board_id' AS board_id
  FROM old_plans p CROSS JOIN LATERAL jsonb_array_elements(p.payload->'members') m
  WHERE m->>'kind'='monitor'
- AND (m->>'worker'='simple' OR (m->>'worker'='browser' AND m->>'profile' IN ('dom.rendered-urls/v1','dom.rendered-rows/v1','inline.rendered-items/v1','rss.rendered-generic-skip/v1','rss.rendered-generic-items/v1','rss.rendered-generic-summary-skip/v1','rss.rendered-generic-summary-items/v1','rss.rendered-wp_job_manager-skip/v1','rss.rendered-wp_job_manager-items/v1','nextdata.rendered-items/v1','nextdata.rendered-urls/v1','dayforce.session-search/v1','api_sniffer.browser-items/v1','darwinbox.session-items/v1','bytedance.partition-items/v1')))
+ AND (m->>'worker'='simple' OR (m->>'worker'='browser' AND m->>'profile' IN ('dom.rendered-urls/v1','dom.rendered-rows/v1','inline.rendered-items/v1','rss.rendered-generic-skip/v1','rss.rendered-generic-items/v1','rss.rendered-generic-summary-skip/v1','rss.rendered-generic-summary-items/v1','rss.rendered-wp_job_manager-skip/v1','rss.rendered-wp_job_manager-items/v1','nextdata.rendered-items/v1','nextdata.rendered-urls/v1','dayforce.session-search/v1','api_sniffer.browser-items/v1','darwinbox.session-items/v1','bytedance.partition-items/v1','brassring.session-items/v1','accenture.http-items/v1','accenture.captured-items/v1')))
 ), old_details AS MATERIALIZED (
  SELECT p.routing_epoch,d->>'board_id' AS board_id
  FROM old_plans p CROSS JOIN LATERAL jsonb_array_elements(p.payload->'details') d

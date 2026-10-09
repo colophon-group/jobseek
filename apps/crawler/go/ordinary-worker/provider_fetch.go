@@ -28,7 +28,14 @@ func fetchProviderStatusResource(ctx context.Context, client *http.Client, optio
 	if client == nil || !options.ResourceMatches(endpoint) || limit < 1 || limit > 64<<20 {
 		return nil, nil, queue.ErrConfiguration
 	}
-	requestCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	timeout := 30 * time.Second
+	if scoped, ok := options.(interface{ RequestTimeout() time.Duration }); ok {
+		timeout = scoped.RequestTimeout()
+		if timeout <= 0 || timeout > 60*time.Second {
+			return nil, nil, queue.ErrConfiguration
+		}
+	}
+	requestCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	method := http.MethodGet
 	if body != nil {

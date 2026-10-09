@@ -92,3 +92,16 @@ func partitionedBrowserMetadata(raw string) (map[string]any, error) {
 	}
 	return m, nil
 }
+
+// Public detail hydration remains on the board's origin and numeric tenant
+// tuple; captured cookies/headers and arbitrary links grant no HTTP authority.
+func BrassRingDetailResourceMatches(board, resource string) bool {
+	expected, err := BrassRingBoardFromURL(board)
+	actual, parseErr := BrassRingBoardFromURL(resource)
+	base, baseErr := url.Parse(board)
+	target, targetErr := url.Parse(resource)
+	if err != nil || parseErr != nil || baseErr != nil || targetErr != nil || expected != actual || base.Scheme != target.Scheme || base.Host != target.Host || target.User != nil || target.Fragment != "" {
+		return false
+	}
+	return brassRingDigits.MatchString(target.Query().Get("jobid")) && strings.EqualFold(target.Query().Get("PageType"), "JobDetails")
+}

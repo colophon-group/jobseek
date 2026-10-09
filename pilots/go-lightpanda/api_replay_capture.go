@@ -31,15 +31,18 @@ type replayPending struct {
 // events; response bodies are read outside the listener so CDP cannot deadlock.
 // Request credentials never become task, result or diagnostic fields.
 type replayCapture struct {
-	mu            sync.Mutex
-	endpoint      *url.URL
-	method        string
-	bodyLimit     int
-	requireStatus int64
-	pending       map[network.RequestID]replayPending
-	completed     chan network.RequestID
-	failure       error
-	closed        bool
+	mu              sync.Mutex
+	endpoint        *url.URL
+	method          string
+	bodyLimit       int
+	requireStatus   int64
+	pending         map[network.RequestID]replayPending
+	completed       chan network.RequestID
+	failure         error
+	closed          bool
+	retainTemplate  bool
+	templateID      network.RequestID
+	templateHeaders http.Header
 }
 
 func (*replayCapture) String() string               { return "private API browser capture" }
@@ -73,6 +76,11 @@ func (c *replayCapture) observe(event any) {
 		if e.Request == nil || e.RequestID == "" || e.Type != network.ResourceTypeXHR && e.Type != network.ResourceTypeFetch || !c.matches(e.Request.URL, e.Request.Method) {
 			return
 		}
+		// Accenture needs only the page-owned template. Subsequent fixed
+		// replay commands check their own status, policy and body limits.
+		if c.retainTemplate && c.templateID != "" && e.RequestID != c.templateID {
+			return
+		}
 		if len(c.pending) >= replayCaptureLimit {
 			c.failure = errResourceLimit
 			return
@@ -89,6 +97,9 @@ func (c *replayCapture) observe(event any) {
 			headers.Set(name, value)
 		}
 		c.pending[e.RequestID] = replayPending{source: e.Request.URL, method: e.Request.Method, headers: headers}
+		if c.retainTemplate && c.templateID == "" && e.Request.HasPostData {
+			c.templateID, c.templateHeaders = e.RequestID, headers.Clone()
+		}
 	case *network.EventResponseReceived:
 		pending, ok := c.pending[e.RequestID]
 		if !ok {
@@ -204,6 +215,8 @@ func (c *replayCapture) erase() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.closed = true
+	c.templateID = ""
+	clear(c.templateHeaders)
 	clear(c.pending)
 	for {
 		select {

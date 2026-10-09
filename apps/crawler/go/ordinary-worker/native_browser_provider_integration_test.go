@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"strings"
 	"testing"
@@ -13,15 +14,17 @@ import (
 )
 
 func TestRealNativeBrowserProviderCanonicalSettlement(t *testing.T) {
-	for _, provider := range []string{"darwinbox", "bytedance"} {
-		for _, mode := range []string{"complete", "truncated", "partial", "reserved", "failed", "wrong-binding", "gone"} {
-			if provider == "bytedance" && (mode == "partial" || mode == "gone") {
+	for _, provider := range []string{"darwinbox", "bytedance", "brassring"} {
+		for _, mode := range []string{"complete", "truncated", "partial", "reserved", "failed", "wrong-binding", "gone", "hydration-failed"} {
+			if provider != "darwinbox" && (mode == "partial" || mode == "gone") || provider != "brassring" && mode == "hydration-failed" {
 				continue
 			}
 			t.Run(provider+"/"+mode, func(t *testing.T) {
 				board := "https://airtel.darwinbox.in/ms/candidate/careers"
 				if provider == "bytedance" {
 					board = "https://joinbytedance.com/search"
+				} else if provider == "brassring" {
+					board = "https://sjobs.brassring.com/TGnewUI/Search/Home/Home?partnerid=25416&siteid=5998"
 				}
 				f := privateRichPipelineFixtureURL(t, provider, `{"scraper_type":"skip"}`, board, queue.Browser)
 				ctx := context.Background()
@@ -33,12 +36,27 @@ func TestRealNativeBrowserProviderCanonicalSettlement(t *testing.T) {
 				if e != nil {
 					t.Fatal(e)
 				}
-				renderer := heldMonitor(func(_ context.Context, p queue.GreenhouseMonitorProfile, _ map[string]string) (RichDiscovery, error) {
+				client := richPipelineHTTP(t, func(w http.ResponseWriter, r *http.Request) {
+					if provider != "brassring" || r.URL.Query().Get("jobid") != "1" {
+						t.Fatal("unexpected worker direct HTTP")
+					}
+					if mode == "hydration-failed" {
+						fmt.Fprint(w, "<html>Missing preload</html>")
+						return
+					}
+					body, _ := json.Marshal(map[string]any{"JobId": "1", "Jobdetails": map[string]any{"JobDetailQuestions": []map[string]string{{"VerityZone": "formtext8", "AnswerValue": "Zurich"}}}})
+					fmt.Fprintf(w, `<input id="preLoadJSON" value="%s">`, html.EscapeString(string(body)))
+				})
+				renderer := heldMonitor(func(call context.Context, p queue.GreenhouseMonitorProfile, _ map[string]string) (RichDiscovery, error) {
 					jobURL := "https://airtel.darwinbox.in/ms/candidatev2/main/careers/jobDetails/" + f.company
 					if provider == "bytedance" {
 						jobURL = "https://joinbytedance.com/search/" + f.company
 					}
 					r := replay.Response{Protocol: replay.Protocol, RequestID: strings.Repeat("a", 64), ConfigFingerprint: p.EffectiveConfigSHA256, Outcome: "success", Inventory: json.RawMessage(fmt.Sprintf(`{"Jobs":[{"url":%q,"title":"Senior Software Engineer","description":"&lt;p&gt;Build Go services in Zurich.&lt;/p&gt;","locations":["Zurich"],"metadata":{"department":"Engineering"},"employment_type":"Full time","date_posted":"2024-02-03"}],"Truncated":%t}`, jobURL, mode == "truncated"))}
+					if provider == "brassring" {
+						jobURL = "https://sjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=25416&siteid=5998&PageType=JobDetails&jobid=1"
+						r.Inventory = json.RawMessage(fmt.Sprintf(`{"Jobs":[{"url":%q,"title":"Senior Software Engineer","description":"&lt;p&gt;Build Go services in Zurich.&lt;/p&gt;","locations":[],"metadata":{"requisition_id":"1"},"employment_type":"Full time","date_posted":"2024-02-03"}],"Truncated":%t}`, jobURL, mode == "truncated"))
+					}
 					switch mode {
 					case "partial":
 						r.Outcome = "partial"
@@ -57,9 +75,12 @@ func TestRealNativeBrowserProviderCanonicalSettlement(t *testing.T) {
 						r.FailureURL = "https://airtel.darwinbox.in/ms/candidateapi/job/alljobs"
 						r.FailureStatus = 410
 					}
-					return parseAPIReplayResponse(p, r)
+					found, err := parseAPIReplayResponse(p, r)
+					if err == nil && provider == "brassring" {
+						return hydrateBrassRingSnapshot(call, client.client, board, found)
+					}
+					return found, err
 				})
-				client := richPipelineHTTP(t, func(http.ResponseWriter, *http.Request) { t.Fatal("browser provider used worker direct HTTP") })
 				result, e := RunGreenhouseClaim(ctx, f.a, claim, client, richPipelinePreparer(t, f), circuits, renderer)
 				if e != nil || result == nil || !result.Settled {
 					t.Fatal("claim settlement", e)
@@ -101,7 +122,7 @@ func TestRealNativeBrowserProviderCanonicalSettlement(t *testing.T) {
 					if mode == "reserved" && (!reserved || failures != 0) {
 						t.Fatal("publisher outcome changed")
 					}
-					if (mode == "failed" || mode == "wrong-binding") && (failures != 1 || missing != 0) {
+					if (mode == "failed" || mode == "wrong-binding" || mode == "hydration-failed") && (failures != 1 || missing != 0) {
 						t.Fatal("failure mutated absence authority")
 					}
 				}

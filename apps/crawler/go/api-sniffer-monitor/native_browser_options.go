@@ -3,11 +3,20 @@ package apisniffer
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 )
 
 // Fixed provider requests use the existing held browser controller. Lifecycle
 // metadata stays bound to the caller's fingerprint and never becomes a request.
 func NativeBrowserOptions(provider, board, raw string) (BrowserReplayOptions, string, error) {
+	if provider == "accenture" {
+		_, options, err := AccentureBrowserOptions(board, raw)
+		return options, board, err
+	}
+	if provider == "brassring" {
+		_, options, err := BrassRingBrowserOptions(board, raw)
+		return options, board, err
+	}
 	o := BrowserReplayOptions{Wait: "load", TimeoutMS: 20000, ResponseBodyLimit: 16 << 20}
 	m, e := DecodeInlineMetadata(raw)
 	if e != nil {
@@ -59,6 +68,11 @@ func NativeBrowserOptions(provider, board, raw string) (BrowserReplayOptions, st
 	return o, "", ErrOptions
 }
 func NativeBrowserRequestMatches(provider, board, metadata string, r Request) bool {
+	if provider == "brassring" || provider == "accenture" {
+		// The fixed search/sort/next driver owns these UI requests. No caller
+		// may manufacture them through the generic fetch conversation.
+		return false
+	}
 	_, _, e := NativeBrowserOptions(provider, board, metadata)
 	if e != nil {
 		return false
@@ -103,6 +117,17 @@ func NativeBrowserResourceMatches(provider, board, metadata, resource string) bo
 	}
 	if resource == listing {
 		return true
+	}
+	if provider == "accenture" {
+		options, _, err := NativeBrowserOptions(provider, board, metadata)
+		return err == nil && resource == options.Inventory.Endpoint
+	}
+	if provider == "brassring" {
+		_, options, err := BrassRingBrowserOptions(board, metadata)
+		if err != nil {
+			return false
+		}
+		return resource == options.Inventory.Endpoint || resource == strings.TrimSuffix(options.Inventory.Endpoint, "MatchedJobs")+"ProcessSortAndShowMoreJobs" || BrassRingDetailResourceMatches(board, resource)
 	}
 	if provider == "darwinbox" {
 		b, e := DarwinboxBoardFromURL(board)

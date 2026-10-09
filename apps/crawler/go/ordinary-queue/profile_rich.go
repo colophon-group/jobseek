@@ -30,6 +30,14 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		for _, key := range []string{"company_key", "flow", "locale", "token", "employer_id", "host", "proxy", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
 		}
+	case "accenture":
+		for _, key := range []string{"country", "language", "site", "endpoint", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+			allowed[key] = true
+		}
+	case "brassring":
+		for _, key := range []string{"partner_id", "site_id", "wait", "wait_fallback", "timeout", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+			allowed[key] = true
+		}
 	case "darwinbox", "bytedance":
 		for _, key := range []string{"host", "company_id", "wait", "timeout", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true

@@ -660,6 +660,9 @@ def test_notion_detail_projection_rejects_foreign_workspace_and_wildcard(domain,
         "api_sniffer.browser-items/v1",
         "darwinbox.session-items/v1",
         "bytedance.partition-items/v1",
+        "brassring.session-items/v1",
+        "accenture.http-items/v1",
+        "accenture.captured-items/v1",
     ],
 )
 def test_rendered_monitor_projection_preserves_exact_worker_boundary(profile):

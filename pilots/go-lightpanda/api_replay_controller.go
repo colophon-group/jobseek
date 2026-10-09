@@ -24,8 +24,23 @@ type apiReplayTask struct {
 	options                        api.BrowserReplayOptions
 	converse                       func(context.Context, api.Fetch, bool) error
 	brassRingConverse              func(context.Context, api.BrassRingPageLoader) error
+	accentureConverse              func(context.Context, api.Fetch, api.Request) error
 	fallback                       api.Fetch
 	nativeProvider, nativeMetadata string
+}
+
+func (task *apiReplayTask) hasOneConversation() bool {
+	count := 0
+	if task.converse != nil {
+		count++
+	}
+	if task.brassRingConverse != nil {
+		count++
+	}
+	if task.accentureConverse != nil {
+		count++
+	}
+	return count == 1
 }
 
 func readReplayResponseBody(ctx context.Context, id network.RequestID) ([]byte, error) {
@@ -70,6 +85,16 @@ func executeAPIReplayConversation(ctx context.Context, task *apiReplayTask, capt
 			return failure
 		}
 		return executeBrassRingConversation(ctx, task, finalURL)
+	}
+	if task.accentureConverse != nil {
+		failure := executeAccentureConversation(ctx, task, capture, finalURL)
+		capture.mu.Lock()
+		capturedFailure := capture.failure
+		capture.mu.Unlock()
+		if capturedFailure != nil {
+			return capturedFailure
+		}
+		return failure
 	}
 	if task.nativeProvider != "" {
 		if task.nativeProvider == "darwinbox" {

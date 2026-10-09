@@ -12,6 +12,15 @@ func firstNativeBrowserProviderFixture(t *testing.T, provider string) firstOwner
 		board = "https://jobs.bytedance.com/experienced/position"
 	}
 	metadata := `{"scraper_type":"skip"}`
+	if provider == "brassring" {
+		board = "https://sjobs.brassring.com/TGnewUI/Search/Home/Home?partnerid=25416&siteid=5998"
+	} else if provider == "accenture" {
+		board = "https://www.accenture.com/us-en/careers/jobsearch"
+		metadata = `{"country":"USA","language":"en","site":"us-en","scraper_type":"skip"}`
+	} else if provider == "accenture/captured" {
+		provider, board = "accenture", "https://www.accenture.com/fr-fr/careers/jobsearch"
+		metadata = `{"country":"France","language":"fr","site":"fr-fr","endpoint":"jobsearch/result","scraper_type":"skip"}`
+	}
 	ctx := context.Background()
 	if _, e := p.f.observer.Exec(ctx, "UPDATE job_board SET crawler_type=$2,board_url=$3,metadata=$4::jsonb WHERE id=$1::uuid", p.f.task.ID, provider, board, metadata); e != nil {
 		t.Fatal(e)
@@ -30,5 +39,5 @@ func firstNativeBrowserProviderFixture(t *testing.T, provider string) firstOwner
 	return p
 }
 func TestRealNativeBrowserProviderColdRetirement(t *testing.T) {
-	testProviderColdRetirement(t, []string{"darwinbox", "bytedance"}, firstNativeBrowserProviderFixture)
+	testProviderColdRetirement(t, []string{"darwinbox", "bytedance", "brassring", "accenture", "accenture/captured"}, firstNativeBrowserProviderFixture)
 }

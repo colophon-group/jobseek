@@ -135,6 +135,9 @@ def ownership_projection(payload: str) -> str:
                     "api_sniffer.browser-items/v1",
                     "darwinbox.session-items/v1",
                     "bytedance.partition-items/v1",
+                    "brassring.session-items/v1",
+                    "accenture.http-items/v1",
+                    "accenture.captured-items/v1",
                 }
                 else "simple"
             )

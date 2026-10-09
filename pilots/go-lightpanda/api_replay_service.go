@@ -25,6 +25,9 @@ func (execution *runtimeV1ServiceExecution) executeAPIReplay(ctx context.Context
 	if !request.Valid() {
 		return response, replay.ErrProtocol
 	}
+	if request.Provider == "brassring" {
+		return execution.executeBrassRingReplay(ctx, request, response)
+	}
 	var task Task
 	var inventory api.Inventory
 	collected := false
@@ -36,7 +39,7 @@ func (execution *runtimeV1ServiceExecution) executeAPIReplay(ctx context.Context
 			return newNativeBrowserTask(request.Provider, board, metadata, converse)
 		}
 	}
-	task, err := constructor(request.BoardURL, string(request.Metadata), func(ctx context.Context, fetch api.Fetch, usingHTTP bool) error {
+	converse := func(ctx context.Context, fetch api.Fetch, usingHTTP bool) error {
 		var err error
 		if request.Provider == "darwinbox" {
 			board, e := api.DarwinboxBoardFromURL(task.APIReplay.boardURL)
@@ -66,7 +69,21 @@ func (execution *runtimeV1ServiceExecution) executeAPIReplay(ctx context.Context
 		}
 		collected = err == nil
 		return err
-	})
+	}
+	var err error
+	if request.Provider == "accenture" {
+		task, err = newAccentureCapturedTask(request.BoardURL, string(request.Metadata), func(ctx context.Context, fetch api.Fetch, captured api.Request) error {
+			options, _, e := api.AccentureBrowserOptions(request.BoardURL, string(request.Metadata))
+			if e != nil {
+				return e
+			}
+			inventory, e = api.DiscoverAccenture(ctx, options, fetch, &captured, nil)
+			collected = e == nil
+			return e
+		})
+	} else {
+		task, err = constructor(request.BoardURL, string(request.Metadata), converse)
+	}
 	if err != nil {
 		response.Outcome = "invalid_config"
 		return response, nil
@@ -105,6 +122,65 @@ func (execution *runtimeV1ServiceExecution) executeAPIReplay(ctx context.Context
 		response.Outcome = "partial"
 	}
 	response.Inventory = body
+	return response, nil
+}
+
+func (execution *runtimeV1ServiceExecution) executeBrassRingReplay(ctx context.Context, request replay.Request, response replay.Response) (replay.Response, error) {
+	board, err := api.BrassRingBoardFromURL(request.BoardURL)
+	if err != nil {
+		response.Outcome = "invalid_config"
+		return response, nil
+	}
+	config := execution.dayforceConfig
+	config.TaskTimeout = time.Duration(request.TimeoutMS) * time.Millisecond
+	// A changing inventory gets the original two fresh snapshots. Each runner
+	// must finish cleanup before another target can be created or data returned.
+	for attempt := 0; attempt < 2; attempt++ {
+		var inventory api.Inventory
+		collected := false
+		task, err := newBrassRingBrowserTask(request.BoardURL, string(request.Metadata), func(ctx context.Context, load api.BrassRingPageLoader) error {
+			var collectErr error
+			inventory, collectErr = api.CollectBrassRingSnapshot(ctx, board, load, func(s string) (*string, error) { return &s, nil })
+			collected = collectErr == nil
+			return collectErr
+		})
+		if err != nil {
+			response.Outcome = "invalid_config"
+			return response, nil
+		}
+		result, err := execution.dayforceRun(ctx, config, task)
+		if err != nil {
+			var reservation *policy.Reservation
+			if errors.Is(err, errCleanupUnproved) {
+				return response, nil
+			}
+			if errors.As(err, &reservation) {
+				response.Outcome = "publisher_reserved"
+				response.Reservation = &replay.Reservation{URL: reservation.URL, Source: reservation.Source, PolicyURL: reservation.PolicyURL}
+				return response, nil
+			}
+			if attempt == 0 && errors.Is(err, api.ErrBrassRingSnapshot) && ctx.Err() == nil {
+				timer := time.NewTimer(time.Second)
+				select {
+				case <-ctx.Done():
+					timer.Stop()
+					return response, nil
+				case <-timer.C:
+					continue
+				}
+			}
+			return response, nil
+		}
+		if !collected || !result.apiReplaySessionSettled || ctx.Err() != nil {
+			return response, nil
+		}
+		body, err := json.Marshal(inventory)
+		if err != nil || len(body) > replay.ResponseLimit-1024 {
+			return response, nil
+		}
+		response.Outcome, response.Inventory = "success", body
+		return response, nil
+	}
 	return response, nil
 }
 
