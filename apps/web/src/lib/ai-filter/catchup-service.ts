@@ -19,6 +19,7 @@ import { executeAiFilterSegment } from "./orchestrator";
 import { PostgresAiFilterExecutionRepository } from "./postgres-repository";
 import {
   AI_FILTER_PROMPT_VERSION,
+  AI_FILTER_MAX_FRESHNESS_SEGMENTS_PROJECT,
   JEV_MODEL,
   canRunAiFilter,
   readAiFilterRuntimePolicy,
@@ -236,7 +237,10 @@ async function claimSegment(input: {
           gt(aiFilterSegment.leaseExpiresAt, input.now),
         )),
       tx
-        .select({ count: sql<number>`count(*)::integer` })
+        .select({
+          count: sql<number>`count(*)::integer`,
+          freshnessCount: sql<number>`count(*) FILTER (WHERE ${aiFilterSegment.kind} = 'freshness')::integer`,
+        })
         .from(aiFilterSegment)
         .where(and(
           eq(aiFilterSegment.status, "processing"),
@@ -245,7 +249,8 @@ async function claimSegment(input: {
     ]);
     if (
       (userCapacity?.count ?? 0) >= input.maxSegmentsPerUser ||
-      (projectCapacity?.count ?? 0) >= input.maxSegmentsPerProject
+      (projectCapacity?.count ?? 0) >= input.maxSegmentsPerProject ||
+      (input.kind === "freshness" && (projectCapacity?.freshnessCount ?? 0) >= AI_FILTER_MAX_FRESHNESS_SEGMENTS_PROJECT)
     ) {
       return { kind: "busy" as const, segment: active ?? null };
     }

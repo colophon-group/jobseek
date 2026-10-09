@@ -331,6 +331,22 @@ describe("readWatchlistCandidates", () => {
     expect(mocks.singleSearch.mock.calls[2]?.[0]).not.toHaveProperty("per_page");
   });
 
+  it("counts a ready candidate scope without sorting and hydrating UUID guard rows", async () => {
+    mocks.singleSearch.mockResolvedValue({ found: 5, hits: [] });
+    await expect(readWatchlistCandidates({
+      filters: { companyIds: [makeUuid(100)] },
+      offset: 0, limit: 0, order: "newest", requireStableOrder: true,
+    })).resolves.toEqual({ postings: [], total: 5 });
+    expect(mocks.singleSearch).toHaveBeenCalledOnce();
+    expect(mocks.singleSearch.mock.calls[0]?.[0]).toMatchObject({ per_page: 0 });
+    setTestEnv({ TYPESENSE_STABLE_CANDIDATE_ORDER_RECEIPT: undefined });
+    await expect(readWatchlistCandidates({
+      filters: { companyIds: [makeUuid(100)] },
+      offset: 0, limit: 0, order: "newest", requireStableOrder: true,
+    })).rejects.toThrow("has not passed backfill readiness");
+    expect(mocks.singleSearch).toHaveBeenCalledOnce();
+  });
+
   it("preserves per_page zero for a direct count-only read", async () => {
     mocks.singleSearch.mockResolvedValue({ found: 5, hits: [] });
 

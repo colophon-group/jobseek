@@ -55,7 +55,9 @@ describe("scheduled narrowed freshness", () => {
   });
 
   it("isolates dispatch failures so another watchlist still refreshes", async () => {
-    deps.claim.mockReset().mockResolvedValue([]).mockResolvedValueOnce([target, { ...target, watchlistId: "another" }]);
+    deps.claim.mockReset().mockResolvedValue([])
+      .mockResolvedValueOnce([target])
+      .mockResolvedValueOnce([{ ...target, watchlistId: "another" }]);
     deps.start.mockRejectedValueOnce(new Error("dispatch unavailable"));
     expect(await runAiFilterRefreshSweep({ dependencies: deps })).toMatchObject({ started: 1, failed: 1 });
   });
@@ -69,7 +71,7 @@ describe("scheduled narrowed freshness", () => {
 
 
 describe("refresh sweep fairness under a slow preparation", () => {
-  it("claims only the next pair before running out of its work budget", async () => {
+  it("claims only the next target before running out of its work budget", async () => {
     const clock = vi.spyOn(Date, "now").mockReturnValue(0);
     const claim = vi.fn().mockResolvedValue([target]);
     const configure = vi.fn().mockResolvedValue({ queryVersionId: "query" });
@@ -79,7 +81,20 @@ describe("refresh sweep fairness under a slow preparation", () => {
       expect(await runAiFilterRefreshSweep({ dependencies: { claim, configure, start, assertScope } }))
         .toMatchObject({ claimed: 1, started: 1 });
       expect(claim).toHaveBeenCalledOnce();
-      expect(claim).toHaveBeenCalledWith(expect.any(Date), 2);
+      expect(claim).toHaveBeenCalledWith(expect.any(Date), 1);
     } finally { clock.mockRestore(); }
   });
+});
+
+
+it("prepares and starts each claimed target before checking the next scope", async () => {
+  const events: string[] = [];
+  deps.claim.mockReset().mockResolvedValue([])
+    .mockResolvedValueOnce([target])
+    .mockResolvedValueOnce([{ ...target, watchlistId: "second" }]);
+  deps.assertScope.mockImplementation(async ({ watchlistId }) => { events.push(`scope:${watchlistId}`); return 1; });
+  deps.start.mockImplementation(async ({ watchlistId }) => { events.push(`start:${watchlistId}`); return { runId: "run" }; });
+  expect(await runAiFilterRefreshSweep({ dependencies: deps })).toMatchObject({ started: 2 });
+  expect(events).toEqual(["scope:watchlist", "start:watchlist", "scope:second", "start:second"]);
+  expect(deps.claim.mock.calls.every(([, limit]) => limit === 1)).toBe(true);
 });
