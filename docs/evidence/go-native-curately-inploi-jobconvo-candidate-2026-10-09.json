@@ -1,6 +1,6 @@
 {
   "schema": "jobseek-native-migration-candidate/v1",
-  "version": "0.13.992",
+  "version": "0.13.993",
   "prototype_base": "ffab5fb2b37ebfdd243239289f520d78e9789961",
   "providers": [
     "curately",
@@ -123,5 +123,12 @@
       "passed": 57,
       "seconds": 1.33
     }
+  },
+  "requalification_after_concurrent_runtime_merge": {
+    "base": "3d940cee963cfa9c443e88cbc91989b2da376916",
+    "preserved_grouped_go_implementation": "byte unchanged from 2b4afa0b899395aad1052d9b02277f6383e42851",
+    "reason": "Concurrent trace/resolver release consumed0.13.992; candidate includes that source and advances to0.13.993",
+    "exact_head_ci": "pending renewed checks; prior-head tests are historical evidence",
+    "production_recovery": "not yet proved"
   }
 }

@@ -1010,3 +1010,8 @@ validation and all 57 census tests pass after regeneration. Neither failure
 is treated as migration success. Source993's exact published head
 `78283afa69620817cc0617deedbec48126c90dcf` full worker race suite passed in
 863.208 seconds; its parent update and final checks remain separate obligations.
+
+
+### 2026-10-09 concurrent runtime integration
+
+PR #10385 merged a resolver/trace repair at `3d940cee963cfa9c443e88cbc91989b2da376916`, consuming version0.13.992 and starting its original crawler rollout. The grouped Curately/Inploi/JobConvo and bounded exporter repair now includes that source, advances to0.13.993, and renews exact-head CI. Its Go implementation, routing reader, installed-profile contract and census are byte unchanged from tested2b4. Production export recovery and broad ownership still require the supported rollout and independent proof; the full migration remains incomplete. The Workable/SmartRecruiters child advances to0.13.994.
