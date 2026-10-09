@@ -1,0 +1,78 @@
+{
+  "schema": "jobseek.go-native.candidate/v1",
+  "observed_at_utc": "2026-10-09T09:57:44.065875+00:00",
+  "version": "0.13.991",
+  "scope": {
+    "configurations": 13,
+    "monitor_types": [
+      "dom",
+      "api_sniffer"
+    ],
+    "compiled_profiles": 158,
+    "registry_boards": [
+      "alten-poland",
+      "arthur-d-little-global-careers",
+      "cambridge-aerospace-careers-api",
+      "carrefour-france-careers-fr-franchise",
+      "coop-careers-service7000",
+      "cushman-wakefield-brazil",
+      "cushman-wakefield-chile",
+      "cushman-wakefield-mexico",
+      "cushman-wakefield-peru",
+      "fidelity-investments-careers-temporary",
+      "maruti-suzuki-careers",
+      "qnb-group-turkey",
+      "vista-global-global"
+    ],
+    "dom": {
+      "negative_initial_cursor": 2,
+      "whole_inventory_root_total": 7
+    },
+    "api": {
+      "explicit_fields_implicit_url": 3,
+      "field_list_path_html_unescape": 1
+    }
+  },
+  "original_reference": {
+    "fixture": "apps/crawler/go/ordinary-worker/testdata/python_shared_listing_contracts.json",
+    "sha256": "e3ad32250ccfe0b9790ddbb48acf37ebf9f5c05baafb34f5c95c364a9a5d6ea0",
+    "cases": 13,
+    "regeneration": "actual Python HTTP/DOM monitor, deterministic identical regeneration; full fields/method/URL/body/status/header exchanges"
+  },
+  "local_verification": {
+    "terminal_cases": 34,
+    "existing_single_page_proof_reference_cases": 15,
+    "cold_retirement_cases": 15,
+    "startup": "158-profile actual executable, metrics, signal drain and wrong projection refusal",
+    "api_sdk_race_seconds": 5.661,
+    "dom_sdk_race_seconds": 2.457,
+    "queue_unit_race_seconds": 25.34,
+    "worker_vet": "PASS",
+    "proof_logs": [
+      {
+        "name": "native991-shared-listing-real-terminal-verified2-2026-10-09.log",
+        "sha256": "e60023d6eacf60145e3298fc19971818c08251d97fd3f43c8eeeb90c57e1f4af"
+      },
+      {
+        "name": "native991-shared-listing-real-cold-initial3-2026-10-09.log",
+        "sha256": "2f16c0e8c552df95140d4a07e0cedbfd04210f6e15b31424ef31771c0be0eff7"
+      },
+      {
+        "name": "native991-shared-listing-real-startup-verified4-2026-10-09.log",
+        "sha256": "ef075e2ffe80e314aa3149a075c71a5c0db55e1570dfc24e72fe0c02e99a673a"
+      }
+    ]
+  },
+  "preserved_failed_iterations": [
+    "original fixture initial1/initial2: required slug context and relative selector href corrected",
+    "real terminal initial1: synthetic total unintentionally truncated successful API fixtures; fixture request counter race corrected",
+    "race oracle initial1: concurrent independent JSON-LD responses consumed sequentially by comparison helper; exact request matching and completeness strengthened"
+  ],
+  "limits": [
+    "new pagination with advertised totals remains static-only; previously qualified single-page rendered proofs retained",
+    "empty_states with pagination, browser tail actions, private fetch targets and initial cursors below -1 remain unsupported",
+    "public captures, full exact-head CI, installed image parity, immutable deployment and fresh actual-route admission remain pending",
+    "no natural freshness, full conservation, whole-service cost or production Python retirement claim"
+  ],
+  "full_migration_complete": false
+}

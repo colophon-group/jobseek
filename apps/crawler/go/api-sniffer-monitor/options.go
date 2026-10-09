@@ -35,6 +35,7 @@ type Options struct {
 	PathValues                             bool
 	AutoPath                               bool
 	AutoFields                             bool
+	AutoURLField                           bool
 	HTML                                   bool
 	URLRegex                               string
 	MaxItems, Attempts                     int
@@ -324,14 +325,19 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 				return o, ErrOptions
 			}
 			for _, spec := range obj {
-				if ValidateField(spec) != nil {
+				validate := ValidateField
+				if k == "fields" {
+					validate = ValidateAPIField
+				}
+				if validate(spec) != nil {
 					return o, ErrOptions
 				}
 			}
 			*dst = obj
 		}
 	}
-	o.HTML = o.URLTemplate == "" && o.URLField == ""
+	o.AutoURLField = o.URLTemplate == "" && o.URLField == "" && len(o.Fields) > 0
+	o.HTML = o.URLTemplate == "" && o.URLField == "" && len(o.Fields) == 0
 	if o.HTML {
 		// Explicit HTML paths never infer an array mapping after schema drift.
 		if o.AutoPath || o.PathValues || len(o.Fields) != 0 || len(o.TemplateFields) != 0 || o.ItemFilter != nil {
@@ -668,4 +674,22 @@ func (o Options) ResourceMatches(raw string) bool {
 		}
 	}
 	return true
+}
+
+// API rich field lists concatenate independently extracted specs with blank
+// lines. Generic nextdata/inline concatenation keeps its own each/wrap grammar.
+func ValidateAPIField(spec any) error {
+	if fields, ok := spec.([]any); ok {
+		for _, field := range fields {
+			if o, ok := field.(map[string]any); ok && o["path"] != nil {
+				if ValidateField(field) != nil {
+					return ErrOptions
+				}
+			} else if ValidateField([]any{field}) != nil {
+				return ErrOptions
+			}
+		}
+		return nil
+	}
+	return ValidateField(spec)
 }

@@ -219,7 +219,17 @@ func parseDOMInventory(ctx context.Context, result RichDiscovery, profile queue.
 	}
 	sort.Strings(ordered)
 	c.JoinProofURL = pythonJoinURL
-	if err := dom.ValidateListingEmpty(source, c, len(ordered)); err != nil {
+	proofOptions := c
+	if c.Pagination != nil && c.Proofs != nil && c.Proofs.TotalPattern != nil {
+		if len(allowEmpty) == 0 || !allowEmpty[0] {
+			result.domListingTotal, err = dom.ListingAdvertisedTotal(source, c.Proofs)
+			if err != nil {
+				return RichDiscovery{Response: result.Response}, err
+			}
+		}
+		proofOptions.Proofs = nil
+	}
+	if err := dom.ValidateListingEmpty(source, proofOptions, len(ordered)); err != nil {
 		return RichDiscovery{Response: result.Response}, err
 	}
 	if len(ordered) > 50_000 {
@@ -338,6 +348,9 @@ func collectDOMListingPages(ctx context.Context, profile queue.GreenhouseMonitor
 		if count == 0 {
 			break
 		}
+	}
+	if result.domListingTotal != nil && *result.domListingTotal != len(jobs) {
+		return RichDiscovery{Response: result.Response}, dom.ErrListingProof
 	}
 	result.Jobs = jobs
 	return result, nil

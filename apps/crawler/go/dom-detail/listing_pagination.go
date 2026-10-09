@@ -56,7 +56,7 @@ func listingPagination(raw any, endpoint string) (*ListingPagination, error) {
 			}
 		}
 	}
-	if p.Start < 0 || p.Start > 1000000 || p.Increment < 1 || p.Increment > 1000000 || p.MaxPages < 1 || p.Attempts < 1 || p.Attempts > 5 {
+	if p.Start < -1 || p.Start > 1000000 || p.Increment < 1 || p.Increment > 1000000 || p.MaxPages < 1 || p.Attempts < 1 || p.Attempts > 5 {
 		return nil, errors.New("invalid DOM pagination budget")
 	}
 	p.MaxPages = min(p.MaxPages, 10000)

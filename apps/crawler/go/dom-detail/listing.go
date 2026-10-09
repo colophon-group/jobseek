@@ -128,7 +128,7 @@ func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 		return c, err
 	}
 	c.Proofs, err = ListingProofOptions(config)
-	if err != nil || c.Proofs != nil && c.Pagination != nil {
+	if err != nil || c.Proofs != nil && c.Pagination != nil && (c.Proofs.TotalPattern == nil || len(c.Proofs.EmptyStates) != 0) {
 		return c, ErrListingProof
 	}
 	if (c.IncludeBoardURL || c.RequireJSONLD) && (c.EmptySelector != "" || config["empty_states"] != nil) || c.IncludeBoardURL && config["advertised_total"] != nil {

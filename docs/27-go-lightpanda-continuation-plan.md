@@ -50,11 +50,42 @@ skip/no-detail regressions remain covered. Both failed CI runs and local failed
 iterations are retained. The corrected combined terminal115 cases pass, including
 the entire twenty-five-case shared policy cohort and eighteen-case ninth-provider
 cohort that exposed the old fixture mismatch. Thirty-six cold-retirement cases
-and four URL-writer repair/relist/routing/fence cases also pass. All component qualification remains evidence; only the
-repaired final head with fresh full CI and installed-image checks may merge.
+and four URL-writer repair/relist/routing/fence cases also pass. Final head `525fa1dbfc6a3c51b087f45a57d2c55dbb04357f` passed full local worker
+race (761.771s), Required CI37892107754, actual Crawler Deploy Gate37892106548
+and installed image parity37892107696. PR #10375 merged at
+`cf4370ab2202d52a9468f7fa21be96f835ece6a6` after independent outgoing cold252
+readback. Original crawler rollout37913413487 is in progress; matching renderer
+rollout37913436345 succeeded and independently read back its immutable image.
+Production source987 remains crawler authority until incoming verification.
 See [fetch/identity evidence](evidence/go-native-shared-inventory-options-candidate-2026-10-09.json)
 and the component evidence below. Deployment, fresh routing authority, natural
 conservation/freshness and full Python retirement remain open.
+
+## Next grouped DOM/API listing batch — thirteen configurations
+
+Candidate **0.13.991** qualifies nine DOM and four API configurations using the
+existing 158 profiles. Two DOM iCIMS listings retain their negative initial cursor;
+seven static paginated listings compare the root advertised total against the full
+deduplicated inventory before independent JSON-LD filtering. Missing/conflicting
+totals, late failures and publisher refusals preserve canonical postings.
+
+Three API listings with declared rich fields retain original implicit URL detection:
+canonical/detail links outrank apply/artwork, with the first five selected rows and
+original key order deciding the field. Explicit field lists retain separate path,
+HTML-unescape and blank-line concatenation rules. Generic inline/nextdata field
+grammars remain bound. Direct, required-proxy and explicitly configured rendered
+API execution use the same inventory parser; browser paginated DOM totals remain
+unsupported. Existing single-page rendered proof behavior stays covered.
+
+All thirteen actual Python fixtures regenerate identically and compare complete
+fields and request exchanges. Thirty-four real terminal cases, fifteen existing
+single-page proof references, fifteen supported cold-retirement cases and actual
+158-profile executable startup pass. API/DOM SDK and queue unit race suites pass.
+The new original-oracle helper also accounts for concurrent independent JSON-LD
+requests without weakening exact request shape/count or pagination order.
+Full exact-head CI, installed-image parity, immutable rollout and fresh actual-route
+admission remain required. No public capture or natural production freshness is
+claimed. See the [candidate evidence](evidence/go-native-shared-listing-contracts-candidate-2026-10-09.json).
 
 ## Component qualification — explicit HTTP TLS settings across three monitor types
 

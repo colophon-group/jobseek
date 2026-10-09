@@ -1,0 +1,1155 @@
+[
+  {
+    "name": "alten-poland",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://oferty.alten-polska.pl/jobs",
+      "metadata": {
+        "render": false,
+        "link_selector": "div[role=\"listitem\"] > a[href^=\"/jobs/\"]",
+        "url_filter": "^https://oferty\\.alten-polska\\.pl/jobs/[0-9]+-[0-9]+/?$",
+        "advertised_total": {
+          "selector": "main header p",
+          "regex": "^Znaleziono (\\d+) ofert(?:y)?$"
+        },
+        "pagination": {
+          "param_name": "page",
+          "max_pages": 10000
+        },
+        "scraper_type": "json-ld"
+      }
+    },
+    "response": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><div role=\"listitem\"><a href=\"/jobs/101-101\">Engineer</a></div></body></html>",
+    "expected": [
+      {
+        "url": "https://oferty.alten-polska.pl/jobs/101-101"
+      },
+      {
+        "url": "https://oferty.alten-polska.pl/jobs/102-102"
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://oferty.alten-polska.pl/jobs",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><div role=\"listitem\"><a href=\"/jobs/101-101\">Engineer</a></div></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://oferty.alten-polska.pl/jobs?page=2",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><div role=\"listitem\"><a href=\"/jobs/102-102\">Engineer</a></div></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://oferty.alten-polska.pl/jobs?page=3",
+        "body": "",
+        "response": {
+          "status": 404,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><div role=\"listitem\"><a href=\"/jobs/102-102\">Engineer</a></div></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "arthur-d-little-global-careers",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://careers-adlittle.icims.com/jobs/search?in_iframe=1",
+      "metadata": {
+        "render": false,
+        "url_filter": "/jobs/[0-9]+/",
+        "pagination": {
+          "url_template": "https://careers-adlittle.icims.com/jobs/search?pr={page}&in_iframe=1",
+          "start": -1,
+          "increment": 1,
+          "max_pages": 100
+        },
+        "scraper_type": "dom",
+        "scraper_config": {
+          "render": false,
+          "steps": [
+            {
+              "tag": "h1",
+              "field": "title"
+            },
+            {
+              "text": "Job Locations",
+              "offset": 1,
+              "field": "locations"
+            },
+            {
+              "text": "Posted Date",
+              "offset": 1,
+              "field": "date_posted",
+              "regex": "\\(([^)]+)\\)",
+              "optional": true
+            },
+            {
+              "text": "Overview",
+              "field": "description",
+              "stop": "Options",
+              "html": true
+            }
+          ]
+        }
+      }
+    },
+    "response": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://careers-adlittle.icims.com/jobs/101/engineer/job\">Engineer</a></body></html>",
+    "expected": [
+      {
+        "url": "https://careers-adlittle.icims.com/jobs/101/engineer/job"
+      },
+      {
+        "url": "https://careers-adlittle.icims.com/jobs/102/engineer/job"
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://careers-adlittle.icims.com/jobs/search?in_iframe=1",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://careers-adlittle.icims.com/jobs/101/engineer/job\">Engineer</a></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://careers-adlittle.icims.com/jobs/search?pr=0&in_iframe=1",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://careers-adlittle.icims.com/jobs/102/engineer/job\">Engineer</a></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://careers-adlittle.icims.com/jobs/search?pr=1&in_iframe=1",
+        "body": "",
+        "response": {
+          "status": 404,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://careers-adlittle.icims.com/jobs/102/engineer/job\">Engineer</a></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "cambridge-aerospace-careers-api",
+    "board": {
+      "provider": "api_sniffer",
+      "board_url": "https://5oyetlp5qsixe6oxtg7be6sb5q0qpnmb.lambda-url.eu-west-2.on.aws/api/job-ads",
+      "metadata": {
+        "api_url": "https://5oyetlp5qsixe6oxtg7be6sb5q0qpnmb.lambda-url.eu-west-2.on.aws/api/job-ads",
+        "method": "POST",
+        "post_data": "{}",
+        "json_path": "",
+        "request_headers": {
+          "content-type": "application/json"
+        },
+        "fields": {
+          "title": "title",
+          "description": "description",
+          "locations": "jobAdSite",
+          "job_location_type": {
+            "path": "workspaceTypeId",
+            "map": {
+              "hybrid": "hybrid",
+              "on_site": "onsite",
+              "remote": "remote"
+            }
+          },
+          "employment_type": {
+            "path": "employmentType",
+            "map": {
+              "Permanent": "full_time",
+              "Contract": "contract",
+              "Temporary": "temporary",
+              "Internship": "internship",
+              "Part-time": "part_time",
+              "Full-time": "full_time"
+            }
+          },
+          "metadata.team": "department"
+        },
+        "scraper_type": "skip"
+      }
+    },
+    "response": "[{\"title\": \"Senior Software Engineer\", \"description\": \"<p>Build systems.</p>\", \"locations\": [\"Zurich\"], \"created_at\": \"2026-10-01\", \"job_type\": \"Full-time\", \"category\": \"Engineering\", \"jobAdSite\": \"Zurich\", \"workspaceTypeId\": \"hybrid\", \"employmentType\": \"Full-time\", \"department\": \"Engineering\", \"pictureUrl\": \"https://example.com/logo.png\", \"links\": {\"apply\": \"https://example.com/apply/101\", \"canonical\": \"/jobs/101\"}, \"JobTitle\": \"Senior Software Engineer\", \"PublicationUrlAbacusJobPortal\": \"https://example.com/jobs/101\", \"Organization\": \"&lt;p&gt;Organisation&lt;/p&gt;\", \"Tasks\": \"&lt;p&gt;Build systems.&lt;/p&gt;\", \"Requirements\": \"&lt;p&gt;Experience&lt;/p&gt;\", \"Benefits\": \"&lt;p&gt;Learning&lt;/p&gt;\", \"PlaceOfWorkCity\": \"Zurich\", \"PlaceOfWorkCountry\": \"Switzerland\", \"PublicationStartDate\": \"2026-10-01\", \"JobId\": \"101\", \"CompanyName\": \"Fixture\", \"PositionLevelOfEmployment\": \"100%\"}]",
+    "expected": [
+      {
+        "url": "https://5oyetlp5qsixe6oxtg7be6sb5q0qpnmb.lambda-url.eu-west-2.on.aws/jobs/101",
+        "title": "Senior Software Engineer",
+        "description": "<p>Build systems.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "hybrid",
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "team": "Engineering"
+        },
+        "source_identity": null
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "POST",
+        "url": "https://5oyetlp5qsixe6oxtg7be6sb5q0qpnmb.lambda-url.eu-west-2.on.aws/api/job-ads",
+        "body": "{}",
+        "response": {
+          "status": 200,
+          "body": "[{\"title\": \"Senior Software Engineer\", \"description\": \"<p>Build systems.</p>\", \"locations\": [\"Zurich\"], \"created_at\": \"2026-10-01\", \"job_type\": \"Full-time\", \"category\": \"Engineering\", \"jobAdSite\": \"Zurich\", \"workspaceTypeId\": \"hybrid\", \"employmentType\": \"Full-time\", \"department\": \"Engineering\", \"pictureUrl\": \"https://example.com/logo.png\", \"links\": {\"apply\": \"https://example.com/apply/101\", \"canonical\": \"/jobs/101\"}, \"JobTitle\": \"Senior Software Engineer\", \"PublicationUrlAbacusJobPortal\": \"https://example.com/jobs/101\", \"Organization\": \"&lt;p&gt;Organisation&lt;/p&gt;\", \"Tasks\": \"&lt;p&gt;Build systems.&lt;/p&gt;\", \"Requirements\": \"&lt;p&gt;Experience&lt;/p&gt;\", \"Benefits\": \"&lt;p&gt;Learning&lt;/p&gt;\", \"PlaceOfWorkCity\": \"Zurich\", \"PlaceOfWorkCountry\": \"Switzerland\", \"PublicationStartDate\": \"2026-10-01\", \"JobId\": \"101\", \"CompanyName\": \"Fixture\", \"PositionLevelOfEmployment\": \"100%\"}]",
+          "headers": {
+            "content-type": "application/json"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "carrefour-france-careers-fr-franchise",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://franchise-carrefour.gestmax.fr/search",
+      "metadata": {
+        "link_selector": "a[href]",
+        "url_filter": "^https://franchise-carrefour\\.gestmax\\.fr/[0-9]+/1/[^/?#]+$",
+        "pagination": {
+          "url_template": "https://franchise-carrefour.gestmax.fr/search/index/page/{page}",
+          "max_pages": 100
+        },
+        "advertised_total": {
+          "selector": "#pager-total-results",
+          "regex": "^(\\d+)$"
+        },
+        "scraper_type": "dom",
+        "scraper_config": {
+          "steps": [
+            {
+              "tag": "h1",
+              "field": "title"
+            },
+            {
+              "text": "Ville :",
+              "field": "locations",
+              "regex": "Ville\\s*:\\s*([^\\n]+)",
+              "from": 0
+            },
+            {
+              "text": "Missions",
+              "field": "description",
+              "html": true,
+              "stop": "Postuler"
+            }
+          ]
+        }
+      }
+    },
+    "response": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://franchise-carrefour.gestmax.fr/101/1/engineer\">Engineer</a></body></html>",
+    "expected": [
+      {
+        "url": "https://franchise-carrefour.gestmax.fr/101/1/engineer"
+      },
+      {
+        "url": "https://franchise-carrefour.gestmax.fr/102/1/engineer"
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://franchise-carrefour.gestmax.fr/search",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://franchise-carrefour.gestmax.fr/101/1/engineer\">Engineer</a></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://franchise-carrefour.gestmax.fr/search/index/page/2",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://franchise-carrefour.gestmax.fr/102/1/engineer\">Engineer</a></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://franchise-carrefour.gestmax.fr/search/index/page/3",
+        "body": "",
+        "response": {
+          "status": 404,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://franchise-carrefour.gestmax.fr/102/1/engineer\">Engineer</a></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "coop-careers-service7000",
+    "board": {
+      "provider": "api_sniffer",
+      "board_url": "https://app.jobportal.abaservices.ch/job-overview/fc056571-97ec-4b53-b1bb-cb0e47ca3a69",
+      "metadata": {
+        "api_url": "https://api.jobportal.abaservices.ch/api/publication/publications",
+        "method": "GET",
+        "json_path": "",
+        "url_field": "PublicationUrlAbacusJobPortal",
+        "params": {
+          "job-portal-id": "fc056571-97ec-4b53-b1bb-cb0e47ca3a69"
+        },
+        "fields": {
+          "title": "JobTitle",
+          "description": [
+            {
+              "path": "Organization",
+              "html_unescape": true
+            },
+            {
+              "path": "Tasks",
+              "html_unescape": true
+            },
+            {
+              "path": "Requirements",
+              "html_unescape": true
+            },
+            {
+              "path": "Benefits",
+              "html_unescape": true
+            }
+          ],
+          "locations": {
+            "concat": [
+              "PlaceOfWorkCity",
+              "PlaceOfWorkCountry"
+            ],
+            "separator": ", "
+          },
+          "date_posted": "PublicationStartDate",
+          "responsibilities": {
+            "path": "Tasks",
+            "html_unescape": true
+          },
+          "qualifications": {
+            "path": "Requirements",
+            "html_unescape": true
+          },
+          "metadata.benefits": {
+            "path": "Benefits",
+            "html_unescape": true
+          },
+          "metadata.company": "CompanyName",
+          "metadata.workload": "PositionLevelOfEmployment",
+          "metadata.job_id": "JobId"
+        },
+        "scraper_type": "skip"
+      }
+    },
+    "response": "[{\"title\": \"Senior Software Engineer\", \"description\": \"<p>Build systems.</p>\", \"locations\": [\"Zurich\"], \"created_at\": \"2026-10-01\", \"job_type\": \"Full-time\", \"category\": \"Engineering\", \"jobAdSite\": \"Zurich\", \"workspaceTypeId\": \"hybrid\", \"employmentType\": \"Full-time\", \"department\": \"Engineering\", \"pictureUrl\": \"https://example.com/logo.png\", \"links\": {\"apply\": \"https://example.com/apply/101\", \"canonical\": \"/jobs/101\"}, \"JobTitle\": \"Senior Software Engineer\", \"PublicationUrlAbacusJobPortal\": \"https://example.com/jobs/101\", \"Organization\": \"&lt;p&gt;Organisation&lt;/p&gt;\", \"Tasks\": \"&lt;p&gt;Build systems.&lt;/p&gt;\", \"Requirements\": \"&lt;p&gt;Experience&lt;/p&gt;\", \"Benefits\": \"&lt;p&gt;Learning&lt;/p&gt;\", \"PlaceOfWorkCity\": \"Zurich\", \"PlaceOfWorkCountry\": \"Switzerland\", \"PublicationStartDate\": \"2026-10-01\", \"JobId\": \"101\", \"CompanyName\": \"Fixture\", \"PositionLevelOfEmployment\": \"100%\"}]",
+    "expected": [
+      {
+        "url": "https://example.com/jobs/101",
+        "title": "Senior Software Engineer",
+        "description": "<p>Organisation</p>\n\n<p>Build systems.</p>\n\n<p>Experience</p>\n\n<p>Learning</p>",
+        "locations": [
+          "Zurich, Switzerland"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-10-01",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": {
+          "responsibilities": [
+            "<p>Build systems.</p>"
+          ],
+          "qualifications": [
+            "<p>Experience</p>"
+          ]
+        },
+        "metadata": {
+          "benefits": "<p>Learning</p>",
+          "company": "Fixture",
+          "workload": "100%",
+          "job_id": "101"
+        },
+        "source_identity": null
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://api.jobportal.abaservices.ch/api/publication/publications?job-portal-id=fc056571-97ec-4b53-b1bb-cb0e47ca3a69",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "[{\"title\": \"Senior Software Engineer\", \"description\": \"<p>Build systems.</p>\", \"locations\": [\"Zurich\"], \"created_at\": \"2026-10-01\", \"job_type\": \"Full-time\", \"category\": \"Engineering\", \"jobAdSite\": \"Zurich\", \"workspaceTypeId\": \"hybrid\", \"employmentType\": \"Full-time\", \"department\": \"Engineering\", \"pictureUrl\": \"https://example.com/logo.png\", \"links\": {\"apply\": \"https://example.com/apply/101\", \"canonical\": \"/jobs/101\"}, \"JobTitle\": \"Senior Software Engineer\", \"PublicationUrlAbacusJobPortal\": \"https://example.com/jobs/101\", \"Organization\": \"&lt;p&gt;Organisation&lt;/p&gt;\", \"Tasks\": \"&lt;p&gt;Build systems.&lt;/p&gt;\", \"Requirements\": \"&lt;p&gt;Experience&lt;/p&gt;\", \"Benefits\": \"&lt;p&gt;Learning&lt;/p&gt;\", \"PlaceOfWorkCity\": \"Zurich\", \"PlaceOfWorkCountry\": \"Switzerland\", \"PublicationStartDate\": \"2026-10-01\", \"JobId\": \"101\", \"CompanyName\": \"Fixture\", \"PositionLevelOfEmployment\": \"100%\"}]",
+          "headers": {
+            "content-type": "application/json"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "cushman-wakefield-brazil",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://cushmanwakefield.pandape.infojobs.com.br/Vacancies",
+      "metadata": {
+        "render": false,
+        "link_selector": "a[href*=\"/Detail/\"]",
+        "url_filter": "/Detail/",
+        "pagination": {
+          "param_name": "pageNumber",
+          "max_pages": 100,
+          "transient_403": true
+        },
+        "advertised_total": {
+          "selector": "#VacancySection .color-title.font-3xl",
+          "regex": "(?i)^(\\d+) vagas de emprego$"
+        },
+        "require_jsonld_jobposting": true,
+        "scraper_type": "json-ld"
+      }
+    },
+    "response": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 vagas de emprego</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://cushmanwakefield.pandape.infojobs.com.br/Detail/101\">Engineer</a></body></html>",
+    "expected": [
+      {
+        "url": "https://cushmanwakefield.pandape.infojobs.com.br/Detail/101"
+      },
+      {
+        "url": "https://cushmanwakefield.pandape.infojobs.com.br/Detail/102"
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://cushmanwakefield.pandape.infojobs.com.br/Vacancies",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 vagas de emprego</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://cushmanwakefield.pandape.infojobs.com.br/Detail/101\">Engineer</a></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://cushmanwakefield.pandape.infojobs.com.br/Vacancies?pageNumber=2",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 vagas de emprego</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://cushmanwakefield.pandape.infojobs.com.br/Detail/102\">Engineer</a></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://cushmanwakefield.pandape.infojobs.com.br/Vacancies?pageNumber=3",
+        "body": "",
+        "response": {
+          "status": 404,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 vagas de emprego</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://cushmanwakefield.pandape.infojobs.com.br/Detail/102\">Engineer</a></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://cushmanwakefield.pandape.infojobs.com.br/Detail/101",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Engineer\", \"description\": \"<p>Build systems.</p>\", \"url\": \"https://cushmanwakefield.pandape.infojobs.com.br/Detail/101\"}</script>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://cushmanwakefield.pandape.infojobs.com.br/Detail/102",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Engineer\", \"description\": \"<p>Build systems.</p>\", \"url\": \"https://cushmanwakefield.pandape.infojobs.com.br/Detail/102\"}</script>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "cushman-wakefield-chile",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://cushwake.pandape.computrabajo.com/Vacancies",
+      "metadata": {
+        "render": false,
+        "proxy": true,
+        "link_selector": "a[href*=\"/Detail/\"]",
+        "url_filter": "/Detail/",
+        "pagination": {
+          "param_name": "pageNumber",
+          "max_pages": 100,
+          "transient_403": true
+        },
+        "advertised_total": {
+          "selector": "#VacancySection .color-title.font-3xl",
+          "regex": "(?i)^(\\d+) ofertas de empleo$"
+        },
+        "require_jsonld_jobposting": true,
+        "scraper_type": "dom",
+        "scraper_config": {
+          "proxy": true,
+          "steps": [
+            {
+              "tag": "h1",
+              "field": "title"
+            },
+            {
+              "tag": "h1",
+              "offset": 1,
+              "field": "locations",
+              "from": 0
+            },
+            {
+              "field": "description",
+              "html": true,
+              "optional": true,
+              "stop": "Sobre"
+            }
+          ]
+        }
+      }
+    },
+    "response": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://cushwake.pandape.computrabajo.com/Detail/101\">Engineer</a></body></html>",
+    "expected": [
+      {
+        "url": "https://cushwake.pandape.computrabajo.com/Detail/101"
+      },
+      {
+        "url": "https://cushwake.pandape.computrabajo.com/Detail/102"
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://cushwake.pandape.computrabajo.com/Vacancies",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://cushwake.pandape.computrabajo.com/Detail/101\">Engineer</a></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://cushwake.pandape.computrabajo.com/Vacancies?pageNumber=2",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://cushwake.pandape.computrabajo.com/Detail/102\">Engineer</a></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://cushwake.pandape.computrabajo.com/Vacancies?pageNumber=3",
+        "body": "",
+        "response": {
+          "status": 404,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://cushwake.pandape.computrabajo.com/Detail/102\">Engineer</a></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://cushwake.pandape.computrabajo.com/Detail/101",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Engineer\", \"description\": \"<p>Build systems.</p>\", \"url\": \"https://cushwake.pandape.computrabajo.com/Detail/101\"}</script>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://cushwake.pandape.computrabajo.com/Detail/102",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Engineer\", \"description\": \"<p>Build systems.</p>\", \"url\": \"https://cushwake.pandape.computrabajo.com/Detail/102\"}</script>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "cushman-wakefield-mexico",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://cushmanwakefield.pandape.computrabajo.com/Vacancies",
+      "metadata": {
+        "render": false,
+        "proxy": true,
+        "link_selector": "a[href*=\"/Detail/\"]",
+        "url_filter": "/Detail/",
+        "pagination": {
+          "param_name": "pageNumber",
+          "max_pages": 100,
+          "transient_403": true
+        },
+        "advertised_total": {
+          "selector": "#VacancySection .color-title.font-3xl",
+          "regex": "(?i)^(\\d+) ofertas de empleo$"
+        },
+        "require_jsonld_jobposting": true,
+        "scraper_type": "dom",
+        "scraper_config": {
+          "proxy": true,
+          "steps": [
+            {
+              "tag": "h1",
+              "field": "title"
+            },
+            {
+              "tag": "h1",
+              "offset": 1,
+              "field": "locations",
+              "from": 0
+            },
+            {
+              "field": "description",
+              "html": true,
+              "optional": true,
+              "stop": "Sobre C&W OPERACION INMOBILIARIA SA de CV"
+            }
+          ]
+        }
+      }
+    },
+    "response": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://cushmanwakefield.pandape.computrabajo.com/Detail/101\">Engineer</a></body></html>",
+    "expected": [
+      {
+        "url": "https://cushmanwakefield.pandape.computrabajo.com/Detail/101"
+      },
+      {
+        "url": "https://cushmanwakefield.pandape.computrabajo.com/Detail/102"
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://cushmanwakefield.pandape.computrabajo.com/Vacancies",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://cushmanwakefield.pandape.computrabajo.com/Detail/101\">Engineer</a></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://cushmanwakefield.pandape.computrabajo.com/Vacancies?pageNumber=2",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://cushmanwakefield.pandape.computrabajo.com/Detail/102\">Engineer</a></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://cushmanwakefield.pandape.computrabajo.com/Vacancies?pageNumber=3",
+        "body": "",
+        "response": {
+          "status": 404,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://cushmanwakefield.pandape.computrabajo.com/Detail/102\">Engineer</a></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://cushmanwakefield.pandape.computrabajo.com/Detail/101",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Engineer\", \"description\": \"<p>Build systems.</p>\", \"url\": \"https://cushmanwakefield.pandape.computrabajo.com/Detail/101\"}</script>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://cushmanwakefield.pandape.computrabajo.com/Detail/102",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Engineer\", \"description\": \"<p>Build systems.</p>\", \"url\": \"https://cushmanwakefield.pandape.computrabajo.com/Detail/102\"}</script>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "cushman-wakefield-peru",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://cushman-wakefield-peru.pandape.computrabajo.com/Vacancies",
+      "metadata": {
+        "render": false,
+        "proxy": true,
+        "link_selector": "a[href*=\"/Detail/\"]",
+        "url_filter": "/Detail/",
+        "pagination": {
+          "param_name": "pageNumber",
+          "max_pages": 100,
+          "transient_403": true
+        },
+        "advertised_total": {
+          "selector": "#VacancySection .color-title.font-3xl",
+          "regex": "(?i)^(\\d+) ofertas de empleo$"
+        },
+        "require_jsonld_jobposting": true,
+        "scraper_type": "dom",
+        "scraper_config": {
+          "proxy": true,
+          "steps": [
+            {
+              "tag": "h1",
+              "field": "title"
+            },
+            {
+              "tag": "h1",
+              "offset": 1,
+              "field": "locations",
+              "from": 0
+            },
+            {
+              "field": "description",
+              "html": true,
+              "optional": true,
+              "stop": "Sobre"
+            }
+          ]
+        }
+      }
+    },
+    "response": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://cushman-wakefield-peru.pandape.computrabajo.com/Detail/101\">Engineer</a></body></html>",
+    "expected": [
+      {
+        "url": "https://cushman-wakefield-peru.pandape.computrabajo.com/Detail/101"
+      },
+      {
+        "url": "https://cushman-wakefield-peru.pandape.computrabajo.com/Detail/102"
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://cushman-wakefield-peru.pandape.computrabajo.com/Vacancies",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://cushman-wakefield-peru.pandape.computrabajo.com/Detail/101\">Engineer</a></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://cushman-wakefield-peru.pandape.computrabajo.com/Vacancies?pageNumber=2",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://cushman-wakefield-peru.pandape.computrabajo.com/Detail/102\">Engineer</a></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://cushman-wakefield-peru.pandape.computrabajo.com/Vacancies?pageNumber=3",
+        "body": "",
+        "response": {
+          "status": 404,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://cushman-wakefield-peru.pandape.computrabajo.com/Detail/102\">Engineer</a></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://cushman-wakefield-peru.pandape.computrabajo.com/Detail/101",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Engineer\", \"description\": \"<p>Build systems.</p>\", \"url\": \"https://cushman-wakefield-peru.pandape.computrabajo.com/Detail/101\"}</script>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://cushman-wakefield-peru.pandape.computrabajo.com/Detail/102",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Engineer\", \"description\": \"<p>Build systems.</p>\", \"url\": \"https://cushman-wakefield-peru.pandape.computrabajo.com/Detail/102\"}</script>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "fidelity-investments-careers-temporary",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://www.fidelitytalentsource.com/job-search/",
+      "metadata": {
+        "render": false,
+        "link_selector": ".card-job h2.card-title a.js-view-job",
+        "url_filter": "^https://www\\.fidelitytalentsource\\.com/job-search/[0-9]+/[a-z0-9-]+/?\\?job-id=[0-9]+$",
+        "advertised_total": {
+          "selector": "h2.job-count",
+          "regex": "^(\\d+) jobs available$"
+        },
+        "pagination": {
+          "param_name": "page",
+          "max_pages": 100
+        },
+        "proxy": true,
+        "scraper_type": "json-ld",
+        "scraper_config": {
+          "proxy": true
+        }
+      }
+    },
+    "response": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><div class=\"card-job\"><h2 class=\"card-title\"><a class=\"js-view-job\" href=\"https://www.fidelitytalentsource.com/job-search/101/engineer/?job-id=101\">Engineer</a></h2></div></body></html>",
+    "expected": [
+      {
+        "url": "https://www.fidelitytalentsource.com/job-search/101/engineer/?job-id=101"
+      },
+      {
+        "url": "https://www.fidelitytalentsource.com/job-search/102/engineer/?job-id=102"
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://www.fidelitytalentsource.com/job-search/",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><div class=\"card-job\"><h2 class=\"card-title\"><a class=\"js-view-job\" href=\"https://www.fidelitytalentsource.com/job-search/101/engineer/?job-id=101\">Engineer</a></h2></div></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://www.fidelitytalentsource.com/job-search/?page=2",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><div class=\"card-job\"><h2 class=\"card-title\"><a class=\"js-view-job\" href=\"https://www.fidelitytalentsource.com/job-search/102/engineer/?job-id=102\">Engineer</a></h2></div></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://www.fidelitytalentsource.com/job-search/?page=3",
+        "body": "",
+        "response": {
+          "status": 404,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><div class=\"card-job\"><h2 class=\"card-title\"><a class=\"js-view-job\" href=\"https://www.fidelitytalentsource.com/job-search/102/engineer/?job-id=102\">Engineer</a></h2></div></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "maruti-suzuki-careers",
+    "board": {
+      "provider": "api_sniffer",
+      "board_url": "https://maruti.app.param.ai/jobs/",
+      "metadata": {
+        "api_url": "https://maruti.app.param.ai/api/career/get_job/",
+        "method": "GET",
+        "json_path": "data.*.jobs[]",
+        "fields": {
+          "title": "title",
+          "description": "description",
+          "employment_type": "job_type",
+          "date_posted": "created_at",
+          "locations": "locations",
+          "metadata.team": "category"
+        },
+        "wait": "networkidle",
+        "timeout": 30000,
+        "settle": 5,
+        "scraper_type": "skip"
+      }
+    },
+    "response": "{\"data\": {\"engineering\": {\"jobs\": [{\"title\": \"Senior Software Engineer\", \"description\": \"<p>Build systems.</p>\", \"locations\": [\"Zurich\"], \"created_at\": \"2026-10-01\", \"job_type\": \"Full-time\", \"category\": \"Engineering\", \"jobAdSite\": \"Zurich\", \"workspaceTypeId\": \"hybrid\", \"employmentType\": \"Full-time\", \"department\": \"Engineering\", \"pictureUrl\": \"https://example.com/logo.png\", \"links\": {\"apply\": \"https://example.com/apply/101\", \"canonical\": \"/jobs/101\"}, \"JobTitle\": \"Senior Software Engineer\", \"PublicationUrlAbacusJobPortal\": \"https://example.com/jobs/101\", \"Organization\": \"&lt;p&gt;Organisation&lt;/p&gt;\", \"Tasks\": \"&lt;p&gt;Build systems.&lt;/p&gt;\", \"Requirements\": \"&lt;p&gt;Experience&lt;/p&gt;\", \"Benefits\": \"&lt;p&gt;Learning&lt;/p&gt;\", \"PlaceOfWorkCity\": \"Zurich\", \"PlaceOfWorkCountry\": \"Switzerland\", \"PublicationStartDate\": \"2026-10-01\", \"JobId\": \"101\", \"CompanyName\": \"Fixture\", \"PositionLevelOfEmployment\": \"100%\"}]}}}",
+    "expected": [
+      {
+        "url": "https://maruti.app.param.ai/jobs/101",
+        "title": "Senior Software Engineer",
+        "description": "<p>Build systems.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-01",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "team": "Engineering"
+        },
+        "source_identity": null
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://maruti.app.param.ai/api/career/get_job/",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "{\"data\": {\"engineering\": {\"jobs\": [{\"title\": \"Senior Software Engineer\", \"description\": \"<p>Build systems.</p>\", \"locations\": [\"Zurich\"], \"created_at\": \"2026-10-01\", \"job_type\": \"Full-time\", \"category\": \"Engineering\", \"jobAdSite\": \"Zurich\", \"workspaceTypeId\": \"hybrid\", \"employmentType\": \"Full-time\", \"department\": \"Engineering\", \"pictureUrl\": \"https://example.com/logo.png\", \"links\": {\"apply\": \"https://example.com/apply/101\", \"canonical\": \"/jobs/101\"}, \"JobTitle\": \"Senior Software Engineer\", \"PublicationUrlAbacusJobPortal\": \"https://example.com/jobs/101\", \"Organization\": \"&lt;p&gt;Organisation&lt;/p&gt;\", \"Tasks\": \"&lt;p&gt;Build systems.&lt;/p&gt;\", \"Requirements\": \"&lt;p&gt;Experience&lt;/p&gt;\", \"Benefits\": \"&lt;p&gt;Learning&lt;/p&gt;\", \"PlaceOfWorkCity\": \"Zurich\", \"PlaceOfWorkCountry\": \"Switzerland\", \"PublicationStartDate\": \"2026-10-01\", \"JobId\": \"101\", \"CompanyName\": \"Fixture\", \"PositionLevelOfEmployment\": \"100%\"}]}}}",
+          "headers": {
+            "content-type": "application/json"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "qnb-group-turkey",
+    "board": {
+      "provider": "api_sniffer",
+      "board_url": "https://qnbkariyer.com/ilanlar/",
+      "metadata": {
+        "api_url": "https://api.qnbkariyer.com/api/ilanlar",
+        "method": "GET",
+        "json_path": "ilanlar",
+        "fields": {
+          "title": "title"
+        },
+        "scraper_type": "skip"
+      }
+    },
+    "response": "{\"ilanlar\": [{\"title\": \"Senior Software Engineer\", \"description\": \"<p>Build systems.</p>\", \"locations\": [\"Zurich\"], \"created_at\": \"2026-10-01\", \"job_type\": \"Full-time\", \"category\": \"Engineering\", \"jobAdSite\": \"Zurich\", \"workspaceTypeId\": \"hybrid\", \"employmentType\": \"Full-time\", \"department\": \"Engineering\", \"pictureUrl\": \"https://example.com/logo.png\", \"links\": {\"apply\": \"https://example.com/apply/101\", \"canonical\": \"/jobs/101\"}, \"JobTitle\": \"Senior Software Engineer\", \"PublicationUrlAbacusJobPortal\": \"https://example.com/jobs/101\", \"Organization\": \"&lt;p&gt;Organisation&lt;/p&gt;\", \"Tasks\": \"&lt;p&gt;Build systems.&lt;/p&gt;\", \"Requirements\": \"&lt;p&gt;Experience&lt;/p&gt;\", \"Benefits\": \"&lt;p&gt;Learning&lt;/p&gt;\", \"PlaceOfWorkCity\": \"Zurich\", \"PlaceOfWorkCountry\": \"Switzerland\", \"PublicationStartDate\": \"2026-10-01\", \"JobId\": \"101\", \"CompanyName\": \"Fixture\", \"PositionLevelOfEmployment\": \"100%\"}]}",
+    "expected": [
+      {
+        "url": "https://qnbkariyer.com/jobs/101",
+        "title": "Senior Software Engineer",
+        "description": null,
+        "locations": null,
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://api.qnbkariyer.com/api/ilanlar",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "{\"ilanlar\": [{\"title\": \"Senior Software Engineer\", \"description\": \"<p>Build systems.</p>\", \"locations\": [\"Zurich\"], \"created_at\": \"2026-10-01\", \"job_type\": \"Full-time\", \"category\": \"Engineering\", \"jobAdSite\": \"Zurich\", \"workspaceTypeId\": \"hybrid\", \"employmentType\": \"Full-time\", \"department\": \"Engineering\", \"pictureUrl\": \"https://example.com/logo.png\", \"links\": {\"apply\": \"https://example.com/apply/101\", \"canonical\": \"/jobs/101\"}, \"JobTitle\": \"Senior Software Engineer\", \"PublicationUrlAbacusJobPortal\": \"https://example.com/jobs/101\", \"Organization\": \"&lt;p&gt;Organisation&lt;/p&gt;\", \"Tasks\": \"&lt;p&gt;Build systems.&lt;/p&gt;\", \"Requirements\": \"&lt;p&gt;Experience&lt;/p&gt;\", \"Benefits\": \"&lt;p&gt;Learning&lt;/p&gt;\", \"PlaceOfWorkCity\": \"Zurich\", \"PlaceOfWorkCountry\": \"Switzerland\", \"PublicationStartDate\": \"2026-10-01\", \"JobId\": \"101\", \"CompanyName\": \"Fixture\", \"PositionLevelOfEmployment\": \"100%\"}]}",
+          "headers": {
+            "content-type": "application/json"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "vista-global-global",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://hub-vistaglobal.icims.com/jobs/search?ss=1",
+      "metadata": {
+        "render": false,
+        "url_filter": "^https://careers-(?:vistaglobal|vistaamerica|us-vistaglobal)\\.icims\\.com/jobs/[0-9]+/[^?]+/job",
+        "pagination": {
+          "url_template": "https://hub-vistaglobal.icims.com/jobs/search?hashed=-435623327&in_iframe=1&ss=1&pr={page}",
+          "start": -1,
+          "increment": 1,
+          "max_pages": 100
+        },
+        "scraper_type": "dom",
+        "scraper_config": {
+          "steps": [
+            {
+              "tag": "h1",
+              "field": "title"
+            },
+            {
+              "field": "description",
+              "html": true,
+              "optional": true,
+              "stop": "Application FAQs"
+            },
+            {
+              "tag": "title",
+              "field": "location",
+              "from": 0,
+              "regex": " in (.+?) \\| Careers at"
+            },
+            {
+              "text": "Work Base",
+              "offset": 1,
+              "field": "job_location_type",
+              "from": 0,
+              "optional": true
+            },
+            {
+              "text": "Position Type",
+              "offset": 1,
+              "field": "employment_type",
+              "from": 0,
+              "optional": true
+            }
+          ]
+        }
+      }
+    },
+    "response": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://careers-vistaglobal.icims.com/jobs/101/engineer/job\">Engineer</a></body></html>",
+    "expected": [
+      {
+        "url": "https://careers-vistaglobal.icims.com/jobs/101/engineer/job"
+      },
+      {
+        "url": "https://careers-vistaglobal.icims.com/jobs/102/engineer/job"
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://hub-vistaglobal.icims.com/jobs/search?ss=1",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://careers-vistaglobal.icims.com/jobs/101/engineer/job\">Engineer</a></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://hub-vistaglobal.icims.com/jobs/search?hashed=-435623327&in_iframe=1&ss=1&pr=0",
+        "body": "",
+        "response": {
+          "status": 200,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://careers-vistaglobal.icims.com/jobs/102/engineer/job\">Engineer</a></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://hub-vistaglobal.icims.com/jobs/search?hashed=-435623327&in_iframe=1&ss=1&pr=1",
+        "body": "",
+        "response": {
+          "status": 404,
+          "body": "<html><body><div id=\"pager-total-results\">2</div><main><header><p>Znaleziono 2 oferty</p></header></main><div id=\"VacancySection\"><h2 class=\"color-title font-3xl\">2 ofertas de empleo</h2></div><h2 class=\"job-count\">2 jobs available</h2><a href=\"https://careers-vistaglobal.icims.com/jobs/102/engineer/job\">Engineer</a></body></html>",
+          "headers": {
+            "content-type": "text/html"
+          }
+        }
+      }
+    ]
+  }
+]

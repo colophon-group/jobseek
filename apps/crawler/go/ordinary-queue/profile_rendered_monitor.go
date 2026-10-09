@@ -56,6 +56,11 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 		delete(cloneMD, key)
 	}
 	if raw, exists := cloneMD["pagination"]; exists && string(raw) != "null" {
+		// Whole-list totals newly admitted with pagination are static-only.
+		// Preserve the previously qualified single-page rendered proof path.
+		if total, exists := md["advertised_total"]; exists && string(total) != "null" {
+			return fail()
+		}
 		var pagination map[string]json.RawMessage
 		if json.Unmarshal(raw, &pagination) != nil || pagination == nil {
 			return fail()

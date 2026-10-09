@@ -244,7 +244,7 @@ func Discover(ctx context.Context, o Options, fetch Fetch, join JoinURL) (Invent
 	add := func(d *Document, rows []map[string]any) error {
 		d.Root = root.Value
 		for _, row := range rows {
-			if o.ItemFilter != nil || o.AutoFields {
+			if o.ItemFilter != nil || o.AutoFields || o.AutoURLField {
 				sourceRows = append(sourceRows, inventorySourceRow{d, row})
 				continue
 			}
@@ -392,7 +392,7 @@ func Discover(ctx context.Context, o Options, fetch Fetch, join JoinURL) (Invent
 			}
 		}
 	}
-	if o.ItemFilter != nil || o.AutoFields {
+	if o.ItemFilter != nil || o.AutoFields || o.AutoURLField {
 		rows := []map[string]any{}
 		for _, source := range sourceRows {
 			rows = append(rows, source.row)
@@ -413,6 +413,18 @@ func Discover(ctx context.Context, o Options, fetch Fetch, join JoinURL) (Invent
 			total = max(0, total-removed)
 		}
 		itemCount -= removed
+		if o.AutoURLField {
+			samples := []map[string]any{}
+			for _, i := range selected {
+				samples = append(samples, sourceRows[i].row)
+				if len(samples) == 5 {
+					break
+				}
+			}
+			if len(samples) > 0 {
+				o.URLField = sourceRows[selected[0]].document.FindURLField(samples)
+			}
+		}
 		if o.AutoFields {
 			samples := []inventorySourceRow{}
 			for _, i := range selected {
