@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-//go:embed testdata/provider_location_types.json
+//go:embed provider_location_types.json
 var providerLocationTypesJSON []byte
 var providerLocationTypes map[string]string
 

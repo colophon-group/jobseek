@@ -29,7 +29,7 @@
       "sha256": "bdb65e3b6a2ed6d5d1fde7ed18c9db8d726105182104db503b57ea9bf36818bd"
     },
     {
-      "path": "apps/crawler/go/api-sniffer-monitor/testdata/provider_location_types.json",
+      "path": "apps/crawler/go/api-sniffer-monitor/provider_location_types.json",
       "sha256": "91be8541c1e457681926f9e65425d7b772ff1926ecd7a53f5e02c795e6ab3c6a"
     }
   ],
@@ -73,7 +73,8 @@
     "terminal initial1: original Curately duplicate refusal was incorrectly expected to succeed; corrected fixture expectation only",
     "detail initial3: assertion omitted original qualifications description enrichment; actual Python enrichment oracle added",
     "public initial1: response observer read a streaming GET request before buffering; bounded retry preserved original response headers",
-    "public comparison initial1: valid JobConvo redirect used app host and explicit default TLS port; resource binding and HTTPX port normalization corrected without widening provider identity"
+    "public comparison initial1: valid JobConvo redirect used app host and explicit default TLS port; resource binding and HTTPX port normalization corrected without widening provider identity",
+    "Go Lightpanda Pilot37924014025: runtime enum JSON lived under testdata and was absent from the explicit image copy list; moved the unchanged asset to module runtime assets and copied it into the pilot image"
   ],
   "qualification_limits": [
     "prototype source; full reviewed-head worker race and Required CI pending",

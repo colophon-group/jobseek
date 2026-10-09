@@ -141,7 +141,7 @@ def core():
     ROOT.joinpath("python_curately_inploi_jobconvo_fields.json").write_text(
         json.dumps(cases, ensure_ascii=False, indent=2) + "\n"
     )
-    ROOT.joinpath("provider_location_types.json").write_text(
+    ROOT.parent.joinpath("provider_location_types.json").write_text(
         json.dumps(
             enum_normalize._JOB_LOCATION_TYPE_MAP, ensure_ascii=False, sort_keys=True, indent=2
         )
