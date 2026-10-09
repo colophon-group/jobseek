@@ -7,6 +7,14 @@ combines enabled watchlists, deduplicates postings and shows at most 20 roles.
 Each role shows its company icon and localized age since first seen by Jobseek
 (“Added … ago”), calculated at render time and included in plain text too.
 Missing/unsafe icon URLs use company initials; invalid dates omit the age.
+Company images on our asset host use `/api/notifications/company-icon/v1.png?src=…`.
+This public endpoint renders an opaque 96×96 PNG with a small inset, preserving
+the artwork's aspect ratio before the email displays it at 32×32. It avoids
+Gmail's loss of WebP transparency and email clients that ignore `object-fit`.
+Only canonical company asset URLs are accepted; fetches disallow redirects,
+time out after 10 seconds, and cap source bytes and decoded pixels. Hashed
+sources cache for a year; historical mutable paths cache for a day. Failed
+fetches or conversions are not cached. Other HTTPS icon URLs remain direct.
 Job titles open `https://jseek.co/{locale}/watchlists/{id}?show={postingId}`
 in the first matching watchlist. Each matching-watchlist label opens the same
 job in that list. HTML and plain text use these links; employer application
