@@ -24,6 +24,13 @@ var (
 
 const typesenseOwnerKey = "export_owner:typesense:job_posting"
 
+// Bulk indexing can outlast a health probe, especially after a full sync.
+// Match the existing backfill budget while preserving context cancellation
+// and the cursor fence until every acknowledgement has been verified.
+func newExporterHTTPClient() *http.Client {
+	return &http.Client{Timeout: 120 * time.Second}
+}
+
 type exporterSettings struct {
 	DBURL         string
 	TypesenseURL  string
@@ -182,7 +189,7 @@ func runExporter() error {
 	defer conn.Close(context.Background())
 	e := exporter{
 		conn: conn, settings: settings,
-		httpClient: &http.Client{Timeout: 10 * time.Second},
+		httpClient: newExporterHTTPClient(),
 	}
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 	metrics := newExporterMetrics()

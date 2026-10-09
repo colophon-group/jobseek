@@ -96,5 +96,32 @@
       "qualified_redirect": "alternate first-party listing host and explicit default 443 normalized like HTTPX"
     },
     "limits": "current upstream Curately refusal is preserved; no public successful Curately inventory claimed"
+  },
+  "runtime_exporter_recovery": {
+    "scope": "Observed production bulk deadline after original source991 rollout; candidate repair still requires exact-head CI and source992 whole rollout",
+    "observed_source": "02e8adaef88db28c8977c4df165a8e1c19ec16e5",
+    "observed_health": "worker/browser/drain200, exporter503; TypeSensehealth1 and metrics GET200 in0.117s",
+    "diagnostic": "native991-postdeploy-exporter-diagnostic-initial1-2026-10-09.json",
+    "old_http_deadline_seconds": 10,
+    "new_bounded_import_client_seconds": 120,
+    "existing_backfill_client_seconds": 120,
+    "health_probe_seconds": 3,
+    "cursor_rule": "Every positional acknowledgement must be proved before saving the fenced batch cursor; transport/cancellation failure keeps it pinned",
+    "regression": "Real 11-second delayed complete acknowledgements, parent cancellation, and independent three-second health deadline passed; full package race passed.",
+    "full_exporter_package_race": {
+      "result": "passed",
+      "seconds": 17.331,
+      "optional_postgres_not_requested": true
+    }
+  },
+  "generated_census_repair": {
+    "failed_required_ci": 37929530390,
+    "reason": "Inploi page_size CSV repair changed boards input hash; committed offline census was stale",
+    "regenerated_census_sha256": "2a75f47d20e7fc5ed43afd1f0714da9849974d16c316ef580000ba401ffd49f3",
+    "data_validation": "passed",
+    "census_tests": {
+      "passed": 57,
+      "seconds": 1.33
+    }
   }
 }

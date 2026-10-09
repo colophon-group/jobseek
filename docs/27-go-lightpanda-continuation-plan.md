@@ -985,3 +985,28 @@ and provider types. Keep the full migration goal active until coverage, mandator
 consumers, full natural freshness and queue conservation, comparable cost, supported
 reversal and the retirement window justify removing production Python, Playwright
 and Chromium. Preserve useful isolated offline Python and every enabled board.
+
+
+Source991's original crawler and renderer workflows completed successfully.
+The independent read verified crawler image `sha256:5ce94c517e3302a0469aa19b68028303ab12831d483fa1120adab52c1761bbfe`,
+browser image `sha256:7e967d476f997e8c01deb344cc16d5ae1ea15dff7c205414e585a7593143f7ae`,
+and renderer image `sha256:1cb3c1fe55d7b25dc25e13dd10d1be2428abb9d19a9841b96fa71fb17ebc4511`.
+The source991 generation is selected. Independent cold readiness did not pass:
+the exporter has no successful tick and repeatedly exhausts its ten-second
+HTTP deadline on a 2000-document import. Worker/browser/drain endpoints return
+200, Typesense health is positive, and a read-only operational metrics request
+completed in 0.117 seconds. B0 staging/activation was not attempted.
+
+Source992 now includes a bounded exporter repair: use the same two-minute
+bulk client budget as the existing backfill, preserve the independent
+three-second health probe, honor parent cancellation, and keep the CDC cursor
+fenced until the complete positional acknowledgement is verified. A real
+11-second response regression qualifies the longer import budget; cancellation
+and short health deadline checks qualify reversibility. Fresh deployed exporter
+progress and cold readiness must pass before reopening native ownership.
+The Inploi page-size repair also required refreshing the generated offline
+census; stale census hashes caused Required CI 37929530390 to fail. Data
+validation and all 57 census tests pass after regeneration. Neither failure
+is treated as migration success. Source993's exact published head
+`78283afa69620817cc0617deedbec48126c90dcf` full worker race suite passed in
+863.208 seconds; its parent update and final checks remain separate obligations.
