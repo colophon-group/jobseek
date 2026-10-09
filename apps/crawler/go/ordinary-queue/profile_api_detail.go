@@ -19,6 +19,7 @@ import (
 
 const smartRecruitersDetailProfile = "smartrecruiters.api-detail/v1"
 const workableDetailProfile = "workable.api-detail/v1"
+const workableProxyDetailProfile = "workable.proxy-api-detail/v1"
 const joinDetailProfile = "join.nextdata-detail/v1"
 const oracleDetailProfile = "oracle_hcm.api-detail/v1"
 const adpDetailProfile = "adp.public-detail/v1"
@@ -34,7 +35,7 @@ func independentDetailProfile(profile string) bool {
 	switch profile {
 	case notionDetailProfile, pdfDetailProfile, seekDetailProfile, linkedInDetailProfile, jazzHRDetailProfile, taleoEnterpriseDetailProfile, jobConvoDetailProfile:
 		return true
-	case adpDetailProfile, paylocityDetailProfile, paylocityProxyDetailProfile, paycomDetailProfile, ripplingDetailProfile, mokahrDetailProfile, eightfoldDetailProfile, eightfoldProxyDetailProfile, domProxyDetailProfile, jsonldProxyDetailProfile, httpAPIProxyDetailProfile, domRenderedDetailProfile, jsonldRenderedDetailProfile, embeddedRenderedDetailProfile, domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, joinDetailProfile, oracleDetailProfile, embeddedDetailProfile, httpAPIDetailProfile:
+	case adpDetailProfile, paylocityDetailProfile, paylocityProxyDetailProfile, paycomDetailProfile, ripplingDetailProfile, mokahrDetailProfile, eightfoldDetailProfile, eightfoldProxyDetailProfile, domProxyDetailProfile, jsonldProxyDetailProfile, httpAPIProxyDetailProfile, domRenderedDetailProfile, jsonldRenderedDetailProfile, embeddedRenderedDetailProfile, domDetailProfile, jsonldDetailProfile, smartRecruitersDetailProfile, workableDetailProfile, workableProxyDetailProfile, joinDetailProfile, oracleDetailProfile, embeddedDetailProfile, httpAPIDetailProfile:
 		return true
 	}
 	return false
@@ -118,7 +119,7 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 		}
 	}
 	for _, key := range []string{"proxy", "render"} {
-		if (scraper == "paylocity" || scraper == "eightfold") && key == "proxy" && string(options[key]) == "true" {
+		if (scraper == "paylocity" || scraper == "eightfold" || scraper == "workable") && key == "proxy" && string(options[key]) == "true" {
 			continue
 		}
 		if raw, ok := options[key]; ok && string(raw) != "false" && string(raw) != "null" {
@@ -238,6 +239,9 @@ func InspectAPIDetail(boardID string, config map[string]string, source string, w
 		}
 		endpoint, _, err = workable.DetailEndpoints(source, override)
 		profile = workableDetailProfile
+		if string(options["proxy"]) == "true" {
+			profile = workableProxyDetailProfile
+		}
 	} else if scraper == "oracle_hcm" {
 		var overrides map[string]any
 		body, _ := json.Marshal(options)

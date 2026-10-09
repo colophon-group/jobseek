@@ -49,12 +49,13 @@ type requestDoer interface {
 var detailPathID = regexp.MustCompile(`^[\p{L}\p{N}_-]{1,128}$`)
 
 type fetcher struct {
-	token  string
-	client requestDoer
-	pause  Pause
-	retain func(string, []byte)
-	mu     sync.Mutex
-	result FetchResult
+	token       string
+	client      requestDoer
+	pause       Pause
+	retain      func(string, []byte)
+	mu          sync.Mutex
+	result      FetchResult
+	reservation *Failure
 }
 
 func normalPause(ctx context.Context, d time.Duration) error {
@@ -195,6 +196,13 @@ func (f *fetcher) get(ctx context.Context, endpoint string, limit int) (Object, 
 		data, status, location, err := f.once(ctx, endpoint, limit)
 		var failure *Failure
 		if errors.As(err, &failure) {
+			if failure.Kind == "tdm" {
+				f.mu.Lock()
+				if f.reservation == nil || failure.URL < f.reservation.URL {
+					f.reservation = failure
+				}
+				f.mu.Unlock()
+			}
 			return nil, err
 		}
 		if ctx.Err() != nil {
@@ -239,6 +247,13 @@ func fetchWith(ctx context.Context, boardURL string, metadata Object, client req
 	if err == nil {
 		f.result.Inventory, err = Discover(ctx, opt, f.get, pause)
 	}
+	// Concurrent detail failures cannot erase a publisher reservation observed
+	// by another completed request. All workers have joined before this read.
+	f.mu.Lock()
+	if f.reservation != nil {
+		err = f.reservation
+	}
+	f.mu.Unlock()
 	if err != nil {
 		f.result.Inventory = Inventory{}
 		f.result.Error = err.Error()
