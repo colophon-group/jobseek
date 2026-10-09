@@ -1,0 +1,2736 @@
+[
+  {
+    "provider": "keka",
+    "operation": "fields",
+    "name": "populated",
+    "inputs": {
+      "row": {
+        "id": 123,
+        "title": " Platform Engineer ",
+        "description": "<h2 style=\"color:red\">Build</h2><script>bad()</script><p>Systems</p>",
+        "departmentIdentifier": "dept-uuid",
+        "departmentName": "Engineering",
+        "experience": "3 - 5 years",
+        "jobNumber": "ENG-123",
+        "jobLocations": [
+          {
+            "id": 1,
+            "name": "HQ",
+            "city": "Bengaluru",
+            "state": "KA",
+            "countryCode": "IN",
+            "countryName": "India"
+          }
+        ],
+        "jobType": 2,
+        "publishedOn": "2026-08-01T12:30:00Z",
+        "salaryRange": {
+          "minimum": 100000,
+          "maximum": 150000,
+          "currency": "INR",
+          "salaryPeriod": 4
+        },
+        "skillNames": [
+          "Python",
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "tenant": "acme",
+      "portal": "default"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://acme.keka.com/careers/jobdetails/123",
+      "title": "Platform Engineer",
+      "description": "<h2>Build</h2><p>Systems</p>",
+      "locations": [
+        "Bengaluru, KA, India"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-08-01",
+      "base_salary": {
+        "currency": "INR",
+        "min": 100000,
+        "max": 150000,
+        "unit": "year"
+      },
+      "language": null,
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "metadata": {
+        "id": 123,
+        "department_id": "dept-uuid",
+        "department": "Engineering",
+        "experience": "3 - 5 years",
+        "job_number": "ENG-123",
+        "job_type": 2
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "keka",
+    "operation": "fields",
+    "name": "unicode-space",
+    "inputs": {
+      "row": {
+        "id": 123,
+        "title": " A\u001c B  C ",
+        "description": "<h2 style=\"color:red\">Build</h2><script>bad()</script><p>Systems</p>",
+        "departmentIdentifier": "dept-uuid",
+        "departmentName": "Engineering",
+        "experience": "3 - 5 years",
+        "jobNumber": "ENG-123",
+        "jobLocations": [
+          {
+            "id": 1,
+            "name": "HQ",
+            "city": "Bengaluru",
+            "state": "KA",
+            "countryCode": "IN",
+            "countryName": "India"
+          }
+        ],
+        "jobType": 2,
+        "publishedOn": "2026-08-01T12:30:00Z",
+        "salaryRange": {
+          "minimum": 100000,
+          "maximum": 150000,
+          "currency": "INR",
+          "salaryPeriod": 4
+        },
+        "skillNames": [
+          "Python",
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "tenant": "acme",
+      "portal": "default"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://acme.keka.com/careers/jobdetails/123",
+      "title": "A B C",
+      "description": "<h2>Build</h2><p>Systems</p>",
+      "locations": [
+        "Bengaluru, KA, India"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-08-01",
+      "base_salary": {
+        "currency": "INR",
+        "min": 100000,
+        "max": 150000,
+        "unit": "year"
+      },
+      "language": null,
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "metadata": {
+        "id": 123,
+        "department_id": "dept-uuid",
+        "department": "Engineering",
+        "experience": "3 - 5 years",
+        "job_number": "ENG-123",
+        "job_type": 2
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "keka",
+    "operation": "fields",
+    "name": "missing-title",
+    "inputs": {
+      "row": {
+        "id": 123,
+        "title": null,
+        "description": "<h2 style=\"color:red\">Build</h2><script>bad()</script><p>Systems</p>",
+        "departmentIdentifier": "dept-uuid",
+        "departmentName": "Engineering",
+        "experience": "3 - 5 years",
+        "jobNumber": "ENG-123",
+        "jobLocations": [
+          {
+            "id": 1,
+            "name": "HQ",
+            "city": "Bengaluru",
+            "state": "KA",
+            "countryCode": "IN",
+            "countryName": "India"
+          }
+        ],
+        "jobType": 2,
+        "publishedOn": "2026-08-01T12:30:00Z",
+        "salaryRange": {
+          "minimum": 100000,
+          "maximum": 150000,
+          "currency": "INR",
+          "salaryPeriod": 4
+        },
+        "skillNames": [
+          "Python",
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "tenant": "acme",
+      "portal": "default"
+    },
+    "status": "failed",
+    "error_type": "ValueError"
+  },
+  {
+    "provider": "keka",
+    "operation": "fields",
+    "name": "boolean-id",
+    "inputs": {
+      "row": {
+        "id": true,
+        "title": " Platform Engineer ",
+        "description": "<h2 style=\"color:red\">Build</h2><script>bad()</script><p>Systems</p>",
+        "departmentIdentifier": "dept-uuid",
+        "departmentName": "Engineering",
+        "experience": "3 - 5 years",
+        "jobNumber": "ENG-123",
+        "jobLocations": [
+          {
+            "id": 1,
+            "name": "HQ",
+            "city": "Bengaluru",
+            "state": "KA",
+            "countryCode": "IN",
+            "countryName": "India"
+          }
+        ],
+        "jobType": 2,
+        "publishedOn": "2026-08-01T12:30:00Z",
+        "salaryRange": {
+          "minimum": 100000,
+          "maximum": 150000,
+          "currency": "INR",
+          "salaryPeriod": 4
+        },
+        "skillNames": [
+          "Python",
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "tenant": "acme",
+      "portal": "default"
+    },
+    "status": "failed",
+    "error_type": "ValueError"
+  },
+  {
+    "provider": "keka",
+    "operation": "fields",
+    "name": "zero-id",
+    "inputs": {
+      "row": {
+        "id": 0,
+        "title": " Platform Engineer ",
+        "description": "<h2 style=\"color:red\">Build</h2><script>bad()</script><p>Systems</p>",
+        "departmentIdentifier": "dept-uuid",
+        "departmentName": "Engineering",
+        "experience": "3 - 5 years",
+        "jobNumber": "ENG-123",
+        "jobLocations": [
+          {
+            "id": 1,
+            "name": "HQ",
+            "city": "Bengaluru",
+            "state": "KA",
+            "countryCode": "IN",
+            "countryName": "India"
+          }
+        ],
+        "jobType": 2,
+        "publishedOn": "2026-08-01T12:30:00Z",
+        "salaryRange": {
+          "minimum": 100000,
+          "maximum": 150000,
+          "currency": "INR",
+          "salaryPeriod": 4
+        },
+        "skillNames": [
+          "Python",
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "tenant": "acme",
+      "portal": "default"
+    },
+    "status": "failed",
+    "error_type": "ValueError"
+  },
+  {
+    "provider": "keka",
+    "operation": "fields",
+    "name": "string-id",
+    "inputs": {
+      "row": {
+        "id": "123",
+        "title": " Platform Engineer ",
+        "description": "<h2 style=\"color:red\">Build</h2><script>bad()</script><p>Systems</p>",
+        "departmentIdentifier": "dept-uuid",
+        "departmentName": "Engineering",
+        "experience": "3 - 5 years",
+        "jobNumber": "ENG-123",
+        "jobLocations": [
+          {
+            "id": 1,
+            "name": "HQ",
+            "city": "Bengaluru",
+            "state": "KA",
+            "countryCode": "IN",
+            "countryName": "India"
+          }
+        ],
+        "jobType": 2,
+        "publishedOn": "2026-08-01T12:30:00Z",
+        "salaryRange": {
+          "minimum": 100000,
+          "maximum": 150000,
+          "currency": "INR",
+          "salaryPeriod": 4
+        },
+        "skillNames": [
+          "Python",
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "tenant": "acme",
+      "portal": "default"
+    },
+    "status": "failed",
+    "error_type": "ValueError"
+  },
+  {
+    "provider": "keka",
+    "operation": "fields",
+    "name": "no-description",
+    "inputs": {
+      "row": {
+        "id": 123,
+        "title": " Platform Engineer ",
+        "description": 1,
+        "departmentIdentifier": "dept-uuid",
+        "departmentName": "Engineering",
+        "experience": "3 - 5 years",
+        "jobNumber": "ENG-123",
+        "jobLocations": [
+          {
+            "id": 1,
+            "name": "HQ",
+            "city": "Bengaluru",
+            "state": "KA",
+            "countryCode": "IN",
+            "countryName": "India"
+          }
+        ],
+        "jobType": 2,
+        "publishedOn": "2026-08-01T12:30:00Z",
+        "salaryRange": {
+          "minimum": 100000,
+          "maximum": 150000,
+          "currency": "INR",
+          "salaryPeriod": 4
+        },
+        "skillNames": [
+          "Python",
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "tenant": "acme",
+      "portal": "default"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://acme.keka.com/careers/jobdetails/123",
+      "title": "Platform Engineer",
+      "description": null,
+      "locations": [
+        "Bengaluru, KA, India"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-08-01",
+      "base_salary": {
+        "currency": "INR",
+        "min": 100000,
+        "max": 150000,
+        "unit": "year"
+      },
+      "language": null,
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "metadata": {
+        "id": 123,
+        "department_id": "dept-uuid",
+        "department": "Engineering",
+        "experience": "3 - 5 years",
+        "job_number": "ENG-123",
+        "job_type": 2
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "keka",
+    "operation": "fields",
+    "name": "part-time",
+    "inputs": {
+      "row": {
+        "id": 123,
+        "title": " Platform Engineer ",
+        "description": "<h2 style=\"color:red\">Build</h2><script>bad()</script><p>Systems</p>",
+        "departmentIdentifier": "dept-uuid",
+        "departmentName": "Engineering",
+        "experience": "3 - 5 years",
+        "jobNumber": "ENG-123",
+        "jobLocations": [
+          {
+            "id": 1,
+            "name": "HQ",
+            "city": "Bengaluru",
+            "state": "KA",
+            "countryCode": "IN",
+            "countryName": "India"
+          }
+        ],
+        "jobType": 1,
+        "publishedOn": "2026-08-01T12:30:00Z",
+        "salaryRange": {
+          "minimum": 100000,
+          "maximum": 150000,
+          "currency": "INR",
+          "salaryPeriod": 4
+        },
+        "skillNames": [
+          "Python",
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "tenant": "acme",
+      "portal": "default"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://acme.keka.com/careers/jobdetails/123",
+      "title": "Platform Engineer",
+      "description": "<h2>Build</h2><p>Systems</p>",
+      "locations": [
+        "Bengaluru, KA, India"
+      ],
+      "employment_type": "Part Time",
+      "job_location_type": null,
+      "date_posted": "2026-08-01",
+      "base_salary": {
+        "currency": "INR",
+        "min": 100000,
+        "max": 150000,
+        "unit": "year"
+      },
+      "language": null,
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "metadata": {
+        "id": 123,
+        "department_id": "dept-uuid",
+        "department": "Engineering",
+        "experience": "3 - 5 years",
+        "job_number": "ENG-123",
+        "job_type": 1
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "keka",
+    "operation": "fields",
+    "name": "boolean-jobtype",
+    "inputs": {
+      "row": {
+        "id": 123,
+        "title": " Platform Engineer ",
+        "description": "<h2 style=\"color:red\">Build</h2><script>bad()</script><p>Systems</p>",
+        "departmentIdentifier": "dept-uuid",
+        "departmentName": "Engineering",
+        "experience": "3 - 5 years",
+        "jobNumber": "ENG-123",
+        "jobLocations": [
+          {
+            "id": 1,
+            "name": "HQ",
+            "city": "Bengaluru",
+            "state": "KA",
+            "countryCode": "IN",
+            "countryName": "India"
+          }
+        ],
+        "jobType": true,
+        "publishedOn": "2026-08-01T12:30:00Z",
+        "salaryRange": {
+          "minimum": 100000,
+          "maximum": 150000,
+          "currency": "INR",
+          "salaryPeriod": 4
+        },
+        "skillNames": [
+          "Python",
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "tenant": "acme",
+      "portal": "default"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://acme.keka.com/careers/jobdetails/123",
+      "title": "Platform Engineer",
+      "description": "<h2>Build</h2><p>Systems</p>",
+      "locations": [
+        "Bengaluru, KA, India"
+      ],
+      "employment_type": "Part Time",
+      "job_location_type": null,
+      "date_posted": "2026-08-01",
+      "base_salary": {
+        "currency": "INR",
+        "min": 100000,
+        "max": 150000,
+        "unit": "year"
+      },
+      "language": null,
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "metadata": {
+        "id": 123,
+        "department_id": "dept-uuid",
+        "department": "Engineering",
+        "experience": "3 - 5 years",
+        "job_number": "ENG-123"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "keka",
+    "operation": "fields",
+    "name": "string-jobtype",
+    "inputs": {
+      "row": {
+        "id": 123,
+        "title": " Platform Engineer ",
+        "description": "<h2 style=\"color:red\">Build</h2><script>bad()</script><p>Systems</p>",
+        "departmentIdentifier": "dept-uuid",
+        "departmentName": "Engineering",
+        "experience": "3 - 5 years",
+        "jobNumber": "ENG-123",
+        "jobLocations": [
+          {
+            "id": 1,
+            "name": "HQ",
+            "city": "Bengaluru",
+            "state": "KA",
+            "countryCode": "IN",
+            "countryName": "India"
+          }
+        ],
+        "jobType": "2",
+        "publishedOn": "2026-08-01T12:30:00Z",
+        "salaryRange": {
+          "minimum": 100000,
+          "maximum": 150000,
+          "currency": "INR",
+          "salaryPeriod": 4
+        },
+        "skillNames": [
+          "Python",
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "tenant": "acme",
+      "portal": "default"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://acme.keka.com/careers/jobdetails/123",
+      "title": "Platform Engineer",
+      "description": "<h2>Build</h2><p>Systems</p>",
+      "locations": [
+        "Bengaluru, KA, India"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-08-01",
+      "base_salary": {
+        "currency": "INR",
+        "min": 100000,
+        "max": 150000,
+        "unit": "year"
+      },
+      "language": null,
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "metadata": {
+        "id": 123,
+        "department_id": "dept-uuid",
+        "department": "Engineering",
+        "experience": "3 - 5 years",
+        "job_number": "ENG-123"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "keka",
+    "operation": "fields",
+    "name": "no-locations",
+    "inputs": {
+      "row": {
+        "id": 123,
+        "title": " Platform Engineer ",
+        "description": "<h2 style=\"color:red\">Build</h2><script>bad()</script><p>Systems</p>",
+        "departmentIdentifier": "dept-uuid",
+        "departmentName": "Engineering",
+        "experience": "3 - 5 years",
+        "jobNumber": "ENG-123",
+        "jobLocations": null,
+        "jobType": 2,
+        "publishedOn": "2026-08-01T12:30:00Z",
+        "salaryRange": {
+          "minimum": 100000,
+          "maximum": 150000,
+          "currency": "INR",
+          "salaryPeriod": 4
+        },
+        "skillNames": [
+          "Python",
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "tenant": "acme",
+      "portal": "default"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://acme.keka.com/careers/jobdetails/123",
+      "title": "Platform Engineer",
+      "description": "<h2>Build</h2><p>Systems</p>",
+      "locations": null,
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-08-01",
+      "base_salary": {
+        "currency": "INR",
+        "min": 100000,
+        "max": 150000,
+        "unit": "year"
+      },
+      "language": null,
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "metadata": {
+        "id": 123,
+        "department_id": "dept-uuid",
+        "department": "Engineering",
+        "experience": "3 - 5 years",
+        "job_number": "ENG-123",
+        "job_type": 2
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "keka",
+    "operation": "fields",
+    "name": "location-fallback",
+    "inputs": {
+      "row": {
+        "id": 123,
+        "title": " Platform Engineer ",
+        "description": "<h2 style=\"color:red\">Build</h2><script>bad()</script><p>Systems</p>",
+        "departmentIdentifier": "dept-uuid",
+        "departmentName": "Engineering",
+        "experience": "3 - 5 years",
+        "jobNumber": "ENG-123",
+        "jobLocations": [
+          {
+            "name": " Head Office "
+          },
+          null
+        ],
+        "jobType": 2,
+        "publishedOn": "2026-08-01T12:30:00Z",
+        "salaryRange": {
+          "minimum": 100000,
+          "maximum": 150000,
+          "currency": "INR",
+          "salaryPeriod": 4
+        },
+        "skillNames": [
+          "Python",
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "tenant": "acme",
+      "portal": "default"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://acme.keka.com/careers/jobdetails/123",
+      "title": "Platform Engineer",
+      "description": "<h2>Build</h2><p>Systems</p>",
+      "locations": [
+        "Head Office"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-08-01",
+      "base_salary": {
+        "currency": "INR",
+        "min": 100000,
+        "max": 150000,
+        "unit": "year"
+      },
+      "language": null,
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "metadata": {
+        "id": 123,
+        "department_id": "dept-uuid",
+        "department": "Engineering",
+        "experience": "3 - 5 years",
+        "job_number": "ENG-123",
+        "job_type": 2
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "keka",
+    "operation": "fields",
+    "name": "duplicate-geography",
+    "inputs": {
+      "row": {
+        "id": 123,
+        "title": " Platform Engineer ",
+        "description": "<h2 style=\"color:red\">Build</h2><script>bad()</script><p>Systems</p>",
+        "departmentIdentifier": "dept-uuid",
+        "departmentName": "Engineering",
+        "experience": "3 - 5 years",
+        "jobNumber": "ENG-123",
+        "jobLocations": [
+          {
+            "city": "Bern",
+            "state": " bern ",
+            "countryName": "CH"
+          }
+        ],
+        "jobType": 2,
+        "publishedOn": "2026-08-01T12:30:00Z",
+        "salaryRange": {
+          "minimum": 100000,
+          "maximum": 150000,
+          "currency": "INR",
+          "salaryPeriod": 4
+        },
+        "skillNames": [
+          "Python",
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "tenant": "acme",
+      "portal": "default"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://acme.keka.com/careers/jobdetails/123",
+      "title": "Platform Engineer",
+      "description": "<h2>Build</h2><p>Systems</p>",
+      "locations": [
+        "Bern, CH"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-08-01",
+      "base_salary": {
+        "currency": "INR",
+        "min": 100000,
+        "max": 150000,
+        "unit": "year"
+      },
+      "language": null,
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "metadata": {
+        "id": 123,
+        "department_id": "dept-uuid",
+        "department": "Engineering",
+        "experience": "3 - 5 years",
+        "job_number": "ENG-123",
+        "job_type": 2
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "keka",
+    "operation": "fields",
+    "name": "skill-shapes",
+    "inputs": {
+      "row": {
+        "id": 123,
+        "title": " Platform Engineer ",
+        "description": "<h2 style=\"color:red\">Build</h2><script>bad()</script><p>Systems</p>",
+        "departmentIdentifier": "dept-uuid",
+        "departmentName": "Engineering",
+        "experience": "3 - 5 years",
+        "jobNumber": "ENG-123",
+        "jobLocations": [
+          {
+            "id": 1,
+            "name": "HQ",
+            "city": "Bengaluru",
+            "state": "KA",
+            "countryCode": "IN",
+            "countryName": "India"
+          }
+        ],
+        "jobType": 2,
+        "publishedOn": "2026-08-01T12:30:00Z",
+        "salaryRange": {
+          "minimum": 100000,
+          "maximum": 150000,
+          "currency": "INR",
+          "salaryPeriod": 4
+        },
+        "skillNames": [
+          " Go ",
+          "Go",
+          true,
+          "SQL",
+          ""
+        ]
+      },
+      "tenant": "acme",
+      "portal": "default"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://acme.keka.com/careers/jobdetails/123",
+      "title": "Platform Engineer",
+      "description": "<h2>Build</h2><p>Systems</p>",
+      "locations": [
+        "Bengaluru, KA, India"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-08-01",
+      "base_salary": {
+        "currency": "INR",
+        "min": 100000,
+        "max": 150000,
+        "unit": "year"
+      },
+      "language": null,
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Go",
+          "SQL"
+        ]
+      },
+      "metadata": {
+        "id": 123,
+        "department_id": "dept-uuid",
+        "department": "Engineering",
+        "experience": "3 - 5 years",
+        "job_number": "ENG-123",
+        "job_type": 2
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "keka",
+    "operation": "fields",
+    "name": "invalid-date",
+    "inputs": {
+      "row": {
+        "id": 123,
+        "title": " Platform Engineer ",
+        "description": "<h2 style=\"color:red\">Build</h2><script>bad()</script><p>Systems</p>",
+        "departmentIdentifier": "dept-uuid",
+        "departmentName": "Engineering",
+        "experience": "3 - 5 years",
+        "jobNumber": "ENG-123",
+        "jobLocations": [
+          {
+            "id": 1,
+            "name": "HQ",
+            "city": "Bengaluru",
+            "state": "KA",
+            "countryCode": "IN",
+            "countryName": "India"
+          }
+        ],
+        "jobType": 2,
+        "publishedOn": "2026-02-30T00:00:00Z",
+        "salaryRange": {
+          "minimum": 100000,
+          "maximum": 150000,
+          "currency": "INR",
+          "salaryPeriod": 4
+        },
+        "skillNames": [
+          "Python",
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "tenant": "acme",
+      "portal": "default"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://acme.keka.com/careers/jobdetails/123",
+      "title": "Platform Engineer",
+      "description": "<h2>Build</h2><p>Systems</p>",
+      "locations": [
+        "Bengaluru, KA, India"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": {
+        "currency": "INR",
+        "min": 100000,
+        "max": 150000,
+        "unit": "year"
+      },
+      "language": null,
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "metadata": {
+        "id": 123,
+        "department_id": "dept-uuid",
+        "department": "Engineering",
+        "experience": "3 - 5 years",
+        "job_number": "ENG-123",
+        "job_type": 2
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "keka",
+    "operation": "fields",
+    "name": "date-only",
+    "inputs": {
+      "row": {
+        "id": 123,
+        "title": " Platform Engineer ",
+        "description": "<h2 style=\"color:red\">Build</h2><script>bad()</script><p>Systems</p>",
+        "departmentIdentifier": "dept-uuid",
+        "departmentName": "Engineering",
+        "experience": "3 - 5 years",
+        "jobNumber": "ENG-123",
+        "jobLocations": [
+          {
+            "id": 1,
+            "name": "HQ",
+            "city": "Bengaluru",
+            "state": "KA",
+            "countryCode": "IN",
+            "countryName": "India"
+          }
+        ],
+        "jobType": 2,
+        "publishedOn": "2026-10-09",
+        "salaryRange": {
+          "minimum": 100000,
+          "maximum": 150000,
+          "currency": "INR",
+          "salaryPeriod": 4
+        },
+        "skillNames": [
+          "Python",
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "tenant": "acme",
+      "portal": "default"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://acme.keka.com/careers/jobdetails/123",
+      "title": "Platform Engineer",
+      "description": "<h2>Build</h2><p>Systems</p>",
+      "locations": [
+        "Bengaluru, KA, India"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "INR",
+        "min": 100000,
+        "max": 150000,
+        "unit": "year"
+      },
+      "language": null,
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "metadata": {
+        "id": 123,
+        "department_id": "dept-uuid",
+        "department": "Engineering",
+        "experience": "3 - 5 years",
+        "job_number": "ENG-123",
+        "job_type": 2
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "keka",
+    "operation": "fields",
+    "name": "basic-date",
+    "inputs": {
+      "row": {
+        "id": 123,
+        "title": " Platform Engineer ",
+        "description": "<h2 style=\"color:red\">Build</h2><script>bad()</script><p>Systems</p>",
+        "departmentIdentifier": "dept-uuid",
+        "departmentName": "Engineering",
+        "experience": "3 - 5 years",
+        "jobNumber": "ENG-123",
+        "jobLocations": [
+          {
+            "id": 1,
+            "name": "HQ",
+            "city": "Bengaluru",
+            "state": "KA",
+            "countryCode": "IN",
+            "countryName": "India"
+          }
+        ],
+        "jobType": 2,
+        "publishedOn": "20261009",
+        "salaryRange": {
+          "minimum": 100000,
+          "maximum": 150000,
+          "currency": "INR",
+          "salaryPeriod": 4
+        },
+        "skillNames": [
+          "Python",
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "tenant": "acme",
+      "portal": "default"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://acme.keka.com/careers/jobdetails/123",
+      "title": "Platform Engineer",
+      "description": "<h2>Build</h2><p>Systems</p>",
+      "locations": [
+        "Bengaluru, KA, India"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "INR",
+        "min": 100000,
+        "max": 150000,
+        "unit": "year"
+      },
+      "language": null,
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "metadata": {
+        "id": 123,
+        "department_id": "dept-uuid",
+        "department": "Engineering",
+        "experience": "3 - 5 years",
+        "job_number": "ENG-123",
+        "job_type": 2
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "keka",
+    "operation": "fields",
+    "name": "week-date",
+    "inputs": {
+      "row": {
+        "id": 123,
+        "title": " Platform Engineer ",
+        "description": "<h2 style=\"color:red\">Build</h2><script>bad()</script><p>Systems</p>",
+        "departmentIdentifier": "dept-uuid",
+        "departmentName": "Engineering",
+        "experience": "3 - 5 years",
+        "jobNumber": "ENG-123",
+        "jobLocations": [
+          {
+            "id": 1,
+            "name": "HQ",
+            "city": "Bengaluru",
+            "state": "KA",
+            "countryCode": "IN",
+            "countryName": "India"
+          }
+        ],
+        "jobType": 2,
+        "publishedOn": "2026-W41-5",
+        "salaryRange": {
+          "minimum": 100000,
+          "maximum": 150000,
+          "currency": "INR",
+          "salaryPeriod": 4
+        },
+        "skillNames": [
+          "Python",
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "tenant": "acme",
+      "portal": "default"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://acme.keka.com/careers/jobdetails/123",
+      "title": "Platform Engineer",
+      "description": "<h2>Build</h2><p>Systems</p>",
+      "locations": [
+        "Bengaluru, KA, India"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "INR",
+        "min": 100000,
+        "max": 150000,
+        "unit": "year"
+      },
+      "language": null,
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "metadata": {
+        "id": 123,
+        "department_id": "dept-uuid",
+        "department": "Engineering",
+        "experience": "3 - 5 years",
+        "job_number": "ENG-123",
+        "job_type": 2
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "keka",
+    "operation": "fields",
+    "name": "offset-date",
+    "inputs": {
+      "row": {
+        "id": 123,
+        "title": " Platform Engineer ",
+        "description": "<h2 style=\"color:red\">Build</h2><script>bad()</script><p>Systems</p>",
+        "departmentIdentifier": "dept-uuid",
+        "departmentName": "Engineering",
+        "experience": "3 - 5 years",
+        "jobNumber": "ENG-123",
+        "jobLocations": [
+          {
+            "id": 1,
+            "name": "HQ",
+            "city": "Bengaluru",
+            "state": "KA",
+            "countryCode": "IN",
+            "countryName": "India"
+          }
+        ],
+        "jobType": 2,
+        "publishedOn": "2026-10-09T00:01:00+05:30",
+        "salaryRange": {
+          "minimum": 100000,
+          "maximum": 150000,
+          "currency": "INR",
+          "salaryPeriod": 4
+        },
+        "skillNames": [
+          "Python",
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "tenant": "acme",
+      "portal": "default"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://acme.keka.com/careers/jobdetails/123",
+      "title": "Platform Engineer",
+      "description": "<h2>Build</h2><p>Systems</p>",
+      "locations": [
+        "Bengaluru, KA, India"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-10-09",
+      "base_salary": {
+        "currency": "INR",
+        "min": 100000,
+        "max": 150000,
+        "unit": "year"
+      },
+      "language": null,
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "metadata": {
+        "id": 123,
+        "department_id": "dept-uuid",
+        "department": "Engineering",
+        "experience": "3 - 5 years",
+        "job_number": "ENG-123",
+        "job_type": 2
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "keka",
+    "operation": "fields",
+    "name": "salary-booleans",
+    "inputs": {
+      "row": {
+        "id": 123,
+        "title": " Platform Engineer ",
+        "description": "<h2 style=\"color:red\">Build</h2><script>bad()</script><p>Systems</p>",
+        "departmentIdentifier": "dept-uuid",
+        "departmentName": "Engineering",
+        "experience": "3 - 5 years",
+        "jobNumber": "ENG-123",
+        "jobLocations": [
+          {
+            "id": 1,
+            "name": "HQ",
+            "city": "Bengaluru",
+            "state": "KA",
+            "countryCode": "IN",
+            "countryName": "India"
+          }
+        ],
+        "jobType": 2,
+        "publishedOn": "2026-08-01T12:30:00Z",
+        "salaryRange": {
+          "minimum": true,
+          "maximum": 120,
+          "salaryPeriod": true
+        },
+        "skillNames": [
+          "Python",
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "tenant": "acme",
+      "portal": "default"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://acme.keka.com/careers/jobdetails/123",
+      "title": "Platform Engineer",
+      "description": "<h2>Build</h2><p>Systems</p>",
+      "locations": [
+        "Bengaluru, KA, India"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-08-01",
+      "base_salary": {
+        "currency": null,
+        "min": null,
+        "max": 120,
+        "unit": null
+      },
+      "language": null,
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "metadata": {
+        "id": 123,
+        "department_id": "dept-uuid",
+        "department": "Engineering",
+        "experience": "3 - 5 years",
+        "job_number": "ENG-123",
+        "job_type": 2
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "keka",
+    "operation": "fields",
+    "name": "salary-negative",
+    "inputs": {
+      "row": {
+        "id": 123,
+        "title": " Platform Engineer ",
+        "description": "<h2 style=\"color:red\">Build</h2><script>bad()</script><p>Systems</p>",
+        "departmentIdentifier": "dept-uuid",
+        "departmentName": "Engineering",
+        "experience": "3 - 5 years",
+        "jobNumber": "ENG-123",
+        "jobLocations": [
+          {
+            "id": 1,
+            "name": "HQ",
+            "city": "Bengaluru",
+            "state": "KA",
+            "countryCode": "IN",
+            "countryName": "India"
+          }
+        ],
+        "jobType": 2,
+        "publishedOn": "2026-08-01T12:30:00Z",
+        "salaryRange": {
+          "minimum": -1,
+          "maximum": 0
+        },
+        "skillNames": [
+          "Python",
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "tenant": "acme",
+      "portal": "default"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://acme.keka.com/careers/jobdetails/123",
+      "title": "Platform Engineer",
+      "description": "<h2>Build</h2><p>Systems</p>",
+      "locations": [
+        "Bengaluru, KA, India"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-08-01",
+      "base_salary": null,
+      "language": null,
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Python",
+          "PostgreSQL"
+        ]
+      },
+      "metadata": {
+        "id": 123,
+        "department_id": "dept-uuid",
+        "department": "Engineering",
+        "experience": "3 - 5 years",
+        "job_number": "ENG-123",
+        "job_type": 2
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "turbohire",
+    "operation": "fields",
+    "name": "populated",
+    "inputs": {
+      "row": {
+        "JobId": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "JobIdObfuscated": "abc%2Fdef",
+        "JobTitle": "Branch Manager",
+        "JobCode": "FIPL-54320",
+        "Department": "Service Delivery",
+        "ClientName": "Flipkart",
+        "JobDescriptionV2": "<p>Lead the service-delivery team.</p>",
+        "RolesAndResponsibilitiesV2": "<p>Own branch operations.</p>",
+        "EligibilityV2": "<p>Five years of experience.</p>",
+        "Location": "[{\"Address\": \"Ghaziabad, Uttar Pradesh, India\"}]",
+        "JobTypeV2": "Full Time",
+        "PublishedDates": {
+          "CAREERPAGE": "2026-07-31T12:06:25Z"
+        },
+        "Experience": {
+          "MinExp": 5,
+          "MaxExp": 10
+        },
+        "Skills": [
+          " Leadership ",
+          "Operations",
+          "Leadership"
+        ]
+      },
+      "origin": "https://flipkart.turbohire.co"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://flipkart.turbohire.co/job/publicjobs/abc%2Fdef",
+      "title": "Branch Manager",
+      "description": "<p>Lead the service-delivery team.</p>",
+      "locations": [
+        "Ghaziabad, Uttar Pradesh, India"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-07-31T12:06:25Z",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Leadership",
+          "Operations"
+        ],
+        "responsibilities": "<p>Own branch operations.</p>",
+        "qualifications": "<p>Five years of experience.</p>"
+      },
+      "metadata": {
+        "id": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "job_code": "FIPL-54320",
+        "department": "Service Delivery",
+        "client_name": "Flipkart",
+        "experience_min": 5,
+        "experience_max": 10
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "turbohire",
+    "operation": "fields",
+    "name": "unicode-space",
+    "inputs": {
+      "row": {
+        "JobId": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "JobIdObfuscated": "abc%2Fdef",
+        "JobTitle": " A\u001c B  C ",
+        "JobCode": "FIPL-54320",
+        "Department": "Service Delivery",
+        "ClientName": "Flipkart",
+        "JobDescriptionV2": "<p>Lead the service-delivery team.</p>",
+        "RolesAndResponsibilitiesV2": "<p>Own branch operations.</p>",
+        "EligibilityV2": "<p>Five years of experience.</p>",
+        "Location": "[{\"Address\": \"Ghaziabad, Uttar Pradesh, India\"}]",
+        "JobTypeV2": "Full Time",
+        "PublishedDates": {
+          "CAREERPAGE": "2026-07-31T12:06:25Z"
+        },
+        "Experience": {
+          "MinExp": 5,
+          "MaxExp": 10
+        },
+        "Skills": [
+          " Leadership ",
+          "Operations",
+          "Leadership"
+        ]
+      },
+      "origin": "https://flipkart.turbohire.co"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://flipkart.turbohire.co/job/publicjobs/abc%2Fdef",
+      "title": "A B C",
+      "description": "<p>Lead the service-delivery team.</p>",
+      "locations": [
+        "Ghaziabad, Uttar Pradesh, India"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-07-31T12:06:25Z",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Leadership",
+          "Operations"
+        ],
+        "responsibilities": "<p>Own branch operations.</p>",
+        "qualifications": "<p>Five years of experience.</p>"
+      },
+      "metadata": {
+        "id": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "job_code": "FIPL-54320",
+        "department": "Service Delivery",
+        "client_name": "Flipkart",
+        "experience_min": 5,
+        "experience_max": 10
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "turbohire",
+    "operation": "fields",
+    "name": "missing-title",
+    "inputs": {
+      "row": {
+        "JobId": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "JobIdObfuscated": "abc%2Fdef",
+        "JobTitle": null,
+        "JobCode": "FIPL-54320",
+        "Department": "Service Delivery",
+        "ClientName": "Flipkart",
+        "JobDescriptionV2": "<p>Lead the service-delivery team.</p>",
+        "RolesAndResponsibilitiesV2": "<p>Own branch operations.</p>",
+        "EligibilityV2": "<p>Five years of experience.</p>",
+        "Location": "[{\"Address\": \"Ghaziabad, Uttar Pradesh, India\"}]",
+        "JobTypeV2": "Full Time",
+        "PublishedDates": {
+          "CAREERPAGE": "2026-07-31T12:06:25Z"
+        },
+        "Experience": {
+          "MinExp": 5,
+          "MaxExp": 10
+        },
+        "Skills": [
+          " Leadership ",
+          "Operations",
+          "Leadership"
+        ]
+      },
+      "origin": "https://flipkart.turbohire.co"
+    },
+    "status": "failed",
+    "error_type": "ValueError"
+  },
+  {
+    "provider": "turbohire",
+    "operation": "fields",
+    "name": "missing-id",
+    "inputs": {
+      "row": {
+        "JobId": null,
+        "JobIdObfuscated": "abc%2Fdef",
+        "JobTitle": "Branch Manager",
+        "JobCode": "FIPL-54320",
+        "Department": "Service Delivery",
+        "ClientName": "Flipkart",
+        "JobDescriptionV2": "<p>Lead the service-delivery team.</p>",
+        "RolesAndResponsibilitiesV2": "<p>Own branch operations.</p>",
+        "EligibilityV2": "<p>Five years of experience.</p>",
+        "Location": "[{\"Address\": \"Ghaziabad, Uttar Pradesh, India\"}]",
+        "JobTypeV2": "Full Time",
+        "PublishedDates": {
+          "CAREERPAGE": "2026-07-31T12:06:25Z"
+        },
+        "Experience": {
+          "MinExp": 5,
+          "MaxExp": 10
+        },
+        "Skills": [
+          " Leadership ",
+          "Operations",
+          "Leadership"
+        ]
+      },
+      "origin": "https://flipkart.turbohire.co"
+    },
+    "status": "failed",
+    "error_type": "ValueError"
+  },
+  {
+    "provider": "turbohire",
+    "operation": "fields",
+    "name": "numeric-id",
+    "inputs": {
+      "row": {
+        "JobId": 1,
+        "JobIdObfuscated": "abc%2Fdef",
+        "JobTitle": "Branch Manager",
+        "JobCode": "FIPL-54320",
+        "Department": "Service Delivery",
+        "ClientName": "Flipkart",
+        "JobDescriptionV2": "<p>Lead the service-delivery team.</p>",
+        "RolesAndResponsibilitiesV2": "<p>Own branch operations.</p>",
+        "EligibilityV2": "<p>Five years of experience.</p>",
+        "Location": "[{\"Address\": \"Ghaziabad, Uttar Pradesh, India\"}]",
+        "JobTypeV2": "Full Time",
+        "PublishedDates": {
+          "CAREERPAGE": "2026-07-31T12:06:25Z"
+        },
+        "Experience": {
+          "MinExp": 5,
+          "MaxExp": 10
+        },
+        "Skills": [
+          " Leadership ",
+          "Operations",
+          "Leadership"
+        ]
+      },
+      "origin": "https://flipkart.turbohire.co"
+    },
+    "status": "failed",
+    "error_type": "ValueError"
+  },
+  {
+    "provider": "turbohire",
+    "operation": "fields",
+    "name": "path-segment",
+    "inputs": {
+      "row": {
+        "JobId": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "JobIdObfuscated": "../abc?draft=true#section",
+        "JobTitle": "Branch Manager",
+        "JobCode": "FIPL-54320",
+        "Department": "Service Delivery",
+        "ClientName": "Flipkart",
+        "JobDescriptionV2": "<p>Lead the service-delivery team.</p>",
+        "RolesAndResponsibilitiesV2": "<p>Own branch operations.</p>",
+        "EligibilityV2": "<p>Five years of experience.</p>",
+        "Location": "[{\"Address\": \"Ghaziabad, Uttar Pradesh, India\"}]",
+        "JobTypeV2": "Full Time",
+        "PublishedDates": {
+          "CAREERPAGE": "2026-07-31T12:06:25Z"
+        },
+        "Experience": {
+          "MinExp": 5,
+          "MaxExp": 10
+        },
+        "Skills": [
+          " Leadership ",
+          "Operations",
+          "Leadership"
+        ]
+      },
+      "origin": "https://flipkart.turbohire.co"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://flipkart.turbohire.co/job/publicjobs/..%2Fabc%3Fdraft%3Dtrue%23section",
+      "title": "Branch Manager",
+      "description": "<p>Lead the service-delivery team.</p>",
+      "locations": [
+        "Ghaziabad, Uttar Pradesh, India"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-07-31T12:06:25Z",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Leadership",
+          "Operations"
+        ],
+        "responsibilities": "<p>Own branch operations.</p>",
+        "qualifications": "<p>Five years of experience.</p>"
+      },
+      "metadata": {
+        "id": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "job_code": "FIPL-54320",
+        "department": "Service Delivery",
+        "client_name": "Flipkart",
+        "experience_min": 5,
+        "experience_max": 10
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "turbohire",
+    "operation": "fields",
+    "name": "utf8-segment",
+    "inputs": {
+      "row": {
+        "JobId": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "JobIdObfuscated": "caf%C3%A9/%ZZ",
+        "JobTitle": "Branch Manager",
+        "JobCode": "FIPL-54320",
+        "Department": "Service Delivery",
+        "ClientName": "Flipkart",
+        "JobDescriptionV2": "<p>Lead the service-delivery team.</p>",
+        "RolesAndResponsibilitiesV2": "<p>Own branch operations.</p>",
+        "EligibilityV2": "<p>Five years of experience.</p>",
+        "Location": "[{\"Address\": \"Ghaziabad, Uttar Pradesh, India\"}]",
+        "JobTypeV2": "Full Time",
+        "PublishedDates": {
+          "CAREERPAGE": "2026-07-31T12:06:25Z"
+        },
+        "Experience": {
+          "MinExp": 5,
+          "MaxExp": 10
+        },
+        "Skills": [
+          " Leadership ",
+          "Operations",
+          "Leadership"
+        ]
+      },
+      "origin": "https://flipkart.turbohire.co"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://flipkart.turbohire.co/job/publicjobs/caf%C3%A9%2F%25ZZ",
+      "title": "Branch Manager",
+      "description": "<p>Lead the service-delivery team.</p>",
+      "locations": [
+        "Ghaziabad, Uttar Pradesh, India"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-07-31T12:06:25Z",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Leadership",
+          "Operations"
+        ],
+        "responsibilities": "<p>Own branch operations.</p>",
+        "qualifications": "<p>Five years of experience.</p>"
+      },
+      "metadata": {
+        "id": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "job_code": "FIPL-54320",
+        "department": "Service Delivery",
+        "client_name": "Flipkart",
+        "experience_min": 5,
+        "experience_max": 10
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "turbohire",
+    "operation": "fields",
+    "name": "description-fallback",
+    "inputs": {
+      "row": {
+        "JobId": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "JobIdObfuscated": "abc%2Fdef",
+        "JobTitle": "Branch Manager",
+        "JobCode": "FIPL-54320",
+        "Department": "Service Delivery",
+        "ClientName": "Flipkart",
+        "JobDescriptionV2": " ",
+        "RolesAndResponsibilitiesV2": "<p>Own branch operations.</p>",
+        "EligibilityV2": "<p>Five years of experience.</p>",
+        "Location": "[{\"Address\": \"Ghaziabad, Uttar Pradesh, India\"}]",
+        "JobTypeV2": "Full Time",
+        "PublishedDates": {
+          "CAREERPAGE": "2026-07-31T12:06:25Z"
+        },
+        "Experience": {
+          "MinExp": 5,
+          "MaxExp": 10
+        },
+        "Skills": [
+          " Leadership ",
+          "Operations",
+          "Leadership"
+        ],
+        "JobDescription": "<p>Fallback</p>"
+      },
+      "origin": "https://flipkart.turbohire.co"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://flipkart.turbohire.co/job/publicjobs/abc%2Fdef",
+      "title": "Branch Manager",
+      "description": "<p>Fallback</p>",
+      "locations": [
+        "Ghaziabad, Uttar Pradesh, India"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-07-31T12:06:25Z",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Leadership",
+          "Operations"
+        ],
+        "responsibilities": "<p>Own branch operations.</p>",
+        "qualifications": "<p>Five years of experience.</p>"
+      },
+      "metadata": {
+        "id": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "job_code": "FIPL-54320",
+        "department": "Service Delivery",
+        "client_name": "Flipkart",
+        "experience_min": 5,
+        "experience_max": 10
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "turbohire",
+    "operation": "fields",
+    "name": "no-description",
+    "inputs": {
+      "row": {
+        "JobId": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "JobIdObfuscated": "abc%2Fdef",
+        "JobTitle": "Branch Manager",
+        "JobCode": "FIPL-54320",
+        "Department": "Service Delivery",
+        "ClientName": "Flipkart",
+        "JobDescriptionV2": null,
+        "RolesAndResponsibilitiesV2": "<p>Own branch operations.</p>",
+        "EligibilityV2": "<p>Five years of experience.</p>",
+        "Location": "[{\"Address\": \"Ghaziabad, Uttar Pradesh, India\"}]",
+        "JobTypeV2": "Full Time",
+        "PublishedDates": {
+          "CAREERPAGE": "2026-07-31T12:06:25Z"
+        },
+        "Experience": {
+          "MinExp": 5,
+          "MaxExp": 10
+        },
+        "Skills": [
+          " Leadership ",
+          "Operations",
+          "Leadership"
+        ],
+        "JobDescription": null
+      },
+      "origin": "https://flipkart.turbohire.co"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://flipkart.turbohire.co/job/publicjobs/abc%2Fdef",
+      "title": "Branch Manager",
+      "description": null,
+      "locations": [
+        "Ghaziabad, Uttar Pradesh, India"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-07-31T12:06:25Z",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Leadership",
+          "Operations"
+        ],
+        "responsibilities": "<p>Own branch operations.</p>",
+        "qualifications": "<p>Five years of experience.</p>"
+      },
+      "metadata": {
+        "id": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "job_code": "FIPL-54320",
+        "department": "Service Delivery",
+        "client_name": "Flipkart",
+        "experience_min": 5,
+        "experience_max": 10
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "turbohire",
+    "operation": "fields",
+    "name": "location-text",
+    "inputs": {
+      "row": {
+        "JobId": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "JobIdObfuscated": "abc%2Fdef",
+        "JobTitle": "Branch Manager",
+        "JobCode": "FIPL-54320",
+        "Department": "Service Delivery",
+        "ClientName": "Flipkart",
+        "JobDescriptionV2": "<p>Lead the service-delivery team.</p>",
+        "RolesAndResponsibilitiesV2": "<p>Own branch operations.</p>",
+        "EligibilityV2": "<p>Five years of experience.</p>",
+        "Location": " New Delhi, India ",
+        "JobTypeV2": "Full Time",
+        "PublishedDates": {
+          "CAREERPAGE": "2026-07-31T12:06:25Z"
+        },
+        "Experience": {
+          "MinExp": 5,
+          "MaxExp": 10
+        },
+        "Skills": [
+          " Leadership ",
+          "Operations",
+          "Leadership"
+        ]
+      },
+      "origin": "https://flipkart.turbohire.co"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://flipkart.turbohire.co/job/publicjobs/abc%2Fdef",
+      "title": "Branch Manager",
+      "description": "<p>Lead the service-delivery team.</p>",
+      "locations": [
+        "New Delhi, India"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-07-31T12:06:25Z",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Leadership",
+          "Operations"
+        ],
+        "responsibilities": "<p>Own branch operations.</p>",
+        "qualifications": "<p>Five years of experience.</p>"
+      },
+      "metadata": {
+        "id": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "job_code": "FIPL-54320",
+        "department": "Service Delivery",
+        "client_name": "Flipkart",
+        "experience_min": 5,
+        "experience_max": 10
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "turbohire",
+    "operation": "fields",
+    "name": "location-object",
+    "inputs": {
+      "row": {
+        "JobId": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "JobIdObfuscated": "abc%2Fdef",
+        "JobTitle": "Branch Manager",
+        "JobCode": "FIPL-54320",
+        "Department": "Service Delivery",
+        "ClientName": "Flipkart",
+        "JobDescriptionV2": "<p>Lead the service-delivery team.</p>",
+        "RolesAndResponsibilitiesV2": "<p>Own branch operations.</p>",
+        "EligibilityV2": "<p>Five years of experience.</p>",
+        "Location": "{}",
+        "JobTypeV2": "Full Time",
+        "PublishedDates": {
+          "CAREERPAGE": "2026-07-31T12:06:25Z"
+        },
+        "Experience": {
+          "MinExp": 5,
+          "MaxExp": 10
+        },
+        "Skills": [
+          " Leadership ",
+          "Operations",
+          "Leadership"
+        ]
+      },
+      "origin": "https://flipkart.turbohire.co"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://flipkart.turbohire.co/job/publicjobs/abc%2Fdef",
+      "title": "Branch Manager",
+      "description": "<p>Lead the service-delivery team.</p>",
+      "locations": null,
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-07-31T12:06:25Z",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Leadership",
+          "Operations"
+        ],
+        "responsibilities": "<p>Own branch operations.</p>",
+        "qualifications": "<p>Five years of experience.</p>"
+      },
+      "metadata": {
+        "id": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "job_code": "FIPL-54320",
+        "department": "Service Delivery",
+        "client_name": "Flipkart",
+        "experience_min": 5,
+        "experience_max": 10
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "turbohire",
+    "operation": "fields",
+    "name": "location-fold",
+    "inputs": {
+      "row": {
+        "JobId": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "JobIdObfuscated": "abc%2Fdef",
+        "JobTitle": "Branch Manager",
+        "JobCode": "FIPL-54320",
+        "Department": "Service Delivery",
+        "ClientName": "Flipkart",
+        "JobDescriptionV2": "<p>Lead the service-delivery team.</p>",
+        "RolesAndResponsibilitiesV2": "<p>Own branch operations.</p>",
+        "EligibilityV2": "<p>Five years of experience.</p>",
+        "Location": "[{\"Address\": \"Stra\\u00dfe\"}, {\"Address\": \"STRASSE\"}]",
+        "JobTypeV2": "Full Time",
+        "PublishedDates": {
+          "CAREERPAGE": "2026-07-31T12:06:25Z"
+        },
+        "Experience": {
+          "MinExp": 5,
+          "MaxExp": 10
+        },
+        "Skills": [
+          " Leadership ",
+          "Operations",
+          "Leadership"
+        ]
+      },
+      "origin": "https://flipkart.turbohire.co"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://flipkart.turbohire.co/job/publicjobs/abc%2Fdef",
+      "title": "Branch Manager",
+      "description": "<p>Lead the service-delivery team.</p>",
+      "locations": [
+        "Straße"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-07-31T12:06:25Z",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Leadership",
+          "Operations"
+        ],
+        "responsibilities": "<p>Own branch operations.</p>",
+        "qualifications": "<p>Five years of experience.</p>"
+      },
+      "metadata": {
+        "id": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "job_code": "FIPL-54320",
+        "department": "Service Delivery",
+        "client_name": "Flipkart",
+        "experience_min": 5,
+        "experience_max": 10
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "turbohire",
+    "operation": "fields",
+    "name": "unspecified",
+    "inputs": {
+      "row": {
+        "JobId": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "JobIdObfuscated": "abc%2Fdef",
+        "JobTitle": "Branch Manager",
+        "JobCode": "FIPL-54320",
+        "Department": "Service Delivery",
+        "ClientName": "Flipkart",
+        "JobDescriptionV2": "<p>Lead the service-delivery team.</p>",
+        "RolesAndResponsibilitiesV2": "<p>Own branch operations.</p>",
+        "EligibilityV2": "<p>Five years of experience.</p>",
+        "Location": "[{\"Address\": \"Ghaziabad, Uttar Pradesh, India\"}]",
+        "JobTypeV2": " Unspecified ",
+        "PublishedDates": {
+          "CAREERPAGE": "2026-07-31T12:06:25Z"
+        },
+        "Experience": {
+          "MinExp": 5,
+          "MaxExp": 10
+        },
+        "Skills": [
+          " Leadership ",
+          "Operations",
+          "Leadership"
+        ]
+      },
+      "origin": "https://flipkart.turbohire.co"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://flipkart.turbohire.co/job/publicjobs/abc%2Fdef",
+      "title": "Branch Manager",
+      "description": "<p>Lead the service-delivery team.</p>",
+      "locations": [
+        "Ghaziabad, Uttar Pradesh, India"
+      ],
+      "employment_type": null,
+      "job_location_type": null,
+      "date_posted": "2026-07-31T12:06:25Z",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Leadership",
+          "Operations"
+        ],
+        "responsibilities": "<p>Own branch operations.</p>",
+        "qualifications": "<p>Five years of experience.</p>"
+      },
+      "metadata": {
+        "id": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "job_code": "FIPL-54320",
+        "department": "Service Delivery",
+        "client_name": "Flipkart",
+        "experience_min": 5,
+        "experience_max": 10
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "turbohire",
+    "operation": "fields",
+    "name": "employment-fallback",
+    "inputs": {
+      "row": {
+        "JobId": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "JobIdObfuscated": "abc%2Fdef",
+        "JobTitle": "Branch Manager",
+        "JobCode": "FIPL-54320",
+        "Department": "Service Delivery",
+        "ClientName": "Flipkart",
+        "JobDescriptionV2": "<p>Lead the service-delivery team.</p>",
+        "RolesAndResponsibilitiesV2": "<p>Own branch operations.</p>",
+        "EligibilityV2": "<p>Five years of experience.</p>",
+        "Location": "[{\"Address\": \"Ghaziabad, Uttar Pradesh, India\"}]",
+        "JobTypeV2": null,
+        "PublishedDates": {
+          "CAREERPAGE": "2026-07-31T12:06:25Z"
+        },
+        "Experience": {
+          "MinExp": 5,
+          "MaxExp": 10
+        },
+        "Skills": [
+          " Leadership ",
+          "Operations",
+          "Leadership"
+        ],
+        "Type": "Part Time"
+      },
+      "origin": "https://flipkart.turbohire.co"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://flipkart.turbohire.co/job/publicjobs/abc%2Fdef",
+      "title": "Branch Manager",
+      "description": "<p>Lead the service-delivery team.</p>",
+      "locations": [
+        "Ghaziabad, Uttar Pradesh, India"
+      ],
+      "employment_type": "Part Time",
+      "job_location_type": null,
+      "date_posted": "2026-07-31T12:06:25Z",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Leadership",
+          "Operations"
+        ],
+        "responsibilities": "<p>Own branch operations.</p>",
+        "qualifications": "<p>Five years of experience.</p>"
+      },
+      "metadata": {
+        "id": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "job_code": "FIPL-54320",
+        "department": "Service Delivery",
+        "client_name": "Flipkart",
+        "experience_min": 5,
+        "experience_max": 10
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "turbohire",
+    "operation": "fields",
+    "name": "experience-shapes",
+    "inputs": {
+      "row": {
+        "JobId": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "JobIdObfuscated": "abc%2Fdef",
+        "JobTitle": "Branch Manager",
+        "JobCode": "FIPL-54320",
+        "Department": "Service Delivery",
+        "ClientName": "Flipkart",
+        "JobDescriptionV2": "<p>Lead the service-delivery team.</p>",
+        "RolesAndResponsibilitiesV2": "<p>Own branch operations.</p>",
+        "EligibilityV2": "<p>Five years of experience.</p>",
+        "Location": "[{\"Address\": \"Ghaziabad, Uttar Pradesh, India\"}]",
+        "JobTypeV2": "Full Time",
+        "PublishedDates": {
+          "CAREERPAGE": "2026-07-31T12:06:25Z"
+        },
+        "Experience": {
+          "MinExp": true,
+          "MaxExp": "5"
+        },
+        "Skills": [
+          " Leadership ",
+          "Operations",
+          "Leadership"
+        ]
+      },
+      "origin": "https://flipkart.turbohire.co"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://flipkart.turbohire.co/job/publicjobs/abc%2Fdef",
+      "title": "Branch Manager",
+      "description": "<p>Lead the service-delivery team.</p>",
+      "locations": [
+        "Ghaziabad, Uttar Pradesh, India"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-07-31T12:06:25Z",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Leadership",
+          "Operations"
+        ],
+        "responsibilities": "<p>Own branch operations.</p>",
+        "qualifications": "<p>Five years of experience.</p>"
+      },
+      "metadata": {
+        "id": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "job_code": "FIPL-54320",
+        "department": "Service Delivery",
+        "client_name": "Flipkart"
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "turbohire",
+    "operation": "fields",
+    "name": "date-fallback",
+    "inputs": {
+      "row": {
+        "JobId": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "JobIdObfuscated": "abc%2Fdef",
+        "JobTitle": "Branch Manager",
+        "JobCode": "FIPL-54320",
+        "Department": "Service Delivery",
+        "ClientName": "Flipkart",
+        "JobDescriptionV2": "<p>Lead the service-delivery team.</p>",
+        "RolesAndResponsibilitiesV2": "<p>Own branch operations.</p>",
+        "EligibilityV2": "<p>Five years of experience.</p>",
+        "Location": "[{\"Address\": \"Ghaziabad, Uttar Pradesh, India\"}]",
+        "JobTypeV2": "Full Time",
+        "PublishedDates": {},
+        "Experience": {
+          "MinExp": 5,
+          "MaxExp": 10
+        },
+        "Skills": [
+          " Leadership ",
+          "Operations",
+          "Leadership"
+        ],
+        "PublishedDate": "2026-10-09"
+      },
+      "origin": "https://flipkart.turbohire.co"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://flipkart.turbohire.co/job/publicjobs/abc%2Fdef",
+      "title": "Branch Manager",
+      "description": "<p>Lead the service-delivery team.</p>",
+      "locations": [
+        "Ghaziabad, Uttar Pradesh, India"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": "2026-10-09",
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Leadership",
+          "Operations"
+        ],
+        "responsibilities": "<p>Own branch operations.</p>",
+        "qualifications": "<p>Five years of experience.</p>"
+      },
+      "metadata": {
+        "id": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "job_code": "FIPL-54320",
+        "department": "Service Delivery",
+        "client_name": "Flipkart",
+        "experience_min": 5,
+        "experience_max": 10
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "turbohire",
+    "operation": "fields",
+    "name": "numeric-date",
+    "inputs": {
+      "row": {
+        "JobId": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "JobIdObfuscated": "abc%2Fdef",
+        "JobTitle": "Branch Manager",
+        "JobCode": "FIPL-54320",
+        "Department": "Service Delivery",
+        "ClientName": "Flipkart",
+        "JobDescriptionV2": "<p>Lead the service-delivery team.</p>",
+        "RolesAndResponsibilitiesV2": "<p>Own branch operations.</p>",
+        "EligibilityV2": "<p>Five years of experience.</p>",
+        "Location": "[{\"Address\": \"Ghaziabad, Uttar Pradesh, India\"}]",
+        "JobTypeV2": "Full Time",
+        "PublishedDates": {
+          "CAREERPAGE": 1
+        },
+        "Experience": {
+          "MinExp": 5,
+          "MaxExp": 10
+        },
+        "Skills": [
+          " Leadership ",
+          "Operations",
+          "Leadership"
+        ]
+      },
+      "origin": "https://flipkart.turbohire.co"
+    },
+    "status": "complete",
+    "expected": {
+      "url": "https://flipkart.turbohire.co/job/publicjobs/abc%2Fdef",
+      "title": "Branch Manager",
+      "description": "<p>Lead the service-delivery team.</p>",
+      "locations": [
+        "Ghaziabad, Uttar Pradesh, India"
+      ],
+      "employment_type": "Full Time",
+      "job_location_type": null,
+      "date_posted": null,
+      "base_salary": null,
+      "language": "en",
+      "localizations": null,
+      "extras": {
+        "skills": [
+          "Leadership",
+          "Operations"
+        ],
+        "responsibilities": "<p>Own branch operations.</p>",
+        "qualifications": "<p>Five years of experience.</p>"
+      },
+      "metadata": {
+        "id": "d48b732d-c749-4e82-bd53-fcef465411db",
+        "job_code": "FIPL-54320",
+        "department": "Service Delivery",
+        "client_name": "Flipkart",
+        "experience_min": 5,
+        "experience_max": 10
+      },
+      "source_identity": null
+    }
+  },
+  {
+    "provider": "pageup",
+    "operation": "listing-page",
+    "name": "populated",
+    "inputs": {
+      "body": "<html><script>PU.Jobs.source = {\"instId\":873,\"sourcePointer\":\"cw\",\"language\":\"en-us\",\"baseDomain\":\"https://careers.pageuppeople.com\",\"dynamicTemplate\":true,\"action\":\"Listing\"};</script><body><a class=\"job-link\" href=\"/873/cw/en-us/job/560566/plumber\">Plumber</a><a class=\"job-link\" href=\"/873/cw/en-us/job/560566/plumber\">Plumber</a><p>Search Results: <span class=\"result-count\">1</span></p></body></html>",
+      "instance": 873,
+      "source_pointer": "cw",
+      "locale": "en-us",
+      "page": 1,
+      "page_size": 500,
+      "expected_total": null
+    },
+    "status": "complete",
+    "expected": [
+      [
+        {
+          "url": "https://careers.pageuppeople.com/873/cw/en-us/job/560566/plumber",
+          "title": "Plumber",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      1,
+      false
+    ]
+  },
+  {
+    "provider": "pageup",
+    "operation": "listing-page",
+    "name": "empty",
+    "inputs": {
+      "body": "<html><script>PU.Jobs.source = {\"instId\":873,\"sourcePointer\":\"cw\",\"language\":\"en-us\",\"baseDomain\":\"https://careers.pageuppeople.com\",\"dynamicTemplate\":true,\"action\":\"Listing\"};</script><body><p>Search Results: <span class=\"result-count\">0</span></p></body></html>",
+      "instance": 873,
+      "source_pointer": "cw",
+      "locale": "en-us",
+      "page": 1,
+      "page_size": 500,
+      "expected_total": null
+    },
+    "status": "complete",
+    "expected": [
+      [],
+      0,
+      false
+    ]
+  },
+  {
+    "provider": "pageup",
+    "operation": "listing-page",
+    "name": "conflicting-count",
+    "inputs": {
+      "body": "<html><script>PU.Jobs.source = {\"instId\":873,\"sourcePointer\":\"cw\",\"language\":\"en-us\",\"baseDomain\":\"https://careers.pageuppeople.com\",\"dynamicTemplate\":true,\"action\":\"Listing\"};</script><body><a class=\"job-link\" href=\"/873/cw/en-us/job/560566/plumber\">Plumber</a><a class=\"job-link\" href=\"/873/cw/en-us/job/560566/plumber\">Plumber</a><p>Search Results: <span class=\"result-count\">2</span></p></body></html>",
+      "instance": 873,
+      "source_pointer": "cw",
+      "locale": "en-us",
+      "page": 1,
+      "page_size": 500,
+      "expected_total": null
+    },
+    "status": "failed",
+    "error_type": "ValueError"
+  },
+  {
+    "provider": "pageup",
+    "operation": "listing-page",
+    "name": "changed-snapshot",
+    "inputs": {
+      "body": "<html><script>PU.Jobs.source = {\"instId\":873,\"sourcePointer\":\"cw\",\"language\":\"en-us\",\"baseDomain\":\"https://careers.pageuppeople.com\",\"dynamicTemplate\":true,\"action\":\"Listing\"};</script><body><a class=\"job-link\" href=\"/873/cw/en-us/job/560566/plumber\">Plumber</a><a class=\"job-link\" href=\"/873/cw/en-us/job/560566/plumber\">Plumber</a><p>Search Results: <span class=\"result-count\">1</span></p></body></html>",
+      "instance": 873,
+      "source_pointer": "cw",
+      "locale": "en-us",
+      "page": 1,
+      "page_size": 500,
+      "expected_total": 2
+    },
+    "status": "failed",
+    "error_type": "ValueError"
+  },
+  {
+    "provider": "pageup",
+    "operation": "listing-page",
+    "name": "cross-tenant",
+    "inputs": {
+      "body": "<html><script>PU.Jobs.source = {\"instId\":999,\"sourcePointer\":\"cw\",\"language\":\"en-us\",\"baseDomain\":\"https://careers.pageuppeople.com\",\"dynamicTemplate\":true,\"action\":\"Listing\"};</script><body><a class=\"job-link\" href=\"/873/cw/en-us/job/560566/plumber\">Plumber</a><a class=\"job-link\" href=\"/873/cw/en-us/job/560566/plumber\">Plumber</a><p>Search Results: <span class=\"result-count\">1</span></p></body></html>",
+      "instance": 873,
+      "source_pointer": "cw",
+      "locale": "en-us",
+      "page": 1,
+      "page_size": 500,
+      "expected_total": null
+    },
+    "status": "failed",
+    "error_type": "ValueError"
+  },
+  {
+    "provider": "pageup",
+    "operation": "listing-page",
+    "name": "generic-title",
+    "inputs": {
+      "body": "<html><script>PU.Jobs.source = {\"instId\":873,\"sourcePointer\":\"cw\",\"language\":\"en-us\",\"baseDomain\":\"https://careers.pageuppeople.com\",\"dynamicTemplate\":true,\"action\":\"Listing\"};</script><body><a class=\"job-link\" href=\"/873/cw/en-us/job/560566/plumber\">Apply now</a><a class=\"job-link\" href=\"/873/cw/en-us/job/560566/plumber\">Apply now</a><p>Search Results: <span class=\"result-count\">1</span></p></body></html>",
+      "instance": 873,
+      "source_pointer": "cw",
+      "locale": "en-us",
+      "page": 1,
+      "page_size": 500,
+      "expected_total": null
+    },
+    "status": "complete",
+    "expected": [
+      [
+        {
+          "url": "https://careers.pageuppeople.com/873/cw/en-us/job/560566/plumber",
+          "title": "Apply now",
+          "description": null,
+          "locations": null,
+          "employment_type": null,
+          "job_location_type": null,
+          "date_posted": null,
+          "base_salary": null,
+          "language": null,
+          "localizations": null,
+          "extras": null,
+          "metadata": null,
+          "source_identity": null
+        }
+      ],
+      1,
+      false
+    ]
+  },
+  {
+    "provider": "pageup",
+    "operation": "listing-page",
+    "name": "markerless-empty",
+    "inputs": {
+      "body": "<html><body></body></html>",
+      "instance": 873,
+      "source_pointer": "cw",
+      "locale": "en-us",
+      "page": 1,
+      "page_size": 500,
+      "expected_total": null
+    },
+    "status": "failed",
+    "error_type": "ValueError"
+  },
+  {
+    "provider": "infoniqa",
+    "operation": "shell",
+    "name": "populated",
+    "inputs": {
+      "body": "\n    <html>\n      <body class=\"jobOfferList\">\n        <a class=\"navbar-brand\"><img\n          src=\"/hcm/jobexchange/streamResource.do/1/styles/jobexchange/theme/images/logo.svg\"\n          alt=\"EHL Hotelfachschule Passugg Logo\"></a>\n        <a class=\"menu menuQuicksearch\" href=\"/hcm/jobexchange/showJobOfferList.do?j=jobexchange\">Offene Jobs</a>\n        <h1 class=\"caption\">Stellenangebote der EHL Hotelfachschule Passugg</h1>\n        <form id=\"jobOfferSearch\" method=\"post\" action=\"\">\n          <input name=\"j\" type=\"hidden\" value=\"jobexchange\">\n          <input name=\"_csrf\" type=\"hidden\" value=\"6526e5df-bf9f-4d16-9c2f-0ed3067c4ab6\">\n        </form>\n        <script>\n          $.ajax({url: '/hcm/jobexchange/showJobOfferList.do?search=true',\n                    data: {'_csrf': '6526e5df-bf9f-4d16-9c2f-0ed3067c4ab6'}});\n          $.ajax({data: {showNextJobOffers: 'true', '_csrf': '6526e5df-bf9f-4d16-9c2f-0ed3067c4ab6'}});\n          $.ajax({data: {hasNextJobOffers: 'true', '_csrf': '6526e5df-bf9f-4d16-9c2f-0ed3067c4ab6'}});\n        </script>\n      </body>\n    </html>\n    ",
+      "board_url": "https://ehlcampus.infoniqa.io/hcm/jobexchange/showJobOfferList.do?init=true&j=jobexchange",
+      "employer": "EHL Hotelfachschule Passugg"
+    },
+    "status": "complete",
+    "expected": {
+      "csrf": "6526e5df-bf9f-4d16-9c2f-0ed3067c4ab6",
+      "employer_name": "EHL Hotelfachschule Passugg"
+    }
+  },
+  {
+    "provider": "infoniqa",
+    "operation": "shell",
+    "name": "cross-employer",
+    "inputs": {
+      "body": "\n    <html>\n      <body class=\"jobOfferList\">\n        <a class=\"navbar-brand\"><img\n          src=\"/hcm/jobexchange/streamResource.do/1/styles/jobexchange/theme/images/logo.svg\"\n          alt=\"Another Employer Logo\"></a>\n        <a class=\"menu menuQuicksearch\" href=\"/hcm/jobexchange/showJobOfferList.do?j=jobexchange\">Offene Jobs</a>\n        <h1 class=\"caption\">Stellenangebote der Another Employer</h1>\n        <form id=\"jobOfferSearch\" method=\"post\" action=\"\">\n          <input name=\"j\" type=\"hidden\" value=\"jobexchange\">\n          <input name=\"_csrf\" type=\"hidden\" value=\"6526e5df-bf9f-4d16-9c2f-0ed3067c4ab6\">\n        </form>\n        <script>\n          $.ajax({url: '/hcm/jobexchange/showJobOfferList.do?search=true',\n                    data: {'_csrf': '6526e5df-bf9f-4d16-9c2f-0ed3067c4ab6'}});\n          $.ajax({data: {showNextJobOffers: 'true', '_csrf': '6526e5df-bf9f-4d16-9c2f-0ed3067c4ab6'}});\n          $.ajax({data: {hasNextJobOffers: 'true', '_csrf': '6526e5df-bf9f-4d16-9c2f-0ed3067c4ab6'}});\n        </script>\n      </body>\n    </html>\n    ",
+      "board_url": "https://ehlcampus.infoniqa.io/hcm/jobexchange/showJobOfferList.do?init=true&j=jobexchange",
+      "employer": "EHL Hotelfachschule Passugg"
+    },
+    "status": "failed",
+    "error_type": "ValueError"
+  },
+  {
+    "provider": "infoniqa",
+    "operation": "shell",
+    "name": "cross-origin",
+    "inputs": {
+      "body": "\n    <html>\n      <body class=\"jobOfferList\">\n        <a class=\"navbar-brand\"><img\n          src=\"/hcm/jobexchange/streamResource.do/1/styles/jobexchange/theme/images/logo.svg\"\n          alt=\"EHL Hotelfachschule Passugg Logo\"></a>\n        <a class=\"menu menuQuicksearch\" href=\"https://other.infoniqa.io/hcm/jobexchange/showJobOfferList.do?j=jobexchange\">Offene Jobs</a>\n        <h1 class=\"caption\">Stellenangebote der EHL Hotelfachschule Passugg</h1>\n        <form id=\"jobOfferSearch\" method=\"post\" action=\"\">\n          <input name=\"j\" type=\"hidden\" value=\"jobexchange\">\n          <input name=\"_csrf\" type=\"hidden\" value=\"6526e5df-bf9f-4d16-9c2f-0ed3067c4ab6\">\n        </form>\n        <script>\n          $.ajax({url: '/hcm/jobexchange/showJobOfferList.do?search=true',\n                    data: {'_csrf': '6526e5df-bf9f-4d16-9c2f-0ed3067c4ab6'}});\n          $.ajax({data: {showNextJobOffers: 'true', '_csrf': '6526e5df-bf9f-4d16-9c2f-0ed3067c4ab6'}});\n          $.ajax({data: {hasNextJobOffers: 'true', '_csrf': '6526e5df-bf9f-4d16-9c2f-0ed3067c4ab6'}});\n        </script>\n      </body>\n    </html>\n    ",
+      "board_url": "https://ehlcampus.infoniqa.io/hcm/jobexchange/showJobOfferList.do?init=true&j=jobexchange",
+      "employer": "EHL Hotelfachschule Passugg"
+    },
+    "status": "failed",
+    "error_type": "ValueError"
+  },
+  {
+    "provider": "infoniqa",
+    "operation": "shell",
+    "name": "missing-csrf",
+    "inputs": {
+      "body": "\n    <html>\n      <body class=\"jobOfferList\">\n        <a class=\"navbar-brand\"><img\n          src=\"/hcm/jobexchange/streamResource.do/1/styles/jobexchange/theme/images/logo.svg\"\n          alt=\"EHL Hotelfachschule Passugg Logo\"></a>\n        <a class=\"menu menuQuicksearch\" href=\"/hcm/jobexchange/showJobOfferList.do?j=jobexchange\">Offene Jobs</a>\n        <h1 class=\"caption\">Stellenangebote der EHL Hotelfachschule Passugg</h1>\n        <form id=\"jobOfferSearch\" method=\"post\" action=\"\">\n          <input name=\"j\" type=\"hidden\" value=\"jobexchange\">\n          <input name=\"other\" type=\"hidden\" value=\"6526e5df-bf9f-4d16-9c2f-0ed3067c4ab6\">\n        </form>\n        <script>\n          $.ajax({url: '/hcm/jobexchange/showJobOfferList.do?search=true',\n                    data: {'_csrf': '6526e5df-bf9f-4d16-9c2f-0ed3067c4ab6'}});\n          $.ajax({data: {showNextJobOffers: 'true', '_csrf': '6526e5df-bf9f-4d16-9c2f-0ed3067c4ab6'}});\n          $.ajax({data: {hasNextJobOffers: 'true', '_csrf': '6526e5df-bf9f-4d16-9c2f-0ed3067c4ab6'}});\n        </script>\n      </body>\n    </html>\n    ",
+      "board_url": "https://ehlcampus.infoniqa.io/hcm/jobexchange/showJobOfferList.do?init=true&j=jobexchange",
+      "employer": "EHL Hotelfachschule Passugg"
+    },
+    "status": "failed",
+    "error_type": "ValueError"
+  },
+  {
+    "provider": "infoniqa",
+    "operation": "shell",
+    "name": "invalid-body",
+    "inputs": {
+      "body": "\n    <html>\n      <body class=\"jobOfferList other\">\n        <a class=\"navbar-brand\"><img\n          src=\"/hcm/jobexchange/streamResource.do/1/styles/jobexchange/theme/images/logo.svg\"\n          alt=\"EHL Hotelfachschule Passugg Logo\"></a>\n        <a class=\"menu menuQuicksearch\" href=\"/hcm/jobexchange/showJobOfferList.do?j=jobexchange\">Offene Jobs</a>\n        <h1 class=\"caption\">Stellenangebote der EHL Hotelfachschule Passugg</h1>\n        <form id=\"jobOfferSearch\" method=\"post\" action=\"\">\n          <input name=\"j\" type=\"hidden\" value=\"jobexchange\">\n          <input name=\"_csrf\" type=\"hidden\" value=\"6526e5df-bf9f-4d16-9c2f-0ed3067c4ab6\">\n        </form>\n        <script>\n          $.ajax({url: '/hcm/jobexchange/showJobOfferList.do?search=true',\n                    data: {'_csrf': '6526e5df-bf9f-4d16-9c2f-0ed3067c4ab6'}});\n          $.ajax({data: {showNextJobOffers: 'true', '_csrf': '6526e5df-bf9f-4d16-9c2f-0ed3067c4ab6'}});\n          $.ajax({data: {hasNextJobOffers: 'true', '_csrf': '6526e5df-bf9f-4d16-9c2f-0ed3067c4ab6'}});\n        </script>\n      </body>\n    </html>\n    ",
+      "board_url": "https://ehlcampus.infoniqa.io/hcm/jobexchange/showJobOfferList.do?init=true&j=jobexchange",
+      "employer": "EHL Hotelfachschule Passugg"
+    },
+    "status": "failed",
+    "error_type": "ValueError"
+  },
+  {
+    "provider": "infoniqa",
+    "operation": "search",
+    "name": "populated",
+    "inputs": {
+      "body": "\n    <script>$('#showJobsButton').val('Jobs anzeigen (2)');</script>\n    <p class=\"searchResultInfo\">2 Treffer zu Ihrer Suche</p>\n    <ul id=\"jobOffers\" class=\"jobOffers\">\n    <li class=\"jobOffer\" tabindex=\"0\"\n        onclick=\"showBlockUIMessage(window,'wait');window.location.href='showJobOfferDetail.do?jobOfferId=8a7ec04b955ee2d701956b4405230214&amp;j=jobexchange&amp;organizationUnitId='\"\n        onkeydown=\"if(event.key === 'Enter') {window.location.href='showJobOfferDetail.do?jobOfferId=8a7ec04b955ee2d701956b4405230214&amp;j=jobexchange&amp;organizationUnitId='}\">\n      <div><h2 class=\"jobOfferDescription\">Sales Officer</h2></div>\n      <ul><li class=\"fieldHeader\">Entry date</li></ul>\n    </li>\n    \n    <li class=\"jobOffer\" tabindex=\"0\"\n        onclick=\"showBlockUIMessage(window,'wait');window.location.href='showJobOfferDetail.do?jobOfferId=8a7ec1119f2fcb33019f37afb5e00079&amp;j=jobexchange&amp;organizationUnitId='\"\n        onkeydown=\"if(event.key === 'Enter') {window.location.href='showJobOfferDetail.do?jobOfferId=8a7ec1119f2fcb33019f37afb5e00079&amp;j=jobexchange&amp;organizationUnitId='}\">\n      <div><h2 class=\"jobOfferDescription\">Sales Officer</h2></div>\n      <ul><li class=\"fieldHeader\">Entry date</li></ul>\n    </li>\n    </ul>\n    <span id=\"showNextJobOffers\"></span>\n    ",
+      "board_url": "https://ehlcampus.infoniqa.io/hcm/jobexchange/showJobOfferList.do?init=true&j=jobexchange"
+    },
+    "status": "complete",
+    "expected": {
+      "total": 2,
+      "urls": [
+        "https://ehlcampus.infoniqa.io/hcm/jobexchange/showJobOfferDetail.do?jobOfferId=8a7ec04b955ee2d701956b4405230214&j=jobexchange&organizationUnitId=",
+        "https://ehlcampus.infoniqa.io/hcm/jobexchange/showJobOfferDetail.do?jobOfferId=8a7ec1119f2fcb33019f37afb5e00079&j=jobexchange&organizationUnitId="
+      ]
+    }
+  },
+  {
+    "provider": "infoniqa",
+    "operation": "search",
+    "name": "empty",
+    "inputs": {
+      "body": "\n    <script>$('#showJobsButton').val('Jobs anzeigen (0)');</script>\n    <p class=\"searchResultInfo\">0 Treffer zu Ihrer Suche</p>\n    <ul id=\"jobOffers\" class=\"jobOffers\"></ul>\n    <span id=\"showNextJobOffers\"></span>\n    ",
+      "board_url": "https://ehlcampus.infoniqa.io/hcm/jobexchange/showJobOfferList.do?init=true&j=jobexchange"
+    },
+    "status": "complete",
+    "expected": {
+      "total": 0,
+      "urls": []
+    }
+  },
+  {
+    "provider": "infoniqa",
+    "operation": "search",
+    "name": "conflicting-counts",
+    "inputs": {
+      "body": "\n    <script>$('#showJobsButton').val('Jobs anzeigen (1)');</script>\n    <p class=\"searchResultInfo\">2 Treffer zu Ihrer Suche</p>\n    <ul id=\"jobOffers\" class=\"jobOffers\"></ul>\n    <span id=\"showNextJobOffers\"></span>\n    ",
+      "board_url": "https://ehlcampus.infoniqa.io/hcm/jobexchange/showJobOfferList.do?init=true&j=jobexchange"
+    },
+    "status": "failed",
+    "error_type": "ValueError"
+  },
+  {
+    "provider": "infoniqa",
+    "operation": "search",
+    "name": "duplicate-id",
+    "inputs": {
+      "body": "\n    <script>$('#showJobsButton').val('Jobs anzeigen (2)');</script>\n    <p class=\"searchResultInfo\">2 Treffer zu Ihrer Suche</p>\n    <ul id=\"jobOffers\" class=\"jobOffers\">\n    <li class=\"jobOffer\" tabindex=\"0\"\n        onclick=\"showBlockUIMessage(window,'wait');window.location.href='showJobOfferDetail.do?jobOfferId=8a7ec04b955ee2d701956b4405230214&amp;j=jobexchange&amp;organizationUnitId='\"\n        onkeydown=\"if(event.key === 'Enter') {window.location.href='showJobOfferDetail.do?jobOfferId=8a7ec04b955ee2d701956b4405230214&amp;j=jobexchange&amp;organizationUnitId='}\">\n      <div><h2 class=\"jobOfferDescription\">Sales Officer</h2></div>\n      <ul><li class=\"fieldHeader\">Entry date</li></ul>\n    </li>\n    \n    <li class=\"jobOffer\" tabindex=\"0\"\n        onclick=\"showBlockUIMessage(window,'wait');window.location.href='showJobOfferDetail.do?jobOfferId=8a7ec04b955ee2d701956b4405230214&amp;j=jobexchange&amp;organizationUnitId='\"\n        onkeydown=\"if(event.key === 'Enter') {window.location.href='showJobOfferDetail.do?jobOfferId=8a7ec04b955ee2d701956b4405230214&amp;j=jobexchange&amp;organizationUnitId='}\">\n      <div><h2 class=\"jobOfferDescription\">Sales Officer</h2></div>\n      <ul><li class=\"fieldHeader\">Entry date</li></ul>\n    </li>\n    </ul>\n    <span id=\"showNextJobOffers\"></span>\n    ",
+      "board_url": "https://ehlcampus.infoniqa.io/hcm/jobexchange/showJobOfferList.do?init=true&j=jobexchange"
+    },
+    "status": "failed",
+    "error_type": "ValueError"
+  },
+  {
+    "provider": "infoniqa",
+    "operation": "search",
+    "name": "missing-title",
+    "inputs": {
+      "body": "\n    <script>$('#showJobsButton').val('Jobs anzeigen (1)');</script>\n    <p class=\"searchResultInfo\">1 Treffer zu Ihrer Suche</p>\n    <ul id=\"jobOffers\" class=\"jobOffers\">\n    <li class=\"jobOffer\" tabindex=\"0\"\n        onclick=\"showBlockUIMessage(window,'wait');window.location.href='showJobOfferDetail.do?jobOfferId=8a7ec04b955ee2d701956b4405230214&amp;j=jobexchange&amp;organizationUnitId='\"\n        onkeydown=\"if(event.key === 'Enter') {window.location.href='showJobOfferDetail.do?jobOfferId=8a7ec04b955ee2d701956b4405230214&amp;j=jobexchange&amp;organizationUnitId='}\">\n      <div><h2 class=\"jobOfferDescription\"></h2></div>\n      <ul><li class=\"fieldHeader\">Entry date</li></ul>\n    </li>\n    </ul>\n    <span id=\"showNextJobOffers\"></span>\n    ",
+      "board_url": "https://ehlcampus.infoniqa.io/hcm/jobexchange/showJobOfferList.do?init=true&j=jobexchange"
+    },
+    "status": "failed",
+    "error_type": "ValueError"
+  }
+]

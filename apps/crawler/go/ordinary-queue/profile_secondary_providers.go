@@ -7,7 +7,7 @@ import (
 )
 
 func SecondaryProvider(provider string) bool {
-	if FinalHTTPProvider(provider) || SmallProvider(provider) {
+	if PortalHTTPProvider(provider) || FinalHTTPProvider(provider) || SmallProvider(provider) {
 		return true
 	}
 	if provider == "linkedin" || provider == "taleo" || provider == "practicematch" {
@@ -28,6 +28,9 @@ func paycomEnrichmentFields(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true})
 }
 func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
+	if PortalHTTPProvider(config["crawler_type"]) {
+		return portalMonitorEnrichment(config)
+	}
 	if FinalHTTPProvider(config["crawler_type"]) || SmallProvider(config["crawler_type"]) {
 		return monitorEnrichmentFields(config, map[string]bool{})
 	}
@@ -78,6 +81,9 @@ func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, allowed)
 }
 func inspectSecondaryMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
+	if PortalHTTPProvider(config["crawler_type"]) {
+		return inspectPortalHTTPMonitor(boardID, config, md)
+	}
 	if FinalHTTPProvider(config["crawler_type"]) {
 		return inspectFinalHTTPProviderMonitor(boardID, config, md)
 	}
@@ -299,6 +305,10 @@ func inspectSecondaryMonitor(boardID string, config map[string]string, md map[st
 	return inspectURLOnlyMonitor(boardID, config, md, provider, profile, provider, endpoint)
 }
 func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[string]string, resource string) bool {
+	if PortalHTTPProvider(p.Provider) {
+		o, err := api.PortalHTTPProviderOptionsFromMetadata(p.Provider, config["board_url"], config["metadata"])
+		return err == nil && p.Provider == config["crawler_type"] && p.Profile == o.Profile() && p.Endpoint == o.Listing && o.ResourceMatches(resource)
+	}
 	if FinalHTTPProvider(p.Provider) {
 		o, e := api.FinalHTTPProviderOptionsFromMetadata(p.Provider, config["board_url"], config["metadata"])
 		return e == nil && config["crawler_type"] == p.Provider && p.Profile == o.Profile() && p.Endpoint == o.ListingURL() && o.ResourceMatches(resource)
@@ -408,6 +418,9 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 	return false
 }
 func SecondaryMonitorGone(config map[string]string, resource string, status int, disabled bool) bool {
+	if PortalHTTPProvider(config["crawler_type"]) {
+		return portalHTTPMonitorGone(config, resource, status, disabled)
+	}
 	if FinalHTTPProvider(config["crawler_type"]) {
 		return finalHTTPProviderMonitorGone(config, resource, status, disabled)
 	}

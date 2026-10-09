@@ -26,6 +26,10 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		allowed[key] = value
 	}
 	switch config["crawler_type"] {
+	case "pageup", "infoniqa", "keka", "turbohire":
+		for _, key := range []string{"instance", "source_pointer", "locale", "listing_url", "employer_name", "tenant", "portal", "identifier", "org_id", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+			allowed[key] = true
+		}
 	case "paynet", "nowhiring", "fenbi", "wecruit":
 		for _, key := range []string{"slug", "kind", "suite_key", "api_origin", "recruit_types", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true

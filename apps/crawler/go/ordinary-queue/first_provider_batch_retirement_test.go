@@ -39,6 +39,14 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 		board, metadata = "https://careers.smartrecruiters.com/fixture", `{"company_identifier":"ignored-alias","scraper_type":"smartrecruiters"}`
 	case "paynet":
 		board, metadata = "https://www.pay-netonline.com/PayNet/Applicant/Postings.aspx?Co=Example", `{"scraper_type":"skip"}`
+	case "pageup":
+		board, metadata = "https://careers.pageuppeople.com/873/cw/en-us", `{"scraper_type":"dom","scraper_config":{"steps":[{"tag":"p","field":"description"}],"enrich":["description"]}}`
+	case "infoniqa":
+		board, metadata = "https://ehlcampus.infoniqa.io/hcm/jobexchange/showJobOfferList.do?init=true&j=jobexchange", `{"employer_name":"EHL Hotelfachschule Passugg","scraper_type":"dom","scraper_config":{"steps":[{"tag":"h1","field":"title"}]}}`
+	case "keka":
+		board, metadata = "https://acme.keka.com/careers", `{"scraper_type":"skip"}`
+	case "turbohire":
+		board, metadata = "https://flipkart.turbohire.co/careerpage/4d757ba0-3d57-448a-b82c-238ed87ac90f", `{"scraper_type":"skip"}`
 	case "nowhiring":
 		board, metadata = "https://nowhiring.com/example/", `{"slug":"example","scraper_type":"skip"}`
 	case "fenbi":

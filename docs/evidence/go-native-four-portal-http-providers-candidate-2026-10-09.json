@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-10-09T03:30:00Z",
+  "candidate_version": "0.13.987",
+  "candidate_branch": "fix-crawler/native-portal-http-batch",
+  "candidate_parent": "b2f5a5b3f74c7393527be0212ec6f89a9c61ddee",
+  "state": "locally qualified candidate; not merged or deployed; no production ownership",
+  "compiled_profiles": 158,
+  "providers": [
+    "pageup",
+    "infoniqa",
+    "keka",
+    "turbohire"
+  ],
+  "current_configs": 6,
+  "contracts": {
+    "pageup": "Validated 500-row hybrid pages commit through the existing native stream writer; later failure retains the committed prefix and detail schedules, without absence handling. First-page 404/410 alone is disappearance. Original configured enrichment remains authoritative.",
+    "infoniqa": "Per-operation cookie jar, original CSRF/form request order, exact MIME, employer/shell identity, boolean pagination and complete URL inventory; ordinary URL-only detail scheduling.",
+    "keka": "First-party tenant/portal/bootstrap UUID binding, complete active-job array, rich fields/extras, parse-once text helper, and only original first bootstrap disappearance/forbidden redirect.",
+    "turbohire": "Bound public no-auth token, original filter POST and per-job detail identity; ten details per batch, original encoding/fields/extras, cancellation and joined child work."
+  },
+  "qualification": {
+    "actual_original_core": 55,
+    "actual_original_inventory": 26,
+    "actual_original_inventory_complete": 10,
+    "actual_original_inventory_failed": 16,
+    "latest_core_inventory_transport_race_seconds": 4.103,
+    "current_registry_race_seconds": 1.637,
+    "real_terminal_cases": 17,
+    "real_cold_cases": 12,
+    "actual_startup_profiles": 158,
+    "affected_module_vet": "pass",
+    "public_same_capture": [
+      {
+        "changed_fields": 0,
+        "changed_keys": {},
+        "match": true,
+        "native_count": 0,
+        "native_failed": true,
+        "original_count": 0,
+        "original_status": "failed",
+        "profile": "pageup.listing-items/v1",
+        "provider": "pageup",
+        "requests": 1,
+        "scope": "current actual config admission and complete native inventory; same original public HTTP captures; all original fields compared; failure parity is not healthy freshness; real worker persistence separately verified",
+        "slug": "california-state-university-careers"
+      },
+      {
+        "changed_fields": 0,
+        "changed_keys": {},
+        "match": true,
+        "native_count": 770,
+        "native_failed": false,
+        "original_count": 770,
+        "original_status": "complete",
+        "profile": "pageup.listing-items/v1",
+        "provider": "pageup",
+        "requests": 2,
+        "scope": "current actual config admission and complete native inventory; same original public HTTP captures; all original fields compared; failure parity is not healthy freshness; real worker persistence separately verified",
+        "slug": "commonwealth-of-virginia-careers"
+      },
+      {
+        "changed_fields": 0,
+        "changed_keys": {},
+        "match": true,
+        "native_count": 4,
+        "native_failed": false,
+        "original_count": 4,
+        "original_status": "complete",
+        "profile": "infoniqa.session-urls/v1",
+        "provider": "infoniqa",
+        "requests": 5,
+        "scope": "current actual config admission and complete native inventory; same original public HTTP captures; all original fields compared; failure parity is not healthy freshness; real worker persistence separately verified",
+        "slug": "ehl-group-passugg-infoniqa"
+      },
+      {
+        "changed_fields": 0,
+        "changed_keys": {},
+        "match": true,
+        "native_count": 5,
+        "native_failed": false,
+        "original_count": 5,
+        "original_status": "complete",
+        "profile": "turbohire.public-items/v1",
+        "provider": "turbohire",
+        "requests": 7,
+        "scope": "current actual config admission and complete native inventory; same original public HTTP captures; all original fields compared; failure parity is not healthy freshness; real worker persistence separately verified",
+        "slug": "flipkart-turbohire"
+      },
+      {
+        "changed_fields": 0,
+        "changed_keys": {},
+        "match": true,
+        "native_count": 931,
+        "native_failed": false,
+        "original_count": 931,
+        "original_status": "complete",
+        "profile": "keka.public-items/v1",
+        "provider": "keka",
+        "requests": 2,
+        "scope": "current actual config admission and complete native inventory; same original public HTTP captures; all original fields compared; failure parity is not healthy freshness; real worker persistence separately verified",
+        "slug": "kp-group-careers"
+      },
+      {
+        "changed_fields": 0,
+        "changed_keys": {},
+        "match": true,
+        "native_count": 172,
+        "native_failed": false,
+        "original_count": 172,
+        "original_status": "complete",
+        "profile": "pageup.listing-items/v1",
+        "provider": "pageup",
+        "requests": 1,
+        "scope": "current actual config admission and complete native inventory; same original public HTTP captures; all original fields compared; failure parity is not healthy freshness; real worker persistence separately verified",
+        "slug": "unicef-global"
+      }
+    ],
+    "public_successful_boards": 5,
+    "public_populated_jobs": 1882,
+    "public_failure_caveat": "California State University failed in the original Python monitor; matching failure is not healthy freshness.",
+    "whole_local_queue_worker_suite": "not claimed; required CI will run it",
+    "test_repair": "Original raw monitor HTML omits appended structured extras. The first two real terminal attempts are retained as failures; the fixture now freezes canonical HTML using actual original normalize_description_html and enrich_description outside the monitor exception handler. This correction changed no runtime semantics.",
+    "full_api_module_race_seconds": 5.482,
+    "turbohire_child_cases": 3,
+    "turbohire_children": "Ten-child bounded batches; completed12, reserved-child cancels and joins first10, cancelled parent joins first10; no failure prefix or second batch."
+  },
+  "private_proof_sha256": {
+    "native987-portal-http-real-terminal-verified4-2026-10-09.log": "e3c1944f02fd9e280f0d2b6bba5fba34d398d91ab9272edcb13a61151964dc00",
+    "native987-portal-http-real-cold-verified4-2026-10-09.log": "1333c5524e50eae134427b7817420871f7ae82211ed017b4922f69bb100982eb",
+    "native987-portal-http-real-startup-verified4-2026-10-09.log": "8c916b51c2665f539aad2ecad6a51169aaab7b305a67f40676586886d0dfe1db",
+    "native987-portal-http-public-parity-initial1-2026-10-09.json": "f2fdaecb253c8ee7b84fa1ffaf0d1c440ed5c559b973cc3c586e412cca13db5b"
+  },
+  "source_files_sha256": {
+    "apps/crawler/go/api-sniffer-monitor/testdata/python_portal_http_core.json": "3ed7b25ed4280154b3512cbf0abe6a51abb8996cabbcecd76c0bf5ebff925160",
+    "apps/crawler/go/api-sniffer-monitor/testdata/python_portal_http_inventory.json": "a20f77533af7355a7431c15848e76b10dfcc6a2e93842753194b202738e1b2ed"
+  },
+  "full_migration_complete": false,
+  "prototype_parent_review": "4318e9ddbbf93c836475ddafa3340b9d61d347f2",
+  "parent_rebase": "Own candidate rebased onto actual merged source986; provider runtime tree unchanged by rebase."
+}
