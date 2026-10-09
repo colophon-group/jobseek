@@ -20,10 +20,26 @@ func writeFeedPolicyInventory(ctx context.Context, sink GreenhouseSink, preparer
 	if config["crawler_type"] == "rss" {
 		batchSize = 200
 	}
-	for offset := 0; offset < len(discovery.Jobs); offset += batchSize {
-		jobs, err := applyFeedMonitorURLs(ctx, config, discovery.Jobs[offset:min(offset+batchSize, len(discovery.Jobs))], &rejected)
+	rules, err := queue.FeedMonitorURLRules(config)
+	if err != nil {
+		return result, summary, rejected, err
+	}
+	collision := rules.HasCollision()
+	if collision {
+		// Intentional collisions span the entire original inventory. Validate
+		// and choose winners before SQL effects; later batches cannot win.
+		discovery.Jobs, err = applyFeedMonitorURLs(ctx, config, discovery.Jobs, &rejected)
 		if err != nil {
 			return result, summary, rejected, err
+		}
+	}
+	for offset := 0; offset < len(discovery.Jobs); offset += batchSize {
+		jobs := discovery.Jobs[offset:min(offset+batchSize, len(discovery.Jobs))]
+		if !collision {
+			jobs, err = applyFeedMonitorURLs(ctx, config, jobs, &rejected)
+			if err != nil {
+				return result, summary, rejected, err
+			}
 		}
 		inventory, err := NormalizeRichInventory(ctx, config["board_url"], jobs, false)
 		if err != nil {

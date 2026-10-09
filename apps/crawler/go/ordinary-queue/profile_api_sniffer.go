@@ -19,6 +19,24 @@ func APISnifferMonitorOptions(config map[string]string) (apisniffer.Options, err
 	if parseErr != nil {
 		return apisniffer.Options{}, parseErr
 	}
+	// Shared URL identity policy is validated and applied by the canonical
+	// inventory writer. Keep it out of the network/parser-only clone.
+	if _, err := FeedMonitorURLRules(config); err != nil {
+		return apisniffer.Options{}, err
+	}
+	md, err := profileMetadataFields(parsed["metadata"], nil)
+	if err != nil {
+		return apisniffer.Options{}, err
+	}
+	if _, ok := md["url_transform"]; ok {
+		delete(md, "url_transform")
+		body, err := json.Marshal(md)
+		if err != nil {
+			return apisniffer.Options{}, ErrUnsupportedProfile
+		}
+		parsed = cloneConfig(parsed)
+		parsed["metadata"] = string(body)
+	}
 	config = parsed
 	if config["crawler_type"] != "api_sniffer" || config["monitor_needs_browser"] != "0" {
 		return apisniffer.Options{}, ErrUnsupportedProfile

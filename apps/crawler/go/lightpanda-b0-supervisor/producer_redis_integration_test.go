@@ -792,3 +792,58 @@ func TestRealRedisPersistenceVerify(t *testing.T) {
 		t.Fatalf("persisted queue conservation failed: %v", err)
 	}
 }
+
+func TestRealRedisFullPreflightRetainsCompleteOwnerAndNamespaceChecks(t *testing.T) {
+	tests := []struct {
+		name      string
+		mutate    func(context.Context, *redis.Client, *b0Queue)
+		bootstrap bool
+		class     string
+	}{
+		{name: "valid"},
+		{name: "fresh", bootstrap: true, mutate: func(ctx context.Context, c *redis.Client, q *b0Queue) {
+			if err := c.FlushDB(ctx).Err(); err != nil {
+				t.Fatal(err)
+			}
+		}},
+		{name: "missing-owner", class: "corruption", mutate: func(ctx context.Context, c *redis.Client, q *b0Queue) { c.Del(ctx, producerOwnerKey) }},
+		{name: "extra-owner-field", class: "corruption", mutate: func(ctx context.Context, c *redis.Client, q *b0Queue) {
+			c.HSet(ctx, producerOwnerKey, "unexpected", "1")
+		}},
+		{name: "missing-board-binding", class: "corruption", mutate: func(ctx context.Context, c *redis.Client, q *b0Queue) {
+			c.HDel(ctx, producerOwnerKey, "board_slug:browser-use-careers")
+		}},
+		{name: "changed-cohort", class: "corruption", mutate: func(ctx context.Context, c *redis.Client, q *b0Queue) {
+			c.HSet(ctx, producerOwnerKey, "cohort", "cdom")
+		}},
+		{name: "changed-engine", class: "fenced", mutate: func(ctx context.Context, c *redis.Client, q *b0Queue) {
+			c.HSet(ctx, q.keys[0], "engine_owner", "python")
+		}},
+		{name: "noncanonical-sequence", class: "corruption", mutate: func(ctx context.Context, c *redis.Client, q *b0Queue) { c.HSet(ctx, q.keys[0], "claim_sequence", "00") }},
+		{name: "wrong-ready-type", class: "corruption", mutate: func(ctx context.Context, c *redis.Client, q *b0Queue) { c.Set(ctx, q.keys[2], "invalid", 0) }},
+		{name: "orphan-record", class: "corruption", mutate: func(ctx context.Context, c *redis.Client, q *b0Queue) { c.HSet(ctx, q.keys[1], "invalid", "{}") }},
+		{name: "invalid-legacy-guard", class: "corruption", mutate: func(ctx context.Context, c *redis.Client, q *b0Queue) { c.Set(ctx, legacyGuardKey, "invalid", 0) }},
+		{name: "fresh-namespace-with-owner", class: "corruption", mutate: func(ctx context.Context, c *redis.Client, q *b0Queue) { c.Del(ctx, q.keys[0]) }},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			c, q, owner := integrationRedisQueue(t)
+			ctx, cancel := context.WithTimeout(context.Background(), producerTimeout)
+			defer cancel()
+			if tc.mutate != nil {
+				tc.mutate(ctx, c, q)
+			}
+			boot, err := q.preflight(ctx, true, owner)
+			if tc.class == "" {
+				if err != nil || boot != tc.bootstrap {
+					t.Fatal("valid/full fresh preflight changed", boot, err)
+				}
+				return
+			}
+			class, ok := authorityErrorClass(err)
+			if !ok || class != tc.class || boot {
+				t.Fatal("complete authority guard lost", boot, class, err)
+			}
+		})
+	}
+}

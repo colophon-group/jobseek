@@ -421,7 +421,8 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 	}
 	if fetchErr != nil {
 		var prefix *rssStreamPrefixError
-		if profile.Provider == "rss" && task.Worker == queue.Simple && errors.As(fetchErr, &prefix) && len(discovery.Jobs) > 0 {
+		prefixRules, ruleErr := queue.FeedMonitorURLRules(task.Config)
+		if profile.Provider == "rss" && task.Worker == queue.Simple && errors.As(fetchErr, &prefix) && len(discovery.Jobs) > 0 && ruleErr == nil && !prefixRules.HasCollision() {
 			processed, _, rejected, err := writeFeedPolicyInventory(ctx, cycle, preparer, task.Config, discovery)
 			if processed != nil {
 				result.Batches = processed.Batches
@@ -539,7 +540,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		if err != nil {
 			return failure("configuration", err)
 		}
-		if rules.RequiresRawInventory() || profile.Provider == "api_sniffer" && rules.HasURLFilter() {
+		if rules.RequiresRawInventory() || profile.Provider == "api_sniffer" && (rules.HasURLFilter() || rules.HasTransform()) {
 			processed, summary, rejected, err := writeFeedPolicyInventory(ctx, cycle, preparer, task.Config, discovery)
 			if processed != nil {
 				result.Batches = processed.Batches

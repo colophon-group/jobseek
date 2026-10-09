@@ -240,6 +240,10 @@ func (q *b0Queue) callWithProducer(ctx context.Context, operation string, task *
 		q.metrics.incQueue(operation, "transport_error")
 		return transition{}, queueRedisFailure(err, operation)
 	}
+	return q.decodeTransitionReply(result, operation, task, claimToken, leaseTTL, readyAtMS, expectedLeaseUntilMS)
+}
+
+func (q *b0Queue) decodeTransitionReply(result any, operation string, task *queueTask, claimToken string, leaseTTL time.Duration, readyAtMS, expectedLeaseUntilMS int64) (transition, error) {
 	raw, ok := result.([]any)
 	if !ok || len(raw) != 12 {
 		q.metrics.incQueue(operation, "transport_error")
@@ -496,6 +500,9 @@ func (q *b0Queue) activateLegacy(ctx context.Context, task *queueTask, readyAtMS
 func (q *b0Queue) preflight(ctx context.Context, full bool, owner producerOwnerIdentity) (bool, error) {
 	if ctx == nil || owner.validate() != nil || owner.Namespace != q.namespace || owner.Route != q.route {
 		return false, queueAuthority("corruption", "preflight")
+	}
+	if full {
+		return q.fullPreflightOnePipeline(ctx, owner)
 	}
 	pipeline := q.client.Pipeline()
 	types := make([]*redis.StatusCmd, 0, len(q.keys))
@@ -818,4 +825,118 @@ func transitionError(operation string, result transition, err error) error {
 		return queueAuthority("fenced", operation)
 	}
 	return queueAuthority("corruption", operation)
+}
+
+// Keep the complete namespace audit and original pre/post owner checks in one
+// wire pipeline. A full ordinary cohort makes repeated competing legacy reads
+// expensive; one pipeline avoids multiplying that wait within the same budget.
+func (q *b0Queue) fullPreflightOnePipeline(ctx context.Context, owner producerOwnerIdentity) (bool, error) {
+	p := q.client.Pipeline()
+	types := make([]*redis.StatusCmd, 0, len(q.keys))
+	for _, key := range q.keys {
+		types = append(types, p.Type(ctx, key))
+	}
+	guardType := p.Type(ctx, legacyGuardKey)
+	metaCount := p.HLen(ctx, q.keys[0])
+	meta := p.HMGet(ctx, q.keys[0], "shard_id", "engine_owner", "routing_epoch", "claim_sequence")
+	fields := []string{"schema", "namespace", "shard_id", "routing_epoch", "engine_owner", "cohort", "board_count"}
+	for _, slug := range owner.BoardSlugs {
+		fields = append(fields, "board_slug:"+slug)
+	}
+	ownerType := p.Type(ctx, producerOwnerKey)
+	ownerCount := p.HLen(ctx, producerOwnerKey)
+	before := p.HMGet(ctx, producerOwnerKey, fields...)
+	argv := []any{"audit", q.route.ShardID, strconv.FormatInt(q.route.RoutingEpoch, 10), q.route.EngineOwner, "", "0", "", "0", "0", "0", "", "", "", strconv.Itoa(queueScanLimit), q.defaultDelay, "", "0", q.namespace, "", "0", "", "0", "0"}
+	audit := q.script.Eval(ctx, p, q.keys, argv...)
+	ready := p.ZCard(ctx, q.keys[2])
+	inflight := p.ZCard(ctx, q.keys[3])
+	dead := p.SCard(ctx, q.keys[4])
+	afterType := p.Type(ctx, producerOwnerKey)
+	afterCount := p.HLen(ctx, producerOwnerKey)
+	after := p.HMGet(ctx, producerOwnerKey, fields...)
+	_, execErr := p.Exec(ctx)
+	for _, command := range types {
+		if command.Err() != nil {
+			return false, queueRedisFailure(command.Err(), "preflight")
+		}
+	}
+	if types[0].Val() == "none" {
+		for _, command := range types[1:] {
+			if command.Val() != "none" {
+				return false, queueAuthority("corruption", "preflight")
+			}
+		}
+		if ownerType.Err() != nil || guardType.Err() != nil {
+			return false, queueRedisFailure(execErr, "preflight")
+		}
+		if ownerType.Val() != "none" || guardType.Val() != "none" {
+			return false, queueAuthority("corruption", "preflight")
+		}
+		if execErr != nil {
+			return false, queueRedisFailure(execErr, "preflight")
+		}
+		return true, nil
+	}
+	expected := []string{"hash", "hash", "zset", "zset", "set", "set", "hash"}
+	for i, command := range types {
+		if command.Val() != "none" && command.Val() != expected[i] {
+			return false, queueAuthority("corruption", "preflight")
+		}
+	}
+	if execErr != nil {
+		return false, queueRedisFailure(execErr, "preflight")
+	}
+	values := meta.Val()
+	if metaCount.Val() != 4 || len(values) != 4 {
+		return false, queueAuthority("corruption", "preflight")
+	}
+	frame := make([]string, 4)
+	for i, v := range values {
+		x, ok := v.(string)
+		if !ok {
+			return false, queueAuthority("corruption", "preflight")
+		}
+		frame[i] = x
+	}
+	if !safeID.MatchString(frame[0]) || !contains(set("python", "go"), frame[1]) {
+		return false, queueAuthority("corruption", "preflight")
+	}
+	epoch, e := strconv.ParseInt(frame[2], 10, 64)
+	sequence, se := strconv.ParseInt(frame[3], 10, 64)
+	if e != nil || epoch < 1 || epoch > maxInteger || strconv.FormatInt(epoch, 10) != frame[2] || se != nil || sequence < 0 || sequence > maxInteger || strconv.FormatInt(sequence, 10) != frame[3] {
+		return false, queueAuthority("corruption", "preflight")
+	}
+	if frame[0] != q.route.ShardID || frame[1] != q.route.EngineOwner || epoch != q.route.RoutingEpoch {
+		return false, queueAuthority("fenced", "preflight")
+	}
+	want := []string{producerOwnerV1, owner.Namespace, owner.Route.ShardID, strconv.FormatInt(owner.Route.RoutingEpoch, 10), owner.Route.EngineOwner, owner.Cohort, strconv.Itoa(len(owner.BoardSlugs))}
+	for range owner.BoardSlugs {
+		want = append(want, "1")
+	}
+	verify := func(t *redis.StatusCmd, n *redis.IntCmd, v *redis.SliceCmd) error {
+		if t.Val() != "hash" || n.Val() != int64(len(fields)) || len(v.Val()) != len(fields) {
+			return queueAuthority("corruption", "preflight")
+		}
+		for i, raw := range v.Val() {
+			text, ok := raw.(string)
+			if !ok || text != want[i] {
+				return queueAuthority("corruption", "preflight")
+			}
+		}
+		return nil
+	}
+	if err := verify(ownerType, ownerCount, before); err != nil {
+		return false, err
+	}
+	transition, err := q.decodeTransitionReply(audit.Val(), "audit", nil, "", 0, 0, 0)
+	if err != nil || !transition.accepted() {
+		return false, transitionError("audit", transition, err)
+	}
+	q.metrics.readyCount.Store(ready.Val())
+	q.metrics.redisInflight.Store(inflight.Val())
+	q.metrics.deadCount.Store(dead.Val())
+	if err := verify(afterType, afterCount, after); err != nil {
+		return false, err
+	}
+	return false, nil
 }

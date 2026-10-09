@@ -1,0 +1,4961 @@
+{
+  "reference": "original src.core.monitor collision dispatcher",
+  "cases": [
+    {
+      "name": "rss-source-preference",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/de/jobs/123-b",
+          "Title": "German",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "123"
+          },
+          "SourceIdentity": ""
+        }
+      ],
+      "error": false,
+      "native_refused": false
+    },
+    {
+      "name": "rss-reverse-order",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        },
+        {
+          "URL": "https://example.com/de/jobs/123-b",
+          "Title": "German",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "123"
+          },
+          "SourceIdentity": ""
+        }
+      ],
+      "error": false,
+      "native_refused": false
+    },
+    {
+      "name": "api_sniffer-source-preference",
+      "provider": "api_sniffer",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/de/jobs/123-b",
+          "Title": "German",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "123"
+          },
+          "SourceIdentity": ""
+        }
+      ],
+      "error": false,
+      "native_refused": false
+    },
+    {
+      "name": "api_sniffer-reverse-order",
+      "provider": "api_sniffer",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        },
+        {
+          "URL": "https://example.com/de/jobs/123-b",
+          "Title": "German",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "123"
+          },
+          "SourceIdentity": ""
+        }
+      ],
+      "error": false,
+      "native_refused": false
+    },
+    {
+      "name": "dom-source-preference",
+      "provider": "dom",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/de/jobs/123-b",
+          "Title": "German",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "123"
+          },
+          "SourceIdentity": ""
+        }
+      ],
+      "error": false,
+      "native_refused": false
+    },
+    {
+      "name": "dom-reverse-order",
+      "provider": "dom",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        },
+        {
+          "URL": "https://example.com/de/jobs/123-b",
+          "Title": "German",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "123"
+          },
+          "SourceIdentity": ""
+        }
+      ],
+      "error": false,
+      "native_refused": false
+    },
+    {
+      "name": "lexical-tie",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-b",
+          "Title": "B",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "A",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "A",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "123"
+          },
+          "SourceIdentity": ""
+        }
+      ],
+      "error": false,
+      "native_refused": false
+    },
+    {
+      "name": "metadata-preference",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500,
+          "collision_preferred_metadata_key": "locale",
+          "collision_preferred_metadata_patterns": [
+            "^de$",
+            "^en$"
+          ]
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123",
+            "locale": "en"
+          }
+        },
+        {
+          "URL": "https://example.com/de/jobs/123-b",
+          "Title": "Deutsch",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123",
+            "locale": "de"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Deutsch",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "123",
+            "locale": "de"
+          },
+          "SourceIdentity": ""
+        }
+      ],
+      "error": false,
+      "native_refused": false
+    },
+    {
+      "name": "identity-missing",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {}
+        }
+      ],
+      "expected": [],
+      "error": true,
+      "native_refused": false
+    },
+    {
+      "name": "identity-mismatch",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "456"
+          }
+        }
+      ],
+      "expected": [],
+      "error": true,
+      "native_refused": false
+    },
+    {
+      "name": "identity-integer",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": 123
+          }
+        }
+      ],
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": 123
+          },
+          "SourceIdentity": ""
+        }
+      ],
+      "error": false,
+      "native_refused": false
+    },
+    {
+      "name": "identity-float",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": 123.0
+          }
+        }
+      ],
+      "expected": [],
+      "error": true,
+      "native_refused": false
+    },
+    {
+      "name": "identity-bool",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": true
+          }
+        }
+      ],
+      "expected": [],
+      "error": true,
+      "native_refused": false
+    },
+    {
+      "name": "identity-source-pattern",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_stream_buffer_limit": 500,
+          "collision_source_identity_regex": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$"
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": null
+        }
+      ],
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": null,
+          "SourceIdentity": ""
+        }
+      ],
+      "error": false,
+      "native_refused": false
+    },
+    {
+      "name": "same-explicit-identity",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          },
+          "SourceIdentity": "provider:tenant:123"
+        },
+        {
+          "URL": "https://example.com/de/jobs/123-b",
+          "Title": "Deutsch",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          },
+          "SourceIdentity": "provider:tenant:123"
+        }
+      ],
+      "expected": [],
+      "error": true,
+      "native_refused": false
+    },
+    {
+      "name": "conflicting-explicit-identity",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          },
+          "SourceIdentity": "provider:tenant:123"
+        },
+        {
+          "URL": "https://example.com/de/jobs/123-b",
+          "Title": "Deutsch",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          },
+          "SourceIdentity": "provider:tenant:456"
+        }
+      ],
+      "expected": [],
+      "error": true,
+      "native_refused": false
+    },
+    {
+      "name": "inherit-explicit-identity",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        },
+        {
+          "URL": "https://example.com/de/jobs/123-b",
+          "Title": "Deutsch",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          },
+          "SourceIdentity": "provider:tenant:123"
+        }
+      ],
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "123"
+          },
+          "SourceIdentity": "provider:tenant:123"
+        }
+      ],
+      "error": false,
+      "native_refused": false
+    },
+    {
+      "name": "duplicate-exact",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "123"
+          },
+          "SourceIdentity": ""
+        }
+      ],
+      "error": false,
+      "native_refused": false
+    },
+    {
+      "name": "duplicate-conflicting",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "Changed",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        }
+      ],
+      "expected": [],
+      "error": true,
+      "native_refused": false
+    },
+    {
+      "name": "url-only",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/de/jobs/123-b",
+          "URLOnly": true
+        },
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "URLOnly": true
+        }
+      ],
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "URLOnly": true
+        }
+      ],
+      "error": false,
+      "native_refused": false
+    },
+    {
+      "name": "identity-marker",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/.*$",
+          "replace": "https://example.com/jobs/{identity}",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "123"
+          },
+          "SourceIdentity": ""
+        }
+      ],
+      "error": false,
+      "native_refused": false
+    },
+    {
+      "name": "identity-marker-non-string",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/.*$",
+          "replace": "https://example.com/jobs/{identity}",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": 123
+          }
+        }
+      ],
+      "expected": [],
+      "error": true,
+      "native_refused": false
+    },
+    {
+      "name": "filter-before-identity",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        },
+        "url_filter": "/de/"
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {}
+        },
+        {
+          "URL": "https://example.com/de/jobs/123-b",
+          "Title": "Deutsch",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "Deutsch",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "123"
+          },
+          "SourceIdentity": ""
+        }
+      ],
+      "error": false,
+      "native_refused": false
+    },
+    {
+      "name": "rss-cross-batch-preference",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/de/jobs/123-b",
+          "Title": "Deutsch",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1000-a",
+          "Title": "1000",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1000"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1001-a",
+          "Title": "1001",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1001"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1002-a",
+          "Title": "1002",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1002"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1003-a",
+          "Title": "1003",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1003"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1004-a",
+          "Title": "1004",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1004"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1005-a",
+          "Title": "1005",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1005"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1006-a",
+          "Title": "1006",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1006"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1007-a",
+          "Title": "1007",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1007"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1008-a",
+          "Title": "1008",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1008"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1009-a",
+          "Title": "1009",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1009"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1010-a",
+          "Title": "1010",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1010"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1011-a",
+          "Title": "1011",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1011"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1012-a",
+          "Title": "1012",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1012"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1013-a",
+          "Title": "1013",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1013"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1014-a",
+          "Title": "1014",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1014"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1015-a",
+          "Title": "1015",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1015"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1016-a",
+          "Title": "1016",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1016"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1017-a",
+          "Title": "1017",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1017"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1018-a",
+          "Title": "1018",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1018"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1019-a",
+          "Title": "1019",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1019"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1020-a",
+          "Title": "1020",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1020"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1021-a",
+          "Title": "1021",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1021"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1022-a",
+          "Title": "1022",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1022"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1023-a",
+          "Title": "1023",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1023"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1024-a",
+          "Title": "1024",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1024"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1025-a",
+          "Title": "1025",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1025"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1026-a",
+          "Title": "1026",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1026"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1027-a",
+          "Title": "1027",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1027"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1028-a",
+          "Title": "1028",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1028"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1029-a",
+          "Title": "1029",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1029"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1030-a",
+          "Title": "1030",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1030"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1031-a",
+          "Title": "1031",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1031"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1032-a",
+          "Title": "1032",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1032"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1033-a",
+          "Title": "1033",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1033"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1034-a",
+          "Title": "1034",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1034"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1035-a",
+          "Title": "1035",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1035"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1036-a",
+          "Title": "1036",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1036"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1037-a",
+          "Title": "1037",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1037"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1038-a",
+          "Title": "1038",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1038"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1039-a",
+          "Title": "1039",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1039"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1040-a",
+          "Title": "1040",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1040"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1041-a",
+          "Title": "1041",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1041"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1042-a",
+          "Title": "1042",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1042"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1043-a",
+          "Title": "1043",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1043"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1044-a",
+          "Title": "1044",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1044"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1045-a",
+          "Title": "1045",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1045"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1046-a",
+          "Title": "1046",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1046"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1047-a",
+          "Title": "1047",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1047"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1048-a",
+          "Title": "1048",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1048"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1049-a",
+          "Title": "1049",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1049"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1050-a",
+          "Title": "1050",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1050"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1051-a",
+          "Title": "1051",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1051"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1052-a",
+          "Title": "1052",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1052"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1053-a",
+          "Title": "1053",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1053"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1054-a",
+          "Title": "1054",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1054"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1055-a",
+          "Title": "1055",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1055"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1056-a",
+          "Title": "1056",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1056"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1057-a",
+          "Title": "1057",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1057"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1058-a",
+          "Title": "1058",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1058"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1059-a",
+          "Title": "1059",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1059"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1060-a",
+          "Title": "1060",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1060"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1061-a",
+          "Title": "1061",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1061"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1062-a",
+          "Title": "1062",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1062"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1063-a",
+          "Title": "1063",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1063"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1064-a",
+          "Title": "1064",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1064"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1065-a",
+          "Title": "1065",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1065"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1066-a",
+          "Title": "1066",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1066"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1067-a",
+          "Title": "1067",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1067"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1068-a",
+          "Title": "1068",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1068"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1069-a",
+          "Title": "1069",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1069"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1070-a",
+          "Title": "1070",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1070"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1071-a",
+          "Title": "1071",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1071"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1072-a",
+          "Title": "1072",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1072"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1073-a",
+          "Title": "1073",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1073"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1074-a",
+          "Title": "1074",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1074"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1075-a",
+          "Title": "1075",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1075"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1076-a",
+          "Title": "1076",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1076"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1077-a",
+          "Title": "1077",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1077"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1078-a",
+          "Title": "1078",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1078"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1079-a",
+          "Title": "1079",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1079"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1080-a",
+          "Title": "1080",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1080"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1081-a",
+          "Title": "1081",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1081"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1082-a",
+          "Title": "1082",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1082"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1083-a",
+          "Title": "1083",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1083"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1084-a",
+          "Title": "1084",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1084"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1085-a",
+          "Title": "1085",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1085"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1086-a",
+          "Title": "1086",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1086"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1087-a",
+          "Title": "1087",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1087"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1088-a",
+          "Title": "1088",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1088"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1089-a",
+          "Title": "1089",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1089"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1090-a",
+          "Title": "1090",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1090"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1091-a",
+          "Title": "1091",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1091"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1092-a",
+          "Title": "1092",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1092"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1093-a",
+          "Title": "1093",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1093"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1094-a",
+          "Title": "1094",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1094"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1095-a",
+          "Title": "1095",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1095"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1096-a",
+          "Title": "1096",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1096"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1097-a",
+          "Title": "1097",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1097"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1098-a",
+          "Title": "1098",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1098"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1099-a",
+          "Title": "1099",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1099"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1100-a",
+          "Title": "1100",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1100"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1101-a",
+          "Title": "1101",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1101"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1102-a",
+          "Title": "1102",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1102"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1103-a",
+          "Title": "1103",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1103"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1104-a",
+          "Title": "1104",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1104"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1105-a",
+          "Title": "1105",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1105"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1106-a",
+          "Title": "1106",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1106"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1107-a",
+          "Title": "1107",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1107"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1108-a",
+          "Title": "1108",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1108"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1109-a",
+          "Title": "1109",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1109"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1110-a",
+          "Title": "1110",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1110"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1111-a",
+          "Title": "1111",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1111"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1112-a",
+          "Title": "1112",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1112"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1113-a",
+          "Title": "1113",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1113"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1114-a",
+          "Title": "1114",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1114"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1115-a",
+          "Title": "1115",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1115"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1116-a",
+          "Title": "1116",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1116"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1117-a",
+          "Title": "1117",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1117"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1118-a",
+          "Title": "1118",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1118"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1119-a",
+          "Title": "1119",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1119"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1120-a",
+          "Title": "1120",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1120"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1121-a",
+          "Title": "1121",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1121"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1122-a",
+          "Title": "1122",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1122"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1123-a",
+          "Title": "1123",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1123"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1124-a",
+          "Title": "1124",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1124"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1125-a",
+          "Title": "1125",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1125"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1126-a",
+          "Title": "1126",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1126"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1127-a",
+          "Title": "1127",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1127"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1128-a",
+          "Title": "1128",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1128"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1129-a",
+          "Title": "1129",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1129"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1130-a",
+          "Title": "1130",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1130"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1131-a",
+          "Title": "1131",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1131"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1132-a",
+          "Title": "1132",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1132"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1133-a",
+          "Title": "1133",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1133"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1134-a",
+          "Title": "1134",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1134"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1135-a",
+          "Title": "1135",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1135"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1136-a",
+          "Title": "1136",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1136"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1137-a",
+          "Title": "1137",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1137"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1138-a",
+          "Title": "1138",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1138"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1139-a",
+          "Title": "1139",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1139"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1140-a",
+          "Title": "1140",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1140"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1141-a",
+          "Title": "1141",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1141"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1142-a",
+          "Title": "1142",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1142"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1143-a",
+          "Title": "1143",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1143"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1144-a",
+          "Title": "1144",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1144"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1145-a",
+          "Title": "1145",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1145"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1146-a",
+          "Title": "1146",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1146"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1147-a",
+          "Title": "1147",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1147"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1148-a",
+          "Title": "1148",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1148"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1149-a",
+          "Title": "1149",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1149"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1150-a",
+          "Title": "1150",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1150"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1151-a",
+          "Title": "1151",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1151"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1152-a",
+          "Title": "1152",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1152"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1153-a",
+          "Title": "1153",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1153"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1154-a",
+          "Title": "1154",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1154"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1155-a",
+          "Title": "1155",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1155"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1156-a",
+          "Title": "1156",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1156"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1157-a",
+          "Title": "1157",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1157"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1158-a",
+          "Title": "1158",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1158"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1159-a",
+          "Title": "1159",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1159"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1160-a",
+          "Title": "1160",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1160"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1161-a",
+          "Title": "1161",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1161"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1162-a",
+          "Title": "1162",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1162"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1163-a",
+          "Title": "1163",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1163"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1164-a",
+          "Title": "1164",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1164"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1165-a",
+          "Title": "1165",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1165"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1166-a",
+          "Title": "1166",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1166"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1167-a",
+          "Title": "1167",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1167"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1168-a",
+          "Title": "1168",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1168"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1169-a",
+          "Title": "1169",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1169"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1170-a",
+          "Title": "1170",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1170"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1171-a",
+          "Title": "1171",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1171"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1172-a",
+          "Title": "1172",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1172"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1173-a",
+          "Title": "1173",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1173"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1174-a",
+          "Title": "1174",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1174"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1175-a",
+          "Title": "1175",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1175"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1176-a",
+          "Title": "1176",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1176"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1177-a",
+          "Title": "1177",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1177"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1178-a",
+          "Title": "1178",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1178"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1179-a",
+          "Title": "1179",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1179"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1180-a",
+          "Title": "1180",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1180"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1181-a",
+          "Title": "1181",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1181"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1182-a",
+          "Title": "1182",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1182"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1183-a",
+          "Title": "1183",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1183"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1184-a",
+          "Title": "1184",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1184"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1185-a",
+          "Title": "1185",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1185"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1186-a",
+          "Title": "1186",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1186"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1187-a",
+          "Title": "1187",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1187"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1188-a",
+          "Title": "1188",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1188"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1189-a",
+          "Title": "1189",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1189"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1190-a",
+          "Title": "1190",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1190"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1191-a",
+          "Title": "1191",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1191"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1192-a",
+          "Title": "1192",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1192"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1193-a",
+          "Title": "1193",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1193"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1194-a",
+          "Title": "1194",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1194"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1195-a",
+          "Title": "1195",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1195"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1196-a",
+          "Title": "1196",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1196"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1197-a",
+          "Title": "1197",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1197"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1198-a",
+          "Title": "1198",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1198"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/1199-a",
+          "Title": "1199",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "1199"
+          }
+        },
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/1000",
+          "Title": "1000",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1000"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1001",
+          "Title": "1001",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1001"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1002",
+          "Title": "1002",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1002"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1003",
+          "Title": "1003",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1003"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1004",
+          "Title": "1004",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1004"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1005",
+          "Title": "1005",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1005"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1006",
+          "Title": "1006",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1006"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1007",
+          "Title": "1007",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1007"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1008",
+          "Title": "1008",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1008"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1009",
+          "Title": "1009",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1009"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1010",
+          "Title": "1010",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1010"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1011",
+          "Title": "1011",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1011"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1012",
+          "Title": "1012",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1012"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1013",
+          "Title": "1013",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1013"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1014",
+          "Title": "1014",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1014"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1015",
+          "Title": "1015",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1015"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1016",
+          "Title": "1016",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1016"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1017",
+          "Title": "1017",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1017"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1018",
+          "Title": "1018",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1018"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1019",
+          "Title": "1019",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1019"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1020",
+          "Title": "1020",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1020"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1021",
+          "Title": "1021",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1021"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1022",
+          "Title": "1022",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1022"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1023",
+          "Title": "1023",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1023"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1024",
+          "Title": "1024",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1024"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1025",
+          "Title": "1025",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1025"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1026",
+          "Title": "1026",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1026"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1027",
+          "Title": "1027",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1027"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1028",
+          "Title": "1028",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1028"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1029",
+          "Title": "1029",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1029"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1030",
+          "Title": "1030",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1030"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1031",
+          "Title": "1031",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1031"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1032",
+          "Title": "1032",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1032"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1033",
+          "Title": "1033",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1033"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1034",
+          "Title": "1034",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1034"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1035",
+          "Title": "1035",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1035"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1036",
+          "Title": "1036",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1036"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1037",
+          "Title": "1037",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1037"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1038",
+          "Title": "1038",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1038"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1039",
+          "Title": "1039",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1039"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1040",
+          "Title": "1040",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1040"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1041",
+          "Title": "1041",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1041"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1042",
+          "Title": "1042",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1042"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1043",
+          "Title": "1043",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1043"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1044",
+          "Title": "1044",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1044"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1045",
+          "Title": "1045",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1045"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1046",
+          "Title": "1046",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1046"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1047",
+          "Title": "1047",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1047"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1048",
+          "Title": "1048",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1048"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1049",
+          "Title": "1049",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1049"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1050",
+          "Title": "1050",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1050"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1051",
+          "Title": "1051",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1051"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1052",
+          "Title": "1052",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1052"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1053",
+          "Title": "1053",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1053"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1054",
+          "Title": "1054",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1054"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1055",
+          "Title": "1055",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1055"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1056",
+          "Title": "1056",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1056"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1057",
+          "Title": "1057",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1057"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1058",
+          "Title": "1058",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1058"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1059",
+          "Title": "1059",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1059"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1060",
+          "Title": "1060",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1060"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1061",
+          "Title": "1061",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1061"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1062",
+          "Title": "1062",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1062"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1063",
+          "Title": "1063",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1063"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1064",
+          "Title": "1064",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1064"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1065",
+          "Title": "1065",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1065"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1066",
+          "Title": "1066",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1066"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1067",
+          "Title": "1067",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1067"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1068",
+          "Title": "1068",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1068"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1069",
+          "Title": "1069",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1069"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1070",
+          "Title": "1070",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1070"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1071",
+          "Title": "1071",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1071"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1072",
+          "Title": "1072",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1072"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1073",
+          "Title": "1073",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1073"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1074",
+          "Title": "1074",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1074"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1075",
+          "Title": "1075",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1075"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1076",
+          "Title": "1076",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1076"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1077",
+          "Title": "1077",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1077"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1078",
+          "Title": "1078",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1078"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1079",
+          "Title": "1079",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1079"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1080",
+          "Title": "1080",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1080"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1081",
+          "Title": "1081",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1081"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1082",
+          "Title": "1082",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1082"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1083",
+          "Title": "1083",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1083"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1084",
+          "Title": "1084",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1084"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1085",
+          "Title": "1085",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1085"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1086",
+          "Title": "1086",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1086"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1087",
+          "Title": "1087",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1087"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1088",
+          "Title": "1088",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1088"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1089",
+          "Title": "1089",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1089"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1090",
+          "Title": "1090",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1090"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1091",
+          "Title": "1091",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1091"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1092",
+          "Title": "1092",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1092"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1093",
+          "Title": "1093",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1093"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1094",
+          "Title": "1094",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1094"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1095",
+          "Title": "1095",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1095"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1096",
+          "Title": "1096",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1096"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1097",
+          "Title": "1097",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1097"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1098",
+          "Title": "1098",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1098"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1099",
+          "Title": "1099",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1099"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1100",
+          "Title": "1100",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1100"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1101",
+          "Title": "1101",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1101"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1102",
+          "Title": "1102",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1102"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1103",
+          "Title": "1103",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1103"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1104",
+          "Title": "1104",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1104"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1105",
+          "Title": "1105",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1105"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1106",
+          "Title": "1106",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1106"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1107",
+          "Title": "1107",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1107"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1108",
+          "Title": "1108",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1108"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1109",
+          "Title": "1109",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1109"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1110",
+          "Title": "1110",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1110"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1111",
+          "Title": "1111",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1111"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1112",
+          "Title": "1112",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1112"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1113",
+          "Title": "1113",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1113"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1114",
+          "Title": "1114",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1114"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1115",
+          "Title": "1115",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1115"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1116",
+          "Title": "1116",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1116"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1117",
+          "Title": "1117",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1117"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1118",
+          "Title": "1118",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1118"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1119",
+          "Title": "1119",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1119"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1120",
+          "Title": "1120",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1120"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1121",
+          "Title": "1121",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1121"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1122",
+          "Title": "1122",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1122"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1123",
+          "Title": "1123",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1123"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1124",
+          "Title": "1124",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1124"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1125",
+          "Title": "1125",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1125"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1126",
+          "Title": "1126",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1126"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1127",
+          "Title": "1127",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1127"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1128",
+          "Title": "1128",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1128"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1129",
+          "Title": "1129",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1129"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1130",
+          "Title": "1130",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1130"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1131",
+          "Title": "1131",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1131"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1132",
+          "Title": "1132",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1132"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1133",
+          "Title": "1133",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1133"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1134",
+          "Title": "1134",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1134"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1135",
+          "Title": "1135",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1135"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1136",
+          "Title": "1136",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1136"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1137",
+          "Title": "1137",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1137"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1138",
+          "Title": "1138",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1138"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1139",
+          "Title": "1139",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1139"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1140",
+          "Title": "1140",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1140"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1141",
+          "Title": "1141",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1141"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1142",
+          "Title": "1142",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1142"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1143",
+          "Title": "1143",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1143"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1144",
+          "Title": "1144",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1144"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1145",
+          "Title": "1145",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1145"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1146",
+          "Title": "1146",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1146"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1147",
+          "Title": "1147",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1147"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1148",
+          "Title": "1148",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1148"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1149",
+          "Title": "1149",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1149"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1150",
+          "Title": "1150",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1150"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1151",
+          "Title": "1151",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1151"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1152",
+          "Title": "1152",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1152"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1153",
+          "Title": "1153",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1153"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1154",
+          "Title": "1154",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1154"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1155",
+          "Title": "1155",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1155"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1156",
+          "Title": "1156",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1156"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1157",
+          "Title": "1157",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1157"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1158",
+          "Title": "1158",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1158"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1159",
+          "Title": "1159",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1159"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1160",
+          "Title": "1160",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1160"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1161",
+          "Title": "1161",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1161"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1162",
+          "Title": "1162",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1162"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1163",
+          "Title": "1163",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1163"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1164",
+          "Title": "1164",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1164"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1165",
+          "Title": "1165",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1165"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1166",
+          "Title": "1166",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1166"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1167",
+          "Title": "1167",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1167"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1168",
+          "Title": "1168",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1168"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1169",
+          "Title": "1169",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1169"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1170",
+          "Title": "1170",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1170"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1171",
+          "Title": "1171",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1171"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1172",
+          "Title": "1172",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1172"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1173",
+          "Title": "1173",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1173"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1174",
+          "Title": "1174",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1174"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1175",
+          "Title": "1175",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1175"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1176",
+          "Title": "1176",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1176"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1177",
+          "Title": "1177",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1177"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1178",
+          "Title": "1178",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1178"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1179",
+          "Title": "1179",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1179"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1180",
+          "Title": "1180",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1180"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1181",
+          "Title": "1181",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1181"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1182",
+          "Title": "1182",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1182"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1183",
+          "Title": "1183",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1183"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1184",
+          "Title": "1184",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1184"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1185",
+          "Title": "1185",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1185"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1186",
+          "Title": "1186",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1186"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1187",
+          "Title": "1187",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1187"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1188",
+          "Title": "1188",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1188"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1189",
+          "Title": "1189",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1189"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1190",
+          "Title": "1190",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1190"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1191",
+          "Title": "1191",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1191"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1192",
+          "Title": "1192",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1192"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1193",
+          "Title": "1193",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1193"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1194",
+          "Title": "1194",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1194"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1195",
+          "Title": "1195",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1195"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1196",
+          "Title": "1196",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1196"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1197",
+          "Title": "1197",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1197"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1198",
+          "Title": "1198",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1198"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/1199",
+          "Title": "1199",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "1199"
+          },
+          "SourceIdentity": ""
+        },
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "123"
+          },
+          "SourceIdentity": ""
+        }
+      ],
+      "error": false,
+      "native_refused": false
+    },
+    {
+      "name": "rss-buffer-limit",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 1
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        },
+        {
+          "URL": "https://example.com/de/jobs/123-b",
+          "Title": "Deutsch",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        }
+      ],
+      "expected": [],
+      "error": true,
+      "native_refused": false
+    },
+    {
+      "name": "non-stream-buffer-not-used",
+      "provider": "api_sniffer",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 1
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        },
+        {
+          "URL": "https://example.com/de/jobs/123-b",
+          "Title": "Deutsch",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "URL": "https://example.com/jobs/123",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "123"
+          },
+          "SourceIdentity": ""
+        }
+      ],
+      "error": false,
+      "native_refused": false
+    },
+    {
+      "name": "bad-policy",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "last",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        }
+      ],
+      "expected": [],
+      "error": true,
+      "native_refused": true
+    },
+    {
+      "name": "missing-source-preference",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        }
+      ],
+      "expected": [],
+      "error": true,
+      "native_refused": true
+    },
+    {
+      "name": "bad-canonical-groups",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": ".*",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        }
+      ],
+      "expected": [],
+      "error": true,
+      "native_refused": true
+    },
+    {
+      "name": "two-identities",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500,
+          "collision_source_identity_regex": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$"
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        }
+      ],
+      "expected": [],
+      "error": true,
+      "native_refused": true
+    },
+    {
+      "name": "bad-limit",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": true
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        }
+      ],
+      "expected": [],
+      "error": true,
+      "native_refused": true
+    },
+    {
+      "name": "unpaired-preference",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "^https://example\\.com/(?:en|de)/jobs/(\\d+)(?:-[^/?#]+)?$",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500,
+          "collision_preferred_metadata_key": "locale"
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        }
+      ],
+      "expected": [],
+      "error": true,
+      "native_refused": true
+    },
+    {
+      "name": "bad-regex",
+      "provider": "rss",
+      "config": {
+        "url_transform": {
+          "find": "[",
+          "replace": "https://example.com/jobs/\\1",
+          "collision_policy": "prefer_source_pattern",
+          "collision_preferred_source_patterns": [
+            "/en/",
+            "/de/"
+          ],
+          "collision_canonical_identity_regex": "^https://example\\.com/jobs/(\\d+)$",
+          "collision_identity_metadata_key": "id",
+          "collision_stream_buffer_limit": 500
+        }
+      },
+      "jobs": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Metadata": {
+            "id": "123"
+          }
+        }
+      ],
+      "expected": [
+        {
+          "URL": "https://example.com/en/jobs/123-a",
+          "Title": "English",
+          "Description": "<p>Work.</p>",
+          "Locations": null,
+          "Metadata": {
+            "id": "123"
+          },
+          "SourceIdentity": ""
+        }
+      ],
+      "error": false,
+      "native_refused": true
+    }
+  ]
+}
