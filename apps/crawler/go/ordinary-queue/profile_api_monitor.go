@@ -86,6 +86,15 @@ func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[stri
 		return fail()
 	}
 	validation := cloneConfig(config)
+	// Wecruit landing pages use a fragment-only SPA route. Provider validation
+	// binds the explicit API origin and tenant; preserve the original URL in
+	// the immutable profile while removing its fragment only for this validator.
+	if provider == "wecruit" {
+		if u, err := url.Parse(validation["board_url"]); err == nil {
+			u.Fragment, u.RawFragment = "", ""
+			validation["board_url"] = u.String()
+		}
+	}
 	// JazzHR's strict first-party identity permits the explicit default TLS port.
 	// Normalize only this reused validator input; immutable binding keeps the
 	// original configured URL and the provider endpoint has no explicit port.

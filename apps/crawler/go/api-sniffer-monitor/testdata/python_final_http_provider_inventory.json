@@ -1,0 +1,1630 @@
+[
+  {
+    "provider": "paynet",
+    "mode": "rich",
+    "board": {
+      "board_url": "https://www.pay-netonline.com/PayNet/Applicant/Postings.aspx?Co=Example",
+      "metadata": {}
+    },
+    "exchanges": [
+      {
+        "url": "https://api.pay-netonline.com/applicantpublic/jobpostings?company_id=Example",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json"
+        },
+        "body": "[{\"ID\":\"11111111-2222-3333-4444-555555555555\",\"Position\":{\"Title\":\" Engineer \",\"Description\":\"Build & test\\nPeople's systems\",\"Requirements\":\"<ul><li>Care</li></ul>\",\"Location\":\" Sioux Falls, SD \",\"StartDate\":\"2/3/2026\",\"EndDate\":\"2027-12-31\"},\"Company\":{\"Name\":\" Company \"}}]"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://www.pay-netonline.com/PayNet/Applicant/Posting.aspx?JobPostingID=11111111-2222-3333-4444-555555555555",
+        "title": "Engineer",
+        "description": "<p>Build &amp; test<br>People&#x27;s systems</p>\n<h3>Requirements</h3>\n<ul><li>Care</li></ul>",
+        "locations": [
+          "Sioux Falls, SD"
+        ],
+        "date_posted": "2026-02-03",
+        "extras": {
+          "qualifications": "<ul><li>Care</li></ul>"
+        },
+        "metadata": {
+          "posting_id": "11111111-2222-3333-4444-555555555555",
+          "company_name": "Company",
+          "valid_through": "2027-12-31"
+        },
+        "source_identity": "paynet:example:11111111-2222-3333-4444-555555555555"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "paynet",
+    "mode": "empty",
+    "board": {
+      "board_url": "https://www.pay-netonline.com/PayNet/Applicant/Postings.aspx?Co=Example",
+      "metadata": {}
+    },
+    "exchanges": [
+      {
+        "url": "https://api.pay-netonline.com/applicantpublic/jobpostings?company_id=Example",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json"
+        },
+        "body": "[]"
+      }
+    ],
+    "jobs": [],
+    "truncated": false
+  },
+  {
+    "provider": "paynet",
+    "mode": "duplicate",
+    "board": {
+      "board_url": "https://www.pay-netonline.com/PayNet/Applicant/Postings.aspx?Co=Example",
+      "metadata": {}
+    },
+    "exchanges": [
+      {
+        "url": "https://api.pay-netonline.com/applicantpublic/jobpostings?company_id=Example",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json"
+        },
+        "body": "[{\"ID\":\"11111111-2222-3333-4444-555555555555\",\"Position\":{\"Title\":\" Engineer \",\"Description\":\"Build & test\\nPeople's systems\",\"Requirements\":\"<ul><li>Care</li></ul>\",\"Location\":\" Sioux Falls, SD \",\"StartDate\":\"2/3/2026\",\"EndDate\":\"2027-12-31\"},\"Company\":{\"Name\":\" Company \"}},{\"ID\":\"11111111-2222-3333-4444-555555555555\",\"Position\":{\"Title\":\" Engineer \",\"Description\":\"Build & test\\nPeople's systems\",\"Requirements\":\"<ul><li>Care</li></ul>\",\"Location\":\" Sioux Falls, SD \",\"StartDate\":\"2/3/2026\",\"EndDate\":\"2027-12-31\"},\"Company\":{\"Name\":\" Company \"}}]"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://www.pay-netonline.com/PayNet/Applicant/Posting.aspx?JobPostingID=11111111-2222-3333-4444-555555555555",
+        "title": "Engineer",
+        "description": "<p>Build &amp; test<br>People&#x27;s systems</p>\n<h3>Requirements</h3>\n<ul><li>Care</li></ul>",
+        "locations": [
+          "Sioux Falls, SD"
+        ],
+        "date_posted": "2026-02-03",
+        "extras": {
+          "qualifications": "<ul><li>Care</li></ul>"
+        },
+        "metadata": {
+          "posting_id": "11111111-2222-3333-4444-555555555555",
+          "company_name": "Company",
+          "valid_through": "2027-12-31"
+        },
+        "source_identity": "paynet:example:11111111-2222-3333-4444-555555555555"
+      }
+    ],
+    "truncated": true
+  },
+  {
+    "provider": "paynet",
+    "mode": "mixed-invalid",
+    "board": {
+      "board_url": "https://www.pay-netonline.com/PayNet/Applicant/Postings.aspx?Co=Example",
+      "metadata": {}
+    },
+    "exchanges": [
+      {
+        "url": "https://api.pay-netonline.com/applicantpublic/jobpostings?company_id=Example",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json"
+        },
+        "body": "[{\"ID\":\"11111111-2222-3333-4444-555555555555\",\"Position\":{\"Title\":\" Engineer \",\"Description\":\"Build & test\\nPeople's systems\",\"Requirements\":\"<ul><li>Care</li></ul>\",\"Location\":\" Sioux Falls, SD \",\"StartDate\":\"2/3/2026\",\"EndDate\":\"2027-12-31\"},\"Company\":{\"Name\":\" Company \"}},null]"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://www.pay-netonline.com/PayNet/Applicant/Posting.aspx?JobPostingID=11111111-2222-3333-4444-555555555555",
+        "title": "Engineer",
+        "description": "<p>Build &amp; test<br>People&#x27;s systems</p>\n<h3>Requirements</h3>\n<ul><li>Care</li></ul>",
+        "locations": [
+          "Sioux Falls, SD"
+        ],
+        "date_posted": "2026-02-03",
+        "extras": {
+          "qualifications": "<ul><li>Care</li></ul>"
+        },
+        "metadata": {
+          "posting_id": "11111111-2222-3333-4444-555555555555",
+          "company_name": "Company",
+          "valid_through": "2027-12-31"
+        },
+        "source_identity": "paynet:example:11111111-2222-3333-4444-555555555555"
+      }
+    ],
+    "truncated": true
+  },
+  {
+    "provider": "paynet",
+    "mode": "all-invalid",
+    "board": {
+      "board_url": "https://www.pay-netonline.com/PayNet/Applicant/Postings.aspx?Co=Example",
+      "metadata": {}
+    },
+    "exchanges": [
+      {
+        "url": "https://api.pay-netonline.com/applicantpublic/jobpostings?company_id=Example",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json"
+        },
+        "body": "[null]"
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "paynet",
+    "mode": "wrong-shape",
+    "board": {
+      "board_url": "https://www.pay-netonline.com/PayNet/Applicant/Postings.aspx?Co=Example",
+      "metadata": {}
+    },
+    "exchanges": [
+      {
+        "url": "https://api.pay-netonline.com/applicantpublic/jobpostings?company_id=Example",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json"
+        },
+        "body": "{}"
+      },
+      {
+        "url": "https://api.pay-netonline.com/applicantpublic/jobpostings?company_id=Example",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json"
+        },
+        "body": "{}"
+      },
+      {
+        "url": "https://api.pay-netonline.com/applicantpublic/jobpostings?company_id=Example",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json"
+        },
+        "body": "{}"
+      }
+    ],
+    "error": true,
+    "original_error": "PaginationFetchError"
+  },
+  {
+    "provider": "nowhiring",
+    "mode": "rich",
+    "board": {
+      "board_url": "https://nowhiring.com/example/",
+      "metadata": {
+        "slug": "example"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://nowhiring.com/api/career-live-sites/nowhiring.com%2Fexample",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/example/"
+        },
+        "body": "{\"jobSearchCriteria\":[{\"fieldName\":\"billingAccountId\",\"fieldValue\":\"123\"},{\"fieldName\":\"brandId\",\"fieldValue\":\"brand\"}]}"
+      },
+      {
+        "url": "https://nowhiring.com/api/jobs/search",
+        "method": "POST",
+        "request_body": "{\"customerId\":[\"123\"],\"brandTemplateId\":[],\"brandId\":[\"brand\"],\"start\":\"0\",\"sort\":\"jobtitle\",\"includefacetlist\":false,\"manyselectfacets\":[],\"specificfacets\":[],\"disablesuppression\":true,\"specificlocationsonly\":true}",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/",
+          "content-type": "application/json"
+        },
+        "body": "{\"list\":[{\"id\":\"job-1\"}],\"total\":1}"
+      },
+      {
+        "url": "https://nowhiring.com/api/jobs/job-1",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/"
+        },
+        "body": "{\"id\":\"job-1\",\"billingAccountId\":\"123\",\"jobTitle\":\" Engineer \",\"jobDescription\":\"<p>Build</p>\",\"addressLine1\":\" Main Street \",\"addressLine2\":\"Main Street\",\"city\":\"City\",\"stateProvCode\":\"State\",\"postalCode\":\"00001\",\"categories\":[null,\" \",\" Full-time \",\"Other\"],\"postedDate\":\"2026-10-09\",\"company\":\"Employer\",\"thirdPartyApplyUrl\":\"\",\"applicationURL\":\"https://example.invalid/apply\",\"brandId\":0}"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://nowhiring.com/example/job-details/job-1",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Main Street, City, State, 00001"
+        ],
+        "employment_type": "Full-time",
+        "date_posted": "2026-10-09",
+        "language": "en",
+        "metadata": {
+          "job_id": "job-1",
+          "company": "Employer",
+          "application_url": "https://example.invalid/apply",
+          "brand_id": 0
+        },
+        "source_identity": "nowhiring:123:job-1"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "nowhiring",
+    "mode": "empty",
+    "board": {
+      "board_url": "https://nowhiring.com/example/",
+      "metadata": {
+        "slug": "example"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://nowhiring.com/api/career-live-sites/nowhiring.com%2Fexample",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/example/"
+        },
+        "body": "{\"jobSearchCriteria\":[{\"fieldName\":\"billingAccountId\",\"fieldValue\":\"123\"},{\"fieldName\":\"brandId\",\"fieldValue\":\"brand\"}]}"
+      },
+      {
+        "url": "https://nowhiring.com/api/jobs/search",
+        "method": "POST",
+        "request_body": "{\"customerId\":[\"123\"],\"brandTemplateId\":[],\"brandId\":[\"brand\"],\"start\":\"0\",\"sort\":\"jobtitle\",\"includefacetlist\":false,\"manyselectfacets\":[],\"specificfacets\":[],\"disablesuppression\":true,\"specificlocationsonly\":true}",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/",
+          "content-type": "application/json"
+        },
+        "body": "{\"list\":[],\"total\":0}"
+      }
+    ],
+    "jobs": [],
+    "truncated": false
+  },
+  {
+    "provider": "nowhiring",
+    "mode": "duplicate",
+    "board": {
+      "board_url": "https://nowhiring.com/example/",
+      "metadata": {
+        "slug": "example"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://nowhiring.com/api/career-live-sites/nowhiring.com%2Fexample",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/example/"
+        },
+        "body": "{\"jobSearchCriteria\":[{\"fieldName\":\"billingAccountId\",\"fieldValue\":\"123\"},{\"fieldName\":\"brandId\",\"fieldValue\":\"brand\"}]}"
+      },
+      {
+        "url": "https://nowhiring.com/api/jobs/search",
+        "method": "POST",
+        "request_body": "{\"customerId\":[\"123\"],\"brandTemplateId\":[],\"brandId\":[\"brand\"],\"start\":\"0\",\"sort\":\"jobtitle\",\"includefacetlist\":false,\"manyselectfacets\":[],\"specificfacets\":[],\"disablesuppression\":true,\"specificlocationsonly\":true}",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/",
+          "content-type": "application/json"
+        },
+        "body": "{\"list\":[{\"id\":\"job-1\"},{\"id\":\"job-1\"}],\"total\":2}"
+      },
+      {
+        "url": "https://nowhiring.com/api/jobs/job-1",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/"
+        },
+        "body": "{\"id\":\"job-1\",\"billingAccountId\":\"123\",\"jobTitle\":\" Engineer \",\"jobDescription\":\"<p>Build</p>\",\"addressLine1\":\" Main Street \",\"addressLine2\":\"Main Street\",\"city\":\"City\",\"stateProvCode\":\"State\",\"postalCode\":\"00001\",\"categories\":[null,\" \",\" Full-time \",\"Other\"],\"postedDate\":\"2026-10-09\",\"company\":\"Employer\",\"thirdPartyApplyUrl\":\"\",\"applicationURL\":\"https://example.invalid/apply\",\"brandId\":0}"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://nowhiring.com/example/job-details/job-1",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Main Street, City, State, 00001"
+        ],
+        "employment_type": "Full-time",
+        "date_posted": "2026-10-09",
+        "language": "en",
+        "metadata": {
+          "job_id": "job-1",
+          "company": "Employer",
+          "application_url": "https://example.invalid/apply",
+          "brand_id": 0
+        },
+        "source_identity": "nowhiring:123:job-1"
+      }
+    ],
+    "truncated": true
+  },
+  {
+    "provider": "nowhiring",
+    "mode": "gap",
+    "board": {
+      "board_url": "https://nowhiring.com/example/",
+      "metadata": {
+        "slug": "example"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://nowhiring.com/api/career-live-sites/nowhiring.com%2Fexample",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/example/"
+        },
+        "body": "{\"jobSearchCriteria\":[{\"fieldName\":\"billingAccountId\",\"fieldValue\":\"123\"},{\"fieldName\":\"brandId\",\"fieldValue\":\"brand\"}]}"
+      },
+      {
+        "url": "https://nowhiring.com/api/jobs/search",
+        "method": "POST",
+        "request_body": "{\"customerId\":[\"123\"],\"brandTemplateId\":[],\"brandId\":[\"brand\"],\"start\":\"0\",\"sort\":\"jobtitle\",\"includefacetlist\":false,\"manyselectfacets\":[],\"specificfacets\":[],\"disablesuppression\":true,\"specificlocationsonly\":true}",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/",
+          "content-type": "application/json"
+        },
+        "body": "{\"list\":[{\"id\":\"job-1\"}],\"total\":2}"
+      },
+      {
+        "url": "https://nowhiring.com/api/jobs/search",
+        "method": "POST",
+        "request_body": "{\"customerId\":[\"123\"],\"brandTemplateId\":[],\"brandId\":[\"brand\"],\"start\":\"1\",\"sort\":\"jobtitle\",\"includefacetlist\":false,\"manyselectfacets\":[],\"specificfacets\":[],\"disablesuppression\":true,\"specificlocationsonly\":true}",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/",
+          "content-type": "application/json"
+        },
+        "body": "{\"list\":[],\"total\":2}"
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "nowhiring",
+    "mode": "paged",
+    "board": {
+      "board_url": "https://nowhiring.com/example/",
+      "metadata": {
+        "slug": "example"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://nowhiring.com/api/career-live-sites/nowhiring.com%2Fexample",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/example/"
+        },
+        "body": "{\"jobSearchCriteria\":[{\"fieldName\":\"billingAccountId\",\"fieldValue\":\"123\"},{\"fieldName\":\"brandId\",\"fieldValue\":\"brand\"}]}"
+      },
+      {
+        "url": "https://nowhiring.com/api/jobs/search",
+        "method": "POST",
+        "request_body": "{\"customerId\":[\"123\"],\"brandTemplateId\":[],\"brandId\":[\"brand\"],\"start\":\"0\",\"sort\":\"jobtitle\",\"includefacetlist\":false,\"manyselectfacets\":[],\"specificfacets\":[],\"disablesuppression\":true,\"specificlocationsonly\":true}",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/",
+          "content-type": "application/json"
+        },
+        "body": "{\"list\":[{\"id\":\"job-1\"}],\"total\":3}"
+      },
+      {
+        "url": "https://nowhiring.com/api/jobs/search",
+        "method": "POST",
+        "request_body": "{\"customerId\":[\"123\"],\"brandTemplateId\":[],\"brandId\":[\"brand\"],\"start\":\"1\",\"sort\":\"jobtitle\",\"includefacetlist\":false,\"manyselectfacets\":[],\"specificfacets\":[],\"disablesuppression\":true,\"specificlocationsonly\":true}",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/",
+          "content-type": "application/json"
+        },
+        "body": "{\"list\":[{\"id\":\"job-2\"}],\"total\":3}"
+      },
+      {
+        "url": "https://nowhiring.com/api/jobs/search",
+        "method": "POST",
+        "request_body": "{\"customerId\":[\"123\"],\"brandTemplateId\":[],\"brandId\":[\"brand\"],\"start\":\"2\",\"sort\":\"jobtitle\",\"includefacetlist\":false,\"manyselectfacets\":[],\"specificfacets\":[],\"disablesuppression\":true,\"specificlocationsonly\":true}",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/",
+          "content-type": "application/json"
+        },
+        "body": "{\"list\":[{\"id\":\"job-3\"}],\"total\":3}"
+      },
+      {
+        "url": "https://nowhiring.com/api/jobs/job-1",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/"
+        },
+        "body": "{\"id\":\"job-1\",\"billingAccountId\":\"123\",\"jobTitle\":\" Engineer \",\"jobDescription\":\"<p>Build</p>\",\"addressLine1\":\" Main Street \",\"addressLine2\":\"Main Street\",\"city\":\"City\",\"stateProvCode\":\"State\",\"postalCode\":\"00001\",\"categories\":[null,\" \",\" Full-time \",\"Other\"],\"postedDate\":\"2026-10-09\",\"company\":\"Employer\",\"thirdPartyApplyUrl\":\"\",\"applicationURL\":\"https://example.invalid/apply\",\"brandId\":0}"
+      },
+      {
+        "url": "https://nowhiring.com/api/jobs/job-2",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/"
+        },
+        "body": "{\"id\":\"job-2\",\"billingAccountId\":\"123\",\"jobTitle\":\" Engineer \",\"jobDescription\":\"<p>Build</p>\",\"addressLine1\":\" Main Street \",\"addressLine2\":\"Main Street\",\"city\":\"City\",\"stateProvCode\":\"State\",\"postalCode\":\"00001\",\"categories\":[null,\" \",\" Full-time \",\"Other\"],\"postedDate\":\"2026-10-09\",\"company\":\"Employer\",\"thirdPartyApplyUrl\":\"\",\"applicationURL\":\"https://example.invalid/apply\",\"brandId\":0}"
+      },
+      {
+        "url": "https://nowhiring.com/api/jobs/job-3",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/"
+        },
+        "body": "{\"id\":\"job-3\",\"billingAccountId\":\"123\",\"jobTitle\":\" Engineer \",\"jobDescription\":\"<p>Build</p>\",\"addressLine1\":\" Main Street \",\"addressLine2\":\"Main Street\",\"city\":\"City\",\"stateProvCode\":\"State\",\"postalCode\":\"00001\",\"categories\":[null,\" \",\" Full-time \",\"Other\"],\"postedDate\":\"2026-10-09\",\"company\":\"Employer\",\"thirdPartyApplyUrl\":\"\",\"applicationURL\":\"https://example.invalid/apply\",\"brandId\":0}"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://nowhiring.com/example/job-details/job-1",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Main Street, City, State, 00001"
+        ],
+        "employment_type": "Full-time",
+        "date_posted": "2026-10-09",
+        "language": "en",
+        "metadata": {
+          "job_id": "job-1",
+          "company": "Employer",
+          "application_url": "https://example.invalid/apply",
+          "brand_id": 0
+        },
+        "source_identity": "nowhiring:123:job-1"
+      },
+      {
+        "url": "https://nowhiring.com/example/job-details/job-2",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Main Street, City, State, 00001"
+        ],
+        "employment_type": "Full-time",
+        "date_posted": "2026-10-09",
+        "language": "en",
+        "metadata": {
+          "job_id": "job-2",
+          "company": "Employer",
+          "application_url": "https://example.invalid/apply",
+          "brand_id": 0
+        },
+        "source_identity": "nowhiring:123:job-2"
+      },
+      {
+        "url": "https://nowhiring.com/example/job-details/job-3",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Main Street, City, State, 00001"
+        ],
+        "employment_type": "Full-time",
+        "date_posted": "2026-10-09",
+        "language": "en",
+        "metadata": {
+          "job_id": "job-3",
+          "company": "Employer",
+          "application_url": "https://example.invalid/apply",
+          "brand_id": 0
+        },
+        "source_identity": "nowhiring:123:job-3"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "nowhiring",
+    "mode": "invalid-id",
+    "board": {
+      "board_url": "https://nowhiring.com/example/",
+      "metadata": {
+        "slug": "example"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://nowhiring.com/api/career-live-sites/nowhiring.com%2Fexample",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/example/"
+        },
+        "body": "{\"jobSearchCriteria\":[{\"fieldName\":\"billingAccountId\",\"fieldValue\":\"123\"},{\"fieldName\":\"brandId\",\"fieldValue\":\"brand\"}]}"
+      },
+      {
+        "url": "https://nowhiring.com/api/jobs/search",
+        "method": "POST",
+        "request_body": "{\"customerId\":[\"123\"],\"brandTemplateId\":[],\"brandId\":[\"brand\"],\"start\":\"0\",\"sort\":\"jobtitle\",\"includefacetlist\":false,\"manyselectfacets\":[],\"specificfacets\":[],\"disablesuppression\":true,\"specificlocationsonly\":true}",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/",
+          "content-type": "application/json"
+        },
+        "body": "{\"list\":[{\"id\":\"path/escape\"}],\"total\":1}"
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "nowhiring",
+    "mode": "boolean-total",
+    "board": {
+      "board_url": "https://nowhiring.com/example/",
+      "metadata": {
+        "slug": "example"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://nowhiring.com/api/career-live-sites/nowhiring.com%2Fexample",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/example/"
+        },
+        "body": "{\"jobSearchCriteria\":[{\"fieldName\":\"billingAccountId\",\"fieldValue\":\"123\"},{\"fieldName\":\"brandId\",\"fieldValue\":\"brand\"}]}"
+      },
+      {
+        "url": "https://nowhiring.com/api/jobs/search",
+        "method": "POST",
+        "request_body": "{\"customerId\":[\"123\"],\"brandTemplateId\":[],\"brandId\":[\"brand\"],\"start\":\"0\",\"sort\":\"jobtitle\",\"includefacetlist\":false,\"manyselectfacets\":[],\"specificfacets\":[],\"disablesuppression\":true,\"specificlocationsonly\":true}",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/",
+          "content-type": "application/json"
+        },
+        "body": "{\"list\":[{\"id\":\"job-1\"}],\"total\":true}"
+      },
+      {
+        "url": "https://nowhiring.com/api/jobs/job-1",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/"
+        },
+        "body": "{\"id\":\"job-1\",\"billingAccountId\":\"123\",\"jobTitle\":\" Engineer \",\"jobDescription\":\"<p>Build</p>\",\"addressLine1\":\" Main Street \",\"addressLine2\":\"Main Street\",\"city\":\"City\",\"stateProvCode\":\"State\",\"postalCode\":\"00001\",\"categories\":[null,\" \",\" Full-time \",\"Other\"],\"postedDate\":\"2026-10-09\",\"company\":\"Employer\",\"thirdPartyApplyUrl\":\"\",\"applicationURL\":\"https://example.invalid/apply\",\"brandId\":0}"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://nowhiring.com/example/job-details/job-1",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Main Street, City, State, 00001"
+        ],
+        "employment_type": "Full-time",
+        "date_posted": "2026-10-09",
+        "language": "en",
+        "metadata": {
+          "job_id": "job-1",
+          "company": "Employer",
+          "application_url": "https://example.invalid/apply",
+          "brand_id": 0
+        },
+        "source_identity": "nowhiring:123:job-1"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "nowhiring",
+    "mode": "float-total",
+    "board": {
+      "board_url": "https://nowhiring.com/example/",
+      "metadata": {
+        "slug": "example"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://nowhiring.com/api/career-live-sites/nowhiring.com%2Fexample",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/example/"
+        },
+        "body": "{\"jobSearchCriteria\":[{\"fieldName\":\"billingAccountId\",\"fieldValue\":\"123\"},{\"fieldName\":\"brandId\",\"fieldValue\":\"brand\"}]}"
+      },
+      {
+        "url": "https://nowhiring.com/api/jobs/search",
+        "method": "POST",
+        "request_body": "{\"customerId\":[\"123\"],\"brandTemplateId\":[],\"brandId\":[\"brand\"],\"start\":\"0\",\"sort\":\"jobtitle\",\"includefacetlist\":false,\"manyselectfacets\":[],\"specificfacets\":[],\"disablesuppression\":true,\"specificlocationsonly\":true}",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/",
+          "content-type": "application/json"
+        },
+        "body": "{\"list\":[{\"id\":\"job-1\"}],\"total\":1.0}"
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "nowhiring",
+    "mode": "missing-scope",
+    "board": {
+      "board_url": "https://nowhiring.com/example/",
+      "metadata": {
+        "slug": "example"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://nowhiring.com/api/career-live-sites/nowhiring.com%2Fexample",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/example/"
+        },
+        "body": "{}"
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "nowhiring",
+    "mode": "invalid-detail",
+    "board": {
+      "board_url": "https://nowhiring.com/example/",
+      "metadata": {
+        "slug": "example"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://nowhiring.com/api/career-live-sites/nowhiring.com%2Fexample",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/example/"
+        },
+        "body": "{\"jobSearchCriteria\":[{\"fieldName\":\"billingAccountId\",\"fieldValue\":\"123\"},{\"fieldName\":\"brandId\",\"fieldValue\":\"brand\"}]}"
+      },
+      {
+        "url": "https://nowhiring.com/api/jobs/search",
+        "method": "POST",
+        "request_body": "{\"customerId\":[\"123\"],\"brandTemplateId\":[],\"brandId\":[\"brand\"],\"start\":\"0\",\"sort\":\"jobtitle\",\"includefacetlist\":false,\"manyselectfacets\":[],\"specificfacets\":[],\"disablesuppression\":true,\"specificlocationsonly\":true}",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/",
+          "content-type": "application/json"
+        },
+        "body": "{\"list\":[{\"id\":\"job-1\"}],\"total\":1}"
+      },
+      {
+        "url": "https://nowhiring.com/api/jobs/job-1",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "application/json",
+          "referer": "https://nowhiring.com/"
+        },
+        "body": "{\"id\":\"job-1\",\"billingAccountId\":\"123\",\"jobTitle\":\" \",\"jobDescription\":\"<p>Build</p>\",\"addressLine1\":\" Main Street \",\"addressLine2\":\"Main Street\",\"city\":\"City\",\"stateProvCode\":\"State\",\"postalCode\":\"00001\",\"categories\":[null,\" \",\" Full-time \",\"Other\"],\"postedDate\":\"2026-10-09\",\"company\":\"Employer\",\"thirdPartyApplyUrl\":\"\",\"applicationURL\":\"https://example.invalid/apply\",\"brandId\":0}"
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "fenbi",
+    "mode": "rich",
+    "board": {
+      "board_url": "https://www.fenbi.com/page/joinus",
+      "metadata": {
+        "kind": "fulltime"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://www.fenbi.com/page/joinus",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "<script src=\"https://nodestatic.fbstatic.cn/weblts_spa_online/page/main-ABC123.js\"></script>"
+      },
+      {
+        "url": "https://nodestatic.fbstatic.cn/weblts_spa_online/page/main-ABC123.js",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "this.joinUsArr={\"fulltime\":[{\"id\":123,\"title\":\" 研发工程师 \",\"location\":\" 北京（优先）、全国、居家 \",\"description\":[\" 构建 & 测试 \",\"支持 '团队'\"],\"requirements\":[\" 经验 \"],\"publicDateShow\":\"2026年2月3日\",\"department\":\"研发\"}],\"parttime\":[{\"id\":123,\"title\":\" 研发工程师 \",\"location\":\" 北京（优先）、全国、居家 \",\"description\":[\" 构建 & 测试 \",\"支持 '团队'\"],\"requirements\":[\" 经验 \"],\"publicDateShow\":\"2026年2月3日\",\"department\":\"研发\"}]};"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://www.fenbi.com/page/joinusdetail/fulltime/123",
+        "title": "研发工程师",
+        "description": "<h2>岗位职责</h2><ol><li>构建 &amp; 测试</li><li>支持 &#x27;团队&#x27;</li></ol><h2>任职要求</h2><ol><li>经验</li></ol>",
+        "locations": [
+          "北京",
+          "China"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": "hybrid",
+        "date_posted": "2026-02-03",
+        "extras": {
+          "responsibilities": [
+            "构建 & 测试",
+            "支持 '团队'"
+          ],
+          "qualifications": [
+            "经验"
+          ]
+        },
+        "metadata": {
+          "provider_id": 123,
+          "department": "研发"
+        },
+        "source_identity": "fenbi:careers:fulltime-123"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "fenbi",
+    "mode": "empty",
+    "board": {
+      "board_url": "https://www.fenbi.com/page/joinus",
+      "metadata": {
+        "kind": "fulltime"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://www.fenbi.com/page/joinus",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "<script src=\"https://nodestatic.fbstatic.cn/weblts_spa_online/page/main-ABC123.js\"></script>"
+      },
+      {
+        "url": "https://nodestatic.fbstatic.cn/weblts_spa_online/page/main-ABC123.js",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "this.joinUsArr={\"fulltime\":[],\"parttime\":[]};"
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "fenbi",
+    "mode": "duplicate",
+    "board": {
+      "board_url": "https://www.fenbi.com/page/joinus",
+      "metadata": {
+        "kind": "fulltime"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://www.fenbi.com/page/joinus",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "<script src=\"https://nodestatic.fbstatic.cn/weblts_spa_online/page/main-ABC123.js\"></script>"
+      },
+      {
+        "url": "https://nodestatic.fbstatic.cn/weblts_spa_online/page/main-ABC123.js",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "this.joinUsArr={\"fulltime\":[{\"id\":123,\"title\":\" 研发工程师 \",\"location\":\" 北京（优先）、全国、居家 \",\"description\":[\" 构建 & 测试 \",\"支持 '团队'\"],\"requirements\":[\" 经验 \"],\"publicDateShow\":\"2026年2月3日\",\"department\":\"研发\"},{\"id\":123,\"title\":\" 研发工程师 \",\"location\":\" 北京（优先）、全国、居家 \",\"description\":[\" 构建 & 测试 \",\"支持 '团队'\"],\"requirements\":[\" 经验 \"],\"publicDateShow\":\"2026年2月3日\",\"department\":\"研发\"}],\"parttime\":[{\"id\":123,\"title\":\" 研发工程师 \",\"location\":\" 北京（优先）、全国、居家 \",\"description\":[\" 构建 & 测试 \",\"支持 '团队'\"],\"requirements\":[\" 经验 \"],\"publicDateShow\":\"2026年2月3日\",\"department\":\"研发\"},{\"id\":123,\"title\":\" 研发工程师 \",\"location\":\" 北京（优先）、全国、居家 \",\"description\":[\" 构建 & 测试 \",\"支持 '团队'\"],\"requirements\":[\" 经验 \"],\"publicDateShow\":\"2026年2月3日\",\"department\":\"研发\"}]};"
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "fenbi",
+    "mode": "invalid-detail",
+    "board": {
+      "board_url": "https://www.fenbi.com/page/joinus",
+      "metadata": {
+        "kind": "fulltime"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://www.fenbi.com/page/joinus",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "<script src=\"https://nodestatic.fbstatic.cn/weblts_spa_online/page/main-ABC123.js\"></script>"
+      },
+      {
+        "url": "https://nodestatic.fbstatic.cn/weblts_spa_online/page/main-ABC123.js",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "this.joinUsArr={\"fulltime\":[{\"id\":123,\"title\":\" \",\"location\":\" 北京（优先）、全国、居家 \",\"description\":[\" 构建 & 测试 \",\"支持 '团队'\"],\"requirements\":[\" 经验 \"],\"publicDateShow\":\"2026年2月3日\",\"department\":\"研发\"}],\"parttime\":[{\"id\":123,\"title\":\" \",\"location\":\" 北京（优先）、全国、居家 \",\"description\":[\" 构建 & 测试 \",\"支持 '团队'\"],\"requirements\":[\" 经验 \"],\"publicDateShow\":\"2026年2月3日\",\"department\":\"研发\"}]};"
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "fenbi",
+    "mode": "missing-bundle",
+    "board": {
+      "board_url": "https://www.fenbi.com/page/joinus",
+      "metadata": {
+        "kind": "fulltime"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://www.fenbi.com/page/joinus",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "<html></html>"
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "fenbi",
+    "mode": "duplicate-bundle",
+    "board": {
+      "board_url": "https://www.fenbi.com/page/joinus",
+      "metadata": {
+        "kind": "fulltime"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://www.fenbi.com/page/joinus",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "<script src=\"https://nodestatic.fbstatic.cn/weblts_spa_online/page/main-ABC123.js\"></script><script src=\"https://nodestatic.fbstatic.cn/weblts_spa_online/page/main-ABC123.js\"></script>"
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "fenbi",
+    "mode": "duplicate-marker",
+    "board": {
+      "board_url": "https://www.fenbi.com/page/joinus",
+      "metadata": {
+        "kind": "fulltime"
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://www.fenbi.com/page/joinus",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "<script src=\"https://nodestatic.fbstatic.cn/weblts_spa_online/page/main-ABC123.js\"></script>"
+      },
+      {
+        "url": "https://nodestatic.fbstatic.cn/weblts_spa_online/page/main-ABC123.js",
+        "method": "GET",
+        "request_body": "",
+        "headers": {
+          "accept": "*/*"
+        },
+        "body": "this.joinUsArr={\"fulltime\":[{\"id\":123,\"title\":\" 研发工程师 \",\"location\":\" 北京（优先）、全国、居家 \",\"description\":[\" 构建 & 测试 \",\"支持 '团队'\"],\"requirements\":[\" 经验 \"],\"publicDateShow\":\"2026年2月3日\",\"department\":\"研发\"}],\"parttime\":[{\"id\":123,\"title\":\" 研发工程师 \",\"location\":\" 北京（优先）、全国、居家 \",\"description\":[\" 构建 & 测试 \",\"支持 '团队'\"],\"requirements\":[\" 经验 \"],\"publicDateShow\":\"2026年2月3日\",\"department\":\"研发\"}]};this.joinUsArr={\"fulltime\":[{\"id\":123,\"title\":\" 研发工程师 \",\"location\":\" 北京（优先）、全国、居家 \",\"description\":[\" 构建 & 测试 \",\"支持 '团队'\"],\"requirements\":[\" 经验 \"],\"publicDateShow\":\"2026年2月3日\",\"department\":\"研发\"}],\"parttime\":[{\"id\":123,\"title\":\" 研发工程师 \",\"location\":\" 北京（优先）、全国、居家 \",\"description\":[\" 构建 & 测试 \",\"支持 '团队'\"],\"requirements\":[\" 经验 \"],\"publicDateShow\":\"2026年2月3日\",\"department\":\"研发\"}]};"
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "wecruit",
+    "mode": "rich",
+    "board": {
+      "board_url": "https://wecruit.hotjob.cn/SU1234567890abcdef12345678/pb/index.html#/",
+      "metadata": {
+        "api_origin": "https://wecruit.hotjob.cn",
+        "suite_key": "1234567890abcdef12345678",
+        "recruit_types": [
+          1
+        ]
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPosition/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "isFrompb=true&recruitType=1&pageSize=50&currentPage=1",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":\"200\",\"data\":{\"pageForm\":{\"pageData\":[{\"postId\":\"000000000000000000000001\",\"recruitType\":1,\"currentSuiteKey\":\"1234567890abcdef12345678\",\"postName\":\"Fallback\",\"publishDate\":\"2026-10-09\"}],\"totalPage\":1,\"pageSize\":50,\"currentPage\":1,\"dataCount\":1},\"positonNum\":1}}"
+      },
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPositionDetail/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "postId=000000000000000000000001",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":200,\"data\":{\"postName\":\" Engineer \",\"workContent\":\"Build & test\\nPeople's systems\",\"serviceCondition\":\" Learn \",\"workPlaceList\":[{\"name\":\" 北京 \"},{\"name\":\"北京\"},{\"name\":\"上海\"},null],\"publishDate\":\"2026-10-08 12:34:56\",\"endDate\":\"2027-01-31T00:00:00\",\"company\":\"Company\",\"recruitNumStr\":0,\"postCode\":\"code\",\"postId\":\"000000000000000000000001\",\"recruitType\":1}}"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://wecruit.hotjob.cn/SU1234567890abcdef12345678/pb/posDetail.html?postId=000000000000000000000001&postType=1",
+        "title": "Engineer",
+        "description": "<h3>工作职责</h3>\n<p>Build &amp; test<br>People's systems</p>\n<h3>任职要求</h3>\n<p>Learn</p>",
+        "locations": [
+          "北京",
+          "上海"
+        ],
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "qualifications": "Learn",
+          "responsibilities": "Build & test\nPeople's systems",
+          "valid_through": "2027-01-31"
+        },
+        "metadata": {
+          "post_code": "code",
+          "company": "Company",
+          "recruits": 0,
+          "recruit_type": 1
+        },
+        "source_identity": "wecruit:1234567890abcdef12345678:000000000000000000000001"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "wecruit",
+    "mode": "empty",
+    "board": {
+      "board_url": "https://wecruit.hotjob.cn/SU1234567890abcdef12345678/pb/index.html#/",
+      "metadata": {
+        "api_origin": "https://wecruit.hotjob.cn",
+        "suite_key": "1234567890abcdef12345678",
+        "recruit_types": [
+          1
+        ]
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPosition/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "isFrompb=true&recruitType=1&pageSize=50&currentPage=1",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":\"200\",\"data\":{\"pageForm\":{\"pageData\":[],\"totalPage\":0,\"pageSize\":0,\"currentPage\":0,\"dataCount\":0},\"positonNum\":0}}"
+      }
+    ],
+    "jobs": [],
+    "truncated": false
+  },
+  {
+    "provider": "wecruit",
+    "mode": "paged",
+    "board": {
+      "board_url": "https://wecruit.hotjob.cn/SU1234567890abcdef12345678/pb/index.html#/",
+      "metadata": {
+        "api_origin": "https://wecruit.hotjob.cn",
+        "suite_key": "1234567890abcdef12345678",
+        "recruit_types": [
+          1
+        ]
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPosition/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "isFrompb=true&recruitType=1&pageSize=50&currentPage=1",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":\"200\",\"data\":{\"pageForm\":{\"pageData\":[{\"postId\":\"000000000000000000000001\",\"recruitType\":1,\"currentSuiteKey\":\"1234567890abcdef12345678\",\"postName\":\"Fallback\",\"publishDate\":\"2026-10-09\"},{\"postId\":\"000000000000000000000002\",\"recruitType\":1,\"currentSuiteKey\":\"1234567890abcdef12345678\",\"postName\":\"Fallback\",\"publishDate\":\"2026-10-09\"}],\"totalPage\":2,\"pageSize\":2,\"currentPage\":1,\"dataCount\":3},\"positonNum\":3}}"
+      },
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPosition/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "isFrompb=true&recruitType=1&pageSize=2&currentPage=2",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":\"200\",\"data\":{\"pageForm\":{\"pageData\":[{\"postId\":\"000000000000000000000003\",\"recruitType\":1,\"currentSuiteKey\":\"1234567890abcdef12345678\",\"postName\":\"Fallback\",\"publishDate\":\"2026-10-09\"}],\"totalPage\":2,\"pageSize\":2,\"currentPage\":2,\"dataCount\":3},\"positonNum\":3}}"
+      },
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPositionDetail/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "postId=000000000000000000000001",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":200,\"data\":{\"postName\":\" Engineer \",\"workContent\":\"Build & test\\nPeople's systems\",\"serviceCondition\":\" Learn \",\"workPlaceList\":[{\"name\":\" 北京 \"},{\"name\":\"北京\"},{\"name\":\"上海\"},null],\"publishDate\":\"2026-10-08 12:34:56\",\"endDate\":\"2027-01-31T00:00:00\",\"company\":\"Company\",\"recruitNumStr\":0,\"postCode\":\"code\",\"postId\":\"000000000000000000000001\",\"recruitType\":1}}"
+      },
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPositionDetail/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "postId=000000000000000000000002",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":200,\"data\":{\"postName\":\" Engineer \",\"workContent\":\"Build & test\\nPeople's systems\",\"serviceCondition\":\" Learn \",\"workPlaceList\":[{\"name\":\" 北京 \"},{\"name\":\"北京\"},{\"name\":\"上海\"},null],\"publishDate\":\"2026-10-08 12:34:56\",\"endDate\":\"2027-01-31T00:00:00\",\"company\":\"Company\",\"recruitNumStr\":0,\"postCode\":\"code\",\"postId\":\"000000000000000000000002\",\"recruitType\":1}}"
+      },
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPositionDetail/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "postId=000000000000000000000003",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":200,\"data\":{\"postName\":\" Engineer \",\"workContent\":\"Build & test\\nPeople's systems\",\"serviceCondition\":\" Learn \",\"workPlaceList\":[{\"name\":\" 北京 \"},{\"name\":\"北京\"},{\"name\":\"上海\"},null],\"publishDate\":\"2026-10-08 12:34:56\",\"endDate\":\"2027-01-31T00:00:00\",\"company\":\"Company\",\"recruitNumStr\":0,\"postCode\":\"code\",\"postId\":\"000000000000000000000003\",\"recruitType\":1}}"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://wecruit.hotjob.cn/SU1234567890abcdef12345678/pb/posDetail.html?postId=000000000000000000000001&postType=1",
+        "title": "Engineer",
+        "description": "<h3>工作职责</h3>\n<p>Build &amp; test<br>People's systems</p>\n<h3>任职要求</h3>\n<p>Learn</p>",
+        "locations": [
+          "北京",
+          "上海"
+        ],
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "qualifications": "Learn",
+          "responsibilities": "Build & test\nPeople's systems",
+          "valid_through": "2027-01-31"
+        },
+        "metadata": {
+          "post_code": "code",
+          "company": "Company",
+          "recruits": 0,
+          "recruit_type": 1
+        },
+        "source_identity": "wecruit:1234567890abcdef12345678:000000000000000000000001"
+      },
+      {
+        "url": "https://wecruit.hotjob.cn/SU1234567890abcdef12345678/pb/posDetail.html?postId=000000000000000000000002&postType=1",
+        "title": "Engineer",
+        "description": "<h3>工作职责</h3>\n<p>Build &amp; test<br>People's systems</p>\n<h3>任职要求</h3>\n<p>Learn</p>",
+        "locations": [
+          "北京",
+          "上海"
+        ],
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "qualifications": "Learn",
+          "responsibilities": "Build & test\nPeople's systems",
+          "valid_through": "2027-01-31"
+        },
+        "metadata": {
+          "post_code": "code",
+          "company": "Company",
+          "recruits": 0,
+          "recruit_type": 1
+        },
+        "source_identity": "wecruit:1234567890abcdef12345678:000000000000000000000002"
+      },
+      {
+        "url": "https://wecruit.hotjob.cn/SU1234567890abcdef12345678/pb/posDetail.html?postId=000000000000000000000003&postType=1",
+        "title": "Engineer",
+        "description": "<h3>工作职责</h3>\n<p>Build &amp; test<br>People's systems</p>\n<h3>任职要求</h3>\n<p>Learn</p>",
+        "locations": [
+          "北京",
+          "上海"
+        ],
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "qualifications": "Learn",
+          "responsibilities": "Build & test\nPeople's systems",
+          "valid_through": "2027-01-31"
+        },
+        "metadata": {
+          "post_code": "code",
+          "company": "Company",
+          "recruits": 0,
+          "recruit_type": 1
+        },
+        "source_identity": "wecruit:1234567890abcdef12345678:000000000000000000000003"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "wecruit",
+    "mode": "changed-total",
+    "board": {
+      "board_url": "https://wecruit.hotjob.cn/SU1234567890abcdef12345678/pb/index.html#/",
+      "metadata": {
+        "api_origin": "https://wecruit.hotjob.cn",
+        "suite_key": "1234567890abcdef12345678",
+        "recruit_types": [
+          1
+        ]
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPosition/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "isFrompb=true&recruitType=1&pageSize=50&currentPage=1",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":\"200\",\"data\":{\"pageForm\":{\"pageData\":[{\"postId\":\"000000000000000000000001\",\"recruitType\":1,\"currentSuiteKey\":\"1234567890abcdef12345678\",\"postName\":\"Fallback\",\"publishDate\":\"2026-10-09\"},{\"postId\":\"000000000000000000000002\",\"recruitType\":1,\"currentSuiteKey\":\"1234567890abcdef12345678\",\"postName\":\"Fallback\",\"publishDate\":\"2026-10-09\"}],\"totalPage\":2,\"pageSize\":2,\"currentPage\":1,\"dataCount\":3},\"positonNum\":3}}"
+      },
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPosition/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "isFrompb=true&recruitType=1&pageSize=2&currentPage=2",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":\"200\",\"data\":{\"pageForm\":{\"pageData\":[{\"postId\":\"000000000000000000000003\",\"recruitType\":1,\"currentSuiteKey\":\"1234567890abcdef12345678\",\"postName\":\"Fallback\",\"publishDate\":\"2026-10-09\"}],\"totalPage\":2,\"pageSize\":2,\"currentPage\":2,\"dataCount\":4},\"positonNum\":4}}"
+      },
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPosition/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "isFrompb=true&recruitType=1&pageSize=50&currentPage=1",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":\"200\",\"data\":{\"pageForm\":{\"pageData\":[{\"postId\":\"000000000000000000000001\",\"recruitType\":1,\"currentSuiteKey\":\"1234567890abcdef12345678\",\"postName\":\"Fallback\",\"publishDate\":\"2026-10-09\"},{\"postId\":\"000000000000000000000002\",\"recruitType\":1,\"currentSuiteKey\":\"1234567890abcdef12345678\",\"postName\":\"Fallback\",\"publishDate\":\"2026-10-09\"}],\"totalPage\":2,\"pageSize\":2,\"currentPage\":1,\"dataCount\":3},\"positonNum\":3}}"
+      },
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPosition/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "isFrompb=true&recruitType=1&pageSize=2&currentPage=2",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":\"200\",\"data\":{\"pageForm\":{\"pageData\":[{\"postId\":\"000000000000000000000003\",\"recruitType\":1,\"currentSuiteKey\":\"1234567890abcdef12345678\",\"postName\":\"Fallback\",\"publishDate\":\"2026-10-09\"}],\"totalPage\":2,\"pageSize\":2,\"currentPage\":2,\"dataCount\":3},\"positonNum\":3}}"
+      },
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPositionDetail/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "postId=000000000000000000000001",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":200,\"data\":{\"postName\":\" Engineer \",\"workContent\":\"Build & test\\nPeople's systems\",\"serviceCondition\":\" Learn \",\"workPlaceList\":[{\"name\":\" 北京 \"},{\"name\":\"北京\"},{\"name\":\"上海\"},null],\"publishDate\":\"2026-10-08 12:34:56\",\"endDate\":\"2027-01-31T00:00:00\",\"company\":\"Company\",\"recruitNumStr\":0,\"postCode\":\"code\",\"postId\":\"000000000000000000000001\",\"recruitType\":1}}"
+      },
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPositionDetail/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "postId=000000000000000000000002",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":200,\"data\":{\"postName\":\" Engineer \",\"workContent\":\"Build & test\\nPeople's systems\",\"serviceCondition\":\" Learn \",\"workPlaceList\":[{\"name\":\" 北京 \"},{\"name\":\"北京\"},{\"name\":\"上海\"},null],\"publishDate\":\"2026-10-08 12:34:56\",\"endDate\":\"2027-01-31T00:00:00\",\"company\":\"Company\",\"recruitNumStr\":0,\"postCode\":\"code\",\"postId\":\"000000000000000000000002\",\"recruitType\":1}}"
+      },
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPositionDetail/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "postId=000000000000000000000003",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":200,\"data\":{\"postName\":\" Engineer \",\"workContent\":\"Build & test\\nPeople's systems\",\"serviceCondition\":\" Learn \",\"workPlaceList\":[{\"name\":\" 北京 \"},{\"name\":\"北京\"},{\"name\":\"上海\"},null],\"publishDate\":\"2026-10-08 12:34:56\",\"endDate\":\"2027-01-31T00:00:00\",\"company\":\"Company\",\"recruitNumStr\":0,\"postCode\":\"code\",\"postId\":\"000000000000000000000003\",\"recruitType\":1}}"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://wecruit.hotjob.cn/SU1234567890abcdef12345678/pb/posDetail.html?postId=000000000000000000000001&postType=1",
+        "title": "Engineer",
+        "description": "<h3>工作职责</h3>\n<p>Build &amp; test<br>People's systems</p>\n<h3>任职要求</h3>\n<p>Learn</p>",
+        "locations": [
+          "北京",
+          "上海"
+        ],
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "qualifications": "Learn",
+          "responsibilities": "Build & test\nPeople's systems",
+          "valid_through": "2027-01-31"
+        },
+        "metadata": {
+          "post_code": "code",
+          "company": "Company",
+          "recruits": 0,
+          "recruit_type": 1
+        },
+        "source_identity": "wecruit:1234567890abcdef12345678:000000000000000000000001"
+      },
+      {
+        "url": "https://wecruit.hotjob.cn/SU1234567890abcdef12345678/pb/posDetail.html?postId=000000000000000000000002&postType=1",
+        "title": "Engineer",
+        "description": "<h3>工作职责</h3>\n<p>Build &amp; test<br>People's systems</p>\n<h3>任职要求</h3>\n<p>Learn</p>",
+        "locations": [
+          "北京",
+          "上海"
+        ],
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "qualifications": "Learn",
+          "responsibilities": "Build & test\nPeople's systems",
+          "valid_through": "2027-01-31"
+        },
+        "metadata": {
+          "post_code": "code",
+          "company": "Company",
+          "recruits": 0,
+          "recruit_type": 1
+        },
+        "source_identity": "wecruit:1234567890abcdef12345678:000000000000000000000002"
+      },
+      {
+        "url": "https://wecruit.hotjob.cn/SU1234567890abcdef12345678/pb/posDetail.html?postId=000000000000000000000003&postType=1",
+        "title": "Engineer",
+        "description": "<h3>工作职责</h3>\n<p>Build &amp; test<br>People's systems</p>\n<h3>任职要求</h3>\n<p>Learn</p>",
+        "locations": [
+          "北京",
+          "上海"
+        ],
+        "date_posted": "2026-10-08",
+        "language": "zh",
+        "extras": {
+          "qualifications": "Learn",
+          "responsibilities": "Build & test\nPeople's systems",
+          "valid_through": "2027-01-31"
+        },
+        "metadata": {
+          "post_code": "code",
+          "company": "Company",
+          "recruits": 0,
+          "recruit_type": 1
+        },
+        "source_identity": "wecruit:1234567890abcdef12345678:000000000000000000000003"
+      }
+    ],
+    "truncated": false
+  },
+  {
+    "provider": "wecruit",
+    "mode": "duplicate",
+    "board": {
+      "board_url": "https://wecruit.hotjob.cn/SU1234567890abcdef12345678/pb/index.html#/",
+      "metadata": {
+        "api_origin": "https://wecruit.hotjob.cn",
+        "suite_key": "1234567890abcdef12345678",
+        "recruit_types": [
+          1
+        ]
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPosition/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "isFrompb=true&recruitType=1&pageSize=50&currentPage=1",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":\"200\",\"data\":{\"pageForm\":{\"pageData\":[{\"postId\":\"000000000000000000000001\",\"recruitType\":1,\"currentSuiteKey\":\"1234567890abcdef12345678\",\"postName\":\"Fallback\",\"publishDate\":\"2026-10-09\"},{\"postId\":\"000000000000000000000001\",\"recruitType\":1,\"currentSuiteKey\":\"1234567890abcdef12345678\",\"postName\":\"Fallback\",\"publishDate\":\"2026-10-09\"}],\"totalPage\":1,\"pageSize\":50,\"currentPage\":1,\"dataCount\":2},\"positonNum\":2}}"
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "wecruit",
+    "mode": "wrong-suite",
+    "board": {
+      "board_url": "https://wecruit.hotjob.cn/SU1234567890abcdef12345678/pb/index.html#/",
+      "metadata": {
+        "api_origin": "https://wecruit.hotjob.cn",
+        "suite_key": "1234567890abcdef12345678",
+        "recruit_types": [
+          1
+        ]
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPosition/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "isFrompb=true&recruitType=1&pageSize=50&currentPage=1",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":\"200\",\"data\":{\"pageForm\":{\"pageData\":[{\"postId\":\"000000000000000000000001\",\"recruitType\":1,\"currentSuiteKey\":\"000000000000000000000000\",\"postName\":\"Fallback\",\"publishDate\":\"2026-10-09\"}],\"totalPage\":1,\"pageSize\":50,\"currentPage\":1,\"dataCount\":1},\"positonNum\":1}}"
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "wecruit",
+    "mode": "wrong-lane",
+    "board": {
+      "board_url": "https://wecruit.hotjob.cn/SU1234567890abcdef12345678/pb/index.html#/",
+      "metadata": {
+        "api_origin": "https://wecruit.hotjob.cn",
+        "suite_key": "1234567890abcdef12345678",
+        "recruit_types": [
+          1
+        ]
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPosition/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "isFrompb=true&recruitType=1&pageSize=50&currentPage=1",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":\"200\",\"data\":{\"pageForm\":{\"pageData\":[{\"postId\":\"000000000000000000000001\",\"recruitType\":2,\"currentSuiteKey\":\"1234567890abcdef12345678\",\"postName\":\"Fallback\",\"publishDate\":\"2026-10-09\"}],\"totalPage\":1,\"pageSize\":50,\"currentPage\":1,\"dataCount\":1},\"positonNum\":1}}"
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "wecruit",
+    "mode": "missing-row",
+    "board": {
+      "board_url": "https://wecruit.hotjob.cn/SU1234567890abcdef12345678/pb/index.html#/",
+      "metadata": {
+        "api_origin": "https://wecruit.hotjob.cn",
+        "suite_key": "1234567890abcdef12345678",
+        "recruit_types": [
+          1
+        ]
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPosition/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "isFrompb=true&recruitType=1&pageSize=50&currentPage=1",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":\"200\",\"data\":{\"pageForm\":{\"pageData\":[],\"totalPage\":1,\"pageSize\":50,\"currentPage\":1,\"dataCount\":1},\"positonNum\":1}}"
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "wecruit",
+    "mode": "wrong-detail-id",
+    "board": {
+      "board_url": "https://wecruit.hotjob.cn/SU1234567890abcdef12345678/pb/index.html#/",
+      "metadata": {
+        "api_origin": "https://wecruit.hotjob.cn",
+        "suite_key": "1234567890abcdef12345678",
+        "recruit_types": [
+          1
+        ]
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPosition/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "isFrompb=true&recruitType=1&pageSize=50&currentPage=1",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":\"200\",\"data\":{\"pageForm\":{\"pageData\":[{\"postId\":\"000000000000000000000001\",\"recruitType\":1,\"currentSuiteKey\":\"1234567890abcdef12345678\",\"postName\":\"Fallback\",\"publishDate\":\"2026-10-09\"}],\"totalPage\":1,\"pageSize\":50,\"currentPage\":1,\"dataCount\":1},\"positonNum\":1}}"
+      },
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPositionDetail/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "postId=000000000000000000000001",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":200,\"data\":{\"postName\":\" Engineer \",\"workContent\":\"Build & test\\nPeople's systems\",\"serviceCondition\":\" Learn \",\"workPlaceList\":[{\"name\":\" 北京 \"},{\"name\":\"北京\"},{\"name\":\"上海\"},null],\"publishDate\":\"2026-10-08 12:34:56\",\"endDate\":\"2027-01-31T00:00:00\",\"company\":\"Company\",\"recruitNumStr\":0,\"postCode\":\"code\",\"postId\":\"000000000000000000000000\",\"recruitType\":1}}"
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "wecruit",
+    "mode": "wrong-detail-lane",
+    "board": {
+      "board_url": "https://wecruit.hotjob.cn/SU1234567890abcdef12345678/pb/index.html#/",
+      "metadata": {
+        "api_origin": "https://wecruit.hotjob.cn",
+        "suite_key": "1234567890abcdef12345678",
+        "recruit_types": [
+          1
+        ]
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPosition/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "isFrompb=true&recruitType=1&pageSize=50&currentPage=1",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":\"200\",\"data\":{\"pageForm\":{\"pageData\":[{\"postId\":\"000000000000000000000001\",\"recruitType\":1,\"currentSuiteKey\":\"1234567890abcdef12345678\",\"postName\":\"Fallback\",\"publishDate\":\"2026-10-09\"}],\"totalPage\":1,\"pageSize\":50,\"currentPage\":1,\"dataCount\":1},\"positonNum\":1}}"
+      },
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPositionDetail/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "postId=000000000000000000000001",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":200,\"data\":{\"postName\":\" Engineer \",\"workContent\":\"Build & test\\nPeople's systems\",\"serviceCondition\":\" Learn \",\"workPlaceList\":[{\"name\":\" 北京 \"},{\"name\":\"北京\"},{\"name\":\"上海\"},null],\"publishDate\":\"2026-10-08 12:34:56\",\"endDate\":\"2027-01-31T00:00:00\",\"company\":\"Company\",\"recruitNumStr\":0,\"postCode\":\"code\",\"postId\":\"000000000000000000000001\",\"recruitType\":2}}"
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "wecruit",
+    "mode": "invalid-detail",
+    "board": {
+      "board_url": "https://wecruit.hotjob.cn/SU1234567890abcdef12345678/pb/index.html#/",
+      "metadata": {
+        "api_origin": "https://wecruit.hotjob.cn",
+        "suite_key": "1234567890abcdef12345678",
+        "recruit_types": [
+          1
+        ]
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPosition/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "isFrompb=true&recruitType=1&pageSize=50&currentPage=1",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":\"200\",\"data\":{\"pageForm\":{\"pageData\":[{\"postId\":\"000000000000000000000001\",\"recruitType\":1,\"currentSuiteKey\":\"1234567890abcdef12345678\",\"postName\":\"Fallback\",\"publishDate\":\"2026-10-09\"}],\"totalPage\":1,\"pageSize\":50,\"currentPage\":1,\"dataCount\":1},\"positonNum\":1}}"
+      },
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPositionDetail/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "postId=000000000000000000000001",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":200,\"data\":{\"postName\":\" Engineer \",\"workContent\":\"\",\"serviceCondition\":\"\",\"workPlaceList\":[{\"name\":\" 北京 \"},{\"name\":\"北京\"},{\"name\":\"上海\"},null],\"publishDate\":\"2026-10-08 12:34:56\",\"endDate\":\"2027-01-31T00:00:00\",\"company\":\"Company\",\"recruitNumStr\":0,\"postCode\":\"code\",\"postId\":\"000000000000000000000001\",\"recruitType\":1}}"
+      }
+    ],
+    "error": true,
+    "original_error": "ValueError"
+  },
+  {
+    "provider": "wecruit",
+    "mode": "float-zero",
+    "board": {
+      "board_url": "https://wecruit.hotjob.cn/SU1234567890abcdef12345678/pb/index.html#/",
+      "metadata": {
+        "api_origin": "https://wecruit.hotjob.cn",
+        "suite_key": "1234567890abcdef12345678",
+        "recruit_types": [
+          1
+        ]
+      }
+    },
+    "exchanges": [
+      {
+        "url": "https://wecruit.hotjob.cn/wecruit/positionInfo/listPosition/SU1234567890abcdef12345678",
+        "method": "POST",
+        "request_body": "isFrompb=true&recruitType=1&pageSize=50&currentPage=1",
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded"
+        },
+        "body": "{\"state\":\"200\",\"data\":{\"pageForm\":{\"pageData\":[],\"totalPage\":0.0,\"pageSize\":0.0,\"currentPage\":false,\"dataCount\":false},\"positonNum\":0}}"
+      }
+    ],
+    "jobs": [],
+    "truncated": false
+  }
+]
