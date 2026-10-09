@@ -268,7 +268,7 @@ func validateTask(task Task) error {
 	if len(task.Actions) > 0 && (!actions.Valid(task.Actions) || task.Evaluation != nil || task.APIReplay != nil || task.Feed != nil || task.Dayforce != nil || task.ResponseBodyLimit != 0) {
 		return actions.ErrActions
 	}
-	if task.APIReplay != nil && (task.APIReplay.boardURL != task.URL || task.APIReplay.converse == nil || task.Dayforce != nil || task.Feed != nil || task.Evaluation != nil || task.ResponseBodyLimit != 0 || task.Navigation == nil || task.APIReplay.options.Inventory.Endpoint == "") {
+	if task.APIReplay != nil && (task.APIReplay.boardURL != task.URL || (task.APIReplay.converse == nil) == (task.APIReplay.brassRingConverse == nil) || task.Dayforce != nil || task.Feed != nil || task.Evaluation != nil || task.ResponseBodyLimit != 0 || task.Navigation == nil || task.APIReplay.options.Inventory.Endpoint == "") {
 		return errReplayCapture
 	}
 	if task.Feed != nil && (!task.Feed.request.Valid() || task.Feed.converse == nil || task.Feed.request.FeedURL != task.URL || task.Dayforce != nil || task.Evaluation != nil || task.ResponseBodyLimit != 2_000_000) {
@@ -840,7 +840,7 @@ func comparableDocumentURL(raw string) (string, error) {
 }
 
 func (executor chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (Result, error) {
-	if task.APIReplay != nil && task.APIReplay.fallback == nil {
+	if task.APIReplay != nil && task.APIReplay.brassRingConverse == nil && task.APIReplay.fallback == nil {
 		copyTask := *task.APIReplay
 		fetch, closeHTTP, err := newReplayHTTPFallback(copyTask.options, executor.egressPolicy)
 		if err != nil {

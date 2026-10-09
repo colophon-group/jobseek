@@ -96,6 +96,9 @@ func TestBrassRingStableSnapshotAndLocationHydration(t *testing.T) {
 			if mode == "changed-count" && !errors.Is(e, ErrBrassRingSnapshot) {
 				t.Fatal("snapshot retry class lost", e)
 			}
+			if mode != "complete" && mode != "hydrate-fails" && hydrated != 0 {
+				t.Fatal("invalid snapshot performed detail hydration before all identities were validated")
+			}
 		})
 	}
 }

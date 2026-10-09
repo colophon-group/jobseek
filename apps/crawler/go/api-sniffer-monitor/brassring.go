@@ -21,6 +21,38 @@ type BrassRingPageLoader func(context.Context, int, bool) (*Document, error)
 // committed-page barriers; this pure collector grants no browser authority.
 func DiscoverBrassRing(ctx context.Context, b BrassRingBoard, load BrassRingPageLoader, hydrate func(context.Context, Job) ([]string, error), normalize SmallDescriptionNormalizer) (Inventory, error) {
 	empty := Inventory{Jobs: []Job{}}
+	out, err := CollectBrassRingSnapshot(ctx, b, load, normalize)
+	if err != nil {
+		return empty, err
+	}
+	for i := range out.Jobs {
+		if ctx.Err() != nil {
+			return empty, ctx.Err()
+		}
+		if len(out.Jobs[i].Locations) == 0 {
+			if hydrate == nil {
+				return empty, ErrInventory
+			}
+			out.Jobs[i].Locations, err = hydrate(ctx, out.Jobs[i])
+			if err != nil {
+				return empty, err
+			}
+			if len(out.Jobs[i].Locations) == 0 {
+				return empty, ErrInventory
+			}
+		}
+	}
+	if ctx.Err() != nil {
+		return empty, ctx.Err()
+	}
+	return out, nil
+}
+
+// All identities and page counts must be valid before public detail hydration.
+// A worker can consume this bounded browser snapshot, hydrate missing locations
+// through its verified HTTP transport, and only then grant absence authority.
+func CollectBrassRingSnapshot(ctx context.Context, b BrassRingBoard, load BrassRingPageLoader, normalize SmallDescriptionNormalizer) (Inventory, error) {
+	empty := Inventory{Jobs: []Job{}}
 	if ctx.Err() != nil {
 		return empty, ctx.Err()
 	}
@@ -104,18 +136,6 @@ func DiscoverBrassRing(ctx context.Context, b BrassRingBoard, load BrassRingPage
 			return empty, ErrBrassRingSnapshot
 		}
 		seen[id] = true
-		if len(j.Locations) == 0 {
-			if hydrate == nil {
-				return empty, ErrInventory
-			}
-			j.Locations, e = hydrate(ctx, j)
-			if e != nil {
-				return empty, e
-			}
-			if len(j.Locations) == 0 {
-				return empty, ErrInventory
-			}
-		}
 		jobs = append(jobs, j)
 	}
 	if ctx.Err() != nil {

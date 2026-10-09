@@ -23,6 +23,7 @@ type apiReplayTask struct {
 	boardURL                       string
 	options                        api.BrowserReplayOptions
 	converse                       func(context.Context, api.Fetch, bool) error
+	brassRingConverse              func(context.Context, api.BrassRingPageLoader) error
 	fallback                       api.Fetch
 	nativeProvider, nativeMetadata string
 }
@@ -60,6 +61,15 @@ func executeAPIReplayConversation(ctx context.Context, task *apiReplayTask, capt
 	}
 	if err := policy.Check(signals, html, finalURL); err != nil {
 		return err
+	}
+	if task.brassRingConverse != nil {
+		capture.mu.Lock()
+		failure := capture.failure
+		capture.mu.Unlock()
+		if failure != nil {
+			return failure
+		}
+		return executeBrassRingConversation(ctx, task, finalURL)
 	}
 	if task.nativeProvider != "" {
 		if task.nativeProvider == "darwinbox" {

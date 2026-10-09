@@ -3,12 +3,58 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/chromedp/chromedp"
+	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	api "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
 )
+
+func newBrassRingBrowserTask(board, metadata string, converse func(context.Context, api.BrassRingPageLoader) error) (Task, error) {
+	_, options, err := api.BrassRingBrowserOptions(board, metadata)
+	if err != nil || converse == nil {
+		return Task{}, errReplayCapture
+	}
+	wait := map[string]runtimev1.WaitCondition{"commit": 1, "domcontentloaded": 2, "load": 3, "networkidle": 4}[options.Wait]
+	navigation := &navigationOptions{wait: wait, timeout: time.Duration(options.TimeoutMS) * time.Millisecond, transportRetries: uint32(options.TransportRetries)}
+	if options.WaitFallback != "" && options.WaitFallback != options.Wait {
+		navigation.fallback = &navigationOptions{wait: map[string]runtimev1.WaitCondition{"commit": 1, "domcontentloaded": 2, "load": 3, "networkidle": 4}[options.WaitFallback], timeout: min(5*time.Second, navigation.timeout)}
+	}
+	return Task{URL: board, Navigation: navigation, APIReplay: &apiReplayTask{boardURL: board, options: options, brassRingConverse: converse, nativeMetadata: metadata}}, nil
+}
+
+func executeBrassRingConversation(ctx context.Context, task *apiReplayTask, finalURL string) error {
+	expected, err := api.BrassRingBoardFromURL(task.boardURL)
+	actual, parseErr := api.BrassRingBoardFromURL(finalURL)
+	board, _ := url.Parse(task.boardURL)
+	final, _ := url.Parse(finalURL)
+	if err != nil || parseErr != nil || expected != actual || board.Scheme != final.Scheme || board.Host != final.Host || task.brassRingConverse == nil {
+		return errReplayCapture
+	}
+	var mu sync.Mutex
+	open, sorted, current := true, false, 0
+	defer func() { mu.Lock(); open = false; mu.Unlock() }()
+	return task.brassRingConverse(ctx, func(call context.Context, page int, stable bool) (*api.Document, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		if !open || ctx.Err() != nil || call.Err() != nil || stable && (page != 1 || current != 1 || sorted) || !stable && (page != current+1 || page > 1 && !sorted) {
+			return nil, errReplayCapture
+		}
+		operation, cancel := context.WithCancel(call)
+		stop := context.AfterFunc(ctx, cancel)
+		defer cancel()
+		defer stop()
+		document, err := loadBrassRingBrowserPage(operation, task.boardURL, task.nativeMetadata, page, stable)
+		if err == nil {
+			current = page
+			sorted = sorted || stable
+		}
+		return document, err
+	})
+}
 
 // The caller owns a fresh held target. Register the response capture before
 // clicking, then await Angular's committed page before another page can run.
