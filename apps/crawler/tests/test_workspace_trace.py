@@ -262,6 +262,13 @@ def test_trace_credential_detector_catches_json_escaped_assignments() -> None:
     assert "url_password" in patterns
 
 
+def test_unicode_separator_does_not_hide_json_decoded_credential_assignments() -> None:
+    payload = json.dumps(
+        {"text": "before\u2028after", "SECRET_KEY": "supersecretvalue"}, ensure_ascii=False
+    )
+    assert trace.detect_credentials(payload) == [{"pattern": "sensitive_assignment", "line": 1}]
+
+
 def test_trace_credential_redactor_removes_values_and_preserves_audit_metadata() -> None:
     payload = "\n".join(
         [
@@ -300,6 +307,34 @@ def test_trace_credential_redactor_handles_json_escaped_assignments() -> None:
 
     assert any(finding["pattern"] == "sensitive_assignment" for finding in findings)
     assert "supersecretvalue" not in redacted
+    assert trace.detect_credentials(redacted) == []
+
+
+def test_redaction_preserves_jsonl_after_incomplete_pem_and_nested_arguments() -> None:
+    records = [
+        {"output": "-----BEGIN PRIVATE KEY-----\nprivate-body", "sequence": 1},
+        {"arguments": json.dumps({"SECRET_KEY": "supersecretvalue"}), "sequence": 2},
+        {"output": "ordinary output", "sequence": 3},
+    ]
+    payload = "".join(json.dumps(record) + "\n" for record in records)
+    redacted, findings = trace.redact_credentials(payload)
+    result = [json.loads(line) for line in redacted.split("\n") if line]
+
+    assert [record["sequence"] for record in result] == [1, 2, 3]
+    assert result[0]["output"] == "<REDACTED_CREDENTIAL>"
+    assert json.loads(result[1]["arguments"])["SECRET_KEY"] == "<REDACTED_CREDENTIAL>"
+    assert "private-body" not in redacted
+    assert "supersecretvalue" not in redacted
+    assert {finding["pattern"] for finding in findings} >= {"private_key", "sensitive_assignment"}
+    assert trace.detect_credentials(redacted) == []
+
+
+def test_redaction_preserves_json_escapes_before_password_urls() -> None:
+    payload = json.dumps({"output": "first\nhttps://user:real-password@example.test/"}) + "\n"
+    redacted, findings = trace.redact_credentials(payload)
+
+    assert json.loads(redacted)["output"] == "first\n<REDACTED_CREDENTIAL>example.test/"
+    assert any(finding["pattern"] == "url_password" for finding in findings)
     assert trace.detect_credentials(redacted) == []
 
 

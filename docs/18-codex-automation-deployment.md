@@ -453,6 +453,23 @@ installation during setup, and HuggingFace trace upload if enabled.
 
 ### Phase 3 - governor decision loop
 
+Deployment skill/custom-agent smoke tests use a disposable `CODEX_HOME`, sharing
+only the subscription auth file through a symlink. Native parent and child
+sessions remain available for delegation verification during the test and are
+removed with that temporary home on success, failure, or timeout. They cannot
+age into the resolver's shared session-retention gate.
+
+While holding the existing deployment lock, the installer runs
+`scripts/codex-agent-smoke.py --archive-legacy-sessions` before the live smoke.
+This preserves old shared-home smoke sessions in
+`~/.codex/smoke-session-archive/` with their original bytes and SHA-256 manifests.
+Only parsed `codex_exec` sessions with the exact deployment smoke fixture path
+pattern and an age of at least one hour qualify. Unrelated, malformed, unsafe,
+and recent sessions remain in place. Archive identity and bytes are verified
+and fsynced before the original session name is removed; interrupted archival
+can be retried. This recovery preserves evidence locally and does not change
+the retention thresholds or daily timer activation state.
+
 The systemd timer polls about every 1-1.5 minutes after the previous service
 run exits. The governor still starts at most one resolver per service run and
 uses ledger-backed pacing plus rolling five-hour caps to decide whether a wake
