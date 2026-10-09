@@ -154,8 +154,16 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 		}
 	}
 	tenthIdentity := profile.Provider == "universia" || profile.Provider == "talentreef"
+	finalIdentity := FinalHTTPProvider(profile.Provider)
+	var finalOptions apisniffer.FinalHTTPProviderOptions
+	if finalIdentity {
+		finalOptions, err = apisniffer.FinalHTTPProviderOptionsFromMetadata(profile.Provider, claim.task.Config["board_url"], claim.task.Config["metadata"])
+		if err != nil {
+			return nil, ErrConfiguration
+		}
+	}
 	job51Identity := profile.Provider == "job51"
-	identityEnabled := identityConfig != nil || zohoIdentity || hrIdentity || woowaIdentity || tenthIdentity || job51Identity
+	identityEnabled := identityConfig != nil || zohoIdentity || hrIdentity || woowaIdentity || tenthIdentity || job51Identity || finalIdentity
 	identities := []string{}
 	explicit := []bool{}
 	identityByURL := map[string]string{}
@@ -163,6 +171,9 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 	byURL := make(map[string]*GreenhouseRichContent, len(batch))
 	hybridByURL := map[string]bool{}
 	for _, posting := range batch {
+		if finalIdentity && !finalOptions.IdentityMatches(posting.URL, posting.SourceIdentity) {
+			return nil, ErrConfiguration
+		}
 		if job51Identity && !validJob51SourceIdentity(claim.task.Config, posting.URL, posting.SourceIdentity) {
 			return nil, ErrConfiguration
 		}

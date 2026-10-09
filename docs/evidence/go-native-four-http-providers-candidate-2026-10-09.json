@@ -1,0 +1,101 @@
+{
+  "schema": "jobseek.go-migration-candidate/v1",
+  "observed_at_utc": "2026-10-09T01:17:28.580483+00:00",
+  "base_source": "9762c5c6550674fd2166e68dc4ec813f50d6cc30",
+  "candidate_version": "0.13.985",
+  "state": "local qualification passed; publication and required CI pending",
+  "providers": [
+    "paynet",
+    "nowhiring",
+    "fenbi",
+    "wecruit"
+  ],
+  "compiled_profiles": 151,
+  "current_registry_configurations": {
+    "paynet": 2,
+    "nowhiring": 1,
+    "fenbi": 2,
+    "wecruit": 1
+  },
+  "local_proofs": {
+    "actual_python_core_cases": 62,
+    "actual_python_inventory_cases": 35,
+    "worker_http_inventory_cases": 35,
+    "publisher_status_retry_cancel_cases": 40,
+    "child_reservation_cancellation_cases": 6,
+    "real_database_terminal_cases": 20,
+    "supported_cold_retirement_cases": 12,
+    "registry_bindings": 6,
+    "real_native_executable_startup": "PASS5.800s",
+    "api_full_race": "PASS6.266s",
+    "affected_modules_vet": "PASS",
+    "python_ownership_cutover_runtime_contracts": "97 passed,9 fixture-dependent skipped; initial environment lacked contract-pinned protobuf6.33.6, isolated retry passed",
+    "full_queue_worker": "not run locally this batch; required central CI uses20m module budget"
+  },
+  "public_same_capture": [
+    {
+      "slug": "avera-sunset-manor",
+      "all_populated_fields_match": true,
+      "python_jobs": 6,
+      "native_jobs": 6,
+      "requests": 1,
+      "original_outcome": "complete"
+    },
+    {
+      "slug": "avera-wakonda-heritage-manor",
+      "all_populated_fields_match": true,
+      "python_jobs": 2,
+      "native_jobs": 2,
+      "requests": 1,
+      "original_outcome": "complete"
+    },
+    {
+      "slug": "bestseller-china",
+      "all_populated_fields_match": true,
+      "python_jobs": 0,
+      "native_jobs": 0,
+      "requests": 47,
+      "original_outcome": "failed"
+    },
+    {
+      "slug": "fenbi-joinus",
+      "all_populated_fields_match": true,
+      "python_jobs": 0,
+      "native_jobs": 0,
+      "requests": 2,
+      "original_outcome": "failed"
+    },
+    {
+      "slug": "fenbi-parttime",
+      "all_populated_fields_match": true,
+      "python_jobs": 0,
+      "native_jobs": 0,
+      "requests": 2,
+      "original_outcome": "failed"
+    },
+    {
+      "slug": "fulenwider-enterprises-careers-kfc",
+      "all_populated_fields_match": true,
+      "python_jobs": 0,
+      "native_jobs": 0,
+      "requests": 2,
+      "original_outcome": "complete"
+    }
+  ],
+  "original_python_source_sha256": {
+    "paynet": "781bd12a4b73cf863a31cb2990584a53e52e11a9041130a5d5b33d0d266e6067",
+    "nowhiring": "db7dc612ea8c7cc62d09dbceaa863c8bb86e8c2ebdad74e2cef9b74d95a5ce35",
+    "fenbi": "2fee01f14418143391c72f12fc32a957f62b4cc9d985b98e51b42a88254e06b9",
+    "wecruit": "2ace4e8545edeb35411d8d01a892a6c6b5eb6216efca93fb8bd218c0b15b3b71"
+  },
+  "boundaries": [
+    "explicit Wecruit tenant/origin only; landing discovery fallback not admitted",
+    "unknown metadata and unsupported enrichment fail closed",
+    "Fenbi bounded literal grammar; no JavaScript evaluation",
+    "stable identities checked against configured tenant and canonical source URLs",
+    "finite JSON/body/count bounds retained; unrepresentable advertised counts fail closed",
+    "all boards remain enabled"
+  ],
+  "production_authority": "pending required CI, immutable deployment, fresh canonical/cache/routes and original owner wrappers",
+  "full_migration_complete": false
+}

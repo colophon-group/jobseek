@@ -16,119 +16,83 @@ whole-service CPU/RAM/density/attributable cost; and a supported cold reversal
 with its observation window. A merged candidate or synthetic benchmark does
 not complete migration.
 
-## Latest checkpoint — Jarvi/51job merged and next three-type batch
+## Latest checkpoint — source984 deployed; broad handoff running
 
-[PR #10369](https://github.com/colophon-group/jobseek/pull/10369) merged at
-`cbe398d308d31bbfc731bad51210583217a919e3`, version **0.13.982**, after exact-head
-Required CI, the actual Crawler Deploy Gate, installed-image parity and amd64/arm64
-Lightpanda checks passed. It qualifies **41 additional API/DOM configurations**
-and repairs `cdom` in all three enqueue Lua copies. Original immutable crawler
-run `37854180008` and matching dormant renderer run `37854281427` both succeeded
-on attempt 1. Independent incoming source/image checks passed at cold246.
-Supported B0 activation and seven health endpoints passed at **epoch247**. Fresh
-canonical/cache admission qualifies all **76** combined API/DOM configurations
-across six transport profiles. Supported grouped activation passed at epoch247;
-independent SQL/Redis authority, ten restart-armed writers and eight health
-endpoints passed. The first natural sample records 27 successful and seven failed
-monitors, 1,852 posting touches and zero claim errors. Later natural observations reached forty successful cycles, 21 failed cycles,
-17,937 posting touches and zero claim errors. Swissport completed the corrected
-enqueue naturally at 23:46 UTC. Render resource limits and Securitas 403s remain
-failures. These observations do not prove full freshness.
+[PR #10371](https://github.com/colophon-group/jobseek/pull/10371) merged at
+`9762c5c6550674fd2166e68dc4ec813f50d6cc30`, version **0.13.984**, with all exact-head
+required checks green. It delivers RSS/API/DOM collision policies for six current
+configurations and pipelines the complete B0 startup audit without changing Lua,
+namespace/owner checks or the three-second deadline. The 33 original policy
+cases, 12 real terminal cases, nine cold reversals and public field replay for
+8,784 jobs passed. Its isolated full-size audit under sixty valid legacy
+claimers passed at 691.138 ms; deployed broad readiness remains to be verified.
 
-Outgoing source981 ordinary ownership retired successfully. B0 rollback was
-retried only after the original scheduled reconciliation finished, then selectors
-were cleared. Independent **cold246** readback confirms every base writer armed,
-six health endpoints, both ownership receipts and Redis projection absent,
-retired SQL plan, no current fences, and stopped optional native actors. The
-source981 35-monitor natural observation remains fifteen successes, one failed
-monitor, 941 posting touches and zero claim errors; the corrected enqueue consumer
-must be exercised after fresh source982 admission. Keep every board enabled.
+Original immutable crawler run `37865838788` and matching renderer run
+`37865963658` succeeded on attempt1. Independent cold248 source/image checks
+passed before supported B0 activation. Current B0 **epoch249** is independently
+verified active with seven health endpoints. Its plan is
+`4aeae6ba9438259dca0a31e2a1fc44533cd1809bec507ce0114a26a5ff4acc29`.
 
-The next iteration ports **Jarvi and 51job together**, version **0.13.983**, adding
-two profiles for all three current registry configurations. Jarvi uses its existing
-public SDK offers endpoint and field purposes. 51job preserves signed public CoAPI
-requests, complete listing pages, five concurrent details, employer-bound stable
-identities, canonical descriptions and Chinese fields. Both retain publisher
-precedence, finite inventory bounds, failure/cancellation conservation, rich
-skip-detail processing, existing retries and exact configuration/resource bindings.
-Public-key discovery and ctmid discovery fallbacks remain outside production
-admission; every current board supplies its explicit value.
+Fresh canonical/cache and actual SQL/Redis posting-route admission examined
+**7,885 boards and 1,509,007 scheduled detail postings**. It qualifies **7,583
+monitor boards and 2,739 detail-board assignments**, representing **1,478,021
+scheduled detail postings**. Forty-two detail boards fail current cache/queue
+agreement and one has an unsupported actual route; they keep their current
+owner. Original exact-source staging passed with ordinary plan
+`7505c762a6ee4173b8be3bf4493570496217959fb41a45d25f76abf022fff5c7`,
+projection `911a1eda662afc3513250cb9daa131792d734dc5`, epoch249. The supported
+activation is running. Staging is not serving authority; independent readiness,
+natural freshness/conservation and comparable whole-service cost remain pending.
 
-The original Python core and inventory corpus has **54 cases**. Actual Go HTTP
-replay, publisher/redirect/retry/concurrent failure and cancellation checks pass;
-ten real SQL/Redis terminal cases and six supported cold reversals pass. Public
-same-capture replay matches all fields for **127 jobs**: Jimmy 25/one request,
-Poly 91/96 requests and PVH 11/12 requests. These are input/output and local
-ownership proofs; [PR #10370](https://github.com/colophon-group/jobseek/pull/10370) is published.
-All exact-head Required CI, Crawler Deploy Gate, installed-image parity and
-amd64/arm64 checks passed on `396eb1739581ac13c40fdfca698f16c0b096c5c1`.
-Supported source982 ordinary retirement, B0 reversal and selector clearing passed;
-independent outgoing **cold248** verified every restored base writer, absent
-ownership/Redis projections and retired SQL plan. The head-bound merge succeeded
-at `f1e08a79da633c2397b0a5bf994f9c625380d68a`. Original immutable crawler rollout
-`37862982750` and matching dormant renderer rollout have started. Incoming
-source/image proof, fresh B0 activation and grouped canonical/cache admission
-remain pending. The full queue race suite passed in 538.730s;
-the first worker run was invalidated after an overlapping local fixture check.
-Its interrupted fixture left board/plan rows; the exclusive local synthetic test
-data was reset while preserving taxonomy seeds before the clean serial retry.
-That retry reached Go's default ten-minute timeout after 600.879 seconds; it is
-not a full-worker pass. Central Required CI runs this suite with its existing
-twenty-minute timeout. The first installed-image check found an omitted update
-to the workflow's profile inventory; its exact inventory now matches all 147
-compiled profiles. The corrected exact-head required checks passed. See [candidate evidence](evidence/go-native-jarvi-job51-candidate-2026-10-08.json).
+The preceding Jarvi/51job release983 and source982 ownership were retired and
+reversed through supported workflows. Independent cold248 verified restored base
+writers, absent ownership/projections and stopped optional actors before delivery.
+Source982's 76-monitor natural observation reached forty successful cycles,
+21 failed cycles, 17,937 posting touches and zero claim errors. Swissport's corrected
+enqueue succeeded naturally. Resource limits and Securitas403s remain unresolved.
 
-Continue by resolving the observed rendered fetch failures, completing immutable
-source983 delivery and fresh grouped admission, and delivering the RSS/API/DOM
-collision policies and full-preflight pipeline together. The remaining source981 diagnostic frontier includes
-154 DOM, 49 API-sniffer and 15 RSS configurations, with browser/action/pagination,
-publisher allowlist and provider-specific controls. That diagnostic is a planning
-input, not a current production coverage claim. Group related controls across
-multiple types in each iteration. Resolve full-cohort Redis pressure without
-weakening deadlines or ownership/conservation checks, then finish mandatory
-consumers, natural freshness, comparable whole-service cost, reversal/window and
-production Python/Playwright/Chromium retirement. The full goal stays active.
+Lightpanda **1.0.0**, published 2026-10-02, is the latest stable release verified
+against the official release list on 2026-10-08. The deployed upstream image is
+`lightpanda/browser@sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e`.
+See [the official release](https://github.com/lightpanda-io/browser/releases/tag/1.0.0).
 
-## Next grouped candidate — RSS, API and DOM URL collisions
+## Next grouped candidate — four public HTTP providers
 
-Version **0.13.984** implements the shared explicit URL collision policy across
-RSS, API and DOM monitors for six current registry configurations. It preserves
-complete inventory buffering, source/metadata preference, provider-ID validation,
-URL-only behavior, publisher precedence and failed-inventory conservation.
-Changes to the complete policy remain in canonical ownership hashes. API fetch
-and parser options receive a validated clone; the original config remains bound
-through selection, resources and writes. No profile or board is removed.
+Version **0.13.985** ports **Pay-Net, NowHiring, Fenbi and Wecruit together** for
+all six current registry configurations, raising the compiled profile inventory
+to151. It preserves original rich fields and stable identities, request methods,
+JSON/form pagination, complete inventory joins, duplicate/truncation semantics,
+explicit empty markers, publisher precedence, bounded retries and source/config
+bindings. Fenbi uses a bounded literal parser without evaluating JavaScript.
+Wecruit requires the explicit tenant/origin already supplied by the current board.
+The original landing fragment remains part of the immutable config binding.
 
-All **33 actual Python policy cases**, six registry bindings, twelve real
-SQL/Redis settlement cases and nine cold reversals pass. Public same-capture
-HTTP replay matches all populated fields and **8,784 canonical jobs** across
-Frog 110, MediaMarktSaturn 1,742, CHUV 96, Swiss Post 258 and Capgemini 6,578.
-The original Canton reference fails; Go preserves that failure on the same
-133 captured requests. Capgemini's fourteen raw text coercion differences match
-original `src.processing.cpu._coerce_text` before canonical processing. RSS child
-requests may complete in a different order; their exact resources and counts
-remain matched. CHUV's query encoding differs only in equivalent URL encoding.
+Local qualification passed: **62 actual original Python core cases**, **35 complete
+inventories**, all35 worker HTTP replays,40 publisher/status/retry/cancellation
+cases, six child reservation/cancellation cases, six current registry bindings,
+**20 real SQL/Redis terminal cases**, **12 cold retirements** and real executable
+startup with all151 identities. The full API race suite passes6.266s; affected
+modules pass vet. Ownership/cutover/runtime Python contracts pass97 with nine
+fixture-dependent skips after adding the contract-pinned protobuf runtime to the
+isolated test environment. No full local queue/worker-suite pass is claimed;
+central Required CI runs their real fixtures with the existing twenty-minute
+module budgets.
 
-The same candidate reduces full B0 preflight to one Redis wire pipeline while
-retaining the original Lua audit, namespace checks, route checks, exact owner
-checks before and after the audit, reply validation and three-second budget.
-The isolated full-size cohort under sixty continuous valid legacy claimers
-passed at 691.138 ms with the actual repository queue (prototype 506.620 ms),
-compared with earlier deadline failures. Twelve real Redis
-namespace/owner corruption guards and existing full-audit/capacity/transfer tests
-pass; no Lua or claim contract changed. Production readiness and the original
-failure's exact cause still require deployed verification.
+Public same-capture replay matches every populated field for **eight Pay-Net
+jobs** across two boards and the original NowHiring empty result. Both Fenbi
+boards and Wecruit currently fail in the original Python code; Go matches those
+failures without publishing prefixes. These are failure-parity observations,
+not healthy inventory or freshness claims. All boards remain enabled.
 
-The candidate remains isolated until publication and exact-head required CI,
-immutable deployment and fresh source/epoch admission pass. Source982's shared76
-natural observation has reached forty successful cycles and 17,937 posting
-touches with zero claim errors. Swissport's corrected detail enqueue completed
-naturally at 23:46 UTC. Render resource limits and Securitas 403s remain failures;
-full freshness and full-cohort pressure are unresolved. PR10370 Jarvi/51job now
-has green exact-head Required CI, deployment gate, Lightpanda and installed-image
-checks at `396eb1739581ac13c40fdfca698f16c0b096c5c1`. Supported outgoing source982
-retirement and cold248 checks passed before its bound merge; immutable delivery
-and new source983 ownership remain pending.
+Exact-head Required CI, Crawler Deploy Gate, installed-image parity, immutable
+rollout and fresh ownership admission remain required before production use.
+See [candidate evidence](evidence/go-native-four-http-providers-candidate-2026-10-09.json).
+
+Continue in batches across the remaining enabled DOM/API/RSS controls and
+provider types, resolve rendered resource/403 failures, replace mandatory Python
+service/deploy/maintenance consumers, and prove full natural freshness,
+conservation, whole-service cost and supported reversal/window before retiring
+Python, Playwright and Chromium. The full migration goal stays active.
 
 ## Historical checkpoint — source981
 
