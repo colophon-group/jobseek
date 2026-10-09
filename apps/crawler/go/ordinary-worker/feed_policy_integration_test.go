@@ -28,6 +28,10 @@ func TestRealRSSDOMSharedPolicyPreservesAcceptedWritesAndRejectsTerminalAbsence(
 					}
 				}
 				md = `{` + md + `,"scraper_type":"skip","url_allowlist":"https://example\\.com/jobs/[a-z0-9-]+","job_filter":{"field":"title","include":"Engineer","exclude":"Intern","require_classification":true}}`
+				// URL-only policy fixtures delegate to an actual independent scraper.
+				if family == "dom-urls" {
+					md = strings.Replace(md, `"scraper_type":"skip"`, `"scraper_type":"json-ld"`, 1)
+				}
 				f := privateRichPipelineFixture(t, provider, md)
 				ctx := context.Background()
 				if _, err := f.pg.Exec(ctx, "UPDATE job_posting SET missing_count=3 WHERE id=$1::uuid", f.original); err != nil {

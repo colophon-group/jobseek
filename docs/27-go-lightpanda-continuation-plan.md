@@ -16,50 +16,47 @@ whole-service CPU/RAM/density/attributable cost; and a supported cold reversal
 with its observation window. A merged candidate or synthetic benchmark does
 not complete migration.
 
-## Next grouped batch — fourteen DOM and API configurations
+## Combined review batch — thirty-seven configurations across four types
 
-Candidate **0.13.990** ports five alternate DOM listing reads, three API slug-field
-URL templates and six legacy root `enrich` annotations together. It extends the
-existing fetch/parser/slug contracts and keeps full immutable configuration binding.
-Alternate reads resolve relative links against the configured read URL while the
-official board identity and downstream URL transform remain canonical. Publisher
-reservations and primary disappearance evidence bind that exact read resource.
-Root API `enrich` is inert in the original monitor; only independent
-`scraper_config.enrich` assigns detail work.
+[PR #10375](https://github.com/colophon-group/jobseek/pull/10375) combines all three
+qualified components as **0.13.990**: **37 configurations across DOM, API, inline
+and sitemap**, with 158 compiled profiles. The twenty-three-config annotation/TLS
+batch and following fourteen-config fetch/identity batch share one fresh final CI
+and immutable deployment cycle.
 
-All fourteen actual-original fixture outputs match, including three browser replay
-configurations; request secrets are synthetic in the committed fixtures. Thirty-three
-real SQL/Redis terminal cases, twelve cold-retirement cases and actual 158-profile
-executable startup pass. API/DOM SDK and queue unit suites and queue/worker vet pass.
+The fourteen-config component covers five alternate DOM listing reads, three API
+slug-field templates and six legacy root `enrich` annotations. Alternate reads use
+the configured read URL for relative links and policy/disappearance evidence while
+keeping canonical board identity and downstream URL transformations. Root API
+`enrich` is inert in the original monitor; only independent `scraper_config.enrich`
+assigns detail work. Its original fourteen-case oracle, real terminal33/cold12 and
+158-profile executable startup pass; API/DOM SDK and queue unit suites and vet pass.
 The old source985 configuration capture yields 7,641 static eligible configurations
-and 244 unsupported configs; this is planning evidence, not fresh route admission.
-No public browser success or natural production freshness is claimed. Full CI,
-immutable deployment and fresh ownership qualification remain required after the
-combined source989 batch lands. See the [candidate evidence](evidence/go-native-shared-inventory-options-candidate-2026-10-09.json).
+and 244 unsupported configs; this is planning evidence, not fresh admission.
+No public browser success or natural production freshness is claimed.
 
-## Combined review batch — twenty-three configurations across four types
+Initial component CI37884325254 failed two historical browser-inference assertions.
+Actual Python browser replay without declared fields returns URLs. A repaired check
+also exposed URL-stub insert/enqueue ignoring fresh canonical explicit skip/no-enrich
+policy. Go now suppresses that placeholder work while preserving HTTP inference,
+explicit browser fields and normal first/relisted detail scheduling. Normal URL
+writer fixtures now declare a real independent scraper rather than skip.
 
-[PR #10375](https://github.com/colophon-group/jobseek/pull/10375) now combines the
-annotation/browser correction and explicit HTTP TLS cohort as **0.13.989**,
-**23 configurations across DOM, API, inline and sitemap**, with 158 compiled
-profiles. Both component proof sets are retained; one fresh CI/deployment cycle
-covers the combined change.
+Combined CI37889031239 then passed the full queue suite but failed five additional
+worker fixtures: four URL-only DOM policy cases and one direct Computrabajo case
+still declared skip while asserting delegated detail work. Those intended delegation
+fixtures now declare JSON-LD, matching the already passing proxy case. The explicit
+skip/no-detail regressions remain covered. Both failed CI runs and local failed
+iterations are retained. The corrected combined terminal115 cases pass, including
+the entire twenty-five-case shared policy cohort and eighteen-case ninth-provider
+cohort that exposed the old fixture mismatch. Thirty-six cold-retirement cases
+and four URL-writer repair/relist/routing/fence cases also pass. All component qualification remains evidence; only the
+repaired final head with fresh full CI and installed-image checks may merge.
+See [fetch/identity evidence](evidence/go-native-shared-inventory-options-candidate-2026-10-09.json)
+and the component evidence below. Deployment, fresh routing authority, natural
+conservation/freshness and full Python retirement remain open.
 
-Initial component CI `37884325254` failed two historical rendered API inference
-expectations. Actual Python browser replay without declared fields returns URLs.
-The corrected row-specific check also exposed URL-stub insert/enqueue ignoring an
-explicit skip scraper. Go now follows the original fresh canonical skip/no-enrich
-policy for those inserts and prevents placeholder detail work. HTTP inference and
-ambiguity checks, explicit browser content and first/relisted normal detail work
-remain covered. Normal URL writer tests use an independent DOM scraper rather
-than the rich fixture that declares skip. All 39 combined real SQL/Redis terminal
-cases and 24 cold-retirement cases plus URL writer repair/relist/foreign/fence
-references pass. Initial nullable-array, global-queue and compile assertion
-failures remain preserved. An intermediate test head was pushed after a shell
-continued beyond an assertion failure; only a fully repaired final head with
-fresh required checks may merge. New exact-head full CI is required.
-
-## Next grouped candidate — explicit HTTP TLS settings across three monitor types
+## Component qualification — explicit HTTP TLS settings across three monitor types
 
 Candidate **0.13.989** qualifies sixteen existing HTTP configurations together:
 thirteen DOM, one inline and two sitemap monitors. Fifteen are fully explicit in
@@ -83,7 +80,7 @@ executable transport-selection cases and 158-profile startup pass. Focused
 registry/guard race and queue/worker vet checks pass. Original core-output regression checks and final affected-module vet pass. Full exact-head CI and immutable
 source-bound deployment/ownership remain required. See the [candidate evidence](evidence/go-native-shared-http-tls-candidate-2026-10-09.json).
 
-## Next grouped candidate — shared DOM, API and sitemap service annotations
+## Component qualification — shared DOM, API and sitemap service annotations
 
 Candidate **0.13.988** qualifies seven current configurations across **DOM,
 API and sitemap** using the existing 158 compiled profiles. Root `defaults`

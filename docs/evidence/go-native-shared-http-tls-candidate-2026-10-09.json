@@ -135,5 +135,21 @@
     "cause": "stale rendered inference expectations; corrected row-specific URL-only checks exposed URL-stub insert/enqueue ignoring explicit skip",
     "failure_log_sha256": "92cbbb77fcecc4fecc0a1883d3f95b6b86050c82d91cd2dd293b9ec28c2dfbf6",
     "resolution": "Retain HTTP inference/ambiguity and explicit browser content tests; preserve original URL-only outputs and canonical explicit-skip insert/enqueue behavior; normal URL-only detail writer tests now use an independent DOM scraper fixture"
-  }
+  },
+  "component_of_combined_candidate_version": "0.13.990",
+  "combined_candidate_configs": 37,
+  "combined_pr": 10375,
+  "latest_failed_ci": {
+    "run": 37889031239,
+    "head": "7a9b7f6fab2f8fcaeb077eff3731124ec3c981ae",
+    "native_job": 113686113063,
+    "failure_count": 5,
+    "cause": "Legacy URL-only DOM policy and direct Computrabajo fixtures declared skip while expecting independent detail intents; final intended-delegation fixtures declare JSON-LD. Explicit skip/no-detail regressions remain unchanged.",
+    "private_log_sha256": "7e113f6f4b13d20f4cb771a5e74108711e6e54dfe3750f77e8518f03ee3ca87e"
+  },
+  "combined_repaired_terminal_cases": 115,
+  "combined_repaired_terminal_log_sha256": "79b1762c49e314427b806ae26c2fbf1fef73d0fe04a5845f8fb8ba1a4a240f53",
+  "combined_repaired_cold_retirement_cases": 36,
+  "combined_repaired_url_writer_cases": 4,
+  "combined_repaired_cold_log_sha256": "a85ad13e13ad08fb98cbc233fa78ad5ba0fe4adfdb17ac6265a847ff09d5a88a"
 }
