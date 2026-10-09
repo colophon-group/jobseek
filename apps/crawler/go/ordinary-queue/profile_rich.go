@@ -170,6 +170,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 			allowed[key] = true
 		}
 	case "api_sniffer":
+		allowed["url_transform"] = true
 		for _, key := range apisniffer.ConfigKeys {
 			allowed[key] = true
 		}

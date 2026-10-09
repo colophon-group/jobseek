@@ -1,0 +1,56 @@
+{
+  "schema": "jobseek.go-migration-candidate/v1",
+  "observed_at_utc": "2026-10-09T00:06:37.152474+00:00",
+  "candidate_version": "0.13.984",
+  "parent_reviewed_head": "396eb1739581ac13c40fdfca698f16c0b096c5c1",
+  "state": "isolated implemented candidate; publication, exact-head CI, immutable delivery and fresh ownership pending",
+  "types": [
+    "rss",
+    "api_sniffer",
+    "dom"
+  ],
+  "compiled_profiles": 147,
+  "registry_bindings": 6,
+  "actual_python_policy_cases": 33,
+  "real_database_terminal_cases": 12,
+  "cold_reversal_cases": 9,
+  "public_same_capture": {
+    "success_inventories": 5,
+    "canonical_jobs": 8784,
+    "http_requests": 71,
+    "matched_original_failed_inventory": "Canton of Fribourg:133 requests",
+    "full_fields_and_canonical_urls_match": true,
+    "original_CPU_text_coercions": 14,
+    "scope": "original published direct routes; same captured bodies; no queue/SQL authority"
+  },
+  "producer_preflight": {
+    "lua_unchanged": true,
+    "deadline_seconds": 3,
+    "cohort_size": {
+      "monitors": 7495,
+      "details": 2737,
+      "projection_bytes": 560134
+    },
+    "legacy_load": {
+      "continuous_callers": 60,
+      "claim_errors": 0
+    },
+    "prototype_loaded_ms": 506.62,
+    "namespace_owner_guard_cases": 12,
+    "production_pressure_resolved": false,
+    "repository_loaded_ms": 691.138,
+    "repository_idle_ms": 0.579,
+    "repository_claims": 113,
+    "repository_pressure_proof": "actual repository queue; isolated Redis; 60 continuous valid legacy claimers; original full projection; explicit outcome passed"
+  },
+  "production_admitted": false,
+  "full_migration_complete": false,
+  "boundaries": [
+    "Every board remains enabled",
+    "RSS collision buffering spans all original stream batches; incomplete streams produce no candidate writes",
+    "Canonical ownership binds the original complete identity policy",
+    "Public reference raw text differs only where original CPU normalization coerces it",
+    "Remaining unsupported source/configuration and publisher/resource failures remain migration work"
+  ],
+  "parent_merged_source": "f1e08a79da633c2397b0a5bf994f9c625380d68a"
+}

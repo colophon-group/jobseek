@@ -36,6 +36,7 @@ func feedHasDetailAssignment(md map[string]json.RawMessage) bool {
 // Feed policy changes inventory/content selection and identities, never fetch
 // authority. Provider-boundary rejections require a failed terminal cycle.
 type FeedURLRules struct {
+	collision              *FeedCollision
 	include, exclude       *regexp2.Regexp
 	allowlist              *regexp2.Regexp
 	JobFilter              *FeedJobFilter
@@ -95,6 +96,14 @@ func FeedMonitorURLRules(config map[string]string) (*FeedURLRules, error) {
 		}
 	}
 	if raw, ok := md["url_transform"]; ok && string(raw) != "null" {
+		var policy map[string]json.RawMessage
+		if json.Unmarshal(raw, &policy) != nil {
+			return nil, ErrUnsupportedProfile
+		}
+		if p, ok := policy["collision_policy"]; ok && string(p) != "null" {
+			r.collision, err = parseFeedCollision(string(raw))
+			return r, err
+		}
 		f, err := profileMetadataFields(string(raw), map[string]bool{"find": true, "replace": true})
 		if err != nil {
 			return nil, err
@@ -135,10 +144,12 @@ func FeedMonitorURLRules(config map[string]string) (*FeedURLRules, error) {
 var ErrProviderBoundary = errors.New("provider boundary allowlist rejected inventory")
 var ErrProviderClassification = errors.New("provider job classification is ambiguous")
 
+func (r *FeedURLRules) HasTransform() bool { return r != nil && (r.find != nil || r.HasCollision()) }
+
 func (r *FeedURLRules) HasURLFilter() bool { return r != nil && r.postDiscoveryURLFilter }
 
 func (r *FeedURLRules) RequiresRawInventory() bool {
-	return r != nil && (r.allowlist != nil || r.JobFilter != nil)
+	return r != nil && (r.allowlist != nil || r.JobFilter != nil || r.collision != nil)
 }
 
 func (r *FeedURLRules) ProviderAllows(source string) (bool, error) {
