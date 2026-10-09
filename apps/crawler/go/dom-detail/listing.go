@@ -20,6 +20,7 @@ type ListingConfig struct {
 	Pagination                           *ListingPagination
 	RichRows                             *RichRowsConfig
 	EmptySelector, EmptyText             string
+	FetchURL                             string
 	BoardURL                             string
 	Proofs                               *ListingProofs
 	JoinProofURL                         func(string, string) (string, error)

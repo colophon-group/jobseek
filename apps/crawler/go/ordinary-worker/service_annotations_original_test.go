@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -68,7 +69,7 @@ func runServiceAnnotationOriginalCases(t *testing.T, cases []sharedServiceOrigin
 				if r.Body != nil {
 					body, _ = io.ReadAll(r.Body)
 				}
-				if r.Method != x.Method || !portalURLEqual(r.URL.String(), x.URL) || string(body) != x.Body && !finalHTTPRequestBodyEqual("application/json", string(body), x.Body) {
+				if r.Method != x.Method || !sharedOriginalRequestURLEqual(r.URL.String(), x.URL) || string(body) != x.Body && !finalHTTPRequestBodyEqual("application/json", string(body), x.Body) {
 					t.Fatal("original request differs")
 				}
 				reply := c.Response
@@ -104,12 +105,25 @@ func runServiceAnnotationOriginalCases(t *testing.T, cases []sharedServiceOrigin
 						if calls == 1 {
 							return api.Decode([]byte(c.Response))
 						}
-						return api.Decode([]byte(`{"data":{"results":[]}}`))
+						path, _ := c.Board.Metadata["json_path"].(string)
+						if path == "data.results" {
+							return api.Decode([]byte(`{"data":{"results":[]}}`))
+						}
+						tail, _ := json.Marshal(map[string]any{path: []any{}})
+						return api.Decode(tail)
 					}, pythonJoinURL, false)
 					e = z
 					got.Truncated = inventory.Truncated
 					for _, job := range inventory.Jobs {
-						got.Jobs = append(got.Jobs, RichMonitorJob{URL: job.URL, URLOnly: inventory.URLOnly})
+						title, z := executor.CoerceText(job.Title)
+						if z != nil {
+							t.Fatal(z)
+						}
+						description, z := executor.CoerceText(job.Description)
+						if z != nil {
+							t.Fatal(z)
+						}
+						got.Jobs = append(got.Jobs, RichMonitorJob{URL: job.URL, URLOnly: inventory.URLOnly, Title: title, Description: description, Locations: job.Locations, Language: job.Metadata["language"], DatePosted: job.DatePosted, Metadata: job.Metadata, EmploymentType: job.EmploymentType, JobLocationType: job.JobLocationType, Extras: job.Extras})
 					}
 				} else {
 					o, z := queue.APISnifferMonitorOptions(config)
@@ -179,4 +193,18 @@ func TestSharedServiceAnnotationsSameCapturedPublicOutputs(t *testing.T) {
 		cases = append(cases, c)
 	}
 	runServiceAnnotationOriginalCases(t, cases)
+}
+
+func sharedOriginalRequestURLEqual(a, b string) bool {
+	u, e := url.Parse(a)
+	if e != nil {
+		return false
+	}
+	v, e := url.Parse(b)
+	if e != nil {
+		return false
+	}
+	u.Host = strings.ToLower(u.Host)
+	v.Host = strings.ToLower(v.Host)
+	return portalURLEqual(u.String(), v.String())
 }
