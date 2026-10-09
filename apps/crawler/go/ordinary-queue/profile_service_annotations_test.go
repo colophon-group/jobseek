@@ -113,7 +113,7 @@ func TestSharedServiceAnnotationsRejectInvalidAndRetainOtherGuards(t *testing.T)
 			if provider == "sitemap" {
 				base = `{"sitemap_url":"https://example.com/jobs.xml","scraper_type":"json-ld"}`
 			}
-			for _, extra := range []string{`"rescrape_policy":null`, `"rescrape_policy":true`, `"rescrape_policy":"always"`, `"rescrape_policy":"never","rescrape_policy":"never"`, `"defaults":null`, `"defaults":[]`, `"defaults":{"locations":[],"locations":[]}`, `"defaults":{},"unknown":true`, `"rescrape_policy":"never","skip_ssl":true`} {
+			for _, extra := range []string{`"rescrape_policy":null`, `"rescrape_policy":true`, `"rescrape_policy":"always"`, `"rescrape_policy":"never","rescrape_policy":"never"`, `"defaults":null`, `"defaults":[]`, `"defaults":{"locations":[],"locations":[]}`, `"defaults":{},"unknown":true`, `"rescrape_policy":"never","skip_ssl":"enabled"`} {
 				c["metadata"] = strings.TrimSuffix(base, "}") + "," + extra + "}"
 				if _, e := InspectRichMonitor(profileBoardID, c); e == nil {
 					t.Fatal("unsupported configuration admitted", extra)

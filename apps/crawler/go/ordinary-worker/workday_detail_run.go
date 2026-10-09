@@ -29,7 +29,7 @@ func RunWorkdayDetail(ctx context.Context, authority *queue.Authority, claim *qu
 
 func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Claim, http *VerifiedDirectHTTP, processor *executor.Processor, circuits *queue.HostCircuits, renderers ...renderedDetailClient) (*GreenhouseClaimResult, error) {
 	result := &GreenhouseClaimResult{TaskKind: queue.Scrape}
-	if authority == nil || claim == nil || !claim.OwnershipBound() || http == nil || http.client == nil || processor == nil || circuits == nil {
+	if authority == nil || claim == nil || !claim.OwnershipBound() || http == nil || http.client == nil || http.skipSSL || processor == nil || circuits == nil {
 		return result, claimRunError("detail_startup", queue.ErrConfiguration)
 	}
 	task := claim.Descriptor()

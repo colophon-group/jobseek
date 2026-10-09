@@ -285,8 +285,15 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 	var locations *executor.Locations
 	var httpClient *VerifiedDirectHTTP
 	var workdayHTTP *VerifiedDirectHTTP
+	var skipSSLHTTP, skipSSLHTTP2 *VerifiedDirectHTTP
 	var proxyHTTP *VerifiedHTTP
 	cleanup := func() {
+		if skipSSLHTTP != nil {
+			skipSSLHTTP.CloseIdleConnections()
+		}
+		if skipSSLHTTP2 != nil {
+			skipSSLHTTP2.CloseIdleConnections()
+		}
 		if proxyHTTP != nil {
 			proxyHTTP.CloseIdleConnections()
 		}
@@ -351,6 +358,17 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		cleanup()
 		return runtimeStartupFailure("http2_transport")
 	}
+	skipSSLHTTP, err = NewVerifiedDirectHTTP(DirectHTTPConfig{CABundlePEM: pinnedCA, InternalHosts: c.internalHosts, SkipSSL: true})
+	if err != nil {
+		cleanup()
+		return runtimeStartupFailure("explicit_http_tls_transport")
+	}
+	skipSSLHTTP2, err = NewVerifiedDirectHTTP(DirectHTTPConfig{CABundlePEM: pinnedCA, InternalHosts: c.internalHosts, EnableHTTP2: true, SkipSSL: true})
+	if err != nil {
+		cleanup()
+		return runtimeStartupFailure("explicit_http2_tls_transport")
+	}
+
 	if authority.RequiresProxyHTTP() {
 		proxyHTTP, err = newVerifiedProxyHTTP(DirectHTTPConfig{CABundlePEM: pinnedCA, InternalHosts: c.internalHosts}, c.proxy)
 		if err != nil {
@@ -421,6 +439,20 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		if err != nil {
 			return nil, claimRunError("transport_selection", err)
 		}
+		if claim.Descriptor().Kind == queue.Monitor {
+			skip, err := queue.MonitorSkipsSSL(claim.Descriptor().Config)
+			if err != nil {
+				return nil, claimRunError("transport_selection", err)
+			}
+			if skip {
+				transport := skipSSLHTTP
+				if claim.Descriptor().Config["crawler_type"] == "sitemap" {
+					transport = skipSSLHTTP2
+				}
+				return RunGreenhouseClaim(ctx, authority, claim, transport, preparer, circuits)
+			}
+		}
+
 		if useProxy {
 			if claim.Descriptor().Kind == queue.Scrape {
 				return RunDetail(ctx, authority, claim, proxyHTTP, preparer.Processor, circuits, renderer)

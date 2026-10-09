@@ -81,8 +81,9 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 	if task.Kind != queue.Monitor || (task.Worker != queue.Simple && task.Worker != queue.Browser) {
 		return result, claimRunError("startup", queue.ErrUnsupportedProfile)
 	}
+	skipSSL, tlsErr := queue.MonitorSkipsSSL(task.Config)
 	profile, err := queue.InspectRichMonitor(task.ID, task.Config)
-	if err != nil || queue.MonitorWorker(profile) != task.Worker || http.proxyRequired != queue.ProfileRequiresProxy(profile.Profile) {
+	if tlsErr != nil || http.skipSSL != skipSSL || err != nil || queue.MonitorWorker(profile) != task.Worker || http.proxyRequired != queue.ProfileRequiresProxy(profile.Profile) {
 		return result, claimRunError("startup", queue.ErrUnsupportedProfile)
 	}
 	var renderer renderedMonitorClient

@@ -16,6 +16,30 @@ whole-service CPU/RAM/density/attributable cost; and a supported cold reversal
 with its observation window. A merged candidate or synthetic benchmark does
 not complete migration.
 
+## Next grouped candidate — explicit HTTP TLS settings across three monitor types
+
+Candidate **0.13.989** qualifies sixteen existing HTTP configurations together:
+thirteen DOM, one inline and two sitemap monitors. Fifteen are fully explicit in
+CSV; PLD Space binds its original retained learned sitemap URL, which CSV sync
+preserves. This qualification does not add bare CSV sitemap auto-discovery.
+One ArcelorMittal browser configuration retains its original owner because the
+HTTP transport proof does not cover its browser TLS setting.
+
+The original `skip_ssl` setting selects a distinct sealed HTTP client through
+canonical immutable configuration. Ordinary clients keep certificate verification;
+certificate failures never select the exception automatically. Publisher policy,
+DNS/private-network guards, cancellation/budgets, existing native HTTP protocol choices
+and independent detail transport remain intact. Proxy, browser and detail TLS
+exceptions remain unsupported.
+
+Actual original Python client selection and TLS contexts match all sixteen
+configurations; seven existing original client/SSL tests pass. Real TLS handshakes
+cover HTTP/1.1 and HTTP/2, normal trust and explicit exceptions. Six real SQL/Redis
+complete/reserved cycles, nine supported cold-retirement cases, three actual
+executable transport-selection cases and 158-profile startup pass. Focused
+registry/guard race and queue/worker vet checks pass. Original core-output regression checks and final affected-module vet pass. Full exact-head CI and immutable
+source-bound deployment/ownership remain required. See the [candidate evidence](evidence/go-native-shared-http-tls-candidate-2026-10-09.json).
+
 ## Next grouped candidate — shared DOM, API and sitemap service annotations
 
 Candidate **0.13.988** qualifies seven current configurations across **DOM,
@@ -118,8 +142,10 @@ green full CI `37881786339`, installed-image parity `37881786338` and actual
 deployment gate `37881784758`. Fresh source986 cold252 and head/base-bound
 merge authority passed. PR #10374 merged at
 `a9e2f4cb20c6d9bd5a26ef7c515127cd06cd654b`. Original crawler rollout
-`37884037001` and its guarded matching renderer dispatch are underway.
-Native ownership remains absent. Admit and activate the next combined batch only
+`37884037001` and matching renderer rollout `37884097793` succeeded on attempt 1.
+Independent incoming exact source/images, whole base stack, cold252 and renderer
+verification passed at 04:44 UTC; no one-off administrative consumers remain.
+Native ownership remains absent. Source988 is published as [PR #10375](https://github.com/colophon-group/jobseek/pull/10375); its initial full CI `37884325254` failed in native execution; preserve the original log and repair the actual cause before fresh checks, installed-image parity `37884325243` and deployment gate `37884323962` pass. Admit and activate the next combined batch only
 after the original browser replay parity correction in source988 is deployed;
 retain complete supported cutover and incoming independent verification.
 
