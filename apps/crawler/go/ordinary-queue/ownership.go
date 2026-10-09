@@ -255,7 +255,7 @@ func (a *Authority) StageOwnership(ctx context.Context, revision string, boardID
 		}
 	}
 	var plan *OwnershipPlan
-	err := a.transaction(ctx, true, func(ctx context.Context, tx pgx.Tx) error {
+	err := a.ownershipAdminTransaction(ctx, true, func(ctx context.Context, tx pgx.Tx) error {
 		doc := ownershipDocument{Version: ownershipVersion, Epoch: a.epoch, SourceRevision: revision, ProjectionVersion: ownershipProjectionVersion}
 		requested := append(append([]string(nil), ids...), detailIDs...)
 		snapshots, err := a.observeOwnershipConfigs(ctx, tx, requested, false)
@@ -381,7 +381,7 @@ func (a *Authority) InspectStagedOwnership(ctx context.Context, digest, revision
 		return nil, ErrConfiguration
 	}
 	var plan *OwnershipPlan
-	err := a.transaction(ctx, false, func(ctx context.Context, tx pgx.Tx) error {
+	err := a.ownershipAdminTransaction(ctx, false, func(ctx context.Context, tx pgx.Tx) error {
 		var body string
 		err := tx.QueryRow(ctx, `SELECT payload FROM public.ordinary_worker_ownership_plan
  WHERE plan_sha256=$1 AND source_revision=$2 AND routing_epoch=$3 AND state='staged'`, digest, revision, a.epoch).Scan(&body)

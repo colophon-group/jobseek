@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "source_revision": "ce4964b76a76a99cd839b14c3608033846ccf7bd",
+  "production_observation": {
+    "ordinary_stage_result": "deadline; transaction rolled back, no source996 plans or active routing/receipts",
+    "full_admitted_cohort": {
+      "monitor_boards": 7678,
+      "detail_boards": 2746,
+      "scheduled_postings": 1484140
+    },
+    "first_activity": {
+      "observed_at": "2026-10-09T21:01:25.389668+00:00",
+      "activities": [
+        {
+          "state": "active",
+          "wait_type": "Lock",
+          "wait": "advisory",
+          "transaction_age_seconds": 0.051204,
+          "query_class": "advisory_barrier"
+        }
+      ]
+    },
+    "last_activity": {
+      "observed_at": "2026-10-09T21:01:40.598351+00:00",
+      "activities": [
+        {
+          "state": "active",
+          "wait_type": null,
+          "wait": null,
+          "transaction_age_seconds": 15.260647,
+          "query_class": "plan_insert"
+        }
+      ]
+    },
+    "snapshot_processing": "ClientRead following board snapshot from txage2.6s through14.4s; planinsert observed at15.26s; original txbudget15s",
+    "source996_b0": "active259; independentfullbasehealth200/204; ordinaryreceipt/projectionabsent",
+    "proof_scope": "original supported production staging and bounded readonly PGactivity; no incoming ordinary serving authority claimed"
+  },
+  "change": {
+    "stage_readback_transaction_seconds": 30,
+    "stage_readback_sql_idle_seconds": 30,
+    "runtime_transaction_and_sql_idle_seconds": 15,
+    "whole_admin_seconds": 40,
+    "original_wrapper_seconds": 45,
+    "stage_only_no_activation_or_redis_projection_grant": true
+  },
+  "validation": {
+    "real_pg_delayed_snapshot_race_seconds": 32.644,
+    "checks": [
+      "16s snapshot persists onlystaged plan",
+      "runtime effect remainscancelled at15s",
+      "pooledruntime SQLidle remains15s",
+      "caller100ms deadline rollsbackplan",
+      "originalqueue stateunchanged"
+    ],
+    "broader_checks": "fullqueue andrealCLI pending"
+  }
+}

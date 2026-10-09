@@ -1083,3 +1083,34 @@ Seven physical pinned-Lightpanda session cases are included in both architecture
 Source994 (`66c1a05df0fcd6db42c5709653c8c61b05adfe21`, Workable/SmartRecruiters) is deployed through original whole crawler37962603419 and matching renderer37962775624, with independent image/health/cold readiness at epoch256. Both native owners remain closed. JobStreet/legacy SuccessFactors PR #10389 is based on that source; corrected CI37972145536 executes native jobs, whereas the earlier generic dispatch skipped them and is not accepted. After995 passes fresh merge authority and supported deployment, perform one fresh native admission covering both batches. Continue grouped remaining DOM/API/provider ports while observing the native owner. Lightpanda1.0.0 remains the latest stable release, freshly rechecked on the official releases page. Full freshness/conservation, comparable whole-lane cost, final reversal and rollback window still gate production Python/Playwright/Chromium retirement. The migration goal remains active and incomplete.
 
 Source996 reviewed head`0e20c9c692a65f5ae8d1d37f095c28ac21957f0b` now passes the full native worker race suite against isolated real PostgreSQL/Redis (824.011s wall). The subsequent fixes only classify the existing DOM import as direct and exclude service-only tests from the density build. Density race passes8.970s; fresh exact-head CI and physical Lightpanda builds still require renewal. A fresh complete anonymous global ByteDance capture contains1,430 jobs; Go requests both pages, matches every original Python field with zero differences, and projects4,933,303 bytes within the unchanged8MiB inventory RPC bound. This is public direct-HTTP capture replay evidence, not a live Lightpanda or serving proof.
+
+
+### Source996 full-cohort staging deadline — 2026-10-09
+
+Source996 B0 is independently ACTIVE at259 with the restored base fleet healthy.
+Exact-source actual-route admission covers7,678 monitor boards (all5 Darwinbox
+and3 ByteDance),2,746 detail boards and1,484,140 scheduled postings. All1,515,780
+candidate scheduled routes were reconciled;41 stale posting-cache boards and1
+incompatible route retain legacy ownership. Canonical/cacheboard config mismatches0.
+
+Original full-cohort staging attempts1,2,4 hit the15s transaction deadline;
+attempt3 properly rejected an existing production mutation lock. A bounded
+PGactivity observation caught~2s advisory wait, client-side snapshot processing
+through14.4s, then plan insertion at15.26s. The transaction rolled back. Independent
+readback verifies no source996 ordinary plan, receipt or active projection.
+
+The narrow next release reservesVERSION0.13.997 to give only staged-plan
+administration30s transactions and transaction-local SQLidle caps; ordinary runtime
+transaction/idle caps remain15s. Whole admin work is40s within the original45s
+wrapper. Lease/epoch/row barriers, exactsource/config checks, staged-only authority
+and caller cancellation are preserved. A real privatePG/Redis race regression
+passed32.644s, verifying a16s snapshot, runtime15s cancellation, no pooled idle-cap
+leak, caller100ms cancellation, and unchanged queue state. Full queue/realCLI checks
+and required CI are pending. See docs/evidence/go-native-owner-stage-budget-2026-10-09.json.
+
+Do not reduce the admitted cohort to fit the old timer. Finish and qualify this
+administrative fix, then supportedB0 reversal/completecold260 precedes its merge
+and whole rollout; refresh full admission and activate the complete native owner.
+The paired Accenture/BrassRing prototype remains local on source996; after this
+release rebase it, reserve the next version and finish both browser/controllers,
+real settlement and physical qualification together. Full migration remainsACTIVE.

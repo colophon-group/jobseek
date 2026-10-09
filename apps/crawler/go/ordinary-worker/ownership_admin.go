@@ -201,7 +201,8 @@ func RunOwnershipAdmin(ctx context.Context, c OwnershipAdminConfig) (*OwnershipS
 			return nil, ownershipAdminFailure("cohort", err)
 		}
 	}
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	// Keep both full-cohort snapshots bounded inside the wrapper's 45s limit.
+	ctx, cancel := context.WithTimeout(ctx, 40*time.Second)
 	defer cancel()
 	client, err := queue.Open(c.redis, queue.Settings{LeaseTTL: 600 * time.Second, MaxDomains: 10})
 	if err != nil {

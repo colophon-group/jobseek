@@ -200,7 +200,25 @@ func OpenAuthority(ctx context.Context, dsn string, client *Client, epoch int64)
 func (a *Authority) Close() { a.pool.Close() }
 
 func (a *Authority) transaction(ctx context.Context, retire bool, fn func(context.Context, pgx.Tx) error) error {
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	return a.transactionWithin(ctx, retire, 15*time.Second, fn)
+}
+
+// Full-cohort staging and readback parse thousands of bound configurations.
+// Their separate administrative budget grants no runtime claim authority.
+func (a *Authority) ownershipAdminTransaction(ctx context.Context, retire bool, fn func(context.Context, pgx.Tx) error) error {
+	return a.transactionWithin(ctx, retire, 30*time.Second, func(ctx context.Context, tx pgx.Tx) error {
+		// Config parsing is client-side work while the snapshot's row locks are
+		// held. SET LOCAL keeps the matching idle ceiling inside this one
+		// staged-plan transaction; pooled runtime sessions retain their 15s cap.
+		if _, err := tx.Exec(ctx, "SET LOCAL idle_in_transaction_session_timeout='30s'"); err != nil {
+			return err
+		}
+		return fn(ctx, tx)
+	})
+}
+
+func (a *Authority) transactionWithin(ctx context.Context, retire bool, budget time.Duration, fn func(context.Context, pgx.Tx) error) error {
+	ctx, cancel := context.WithTimeout(ctx, budget)
 	defer cancel()
 	err := pgx.BeginFunc(ctx, a.pool, func(tx pgx.Tx) error {
 		lock := "SELECT pg_advisory_xact_lock_shared($1)"
