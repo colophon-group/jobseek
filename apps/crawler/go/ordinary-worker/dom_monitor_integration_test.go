@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -17,9 +18,24 @@ func TestRealProxyDOMCompleteInventoryRetryGoneAndPolicy(t *testing.T) {
 }
 func realDOMTransportCases(t *testing.T, proxy bool, annotations ...bool) {
 	annotated := len(annotations) > 0 && annotations[0]
+	alternate := len(annotations) > 1 && annotations[1]
 	for _, mode := range []string{"success", "retry429", "empty", "retry403", "gone404", "gone410", "challenge", "header", "meta", "redirect_header"} {
 		t.Run(mode, func(t *testing.T) {
-			f := privateRichPipelineFixture(t, "dom", proxyFixtureMetadata(t, sharedAnnotationFixtureMetadata(t, `{"url_filter":{"include":"/jobs/\\w+","exclude":"intern"},"scraper_type":"json-ld"}`, annotated), proxy))
+			metadata := proxyFixtureMetadata(t, sharedAnnotationFixtureMetadata(t, `{"url_filter":{"include":"/jobs/\\w+","exclude":"intern"},"scraper_type":"json-ld"}`, annotated), proxy)
+			if alternate {
+				var md map[string]any
+				if json.Unmarshal([]byte(metadata), &md) != nil {
+					t.Fatal("metadata")
+				}
+				md["fetch_url_transform"] = map[string]any{"find": "^https://example.com/careers$", "replace": "https://example.com/alternate/"}
+				raw, _ := json.Marshal(md)
+				metadata = string(raw)
+			}
+			f := privateRichPipelineFixture(t, "dom", metadata)
+			listingPath := "/careers"
+			if alternate {
+				listingPath = "/alternate/"
+			}
 			ctx := context.Background()
 			if _, err := f.pg.Exec(ctx, "UPDATE job_posting SET missing_count=3 WHERE id=$1::uuid", f.original); err != nil {
 				t.Fatal(err)
@@ -28,7 +44,7 @@ func realDOMTransportCases(t *testing.T, proxy bool, annotations ...bool) {
 			var calls atomic.Int64
 			client := verifiedClaimFixtureClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				calls.Add(1)
-				if r.Method != "GET" || r.Host != "example.com" || r.URL.Path != "/careers" && r.URL.Path != "/policy-page" {
+				if r.Method != "GET" || r.Host != "example.com" || r.URL.Path != listingPath && r.URL.Path != "/policy-page" {
 					t.Error("DOM left reviewed direct resource")
 				}
 				if mode == "retry429" && calls.Load() < 3 {
@@ -47,7 +63,7 @@ func realDOMTransportCases(t *testing.T, proxy bool, annotations ...bool) {
 				case "challenge":
 					fmt.Fprint(w, `<html><title>Just a moment...</title><div id="cf-chl-widget">Checking your browser</div></html>`)
 				case "redirect_header":
-					if r.URL.Path == "/careers" {
+					if r.URL.Path == listingPath {
 						http.Redirect(w, r, "/policy-page", 302)
 						return
 					}
@@ -98,7 +114,7 @@ func realDOMTransportCases(t *testing.T, proxy bool, annotations ...bool) {
 				}
 				if mode == "header" || mode == "meta" || mode == "redirect_header" {
 					wantCalls := int64(1)
-					resource := "https://example.com/careers"
+					resource := "https://example.com" + listingPath
 					if mode == "redirect_header" {
 						wantCalls = 2
 						resource = "https://example.com/policy-page"

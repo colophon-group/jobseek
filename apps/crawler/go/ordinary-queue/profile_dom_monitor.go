@@ -71,6 +71,9 @@ func directDOMMonitorOptions(config map[string]string) (dom.ListingConfig, error
 	if err == nil && listing.RichRows != nil && listing.RichRows.TotalSelector != "" && listing.Pagination != nil {
 		return dom.ListingConfig{}, ErrUnsupportedProfile
 	}
+	if err == nil {
+		listing.FetchURL, err = domMonitorFetchURL(config, md, listing)
+	}
 	return listing, err
 }
 
@@ -104,5 +107,5 @@ func inspectDOMMonitor(boardID string, config map[string]string, md map[string]j
 
 func DOMMonitorResourceMatches(p GreenhouseMonitorProfile, config map[string]string, resource string) bool {
 	c, err := DOMMonitorOptions(config)
-	return err == nil && p.Provider == "dom" && c.ResourceMatches(p.Endpoint, resource)
+	return err == nil && p.Provider == "dom" && (c.FetchURL != "" && resource == c.FetchURL || c.FetchURL == "" && c.ResourceMatches(p.Endpoint, resource))
 }

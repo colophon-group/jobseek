@@ -18,6 +18,7 @@ func TestRealProxyConfiguredAPIWritesRichContentAndConservesQueue(t *testing.T) 
 }
 func realAPIRichTransportCases(t *testing.T, proxy bool, annotations ...bool) {
 	annotated := len(annotations) > 0 && annotations[0]
+	legacyEnrich := len(annotations) > 1 && annotations[1]
 	for _, method := range []string{"GET", "POST"} {
 		t.Run(method, func(t *testing.T) {
 			metadata := map[string]any{"api_url": "https://example.com/api?page=1", "method": method, "json_path": "jobs", "url_field": "url", "fields": map[string]any{"title": "name", "description": "body", "locations": "city", "employment_type": "employment", "job_location_type": "workplace", "skills": "skills", "responsibilities": "tasks"}, "scraper_type": "json-ld", "request_headers": map[string]any{"X-Required": "fixture"}, "pagination": map[string]any{"param_name": "page", "start_value": 1, "max_pages": 2}}
@@ -25,6 +26,9 @@ func realAPIRichTransportCases(t *testing.T, proxy bool, annotations ...bool) {
 				metadata["api_url"] = "https://example.com/api"
 				metadata["post_data"] = map[string]any{"page": 1}
 				metadata["pagination"] = map[string]any{"param_name": "page", "start_value": 1, "max_pages": 2, "location": "body"}
+			}
+			if legacyEnrich {
+				metadata["enrich"] = []string{"description", "locations"}
 			}
 			if proxy {
 				metadata["proxy"] = true

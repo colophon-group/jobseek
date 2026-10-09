@@ -33,9 +33,13 @@ func discoverDOMSingleInventory(ctx context.Context, verified *http.Client, prof
 		return result, err
 	}
 	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	fetchURL := profile.Endpoint
+	if c.FetchURL != "" {
+		fetchURL = c.FetchURL
+	}
 	var source string
 	for attempt := 0; attempt < c.Attempts; attempt++ {
-		doc, failure := jsonld.FetchDocumentWithClient(ctx, profile.Endpoint, c.Document, &client)
+		doc, failure := jsonld.FetchDocumentWithClient(ctx, fetchURL, c.Document, &client)
 		result.Response = nil
 		if doc.Responses > 0 {
 			var policy *string
@@ -43,7 +47,7 @@ func discoverDOMSingleInventory(ctx context.Context, verified *http.Client, prof
 				text := doc.TDMPolicy
 				policy = &text
 			}
-			result.Response = &GreenhouseResponse{endpoint: profile.Endpoint, finalURL: doc.FinalURL, status: doc.Status, reserved: doc.ErrorKind == "tdm", policy: policy, reservationSource: doc.TDMSource}
+			result.Response = &GreenhouseResponse{endpoint: fetchURL, finalURL: doc.FinalURL, status: doc.Status, reserved: doc.ErrorKind == "tdm", policy: policy, reservationSource: doc.TDMSource}
 		}
 		if doc.ErrorKind == "tdm" {
 			return result, failure
@@ -155,7 +159,11 @@ func parseDOMInventory(ctx context.Context, result RichDiscovery, profile queue.
 		}
 		absolute, ok := href, true
 		if !rendered {
-			absolute, ok = joinPythonURL(profile.Endpoint, href)
+			base := profile.Endpoint
+			if c.FetchURL != "" {
+				base = c.FetchURL
+			}
+			absolute, ok = joinPythonURL(base, href)
 		}
 		if !ok || !strings.HasPrefix(absolute, "http") {
 			continue
@@ -197,7 +205,7 @@ func parseDOMInventory(ctx context.Context, result RichDiscovery, profile queue.
 			continue
 		}
 		p.fragment = ""
-		if strings.TrimRight(p.String(), "/") == strings.TrimRight(profile.Endpoint, "/") {
+		if strings.TrimRight(p.String(), "/") == strings.TrimRight(profile.Endpoint, "/") || c.FetchURL != "" && strings.TrimRight(p.String(), "/") == strings.TrimRight(c.FetchURL, "/") {
 			continue
 		}
 		urls[absolute] = struct{}{}

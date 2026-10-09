@@ -122,7 +122,7 @@ func (c *GreenhouseCycle) FinishProviderGoneResource(ctx context.Context, initia
 		if !BeisenMonitorPrimaryGone(c.claim.task.Config, initialEndpoint, observation.HTTPStatus, observation.PortalDisabled) {
 			return nil, ErrConfiguration
 		}
-	} else if observation.PortalDisabled || (observation.HTTPStatus != 404 && observation.HTTPStatus != 410) || initialEndpoint != profile.Endpoint || observation.HTTPStatus == 410 && profile.Provider != "join" && profile.Provider != "dom" && profile.Provider != "icims" && profile.Provider != "jazzhr" && profile.Provider != "gupy" {
+	} else if observation.PortalDisabled || (observation.HTTPStatus != 404 && observation.HTTPStatus != 410) || (profile.Provider == "dom" && !DOMMonitorPrimaryResourceMatches(profile, c.claim.task.Config, initialEndpoint) || profile.Provider != "dom" && initialEndpoint != profile.Endpoint) || observation.HTTPStatus == 410 && profile.Provider != "join" && profile.Provider != "dom" && profile.Provider != "icims" && profile.Provider != "jazzhr" && profile.Provider != "gupy" {
 		return nil, ErrConfiguration
 	}
 	if profile.Provider == "icims" && !ICIMSMonitorPrimaryGone(c.claim.task.Config, initialEndpoint, observation.HTTPStatus) {

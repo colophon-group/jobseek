@@ -25,6 +25,7 @@ type Pagination struct {
 type Options struct {
 	BoardURL, Endpoint, Method, Body       string
 	Path, TotalPath, URLField, URLTemplate string
+	SlugFields                             []string
 	TemplateFields                         map[string]any
 	Fields                                 map[string]any
 	EmptyResponse                          map[string]any
@@ -41,7 +42,7 @@ type Options struct {
 	Enrichment                             []string
 }
 
-var ConfigKeys = []string{"api_url", "method", "json_path", "json_path_values", "total_path", "url_field", "url_template", "url_template_fields", "fields", "params", "post_data", "post_body", "request_headers", "headers", "pagination", "max_items", "transient_403", "transport_attempts", "browser", "render", "proxy", "skip_ssl", "ssl_verify", "wait", "timeout", "settle", "items", "score", "total", "empty_response", "item_filter", "url_filter", "resource_policy", "url_regex", "url_allowlist", "defaults", "rescrape_policy"}
+var ConfigKeys = []string{"api_url", "method", "json_path", "json_path_values", "total_path", "url_field", "url_template", "url_template_fields", "fields", "params", "post_data", "post_body", "request_headers", "headers", "pagination", "max_items", "transient_403", "transport_attempts", "browser", "render", "proxy", "skip_ssl", "ssl_verify", "wait", "timeout", "settle", "items", "score", "total", "empty_response", "item_filter", "url_filter", "resource_policy", "url_regex", "url_allowlist", "defaults", "rescrape_policy", "enrich", "slug_fields"}
 
 // Explicit HTTP configurations share the production client and the original
 // inventory writer. Browser captures, rotating auth, provider-specific filters
@@ -78,6 +79,32 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 	}
 	if value, present := m["rescrape_policy"]; present && value != "never" {
 		return o, ErrOptions
+	}
+	// The original API monitor ignores root enrich; only scraper_config.enrich
+	// assigns detail work. Retain this legacy annotation in immutable metadata.
+	if value, present := m["enrich"]; present {
+		fields, ok := value.([]any)
+		if !ok {
+			return o, ErrOptions
+		}
+		for _, field := range fields {
+			if s, ok := field.(string); !ok || strings.TrimSpace(s) == "" {
+				return o, ErrOptions
+			}
+		}
+	}
+	if value := m["slug_fields"]; value != nil {
+		fields, ok := value.([]any)
+		if !ok {
+			return o, ErrOptions
+		}
+		for _, field := range fields {
+			s, ok := field.(string)
+			if !ok || strings.TrimSpace(s) == "" {
+				return o, ErrOptions
+			}
+			o.SlugFields = append(o.SlugFields, strings.TrimSpace(s))
+		}
 	}
 	if value, exists := m["empty_response"]; exists && value != nil {
 		o.EmptyResponse, err = emptyResponseOptions(value)

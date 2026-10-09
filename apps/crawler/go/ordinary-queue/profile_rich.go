@@ -154,6 +154,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 			allowed[key] = true
 		}
 	case "dom":
+		allowed["fetch_url_transform"] = true
 		for _, key := range []string{"include_board_url", "require_jsonld_jobposting", "advertised_total", "empty_states", "empty_selector", "empty_text", "rich_rows", "url_filter", "url_allowlist", "url_transform", "job_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "browser_backend", "routing_revision", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
 		}

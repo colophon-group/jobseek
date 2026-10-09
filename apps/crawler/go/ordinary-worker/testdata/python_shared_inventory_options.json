@@ -1,0 +1,972 @@
+[
+  {
+    "name": "adidas-korea-retail",
+    "board": {
+      "provider": "api_sniffer",
+      "board_url": "https://adidas.ninehire.site/openjobs",
+      "metadata": {
+        "api_url": "https://adidas.ninehire.site/_backend/identity-access/homepage/recruitments",
+        "method": "GET",
+        "json_path": "results",
+        "params": {
+          "companyId": "70077430-9ea2-11ec-93fc-d584c3cbb5db",
+          "countPerPage": "100",
+          "order": "created_at_desc"
+        },
+        "url_template": "https://adidas.ninehire.site/job_posting/{addressKey}",
+        "fields": {
+          "title": "title",
+          "locations": "jobLocations[].placeName",
+          "employment_type": "employmentType",
+          "metadata.status": "status",
+          "metadata.job_group": "jobGroup.title",
+          "metadata.job_task": "jobTask.title"
+        },
+        "enrich": [
+          "description",
+          "locations"
+        ],
+        "scraper_type": "dom",
+        "scraper_config": {
+          "steps": [
+            {
+              "tag": "h1",
+              "field": "title"
+            },
+            {
+              "field": "description",
+              "html": true,
+              "optional": true,
+              "stop": "Qualifications"
+            }
+          ],
+          "defaults_by_url": {
+            "https://adidas.ninehire.site/job_posting/CensDMT2": {
+              "locations": [
+                "South Korea"
+              ]
+            },
+            "https://adidas.ninehire.site/job_posting/dmi6YXbx": {
+              "locations": [
+                "Uiwang, South Korea"
+              ]
+            },
+            "https://adidas.ninehire.site/job_posting/QFnsefif": {
+              "locations": [
+                "Namyangju, South Korea"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "browser": false,
+    "response": "{\"results\": [{\"id\": \"101\", \"title\": \"Ingénieur R&D + Operations\", \"location\": {\"city\": \"Calgary\"}, \"jobOpeningName\": \"Ingénieur R&D + Operations\", \"employmentStatusLabel\": \"Contract\", \"positions_name\": \"Ingénieur R&D + Operations\", \"other_areas\": [\"Tokyo\"], \"type\": \"1\", \"link\": \"/recruit/career/101\", \"name\": \"Ingénieur R&D + Operations\", \"locations_legacy\": [\"Zurich\"], \"percentage\": \"Full Time\", \"department\": \"Engineering\", \"link_https\": \"https://www.u-blox.com/en/job/101\", \"addressKey\": \"abc101\", \"jobLocations\": [{\"placeName\": \"Seoul\"}], \"employmentType\": \"full_time\", \"status\": \"open\", \"jobGroup\": {\"title\": \"Retail\"}, \"jobTask\": {\"title\": \"Operations\"}, \"Job_Posting_Title\": \"Ingénieur R&D + Operations\", \"Job_Requisition_Ref_ID\": \"JR101\", \"Job_Description\": \"<p>Build reliable systems.</p>\", \"Job_Requisition_Primary_Location\": \"Zurich\", \"Time_Type\": \"Full Time\", \"External_Job_Posting_Start_Date\": \"2026-10-01\", \"Job_Family_Group\": \"Engineering\", \"JobTitle\": \"Ingénieur R&D + Operations\", \"VacancyTitle\": \"Cloud\", \"Title\": \"Operations\", \"JobDescription\": \"<p>Build reliable systems.</p>\", \"Location\": \"London\", \"ApplyLink\": \"https://coxautoinc.current-vacancies.com/job/101\"}]}",
+    "expected": [
+      {
+        "url": "https://adidas.ninehire.site/job_posting/abc101",
+        "title": "Ingénieur R&D + Operations",
+        "description": null,
+        "locations": [
+          "Seoul"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "status": "open",
+          "job_group": "Retail",
+          "job_task": "Operations"
+        },
+        "source_identity": null
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://adidas.ninehire.site/_backend/identity-access/homepage/recruitments?companyId=70077430-9ea2-11ec-93fc-d584c3cbb5db&countPerPage=100&order=created_at_desc",
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "arcelormittal-south-africa",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://arcelormittalsa.ci.hr/applicant/index.php?controller=Page&name=jobsearch",
+      "metadata": {
+        "fetch_url_transform": {
+          "find": "^https://arcelormittalsa\\.ci\\.hr/applicant/index\\.php\\?controller=Page&name=jobsearch$",
+          "replace": "https://arcelormittalsa.ci.hr/"
+        },
+        "url_filter": "controller=Listings.*method=view",
+        "scraper_type": "dom",
+        "scraper_config": {
+          "steps": [
+            {
+              "tag": "h4",
+              "field": "title"
+            },
+            {
+              "text": "About our company",
+              "field": "description",
+              "html": true,
+              "stop": "Apply"
+            },
+            {
+              "text": "location",
+              "match_regex": "(?i)^\\s*location\\s*[:：]\\s*(\\S.*)\\s*$",
+              "field": "location",
+              "regex": "(?i)^\\s*location\\s*[:：]\\s*(\\S.*)\\s*$",
+              "from": 0
+            }
+          ]
+        }
+      }
+    },
+    "browser": false,
+    "response": "<html><body><h1>Careers</h1><a href=\"applicant/index.php?controller=Listings&amp;method=view&amp;id=101\">Engineer</a><a href=\"https://arcelormittalsa.ci.hr/applicant/index.php?controller=Page&name=jobsearch\">Official careers</a></body></html>",
+    "expected": [
+      {
+        "url": "https://arcelormittalsa.ci.hr/applicant/index.php?controller=Listings&method=view&id=101"
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://arcelormittalsa.ci.hr/",
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "bae-systems-prismatic",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://www.prismaticltd.co.uk/careers/",
+      "metadata": {
+        "render": false,
+        "fetch_url_transform": {
+          "find": "^https://www\\.prismaticltd\\.co\\.uk(/.*)$",
+          "replace": "https://r.jina.ai/http://www.prismaticltd.co.uk\\1"
+        },
+        "request_headers": {
+          "X-Return-Format": "html"
+        },
+        "url_filter": "^https://www\\.prismaticltd\\.co\\.uk/career/[^/?#]+/?$",
+        "scraper_type": "dom",
+        "scraper_config": {
+          "fetch_url_transform": {
+            "find": "^https://www\\.prismaticltd\\.co\\.uk(/.*)$",
+            "replace": "https://r.jina.ai/http://www.prismaticltd.co.uk\\1"
+          },
+          "request_headers": {
+            "X-Return-Format": "html"
+          },
+          "steps": [
+            {
+              "tag": "h1",
+              "field": "title"
+            },
+            {
+              "tag": "h1",
+              "offset": 1,
+              "field": "description",
+              "html": true,
+              "stop": "How to Apply",
+              "stop_count": 500,
+              "from": 0
+            },
+            {
+              "tag": "li",
+              "match_regex": "^Location\\s*[:–-]",
+              "field": "locations",
+              "regex": "^Location\\s*[:–-]\\s*(.+?)[.]?$",
+              "optional": true,
+              "from": 0
+            },
+            {
+              "tag": "li",
+              "match_regex": "^Contract\\s*[:–-]",
+              "field": "employment_type",
+              "regex": "^Contract\\s*[:–-]\\s*([^,.]+)",
+              "optional": true,
+              "from": 0
+            },
+            {
+              "tag": "li",
+              "match_regex": "^Post\\s*[:–-]",
+              "field": "employment_type",
+              "regex": "^Post\\s*[:–-]\\s*(.+?)[.]?$",
+              "optional": true,
+              "from": 0
+            },
+            {
+              "tag": "p",
+              "attr": "class=h6 text-upper",
+              "field": "date_posted",
+              "regex": "^Posted on\\s+(.+)$",
+              "optional": true,
+              "from": 0
+            }
+          ]
+        }
+      }
+    },
+    "browser": false,
+    "response": "<html><body><h1>Careers</h1><a href=\"https://www.prismaticltd.co.uk/career/engineer/\">Engineer</a><a href=\"https://www.prismaticltd.co.uk/careers/\">Official careers</a></body></html>",
+    "expected": [
+      {
+        "url": "https://www.prismaticltd.co.uk/career/engineer/"
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://r.jina.ai/http://www.prismaticltd.co.uk/careers/",
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "carrefour-france-careers-fr-match",
+    "board": {
+      "provider": "api_sniffer",
+      "board_url": "https://emploi.supermarchesmatch.fr/fr/annonces",
+      "metadata": {
+        "api_url": "https://api.digitalrecruiters.com/public/v1/careers-site/job-ads",
+        "method": "POST",
+        "browser": true,
+        "params": {
+          "domainName": "emploi.supermarchesmatch.fr",
+          "limit": "100",
+          "locale": "fr_FR"
+        },
+        "post_data": {
+          "filters": {},
+          "coordinates": {
+            "lat": 0,
+            "lng": 0
+          }
+        },
+        "json_path": "items",
+        "url_template": "https://emploi.supermarchesmatch.fr/fr/annonce/{id}-{slug}",
+        "slug_fields": [
+          "title"
+        ],
+        "pagination": {
+          "param_name": "page",
+          "style": "page",
+          "start_value": 1,
+          "increment": 1,
+          "location": "query"
+        },
+        "request_headers": {
+          "referer": "https://emploi.supermarchesmatch.fr/",
+          "accept": "application/json, text/plain, */*",
+          "content-type": "application/json"
+        },
+        "fields": {
+          "title": "title",
+          "locations": "location"
+        },
+        "scraper_type": "json-ld",
+        "scraper_config": {
+          "enrich": [
+            "description",
+            "locations",
+            "employment_type",
+            "date_posted",
+            "base_salary"
+          ]
+        }
+      }
+    },
+    "browser": true,
+    "response": "{\"items\": [{\"id\": \"101\", \"title\": \"Ingénieur R&D + Operations\", \"location\": \"Paris\", \"jobOpeningName\": \"Ingénieur R&D + Operations\", \"employmentStatusLabel\": \"Contract\", \"positions_name\": \"Ingénieur R&D + Operations\", \"other_areas\": [\"Tokyo\"], \"type\": \"1\", \"link\": \"/recruit/career/101\", \"name\": \"Ingénieur R&D + Operations\", \"locations_legacy\": [\"Zurich\"], \"percentage\": \"Full Time\", \"department\": \"Engineering\", \"link_https\": \"https://www.u-blox.com/en/job/101\", \"addressKey\": \"abc101\", \"jobLocations\": [{\"placeName\": \"Seoul\"}], \"employmentType\": \"full_time\", \"status\": \"open\", \"jobGroup\": {\"title\": \"Retail\"}, \"jobTask\": {\"title\": \"Operations\"}, \"Job_Posting_Title\": \"Ingénieur R&D + Operations\", \"Job_Requisition_Ref_ID\": \"JR101\", \"Job_Description\": \"<p>Build reliable systems.</p>\", \"Job_Requisition_Primary_Location\": \"Zurich\", \"Time_Type\": \"Full Time\", \"External_Job_Posting_Start_Date\": \"2026-10-01\", \"Job_Family_Group\": \"Engineering\", \"JobTitle\": \"Ingénieur R&D + Operations\", \"VacancyTitle\": \"Cloud\", \"Title\": \"Operations\", \"JobDescription\": \"<p>Build reliable systems.</p>\", \"Location\": \"London\", \"ApplyLink\": \"https://coxautoinc.current-vacancies.com/job/101\"}]}",
+    "expected": [
+      {
+        "url": "https://emploi.supermarchesmatch.fr/fr/annonce/101-ingenieur-randd-plus-operations",
+        "title": "Ingénieur R&D + Operations",
+        "description": null,
+        "locations": [
+          "Paris"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "POST",
+        "url": "https://api.digitalrecruiters.com/public/v1/careers-site/job-ads",
+        "body": "",
+        "browser_capture": true
+      }
+    ]
+  },
+  {
+    "name": "cox-careers-eu",
+    "board": {
+      "provider": "api_sniffer",
+      "board_url": "https://coxautoinc.current-vacancies.com/Careers/Cox-Automotive-Vacancies-3258",
+      "metadata": {
+        "api_url": "https://coxautoinc.current-vacancies.com/Careers/SearchVacancies",
+        "method": "POST",
+        "json_path": "Data",
+        "browser": true,
+        "url_field": "ApplyLink",
+        "post_data": "fixture_token=synthetic",
+        "request_headers": {
+          "referer": "https://coxautoinc.current-vacancies.com/Careers/Cox-Automotive-Vacancies-3258",
+          "x-requested-with": "XMLHttpRequest",
+          "accept": "*/*",
+          "content-type": "application/x-www-form-urlencoded; charset=UTF-8"
+        },
+        "fields": {
+          "title": [
+            "JobTitle",
+            "VacancyTitle",
+            "Title"
+          ],
+          "description": "JobDescription",
+          "locations": "Location"
+        },
+        "enrich": [
+          "employment_type",
+          "date_posted",
+          "valid_through",
+          "base_salary"
+        ],
+        "scraper_type": "json-ld"
+      }
+    },
+    "browser": true,
+    "response": "{\"Data\": [{\"id\": \"101\", \"title\": \"Ingénieur R&D + Operations\", \"location\": {\"city\": \"Calgary\"}, \"jobOpeningName\": \"Ingénieur R&D + Operations\", \"employmentStatusLabel\": \"Contract\", \"positions_name\": \"Ingénieur R&D + Operations\", \"other_areas\": [\"Tokyo\"], \"type\": \"1\", \"link\": \"/recruit/career/101\", \"name\": \"Ingénieur R&D + Operations\", \"locations_legacy\": [\"Zurich\"], \"percentage\": \"Full Time\", \"department\": \"Engineering\", \"link_https\": \"https://www.u-blox.com/en/job/101\", \"addressKey\": \"abc101\", \"jobLocations\": [{\"placeName\": \"Seoul\"}], \"employmentType\": \"full_time\", \"status\": \"open\", \"jobGroup\": {\"title\": \"Retail\"}, \"jobTask\": {\"title\": \"Operations\"}, \"Job_Posting_Title\": \"Ingénieur R&D + Operations\", \"Job_Requisition_Ref_ID\": \"JR101\", \"Job_Description\": \"<p>Build reliable systems.</p>\", \"Job_Requisition_Primary_Location\": \"Zurich\", \"Time_Type\": \"Full Time\", \"External_Job_Posting_Start_Date\": \"2026-10-01\", \"Job_Family_Group\": \"Engineering\", \"JobTitle\": \"Ingénieur R&D + Operations\", \"VacancyTitle\": \"Cloud\", \"Title\": \"Operations\", \"JobDescription\": \"<p>Build reliable systems.</p>\", \"Location\": \"London\", \"ApplyLink\": \"https://coxautoinc.current-vacancies.com/job/101\"}]}",
+    "expected": [
+      {
+        "url": "https://coxautoinc.current-vacancies.com/job/101",
+        "title": "Ingénieur R&D + Operations\n\nCloud\n\nOperations",
+        "description": "<p>Build reliable systems.</p>",
+        "locations": [
+          "London"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "POST",
+        "url": "https://coxautoinc.current-vacancies.com/Careers/SearchVacancies",
+        "body": "",
+        "browser_capture": true
+      }
+    ]
+  },
+  {
+    "name": "nexthop-ai-careers",
+    "board": {
+      "provider": "api_sniffer",
+      "board_url": "https://nexthopai.bamboohr.com/careers",
+      "metadata": {
+        "api_url": "https://nexthopai.bamboohr.com/careers/list",
+        "method": "GET",
+        "json_path": "result",
+        "url_template": "https://nexthopai.bamboohr.com/careers/{id}",
+        "fields": {
+          "title": "jobOpeningName",
+          "employment_type": {
+            "path": "employmentStatusLabel",
+            "map": {
+              "Full-Time": "full_time",
+              "Part-Time": "part_time",
+              "Contract": "contract",
+              "Intern": "internship",
+              "Internship": "internship",
+              "Temporary": "temporary"
+            }
+          }
+        },
+        "enrich": [
+          "description",
+          "locations",
+          "date_posted"
+        ],
+        "scraper_type": "json-ld",
+        "scraper_config": {
+          "render": true
+        }
+      }
+    },
+    "browser": false,
+    "response": "{\"result\": [{\"id\": \"101\", \"title\": \"Ingénieur R&D + Operations\", \"location\": {\"city\": \"Calgary\"}, \"jobOpeningName\": \"Ingénieur R&D + Operations\", \"employmentStatusLabel\": \"Contract\", \"positions_name\": \"Ingénieur R&D + Operations\", \"other_areas\": [\"Tokyo\"], \"type\": \"1\", \"link\": \"/recruit/career/101\", \"name\": \"Ingénieur R&D + Operations\", \"locations_legacy\": [\"Zurich\"], \"percentage\": \"Full Time\", \"department\": \"Engineering\", \"link_https\": \"https://www.u-blox.com/en/job/101\", \"addressKey\": \"abc101\", \"jobLocations\": [{\"placeName\": \"Seoul\"}], \"employmentType\": \"full_time\", \"status\": \"open\", \"jobGroup\": {\"title\": \"Retail\"}, \"jobTask\": {\"title\": \"Operations\"}, \"Job_Posting_Title\": \"Ingénieur R&D + Operations\", \"Job_Requisition_Ref_ID\": \"JR101\", \"Job_Description\": \"<p>Build reliable systems.</p>\", \"Job_Requisition_Primary_Location\": \"Zurich\", \"Time_Type\": \"Full Time\", \"External_Job_Posting_Start_Date\": \"2026-10-01\", \"Job_Family_Group\": \"Engineering\", \"JobTitle\": \"Ingénieur R&D + Operations\", \"VacancyTitle\": \"Cloud\", \"Title\": \"Operations\", \"JobDescription\": \"<p>Build reliable systems.</p>\", \"Location\": \"London\", \"ApplyLink\": \"https://coxautoinc.current-vacancies.com/job/101\"}]}",
+    "expected": [
+      {
+        "url": "https://nexthopai.bamboohr.com/careers/101",
+        "title": "Ingénieur R&D + Operations",
+        "description": null,
+        "locations": null,
+        "employment_type": "contract",
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://nexthopai.bamboohr.com/careers/list",
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "roboa-careers",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://www.roboa.ch/career",
+      "metadata": {
+        "render": false,
+        "url_filter": "/career/jobs/(?!speculative-application)[^/]+$",
+        "fetch_url_transform": {
+          "find": "^https://www\\.roboa\\.ch/",
+          "replace": "https://roboa-lp.webflow.io/"
+        },
+        "url_transform": {
+          "find": "^https://roboa-lp\\.webflow\\.io/",
+          "replace": "https://www.roboa.ch/"
+        },
+        "scraper_type": "dom",
+        "scraper_config": {
+          "render": false,
+          "steps": [
+            {
+              "tag": "h1",
+              "field": "title"
+            },
+            {
+              "tag": "h4",
+              "field": "locations",
+              "regex": "^([^|]+)"
+            },
+            {
+              "tag": "h4",
+              "from": 0,
+              "field": "job_location_type",
+              "regex": "\\|\\s*([^|]+)\\|",
+              "optional": true
+            },
+            {
+              "tag": "p",
+              "field": "description",
+              "stop": "How to Apply",
+              "html": true
+            }
+          ],
+          "fetch_url_transform": {
+            "find": "^https://www\\.roboa\\.ch/",
+            "replace": "https://roboa-lp.webflow.io/"
+          }
+        }
+      }
+    },
+    "browser": false,
+    "response": "<html><body><h1>Careers</h1><a href=\"/career/jobs/engineer\">Engineer</a><a href=\"https://www.roboa.ch/career\">Official careers</a></body></html>",
+    "expected": [
+      {
+        "url": "https://roboa-lp.webflow.io/career/jobs/engineer"
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://roboa-lp.webflow.io/career",
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "salesforce-careers",
+    "board": {
+      "provider": "api_sniffer",
+      "board_url": "https://www.salesforce.com/company/careers/jobs/",
+      "metadata": {
+        "api_url": "https://a.sfdcstatic.com/digital/xsf/careers/prod/jobs_2.json",
+        "method": "GET",
+        "json_path": "Report_Entry",
+        "total_path": "Total_Jobs",
+        "url_template": "https://www.salesforce.com/company/careers/jobs/{Job_Requisition_Ref_ID}/{slug}/",
+        "slug_fields": [
+          "Job_Posting_Title"
+        ],
+        "fields": {
+          "title": "Job_Posting_Title",
+          "description": "Job_Description",
+          "locations": "Job_Requisition_Primary_Location",
+          "employment_type": "Time_Type",
+          "date_posted": "External_Job_Posting_Start_Date",
+          "metadata.team": "Job_Family_Group",
+          "metadata.ats_job_id": "Job_Requisition_Ref_ID"
+        },
+        "scraper_type": "skip"
+      }
+    },
+    "browser": false,
+    "response": "{\"Report_Entry\": [{\"id\": \"101\", \"title\": \"Ingénieur R&D + Operations\", \"location\": {\"city\": \"Calgary\"}, \"jobOpeningName\": \"Ingénieur R&D + Operations\", \"employmentStatusLabel\": \"Contract\", \"positions_name\": \"Ingénieur R&D + Operations\", \"other_areas\": [\"Tokyo\"], \"type\": \"1\", \"link\": \"/recruit/career/101\", \"name\": \"Ingénieur R&D + Operations\", \"locations_legacy\": [\"Zurich\"], \"percentage\": \"Full Time\", \"department\": \"Engineering\", \"link_https\": \"https://www.u-blox.com/en/job/101\", \"addressKey\": \"abc101\", \"jobLocations\": [{\"placeName\": \"Seoul\"}], \"employmentType\": \"full_time\", \"status\": \"open\", \"jobGroup\": {\"title\": \"Retail\"}, \"jobTask\": {\"title\": \"Operations\"}, \"Job_Posting_Title\": \"Ingénieur R&D + Operations\", \"Job_Requisition_Ref_ID\": \"JR101\", \"Job_Description\": \"<p>Build reliable systems.</p>\", \"Job_Requisition_Primary_Location\": \"Zurich\", \"Time_Type\": \"Full Time\", \"External_Job_Posting_Start_Date\": \"2026-10-01\", \"Job_Family_Group\": \"Engineering\", \"JobTitle\": \"Ingénieur R&D + Operations\", \"VacancyTitle\": \"Cloud\", \"Title\": \"Operations\", \"JobDescription\": \"<p>Build reliable systems.</p>\", \"Location\": \"London\", \"ApplyLink\": \"https://coxautoinc.current-vacancies.com/job/101\"}], \"Total_Jobs\": 1}",
+    "expected": [
+      {
+        "url": "https://www.salesforce.com/company/careers/jobs/JR101/ingenieur-randd-plus-operations/",
+        "title": "Ingénieur R&D + Operations",
+        "description": "<p>Build reliable systems.</p>",
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full Time",
+        "job_location_type": null,
+        "date_posted": "2026-10-01",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "team": "Engineering",
+          "ats_job_id": "JR101"
+        },
+        "source_identity": null
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://a.sfdcstatic.com/digital/xsf/careers/prod/jobs_2.json",
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "securitas-france",
+    "board": {
+      "provider": "api_sniffer",
+      "board_url": "https://carrieres.securitas.fr/fr/annonces",
+      "metadata": {
+        "api_url": "https://api.digitalrecruiters.com/public/v1/careers-site/job-ads",
+        "method": "POST",
+        "browser": true,
+        "params": {
+          "domainName": "carrieres.securitas.fr",
+          "limit": "100",
+          "locale": "fr_FR"
+        },
+        "post_data": {
+          "filters": {},
+          "coordinates": {
+            "lat": 0,
+            "lng": 0
+          }
+        },
+        "json_path": "items",
+        "url_template": "https://carrieres.securitas.fr/fr/annonce/{id}-{slug}",
+        "slug_fields": [
+          "title"
+        ],
+        "pagination": {
+          "param_name": "page",
+          "style": "page",
+          "start_value": 1,
+          "increment": 1,
+          "location": "query"
+        },
+        "request_headers": {
+          "referer": "https://carrieres.securitas.fr/",
+          "accept": "application/json, text/plain, */*",
+          "content-type": "application/json"
+        },
+        "fields": {
+          "title": "title",
+          "locations": "location"
+        },
+        "scraper_type": "json-ld",
+        "scraper_config": {
+          "enrich": [
+            "description",
+            "locations",
+            "employment_type",
+            "date_posted",
+            "base_salary"
+          ]
+        }
+      }
+    },
+    "browser": true,
+    "response": "{\"items\": [{\"id\": \"101\", \"title\": \"Ingénieur R&D + Operations\", \"location\": \"Paris\", \"jobOpeningName\": \"Ingénieur R&D + Operations\", \"employmentStatusLabel\": \"Contract\", \"positions_name\": \"Ingénieur R&D + Operations\", \"other_areas\": [\"Tokyo\"], \"type\": \"1\", \"link\": \"/recruit/career/101\", \"name\": \"Ingénieur R&D + Operations\", \"locations_legacy\": [\"Zurich\"], \"percentage\": \"Full Time\", \"department\": \"Engineering\", \"link_https\": \"https://www.u-blox.com/en/job/101\", \"addressKey\": \"abc101\", \"jobLocations\": [{\"placeName\": \"Seoul\"}], \"employmentType\": \"full_time\", \"status\": \"open\", \"jobGroup\": {\"title\": \"Retail\"}, \"jobTask\": {\"title\": \"Operations\"}, \"Job_Posting_Title\": \"Ingénieur R&D + Operations\", \"Job_Requisition_Ref_ID\": \"JR101\", \"Job_Description\": \"<p>Build reliable systems.</p>\", \"Job_Requisition_Primary_Location\": \"Zurich\", \"Time_Type\": \"Full Time\", \"External_Job_Posting_Start_Date\": \"2026-10-01\", \"Job_Family_Group\": \"Engineering\", \"JobTitle\": \"Ingénieur R&D + Operations\", \"VacancyTitle\": \"Cloud\", \"Title\": \"Operations\", \"JobDescription\": \"<p>Build reliable systems.</p>\", \"Location\": \"London\", \"ApplyLink\": \"https://coxautoinc.current-vacancies.com/job/101\"}]}",
+    "expected": [
+      {
+        "url": "https://carrieres.securitas.fr/fr/annonce/101-ingenieur-randd-plus-operations",
+        "title": "Ingénieur R&D + Operations",
+        "description": null,
+        "locations": [
+          "Paris"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "POST",
+        "url": "https://api.digitalrecruiters.com/public/v1/careers-site/job-ads",
+        "body": "",
+        "browser_capture": true
+      }
+    ]
+  },
+  {
+    "name": "sinopec-careers-ca",
+    "board": {
+      "provider": "api_sniffer",
+      "board_url": "https://sinopec.bamboohr.com/careers",
+      "metadata": {
+        "api_url": "https://sinopec.bamboohr.com/careers/list",
+        "method": "GET",
+        "json_path": "result",
+        "url_template": "https://sinopec.bamboohr.com/careers/{id}",
+        "fields": {
+          "title": "jobOpeningName",
+          "locations": "location.city",
+          "employment_type": {
+            "path": "employmentStatusLabel",
+            "map": {
+              "Active": "full_time",
+              "Contractor": "contract"
+            }
+          }
+        },
+        "enrich": [
+          "description"
+        ],
+        "scraper_type": "skip"
+      }
+    },
+    "browser": false,
+    "response": "{\"result\": [{\"id\": \"101\", \"title\": \"Ingénieur R&D + Operations\", \"location\": {\"city\": \"Calgary\"}, \"jobOpeningName\": \"Ingénieur R&D + Operations\", \"employmentStatusLabel\": \"Contract\", \"positions_name\": \"Ingénieur R&D + Operations\", \"other_areas\": [\"Tokyo\"], \"type\": \"1\", \"link\": \"/recruit/career/101\", \"name\": \"Ingénieur R&D + Operations\", \"locations_legacy\": [\"Zurich\"], \"percentage\": \"Full Time\", \"department\": \"Engineering\", \"link_https\": \"https://www.u-blox.com/en/job/101\", \"addressKey\": \"abc101\", \"jobLocations\": [{\"placeName\": \"Seoul\"}], \"employmentType\": \"full_time\", \"status\": \"open\", \"jobGroup\": {\"title\": \"Retail\"}, \"jobTask\": {\"title\": \"Operations\"}, \"Job_Posting_Title\": \"Ingénieur R&D + Operations\", \"Job_Requisition_Ref_ID\": \"JR101\", \"Job_Description\": \"<p>Build reliable systems.</p>\", \"Job_Requisition_Primary_Location\": \"Zurich\", \"Time_Type\": \"Full Time\", \"External_Job_Posting_Start_Date\": \"2026-10-01\", \"Job_Family_Group\": \"Engineering\", \"JobTitle\": \"Ingénieur R&D + Operations\", \"VacancyTitle\": \"Cloud\", \"Title\": \"Operations\", \"JobDescription\": \"<p>Build reliable systems.</p>\", \"Location\": \"London\", \"ApplyLink\": \"https://coxautoinc.current-vacancies.com/job/101\"}]}",
+    "expected": [
+      {
+        "url": "https://sinopec.bamboohr.com/careers/101",
+        "title": "Ingénieur R&D + Operations",
+        "description": null,
+        "locations": [
+          "Calgary"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://sinopec.bamboohr.com/careers/list",
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "softbank-career",
+    "board": {
+      "provider": "api_sniffer",
+      "board_url": "https://www.softbank.jp/recruit/career/positions/list/",
+      "metadata": {
+        "api_url": "https://www.softbank.jp/scsystem/api/CreateRecruitJson/CareerPositions/?language=ja-JP",
+        "method": "GET",
+        "json_path": "data",
+        "url_template": "https://www.softbank.jp{link}/",
+        "fields": {
+          "title": "positions_name",
+          "locations": "other_areas",
+          "employment_type": {
+            "path": "type",
+            "map": {
+              "1": "full_time",
+              "2": "full_time"
+            }
+          }
+        },
+        "enrich": [
+          "description"
+        ],
+        "wait": "load",
+        "timeout": 20000,
+        "scraper_type": "dom",
+        "scraper_config": {
+          "steps": [
+            {
+              "text": "採用部門 概要",
+              "offset": 1,
+              "field": "description",
+              "stop": "備考",
+              "html": true
+            }
+          ]
+        }
+      }
+    },
+    "browser": false,
+    "response": "{\"data\": [{\"id\": \"101\", \"title\": \"Ingénieur R&D + Operations\", \"location\": {\"city\": \"Calgary\"}, \"jobOpeningName\": \"Ingénieur R&D + Operations\", \"employmentStatusLabel\": \"Contract\", \"positions_name\": \"Ingénieur R&D + Operations\", \"other_areas\": [\"Tokyo\"], \"type\": \"1\", \"link\": \"/recruit/career/101\", \"name\": \"Ingénieur R&D + Operations\", \"locations_legacy\": [\"Zurich\"], \"percentage\": \"Full Time\", \"department\": \"Engineering\", \"link_https\": \"https://www.u-blox.com/en/job/101\", \"addressKey\": \"abc101\", \"jobLocations\": [{\"placeName\": \"Seoul\"}], \"employmentType\": \"full_time\", \"status\": \"open\", \"jobGroup\": {\"title\": \"Retail\"}, \"jobTask\": {\"title\": \"Operations\"}, \"Job_Posting_Title\": \"Ingénieur R&D + Operations\", \"Job_Requisition_Ref_ID\": \"JR101\", \"Job_Description\": \"<p>Build reliable systems.</p>\", \"Job_Requisition_Primary_Location\": \"Zurich\", \"Time_Type\": \"Full Time\", \"External_Job_Posting_Start_Date\": \"2026-10-01\", \"Job_Family_Group\": \"Engineering\", \"JobTitle\": \"Ingénieur R&D + Operations\", \"VacancyTitle\": \"Cloud\", \"Title\": \"Operations\", \"JobDescription\": \"<p>Build reliable systems.</p>\", \"Location\": \"London\", \"ApplyLink\": \"https://coxautoinc.current-vacancies.com/job/101\"}]}",
+    "expected": [
+      {
+        "url": "https://www.softbank.jp/recruit/career/101/",
+        "title": "Ingénieur R&D + Operations",
+        "description": null,
+        "locations": [
+          "Tokyo"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://www.softbank.jp/scsystem/api/CreateRecruitJson/CareerPositions/?language=ja-JP",
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "u-blox-careers",
+    "board": {
+      "provider": "api_sniffer",
+      "board_url": "https://www.u-blox.com/en/job-openings",
+      "metadata": {
+        "api_url": "https://L87M8KNOMJ-dsn.algolia.net/1/indexes/open_positions_en-US",
+        "method": "GET",
+        "params": {
+          "hitsPerPage": 100,
+          "X-Algolia-Application-Id": "SYNTHETIC",
+          "X-Algolia-API-Key": "synthetic-public-key"
+        },
+        "json_path": "hits",
+        "url_field": "link_https",
+        "fields": {
+          "title": "name",
+          "locations": "locations_legacy",
+          "employment_type": {
+            "path": "percentage",
+            "map": {
+              "Full Time": "full_time",
+              "Part Time": "part_time"
+            }
+          },
+          "metadata.department": "department"
+        },
+        "enrich": [
+          "description"
+        ],
+        "scraper_type": "dom",
+        "scraper_config": {
+          "steps": [
+            {
+              "text": "Job Description",
+              "offset": 1,
+              "field": "description",
+              "stop": "Applications Close Date",
+              "html": true
+            }
+          ]
+        }
+      }
+    },
+    "browser": false,
+    "response": "{\"hits\": [{\"id\": \"101\", \"title\": \"Ingénieur R&D + Operations\", \"location\": {\"city\": \"Calgary\"}, \"jobOpeningName\": \"Ingénieur R&D + Operations\", \"employmentStatusLabel\": \"Contract\", \"positions_name\": \"Ingénieur R&D + Operations\", \"other_areas\": [\"Tokyo\"], \"type\": \"1\", \"link\": \"/recruit/career/101\", \"name\": \"Ingénieur R&D + Operations\", \"locations_legacy\": [\"Zurich\"], \"percentage\": \"Full Time\", \"department\": \"Engineering\", \"link_https\": \"https://www.u-blox.com/en/job/101\", \"addressKey\": \"abc101\", \"jobLocations\": [{\"placeName\": \"Seoul\"}], \"employmentType\": \"full_time\", \"status\": \"open\", \"jobGroup\": {\"title\": \"Retail\"}, \"jobTask\": {\"title\": \"Operations\"}, \"Job_Posting_Title\": \"Ingénieur R&D + Operations\", \"Job_Requisition_Ref_ID\": \"JR101\", \"Job_Description\": \"<p>Build reliable systems.</p>\", \"Job_Requisition_Primary_Location\": \"Zurich\", \"Time_Type\": \"Full Time\", \"External_Job_Posting_Start_Date\": \"2026-10-01\", \"Job_Family_Group\": \"Engineering\", \"JobTitle\": \"Ingénieur R&D + Operations\", \"VacancyTitle\": \"Cloud\", \"Title\": \"Operations\", \"JobDescription\": \"<p>Build reliable systems.</p>\", \"Location\": \"London\", \"ApplyLink\": \"https://coxautoinc.current-vacancies.com/job/101\"}]}",
+    "expected": [
+      {
+        "url": "https://www.u-blox.com/en/job/101",
+        "title": "Ingénieur R&D + Operations",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "full_time",
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "department": "Engineering"
+        },
+        "source_identity": null
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://l87m8knomj-dsn.algolia.net/1/indexes/open_positions_en-US?hitsPerPage=100&X-Algolia-Application-Id=SYNTHETIC&X-Algolia-API-Key=synthetic-public-key",
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "vertiv-data-racks",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://racks.vertiv.com/current-job-openings/",
+      "metadata": {
+        "fetch_url_transform": {
+          "find": "^https://racks\\.vertiv\\.com(/[^?]*)$",
+          "replace": "https://racks-vertiv-com.translate.goog\\1?_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en"
+        },
+        "url_filter": "^https://racks-vertiv-com\\.translate\\.goog/(?:welder|press-brake-operator|assembly|powder-coater)/",
+        "url_transform": {
+          "find": "^https://racks-vertiv-com\\.translate\\.goog(/[^?]+).*$",
+          "replace": "https://racks.vertiv.com\\1"
+        },
+        "scraper_type": "dom",
+        "scraper_config": {
+          "fetch_url_transform": {
+            "find": "^https://racks\\.vertiv\\.com(/[^?]*)$",
+            "replace": "https://racks-vertiv-com.translate.goog\\1?_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en"
+          },
+          "scope": ".section__inner.richtext-entry",
+          "include_document_title": true,
+          "steps": [
+            {
+              "tag": "title",
+              "field": "title",
+              "regex": "^(.*?) - Vertiv"
+            },
+            {
+              "tag": "p",
+              "field": "description",
+              "html": true,
+              "to_end": true
+            }
+          ],
+          "defaults": {
+            "locations": [
+              "Corry, PA, United States"
+            ],
+            "employment_type": "full_time",
+            "job_location_type": "onsite"
+          }
+        }
+      }
+    },
+    "browser": false,
+    "response": "<html><body><h1>Careers</h1><a href=\"/welder/\">Engineer</a><a href=\"https://racks.vertiv.com/current-job-openings/\">Official careers</a></body></html>",
+    "expected": [
+      {
+        "url": "https://racks-vertiv-com.translate.goog/welder/"
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://racks-vertiv-com.translate.goog/current-job-openings/?_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en",
+        "body": ""
+      }
+    ]
+  },
+  {
+    "name": "vertiv-data-racks-general",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://racks.vertiv.com/general-application/",
+      "metadata": {
+        "fetch_url_transform": {
+          "find": "^https://racks\\.vertiv\\.com(/[^?]*)$",
+          "replace": "https://racks-vertiv-com.translate.goog\\1?_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en"
+        },
+        "link_selector": "a[data-jobseek-never]",
+        "include_board_url": true,
+        "scraper_type": "dom",
+        "scraper_config": {
+          "fetch_url_transform": {
+            "find": "^https://racks\\.vertiv\\.com(/[^?]*)$",
+            "replace": "https://racks-vertiv-com.translate.goog\\1?_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en"
+          },
+          "scope": ".section__inner.richtext-entry",
+          "include_document_title": true,
+          "steps": [
+            {
+              "tag": "title",
+              "field": "title",
+              "regex": "^(.*?) - Vertiv"
+            },
+            {
+              "tag": "p",
+              "field": "description",
+              "html": true,
+              "to_end": true
+            }
+          ],
+          "defaults": {
+            "locations": [
+              "Pennsylvania, United States"
+            ],
+            "job_location_type": "onsite"
+          }
+        }
+      }
+    },
+    "browser": false,
+    "response": "<html><body><h1>Careers</h1><a href=\"/jobs/ignored\">Engineer</a><a href=\"https://racks.vertiv.com/general-application/\">Official careers</a></body></html>",
+    "expected": [
+      {
+        "url": "https://racks.vertiv.com/general-application/"
+      }
+    ],
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://racks-vertiv-com.translate.goog/general-application/?_x_tr_sl=auto&_x_tr_tl=en&_x_tr_hl=en",
+        "body": ""
+      }
+    ]
+  }
+]

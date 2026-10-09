@@ -472,6 +472,26 @@ func project(d *Document, row map[string]any, o Options, join JoinURL) (Job, boo
 				values[k] = s
 			}
 		}
+		parts := []string{}
+		for _, path := range o.SlugFields {
+			v, err := d.Field(row, path)
+			if err != nil {
+				return job, false, err
+			}
+			if v == nil {
+				continue
+			}
+			text, err := d.String(v)
+			if err != nil {
+				return job, false, err
+			}
+			if slug := nextdataSlug(text); slug != "" {
+				parts = append(parts, slug)
+			}
+		}
+		if len(parts) > 0 {
+			values["slug"] = strings.Join(parts, "-")
+		}
 		rawURL, _ = formatTemplate(o.URLTemplate, values, true)
 		if len(o.Fields) == 0 && rawURL != "" {
 			var err error

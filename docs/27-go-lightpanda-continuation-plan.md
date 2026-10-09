@@ -16,6 +16,27 @@ whole-service CPU/RAM/density/attributable cost; and a supported cold reversal
 with its observation window. A merged candidate or synthetic benchmark does
 not complete migration.
 
+## Next grouped batch — fourteen DOM and API configurations
+
+Candidate **0.13.990** ports five alternate DOM listing reads, three API slug-field
+URL templates and six legacy root `enrich` annotations together. It extends the
+existing fetch/parser/slug contracts and keeps full immutable configuration binding.
+Alternate reads resolve relative links against the configured read URL while the
+official board identity and downstream URL transform remain canonical. Publisher
+reservations and primary disappearance evidence bind that exact read resource.
+Root API `enrich` is inert in the original monitor; only independent
+`scraper_config.enrich` assigns detail work.
+
+All fourteen actual-original fixture outputs match, including three browser replay
+configurations; request secrets are synthetic in the committed fixtures. Thirty-three
+real SQL/Redis terminal cases, twelve cold-retirement cases and actual 158-profile
+executable startup pass. API/DOM SDK and queue unit suites and queue/worker vet pass.
+The old source985 configuration capture yields 7,641 static eligible configurations
+and 244 unsupported configs; this is planning evidence, not fresh route admission.
+No public browser success or natural production freshness is claimed. Full CI,
+immutable deployment and fresh ownership qualification remain required after the
+combined source989 batch lands. See the [candidate evidence](evidence/go-native-shared-inventory-options-candidate-2026-10-09.json).
+
 ## Combined review batch — twenty-three configurations across four types
 
 [PR #10375](https://github.com/colophon-group/jobseek/pull/10375) now combines the
