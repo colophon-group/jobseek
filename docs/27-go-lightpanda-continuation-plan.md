@@ -1114,3 +1114,14 @@ and whole rollout; refresh full admission and activate the complete native owner
 The paired Accenture/BrassRing prototype remains local on source996; after this
 release rebase it, reserve the next version and finish both browser/controllers,
 real settlement and physical qualification together. Full migration remainsACTIVE.
+
+Required CI initially failed during Docker Hub fixture pulls, before native tests;
+installed image retry repeated429. All four official pinned inputs (Go/Python/
+PostgreSQL17/Redis) were fetched from Docker's official ECR mirror and hashed to
+exactly the existing digests. Use those digest-preserving mirrors for crawler
+builds and CI; previously unpinned PostgreSQL16/17 and Typesense27.1 fixtures now
+use the existing repository production pins. The observed Google-managed cache
+serves the identical Typesense manifest. Both real native staging/inspection CLI
+tests pass5.036s on a fresh private database. The full queue rerun uses CI's20m
+budget after the first command hit Go's default10m suite limit. Complete fresh
+head CI and installed image parity before supported reversal and merge.

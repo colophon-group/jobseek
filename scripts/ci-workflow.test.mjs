@@ -1008,7 +1008,7 @@ test("Go Lightpanda B0 supervisor quality gate is protected", () => {
 
 test("Python fleet comparator stays locked to its production authorities", () => {
   const crawlerBase = crawlerDockerfile.match(
-    /^FROM (python:[^ ]+@sha256:[0-9a-f]{64}) AS base$/m,
+    /^FROM public\.ecr\.aws\/docker\/library\/(python:[^ ]+@sha256:[0-9a-f]{64}) AS base$/m,
   );
   const comparatorBase = pythonFleetDockerfile.match(
     /^ARG PYTHON_IMAGE=(python:[^ ]+@sha256:[0-9a-f]{64})$/m,
@@ -1362,7 +1362,7 @@ test("crawler image job proves live sampler and shutdown lifecycle", () => {
 
   assert.match(
     crawlerImageJob,
-    /services:\n      postgres:\n        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193/,
+    /services:\n      postgres:\n        image: public\.ecr\.aws\/docker\/library\/postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193/,
   );
   assert.match(crawlerImageJob, /POSTGRES_USER: crawler/);
   assert.match(crawlerImageJob, /POSTGRES_PASSWORD: crawler/);
@@ -1371,7 +1371,7 @@ test("crawler image job proves live sampler and shutdown lifecycle", () => {
   assert.match(crawlerImageJob, /pg_isready -U crawler -d crawler/);
   assert.match(
     crawlerImageJob,
-    /redis:\n        image: redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241/,
+    /redis:\n        image: public\.ecr\.aws\/docker\/library\/redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241/,
   );
   assert.match(crawlerImageJob, /- 6379:6379/);
   assert.match(crawlerImageJob, /redis-cli ping/);
@@ -3287,7 +3287,7 @@ test("workflow-dispatched CI publishes the Required CI status context", () => {
 test("CI runs Typesense E2E suites against a service container", () => {
   const webJob = jobBlock("test-web-typesense-e2e");
   assert.match(webJob, /services:\n      typesense:/);
-  assert.match(webJob, /image: typesense\/typesense:27\.1/);
+  assert.match(webJob, /image: mirror\.gcr\.io\/typesense\/typesense:27\.1@sha256:5c12af89130b8ee0be11541321ba8a3a7c7a538d7c6cd95e0409dc2d75ca6455/);
   assert.match(webJob, /options: --tmpfs \/data:rw/);
   assert.match(webJob, /TYPESENSE_API_KEY: local_dev_typesense_key/);
   assert.match(webJob, /TYPESENSE_DATA_DIR: \/data/);
@@ -3300,7 +3300,7 @@ test("CI runs Typesense E2E suites against a service container", () => {
 
   const crawlerJob = jobBlock("test-crawler-typesense-e2e");
   assert.match(crawlerJob, /services:\n      typesense:/);
-  assert.match(crawlerJob, /image: typesense\/typesense:27\.1/);
+  assert.match(crawlerJob, /image: mirror\.gcr\.io\/typesense\/typesense:27\.1@sha256:5c12af89130b8ee0be11541321ba8a3a7c7a538d7c6cd95e0409dc2d75ca6455/);
   assert.match(crawlerJob, /options: --tmpfs \/data:rw/);
   assert.match(crawlerJob, /TYPESENSE_DATA_DIR: \/data/);
   assert.match(crawlerJob, /TYPESENSE_OPERATIONS_KEY: local_dev_typesense_key/);

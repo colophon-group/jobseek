@@ -3556,7 +3556,7 @@ def test_crawler_image_stays_on_python_313_for_fasttext_wheels() -> None:
     dockerfile = DOCKERFILE.read_text()
     dockerignore = DOCKERIGNORE.read_text().splitlines()
 
-    assert "FROM python:3.13.15-slim-trixie@sha256:" in dockerfile
+    assert "FROM public.ecr.aws/docker/library/python:3.13.15-slim-trixie@sha256:" in dockerfile
     assert "python:3.14" not in dockerfile
     assert "ghcr.io/astral-sh/uv:0.12.3@sha256:" in dockerfile
     assert "ghcr.io/astral-sh/uv:latest" not in dockerfile
