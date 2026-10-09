@@ -1,0 +1,129 @@
+{
+  "schema": "jobseek.go-migration-candidate/v1",
+  "observed_at_utc": "2026-10-09T01:58:35.827988+00:00",
+  "candidate_version": "0.13.986",
+  "prototype_parent_review_head": "ac5a99a1c37e4e6d22aa0cccbe8b6b18e340858b",
+  "state": "local qualification passed; initial central CI caught stale tenant rejection expectation; corrected focused cases pass; fresh exact-head CI required",
+  "providers": [
+    "ashby",
+    "lever",
+    "recruitee",
+    "smartrecruiters"
+  ],
+  "compiled_profiles": 154,
+  "current_registry_configurations": 6,
+  "local_proofs": {
+    "actual_python_request_and_effective_enrichment_cases": 6,
+    "rich_provider_real_sql_redis_terminal_cases": 6,
+    "four_provider_supported_cold_retirement_cases": 12,
+    "real_executable_startup": "PASS4.769s;154 inventory identities",
+    "queue_focused_race": "PASS1.485s",
+    "affected_module_vet": "PASS",
+    "full_queue_worker_suite": "not run locally; required central CI must run serial real fixtures"
+  },
+  "public_same_capture": [
+    {
+      "changed_fields": 0,
+      "changed_keys": {},
+      "error": "<nil>",
+      "match": true,
+      "native_count": 3,
+      "profile": "recruitee.api-items/v1",
+      "provider": "recruitee",
+      "python_count": 3,
+      "requests": 1,
+      "scope": "current config eligibility and existing full provider parsers; every original field; empty extras/metadata equivalent to absent; real persistence proof separate",
+      "slug": "floryn-careers"
+    },
+    {
+      "changed_fields": 0,
+      "changed_keys": {},
+      "error": "<nil>",
+      "match": true,
+      "native_count": 1,
+      "profile": "smartrecruiters.api-urls/v1",
+      "provider": "smartrecruiters",
+      "python_count": 1,
+      "requests": 1,
+      "scope": "current config eligibility and existing full provider parsers; every original field; empty extras/metadata equivalent to absent; real persistence proof separate",
+      "slug": "improvado-careers-sr"
+    },
+    {
+      "changed_fields": 0,
+      "changed_keys": {},
+      "error": "<nil>",
+      "match": true,
+      "native_count": 6,
+      "profile": "smartrecruiters.api-urls/v1",
+      "provider": "smartrecruiters",
+      "python_count": 6,
+      "requests": 1,
+      "scope": "current config eligibility and existing full provider parsers; every original field; empty extras/metadata equivalent to absent; real persistence proof separate",
+      "slug": "kaiser-permanente-smartrecruiters"
+    },
+    {
+      "changed_fields": 0,
+      "changed_keys": {},
+      "error": "<nil>",
+      "match": true,
+      "native_count": 142,
+      "profile": "ashby.token-items/v1",
+      "provider": "ashby",
+      "python_count": 142,
+      "requests": 1,
+      "scope": "current config eligibility and existing full provider parsers; every original field; empty extras/metadata equivalent to absent; real persistence proof separate",
+      "slug": "nord-security-main"
+    },
+    {
+      "changed_fields": 0,
+      "changed_keys": {},
+      "error": "<nil>",
+      "match": true,
+      "native_count": 10,
+      "profile": "smartrecruiters.api-urls/v1",
+      "provider": "smartrecruiters",
+      "python_count": 10,
+      "requests": 1,
+      "scope": "current config eligibility and existing full provider parsers; every original field; empty extras/metadata equivalent to absent; real persistence proof separate",
+      "slug": "tech-mahindra-careers-smartrecruiters"
+    },
+    {
+      "changed_fields": 0,
+      "changed_keys": {},
+      "error": "<nil>",
+      "match": true,
+      "native_count": 4,
+      "profile": "lever.token-items/v1",
+      "provider": "lever",
+      "python_count": 4,
+      "requests": 1,
+      "scope": "current config eligibility and existing full provider parsers; every original field; empty extras/metadata equivalent to absent; real persistence proof separate",
+      "slug": "volta-medical-careers"
+    }
+  ],
+  "original_python_source_sha256": {
+    "ashby": "ce522e63d28b159edbff63fd549a8226d22457f1c0a306b1c1ecf894889191c8",
+    "lever": "6920aac1edbbf57b0d87f4fb348e56aee35698826eb7c97f5aaf947fb5fb7cb1",
+    "recruitee": "d808d869bb2d2369d8eb8d3396ee0d887515255dafb085b012a766f47223500a",
+    "smartrecruiters": "f476501ada6dbcf4919d576fb0c39f6115e86ba39e1d6aec71bb25fe4816c4c6"
+  },
+  "boundaries": [
+    "Ashby/Lever/Recruitee retained JSON-LD detail settings only when original effective enrichment is absent; unsupported requested enrichment remains rejected",
+    "original retained metadata/browser flags remain immutable and semantically hashed",
+    "SmartRecruiters company/company_identifier ignored by original; token selected from existing URL; canonical identity modes remain unsupported",
+    "public same-capture uses original provider parsers and current profile selection; real canonical persistence validated independently",
+    "initial local cold runner selected worker module and ran no tests; retained evidence is not a pass; corrected queue runner executes all12 cases successfully",
+    "original rich CPU derives canonical salary from description; byte-authoritative description staging ignores legacy base_salary extras; no unsupported salary persistence claim",
+    "all boards remain enabled"
+  ],
+  "production_authority": "pending exact-head required CI, immutable deployment and fresh actual-route ownership admission",
+  "full_migration_complete": false,
+  "base_source": "bb2dd1236ae1555dfb26b2c703066994dcfc136a",
+  "initial_ci": {
+    "workflow_run": 37873051903,
+    "native_job": 113635391951,
+    "result": "FAIL TestTenantProfilesRejectUnwiredDetailTransportAndConfiguration: old Recruitee no-enrichment JSON-LD rejection contradicts the intended original rich behavior",
+    "repair": "Retain negative test for unsupported description enrichment, and retain Pinpoint no-enrichment JSON-LD rejection; no runtime guard changed",
+    "full_native_worker_suite": "not reached on initial run because queue test failed"
+  }
+}

@@ -73,12 +73,50 @@ func TestRichProviderActualPythonRequestOracle(t *testing.T) {
 }
 
 func TestRichProviderProfilesRefuseUnimplementedConfiguration(t *testing.T) {
-	for _, md := range []string{`{"token":false,"scraper_type":"skip"}`, `{"token":"fixture","scraper_type":"json-ld"}`, `{"token":"fixture","scraper_type":"skip","blast_radius_floor":2}`, `{"token":"fixture","scraper_type":"skip","org":"legacy","filter":"unimplemented"}`} {
+	for _, md := range []string{`{"token":false,"scraper_type":"skip"}`, `{"token":"fixture","scraper_type":"json-ld","scraper_config":{"enrich":["description"]}}`, `{"token":"fixture","scraper_type":"skip","blast_radius_floor":2}`, `{"token":"fixture","scraper_type":"skip","org":"legacy","filter":"unimplemented"}`} {
 		config := profileConfig()
 		config["crawler_type"] = "ashby"
 		config["metadata"] = md
 		if _, err := InspectRichMonitor(profileBoardID, config); err == nil {
 			t.Fatal("unimplemented profile admitted", md)
 		}
+	}
+}
+
+func TestRichProvidersRetainInactiveDetailConfigWithoutSchedulingEnrichment(t *testing.T) {
+	for _, c := range []struct{ provider, board, metadata, profile string }{
+		{"ashby", "https://nordsecurity.com/careers", `{"token":"nord-security","scraper_type":"json-ld","scraper_config":{"wait":"networkidle","render":true,"timeout":30000,"wait_fallback":"domcontentloaded"}}`, "ashby.token-items/v1"},
+		{"lever", "https://jobs.eu.lever.co/volta-medical", `{"token":"volta-medical","region":"eu","scraper_type":"json-ld"}`, "lever.token-items/v1"},
+		{"recruitee", "https://jobs.floryn.com/", `{"api_base":"https://jobs.floryn.com","scraper_type":"json-ld","scraper_config":{"render":false}}`, "recruitee.api-items/v1"},
+	} {
+		t.Run(c.provider, func(t *testing.T) {
+			config := profileConfig()
+			config["crawler_type"], config["board_url"], config["metadata"] = c.provider, c.board, c.metadata
+			config["scraper_needs_browser"] = "1"
+			p, e := InspectRichMonitor(profileBoardID, config)
+			if e != nil || p.Profile != c.profile || p.SnapshotSHA256 != configDigest(config) || config["metadata"] != c.metadata {
+				t.Fatal("retained detail config lost", e)
+			}
+			var md map[string]any
+			if json.Unmarshal([]byte(c.metadata), &md) != nil {
+				t.Fatal("metadata")
+			}
+			// PostgreSQL jsonb and Redis may arrange retained nested options differently.
+			body, _ := json.Marshal(md)
+			reordered := cloneConfig(config)
+			reordered["metadata"] = string(body)
+			same, e := InspectRichMonitor(profileBoardID, reordered)
+			if e != nil || same.EffectiveConfigSHA256 != p.EffectiveConfigSHA256 {
+				t.Fatal("semantic binding changed", e)
+			}
+			for _, bad := range []any{map[string]any{"enrich": []string{"description"}}, map[string]any{"enrich": true}, []string{"invalid"}} {
+				md["scraper_config"] = bad
+				body, _ := json.Marshal(md)
+				reordered["metadata"] = string(body)
+				if _, e := InspectRichMonitor(profileBoardID, reordered); e == nil {
+					t.Fatal("unimplemented enrichment admitted")
+				}
+			}
+		})
 	}
 }

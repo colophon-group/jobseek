@@ -142,7 +142,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 			allowed[key] = true
 		}
 	case "smartrecruiters":
-		for _, key := range []string{"canonical_identity", "canonical_job_id_url_template", "language_preference", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+		for _, key := range []string{"company", "company_identifier", "canonical_identity", "canonical_job_id_url_template", "language_preference", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
 		}
 	case "join":
@@ -307,6 +307,17 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 	}
 	// Admission retains the original values for binding. Only the validation
 	// copy supplies a canonical token and drops provider-specific aliases.
+	noEnrichmentDetail := false
+	if config["crawler_type"] == "ashby" || config["crawler_type"] == "lever" || config["crawler_type"] == "recruitee" {
+		var scraper string
+		if json.Unmarshal(md["scraper_type"], &scraper) == nil && scraper == "json-ld" {
+			fields, err := monitorEnrichmentFields(config, map[string]bool{})
+			if err != nil || len(fields) != 0 {
+				return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+			}
+			noEnrichmentDetail = true
+		}
+	}
 	validation := cloneConfig(config)
 	validation["crawler_type"] = "greenhouse"
 	validationMD := make(map[string]json.RawMessage)
@@ -314,6 +325,14 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 		if greenhouseMetadataFields[key] {
 			validationMD[key] = value
 		}
+	}
+	if noEnrichmentDetail {
+		// Original rich processing drops detail schedules unless enrichment is
+		// explicitly requested. Retained JSON-LD options remain bound but are
+		// not executed by these rich monitors.
+		validationMD["scraper_type"] = json.RawMessage(`"skip"`)
+		validationMD["scraper_config"] = json.RawMessage("null")
+		validation["scraper_needs_browser"] = "0"
 	}
 	if tenantEndpoint != "" {
 		// Python skip monitors ignore leftover detail options unless an
@@ -353,6 +372,9 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 		}
 	}
 	stable, err := stableGreenhouseConfig(config, md)
+	if noEnrichmentDetail {
+		stable, err = stableJSONLDConfig(config, md)
+	}
 	if err != nil {
 		return GreenhouseMonitorProfile{}, err
 	}
@@ -384,6 +406,9 @@ func InspectRichMonitor(boardID string, config map[string]string) (GreenhouseMon
 		profile.Endpoint, profile.Profile = tenantEndpoint, "recruitee.api-skip/v1"
 	case "pinpoint":
 		profile.Endpoint, profile.Profile = tenantEndpoint, "pinpoint.slug-skip/v1"
+	}
+	if noEnrichmentDetail {
+		profile.Profile = strings.Replace(profile.Profile, "-skip/v1", "-items/v1", 1)
 	}
 	return profile, nil
 }
