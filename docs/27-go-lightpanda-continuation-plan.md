@@ -1,6 +1,70 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — 2026-10-10
+## Current checkpoint — source1002 delivered, grouped source1003 candidate
+
+[PR #10398](https://github.com/colophon-group/jobseek/pull/10398) merged as
+`560b761a108ec4b25d813ad24227d4894efc7419`, version **0.13.1002**, with seven
+new compiled profiles (184 total). Its original
+[crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38038078508)
+succeeded at attempt one; the original
+[renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38038188224)
+succeeded at attempt two using the existing stopped-OOM recovery path. Independent
+observation binds both crawler images and the running OOM-free renderer to that
+source. Successful exporter progress is independently verified; see the
+[portable deployment proof](evidence/go-native-source1002-deployment-2026-10-10.json). The earlier full
+source1001 owner and B0 were retired through the supported workflows; outgoing
+cold268 verification preserved all historical SQL/fences. Production currently
+uses the restored legacy owners. Incoming full native activation is deferred:
+review found a missing Papa John's runtime proxy selection, now corrected in the
+next grouped release. Do not give that known invalid source1002 monitor native
+ownership. Scheduled cross-store reconciliation retains its normal mutation lock.
+
+Candidate **0.13.1003** ports **Talemetry, Prospective and KIPT together**, with six
+new profiles (190 total), and selects scheduler proxy
+clients from the compiled ownership profile, fixing Papa John's and Talemetry
+and preventing provider allowlist drift. Real authenticated CONNECT fixtures verify the selected client reaches
+the existing canonical writer. Fifty original frozen contracts, four complete
+canonical registry bindings, 33 verified synthetic inventories, six publisher
+precedence cases and 36 real PostgreSQL/Redis cases pass: twelve grouped monitor
+settlements, three public PDF settlements, three Papa John's proxy regressions
+and eighteen cold retirements. Both original
+Talemetry public inventories have full verified offline transport replay (1,436
+jobs). Prospective's 68 original concurrent responses preserve its atomic failure;
+returned cookies must have been issued by captured responses and respect jar scope.
+Offline session expiry is shifted by the capture clock, preserving cookie lifetime,
+deletion, scope and opaque values. No expiry policy changes at runtime.
+
+KIPT's complete original public inventory fails atomically on its second bulletin;
+Go preserves that failure. The first PDF has exact posting identity, title and date.
+A rendered-page and word-bounds review found one spurious Python space inside a
+continuous word. Native extraction retains the corrected word, six paragraphs and
+all other characters. The qualification exception is bound to that exact PDF and
+both description hashes; no general text normalization waiver is permitted.
+Native PDF extraction uses bounded Poppler without Python. Real complete, partial
+and publisher-reserved PDF settlements verify the writer and reject partial-prefix
+publication. Linux live-public success and production activation are not claimed
+by the macOS offline replays. See the [grouped qualification](evidence/go-native-localized-pdf-talemetry-qualification-2026-10-10.json) before
+admission. All enabled boards and the Unisante pending migration flag are retained.
+
+Deliver this grouped PR with fresh exact-head required checks and the deploy gate.
+Retire any current native owner through the original workflow, independently
+verify source1002 cold state after reconciliation, and deploy source1003 through
+the original whole-service and renderer workflows. Bind exact installed images,
+verify incoming cold/export readiness, then stage B0 and reconcile all actual
+scheduled routes before full native owner staging/activation/readback. Avoid an
+intermediate source1002 cutover that would immediately need retirement.
+Lightpanda stays pinned to latest official stable **1.0.0**, verified October 10.
+
+The source1001 census left 195 monitors outside its ordinary cohort, including
+three already native B0 boards: DOM 123, API-sniffer 26, Accenture 12, BrassRing
+four and RSS eight. The source1002 admission was not activated; recensus after
+source1003 and target shared DOM provider/action/pagination and API browser options
+**together** next. Keep cached-route exceptions on their working owner until
+qualified. Whole-fleet freshness, queue conservation, comparable whole-service
+cost, supported reversal observation and production Python/browser retirement
+remain required. The full migration goal is active and incomplete.
+
+## Historical checkpoint — source1001 active before supported retirement
 
 Production **0.13.1001**, source `b4a7446a917f551ab0b34c06af30b219911e52d2`,
 is delivered through [PR #10397](https://github.com/colophon-group/jobseek/pull/10397).
@@ -31,12 +95,12 @@ macOS verified response and original Python replay are preserved alongside the
 original issuer-verification failure; Linux public success is not claimed and
 TLS remains verified. See [grouped qualification](evidence/go-native-shared-dom-api-rss-public-parity-2026-10-10.json).
 
-## Next grouped delivery
+## Delivered source1002 provider batch
 
-Continue **Infor + PeopleSoft + Papa John's + Unisanté together**, including paired
+**Infor + PeopleSoft + Papa John's + Unisanté** include paired
 Infor/PeopleSoft details. The four parsers and session transport are implemented
-in [PR #10398](https://github.com/colophon-group/jobseek/pull/10398) on source1001. Candidate **0.13.1002** wires seven new compiled profiles (184 total);
-it is not yet admitted or deployed. The 153 original frozen parser/receipt contracts pass
+in [PR #10398](https://github.com/colophon-group/jobseek/pull/10398) on source1001. Delivered **0.13.1002** wires seven new compiled profiles (184 total);
+its deployment succeeded, while native activation waits for the grouped runtime proxy correction. The 153 original frozen parser/receipt contracts pass
 under the race detector. Original complete public monitor captures contain 239
 Infor and 193 PeopleSoft jobs; eight complete original paired details have verified
 Go session/field replay. Papa John's configured proxy pagination and Unisanté's

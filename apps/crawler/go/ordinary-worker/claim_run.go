@@ -310,6 +310,8 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		discovery, fetchErr = FetchJobStreetHTTP(ctx, http.client, profile, task.Config, pauseRich)
 	} else if profile.Profile == "rss.successfactors-legacy-session-items/v1" {
 		discovery, fetchErr = FetchSuccessFactorsLegacyHTTP(ctx, http.client, profile, task.Config, pauseRich)
+	} else if queue.LocalizedHTTPProvider(profile.Provider) {
+		discovery, fetchErr = FetchLocalizedHTTPProviders(ctx, http.client, profile, task.Config, pauseRich)
 	} else if queue.LastHTTPProvider(profile.Provider) {
 		discovery, fetchErr = FetchLastHTTPProviders(ctx, http.client, profile, task.Config, pauseRich)
 	} else if queue.RemainingHTTPProvider(profile.Provider) {

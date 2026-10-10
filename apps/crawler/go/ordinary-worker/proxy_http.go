@@ -15,46 +15,19 @@ import (
 	"sync"
 )
 
-// This chooses a process client only. The claim runner independently requires
-// the exact canonical profile and rejects a mismatched sealed transport.
-func runtimeUsesProxy(task queue.Task) bool {
-	var md map[string]any
-	if json.Unmarshal([]byte(task.Config["metadata"]), &md) != nil {
-		return false
-	}
-	if task.Kind == queue.Monitor {
-		if md["proxy"] != true {
-			return false
-		}
-		if task.Config["crawler_type"] == "paylocity" {
-			return true
-		}
-		if task.Config["monitor_needs_browser"] != "0" {
-			return false
-		}
-		switch task.Config["crawler_type"] {
-		case "dom", "api_sniffer", "inline", "sitemap", "eightfold", "phenom", "earcu", "computrabajo", "practicematch", "headhunter":
-			return true
-		}
-		return false
-	}
-	if task.Kind != queue.Scrape {
-		return false
-	}
-	scraper := task.Config["crawler_type"]
-	if s, ok := md["scraper_type"].(string); ok && s != "" {
-		scraper = s
-	}
-	options, _ := md["scraper_config"].(map[string]any)
-	return (scraper == "headhunter" || scraper == "paylocity" || scraper == "eightfold" || scraper == "dom" || scraper == "json-ld" || scraper == "api_sniffer") && options["proxy"] == true
-}
-
 func runtimeClaimUsesProxy(ctx context.Context, authority *queue.Authority, claim *queue.Claim) (bool, error) {
 	if authority == nil || claim == nil || !claim.OwnershipBound() {
 		return false, queue.ErrConfiguration
 	}
 	if claim.Descriptor().Kind == queue.Monitor {
-		return runtimeUsesProxy(claim.Descriptor()), nil
+		// Select from the same compiled ownership profile that execution checks.
+		// A second provider-name allowlist can drift as new proxy profiles ship.
+		task := claim.Descriptor()
+		profile, err := queue.InspectRichMonitor(task.ID, task.Config)
+		if err != nil {
+			return false, err
+		}
+		return queue.ProfileRequiresProxy(profile.Profile), nil
 	}
 	if claim.Descriptor().Kind != queue.Scrape {
 		return false, queue.ErrConfiguration

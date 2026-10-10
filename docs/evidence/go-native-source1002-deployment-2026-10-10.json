@@ -1,0 +1,63 @@
+{
+  "schema": "jobseek.go-native-source-deployment/v1",
+  "version": "0.13.1002",
+  "source_revision": "560b761a108ec4b25d813ad24227d4894efc7419",
+  "pr": "https://github.com/colophon-group/jobseek/pull/10398",
+  "crawler_original_workflow": {
+    "id": 38038078508,
+    "attempt": 1,
+    "conclusion": "success"
+  },
+  "renderer_original_workflow": {
+    "id": 38038188224,
+    "attempt": 2,
+    "conclusion": "success",
+    "recovery": "Existing verified stopped-OOM predecessor recovery; no host patch, manual restart or increased ceiling"
+  },
+  "installed_crawler": {
+    "source_revision": "560b761a108ec4b25d813ad24227d4894efc7419",
+    "identities": {
+      "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:a3d9f1bc9be1ed244c8d701f788b4a39757ed170cd55845c991533a26e5a0e32",
+      "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:94dd9d06a60087dc1994298497746a35cecfa5f21a6027fc5c1feeda1990e439",
+      "JOBSEEK_DEPLOY_REVISION": "560b761a108ec4b25d813ad24227d4894efc7419"
+    },
+    "release": "release-560b761a108ec4b25d813ad24227d4894efc7419.nXfzaI",
+    "observed_at_utc": "2026-10-10T08:45:24.199986+00:00"
+  },
+  "installed_renderer": {
+    "observed_at_utc": "2026-10-10T08:44:43.543078+00:00",
+    "source_revision": "560b761a108ec4b25d813ad24227d4894efc7419",
+    "renderer_image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:56f4bebbe20cdeca20ed9e6049ecacc28fef170074b9cfa93dc64d053a867502",
+    "renderer_generation": "sha-560b761a108ec4b25d813ad24227d4894efc7419-r38038188224a2",
+    "running": true
+  },
+  "renderer_oom_killed": false,
+  "independent_exporter": {
+    "observed_at_utc": "2026-10-10T08:46:01.773608+00:00",
+    "source_revision": "560b761a108ec4b25d813ad24227d4894efc7419",
+    "exporter_health": 200,
+    "scope": "bounded independent read-only successful export progress; migration-wide freshness not claimed",
+    "metrics": {
+      "crawler_exporter_last_flush_ts": 1791621956.0,
+      "crawler_exporter_rows_exported_total{table=\"job_posting\"}": 584.0,
+      "crawler_typesense_export_docs_total{status=\"success\"}": 584.0,
+      "crawler_typesense_export_docs_total{status=\"error\"}": 0.0,
+      "crawler_exporter_cdc_unknown_writers_total": 0.0,
+      "crawler_typesense_healthy": 1.0,
+      "crawler_exporter_downstream_available{target=\"typesense\"}": 1.0,
+      "crawler_exporter_downstream_backoff_seconds{target=\"typesense\"}": 0.0,
+      "crawler_exporter_flush_duration_seconds_sum": 22.026025525,
+      "crawler_exporter_flush_duration_seconds_count": 85.0
+    }
+  },
+  "source1001_retirement": {
+    "ordinary": "retired",
+    "b0": "rolled back and selectors cleared",
+    "cold_epoch": 268,
+    "independent_cold_sha256": "e0268f6598f52ff974da4060cce1de90d381c8d35f66bc60859e2b323b5692c6",
+    "historical_sql_preserved": true
+  },
+  "source1002_native_owner": "Not activated; legacy owners retained pending grouped source1003 runtime proxy selector correction and fresh original cutover/admission",
+  "scheduled_reconciliation": "Normal original cross-store reconciler retains its mutation lock; no bypass",
+  "scope": "Bounded immutable deployment, healthy export progress and predecessor retirement; full native ownership/fleet freshness/cost/goal completion are not claimed."
+}

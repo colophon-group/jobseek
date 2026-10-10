@@ -7,6 +7,9 @@ import (
 )
 
 func SecondaryProvider(provider string) bool {
+	if LocalizedHTTPProvider(provider) {
+		return true
+	}
 	if LastHTTPProvider(provider) {
 		return true
 	}
@@ -31,6 +34,9 @@ func paycomEnrichmentFields(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true})
 }
 func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
+	if LocalizedHTTPProvider(config["crawler_type"]) {
+		return monitorEnrichmentFields(config, map[string]bool{})
+	}
 	if LastHTTPProvider(config["crawler_type"]) {
 		return lastHTTPMonitorEnrichment(config)
 	}
@@ -99,6 +105,9 @@ func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, allowed)
 }
 func inspectSecondaryMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
+	if LocalizedHTTPProvider(config["crawler_type"]) {
+		return inspectLocalizedHTTPMonitor(boardID, config, md)
+	}
 	if LastHTTPProvider(config["crawler_type"]) {
 		return inspectLastHTTPMonitor(boardID, config, md)
 	}
@@ -335,6 +344,9 @@ func inspectSecondaryMonitor(boardID string, config map[string]string, md map[st
 	return inspectURLOnlyMonitor(boardID, config, md, provider, profile, provider, endpoint)
 }
 func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[string]string, resource string) bool {
+	if LocalizedHTTPProvider(p.Provider) {
+		return localizedHTTPResourceMatches(p, config, resource)
+	}
 	if LastHTTPProvider(p.Provider) {
 		o, e := api.LastHTTPOptionsFromMetadata(p.Provider, config["board_url"], config["metadata"])
 		return e == nil && config["crawler_type"] == p.Provider && p.Profile == o.Profile() && p.Endpoint == o.ListingURL() && o.ResourceMatches(resource)
@@ -462,6 +474,10 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 	return false
 }
 func SecondaryMonitorGone(config map[string]string, resource string, status int, disabled bool) bool {
+	if config["crawler_type"] == "kipt" {
+		o, e := api.KIPTOptionsFromMetadata(config["board_url"], config["metadata"])
+		return e == nil && !disabled && (status == 404 || status == 410) && resource == o.AlternateURL()
+	}
 	if LastHTTPProvider(config["crawler_type"]) {
 		o, e := api.LastHTTPOptionsFromMetadata(config["crawler_type"], config["board_url"], config["metadata"])
 		return e == nil && o.Provider == "peoplesoft" && !disabled && (status == 404 || status == 410) && o.ResourceMatches(resource)
