@@ -71,6 +71,44 @@ DOM/API batch and full epoch271 cohort before supported retirement. Its
 [production proof](evidence/go-native-source1004-production-2026-10-10.json)
 retains the exact identities and bounded natural samples.
 
+## Following grouped publisher candidate — unpublished source1007
+
+The isolated next batch implements **Slaughter and May form pagination and
+Workday explicit TLS handling together**, retaining 195 compiled profiles.
+Slaughter's published PageSize50 form command matches all23 saved original
+URLs with fresh session fields/cookies and complete advertised counts. Eight
+session/failure cases, six real PostgreSQL/Redis terminal cases and three cold
+cases pass. Inventories above50, missing session fields, malformed controls and
+changed totals fail closed. Only the exact existing four-action configuration
+uses this HTTP adapter; its original browser queue and separate details remain.
+
+Workday's existing `ssl_verify=false` setting now applies to CXS discovery as
+well as details. This fixes a recorded legacy-monitor transport defect: the
+verified original monitor failed before receiving a response, while the
+unchanged original discovery function with the explicit configured exception
+returns8 jobs. Go matches all8 URLs and five original detail projections.
+Workday's published ASCII underscore tenant also needs a narrow DNS-label
+exception to Go IDNA validation; public-address checks and socket pinning remain.
+Two real monitor TLS cases, two detail TLS cases, actual executable client
+selection, three monitor cold cases and six detail cold cases pass. Default
+certificate verification remains required for other configured clients.
+
+This candidate is unpublished and grants no serving authority. VERSION is0.13.1007. The final focused aggregate passes29 queue and85 worker
+cases with mandatory private PostgreSQL/Redis and zero skips, including native
+executable selection/startup/identity/health/signal drain and transport regressions.
+Rebase to the actual delivered source1006 and publish the grouped PR. Fresh exact-head
+CI, original whole-service rollout and complete preserved-cohort admission still
+apply. See [candidate proof and limits](evidence/go-native-publisher-pagination-candidate-2026-10-10.json).
+Njoyn's full two-pass session pagination and Candidatus's per-card WinDev
+postbacks remain the following group; neither has been implemented or admitted.
+
+PR #10404's first native CI failed on the obsolete API registry expectation
+(31 supported/5 retained rather than32/4 after token-refresh support). Commit
+`8ce8f01a3936008030c5b3db0f22853d880cc899` fixes that assertion and verifies the
+qualified token-refresh board explicitly. Its focused race check passes, and
+all required gates must be renewed on this exact head before source1005 retires.
+Production remains source1005 at the complete7,736-monitor/2,751-detail cohort.
+
 ## Historical checkpoint — source1003 active before supported retirement
 
 [PR #10399](https://github.com/colophon-group/jobseek/pull/10399) is delivered as

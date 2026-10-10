@@ -27,7 +27,7 @@ func inspectWorkdayMonitor(boardID string, config map[string]string, md map[stri
 	if err != nil {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
-	if raw, ok := md["ssl_verify"]; ok && string(raw) != "true" && string(raw) != "null" {
+	if raw, ok := md["ssl_verify"]; ok && string(raw) != "true" && string(raw) != "false" && string(raw) != "null" {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
 	// Validate the common monitor authority/interval/transport contract using

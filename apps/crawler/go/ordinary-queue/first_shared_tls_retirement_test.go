@@ -17,7 +17,11 @@ func firstSharedTLSFixture(t *testing.T, provider string) firstOwnerFixture {
 	if json.Unmarshal(raw, &md) != nil {
 		t.Fatal("metadata")
 	}
-	md["skip_ssl"] = true
+	if provider == "workday" {
+		md["ssl_verify"] = false
+	} else {
+		md["skip_ssl"] = true
+	}
 	raw, _ = json.Marshal(md)
 	if _, e := p.f.observer.Exec(ctx, "UPDATE job_board SET metadata=$2::jsonb WHERE id=$1::uuid", p.f.task.ID, string(raw)); e != nil {
 		t.Fatal(e)
@@ -38,4 +42,8 @@ func firstSharedTLSFixture(t *testing.T, provider string) firstOwnerFixture {
 
 func TestRealSharedHTTPMonitorTLSExceptionColdRetirement(t *testing.T) {
 	testProviderColdRetirement(t, []string{"dom", "inline", "sitemap"}, firstSharedTLSFixture)
+}
+
+func TestRealWorkdayMonitorTLSExceptionColdRetirement(t *testing.T) {
+	testProviderColdRetirement(t, []string{"workday"}, firstSharedTLSFixture)
 }

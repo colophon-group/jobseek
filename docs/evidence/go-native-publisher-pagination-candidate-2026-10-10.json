@@ -1,0 +1,72 @@
+{
+  "schema": "jobseek.go-native-publisher-pagination-candidate/v1",
+  "candidate_version": "0.13.1007",
+  "base_revision": "8ce8f01a3936008030c5b3db0f22853d880cc899",
+  "status": "unpublished two-provider candidate; no production ownership grant",
+  "compiled_profiles": 195,
+  "selected_additions": [
+    {
+      "board_slug": "slaughter-and-may-careers",
+      "monitor_type": "dom",
+      "CSV_row_sha256": "8443c6c8d0c9347d0369fc09987cb208fbe3c4f1f404c9062651cf59a29101ec"
+    },
+    {
+      "board_slug": "wachtell-careers-workday",
+      "monitor_type": "workday",
+      "CSV_row_sha256": "520245f506a2b44ec9aae68ad0a2db65800264945450d11b7352650c01e1051e"
+    }
+  ],
+  "preservation_requirement": "Preserve the complete actually deployed parent monitor/detail cohort. Reconcile fresh canonical/cache configs and every scheduled detail route before staging; never shrink to fit a timer.",
+  "Slaughter": {
+    "original_capture_jobs": 23,
+    "original_capture_sha256": "452a279f165cef1e81e9c9abd0644a07de9a7d33ad4ec234283e69c4f4634f65",
+    "public_form_capture_sha256": "11487d1a5296c46ef17c3adfaadca5b084619a458c628240ba58810b2a8923d7",
+    "original_URLs_exact": true,
+    "request_scope": "exact original four-action config and published PageSize50 form command; fresh operation cookies/hidden fields; same endpoint; no renderer slot",
+    "incomplete_snapshot": "zero inventory and no absence; malformed control, changed total, more than50 advertised jobs or missing session fields fail closed",
+    "local_proofs": {
+      "session_failure_cases": 8,
+      "real_PG_Redis_terminal_cases": 6,
+      "real_cold_retirement_cases": 3
+    },
+    "limit": "captured original/public form replay; not a new serving or live-network Go proof"
+  },
+  "Workday": {
+    "existing_setting": "canonical ssl_verify=false",
+    "contract_change": "Fix legacy monitor ignoring the explicit canonical TLS exception; details retain the existing configured behavior. Default TLS verification and proxy/browser restrictions remain.",
+    "published_host_fix": "ASCII underscore Workday tenant DNS label; public-address resolution and socket pinning remain required",
+    "legacy_verified_monitor_capture_sha256": "2910840b7957a63dfe789d44e89cea93cb29bf4063f736c9d52f2abb92ad7e76",
+    "legacy_verified_monitor_status": "failed before receiving any response; retained as defect evidence",
+    "original_functions_configured_TLS_capture_sha256": "7c50c2cc56c4884b104e99a791cbb60dffa8de3f539754d5ba8c72a8f906934d",
+    "original_functions_configured_TLS_URLs": 8,
+    "original_detail_samples_exact": 5,
+    "local_proofs": {
+      "real_monitor_TLS_cases": 2,
+      "real_detail_TLS_cases": 2,
+      "real_native_executable_selection": 1,
+      "monitor_cold_cases": 3,
+      "detail_cold_cases": 6,
+      "existing_detail_terminal_regression": "final aggregate passes existing detail policy/failure and new TLS monitor/detail cases"
+    },
+    "limit": "original extractor functions given the explicit configured exception, not parity with the broken legacy monitor transport"
+  },
+  "pending": [
+    "rebase to source1006 actual merged revision",
+    "fresh exact-head required CI and physical/image contracts",
+    "original full-service deployment and full cohort activation"
+  ],
+  "following_group": [
+    "Njoyn full session POST/two-pass inventory",
+    "Candidatus per-card WinDev postback; neither implemented nor admitted"
+  ],
+  "full_migration_complete": false,
+  "local_aggregate": {
+    "mandatory_private_PG_Redis": true,
+    "ordinary_queue_passed_cases": 29,
+    "ordinary_worker_passed_cases": 85,
+    "skipped": 0,
+    "profile_identity": 195,
+    "VERSION": "0.13.1007",
+    "included": "explicit TLS monitor/detail, complete/failed WebForms inventories, original public request/field replay, cold retirement, native executable selection/startup/identity/health/drain, existing detail terminal and direct transport regressions"
+  }
+}

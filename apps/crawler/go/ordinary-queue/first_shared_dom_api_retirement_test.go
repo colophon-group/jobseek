@@ -2,7 +2,9 @@ package queue
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 )
@@ -25,6 +27,35 @@ func firstSharedDOMAPIFixture(t *testing.T, variant string) firstOwnerFixture {
 		p = firstProviderBatchFixture(t, base)
 	}
 	md := map[string]any{"scraper_type": "skip"}
+	boardURL := "https://example.com/careers"
+	if kind == "dom-webforms" {
+		boardURL = "https://careers.slaughterandmay.com/VacanciesV2.aspx"
+		f, err := os.Open("../../data/boards.csv")
+		if err != nil {
+			t.Fatal(err)
+		}
+		rows, err := csv.NewReader(f).ReadAll()
+		f.Close()
+		if err != nil || len(rows) < 2 {
+			t.Fatal("canonical form fixture unavailable", err)
+		}
+		keys := map[string]int{}
+		for i, k := range rows[0] {
+			keys[k] = i
+		}
+		found := false
+		for _, row := range rows[1:] {
+			if row[keys["board_slug"]] == "slaughter-and-may-careers" {
+				if json.Unmarshal([]byte(row[keys["monitor_config"]]), &md) != nil {
+					t.Fatal("canonical form actions unavailable")
+				}
+				found = true
+			}
+		}
+		if !found {
+			t.Fatal("canonical form fixture missing")
+		}
+	}
 	if provider == "api_sniffer" {
 		md["api_url"], md["json_path"], md["url_field"] = "https://example.com/api", "jobs", "url"
 		if kind == "api-html" {
@@ -95,10 +126,10 @@ func firstSharedDOMAPIFixture(t *testing.T, variant string) firstOwnerFixture {
 	}
 	raw, _ := json.Marshal(md)
 	ctx := context.Background()
-	if _, e := p.f.observer.Exec(ctx, "UPDATE job_board SET crawler_type=$2,board_url='https://example.com/careers',metadata=$3::jsonb WHERE id=$1::uuid", p.f.task.ID, provider, string(raw)); e != nil {
+	if _, e := p.f.observer.Exec(ctx, "UPDATE job_board SET crawler_type=$2,board_url=$4,metadata=$3::jsonb WHERE id=$1::uuid", p.f.task.ID, provider, string(raw), boardURL); e != nil {
 		t.Fatal(e)
 	}
-	if e := p.f.client.redis.HSet(ctx, "board:"+p.f.task.ID, "crawler_type", provider, "board_url", "https://example.com/careers", "metadata", string(raw)).Err(); e != nil {
+	if e := p.f.client.redis.HSet(ctx, "board:"+p.f.task.ID, "crawler_type", provider, "board_url", boardURL, "metadata", string(raw)).Err(); e != nil {
 		t.Fatal(e)
 	}
 	plan, e := p.f.authority.StageOwnership(ctx, p.plan.SourceRevision(), []string{p.f.task.ID}, nil)
@@ -128,4 +159,8 @@ func TestRealEncryptedInitialAPIVariantColdRetirement(t *testing.T) {
 
 func TestRealHTTPTokenRefreshAndJapaneseEncodingColdRetirement(t *testing.T) {
 	testProviderColdRetirement(t, []string{"api-refresh/direct", "api-refresh/proxy", "dom-euc-jp/direct", "dom-euc-jp/proxy"}, firstSharedDOMAPIFixture)
+}
+
+func TestRealPublishedWebFormsColdRetirement(t *testing.T) {
+	testProviderColdRetirement(t, []string{"dom-webforms/rendered"}, firstSharedDOMAPIFixture)
 }

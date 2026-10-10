@@ -25,8 +25,11 @@ func TestWorkdayMonitorProfileBindsAllInventoryOptionsAndIndependentDetailFlags(
 		t.Fatal("search over default multi-site admitted")
 	}
 	config["metadata"] = `{"ssl_verify":false}`
-	if _, err := InspectRichMonitor(profileBoardID, config); err == nil {
-		t.Fatal("TLS verification override admitted")
+	if _, err := InspectRichMonitor(profileBoardID, config); err != nil {
+		t.Fatal("explicit TLS setting rejected by monitor", err)
+	}
+	if skip, err := MonitorSkipsSSL(config); err != nil || !skip {
+		t.Fatal("explicit Workday monitor exception not selected", err)
 	}
 	config["metadata"] = `{}`
 	config["monitor_needs_browser"] = "1"

@@ -29,7 +29,7 @@ func RunWorkdayDetail(ctx context.Context, authority *queue.Authority, claim *qu
 
 func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Claim, http *VerifiedDirectHTTP, processor *executor.Processor, circuits *queue.HostCircuits, renderers ...renderedDetailClient) (*GreenhouseClaimResult, error) {
 	result := &GreenhouseClaimResult{TaskKind: queue.Scrape}
-	if authority == nil || claim == nil || !claim.OwnershipBound() || http == nil || http.client == nil || http.skipSSL || processor == nil || circuits == nil {
+	if authority == nil || claim == nil || !claim.OwnershipBound() || http == nil || http.client == nil || processor == nil || circuits == nil {
 		return result, claimRunError("detail_startup", queue.ErrConfiguration)
 	}
 	task := claim.Descriptor()
@@ -57,6 +57,10 @@ func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Cla
 	detail, err := authority.ReadWorkdayDetail(ctx, claim)
 	if err != nil {
 		return result, claimRunError("detail_read", err)
+	}
+	profile := detail.Profile()
+	if http.proxyRequired != queue.ProfileRequiresProxy(profile.Profile) || http.skipSSL != profile.SkipSSL || profile.SkipSSL && (profile.Profile != "workday.cxs-detail/v1" || http.proxyRequired) {
+		return result, claimRunError("detail_transport", queue.ErrConfiguration)
 	}
 	var preflight *queue.GreenhouseHostPreflight
 	var observation *HTTPObservation
@@ -154,10 +158,6 @@ func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Cla
 	defer func() { result.HTTP = observation.Snapshot() }()
 	started := time.Now()
 	result.DiscoveryStarted = true
-	profile := detail.Profile()
-	if http.proxyRequired != queue.ProfileRequiresProxy(profile.Profile) {
-		return result, claimRunError("detail_transport", queue.ErrConfiguration)
-	}
 
 	var content map[string]any
 	var reservation *publisherpolicy.Reservation

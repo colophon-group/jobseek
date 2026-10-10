@@ -42,7 +42,7 @@ func TestWorkdayDetailAdmissionRetainsOtherScrapersAndTransportRoutes(t *testing
 	for _, metadata := range []string{
 		`{"scraper_type":"json-ld"}`, `{"scraper_type":"onlyfy"}`,
 		`{"scraper_config":{"proxy":true}}`, `{"scraper_config":{"render":true}}`,
-		`{"ssl_verify":false}`, `{"scraper_config":{"skip_ssl":true}}`,
+		`{"ssl_verify":"false"}`, `{"scraper_config":{"skip_ssl":true}}`,
 		`{"scraper_config":{"proxy":true,"proxy":false}}`,
 		`{"scraper_config":{"facility_tenant_aliases":[""]}}`,
 	} {
@@ -59,5 +59,22 @@ func TestWorkdayDetailAdmissionRetainsOtherScrapersAndTransportRoutes(t *testing
 	c["scraper_needs_browser"] = "1"
 	if _, err := InspectWorkdayDetail(profileBoardID, c, source, Simple); err == nil {
 		t.Fatal("canonical browser detail admitted to simple queue")
+	}
+}
+
+func TestWorkdayDetailTLSExceptionIsExplicitAndBound(t *testing.T) {
+	c := workdayDetailConfig()
+	source := "https://fixture.wd1.myworkdayjobs.com/Careers/job/JR001"
+	verified, err := InspectWorkdayDetail(profileBoardID, c, source, Simple)
+	if err != nil || verified.SkipSSL {
+		t.Fatal("default TLS changed", err)
+	}
+	c["metadata"] = `{"scraper_type":"workday","ssl_verify":false}`
+	exception, err := InspectWorkdayDetail(profileBoardID, c, source, Simple)
+	if err != nil || !exception.SkipSSL || exception.EffectiveBoardSHA256 == verified.EffectiveBoardSHA256 {
+		t.Fatal("explicit detail TLS exception escaped binding", err)
+	}
+	if skip, err := MonitorSkipsSSL(c); err != nil || !skip {
+		t.Fatal("explicit monitor exception not selected", err)
 	}
 }
