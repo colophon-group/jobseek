@@ -219,6 +219,9 @@ func runTaskWithDependencies(ctx context.Context, config Config, deps dependenci
 	} else if deps.releasePort != nil {
 		deps.releasePort(port)
 	}
+	if cleanupErr == nil && errors.Is(state.waitErr(), errResourceLimit) {
+		runErr = errors.Join(runErr, errResourceLimit)
+	}
 	if runErr != nil {
 		return Result{}, runErr
 	}
@@ -592,7 +595,7 @@ func (s commandStarter) buildCommand(port int, logs io.Writer) (*exec.Cmd, error
 	return command, nil
 }
 
-// fixedLightpandaServeArgs is the single source of truth for the pinned nightly 2026-09-30
+// fixedLightpandaServeArgs is the single source of truth for pinned Lightpanda 1.0.0.
 // command shape. Production callers must validate EgressPolicy before passing
 // its private blockCIDRs. Test-tagged fixture callers can pass one narrowly
 // scoped exact exemption without creating a production configuration surface.
@@ -605,6 +608,7 @@ func fixedLightpandaServeArgs(port int, blockCIDRs string) []string {
 		"--cdp-max-connections", "2",
 		"--cdp-max-pending-connections", "1",
 		"--http-max-concurrent", "8",
+		"--v8-max-heap-mb", "128",
 		"--http-max-host-open", "4",
 		"--http-connect-timeout", "5000",
 		"--http-max-response-size", "8388608",
@@ -621,7 +625,11 @@ type commandProcess struct {
 }
 
 func (p *commandProcess) Wait() error {
-	return p.command.Wait()
+	err := p.command.Wait()
+	if p.logs.heapLimitReached() {
+		return errResourceLimit
+	}
+	return err
 }
 
 func (p *commandProcess) SignalGroup(signal syscall.Signal) error {
@@ -649,14 +657,31 @@ func (p *commandProcess) Logs() string {
 }
 
 type boundedBuffer struct {
-	mu    sync.Mutex
-	data  []byte
-	limit int
+	mu           sync.Mutex
+	data         []byte
+	limit        int
+	heapLimit    bool
+	resourceTail []byte
 }
+
+const lightpandaHeapLimitLog = `$scope=app $level=error $msg="JS heap limit reached"`
 
 func (b *boundedBuffer) Write(data []byte) (int, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	if !b.heapLimit {
+		marker := []byte(lightpandaHeapLimitLog)
+		boundary := append(bytes.Clone(b.resourceTail), data[:min(len(data), len(marker))]...)
+		b.heapLimit = bytes.Contains(data, marker) || bytes.Contains(boundary, marker)
+		if len(data) >= len(marker)-1 {
+			b.resourceTail = bytes.Clone(data[len(data)-len(marker)+1:])
+		} else {
+			b.resourceTail = append(b.resourceTail, data...)
+			if len(b.resourceTail) >= len(marker) {
+				b.resourceTail = bytes.Clone(b.resourceTail[len(b.resourceTail)-len(marker)+1:])
+			}
+		}
+	}
 	remaining := b.limit - len(b.data)
 	if remaining > 0 {
 		if remaining > len(data) {
@@ -665,6 +690,12 @@ func (b *boundedBuffer) Write(data []byte) (int, error) {
 		b.data = append(b.data, data[:remaining]...)
 	}
 	return len(data), nil
+}
+
+func (b *boundedBuffer) heapLimitReached() bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.heapLimit
 }
 
 func (b *boundedBuffer) String() string {

@@ -61,10 +61,14 @@
     "fresh exact-head required CI and physical/image contracts",
     "original full-service deployment and full cohort activation"
   ],
-  "following_group": [
-    "Njoyn full session POST/two-pass inventory",
-    "shared remaining DOM/API transport and pagination options"
-  ],
+  "following_group": {
+    "types": [
+      "API pagination convergence",
+      "RSS SuccessFactors identity and configured filters"
+    ],
+    "njoyn": "Original proxy/stealth/persistent Chrome reference failed origin challenge redirects; full two-pass qualification remains pending",
+    "status": "reference research only; no new serving authority"
+  },
   "full_migration_complete": false,
   "local_aggregate": {
     "mandatory_private_PG_Redis": true,
@@ -91,5 +95,55 @@
       "196_profile_native_startup_pipeline_and_original_public_checks": "12 passing test groups/subcases, zero skips"
     },
     "queue": "original browser boundary with URL-only postings and independent configured details; no Lightpanda reservation"
+  },
+  "source1006_delivery": {
+    "revision": "e81c5a488856113808fa60925fb069fcca128e47",
+    "crawler_run": 38087698034,
+    "crawler_attempt": 1,
+    "renderer_run": 38087725795,
+    "renderer_attempt": 2,
+    "independent_cold_epoch": 274,
+    "native_owners_active": false,
+    "bounded_exported_documents": 419,
+    "export_errors": 0,
+    "full_fleet_freshness_proved": false
+  },
+  "initial_native_ci_failure": {
+    "run": 38087821284,
+    "queue_race_seconds": 1005.701,
+    "failures": [
+      "Secondary provider registry test lacked Candidatus configured DOM detail binding",
+      "Workday TLS selector ignored unsupported skip_ssl setting"
+    ],
+    "repairs": [
+      "Assert Candidatus independent configured DOM detail hash",
+      "Reject Workday skip_ssl; preserve qualified ssl_verify=false only"
+    ],
+    "focused_queue_race_seconds": 1.654,
+    "fresh_exact_head_ci_required": true
+  },
+  "resource_bound_repair": {
+    "pinned_lightpanda": "1.0.0",
+    "v8_max_heap_mb_per_child": 128,
+    "unchanged_renderer_memory_max_bytes": 1073741824,
+    "unchanged_service_capacity": 4,
+    "unchanged_http_response_limit_bytes": 8388608,
+    "trigger": "Three source1005 Lightpanda child memory-cgroup OOM kills, 2026-10-10T20:49:49Z/21:01:02Z/21:06:40Z; anonymous RSS roughly805-864MiB",
+    "behavior": "Preserve exact pinned-browser heap-limit signal beyond bounded log truncation and split writes; withhold partial result, prove child cleanup and return existing deferred resource error",
+    "pinned_mac_physical_test": {
+      "test": "TestLightpandaHeapLimitIntegration",
+      "passed": true,
+      "seconds": 2.22,
+      "checks": [
+        "actual heap exhaustion",
+        "resource error",
+        "cleanup proved",
+        "subsequent independent successful navigation"
+      ]
+    },
+    "complete_pilot_race_seconds": 9.969,
+    "both_linux_physical_gates_required": true,
+    "deployed_oom_repair_proved": false,
+    "whole_lane_resource_cost_proved": false
   }
 }

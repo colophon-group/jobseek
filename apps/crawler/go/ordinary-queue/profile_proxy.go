@@ -34,6 +34,9 @@ func MonitorSkipsSSL(config map[string]string) (bool, error) {
 	// broken chain. Honor that explicit board setting for CXS discovery as
 	// well as details, without enabling fallback or proxy/browser overrides.
 	if config["crawler_type"] == "workday" {
+		if raw := md["skip_ssl"]; raw != nil && string(raw) != "null" && string(raw) != "false" {
+			return false, ErrUnsupportedProfile
+		}
 		raw, present := md["ssl_verify"]
 		if !present || string(raw) == "null" || string(raw) == "true" {
 			return false, nil

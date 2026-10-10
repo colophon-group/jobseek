@@ -1,6 +1,6 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1006 merged, supported rollout pending
+## Current checkpoint — source1006 deployed, native owners cold274
 
 [PR #10404](https://github.com/colophon-group/jobseek/pull/10404) merged as
 `e81c5a488856113808fa60925fb069fcca128e47`, version0.13.1006 with195 profiles.
@@ -8,7 +8,11 @@ Required CI38084533646, actual Crawler Deploy Gate38084532422, installed parity
 38084533668 and both physical Linux architectures38084533677 passed on reviewed
 head8ce8f01. The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38087698034)
 and [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38087725795)
-have started. They have not yet established an incoming serving checkpoint.
+succeeded: crawler attempt1 and renderer attempt2. Independent readback binds
+the exact selected source/images; full cold274 verification confirms seven
+restored base writers, cleared receipts/selectors and no active native owner.
+Export progress shows419 successful documents, zero errors and healthy Typesense.
+These are readiness observations; the15 additions have not acquired serving authority.
 
 The complete source1005 ordinary owner and B0 owner retired through their
 original wrappers. Selector clearing and independent cold epoch274 verification
@@ -97,7 +101,7 @@ DOM/API batch and full epoch271 cohort before supported retirement. Its
 [production proof](evidence/go-native-source1004-production-2026-10-10.json)
 retains the exact identities and bounded natural samples.
 
-## Following grouped publisher candidate — unpublished source1007
+## Following grouped publisher candidate — PR #10405, source1007
 
 The isolated next batch implements **Slaughter and May, Workday and Candidatus
 together**, with196 compiled profiles.
@@ -130,13 +134,29 @@ remain. The expanded196-profile executable startup and pipeline checks pass
 12 groups/subcases with zero skips. A live configured Go HTTP2 Workday inventory
 also matches all8 original URLs.
 
-This candidate is unpublished and grants no serving authority. VERSION is0.13.1007. The final focused aggregate passes29 queue and85 worker
+[PR #10405](https://github.com/colophon-group/jobseek/pull/10405) is published and grants no serving authority. VERSION is0.13.1007. The final focused aggregate passes29 queue and85 worker
 cases with mandatory private PostgreSQL/Redis and zero skips, including native
 executable selection/startup/identity/health/signal drain and transport regressions.
-The candidate is rebased to merged source1006 e81c5a4. Publish the grouped PR
-and renew all exact-head gates. Fresh exact-head
+The candidate is based on merged source1006 e81c5a4. Its initial native CI
+38087821284 failed on the secondary registry test missing the new Candidatus
+detail case and the Workday TLS selector ignoring an unsupported skip_ssl key.
+The detail case now verifies the configured DOM binding; Workday rejects that
+unqualified selector and still honors only its explicit ssl_verify=false setting.
+Four focused queue regression tests pass with race detection. Renew all exact-head gates. Fresh exact-head
 CI, original whole-service rollout and complete preserved-cohort admission still
 apply. See [candidate proof and limits](evidence/go-native-publisher-pagination-candidate-2026-10-10.json).
+The same grouped release adds a fixed128MiB V8 heap bound per Lightpanda
+child, using the option verified in the pinned1.0.0 binary. Kernel evidence on
+source1005 shows three child OOM kills at20:49:49,21:01:02 and21:06:40 UTC,
+with roughly805–864MiB anonymous RSS inside the unchanged1GiB renderer cgroup.
+Lightpanda reports a heap limit without killing its server; the controller now
+preserves that resource signal beyond bounded log truncation and split writes,
+returns a deferred resource error only after cleanup, and never publishes partial
+HTML/inventory. A real pinned Mac binary heap-exhaustion case proves resource
+failure, cleanup and a successful subsequent navigation. The complete pilot race
+suite passes9.969s. Fresh both-architecture Linux physical checks and deployed
+whole-lane measurement remain required; no production OOM cure or cost claim is made.
+
 Njoyn's full two-pass session pagination and remaining shared DOM/API options
 remain the following group. Candidatus is implemented in this candidate and
 has not been admitted in production.
@@ -146,7 +166,7 @@ PR #10404's first native CI failed on the obsolete API registry expectation
 `8ce8f01a3936008030c5b3db0f22853d880cc899` fixes that assertion and verifies the
 qualified token-refresh board explicitly. Its focused race check passes, and
 all required gates must be renewed on this exact head before source1005 retires.
-Production remains source1005 at the complete7,736-monitor/2,751-detail cohort.
+Source1005 is now historical and retired; source1006 is deployed with native owners cold274.
 
 ## Historical checkpoint — source1003 active before supported retirement
 

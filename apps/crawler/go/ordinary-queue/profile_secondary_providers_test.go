@@ -95,6 +95,8 @@ func TestSecondaryProvidersCurrentRegistryConfigurationCoverage(t *testing.T) {
 		}
 		var detail WorkdayDetailProfile
 		switch provider {
+		case "candidatus":
+			detail, e = InspectDOMDetail(profileBoardID, config, "https://carrieres.candidatus.com/annonce-emploi,ABC", Simple)
 		case "jobstreet":
 			detail, e = inspectDetailOwnership(profileBoardID, config)
 		case "pageup", "infoniqa":
