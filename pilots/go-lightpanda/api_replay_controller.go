@@ -67,8 +67,11 @@ func newAPIReplayTask(boardURL, metadata string, converse func(context.Context, 
 }
 
 func executeAPIReplayConversation(ctx context.Context, task *apiReplayTask, capture *replayCapture, status int, finalURL, html string, signals *runtimev1.ResourcePolicySignals) error {
-	if task == nil || capture == nil || status < 200 || status >= 300 {
+	if task == nil || capture == nil {
 		return errReplayCapture
+	}
+	if status < 200 || status >= 300 {
+		return &replayStatusError{status: status}
 	}
 	if err := policy.Check(signals, html, finalURL); err != nil {
 		return err
@@ -78,7 +81,7 @@ func executeAPIReplayConversation(ctx context.Context, task *apiReplayTask, capt
 		failure := capture.failure
 		capture.mu.Unlock()
 		if failure != nil {
-			return failure
+			return &brassRingPhaseError{phase: "initial-capture", err: failure}
 		}
 		return executeBrassRingConversation(ctx, task, finalURL)
 	}

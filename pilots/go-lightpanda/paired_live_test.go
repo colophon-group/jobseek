@@ -92,7 +92,7 @@ func TestLightpandaPairedPublicRegistryQualification(t *testing.T) {
 					if errors.As(err, &status) {
 						code = status.status
 					}
-					t.Logf("runner_failed phase=%s deadline=%t cleanup_unproved=%t snapshot_changed=%t capture_failed=%t publisher_reserved=%t status=%d", phase, errors.Is(err, context.DeadlineExceeded), errors.Is(err, errCleanupUnproved), errors.Is(err, api.ErrBrassRingSnapshot), errors.Is(err, errReplayCapture), errors.As(err, &reserved), code)
+					t.Logf("runner_failed phase=%s deadline=%t cleanup_unproved=%t snapshot_changed=%t capture_failed=%t publisher_reserved=%t resource_limited=%t request_headers_malformed=%t credential_response=%t status=%d", phase, errors.Is(err, context.DeadlineExceeded), errors.Is(err, errCleanupUnproved), errors.Is(err, api.ErrBrassRingSnapshot), errors.Is(err, errReplayCapture), errors.As(err, &reserved), errors.Is(err, errResourceLimit), errors.Is(err, errReplayRequestHeaders), errors.Is(err, errReplayCredentialResponse), code)
 				}
 				return result, err
 			}

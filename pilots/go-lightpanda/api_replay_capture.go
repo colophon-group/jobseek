@@ -15,6 +15,7 @@ import (
 )
 
 var errReplayCapture = errors.New("API browser capture failed")
+var errReplayRequestHeaders = errors.Join(errReplayCapture, errors.New("API request headers malformed"))
 var errReplayCredentialResponse = errors.Join(errReplayCapture, errors.New("API response reflected private credentials"))
 
 const replayCaptureLimit = 32
@@ -83,7 +84,7 @@ func (c *replayCapture) observe(event any) {
 			value, ok := raw.(string)
 			total += len(name) + len(value)
 			if !ok || len(name) > 256 || len(value) > 8192 || strings.ContainsAny(name+value, "\x00\r\n") || total > 64<<10 {
-				c.failure = errReplayCapture
+				c.failure = errReplayRequestHeaders
 				return
 			}
 			headers.Set(name, value)
