@@ -39,9 +39,10 @@ type Options struct {
 	MaxItems, Attempts                     int
 	Transient403                           bool
 	Enrichment                             []string
+	ResponseDecrypt                        *responseDecrypt
 }
 
-var ConfigKeys = []string{"api_url", "method", "json_path", "json_path_values", "total_path", "url_field", "url_template", "url_template_fields", "fields", "params", "post_data", "post_body", "request_headers", "headers", "pagination", "max_items", "transient_403", "transport_attempts", "browser", "render", "proxy", "skip_ssl", "ssl_verify", "wait", "timeout", "settle", "items", "score", "total", "empty_response", "item_filter", "url_filter", "resource_policy", "url_regex", "url_allowlist", "defaults", "rescrape_policy", "enrich", "slug_fields"}
+var ConfigKeys = []string{"api_url", "method", "json_path", "json_path_values", "total_path", "url_field", "url_template", "url_template_fields", "fields", "params", "post_data", "post_body", "request_headers", "headers", "pagination", "max_items", "transient_403", "transport_attempts", "browser", "render", "proxy", "skip_ssl", "ssl_verify", "wait", "timeout", "settle", "items", "score", "total", "empty_response", "item_filter", "url_filter", "resource_policy", "url_regex", "url_allowlist", "defaults", "rescrape_policy", "enrich", "slug_fields", "response_decrypt"}
 
 // Explicit HTTP configurations share the production client and the original
 // inventory writer. Browser captures, rotating auth, provider-specific filters
@@ -55,6 +56,10 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 	m, ok := d.Value.(map[string]any)
 	if !ok {
 		return o, ErrOptions
+	}
+	o.ResponseDecrypt, err = parseResponseDecrypt(m["response_decrypt"])
+	if err != nil {
+		return o, err
 	}
 	allowed := map[string]bool{}
 	for _, k := range ConfigKeys {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -98,6 +99,14 @@ func TestDocumentInteractionsPublicOriginalInventories(t *testing.T) {
 				return
 			}
 			if failure != nil || found.Truncated || calls != 1 {
+				if success := value.GetSuccess(); success != nil {
+					final, _ := url.Parse(success.FinalUrl)
+					fragment := false
+					if final != nil {
+						fragment = final.Fragment != ""
+					}
+					t.Logf("typed_status=%d HTML_bytes=%d chunks=%d final_document_fragment=%t", success.GetStatus(), success.Html.TotalSizeBytes, len(success.Html.Chunks), fragment)
+				}
 				t.Fatal("original complete inventory did not reproduce", "error", failure, "native_code", value.GetError().GetError().GetCode(), "navigation_calls", calls)
 			}
 			want, got := []string{}, []string{}

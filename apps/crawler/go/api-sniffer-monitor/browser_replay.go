@@ -65,6 +65,9 @@ func BrowserReplayOptionsFromMetadata(boardURL, raw string) (BrowserReplayOption
 	if !ok || m["browser"] != true {
 		return o, ErrOptions
 	}
+	if _, present := m["response_decrypt"]; present {
+		return o, ErrOptions // Captured encrypted response ranking is not qualified.
+	}
 	// Explicit actions, interception, live token URLs, stealth and persistent
 	// identities remain unsupported until the corresponding controller exists.
 	// OptionsFromMetadata rejects unknown keys instead of discarding controls.

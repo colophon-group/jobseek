@@ -1,6 +1,6 @@
 {
   "schema": "jobseek.go-native-grouped-progress/v1",
-  "observed_at_utc": "2026-10-10T11:33:32.611326+00:00",
+  "observed_at_utc": "2026-10-10T12:40:16.166851+00:00",
   "status": "local committed interaction candidate; public mismatches remain; no production admission or delivery",
   "parent_candidate_pr": "https://github.com/colophon-group/jobseek/pull/10401",
   "parent_version": "0.13.1004",
@@ -36,12 +36,39 @@
     "large_typed_document": "Maximum2,000,000 bytes passes producer, service envelope and consumer bounds;2,000,001 fails; focused race PASS3.779s",
     "B0_executor_full_race": "PASS18.697s"
   },
-  "public": "26 original and physical public captures; initial exact comparison passes15 cases and exposes11 unresolved outcomes. Second physical capture has24 documents; two large-page envelopes failed before the final ResultLimit correction. Final exact-code capture/comparison pending. Pictet differences isolate to session-issued _s.crb while all58 job IDs match; no broad normalization or waiver granted.",
+  "public": "Final exact committed code captures all26 typed Lightpanda documents (262.42s, log sha256205d13593b50127017b79b34d5ace0784fb6d887f2662890bf5cc297af8441ab). Canonical worker comparison passes17 cases and retains9 unresolved outcomes (log sha256cdb77a73cfb30097a5e7115f89b49ad0ae2def1af371efed3803168d93479953). RSM143 and CRH15 complete jobs now match original after the scoped action bounds fix. No blanket success or admission claim.",
   "required_remaining": [
     "original contract fixtures",
     "final public outcomes and complete fields/request replay; resolve every mismatch",
     "physical Linux fixtures on both architectures",
     "held-session DOM/API pagination/options grouped continuation",
     "fresh main VERSION and exact-head required CI before any delivery"
-  ]
+  ],
+  "public_remaining": [
+    "Lockheed APAC/Canada/EMEA: native403 with final fragment, original empty",
+    "Pictet: all58 job IDs match, independently issued _s.crb values differ; no normalization or waiver granted",
+    "H3: five native versus six original",
+    "Lufthansa: native internal error",
+    "Slaughter and May: ten native versus23 original",
+    "JBS Carriers: native internal error"
+  ],
+  "parent_merge_commit": "17a3c03eb9e7c053d2b891195993d0d235ff8f54",
+  "parent_delivery": "merged PR10401; original crawler rollout38052065286 and renderer38052084321 in progress; cold270 after supported source1003 retirement; full activation271 still required",
+  "next_API_family": {
+    "scope": "initial response AES-CBC suffix or fixed IV, strict bounded config, no optional production Python crypto dependency",
+    "canonical_monitor_candidates": 1,
+    "original_decoder_oracle_cases": 15,
+    "public_jobs_all_original_fields_and_request": 18,
+    "oracle_environment": "optional decoder absent from frozen Python runtime; separate immutable original read-only oracle uses isolated pycryptodome3.23.0; no production dependency changed",
+    "full_SDK_race": "PASS9.494s",
+    "public_and_SDK_log_sha256": "b0ebed8b9e85c5e0ba8dcfe1d0ab8cc0a5ee238213e1e6e3d514140689be6145",
+    "real_PostgreSQL_Redis": {
+      "cold_cases": 6,
+      "worker_cases": 12,
+      "cold_log_sha256": "6dfe411af6ee665d4995065943430b9839af73fb3938687b48597f75f9cb2260",
+      "worker_log_sha256": "8a75e17fea124ae48b5d686481983d94590240d0c4f8fc666a3fa7c9d337d60d",
+      "semantics": "first response only; plain tail pages retained; larger known-count gaps suppress disappearance while initial valid rows retain original insertion authority; malformed data unchanged; publisher precedence retained"
+    },
+    "browser_decryption": "unsupported pending capture ranking qualification"
+  }
 }
