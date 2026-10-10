@@ -13,9 +13,9 @@
     "postfinance-careers"
   ],
   "api": {
-    "original_synthetic_cases": 14,
-    "original_synthetic_sha256": "d2f4256d1acd0b25c31e3403902275289d57576c923c36467c26d3f35495bc5b",
-    "real_pg_redis_settlement_cases": 14,
+    "original_synthetic_cases": 15,
+    "original_synthetic_sha256": "b5557dd1286d10bb67a2fbb854e05c8145b1c5aac971d152052517061038ff13",
+    "real_pg_redis_settlement_cases": 15,
     "unproved_zero_and_publisher_cases": 4,
     "cold_retirement_cases": 3,
     "public_references": {
@@ -35,7 +35,10 @@
     "scope": "explicit numeric total and object-array page/offset inventories; original first-observation union, stable identity/projection, two no-growth passes; truncated validated prefixes never authorize absence",
     "correction": "capture2 retains URL-only MonitorResult URLs; capture1 was not an inventory authority",
     "remaining": "automatic total convergence (IHG) unsupported; no live Go public convergence qualification yet",
-    "all_sdk_race_seconds": 13.609
+    "all_sdk_race_seconds": 13.609,
+    "projection_loss": "Original15th case proves that converged raw rows with lost URLs remain truncated; original unique-output one-record/1% tolerance retained.",
+    "original_and_public_race_seconds": 4.994,
+    "all_sdk_race_scope": "13.609s full SDK proof preceded added projected-URL-loss regression; revised15 original cases and two public replays pass4.994s"
   },
   "rss": {
     "original_raw_feed_records": 277,

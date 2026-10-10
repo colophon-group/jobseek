@@ -3,6 +3,7 @@ package apisniffer
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"strconv"
 	"strings"
 
@@ -295,6 +296,15 @@ func projectConvergedRows(o Options, sources []inventorySourceRow, join JoinURL,
 		if found && strings.TrimSpace(job.URL) != "" {
 			result.Jobs = append(result.Jobs, job)
 		}
+	}
+	unique := map[string]bool{}
+	for _, job := range result.Jobs {
+		unique[job.URL] = true
+	}
+	// Raw convergence does not prove that URL projection retained the inventory.
+	// Preserve the original processor's one-record/1% completeness tolerance.
+	if proven && len(indices)-len(unique) > max(1, int(math.Ceil(float64(len(indices))*0.01))) {
+		result.Truncated = true
 	}
 	return result, nil
 }

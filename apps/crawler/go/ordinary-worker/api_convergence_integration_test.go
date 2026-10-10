@@ -21,7 +21,7 @@ func TestRealOriginalAPIConvergenceCanonicalSettlement(t *testing.T) {
 		Jobs      []map[string]any
 		Truncated bool
 	}
-	if err != nil || json.Unmarshal(raw, &cases) != nil || len(cases) != 14 {
+	if err != nil || json.Unmarshal(raw, &cases) != nil || len(cases) != 15 {
 		t.Fatal("original convergence corpus unavailable")
 	}
 	for _, c := range cases {

@@ -35,7 +35,8 @@ original truncated2958-URL prefix and withholds absence authority; Bupa matches5
 complete jobs. PostFinance matches277 raw RSS records and all24 postprocessed canonical jobs, retaining the published
 filter/collision policy, and ports the original company-wide atomic retirement SQL
 with the exact code-owned board/fingerprint/receipt and healthy inventory gates.
-Zero processed results from an unproved truncated inventory now fail before empty
+Converged raw rows that lose URLs during projection retain the original partial
+inventory guard. Zero processed results from an unproved truncated inventory fail before empty
 accounting; ordinary failure settlement retains existing postings and the empty
 counter. This deliberately repairs the original empty-before-truncation ordering.
 See [candidate evidence](evidence/go-native-convergence-rss-candidate-2026-10-10.json).

@@ -25,7 +25,7 @@ func TestOriginalPythonAPIConvergenceOracle(t *testing.T) {
 	}
 	d := json.NewDecoder(bytes.NewReader(data))
 	d.UseNumber()
-	if err != nil || d.Decode(&cases) != nil || len(cases) != 14 {
+	if err != nil || d.Decode(&cases) != nil || len(cases) != 15 {
 		t.Fatal("unchanged original convergence oracle unavailable")
 	}
 	for _, c := range cases {
