@@ -184,8 +184,13 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		allowed["preset"], allowed["feed_url"] = true, true
 		allowed["variant"], allowed["agency"], allowed["tenant"], allowed["customer"] = true, true, true, true
 		var legacyMetadata map[string]json.RawMessage
-		if json.Unmarshal([]byte(config["metadata"]), &legacyMetadata) == nil && string(legacyMetadata["variant"]) == `"legacy"` {
-			allowed["host"], allowed["listing_url"], allowed["jobs"] = true, true, true
+		if json.Unmarshal([]byte(config["metadata"]), &legacyMetadata) == nil {
+			if string(legacyMetadata["variant"]) == `"legacy"` {
+				allowed["host"], allowed["listing_url"], allowed["jobs"] = true, true, true
+			}
+			if string(legacyMetadata["preset"]) == `"successfactors"` && string(legacyMetadata["variant"]) == `"rmk"` {
+				allowed["brand"], allowed["locale"] = true, true
+			}
 		}
 		for _, key := range []string{"url", "url_filter", "url_allowlist", "url_transform", "job_filter", "description_mode", "fetch_company", "detail_fields", "company", "pagination", "render", "wait", "wait_fallback", "timeout", "browser_backend", "routing_revision", "proxy"} {
 			allowed[key] = true

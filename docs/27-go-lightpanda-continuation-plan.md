@@ -28,8 +28,11 @@ writers are running with zero restarts, and all eight HTTP health endpoints pass
 Forty-two cached-route mismatch boards and one unsupported Eightfold route retain
 their current owner. The first natural sample contains 20 completed scrapes and
 two completed monitor receipts; one receipt was observed between database commit
-and queue acknowledgement. This bounded sample does not establish fleet
-freshness, cost or global conservation. See the [portable production proof](evidence/go-native-source1004-production-2026-10-10.json).
+and queue acknowledgement. A later natural readback has 49 completed monitors with 49 exact original
+recurring schedules, zero retained completion leases and 108 completed scrapes;
+all ten writer restart counts remain zero. The initial lease cleared naturally.
+These bounded samples do not establish fleet freshness, cost or global
+conservation. See the [portable production proof](evidence/go-native-source1004-production-2026-10-10.json).
 
 The complete current monitor census leaves **172** outside Go: DOM111,
 API-sniffer24, Accenture12, BrassRing4, RSS8, inline5, Nextdata2, Oracle HCM2,
@@ -38,7 +41,7 @@ and one each Njoyn, Candidatus, Workday and Amazon. This delivered batch adds
 
 The next local batch combines **click, attached/detached wait, repeat and page
 collection**, plus **encrypted initial HTTP API responses**. The browser group
-has 26 canonical candidates, 30 real database/queue cases and 11 physical macOS
+has 26 canonical candidates, 30 real database/queue cases and 12 physical macOS
 cases; public comparison initially passed 18 candidates with eight unresolved
 outcomes; JBS now passes with 134 exact original URLs, and Pictet has 58 exact
 same-document original parser URLs with independent session-token provenance.
@@ -48,8 +51,17 @@ checks and 18 real database/queue cases pass. Python's optional crypto package i
 absent from the normal frozen runtime; the original oracle uses a separate
 isolated optional decoder, without adding a production dependency. See
 [portable grouped progress](evidence/go-native-browser-interaction-progress-2026-10-10.json).
-Resolve the recorded public mismatches, qualify the complete grouped scope on
-Linux and run exact-head required checks before admitting this candidate.
+The RSS group adds the three CPF Recruiting Marketing boards, with four new
+compiled direct/proxy profiles (194 total). Sixteen original fixtures, all 123
+records in the first public SDK capture and all 124 records plus cookies in a
+fresh worker capture match. Twenty-eight mandatory real PostgreSQL/Redis
+settlement and cold-retirement cases pass. Identical duplicates suppress absence;
+conflicting rows and later-page failures publish no prefix. Explicit description
+enrichment retains downstream scheduling. See the
+[RSS progress proof](evidence/go-native-rss-rmk-progress-2026-10-10.json).
+
+Resolve the recorded public browser mismatches, qualify the complete grouped scope
+on Linux and run exact-head required checks before admitting this candidate.
 
 Continue the remaining shared browser/API pagination options and enabled
 monitor/detail profiles in broad batches. Prove fleet freshness, conservation,

@@ -91,5 +91,17 @@
     "scope": "bounded initial SQL/Redis cross-read; follow-up natural readback required; no whole-fleet freshness, cost or global conservation claim"
   },
   "qualification": "34 frozen original contracts,67 real PostgreSQL/Redis cases,159 public DOM jobs plus10 API jobs with original fields/request replay; physical Linux CI passed",
-  "next": "finish broader grouped browser/API/RSS coverage; retained detail routes, runtime/deployment consumers, fleet freshness/resource/cost and supported reversal window; retire production Python/Playwright/Chromium after replacement authority; full goal remains incomplete"
+  "next": "finish broader grouped browser/API/RSS coverage; retained detail routes, runtime/deployment consumers, fleet freshness/resource/cost and supported reversal window; retire production Python/Playwright/Chromium after replacement authority; full goal remains incomplete",
+  "later_natural_readback": {
+    "observed_at_utc": "2026-10-10T13:22:41.464552+00:00",
+    "completed_monitors": 49,
+    "exact_original_recurring_schedules": 49,
+    "retained_completion_leases": 0,
+    "completed_scrapes": 108,
+    "active_monitor_claims": 2,
+    "active_scrape_claims": 2,
+    "writer_restarts": 0,
+    "initial_completion_lease": "cleared naturally by existing acknowledgement/scheduler; no mutation or reaping injected",
+    "scope": "bounded natural readback; not whole-fleet freshness or cost proof"
+  }
 }

@@ -3,18 +3,20 @@ package queue
 import "encoding/json"
 
 var httpMonitorProxyProfiles = map[string]string{
-	"talemetry.listing-urls/v1":  "talemetry.proxy-listing-urls/v1",
-	"talemetry.json-urls/v1":     "talemetry.proxy-json-urls/v1",
-	"papa_johns.listing-urls/v1": "papa_johns.proxy-listing-urls/v1",
-	"workable.api-urls/v1":       "workable.proxy-api-urls/v1",
-	"umantis.listing-urls/v1":    "umantis.proxy-listing-urls/v1",
-	"dom.direct-urls/v1":         "dom.proxy-urls/v1",
-	"dom.direct-rows/v1":         "dom.proxy-rows/v1",
-	"api_sniffer.http-items/v1":  "api_sniffer.proxy-http-items/v1",
-	"inline.document-items/v1":   "inline.proxy-document-items/v1",
-	"sitemap.explicit-urls/v1":   "sitemap.proxy-explicit-urls/v1",
-	"eightfold.pcsx-sitemap/v1":  "eightfold.proxy-pcsx-sitemap/v1",
-	"phenom.sitemap-urls/v1":     "phenom.proxy-sitemap-urls/v1",
+	"rss.successfactors-rmk-skip/v1":  "rss.successfactors-rmk-proxy-skip/v1",
+	"rss.successfactors-rmk-items/v1": "rss.successfactors-rmk-proxy-items/v1",
+	"talemetry.listing-urls/v1":       "talemetry.proxy-listing-urls/v1",
+	"talemetry.json-urls/v1":          "talemetry.proxy-json-urls/v1",
+	"papa_johns.listing-urls/v1":      "papa_johns.proxy-listing-urls/v1",
+	"workable.api-urls/v1":            "workable.proxy-api-urls/v1",
+	"umantis.listing-urls/v1":         "umantis.proxy-listing-urls/v1",
+	"dom.direct-urls/v1":              "dom.proxy-urls/v1",
+	"dom.direct-rows/v1":              "dom.proxy-rows/v1",
+	"api_sniffer.http-items/v1":       "api_sniffer.proxy-http-items/v1",
+	"inline.document-items/v1":        "inline.proxy-document-items/v1",
+	"sitemap.explicit-urls/v1":        "sitemap.proxy-explicit-urls/v1",
+	"eightfold.pcsx-sitemap/v1":       "eightfold.proxy-pcsx-sitemap/v1",
+	"phenom.sitemap-urls/v1":          "phenom.proxy-sitemap-urls/v1",
 }
 
 // Parsers receive content options, while the immutable profile and process

@@ -22,8 +22,8 @@ func fetchProviderResource(ctx context.Context, client *http.Client, options pro
 }
 
 // PCSX's 403 JSON distinguishes disabled tenants from transient failures.
-// Only that caller opts in to a bounded status body; other providers retain
-// their existing early failure behavior.
+// RMK separately opts in to publisher-policy checks on error statuses.
+// Other providers retain their existing early failure behavior.
 func fetchProviderStatusResource(ctx context.Context, client *http.Client, options providerResourceScope, endpoint string, body []byte, headers http.Header, limit int64, inspectStatus map[int]bool, any2xxGET ...bool) ([]byte, *GreenhouseResponse, error) {
 	if client == nil || !options.ResourceMatches(endpoint) || limit < 1 || limit > 64<<20 {
 		return nil, nil, queue.ErrConfiguration
@@ -58,6 +58,10 @@ func fetchProviderStatusResource(ctx context.Context, client *http.Client, optio
 		return nil, nil, queue.ErrConfiguration
 	}
 	observed := &GreenhouseResponse{endpoint: endpoint, finalURL: response.Request.URL.String(), status: response.StatusCode, location: response.Header.Get("Location"), contentType: response.Header.Get("Content-Type")}
+	policyFirst := false
+	if scope, ok := options.(interface{ PublisherPolicyOnStatus() bool }); ok {
+		policyFirst = scope.PublisherPolicyOnStatus()
+	}
 	var statusError error
 	acceptAnyGET := len(any2xxGET) == 1 && any2xxGET[0]
 	if response.StatusCode < 200 || response.StatusCode >= 300 || body == nil && response.StatusCode != 200 && !acceptAnyGET {
@@ -66,7 +70,7 @@ func fetchProviderStatusResource(ctx context.Context, client *http.Client, optio
 			kind = "provider_gone"
 		}
 		statusError = &DiscoveryError{Kind: kind, Status: response.StatusCode}
-		if !inspectStatus[response.StatusCode] {
+		if !inspectStatus[response.StatusCode] && !policyFirst {
 			return nil, observed, statusError
 		}
 	}
@@ -82,7 +86,7 @@ func fetchProviderStatusResource(ctx context.Context, client *http.Client, optio
 		}
 		return e
 	}
-	if statusError == nil {
+	if statusError == nil || policyFirst {
 		if e := check(""); e != nil {
 			return nil, observed, e
 		}
@@ -102,6 +106,11 @@ func fetchProviderStatusResource(ctx context.Context, client *http.Client, optio
 		return nil, observed, ctx.Err()
 	}
 	if statusError != nil {
+		if policyFirst {
+			if e := check(jsonld.DecodeDocument(raw, response.Header.Get("Content-Type"))); e != nil {
+				return nil, observed, e
+			}
+		}
 		return raw, observed, statusError
 	}
 	if e := check(jsonld.DecodeDocument(raw, response.Header.Get("Content-Type"))); e != nil {

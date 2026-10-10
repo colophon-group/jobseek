@@ -1,0 +1,1429 @@
+[
+  {
+    "name": "zero",
+    "board_url": "https://example.com/Fixture/jobs",
+    "metadata": {
+      "preset": "successfactors",
+      "variant": "rmk",
+      "brand": "Fixture"
+    },
+    "responses": [
+      "<script>var app={brand:'Fixture',locale:'en_US',headers:{'X-CSRF-Token':'fixture-csrf'}};</script>",
+      "{\"totalJobs\": 0, \"jobSearchResult\": []}"
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://example.com/Fixture/jobs",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/services/recruiting/v1/jobs",
+        "body": "{\"keywords\":\"\",\"locale\":\"en_US\",\"location\":\"\",\"pageNumber\":0,\"sortBy\":\"recent\",\"brand\":\"Fixture\"}",
+        "headers": {
+          "content-type": "application/json",
+          "referer": "https://example.com/Fixture/jobs",
+          "x-csrf-token": "fixture-csrf"
+        }
+      }
+    ],
+    "jobs": [],
+    "truncated": false,
+    "error": false
+  },
+  {
+    "name": "rich-single",
+    "board_url": "https://example.com/Fixture/jobs",
+    "metadata": {
+      "preset": "successfactors",
+      "variant": "rmk",
+      "brand": "Fixture"
+    },
+    "responses": [
+      "<script>var app={brand:'Fixture',locale:'en_US',headers:{'X-CSRF-Token':'fixture-csrf'}};</script>",
+      "{\"totalJobs\": 1, \"jobSearchResult\": [{\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"1\", \"unifiedStandardTitle\": \" Engineer 1 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}]}"
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://example.com/Fixture/jobs",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/services/recruiting/v1/jobs",
+        "body": "{\"keywords\":\"\",\"locale\":\"en_US\",\"location\":\"\",\"pageNumber\":0,\"sortBy\":\"recent\",\"brand\":\"Fixture\"}",
+        "headers": {
+          "content-type": "application/json",
+          "referer": "https://example.com/Fixture/jobs",
+          "x-csrf-token": "fixture-csrf"
+        }
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://example.com/Fixture/job/R%26D%20Z%C3%BCrich%20%2F-._~/1-en_US/",
+        "title": "Engineer 1",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "1",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "error": false
+  },
+  {
+    "name": "eleven",
+    "board_url": "https://example.com/Fixture/jobs",
+    "metadata": {
+      "preset": "successfactors",
+      "variant": "rmk",
+      "brand": "Fixture"
+    },
+    "responses": [
+      "<script>var app={brand:'Fixture',locale:'en_US',headers:{'X-CSRF-Token':'fixture-csrf'}};</script>",
+      "{\"totalJobs\": 11, \"jobSearchResult\": [{\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"1\", \"unifiedStandardTitle\": \" Engineer 1 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"2\", \"unifiedStandardTitle\": \" Engineer 2 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"3\", \"unifiedStandardTitle\": \" Engineer 3 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"4\", \"unifiedStandardTitle\": \" Engineer 4 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"5\", \"unifiedStandardTitle\": \" Engineer 5 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"6\", \"unifiedStandardTitle\": \" Engineer 6 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"7\", \"unifiedStandardTitle\": \" Engineer 7 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"8\", \"unifiedStandardTitle\": \" Engineer 8 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"9\", \"unifiedStandardTitle\": \" Engineer 9 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"10\", \"unifiedStandardTitle\": \" Engineer 10 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}]}",
+      "{\"totalJobs\": 11, \"jobSearchResult\": [{\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"11\", \"unifiedStandardTitle\": \" Engineer 11 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}]}"
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://example.com/Fixture/jobs",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/services/recruiting/v1/jobs",
+        "body": "{\"keywords\":\"\",\"locale\":\"en_US\",\"location\":\"\",\"pageNumber\":0,\"sortBy\":\"recent\",\"brand\":\"Fixture\"}",
+        "headers": {
+          "content-type": "application/json",
+          "referer": "https://example.com/Fixture/jobs",
+          "x-csrf-token": "fixture-csrf"
+        }
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/services/recruiting/v1/jobs",
+        "body": "{\"keywords\":\"\",\"locale\":\"en_US\",\"location\":\"\",\"pageNumber\":1,\"sortBy\":\"recent\",\"brand\":\"Fixture\"}",
+        "headers": {
+          "content-type": "application/json",
+          "referer": "https://example.com/Fixture/jobs",
+          "x-csrf-token": "fixture-csrf"
+        }
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://example.com/Fixture/job/R%26D%20Z%C3%BCrich%20%2F-._~/1-en_US/",
+        "title": "Engineer 1",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "1",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/Fixture/job/R%26D%20Z%C3%BCrich%20%2F-._~/2-en_US/",
+        "title": "Engineer 2",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "2",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/Fixture/job/R%26D%20Z%C3%BCrich%20%2F-._~/3-en_US/",
+        "title": "Engineer 3",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "3",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/Fixture/job/R%26D%20Z%C3%BCrich%20%2F-._~/4-en_US/",
+        "title": "Engineer 4",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "4",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/Fixture/job/R%26D%20Z%C3%BCrich%20%2F-._~/5-en_US/",
+        "title": "Engineer 5",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "5",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/Fixture/job/R%26D%20Z%C3%BCrich%20%2F-._~/6-en_US/",
+        "title": "Engineer 6",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "6",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/Fixture/job/R%26D%20Z%C3%BCrich%20%2F-._~/7-en_US/",
+        "title": "Engineer 7",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "7",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/Fixture/job/R%26D%20Z%C3%BCrich%20%2F-._~/8-en_US/",
+        "title": "Engineer 8",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "8",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/Fixture/job/R%26D%20Z%C3%BCrich%20%2F-._~/9-en_US/",
+        "title": "Engineer 9",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "9",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/Fixture/job/R%26D%20Z%C3%BCrich%20%2F-._~/10-en_US/",
+        "title": "Engineer 10",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "10",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/Fixture/job/R%26D%20Z%C3%BCrich%20%2F-._~/11-en_US/",
+        "title": "Engineer 11",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "11",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "error": false
+  },
+  {
+    "name": "repeated",
+    "board_url": "https://example.com/Fixture/jobs",
+    "metadata": {
+      "preset": "successfactors",
+      "variant": "rmk",
+      "brand": "Fixture"
+    },
+    "responses": [
+      "<script>var app={brand:'Fixture',locale:'en_US',headers:{'X-CSRF-Token':'fixture-csrf'}};</script>",
+      "{\"totalJobs\": 11, \"jobSearchResult\": [{\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"1\", \"unifiedStandardTitle\": \" Engineer 1 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"2\", \"unifiedStandardTitle\": \" Engineer 2 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"3\", \"unifiedStandardTitle\": \" Engineer 3 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"4\", \"unifiedStandardTitle\": \" Engineer 4 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"5\", \"unifiedStandardTitle\": \" Engineer 5 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"6\", \"unifiedStandardTitle\": \" Engineer 6 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"7\", \"unifiedStandardTitle\": \" Engineer 7 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"8\", \"unifiedStandardTitle\": \" Engineer 8 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"9\", \"unifiedStandardTitle\": \" Engineer 9 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"10\", \"unifiedStandardTitle\": \" Engineer 10 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}]}",
+      "{\"totalJobs\": 11, \"jobSearchResult\": [{\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"1\", \"unifiedStandardTitle\": \" Engineer 1 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}]}"
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://example.com/Fixture/jobs",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/services/recruiting/v1/jobs",
+        "body": "{\"keywords\":\"\",\"locale\":\"en_US\",\"location\":\"\",\"pageNumber\":0,\"sortBy\":\"recent\",\"brand\":\"Fixture\"}",
+        "headers": {
+          "content-type": "application/json",
+          "referer": "https://example.com/Fixture/jobs",
+          "x-csrf-token": "fixture-csrf"
+        }
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/services/recruiting/v1/jobs",
+        "body": "{\"keywords\":\"\",\"locale\":\"en_US\",\"location\":\"\",\"pageNumber\":1,\"sortBy\":\"recent\",\"brand\":\"Fixture\"}",
+        "headers": {
+          "content-type": "application/json",
+          "referer": "https://example.com/Fixture/jobs",
+          "x-csrf-token": "fixture-csrf"
+        }
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://example.com/Fixture/job/R%26D%20Z%C3%BCrich%20%2F-._~/1-en_US/",
+        "title": "Engineer 1",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "1",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/Fixture/job/R%26D%20Z%C3%BCrich%20%2F-._~/2-en_US/",
+        "title": "Engineer 2",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "2",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/Fixture/job/R%26D%20Z%C3%BCrich%20%2F-._~/3-en_US/",
+        "title": "Engineer 3",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "3",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/Fixture/job/R%26D%20Z%C3%BCrich%20%2F-._~/4-en_US/",
+        "title": "Engineer 4",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "4",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/Fixture/job/R%26D%20Z%C3%BCrich%20%2F-._~/5-en_US/",
+        "title": "Engineer 5",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "5",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/Fixture/job/R%26D%20Z%C3%BCrich%20%2F-._~/6-en_US/",
+        "title": "Engineer 6",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "6",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/Fixture/job/R%26D%20Z%C3%BCrich%20%2F-._~/7-en_US/",
+        "title": "Engineer 7",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "7",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/Fixture/job/R%26D%20Z%C3%BCrich%20%2F-._~/8-en_US/",
+        "title": "Engineer 8",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "8",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/Fixture/job/R%26D%20Z%C3%BCrich%20%2F-._~/9-en_US/",
+        "title": "Engineer 9",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "9",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://example.com/Fixture/job/R%26D%20Z%C3%BCrich%20%2F-._~/10-en_US/",
+        "title": "Engineer 10",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "10",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": true,
+    "error": false
+  },
+  {
+    "name": "conflicting-repeat",
+    "board_url": "https://example.com/Fixture/jobs",
+    "metadata": {
+      "preset": "successfactors",
+      "variant": "rmk",
+      "brand": "Fixture"
+    },
+    "responses": [
+      "<script>var app={brand:'Fixture',locale:'en_US',headers:{'X-CSRF-Token':'fixture-csrf'}};</script>",
+      "{\"totalJobs\": 11, \"jobSearchResult\": [{\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"1\", \"unifiedStandardTitle\": \" Engineer 1 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"2\", \"unifiedStandardTitle\": \" Engineer 2 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"3\", \"unifiedStandardTitle\": \" Engineer 3 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"4\", \"unifiedStandardTitle\": \" Engineer 4 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"5\", \"unifiedStandardTitle\": \" Engineer 5 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"6\", \"unifiedStandardTitle\": \" Engineer 6 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"7\", \"unifiedStandardTitle\": \" Engineer 7 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"8\", \"unifiedStandardTitle\": \" Engineer 8 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"9\", \"unifiedStandardTitle\": \" Engineer 9 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"10\", \"unifiedStandardTitle\": \" Engineer 10 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}]}",
+      "{\"totalJobs\": 11, \"jobSearchResult\": [{\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"1\", \"unifiedStandardTitle\": \"Different\", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}]}"
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://example.com/Fixture/jobs",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/services/recruiting/v1/jobs",
+        "body": "{\"keywords\":\"\",\"locale\":\"en_US\",\"location\":\"\",\"pageNumber\":0,\"sortBy\":\"recent\",\"brand\":\"Fixture\"}",
+        "headers": {
+          "content-type": "application/json",
+          "referer": "https://example.com/Fixture/jobs",
+          "x-csrf-token": "fixture-csrf"
+        }
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/services/recruiting/v1/jobs",
+        "body": "{\"keywords\":\"\",\"locale\":\"en_US\",\"location\":\"\",\"pageNumber\":1,\"sortBy\":\"recent\",\"brand\":\"Fixture\"}",
+        "headers": {
+          "content-type": "application/json",
+          "referer": "https://example.com/Fixture/jobs",
+          "x-csrf-token": "fixture-csrf"
+        }
+      }
+    ],
+    "jobs": [],
+    "truncated": false,
+    "error": true
+  },
+  {
+    "name": "changed-total",
+    "board_url": "https://example.com/Fixture/jobs",
+    "metadata": {
+      "preset": "successfactors",
+      "variant": "rmk",
+      "brand": "Fixture"
+    },
+    "responses": [
+      "<script>var app={brand:'Fixture',locale:'en_US',headers:{'X-CSRF-Token':'fixture-csrf'}};</script>",
+      "{\"totalJobs\": 11, \"jobSearchResult\": [{\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"1\", \"unifiedStandardTitle\": \" Engineer 1 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"2\", \"unifiedStandardTitle\": \" Engineer 2 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"3\", \"unifiedStandardTitle\": \" Engineer 3 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"4\", \"unifiedStandardTitle\": \" Engineer 4 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"5\", \"unifiedStandardTitle\": \" Engineer 5 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"6\", \"unifiedStandardTitle\": \" Engineer 6 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"7\", \"unifiedStandardTitle\": \" Engineer 7 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"8\", \"unifiedStandardTitle\": \" Engineer 8 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"9\", \"unifiedStandardTitle\": \" Engineer 9 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"10\", \"unifiedStandardTitle\": \" Engineer 10 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}]}",
+      "{\"totalJobs\": 12, \"jobSearchResult\": [{\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"11\", \"unifiedStandardTitle\": \" Engineer 11 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}]}"
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://example.com/Fixture/jobs",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/services/recruiting/v1/jobs",
+        "body": "{\"keywords\":\"\",\"locale\":\"en_US\",\"location\":\"\",\"pageNumber\":0,\"sortBy\":\"recent\",\"brand\":\"Fixture\"}",
+        "headers": {
+          "content-type": "application/json",
+          "referer": "https://example.com/Fixture/jobs",
+          "x-csrf-token": "fixture-csrf"
+        }
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/services/recruiting/v1/jobs",
+        "body": "{\"keywords\":\"\",\"locale\":\"en_US\",\"location\":\"\",\"pageNumber\":1,\"sortBy\":\"recent\",\"brand\":\"Fixture\"}",
+        "headers": {
+          "content-type": "application/json",
+          "referer": "https://example.com/Fixture/jobs",
+          "x-csrf-token": "fixture-csrf"
+        }
+      }
+    ],
+    "jobs": [],
+    "truncated": false,
+    "error": true
+  },
+  {
+    "name": "short-tail",
+    "board_url": "https://example.com/Fixture/jobs",
+    "metadata": {
+      "preset": "successfactors",
+      "variant": "rmk",
+      "brand": "Fixture"
+    },
+    "responses": [
+      "<script>var app={brand:'Fixture',locale:'en_US',headers:{'X-CSRF-Token':'fixture-csrf'}};</script>",
+      "{\"totalJobs\": 11, \"jobSearchResult\": [{\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"1\", \"unifiedStandardTitle\": \" Engineer 1 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"2\", \"unifiedStandardTitle\": \" Engineer 2 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"3\", \"unifiedStandardTitle\": \" Engineer 3 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"4\", \"unifiedStandardTitle\": \" Engineer 4 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"5\", \"unifiedStandardTitle\": \" Engineer 5 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"6\", \"unifiedStandardTitle\": \" Engineer 6 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"7\", \"unifiedStandardTitle\": \" Engineer 7 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"8\", \"unifiedStandardTitle\": \" Engineer 8 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"9\", \"unifiedStandardTitle\": \" Engineer 9 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"10\", \"unifiedStandardTitle\": \" Engineer 10 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}]}",
+      "{\"totalJobs\": 11, \"jobSearchResult\": []}"
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://example.com/Fixture/jobs",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/services/recruiting/v1/jobs",
+        "body": "{\"keywords\":\"\",\"locale\":\"en_US\",\"location\":\"\",\"pageNumber\":0,\"sortBy\":\"recent\",\"brand\":\"Fixture\"}",
+        "headers": {
+          "content-type": "application/json",
+          "referer": "https://example.com/Fixture/jobs",
+          "x-csrf-token": "fixture-csrf"
+        }
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/services/recruiting/v1/jobs",
+        "body": "{\"keywords\":\"\",\"locale\":\"en_US\",\"location\":\"\",\"pageNumber\":1,\"sortBy\":\"recent\",\"brand\":\"Fixture\"}",
+        "headers": {
+          "content-type": "application/json",
+          "referer": "https://example.com/Fixture/jobs",
+          "x-csrf-token": "fixture-csrf"
+        }
+      }
+    ],
+    "jobs": [],
+    "truncated": false,
+    "error": true
+  },
+  {
+    "name": "invalid-tail",
+    "board_url": "https://example.com/Fixture/jobs",
+    "metadata": {
+      "preset": "successfactors",
+      "variant": "rmk",
+      "brand": "Fixture"
+    },
+    "responses": [
+      "<script>var app={brand:'Fixture',locale:'en_US',headers:{'X-CSRF-Token':'fixture-csrf'}};</script>",
+      "{\"totalJobs\": 11, \"jobSearchResult\": [{\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"1\", \"unifiedStandardTitle\": \" Engineer 1 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"2\", \"unifiedStandardTitle\": \" Engineer 2 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"3\", \"unifiedStandardTitle\": \" Engineer 3 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"4\", \"unifiedStandardTitle\": \" Engineer 4 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"5\", \"unifiedStandardTitle\": \" Engineer 5 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"6\", \"unifiedStandardTitle\": \" Engineer 6 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"7\", \"unifiedStandardTitle\": \" Engineer 7 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"8\", \"unifiedStandardTitle\": \" Engineer 8 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"9\", \"unifiedStandardTitle\": \" Engineer 9 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}, {\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"10\", \"unifiedStandardTitle\": \" Engineer 10 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}]}",
+      "not-json"
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://example.com/Fixture/jobs",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/services/recruiting/v1/jobs",
+        "body": "{\"keywords\":\"\",\"locale\":\"en_US\",\"location\":\"\",\"pageNumber\":0,\"sortBy\":\"recent\",\"brand\":\"Fixture\"}",
+        "headers": {
+          "content-type": "application/json",
+          "referer": "https://example.com/Fixture/jobs",
+          "x-csrf-token": "fixture-csrf"
+        }
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/services/recruiting/v1/jobs",
+        "body": "{\"keywords\":\"\",\"locale\":\"en_US\",\"location\":\"\",\"pageNumber\":1,\"sortBy\":\"recent\",\"brand\":\"Fixture\"}",
+        "headers": {
+          "content-type": "application/json",
+          "referer": "https://example.com/Fixture/jobs",
+          "x-csrf-token": "fixture-csrf"
+        }
+      }
+    ],
+    "jobs": [],
+    "truncated": false,
+    "error": true
+  },
+  {
+    "name": "boolean-total",
+    "board_url": "https://example.com/Fixture/jobs",
+    "metadata": {
+      "preset": "successfactors",
+      "variant": "rmk",
+      "brand": "Fixture"
+    },
+    "responses": [
+      "<script>var app={brand:'Fixture',locale:'en_US',headers:{'X-CSRF-Token':'fixture-csrf'}};</script>",
+      "{\"totalJobs\": true, \"jobSearchResult\": []}"
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://example.com/Fixture/jobs",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/services/recruiting/v1/jobs",
+        "body": "{\"keywords\":\"\",\"locale\":\"en_US\",\"location\":\"\",\"pageNumber\":0,\"sortBy\":\"recent\",\"brand\":\"Fixture\"}",
+        "headers": {
+          "content-type": "application/json",
+          "referer": "https://example.com/Fixture/jobs",
+          "x-csrf-token": "fixture-csrf"
+        }
+      }
+    ],
+    "jobs": [],
+    "truncated": false,
+    "error": true
+  },
+  {
+    "name": "missing-bootstrap",
+    "board_url": "https://example.com/Fixture/jobs",
+    "metadata": {
+      "preset": "successfactors",
+      "variant": "rmk",
+      "brand": "Fixture"
+    },
+    "responses": [
+      "<html></html>"
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://example.com/Fixture/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "jobs": [],
+    "truncated": false,
+    "error": true
+  },
+  {
+    "name": "wrong-bootstrap-brand",
+    "board_url": "https://example.com/Fixture/jobs",
+    "metadata": {
+      "preset": "successfactors",
+      "variant": "rmk",
+      "brand": "Fixture"
+    },
+    "responses": [
+      "<script>var app={brand:'Other',locale:'en_US',headers:{'X-CSRF-Token':'fixture-csrf'}};</script>"
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://example.com/Fixture/jobs",
+        "body": "",
+        "headers": {}
+      }
+    ],
+    "jobs": [],
+    "truncated": false,
+    "error": true
+  },
+  {
+    "name": "wrong-row-brand",
+    "board_url": "https://example.com/Fixture/jobs",
+    "metadata": {
+      "preset": "successfactors",
+      "variant": "rmk",
+      "brand": "Fixture"
+    },
+    "responses": [
+      "<script>var app={brand:'Fixture',locale:'en_US',headers:{'X-CSRF-Token':'fixture-csrf'}};</script>",
+      "{\"totalJobs\": 1, \"jobSearchResult\": [{\"response\": {\"brandUrl\": \"Other\", \"id\": \"1\", \"unifiedStandardTitle\": \" Engineer 1 \", \"unifiedUrlTitle\": \"R&amp;D Zürich%20/-._~\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \"}}]}"
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://example.com/Fixture/jobs",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/services/recruiting/v1/jobs",
+        "body": "{\"keywords\":\"\",\"locale\":\"en_US\",\"location\":\"\",\"pageNumber\":0,\"sortBy\":\"recent\",\"brand\":\"Fixture\"}",
+        "headers": {
+          "content-type": "application/json",
+          "referer": "https://example.com/Fixture/jobs",
+          "x-csrf-token": "fixture-csrf"
+        }
+      }
+    ],
+    "jobs": [],
+    "truncated": false,
+    "error": true
+  },
+  {
+    "name": "fallback-empty-list",
+    "board_url": "https://example.com/Fixture/jobs",
+    "metadata": {
+      "preset": "successfactors",
+      "variant": "rmk",
+      "brand": "Fixture"
+    },
+    "responses": [
+      "<script>var app={brand:'Fixture',locale:'en_US',headers:{'X-CSRF-Token':'fixture-csrf'}};</script>",
+      "{\"totalJobs\": 1, \"jobSearchResult\": [{\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"1\", \"unifiedStandardTitle\": \" Engineer 1 \", \"unifiedUrlTitle\": [], \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \", \"urlTitle\": \"Fallback Title\"}}]}"
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://example.com/Fixture/jobs",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/services/recruiting/v1/jobs",
+        "body": "{\"keywords\":\"\",\"locale\":\"en_US\",\"location\":\"\",\"pageNumber\":0,\"sortBy\":\"recent\",\"brand\":\"Fixture\"}",
+        "headers": {
+          "content-type": "application/json",
+          "referer": "https://example.com/Fixture/jobs",
+          "x-csrf-token": "fixture-csrf"
+        }
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://example.com/Fixture/job/Fallback%20Title/1-en_US/",
+        "title": "Engineer 1",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "1",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "error": false
+  },
+  {
+    "name": "fallback-zero",
+    "board_url": "https://example.com/Fixture/jobs",
+    "metadata": {
+      "preset": "successfactors",
+      "variant": "rmk",
+      "brand": "Fixture"
+    },
+    "responses": [
+      "<script>var app={brand:'Fixture',locale:'en_US',headers:{'X-CSRF-Token':'fixture-csrf'}};</script>",
+      "{\"totalJobs\": 1, \"jobSearchResult\": [{\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"1\", \"unifiedStandardTitle\": \" Engineer 1 \", \"unifiedUrlTitle\": 0, \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \", \"urlTitle\": \"Fallback Title\"}}]}"
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://example.com/Fixture/jobs",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/services/recruiting/v1/jobs",
+        "body": "{\"keywords\":\"\",\"locale\":\"en_US\",\"location\":\"\",\"pageNumber\":0,\"sortBy\":\"recent\",\"brand\":\"Fixture\"}",
+        "headers": {
+          "content-type": "application/json",
+          "referer": "https://example.com/Fixture/jobs",
+          "x-csrf-token": "fixture-csrf"
+        }
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://example.com/Fixture/job/Fallback%20Title/1-en_US/",
+        "title": "Engineer 1",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "1",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "error": false
+  },
+  {
+    "name": "fallback-false",
+    "board_url": "https://example.com/Fixture/jobs",
+    "metadata": {
+      "preset": "successfactors",
+      "variant": "rmk",
+      "brand": "Fixture"
+    },
+    "responses": [
+      "<script>var app={brand:'Fixture',locale:'en_US',headers:{'X-CSRF-Token':'fixture-csrf'}};</script>",
+      "{\"totalJobs\": 1, \"jobSearchResult\": [{\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"1\", \"unifiedStandardTitle\": \" Engineer 1 \", \"unifiedUrlTitle\": false, \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \", \"urlTitle\": \"Fallback Title\"}}]}"
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://example.com/Fixture/jobs",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/services/recruiting/v1/jobs",
+        "body": "{\"keywords\":\"\",\"locale\":\"en_US\",\"location\":\"\",\"pageNumber\":0,\"sortBy\":\"recent\",\"brand\":\"Fixture\"}",
+        "headers": {
+          "content-type": "application/json",
+          "referer": "https://example.com/Fixture/jobs",
+          "x-csrf-token": "fixture-csrf"
+        }
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://example.com/Fixture/job/Fallback%20Title/1-en_US/",
+        "title": "Engineer 1",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "1",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "error": false
+  },
+  {
+    "name": "fallback-empty",
+    "board_url": "https://example.com/Fixture/jobs",
+    "metadata": {
+      "preset": "successfactors",
+      "variant": "rmk",
+      "brand": "Fixture"
+    },
+    "responses": [
+      "<script>var app={brand:'Fixture',locale:'en_US',headers:{'X-CSRF-Token':'fixture-csrf'}};</script>",
+      "{\"totalJobs\": 1, \"jobSearchResult\": [{\"response\": {\"brandUrl\": \"Fixture\", \"id\": \"1\", \"unifiedStandardTitle\": \" Engineer 1 \", \"unifiedUrlTitle\": \"\", \"filter1\": [\" Zurich \", \"\", 4], \"filter4\": [\" Full-time \", \"Part-time\"], \"filter2\": [\" Research \"], \"businessUnit_obj\": [\" Systems \"], \"division_obj\": [\" Europe \"], \"currency\": [\" CHF \"], \"unifiedStandardStart\": \" 2026-10-10 \", \"urlTitle\": \"Fallback Title\"}}]}"
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://example.com/Fixture/jobs",
+        "body": "",
+        "headers": {}
+      },
+      {
+        "method": "POST",
+        "url": "https://example.com/services/recruiting/v1/jobs",
+        "body": "{\"keywords\":\"\",\"locale\":\"en_US\",\"location\":\"\",\"pageNumber\":0,\"sortBy\":\"recent\",\"brand\":\"Fixture\"}",
+        "headers": {
+          "content-type": "application/json",
+          "referer": "https://example.com/Fixture/jobs",
+          "x-csrf-token": "fixture-csrf"
+        }
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://example.com/Fixture/job/Fallback%20Title/1-en_US/",
+        "title": "Engineer 1",
+        "description": null,
+        "locations": [
+          "Zurich"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": {
+          "id": "1",
+          "brand": "Fixture",
+          "job_function": [
+            "Research"
+          ],
+          "business_unit": [
+            "Systems"
+          ],
+          "division": [
+            "Europe"
+          ],
+          "currency": [
+            "CHF"
+          ]
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "error": false
+  }
+]

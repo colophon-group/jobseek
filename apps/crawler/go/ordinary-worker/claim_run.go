@@ -310,6 +310,8 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		discovery, fetchErr = FetchJobStreetHTTP(ctx, http.client, profile, task.Config, pauseRich)
 	} else if profile.Profile == "rss.successfactors-legacy-session-items/v1" {
 		discovery, fetchErr = FetchSuccessFactorsLegacyHTTP(ctx, http.client, profile, task.Config, pauseRich)
+	} else if queue.RSSRMKProfile(profile.Profile) {
+		discovery, fetchErr = FetchSuccessFactorsRMKHTTP(ctx, http.client, profile, task.Config, pauseRich)
 	} else if queue.LocalizedHTTPProvider(profile.Provider) {
 		discovery, fetchErr = FetchLocalizedHTTPProviders(ctx, http.client, profile, task.Config, pauseRich)
 	} else if queue.LastHTTPProvider(profile.Provider) {
@@ -519,7 +521,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		}
 		if response.reserved {
 			initial := profile.Endpoint
-			if profile.Provider == "rss" && (profile.Profile == "rss.successfactors-legacy-session-items/v1" || profile.RSSPagination != nil || profile.RSSDetailEnrichment) || queue.SecondaryProvider(profile.Provider) || profile.Profile == "rss.hr_manager-skip/v1" || profile.Profile == "rss.hr_manager-items/v1" {
+			if profile.Provider == "rss" && (queue.RSSRMKProfile(profile.Profile) || profile.Profile == "rss.successfactors-legacy-session-items/v1" || profile.RSSPagination != nil || profile.RSSDetailEnrichment) || queue.SecondaryProvider(profile.Provider) || profile.Profile == "rss.hr_manager-skip/v1" || profile.Profile == "rss.hr_manager-items/v1" {
 				initial = response.endpoint
 			}
 			if profile.Provider == "dom" || profile.Provider == "mokahr" || profile.Provider == "almacareer" || profile.Provider == "eightfold" || profile.Provider == "inline" || profile.Provider == "beisen" || profile.Provider == "api_sniffer" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "oracle_hcm" || profile.Provider == "icims" || profile.Provider == "phenom" || profile.Provider == "nextdata" {
