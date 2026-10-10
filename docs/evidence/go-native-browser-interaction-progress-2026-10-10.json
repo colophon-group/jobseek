@@ -1,6 +1,6 @@
 {
   "schema": "jobseek.go-native-grouped-progress/v1",
-  "observed_at_utc": "2026-10-10T13:04:03.088491+00:00",
+  "observed_at_utc": "2026-10-10T14:02:03.002432+00:00",
   "status": "local committed interaction candidate; public mismatches remain; no production admission or delivery",
   "parent_candidate_pr": "https://github.com/colophon-group/jobseek/pull/10401",
   "parent_version": "0.13.1004",
@@ -24,7 +24,7 @@
   "checks": {
     "contracts_full_race": "PASS11.371s",
     "pilot_full_race": "PASS8.918s after all result guard fixes",
-    "physical_pinned_macos_arm64": "11 isolated interaction cases PASS1.87s, including mouse-down click and page-changing collector; private log sha2565f14bc3f653d63c3bd7445fdc77919fa7232eee0e19e7ee33ac066d25b99be77",
+    "physical_pinned_macos_arm64": "13 isolated interaction cases PASS, including delegated ancestor click, mouse-down click, page-changing collector and history transition; private log sha25681c21032df072c6d85849c2a07e5922d14165044b0df2a8b983fc342b1328cb3",
     "physical_linux": "pending original integration target includes new suite on both architectures",
     "real_required_PostgreSQL_Redis": {
       "cold_retirement_cases": 15,

@@ -41,7 +41,7 @@ and one each Njoyn, Candidatus, Workday and Amazon. This delivered batch adds
 
 The next local batch combines **click, attached/detached wait, repeat and page
 collection**, plus **encrypted initial HTTP API responses**. The browser group
-has 26 canonical candidates, 30 real database/queue cases and 12 physical macOS
+has 26 canonical candidates, 30 real database/queue cases and 13 physical macOS
 cases; public comparison initially passed 18 candidates with eight unresolved
 outcomes; JBS now passes with 134 exact original URLs, and Pictet has 58 exact
 same-document original parser URLs with independent session-token provenance.

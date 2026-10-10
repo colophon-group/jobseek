@@ -46,7 +46,7 @@ func TestLightpandaDocumentInteractionsIntegration(t *testing.T) {
 	if runtime.GOOS == "darwin" {
 		address = "127.0.0.1"
 	}
-	for _, mode := range []string{"navigation", "later-publisher", "no-progress", "cap", "repeat", "has-text-click", "mouse-down-click", "wait-attached-detached", "missing-required", "missing-optional", "page-size", "history-transition"} {
+	for _, mode := range []string{"navigation", "later-publisher", "no-progress", "cap", "repeat", "has-text-click", "mouse-down-click", "delegated-click", "wait-attached-detached", "missing-required", "missing-optional", "page-size", "history-transition"} {
 		t.Run(mode, func(t *testing.T) {
 			certificate, ca := dayforceOriginTLS(t)
 			var mu sync.Mutex
@@ -81,6 +81,8 @@ func TestLightpandaDocumentInteractionsIntegration(t *testing.T) {
 					html += `<button onclick="document.body.dataset.wrong='1'">Other</button><button onclick="document.body.dataset.clicked='1'">  Load   MORE </button>`
 				case "mouse-down-click":
 					html += `<button id="dropdown" onmousedown="this.dataset.down='1'" onclick="if(this.dataset.entered==='1'&&this.dataset.down==='1')document.body.dataset.opened='1'">Open</button><script>document.querySelector('#dropdown').addEventListener('mouseover',function(){this.dataset.entered='1'})</script>`
+				case "delegated-click":
+					html += `<ul id="menu"><li id="item">50</li></ul><script>document.querySelector("#menu").addEventListener("click",e=>{if(e.target.id==="item")document.body.dataset.delegated="1"})</script>`
 				case "history-transition":
 					html += `<button id="history" onclick="history.replaceState({},'', '/page/1?page=2');document.body.dataset.history='1'">Next</button>`
 				case "wait-attached-detached":
@@ -109,6 +111,8 @@ func TestLightpandaDocumentInteractionsIntegration(t *testing.T) {
 				pipeline = []actions.Action{{Kind: "click", Selector: `button:has-text("load more")`, TimeoutMS: 5000, Required: true}}
 			case "mouse-down-click":
 				pipeline = []actions.Action{{Kind: "click", Selector: "#dropdown", TimeoutMS: 5000, Required: true}}
+			case "delegated-click":
+				pipeline = []actions.Action{{Kind: "click", Selector: "#item", TimeoutMS: 5000, Required: true}}
 			case "history-transition":
 				pipeline = []actions.Action{{Kind: "click", Selector: "#history", TimeoutMS: 5000, Required: true}}
 			case "wait-attached-detached":
@@ -164,6 +168,10 @@ func TestLightpandaDocumentInteractionsIntegration(t *testing.T) {
 			case "mouse-down-click":
 				if !strings.Contains(html, `data-opened="1"`) {
 					t.Fatal("click lost the mouse-down dropdown transition")
+				}
+			case "delegated-click":
+				if !strings.Contains(html, `data-delegated="1"`) {
+					t.Fatal("click did not reach ancestor handler")
 				}
 			case "wait-attached-detached":
 				if !strings.Contains(html, `id="new"`) || strings.Contains(html, `id="old"`) {
