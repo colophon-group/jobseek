@@ -63,7 +63,7 @@ func ValidateDirectConfig(config Object) error {
 
 func directEncoding(label string) bool {
 	switch strings.ToLower(strings.ReplaceAll(label, "_", "-")) {
-	case "utf-8", "utf8", "iso-8859-1", "latin-1", "latin1", "windows-1252", "cp1252":
+	case "utf-8", "utf8", "iso-8859-1", "latin-1", "latin1", "windows-1252", "cp1252", "euc-jp":
 		return true
 	}
 	return false

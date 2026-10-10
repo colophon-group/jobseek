@@ -65,6 +65,9 @@ func BrowserReplayOptionsFromMetadata(boardURL, raw string) (BrowserReplayOption
 	if !ok || m["browser"] != true {
 		return o, ErrOptions
 	}
+	if _, present := m["post_data_refresh"]; present {
+		return o, ErrOptions
+	}
 	if _, present := m["response_decrypt"]; present {
 		return o, ErrOptions // Captured encrypted response ranking is not qualified.
 	}

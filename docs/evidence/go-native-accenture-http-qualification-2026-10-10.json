@@ -1,0 +1,138 @@
+{
+  "schema": "jobseek.go-native-accenture-http/v1",
+  "observed_at_utc": "2026-10-10T20:10:57.294187+00:00",
+  "candidate_version": "0.13.1006",
+  "base_revision": "26d98bd3fe5afa9f77e5a11358ffcf8ed490dbbf",
+  "profile": "accenture.http-items/v1",
+  "status": "qualified candidate; not merged/deployed/admitted",
+  "scope": "12 original public Accenture inventories through native HTTP, retaining existing browser queue and skip-detail assignment",
+  "route": "https://www.accenture.com/api/accenture/elastic/findjobs",
+  "public_inventories": {
+    "boards": 12,
+    "jobs": 31752,
+    "original_API_requests_and_fields_match": true,
+    "original_worker_text_coercion_and_HTML_normalization_match": true,
+    "worker_log_sha256": "fd67f7ffc4da9eb51cba29a96f554347029c467192fe867864d5ef6dced8748e",
+    "normalization_oracle_sha256": "b2ca667db48b3e63a1c65ea37ccc8db557e171745d816bac1f530deff26489c6",
+    "original_source_revision": "17a3c03eb9e7c053d2b891195993d0d235ff8f54",
+    "normalizer_source_sha256": "a0df612c0f83381305bb25b71ed07e252d0e9cd7a7e4678a4d5ae2f391f671a0",
+    "text_coercion_source_sha256": "57b54f6d67300d8a538f6d074966dd9716149dcf30a8ee4d017c5bf6daea632d",
+    "captures": [
+      {
+        "file": "native-paired-accenture-careers-au-bounded-public-corpus1-2026-10-09.json",
+        "sha256": "0dbf1f1191add133a63eaf96d129172fae9e29ee0bb84901a3ea99fe22832fbc",
+        "jobs": 275
+      },
+      {
+        "file": "native-paired-accenture-careers-ca-bounded-public-corpus1-2026-10-09.json",
+        "sha256": "ff440696e31915006d7edab3783987ec6fcd4bd597a672ac4779251ab43d6574",
+        "jobs": 212
+      },
+      {
+        "file": "native-paired-accenture-careers-ch-bounded-public-corpus1-2026-10-09.json",
+        "sha256": "283d066e4088f566f4a52a0f79808629b6336fa7b251a47b3315104e33a5249c",
+        "jobs": 22
+      },
+      {
+        "file": "native-paired-accenture-careers-de-bounded-public-corpus1-2026-10-09.json",
+        "sha256": "7913f75ccfab6594cd0cf14498bcffde8536a527871fe44189ea7df21b0f393c",
+        "jobs": 230
+      },
+      {
+        "file": "native-paired-accenture-careers-gb-bounded-public-corpus1-2026-10-09.json",
+        "sha256": "fe50eda474542ed8c67db0a6549de0432a3eec65fb4fcdb2d16a585985239a20",
+        "jobs": 352
+      },
+      {
+        "file": "native-paired-accenture-careers-it-bounded-public-corpus1-2026-10-09.json",
+        "sha256": "a01601c85f30bc2b4f265b40a9eb9dd6b49d9fe8c222d1d6a3ed559a6f95b53c",
+        "jobs": 156
+      },
+      {
+        "file": "native-paired-accenture-careers-jp-bounded-public-corpus1-2026-10-09.json",
+        "sha256": "dab270aa49e14b0d593bae7b0b88b7fa39479d5fa3969ab64416d2bf2eb3380f",
+        "jobs": 309
+      },
+      {
+        "file": "native-paired-accenture-careers-sg-bounded-public-corpus1-2026-10-09.json",
+        "sha256": "6e9c25cd4436f191373ded2b68f553a2bb2fe203585e30d758b8fac1ed468a61",
+        "jobs": 170
+      },
+      {
+        "file": "native-paired-accenture-us-complete-public-corpus1-2026-10-09.json",
+        "sha256": "cf8549199cc306d34810644b86aabc78d90e7f1593d3688da3951a53d876e4a4",
+        "jobs": 952
+      },
+      {
+        "file": "native-paired-accenture-in-initial-scan-public-corpus2-2026-10-09.json",
+        "sha256": "0ed131538246dd2ee7e6051bc50b1432fa96c4c9790884974360bf5fca5ef724",
+        "jobs": 28728
+      },
+      {
+        "file": "native-paired-accenture-careers-fr-bounded-public-corpus3-2026-10-10.json",
+        "sha256": "4aea49ce780886b2c6e4d20720f2307b8731971be87682f62606dc02672d76fa",
+        "jobs": 169
+      },
+      {
+        "file": "native-paired-accenture-careers-br-bounded-public-corpus3-2026-10-10.json",
+        "sha256": "fe91a87134809c82bc4e7d104295f6a3fa5d6403e01cbe30f77f51936574c050",
+        "jobs": 177
+      }
+    ],
+    "scope": "saved immutable anonymous public snapshots; exact current Go API bodies, inventories and normalized worker fields; bootstrap-cookie behavior separately tested synthetically; no new live-public full scan claimed"
+  },
+  "route_corrections": {
+    "accenture-careers-fr": {
+      "language": "fr-fr",
+      "endpoint": "elastic/findjobs",
+      "original_public_jobs": 169
+    },
+    "accenture-careers-br": {
+      "language": "pt-br",
+      "endpoint": "elastic/findjobs",
+      "original_public_jobs": 177
+    },
+    "rejected": "old bare fr/pt findjobs payloads returned empty inventories and were not admitted"
+  },
+  "large_inventory": {
+    "India_jobs": 28728,
+    "API_pages": 100,
+    "projected_inventory_bytes": 124390603,
+    "transport": "native HTTP memory; no renderer frame or larger browser transport"
+  },
+  "mandatory_real_PG_Redis": {
+    "settlement_cases": 3,
+    "cases": [
+      "complete normalized insert and absence",
+      "publisher reservation preserves no-prefix/absence",
+      "later API failure publishes no prefix"
+    ],
+    "result": "PASS2.571s",
+    "cold_retirement_cases": 3,
+    "cold_cases": [
+      "interrupted",
+      "committed-before-ack",
+      "changed-setting rejection"
+    ],
+    "cold_result": "PASS3.775s"
+  },
+  "unit_and_frozen_original": {
+    "original_fields": 40,
+    "original_multipart_requests": 2,
+    "captured_body_variants": 3,
+    "bounded_inventory_cases": 10,
+    "generator_reproduces_exact_bytes": true,
+    "full_API_SDK_race": "PASS9.378s",
+    "cookie_and_retry_tests": "PASS1.790s"
+  },
+  "installed_native_executable": {
+    "profiles": 195,
+    "startup_identity_health_signal_drain_real_PG_Redis": "PASS4.980s"
+  },
+  "remaining": [
+    "exact-head required CI/deploy gate/image parity",
+    "fresh production source census",
+    "supported full ownership activation",
+    "unqualified BrassRing remains excluded"
+  ]
+}

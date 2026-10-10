@@ -84,7 +84,11 @@ func fetchLastHTTPOnce(ctx context.Context, client *http.Client, scope providerR
 	if e = check(jsonld.DecodeDocument(raw, observed.contentType)); e != nil {
 		return nil, headers, observed, e
 	}
-	if response.StatusCode != 200 && (r.Method != "POST" || response.StatusCode < 200 || response.StatusCode >= 300) {
+	accept2xx := r.Method == "POST"
+	if configured, ok := scope.(interface{ AcceptSuccess2xx() bool }); ok {
+		accept2xx = configured.AcceptSuccess2xx()
+	}
+	if response.StatusCode != 200 && (!accept2xx || response.StatusCode < 200 || response.StatusCode >= 300) {
 		return raw, headers, observed, &DiscoveryError{Kind: "http_status", Status: response.StatusCode}
 	}
 	return raw, headers, observed, nil

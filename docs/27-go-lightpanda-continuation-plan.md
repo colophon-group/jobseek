@@ -1,98 +1,75 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1004 delivered, grouped browser/API/RSS continuation
+## Current checkpoint — source1005 delivered, next grouped HTTP batch qualified
 
-[PR #10401](https://github.com/colophon-group/jobseek/pull/10401) merged as
-`17a3c03eb9e7c053d2b891195993d0d235ff8f54`, version **0.13.1004**. Exact-head
-Required CI, Crawler Deploy Gate, installed image parity and physical Lightpanda
-on both Linux architectures passed. The grouped batch extends DOM provider
-inventories and API root arrays for **12 boards**, with 34 original fixtures,
-67 real database/queue cases and 169 public jobs compared against original fields.
+[PR #10403](https://github.com/colophon-group/jobseek/pull/10403) merged as
+`26d98bd3fe5afa9f77e5a11358ffcf8ed490dbbf`, version **0.13.1005**, with **194**
+compiled profiles. Required CI, the actual ready-PR Crawler Deploy Gate,
+installed image parity and physical Lightpanda on Linux amd64/arm64 passed.
+The grouped rollout qualifies **26 additions**: 20 browser inventories, two
+HTTP APIs and four RSS feeds. The five unqualified H3, Slaughter and Lockheed
+boards retain their existing owner. See the
+[explicit qualified cohort](evidence/go-native-source1005-qualified-rollout-2026-10-10.json).
 
-Source1003 ordinary and B0 ownership have retired through the original wrappers;
-independent cold **epoch270** verification preceded the head-bound merge.
-The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38052065286)
-succeeded at attempt one. The [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38052084321)
-succeeded at attempt two: attempt one rejected a running predecessor with a
-sticky OOM flag; the original workflow left that predecessor cold, and the original
-installer recovered it on retry. Independent readback confirms the new exact
-renderer image is running without OOM evidence. Lightpanda **1.0.0**, reverified
-against the official release API October 10, remains pinned by immutable digest.
+The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38067534039)
+succeeded at attempt one. The original [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38067638586)
+succeeded at attempt two after its installer recovered the exact stopped
+predecessor with sticky OOM evidence. Independent readback confirms the new
+renderer is running without that flag. Lightpanda **1.0.0**, checked against the
+official latest stable release on October 10, remains pinned by immutable digest.
+Recurring predecessor OOM observations still require whole-renderer resource
+investigation before final Python retirement.
 
-Independent crawler image, cold-state, exporter and renderer verification pass.
-B0 is active at **epoch271**. The fresh complete census qualifies **7,710 monitors
-and 2,751 detail boards**, covering **1,473,641 of 1,503,925** inspected scheduled
-postings. The original supported full activation has completed. Independent SQL/Redis
-readback matches the exact active plan and projection; all ten exact-image
-writers are running with zero restarts, and all eight HTTP health endpoints pass.
-Forty-two cached-route mismatch boards and one unsupported Eightfold route retain
-their current owner. The first natural sample contains 20 completed scrapes and
-two completed monitor receipts; one receipt was observed between database commit
-and queue acknowledgement. A later natural readback has 49 completed monitors with 49 exact original
-recurring schedules, zero retained completion leases and 108 completed scrapes;
-all ten writer restart counts remain zero. The initial lease cleared naturally.
-These bounded samples do not establish fleet freshness, cost or global
-conservation. See the [portable production proof](evidence/go-native-source1004-production-2026-10-10.json).
+Source1004 ordinary and B0 owners retired through the original wrappers;
+independent cold **epoch272** verification preceded the exact-head merge.
+B0 is independently active at **epoch273**. The complete current census and
+original staging preserve all **7,710 previous monitors and 2,751 detail boards**,
+adding all 26 qualified monitors: **7,736 monitors and 2,751 details**. Actual
+routes cover **1,463,626 of 1,493,835** inspected scheduled postings. Forty-two
+cache-mismatch boards and one unsupported Eightfold route remain outside the
+native detail cohort. Independent staging matches the exact SQL plan and queue
+projection. The original full ordinary activation completed. Independent SQL/Redis readback
+matches the exact active plan and projection; all ten exact-image writers have
+zero restarts and all eight HTTP health endpoints pass. The initial natural
+sample has four completed monitor receipts with four exact recurring schedules,
+zero retained completion leases and fourteen completed scrapes. These bounded
+observations do not prove whole-fleet freshness, cost or global conservation.
+See the [production proof](evidence/go-native-source1005-production-2026-10-10.json).
 
-The complete current monitor census leaves **172** outside Go: DOM111,
-API-sniffer24, Accenture12, BrassRing4, RSS8, inline5, Nextdata2, Oracle HCM2,
-and one each Njoyn, Candidatus, Workday and Amazon. This delivered batch adds
-12 monitor boards without removing any previously admitted board.
+The fresh census leaves **146** monitor boards outside this full staged cohort:
+DOM90, API-sniffer23, Accenture12, BrassRing4, RSS4, inline5, Nextdata2,
+Oracle HCM2, and one each Njoyn, Candidatus, Workday and Amazon.
 
-[Draft PR #10403](https://github.com/colophon-group/jobseek/pull/10403), version
-**0.13.1005**, combines **click, attached/detached wait, repeat and page
-collection**, plus **encrypted initial HTTP API responses**. The browser group
-has 26 canonical candidates, 30 real database/queue cases and 13 physical macOS
-cases; public comparison initially passed 18 candidates with eight unresolved
-outcomes; JBS now passes with 134 exact original URLs, and Pictet has 58 exact
-same-document original parser URLs with independent session-token provenance.
-Five browser candidates remain unqualified. Lufthansa is now qualified through
-its published HTTP API: all 373 exact original German URLs match in one request.
-The real worker settles all 373 URL-only rows and independent detail routes,
-retaining the existing JSON-LD scraper. The reviewed CSV switches that board from
-scrolling DOM discovery to the existing API-sniffer family. English returned 55
-different identities despite the same count and was rejected. See the
-[Lufthansa API proof](evidence/go-native-lufthansa-published-api-2026-10-10.json).
-The encrypted API group adds one other canonical candidate: 15 original decrypt
-fixtures, 18 public jobs with all original fields/request matching, full SDK race
-checks and 18 real database/queue cases pass. Python's optional crypto package is
-absent from the normal frozen runtime; the original oracle uses a separate
-isolated optional decoder, without adding a production dependency. See
-[portable grouped progress](evidence/go-native-browser-interaction-progress-2026-10-10.json).
-The RSS group adds the three CPF Recruiting Marketing boards, with four new
-compiled direct/proxy profiles (194 total). Sixteen original fixtures, all 123
-records in the first public SDK capture and all 124 records plus cookies in a
-fresh worker capture match. Twenty-eight mandatory real PostgreSQL/Redis
-settlement and cold-retirement cases pass. Identical duplicates suppress absence;
-conflicting rows and later-page failures publish no prefix. Explicit description
-enrichment retains downstream scheduling. See the
-[RSS progress proof](evidence/go-native-rss-rmk-progress-2026-10-10.json).
+Candidate **0.13.1006** groups the **12 Accenture HTTP boards**, initial HTTP
+POST-token refresh and Japanese EUC-JP DOM monitor/detail decoding. It has
+195 compiled profiles. Accenture reuses the saved original 31,752-job inventories,
+including the qualified French/Brazilian locale routes, with matching API bodies
+and fields; all 31,752 original worker titles and normalized descriptions also match.
+Three real Accenture settlement cases and three cold-retirement cases pass.
+See [Accenture qualification](evidence/go-native-accenture-http-qualification-2026-10-10.json) and
+[grouped refresh/encoding qualification](evidence/go-native-http-refresh-encoding-qualification-2026-10-10.json).
+POST refresh retains fresh operation cookies, ordered forms, publisher precedence
+and atomic failure; ten real database/queue cases pass. Japanese monitor/detail
+settlement has sixteen passing cases, including the original empty-check transition; refresh/encoding cold reversal has twelve.
+The installed native executable startup, identity, health and signal-drain test
+passes with all 195 profiles. This candidate still requires exact-head CI, merge and supported deployment/
+admission. Keep the unresolved BrassRing candidate in [draft #10394](https://github.com/colophon-group/jobseek/pull/10394)
+while moving its qualified Accenture portion into the grouped HTTP batch.
 
-The published draft head passed physical Lightpanda on Linux amd64 and arm64.
-The latest source changes still require exact-head CI and parity checks. Current
-candidate scope is 31 boards: 25 browser, two API and four RSS. Ecom additionally
-qualifies all 54 original RSS records and collision identities, with real
-PostgreSQL/Redis settlement and exact original normalized descriptions. Its
-historical migration receipt remains unchanged and fingerprint-bound; an active
-unimplemented migration marker remains rejected. See the
-[Ecom proof](evidence/go-native-ecom-retained-receipt-2026-10-10.json). Advance the
-**26 qualified additions together** (20 browser, two API and four RSS), preserving
-the entire previously admitted fleet. Keep H3, Slaughter and the three Lockheed
-boards on their current owner until their public results qualify. The fresh
-complete source census must record those five explicit qualification exclusions;
-the supported staging cohort must omit them. This selects a verified rollout
-subset and does not grant those unresolved boards native ownership. Resolve them
-while continuing the remaining grouped ports. H3’s complete published sitemap has
-zero job URLs and cannot replace its six-job monitor; enabling stylesheet loading
-also failed to fix H3 and Slaughter and was not adopted. Lufthansa additionally
-passes a real Go request with the pinned CA bundle and verified public egress.
+Complete and publish the next grouped batch, preserving the full active cohort;
+then continue shared DOM
+and API pagination and the remaining enabled profiles together. Prove natural
+fleet freshness, queue conservation, comparable whole-service CPU/RAM/density/
+cost and the supported reversal window. Retire production Python, Playwright,
+Chromium and runtime-only assets after replacement authority is established,
+retaining useful isolated offline tooling and every enabled board. The full
+migration goal remains active and incomplete.
 
-Continue the remaining shared browser/API pagination options and enabled
-monitor/detail profiles in broad batches. Prove fleet freshness, conservation,
-comparable whole-service resource/cost measurements and the supported reversal
-window, then retire production Python, Playwright, Chromium and runtime-only
-assets while retaining useful isolated offline tooling. The full migration goal
-remains active and incomplete.
+Source1004 is historical: [PR #10401](https://github.com/colophon-group/jobseek/pull/10401),
+source `17a3c03eb9e7c053d2b891195993d0d235ff8f54`, delivered its twelve-board
+DOM/API batch and full epoch271 cohort before supported retirement. Its
+[production proof](evidence/go-native-source1004-production-2026-10-10.json)
+retains the exact identities and bounded natural samples.
 
 ## Historical checkpoint — source1003 active before supported retirement
 
