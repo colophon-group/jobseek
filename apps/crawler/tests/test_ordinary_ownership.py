@@ -658,6 +658,8 @@ def test_notion_detail_projection_rejects_foreign_workspace_and_wildcard(domain,
         "rss.rendered-wp_job_manager-skip/v1",
         "rss.rendered-wp_job_manager-items/v1",
         "api_sniffer.browser-items/v1",
+        "darwinbox.session-items/v1",
+        "bytedance.partition-items/v1",
     ],
 )
 def test_rendered_monitor_projection_preserves_exact_worker_boundary(profile):

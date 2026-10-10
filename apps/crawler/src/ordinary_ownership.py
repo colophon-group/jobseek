@@ -133,6 +133,8 @@ def ownership_projection(payload: str) -> str:
                     "nextdata.rendered-items/v1",
                     "nextdata.rendered-urls/v1",
                     "api_sniffer.browser-items/v1",
+                    "darwinbox.session-items/v1",
+                    "bytedance.partition-items/v1",
                 }
                 else "simple"
             )
