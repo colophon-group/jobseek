@@ -35,6 +35,9 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 	if err != nil {
 		return fail()
 	}
+	if md["prospective_board"] != nil && string(md["prospective_board"]) != "null" {
+		return fail() // Original CareerCenter proof supports static rich rows only.
+	}
 	options := map[string]any{}
 	for _, key := range []string{"render", "browser_backend", "routing_revision", "wait", "wait_fallback", "timeout", "actions", "request_headers", "proxy", "skip_ssl", "channel", "stealth", "headless", "persistent_context", "user_agent", "resource_policy", "transport_attempts", "encoding"} {
 		if raw, ok := md[key]; ok {

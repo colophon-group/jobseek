@@ -1,0 +1,546 @@
+[
+  {
+    "name": "cox-careers-au/one",
+    "board_url": "https://cox.connxcareers.com/",
+    "metadata": {
+      "api_url": "https://cox.connxcareers.com/api/vacancies",
+      "method": "GET",
+      "json_path": "$",
+      "browser": false,
+      "url_template": "https://cox.connxcareers.com/job/details/{guid}",
+      "fields": {
+        "title": "name",
+        "description": "summary",
+        "employment_type": "employmentType",
+        "locations": "location",
+        "metadata.team": "department"
+      },
+      "scraper_type": "skip"
+    },
+    "expected": [
+      {
+        "url": "https://cox.connxcareers.com/job/details/00112233-4455-6677-8899-aabbccddeeff",
+        "title": "Senior Engineer",
+        "description": "<p>Build systems.</p>",
+        "locations": [
+          "Sydney"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "localizations": null,
+        "extras": {},
+        "metadata": {
+          "team": "Engineering"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "url_only": false,
+    "responses": [
+      {
+        "page": 0,
+        "status": 200,
+        "data": [
+          {
+            "guid": "00112233-4455-6677-8899-aabbccddeeff",
+            "name": "Senior Engineer",
+            "location": "Sydney",
+            "summary": "<p>Build systems.</p>",
+            "detail": "<p>Work with researchers.</p>",
+            "department": "Engineering",
+            "employmentType": "Full-time",
+            "code": "R-101",
+            "dateAdvertised": "2026-10-10",
+            "advertisingCloseDate": "2026-11-10",
+            "availableDate": "2026-10-12"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "cox-careers-au/two",
+    "board_url": "https://cox.connxcareers.com/",
+    "metadata": {
+      "api_url": "https://cox.connxcareers.com/api/vacancies",
+      "method": "GET",
+      "json_path": "$",
+      "browser": false,
+      "url_template": "https://cox.connxcareers.com/job/details/{guid}",
+      "fields": {
+        "title": "name",
+        "description": "summary",
+        "employment_type": "employmentType",
+        "locations": "location",
+        "metadata.team": "department"
+      },
+      "scraper_type": "skip"
+    },
+    "expected": [
+      {
+        "url": "https://cox.connxcareers.com/job/details/00112233-4455-6677-8899-aabbccddeeff",
+        "title": "Senior Engineer",
+        "description": "<p>Build systems.</p>",
+        "locations": [
+          "Sydney"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "localizations": null,
+        "extras": {},
+        "metadata": {
+          "team": "Engineering"
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://cox.connxcareers.com/job/details/11223344-5566-7788-99aa-bbccddeeff00",
+        "title": "Research Engineer",
+        "description": "<p>Build systems.</p>",
+        "locations": [
+          "Sydney"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "localizations": null,
+        "extras": {},
+        "metadata": {
+          "team": "Engineering"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "url_only": false,
+    "responses": [
+      {
+        "page": 0,
+        "status": 200,
+        "data": [
+          {
+            "guid": "00112233-4455-6677-8899-aabbccddeeff",
+            "name": "Senior Engineer",
+            "location": "Sydney",
+            "summary": "<p>Build systems.</p>",
+            "detail": "<p>Work with researchers.</p>",
+            "department": "Engineering",
+            "employmentType": "Full-time",
+            "code": "R-101",
+            "dateAdvertised": "2026-10-10",
+            "advertisingCloseDate": "2026-11-10",
+            "availableDate": "2026-10-12"
+          },
+          {
+            "guid": "11223344-5566-7788-99aa-bbccddeeff00",
+            "name": "Research Engineer",
+            "location": "Sydney",
+            "summary": "<p>Build systems.</p>",
+            "detail": "<p>Work with researchers.</p>",
+            "department": "Engineering",
+            "employmentType": "Full-time",
+            "code": "R-101",
+            "dateAdvertised": "2026-10-10",
+            "advertisingCloseDate": "2026-11-10",
+            "availableDate": "2026-10-12"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "cox-careers-au/empty",
+    "board_url": "https://cox.connxcareers.com/",
+    "metadata": {
+      "api_url": "https://cox.connxcareers.com/api/vacancies",
+      "method": "GET",
+      "json_path": "$",
+      "browser": false,
+      "url_template": "https://cox.connxcareers.com/job/details/{guid}",
+      "fields": {
+        "title": "name",
+        "description": "summary",
+        "employment_type": "employmentType",
+        "locations": "location",
+        "metadata.team": "department"
+      },
+      "scraper_type": "skip"
+    },
+    "expected": [],
+    "truncated": false,
+    "url_only": false,
+    "responses": [
+      {
+        "page": 0,
+        "status": 200,
+        "data": []
+      }
+    ]
+  },
+  {
+    "name": "cox-careers-au/nonobjects-filtered",
+    "board_url": "https://cox.connxcareers.com/",
+    "metadata": {
+      "api_url": "https://cox.connxcareers.com/api/vacancies",
+      "method": "GET",
+      "json_path": "$",
+      "browser": false,
+      "url_template": "https://cox.connxcareers.com/job/details/{guid}",
+      "fields": {
+        "title": "name",
+        "description": "summary",
+        "employment_type": "employmentType",
+        "locations": "location",
+        "metadata.team": "department"
+      },
+      "scraper_type": "skip"
+    },
+    "expected": [
+      {
+        "url": "https://cox.connxcareers.com/job/details/00112233-4455-6677-8899-aabbccddeeff",
+        "title": "Senior Engineer",
+        "description": "<p>Build systems.</p>",
+        "locations": [
+          "Sydney"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "localizations": null,
+        "extras": {},
+        "metadata": {
+          "team": "Engineering"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "url_only": false,
+    "responses": [
+      {
+        "page": 0,
+        "status": 200,
+        "data": [
+          null,
+          "unrelated",
+          {
+            "guid": "00112233-4455-6677-8899-aabbccddeeff",
+            "name": "Senior Engineer",
+            "location": "Sydney",
+            "summary": "<p>Build systems.</p>",
+            "detail": "<p>Work with researchers.</p>",
+            "department": "Engineering",
+            "employmentType": "Full-time",
+            "code": "R-101",
+            "dateAdvertised": "2026-10-10",
+            "advertisingCloseDate": "2026-11-10",
+            "availableDate": "2026-10-12"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "fresenius-kabi-australia-new-zealand/one",
+    "board_url": "https://freseniuskabi.connxcareers.com/job/viewjobs",
+    "metadata": {
+      "api_url": "https://freseniuskabi.connxcareers.com/api/vacancies",
+      "method": "GET",
+      "json_path": "$",
+      "browser": false,
+      "request_headers": {
+        "referer": "https://freseniuskabi.connxcareers.com/",
+        "accept": "application/json, text/plain, */*"
+      },
+      "url_template": "https://freseniuskabi.connxcareers.com/job/details/{guid}",
+      "fields": {
+        "title": "name",
+        "description": "detail",
+        "locations": "location",
+        "employment_type": "employmentType",
+        "date_posted": "dateAdvertised",
+        "valid_through": "advertisingCloseDate",
+        "metadata.department": "department",
+        "metadata.code": "code",
+        "metadata.available_date": "availableDate"
+      },
+      "scraper_type": "skip"
+    },
+    "expected": [
+      {
+        "url": "https://freseniuskabi.connxcareers.com/job/details/00112233-4455-6677-8899-aabbccddeeff",
+        "title": "Senior Engineer",
+        "description": "<p>Work with researchers.</p>",
+        "locations": [
+          "Sydney"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "localizations": null,
+        "extras": {
+          "valid_through": "2026-11-10"
+        },
+        "metadata": {
+          "department": "Engineering",
+          "code": "R-101",
+          "available_date": "2026-10-12"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "url_only": false,
+    "responses": [
+      {
+        "page": 0,
+        "status": 200,
+        "data": [
+          {
+            "guid": "00112233-4455-6677-8899-aabbccddeeff",
+            "name": "Senior Engineer",
+            "location": "Sydney",
+            "summary": "<p>Build systems.</p>",
+            "detail": "<p>Work with researchers.</p>",
+            "department": "Engineering",
+            "employmentType": "Full-time",
+            "code": "R-101",
+            "dateAdvertised": "2026-10-10",
+            "advertisingCloseDate": "2026-11-10",
+            "availableDate": "2026-10-12"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "fresenius-kabi-australia-new-zealand/two",
+    "board_url": "https://freseniuskabi.connxcareers.com/job/viewjobs",
+    "metadata": {
+      "api_url": "https://freseniuskabi.connxcareers.com/api/vacancies",
+      "method": "GET",
+      "json_path": "$",
+      "browser": false,
+      "request_headers": {
+        "referer": "https://freseniuskabi.connxcareers.com/",
+        "accept": "application/json, text/plain, */*"
+      },
+      "url_template": "https://freseniuskabi.connxcareers.com/job/details/{guid}",
+      "fields": {
+        "title": "name",
+        "description": "detail",
+        "locations": "location",
+        "employment_type": "employmentType",
+        "date_posted": "dateAdvertised",
+        "valid_through": "advertisingCloseDate",
+        "metadata.department": "department",
+        "metadata.code": "code",
+        "metadata.available_date": "availableDate"
+      },
+      "scraper_type": "skip"
+    },
+    "expected": [
+      {
+        "url": "https://freseniuskabi.connxcareers.com/job/details/00112233-4455-6677-8899-aabbccddeeff",
+        "title": "Senior Engineer",
+        "description": "<p>Work with researchers.</p>",
+        "locations": [
+          "Sydney"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "localizations": null,
+        "extras": {
+          "valid_through": "2026-11-10"
+        },
+        "metadata": {
+          "department": "Engineering",
+          "code": "R-101",
+          "available_date": "2026-10-12"
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://freseniuskabi.connxcareers.com/job/details/11223344-5566-7788-99aa-bbccddeeff00",
+        "title": "Research Engineer",
+        "description": "<p>Work with researchers.</p>",
+        "locations": [
+          "Sydney"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "localizations": null,
+        "extras": {
+          "valid_through": "2026-11-10"
+        },
+        "metadata": {
+          "department": "Engineering",
+          "code": "R-101",
+          "available_date": "2026-10-12"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "url_only": false,
+    "responses": [
+      {
+        "page": 0,
+        "status": 200,
+        "data": [
+          {
+            "guid": "00112233-4455-6677-8899-aabbccddeeff",
+            "name": "Senior Engineer",
+            "location": "Sydney",
+            "summary": "<p>Build systems.</p>",
+            "detail": "<p>Work with researchers.</p>",
+            "department": "Engineering",
+            "employmentType": "Full-time",
+            "code": "R-101",
+            "dateAdvertised": "2026-10-10",
+            "advertisingCloseDate": "2026-11-10",
+            "availableDate": "2026-10-12"
+          },
+          {
+            "guid": "11223344-5566-7788-99aa-bbccddeeff00",
+            "name": "Research Engineer",
+            "location": "Sydney",
+            "summary": "<p>Build systems.</p>",
+            "detail": "<p>Work with researchers.</p>",
+            "department": "Engineering",
+            "employmentType": "Full-time",
+            "code": "R-101",
+            "dateAdvertised": "2026-10-10",
+            "advertisingCloseDate": "2026-11-10",
+            "availableDate": "2026-10-12"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "fresenius-kabi-australia-new-zealand/empty",
+    "board_url": "https://freseniuskabi.connxcareers.com/job/viewjobs",
+    "metadata": {
+      "api_url": "https://freseniuskabi.connxcareers.com/api/vacancies",
+      "method": "GET",
+      "json_path": "$",
+      "browser": false,
+      "request_headers": {
+        "referer": "https://freseniuskabi.connxcareers.com/",
+        "accept": "application/json, text/plain, */*"
+      },
+      "url_template": "https://freseniuskabi.connxcareers.com/job/details/{guid}",
+      "fields": {
+        "title": "name",
+        "description": "detail",
+        "locations": "location",
+        "employment_type": "employmentType",
+        "date_posted": "dateAdvertised",
+        "valid_through": "advertisingCloseDate",
+        "metadata.department": "department",
+        "metadata.code": "code",
+        "metadata.available_date": "availableDate"
+      },
+      "scraper_type": "skip"
+    },
+    "expected": [],
+    "truncated": false,
+    "url_only": false,
+    "responses": [
+      {
+        "page": 0,
+        "status": 200,
+        "data": []
+      }
+    ]
+  },
+  {
+    "name": "fresenius-kabi-australia-new-zealand/nonobjects-filtered",
+    "board_url": "https://freseniuskabi.connxcareers.com/job/viewjobs",
+    "metadata": {
+      "api_url": "https://freseniuskabi.connxcareers.com/api/vacancies",
+      "method": "GET",
+      "json_path": "$",
+      "browser": false,
+      "request_headers": {
+        "referer": "https://freseniuskabi.connxcareers.com/",
+        "accept": "application/json, text/plain, */*"
+      },
+      "url_template": "https://freseniuskabi.connxcareers.com/job/details/{guid}",
+      "fields": {
+        "title": "name",
+        "description": "detail",
+        "locations": "location",
+        "employment_type": "employmentType",
+        "date_posted": "dateAdvertised",
+        "valid_through": "advertisingCloseDate",
+        "metadata.department": "department",
+        "metadata.code": "code",
+        "metadata.available_date": "availableDate"
+      },
+      "scraper_type": "skip"
+    },
+    "expected": [
+      {
+        "url": "https://freseniuskabi.connxcareers.com/job/details/00112233-4455-6677-8899-aabbccddeeff",
+        "title": "Senior Engineer",
+        "description": "<p>Work with researchers.</p>",
+        "locations": [
+          "Sydney"
+        ],
+        "employment_type": "Full-time",
+        "job_location_type": null,
+        "date_posted": "2026-10-10",
+        "base_salary": null,
+        "localizations": null,
+        "extras": {
+          "valid_through": "2026-11-10"
+        },
+        "metadata": {
+          "department": "Engineering",
+          "code": "R-101",
+          "available_date": "2026-10-12"
+        },
+        "source_identity": null
+      }
+    ],
+    "truncated": false,
+    "url_only": false,
+    "responses": [
+      {
+        "page": 0,
+        "status": 200,
+        "data": [
+          null,
+          "unrelated",
+          {
+            "guid": "00112233-4455-6677-8899-aabbccddeeff",
+            "name": "Senior Engineer",
+            "location": "Sydney",
+            "summary": "<p>Build systems.</p>",
+            "detail": "<p>Work with researchers.</p>",
+            "department": "Engineering",
+            "employmentType": "Full-time",
+            "code": "R-101",
+            "dateAdvertised": "2026-10-10",
+            "advertisingCloseDate": "2026-11-10",
+            "availableDate": "2026-10-12"
+          }
+        ]
+      }
+    ]
+  }
+]

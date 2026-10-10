@@ -1,6 +1,7 @@
 package dom
 
 import (
+	"encoding/json"
 	"errors"
 	stdhtml "html"
 	"io"
@@ -25,6 +26,7 @@ type ListingConfig struct {
 	FetchURL                             string
 	BoardURL                             string
 	Proofs                               *ListingProofs
+	ProviderProof                        *ListingProviderProof
 	JoinProofURL                         func(string, string) (string, error)
 }
 
@@ -34,12 +36,31 @@ type ListingConfig struct {
 func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 	c := ListingConfig{Attempts: 3, BoardURL: endpoint}
 	allowed := map[string]bool{}
+	allowed["rich_rows"] = true
+	for _, key := range ListingProviderKeys {
+		allowed[key] = true
+	}
 	for _, key := range []string{"onclick_selector", "script_json_links", "include_board_url", "require_jsonld_jobposting", "advertised_total", "empty_states", "empty_selector", "empty_text", "url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "url_transform"} {
 		allowed[key] = true
 	}
 	for key := range config {
 		if !allowed[key] {
 			return c, errors.New("unsupported static DOM listing option")
+		}
+	}
+	var providerErr error
+	c.ProviderProof, providerErr = listingProviderOptions(config)
+	if providerErr != nil {
+		return c, providerErr
+	}
+	if value := config["rich_rows"]; value != nil {
+		raw, ok := value.(json.RawMessage)
+		if !ok {
+			return c, ErrRichRows
+		}
+		c.RichRows, providerErr = RichRowsOptions(raw)
+		if providerErr != nil {
+			return c, providerErr
 		}
 	}
 	for key, target := range map[string]*bool{"include_board_url": &c.IncludeBoardURL, "require_jsonld_jobposting": &c.RequireJSONLD} {

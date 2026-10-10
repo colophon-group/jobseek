@@ -1,0 +1,1202 @@
+[
+  {
+    "name": "prospective-complete",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/?lang=de",
+      "metadata": {
+        "prospective_board": "1000973",
+        "url_filter": "^https://jobs\\.example\\.com/(?:[^/?#]+/)+[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}/?(?:[?#].*)?$",
+        "rich_rows": {
+          "row_selector": "#jobs-list .job",
+          "link_selector": "a.job-title[href]",
+          "total_selector": ".jobs-total .total",
+          "location_selectors": [
+            ".place-of-work"
+          ]
+        },
+        "empty_states": [
+          {
+            "selector": "body.career-center:has(#jobs-list) .jobs-total .total",
+            "exact_text": "0",
+            "required_link_selector": "link[href*='careercenter/1000973/assets/']",
+            "required_link_url_pattern": "^(?:https://jobs\\.example\\.com|https://ohws\\.prospective\\.ch)/(?:public/v[12]/)?careercenter/1000973/assets/[^?#]+(?:[?#].*)?$",
+            "forbidden_link_selector": "#jobs-list a.job-title[href]"
+          }
+        ],
+        "prospective_canonical_path": "/offene-stellen/job/",
+        "scraper_type": "dom"
+      }
+    },
+    "response": "\n    <html lang=\"de\"><head>\n      <link href=\"/careercenter/1000973/assets/css/company.css\" rel=\"stylesheet\">\n    </head><body class=\"career-center\">\n      <header><h1 class=\"jobs-total\"><span class=\"total\">2</span> Jobs</h1></header>\n      <div id=\"jobs-list\">\n        <div class=\"job\">\n          <a class=\"job-title\" href=\"/offene-stellen/engineer/268ceacb-05c3-4a11-a8a0-80b078a3f4e4\">\n            Platform Engineer\n          </a>\n          <span class=\"place-of-work\">Bern oder Zürich</span>\n        </div>\n        <div class=\"job\">\n          <a class=\"job-title\"\n             href=\"/emplois-vacantes/analyste/5f1e0316-6225-4e57-b40c-cb605e046331\">\n            Analyste\n          </a>\n          <span class=\"place-of-work\">Bern</span>\n        </div>\n      </div>\n    </body></html>\n    ",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/?lang=de",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "\n    <html lang=\"de\"><head>\n      <link href=\"/careercenter/1000973/assets/css/company.css\" rel=\"stylesheet\">\n    </head><body class=\"career-center\">\n      <header><h1 class=\"jobs-total\"><span class=\"total\">2</span> Jobs</h1></header>\n      <div id=\"jobs-list\">\n        <div class=\"job\">\n          <a class=\"job-title\" href=\"/offene-stellen/engineer/268ceacb-05c3-4a11-a8a0-80b078a3f4e4\">\n            Platform Engineer\n          </a>\n          <span class=\"place-of-work\">Bern oder Zürich</span>\n        </div>\n        <div class=\"job\">\n          <a class=\"job-title\"\n             href=\"/emplois-vacantes/analyste/5f1e0316-6225-4e57-b40c-cb605e046331\">\n            Analyste\n          </a>\n          <span class=\"place-of-work\">Bern</span>\n        </div>\n      </div>\n    </body></html>\n    "
+        }
+      }
+    ],
+    "expected": [
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/268ceacb-05c3-4a11-a8a0-80b078a3f4e4",
+        "title": "Platform Engineer",
+        "description": null,
+        "locations": [
+          "Bern oder Zürich"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/5f1e0316-6225-4e57-b40c-cb605e046331",
+        "title": "Analyste",
+        "description": null,
+        "locations": [
+          "Bern"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      }
+    ],
+    "status": "complete"
+  },
+  {
+    "name": "prospective-uppercase-uuid",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/?lang=de",
+      "metadata": {
+        "prospective_board": "1000973",
+        "url_filter": "^https://jobs\\.example\\.com/(?:[^/?#]+/)+[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}/?(?:[?#].*)?$",
+        "rich_rows": {
+          "row_selector": "#jobs-list .job",
+          "link_selector": "a.job-title[href]",
+          "total_selector": ".jobs-total .total",
+          "location_selectors": [
+            ".place-of-work"
+          ]
+        },
+        "empty_states": [
+          {
+            "selector": "body.career-center:has(#jobs-list) .jobs-total .total",
+            "exact_text": "0",
+            "required_link_selector": "link[href*='careercenter/1000973/assets/']",
+            "required_link_url_pattern": "^(?:https://jobs\\.example\\.com|https://ohws\\.prospective\\.ch)/(?:public/v[12]/)?careercenter/1000973/assets/[^?#]+(?:[?#].*)?$",
+            "forbidden_link_selector": "#jobs-list a.job-title[href]"
+          }
+        ],
+        "prospective_canonical_path": "/offene-stellen/job/",
+        "scraper_type": "dom"
+      }
+    },
+    "response": "\n    <html lang=\"de\"><head>\n      <link href=\"/careercenter/1000973/assets/css/company.css\" rel=\"stylesheet\">\n    </head><body class=\"career-center\">\n      <header><h1 class=\"jobs-total\"><span class=\"total\">2</span> Jobs</h1></header>\n      <div id=\"jobs-list\">\n        <div class=\"job\">\n          <a class=\"job-title\" href=\"/offene-stellen/engineer/268ceacb-05c3-4a11-a8a0-80b078a3f4e4\">\n            Platform Engineer\n          </a>\n          <span class=\"place-of-work\">Bern oder Zürich</span>\n        </div>\n        <div class=\"job\">\n          <a class=\"job-title\"\n             href=\"/emplois-vacantes/analyste/5F1E0316-6225-4E57-B40C-CB605E046331\">\n            Analyste\n          </a>\n          <span class=\"place-of-work\">Bern</span>\n        </div>\n      </div>\n    </body></html>\n    ",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/?lang=de",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "\n    <html lang=\"de\"><head>\n      <link href=\"/careercenter/1000973/assets/css/company.css\" rel=\"stylesheet\">\n    </head><body class=\"career-center\">\n      <header><h1 class=\"jobs-total\"><span class=\"total\">2</span> Jobs</h1></header>\n      <div id=\"jobs-list\">\n        <div class=\"job\">\n          <a class=\"job-title\" href=\"/offene-stellen/engineer/268ceacb-05c3-4a11-a8a0-80b078a3f4e4\">\n            Platform Engineer\n          </a>\n          <span class=\"place-of-work\">Bern oder Zürich</span>\n        </div>\n        <div class=\"job\">\n          <a class=\"job-title\"\n             href=\"/emplois-vacantes/analyste/5F1E0316-6225-4E57-B40C-CB605E046331\">\n            Analyste\n          </a>\n          <span class=\"place-of-work\">Bern</span>\n        </div>\n      </div>\n    </body></html>\n    "
+        }
+      }
+    ],
+    "expected": [
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/268ceacb-05c3-4a11-a8a0-80b078a3f4e4",
+        "title": "Platform Engineer",
+        "description": null,
+        "locations": [
+          "Bern oder Zürich"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/5f1e0316-6225-4e57-b40c-cb605e046331",
+        "title": "Analyste",
+        "description": null,
+        "locations": [
+          "Bern"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      }
+    ],
+    "status": "complete"
+  },
+  {
+    "name": "prospective-canonical-asset",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/?lang=de",
+      "metadata": {
+        "prospective_board": "1000973",
+        "url_filter": "^https://jobs\\.example\\.com/(?:[^/?#]+/)+[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}/?(?:[?#].*)?$",
+        "rich_rows": {
+          "row_selector": "#jobs-list .job",
+          "link_selector": "a.job-title[href]",
+          "total_selector": ".jobs-total .total",
+          "location_selectors": [
+            ".place-of-work"
+          ]
+        },
+        "empty_states": [
+          {
+            "selector": "body.career-center:has(#jobs-list) .jobs-total .total",
+            "exact_text": "0",
+            "required_link_selector": "link[href*='careercenter/1000973/assets/']",
+            "required_link_url_pattern": "^(?:https://jobs\\.example\\.com|https://ohws\\.prospective\\.ch)/(?:public/v[12]/)?careercenter/1000973/assets/[^?#]+(?:[?#].*)?$",
+            "forbidden_link_selector": "#jobs-list a.job-title[href]"
+          }
+        ],
+        "prospective_canonical_path": "/offene-stellen/job/",
+        "scraper_type": "dom"
+      }
+    },
+    "response": "\n    <html lang=\"de\"><head>\n      <link href=\"https://ohws.prospective.ch/public/v1/careercenter/1000973/assets/css/company.css\" rel=\"stylesheet\">\n    </head><body class=\"career-center\">\n      <header><h1 class=\"jobs-total\"><span class=\"total\">2</span> Jobs</h1></header>\n      <div id=\"jobs-list\">\n        <div class=\"job\">\n          <a class=\"job-title\" href=\"/offene-stellen/engineer/268ceacb-05c3-4a11-a8a0-80b078a3f4e4\">\n            Platform Engineer\n          </a>\n          <span class=\"place-of-work\">Bern oder Zürich</span>\n        </div>\n        <div class=\"job\">\n          <a class=\"job-title\"\n             href=\"/emplois-vacantes/analyste/5f1e0316-6225-4e57-b40c-cb605e046331\">\n            Analyste\n          </a>\n          <span class=\"place-of-work\">Bern</span>\n        </div>\n      </div>\n    </body></html>\n    ",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/?lang=de",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "\n    <html lang=\"de\"><head>\n      <link href=\"https://ohws.prospective.ch/public/v1/careercenter/1000973/assets/css/company.css\" rel=\"stylesheet\">\n    </head><body class=\"career-center\">\n      <header><h1 class=\"jobs-total\"><span class=\"total\">2</span> Jobs</h1></header>\n      <div id=\"jobs-list\">\n        <div class=\"job\">\n          <a class=\"job-title\" href=\"/offene-stellen/engineer/268ceacb-05c3-4a11-a8a0-80b078a3f4e4\">\n            Platform Engineer\n          </a>\n          <span class=\"place-of-work\">Bern oder Zürich</span>\n        </div>\n        <div class=\"job\">\n          <a class=\"job-title\"\n             href=\"/emplois-vacantes/analyste/5f1e0316-6225-4e57-b40c-cb605e046331\">\n            Analyste\n          </a>\n          <span class=\"place-of-work\">Bern</span>\n        </div>\n      </div>\n    </body></html>\n    "
+        }
+      }
+    ],
+    "expected": [
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/268ceacb-05c3-4a11-a8a0-80b078a3f4e4",
+        "title": "Platform Engineer",
+        "description": null,
+        "locations": [
+          "Bern oder Zürich"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/5f1e0316-6225-4e57-b40c-cb605e046331",
+        "title": "Analyste",
+        "description": null,
+        "locations": [
+          "Bern"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      }
+    ],
+    "status": "complete"
+  },
+  {
+    "name": "prospective-wrong-medium",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/?lang=de",
+      "metadata": {
+        "prospective_board": "1000973",
+        "url_filter": "^https://jobs\\.example\\.com/(?:[^/?#]+/)+[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}/?(?:[?#].*)?$",
+        "rich_rows": {
+          "row_selector": "#jobs-list .job",
+          "link_selector": "a.job-title[href]",
+          "total_selector": ".jobs-total .total",
+          "location_selectors": [
+            ".place-of-work"
+          ]
+        },
+        "empty_states": [
+          {
+            "selector": "body.career-center:has(#jobs-list) .jobs-total .total",
+            "exact_text": "0",
+            "required_link_selector": "link[href*='careercenter/1000973/assets/']",
+            "required_link_url_pattern": "^(?:https://jobs\\.example\\.com|https://ohws\\.prospective\\.ch)/(?:public/v[12]/)?careercenter/1000973/assets/[^?#]+(?:[?#].*)?$",
+            "forbidden_link_selector": "#jobs-list a.job-title[href]"
+          }
+        ],
+        "prospective_canonical_path": "/offene-stellen/job/",
+        "scraper_type": "dom"
+      }
+    },
+    "response": "\n    <html lang=\"de\"><head>\n      <link href=\"/careercenter/1000974/assets/css/company.css\" rel=\"stylesheet\">\n    </head><body class=\"career-center\">\n      <header><h1 class=\"jobs-total\"><span class=\"total\">2</span> Jobs</h1></header>\n      <div id=\"jobs-list\">\n        <div class=\"job\">\n          <a class=\"job-title\" href=\"/offene-stellen/engineer/268ceacb-05c3-4a11-a8a0-80b078a3f4e4\">\n            Platform Engineer\n          </a>\n          <span class=\"place-of-work\">Bern oder Zürich</span>\n        </div>\n        <div class=\"job\">\n          <a class=\"job-title\"\n             href=\"/emplois-vacantes/analyste/5f1e0316-6225-4e57-b40c-cb605e046331\">\n            Analyste\n          </a>\n          <span class=\"place-of-work\">Bern</span>\n        </div>\n      </div>\n    </body></html>\n    ",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/?lang=de",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "\n    <html lang=\"de\"><head>\n      <link href=\"/careercenter/1000974/assets/css/company.css\" rel=\"stylesheet\">\n    </head><body class=\"career-center\">\n      <header><h1 class=\"jobs-total\"><span class=\"total\">2</span> Jobs</h1></header>\n      <div id=\"jobs-list\">\n        <div class=\"job\">\n          <a class=\"job-title\" href=\"/offene-stellen/engineer/268ceacb-05c3-4a11-a8a0-80b078a3f4e4\">\n            Platform Engineer\n          </a>\n          <span class=\"place-of-work\">Bern oder Zürich</span>\n        </div>\n        <div class=\"job\">\n          <a class=\"job-title\"\n             href=\"/emplois-vacantes/analyste/5f1e0316-6225-4e57-b40c-cb605e046331\">\n            Analyste\n          </a>\n          <span class=\"place-of-work\">Bern</span>\n        </div>\n      </div>\n    </body></html>\n    "
+        }
+      }
+    ],
+    "expected": [],
+    "status": "ValueError",
+    "error_kind": "ValueError"
+  },
+  {
+    "name": "prospective-foreign-asset",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/?lang=de",
+      "metadata": {
+        "prospective_board": "1000973",
+        "url_filter": "^https://jobs\\.example\\.com/(?:[^/?#]+/)+[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}/?(?:[?#].*)?$",
+        "rich_rows": {
+          "row_selector": "#jobs-list .job",
+          "link_selector": "a.job-title[href]",
+          "total_selector": ".jobs-total .total",
+          "location_selectors": [
+            ".place-of-work"
+          ]
+        },
+        "empty_states": [
+          {
+            "selector": "body.career-center:has(#jobs-list) .jobs-total .total",
+            "exact_text": "0",
+            "required_link_selector": "link[href*='careercenter/1000973/assets/']",
+            "required_link_url_pattern": "^(?:https://jobs\\.example\\.com|https://ohws\\.prospective\\.ch)/(?:public/v[12]/)?careercenter/1000973/assets/[^?#]+(?:[?#].*)?$",
+            "forbidden_link_selector": "#jobs-list a.job-title[href]"
+          }
+        ],
+        "prospective_canonical_path": "/offene-stellen/job/",
+        "scraper_type": "dom"
+      }
+    },
+    "response": "\n    <html lang=\"de\"><head>\n      <link href=\"https://attacker.example/careercenter/1000973/assets/css/company.css\" rel=\"stylesheet\">\n    </head><body class=\"career-center\">\n      <header><h1 class=\"jobs-total\"><span class=\"total\">2</span> Jobs</h1></header>\n      <div id=\"jobs-list\">\n        <div class=\"job\">\n          <a class=\"job-title\" href=\"/offene-stellen/engineer/268ceacb-05c3-4a11-a8a0-80b078a3f4e4\">\n            Platform Engineer\n          </a>\n          <span class=\"place-of-work\">Bern oder Zürich</span>\n        </div>\n        <div class=\"job\">\n          <a class=\"job-title\"\n             href=\"/emplois-vacantes/analyste/5f1e0316-6225-4e57-b40c-cb605e046331\">\n            Analyste\n          </a>\n          <span class=\"place-of-work\">Bern</span>\n        </div>\n      </div>\n    </body></html>\n    ",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/?lang=de",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "\n    <html lang=\"de\"><head>\n      <link href=\"https://attacker.example/careercenter/1000973/assets/css/company.css\" rel=\"stylesheet\">\n    </head><body class=\"career-center\">\n      <header><h1 class=\"jobs-total\"><span class=\"total\">2</span> Jobs</h1></header>\n      <div id=\"jobs-list\">\n        <div class=\"job\">\n          <a class=\"job-title\" href=\"/offene-stellen/engineer/268ceacb-05c3-4a11-a8a0-80b078a3f4e4\">\n            Platform Engineer\n          </a>\n          <span class=\"place-of-work\">Bern oder Zürich</span>\n        </div>\n        <div class=\"job\">\n          <a class=\"job-title\"\n             href=\"/emplois-vacantes/analyste/5f1e0316-6225-4e57-b40c-cb605e046331\">\n            Analyste\n          </a>\n          <span class=\"place-of-work\">Bern</span>\n        </div>\n      </div>\n    </body></html>\n    "
+        }
+      }
+    ],
+    "expected": [],
+    "status": "ValueError",
+    "error_kind": "ValueError"
+  },
+  {
+    "name": "prospective-ambiguous-medium",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/?lang=de",
+      "metadata": {
+        "prospective_board": "1000973",
+        "url_filter": "^https://jobs\\.example\\.com/(?:[^/?#]+/)+[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}/?(?:[?#].*)?$",
+        "rich_rows": {
+          "row_selector": "#jobs-list .job",
+          "link_selector": "a.job-title[href]",
+          "total_selector": ".jobs-total .total",
+          "location_selectors": [
+            ".place-of-work"
+          ]
+        },
+        "empty_states": [
+          {
+            "selector": "body.career-center:has(#jobs-list) .jobs-total .total",
+            "exact_text": "0",
+            "required_link_selector": "link[href*='careercenter/1000973/assets/']",
+            "required_link_url_pattern": "^(?:https://jobs\\.example\\.com|https://ohws\\.prospective\\.ch)/(?:public/v[12]/)?careercenter/1000973/assets/[^?#]+(?:[?#].*)?$",
+            "forbidden_link_selector": "#jobs-list a.job-title[href]"
+          }
+        ],
+        "prospective_canonical_path": "/offene-stellen/job/",
+        "scraper_type": "dom"
+      }
+    },
+    "response": "\n    <html lang=\"de\"><head>\n      <link href=\"/careercenter/1000973/assets/css/company.css\" rel=\"stylesheet\">\n    <script src=\"/careercenter/1000974/assets/app.js\"></script></head><body class=\"career-center\">\n      <header><h1 class=\"jobs-total\"><span class=\"total\">2</span> Jobs</h1></header>\n      <div id=\"jobs-list\">\n        <div class=\"job\">\n          <a class=\"job-title\" href=\"/offene-stellen/engineer/268ceacb-05c3-4a11-a8a0-80b078a3f4e4\">\n            Platform Engineer\n          </a>\n          <span class=\"place-of-work\">Bern oder Zürich</span>\n        </div>\n        <div class=\"job\">\n          <a class=\"job-title\"\n             href=\"/emplois-vacantes/analyste/5f1e0316-6225-4e57-b40c-cb605e046331\">\n            Analyste\n          </a>\n          <span class=\"place-of-work\">Bern</span>\n        </div>\n      </div>\n    </body></html>\n    ",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/?lang=de",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "\n    <html lang=\"de\"><head>\n      <link href=\"/careercenter/1000973/assets/css/company.css\" rel=\"stylesheet\">\n    <script src=\"/careercenter/1000974/assets/app.js\"></script></head><body class=\"career-center\">\n      <header><h1 class=\"jobs-total\"><span class=\"total\">2</span> Jobs</h1></header>\n      <div id=\"jobs-list\">\n        <div class=\"job\">\n          <a class=\"job-title\" href=\"/offene-stellen/engineer/268ceacb-05c3-4a11-a8a0-80b078a3f4e4\">\n            Platform Engineer\n          </a>\n          <span class=\"place-of-work\">Bern oder Zürich</span>\n        </div>\n        <div class=\"job\">\n          <a class=\"job-title\"\n             href=\"/emplois-vacantes/analyste/5f1e0316-6225-4e57-b40c-cb605e046331\">\n            Analyste\n          </a>\n          <span class=\"place-of-work\">Bern</span>\n        </div>\n      </div>\n    </body></html>\n    "
+        }
+      }
+    ],
+    "expected": [],
+    "status": "ValueError",
+    "error_kind": "ValueError"
+  },
+  {
+    "name": "prospective-encoded-asset",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/?lang=de",
+      "metadata": {
+        "prospective_board": "1000973",
+        "url_filter": "^https://jobs\\.example\\.com/(?:[^/?#]+/)+[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}/?(?:[?#].*)?$",
+        "rich_rows": {
+          "row_selector": "#jobs-list .job",
+          "link_selector": "a.job-title[href]",
+          "total_selector": ".jobs-total .total",
+          "location_selectors": [
+            ".place-of-work"
+          ]
+        },
+        "empty_states": [
+          {
+            "selector": "body.career-center:has(#jobs-list) .jobs-total .total",
+            "exact_text": "0",
+            "required_link_selector": "link[href*='careercenter/1000973/assets/']",
+            "required_link_url_pattern": "^(?:https://jobs\\.example\\.com|https://ohws\\.prospective\\.ch)/(?:public/v[12]/)?careercenter/1000973/assets/[^?#]+(?:[?#].*)?$",
+            "forbidden_link_selector": "#jobs-list a.job-title[href]"
+          }
+        ],
+        "prospective_canonical_path": "/offene-stellen/job/",
+        "scraper_type": "dom"
+      }
+    },
+    "response": "\n    <html lang=\"de\"><head>\n      <link href=\"/%63areercenter/1000973/assets/css/company.css\" rel=\"stylesheet\">\n    </head><body class=\"career-center\">\n      <header><h1 class=\"jobs-total\"><span class=\"total\">2</span> Jobs</h1></header>\n      <div id=\"jobs-list\">\n        <div class=\"job\">\n          <a class=\"job-title\" href=\"/offene-stellen/engineer/268ceacb-05c3-4a11-a8a0-80b078a3f4e4\">\n            Platform Engineer\n          </a>\n          <span class=\"place-of-work\">Bern oder Zürich</span>\n        </div>\n        <div class=\"job\">\n          <a class=\"job-title\"\n             href=\"/emplois-vacantes/analyste/5f1e0316-6225-4e57-b40c-cb605e046331\">\n            Analyste\n          </a>\n          <span class=\"place-of-work\">Bern</span>\n        </div>\n      </div>\n    </body></html>\n    ",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/?lang=de",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "\n    <html lang=\"de\"><head>\n      <link href=\"/%63areercenter/1000973/assets/css/company.css\" rel=\"stylesheet\">\n    </head><body class=\"career-center\">\n      <header><h1 class=\"jobs-total\"><span class=\"total\">2</span> Jobs</h1></header>\n      <div id=\"jobs-list\">\n        <div class=\"job\">\n          <a class=\"job-title\" href=\"/offene-stellen/engineer/268ceacb-05c3-4a11-a8a0-80b078a3f4e4\">\n            Platform Engineer\n          </a>\n          <span class=\"place-of-work\">Bern oder Zürich</span>\n        </div>\n        <div class=\"job\">\n          <a class=\"job-title\"\n             href=\"/emplois-vacantes/analyste/5f1e0316-6225-4e57-b40c-cb605e046331\">\n            Analyste\n          </a>\n          <span class=\"place-of-work\">Bern</span>\n        </div>\n      </div>\n    </body></html>\n    "
+        }
+      }
+    ],
+    "expected": [],
+    "status": "ValueError",
+    "error_kind": "ValueError"
+  },
+  {
+    "name": "prospective-missing-list",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/?lang=de",
+      "metadata": {
+        "prospective_board": "1000973",
+        "url_filter": "^https://jobs\\.example\\.com/(?:[^/?#]+/)+[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}/?(?:[?#].*)?$",
+        "rich_rows": {
+          "row_selector": "#jobs-list .job",
+          "link_selector": "a.job-title[href]",
+          "total_selector": ".jobs-total .total",
+          "location_selectors": [
+            ".place-of-work"
+          ]
+        },
+        "empty_states": [
+          {
+            "selector": "body.career-center:has(#jobs-list) .jobs-total .total",
+            "exact_text": "0",
+            "required_link_selector": "link[href*='careercenter/1000973/assets/']",
+            "required_link_url_pattern": "^(?:https://jobs\\.example\\.com|https://ohws\\.prospective\\.ch)/(?:public/v[12]/)?careercenter/1000973/assets/[^?#]+(?:[?#].*)?$",
+            "forbidden_link_selector": "#jobs-list a.job-title[href]"
+          }
+        ],
+        "prospective_canonical_path": "/offene-stellen/job/",
+        "scraper_type": "dom"
+      }
+    },
+    "response": "<html><head><link href=\"/careercenter/1000973/assets/css/company.css\"></head><body class=\"career-center\"><span class=\"jobs-total\"><span class=\"total\">0</span></span></body></html>",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/?lang=de",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<html><head><link href=\"/careercenter/1000973/assets/css/company.css\"></head><body class=\"career-center\"><span class=\"jobs-total\"><span class=\"total\">0</span></span></body></html>"
+        }
+      }
+    ],
+    "expected": [],
+    "status": "ValueError",
+    "error_kind": "ValueError"
+  },
+  {
+    "name": "prospective-missing-total",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/?lang=de",
+      "metadata": {
+        "prospective_board": "1000973",
+        "url_filter": "^https://jobs\\.example\\.com/(?:[^/?#]+/)+[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}/?(?:[?#].*)?$",
+        "rich_rows": {
+          "row_selector": "#jobs-list .job",
+          "link_selector": "a.job-title[href]",
+          "total_selector": ".jobs-total .total",
+          "location_selectors": [
+            ".place-of-work"
+          ]
+        },
+        "empty_states": [
+          {
+            "selector": "body.career-center:has(#jobs-list) .jobs-total .total",
+            "exact_text": "0",
+            "required_link_selector": "link[href*='careercenter/1000973/assets/']",
+            "required_link_url_pattern": "^(?:https://jobs\\.example\\.com|https://ohws\\.prospective\\.ch)/(?:public/v[12]/)?careercenter/1000973/assets/[^?#]+(?:[?#].*)?$",
+            "forbidden_link_selector": "#jobs-list a.job-title[href]"
+          }
+        ],
+        "prospective_canonical_path": "/offene-stellen/job/",
+        "scraper_type": "dom"
+      }
+    },
+    "response": "<html><head><link href=\"/careercenter/1000973/assets/css/company.css\"></head><body class=\"career-center\"><div id=\"jobs-list\"></div></body></html>",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/?lang=de",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<html><head><link href=\"/careercenter/1000973/assets/css/company.css\"></head><body class=\"career-center\"><div id=\"jobs-list\"></div></body></html>"
+        }
+      }
+    ],
+    "expected": [],
+    "status": "ValueError",
+    "error_kind": "ValueError"
+  },
+  {
+    "name": "prospective-zero",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/?lang=de",
+      "metadata": {
+        "prospective_board": "1000973",
+        "url_filter": "^https://jobs\\.example\\.com/(?:[^/?#]+/)+[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}/?(?:[?#].*)?$",
+        "rich_rows": {
+          "row_selector": "#jobs-list .job",
+          "link_selector": "a.job-title[href]",
+          "total_selector": ".jobs-total .total",
+          "location_selectors": [
+            ".place-of-work"
+          ]
+        },
+        "empty_states": [
+          {
+            "selector": "body.career-center:has(#jobs-list) .jobs-total .total",
+            "exact_text": "0",
+            "required_link_selector": "link[href*='careercenter/1000973/assets/']",
+            "required_link_url_pattern": "^(?:https://jobs\\.example\\.com|https://ohws\\.prospective\\.ch)/(?:public/v[12]/)?careercenter/1000973/assets/[^?#]+(?:[?#].*)?$",
+            "forbidden_link_selector": "#jobs-list a.job-title[href]"
+          }
+        ],
+        "prospective_canonical_path": "/offene-stellen/job/",
+        "scraper_type": "dom"
+      }
+    },
+    "response": "<html><head><link href=\"/careercenter/1000973/assets/css/company.css\"></head><body class=\"career-center\"><span class=\"jobs-total\"><span class=\"total\">0</span></span><div id=\"jobs-list\"></div></body></html>",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/?lang=de",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<html><head><link href=\"/careercenter/1000973/assets/css/company.css\"></head><body class=\"career-center\"><span class=\"jobs-total\"><span class=\"total\">0</span></span><div id=\"jobs-list\"></div></body></html>"
+        }
+      }
+    ],
+    "expected": [],
+    "status": "complete"
+  },
+  {
+    "name": "prospective-incorrect-zero",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/?lang=de",
+      "metadata": {
+        "prospective_board": "1000973",
+        "url_filter": "^https://jobs\\.example\\.com/(?:[^/?#]+/)+[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}/?(?:[?#].*)?$",
+        "rich_rows": {
+          "row_selector": "#jobs-list .job",
+          "link_selector": "a.job-title[href]",
+          "total_selector": ".jobs-total .total",
+          "location_selectors": [
+            ".place-of-work"
+          ]
+        },
+        "empty_states": [
+          {
+            "selector": "body.career-center:has(#jobs-list) .jobs-total .total",
+            "exact_text": "0",
+            "required_link_selector": "link[href*='careercenter/1000973/assets/']",
+            "required_link_url_pattern": "^(?:https://jobs\\.example\\.com|https://ohws\\.prospective\\.ch)/(?:public/v[12]/)?careercenter/1000973/assets/[^?#]+(?:[?#].*)?$",
+            "forbidden_link_selector": "#jobs-list a.job-title[href]"
+          }
+        ],
+        "prospective_canonical_path": "/offene-stellen/job/",
+        "scraper_type": "dom"
+      }
+    },
+    "response": "<html><head><link href=\"/careercenter/1000973/assets/css/company.css\"></head><body class=\"career-center\"><span class=\"jobs-total\"><span class=\"total\">3</span></span><div id=\"jobs-list\"></div></body></html>",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/?lang=de",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<html><head><link href=\"/careercenter/1000973/assets/css/company.css\"></head><body class=\"career-center\"><span class=\"jobs-total\"><span class=\"total\">3</span></span><div id=\"jobs-list\"></div></body></html>"
+        }
+      }
+    ],
+    "expected": [],
+    "status": "ValueError",
+    "error_kind": "ValueError"
+  },
+  {
+    "name": "prospective-foreign-row",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/?lang=de",
+      "metadata": {
+        "prospective_board": "1000973",
+        "url_filter": "^https://jobs\\.example\\.com/(?:[^/?#]+/)+[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}/?(?:[?#].*)?$",
+        "rich_rows": {
+          "row_selector": "#jobs-list .job",
+          "link_selector": "a.job-title[href]",
+          "total_selector": ".jobs-total .total",
+          "location_selectors": [
+            ".place-of-work"
+          ]
+        },
+        "empty_states": [
+          {
+            "selector": "body.career-center:has(#jobs-list) .jobs-total .total",
+            "exact_text": "0",
+            "required_link_selector": "link[href*='careercenter/1000973/assets/']",
+            "required_link_url_pattern": "^(?:https://jobs\\.example\\.com|https://ohws\\.prospective\\.ch)/(?:public/v[12]/)?careercenter/1000973/assets/[^?#]+(?:[?#].*)?$",
+            "forbidden_link_selector": "#jobs-list a.job-title[href]"
+          }
+        ],
+        "prospective_canonical_path": "/offene-stellen/job/",
+        "scraper_type": "dom"
+      }
+    },
+    "response": "\n    <html lang=\"de\"><head>\n      <link href=\"/careercenter/1000973/assets/css/company.css\" rel=\"stylesheet\">\n    </head><body class=\"career-center\">\n      <header><h1 class=\"jobs-total\"><span class=\"total\">2</span> Jobs</h1></header>\n      <div id=\"jobs-list\">\n        <div class=\"job\">\n          <a class=\"job-title\" href=\"/offene-stellen/engineer/268ceacb-05c3-4a11-a8a0-80b078a3f4e4\">\n            Platform Engineer\n          </a>\n          <span class=\"place-of-work\">Bern oder Zürich</span>\n        </div>\n        <div class=\"job\">\n          <a class=\"job-title\"\n             href=\"https://attacker.example/jobs/5f1e0316-6225-4e57-b40c-cb605e046331\">\n            Analyste\n          </a>\n          <span class=\"place-of-work\">Bern</span>\n        </div>\n      </div>\n    </body></html>\n    ",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/?lang=de",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "\n    <html lang=\"de\"><head>\n      <link href=\"/careercenter/1000973/assets/css/company.css\" rel=\"stylesheet\">\n    </head><body class=\"career-center\">\n      <header><h1 class=\"jobs-total\"><span class=\"total\">2</span> Jobs</h1></header>\n      <div id=\"jobs-list\">\n        <div class=\"job\">\n          <a class=\"job-title\" href=\"/offene-stellen/engineer/268ceacb-05c3-4a11-a8a0-80b078a3f4e4\">\n            Platform Engineer\n          </a>\n          <span class=\"place-of-work\">Bern oder Zürich</span>\n        </div>\n        <div class=\"job\">\n          <a class=\"job-title\"\n             href=\"https://attacker.example/jobs/5f1e0316-6225-4e57-b40c-cb605e046331\">\n            Analyste\n          </a>\n          <span class=\"place-of-work\">Bern</span>\n        </div>\n      </div>\n    </body></html>\n    "
+        }
+      }
+    ],
+    "expected": [],
+    "status": "ValueError",
+    "error_kind": "ValueError"
+  },
+  {
+    "name": "prospective-positive-without-canonical-path",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/?lang=de",
+      "metadata": {
+        "prospective_board": "1000973",
+        "url_filter": "^https://jobs\\.example\\.com/(?:[^/?#]+/)+[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}/?(?:[?#].*)?$",
+        "rich_rows": {
+          "row_selector": "#jobs-list .job",
+          "link_selector": "a.job-title[href]",
+          "total_selector": ".jobs-total .total",
+          "location_selectors": [
+            ".place-of-work"
+          ]
+        },
+        "empty_states": [
+          {
+            "selector": "body.career-center:has(#jobs-list) .jobs-total .total",
+            "exact_text": "0",
+            "required_link_selector": "link[href*='careercenter/1000973/assets/']",
+            "required_link_url_pattern": "^(?:https://jobs\\.example\\.com|https://ohws\\.prospective\\.ch)/(?:public/v[12]/)?careercenter/1000973/assets/[^?#]+(?:[?#].*)?$",
+            "forbidden_link_selector": "#jobs-list a.job-title[href]"
+          }
+        ],
+        "scraper_type": "dom"
+      }
+    },
+    "response": "\n    <html lang=\"de\"><head>\n      <link href=\"/careercenter/1000973/assets/css/company.css\" rel=\"stylesheet\">\n    </head><body class=\"career-center\">\n      <header><h1 class=\"jobs-total\"><span class=\"total\">2</span> Jobs</h1></header>\n      <div id=\"jobs-list\">\n        <div class=\"job\">\n          <a class=\"job-title\" href=\"/offene-stellen/engineer/268ceacb-05c3-4a11-a8a0-80b078a3f4e4\">\n            Platform Engineer\n          </a>\n          <span class=\"place-of-work\">Bern oder Zürich</span>\n        </div>\n        <div class=\"job\">\n          <a class=\"job-title\"\n             href=\"/emplois-vacantes/analyste/5f1e0316-6225-4e57-b40c-cb605e046331\">\n            Analyste\n          </a>\n          <span class=\"place-of-work\">Bern</span>\n        </div>\n      </div>\n    </body></html>\n    ",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/?lang=de",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "\n    <html lang=\"de\"><head>\n      <link href=\"/careercenter/1000973/assets/css/company.css\" rel=\"stylesheet\">\n    </head><body class=\"career-center\">\n      <header><h1 class=\"jobs-total\"><span class=\"total\">2</span> Jobs</h1></header>\n      <div id=\"jobs-list\">\n        <div class=\"job\">\n          <a class=\"job-title\" href=\"/offene-stellen/engineer/268ceacb-05c3-4a11-a8a0-80b078a3f4e4\">\n            Platform Engineer\n          </a>\n          <span class=\"place-of-work\">Bern oder Zürich</span>\n        </div>\n        <div class=\"job\">\n          <a class=\"job-title\"\n             href=\"/emplois-vacantes/analyste/5f1e0316-6225-4e57-b40c-cb605e046331\">\n            Analyste\n          </a>\n          <span class=\"place-of-work\">Bern</span>\n        </div>\n      </div>\n    </body></html>\n    "
+        }
+      }
+    ],
+    "expected": [],
+    "status": "ValueError",
+    "error_kind": "ValueError"
+  },
+  {
+    "name": "prospective-zero-without-canonical-path",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/?lang=de",
+      "metadata": {
+        "prospective_board": "1000973",
+        "url_filter": "^https://jobs\\.example\\.com/(?:[^/?#]+/)+[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}/?(?:[?#].*)?$",
+        "rich_rows": {
+          "row_selector": "#jobs-list .job",
+          "link_selector": "a.job-title[href]",
+          "total_selector": ".jobs-total .total",
+          "location_selectors": [
+            ".place-of-work"
+          ]
+        },
+        "empty_states": [
+          {
+            "selector": "body.career-center:has(#jobs-list) .jobs-total .total",
+            "exact_text": "0",
+            "required_link_selector": "link[href*='careercenter/1000973/assets/']",
+            "required_link_url_pattern": "^(?:https://jobs\\.example\\.com|https://ohws\\.prospective\\.ch)/(?:public/v[12]/)?careercenter/1000973/assets/[^?#]+(?:[?#].*)?$",
+            "forbidden_link_selector": "#jobs-list a.job-title[href]"
+          }
+        ],
+        "scraper_type": "dom"
+      }
+    },
+    "response": "<html><head><link href=\"/careercenter/1000973/assets/css/company.css\"></head><body class=\"career-center\"><span class=\"jobs-total\"><span class=\"total\">0</span></span><div id=\"jobs-list\"></div></body></html>",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/?lang=de",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<html><head><link href=\"/careercenter/1000973/assets/css/company.css\"></head><body class=\"career-center\"><span class=\"jobs-total\"><span class=\"total\">0</span></span><div id=\"jobs-list\"></div></body></html>"
+        }
+      }
+    ],
+    "expected": [],
+    "status": "complete"
+  },
+  {
+    "name": "lucca-complete",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.world.luccasoftware.com/world-aquatics",
+      "metadata": {
+        "lucca_board": true,
+        "url_filter": "^https://jobs\\.world\\.luccasoftware\\.com/world\\-aquatics/[^/?#]+-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/?(?:[?#].*)?$",
+        "rich_rows": {
+          "row_selector": ".jobBoard-offers-item",
+          "link_selector": ".jobBoard-offers-item-link[href]",
+          "location_selectors": [
+            ".jobBoard-offers-item-tags > .tag:first-child"
+          ]
+        },
+        "empty_selector": ".jobBoard-offers-empty",
+        "empty_text": "There are no job vacancies at the moment.",
+        "scraper_type": "dom"
+      }
+    },
+    "response": "\n    <html><body class=\"jobBoard\"><div id=\"jobBoardOffers\">\n      <ul class=\"jobBoard-offers-list\">\n        <li class=\"jobBoard-offers-item\">\n          <a class=\"jobBoard-offers-item-link\"\n             href=\"/world-aquatics/athlete-intern-050521f8-610b-4d01-b201-6007b42b6a93\">\n            Athlete Intern\n          </a>\n          <div class=\"jobBoard-offers-item-tags\">\n            <span class=\"tag palette-glacier\">Lausanne</span>\n            <span class=\"tag palette-lime\">Internship | 6 months</span>\n          </div>\n        </li>\n        <li class=\"jobBoard-offers-item\">\n          <a class=\"jobBoard-offers-item-link\"\n             href=\"/world-aquatics/development-manager-517a3a34-bf2b-43cc-b15a-db3761bcd3c3\">\n            Development Manager\n          </a>\n          <div class=\"jobBoard-offers-item-tags\">\n            <span class=\"tag palette-glacier\">Budapest</span>\n          </div>\n        </li>\n      </ul>\n    </div></body></html>\n    ",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.world.luccasoftware.com/world-aquatics",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "\n    <html><body class=\"jobBoard\"><div id=\"jobBoardOffers\">\n      <ul class=\"jobBoard-offers-list\">\n        <li class=\"jobBoard-offers-item\">\n          <a class=\"jobBoard-offers-item-link\"\n             href=\"/world-aquatics/athlete-intern-050521f8-610b-4d01-b201-6007b42b6a93\">\n            Athlete Intern\n          </a>\n          <div class=\"jobBoard-offers-item-tags\">\n            <span class=\"tag palette-glacier\">Lausanne</span>\n            <span class=\"tag palette-lime\">Internship | 6 months</span>\n          </div>\n        </li>\n        <li class=\"jobBoard-offers-item\">\n          <a class=\"jobBoard-offers-item-link\"\n             href=\"/world-aquatics/development-manager-517a3a34-bf2b-43cc-b15a-db3761bcd3c3\">\n            Development Manager\n          </a>\n          <div class=\"jobBoard-offers-item-tags\">\n            <span class=\"tag palette-glacier\">Budapest</span>\n          </div>\n        </li>\n      </ul>\n    </div></body></html>\n    "
+        }
+      }
+    ],
+    "expected": [
+      {
+        "url": "https://jobs.world.luccasoftware.com/world-aquatics/athlete-intern-050521f8-610b-4d01-b201-6007b42b6a93",
+        "title": "Athlete Intern",
+        "description": null,
+        "locations": [
+          "Lausanne"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      },
+      {
+        "url": "https://jobs.world.luccasoftware.com/world-aquatics/development-manager-517a3a34-bf2b-43cc-b15a-db3761bcd3c3",
+        "title": "Development Manager",
+        "description": null,
+        "locations": [
+          "Budapest"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": null,
+        "base_salary": null,
+        "language": null,
+        "localizations": null,
+        "extras": null,
+        "metadata": null,
+        "source_identity": null
+      }
+    ],
+    "status": "complete"
+  },
+  {
+    "name": "lucca-explicit-zero",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.world.luccasoftware.com/world-aquatics",
+      "metadata": {
+        "lucca_board": true,
+        "url_filter": "^https://jobs\\.world\\.luccasoftware\\.com/world\\-aquatics/[^/?#]+-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/?(?:[?#].*)?$",
+        "rich_rows": {
+          "row_selector": ".jobBoard-offers-item",
+          "link_selector": ".jobBoard-offers-item-link[href]",
+          "location_selectors": [
+            ".jobBoard-offers-item-tags > .tag:first-child"
+          ]
+        },
+        "empty_selector": ".jobBoard-offers-empty",
+        "empty_text": "There are no job vacancies at the moment.",
+        "scraper_type": "dom"
+      }
+    },
+    "response": "\n    <html><body class=\"jobBoard\"><div id=\"jobBoardOffers\">\n      <p class=\"jobBoard-offers-empty\">There are no job vacancies at the moment.</p>\n    </div></body></html>\n    ",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.world.luccasoftware.com/world-aquatics",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "\n    <html><body class=\"jobBoard\"><div id=\"jobBoardOffers\">\n      <p class=\"jobBoard-offers-empty\">There are no job vacancies at the moment.</p>\n    </div></body></html>\n    "
+        }
+      }
+    ],
+    "expected": [],
+    "status": "complete"
+  },
+  {
+    "name": "dualoo-original-preset",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.dualoo.com/portal/fyuan4bk?lang=DE",
+      "metadata": {
+        "dualoo_portal": "fyuan4bk",
+        "link_selector": "a.jobElement[href]",
+        "url_filter": "^https://jobs\\.dualoo\\.com/portal/fyuan4bk/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/detail(?:\\?[^#]*)?$",
+        "require_jsonld_jobposting": true,
+        "scraper_type": "dom"
+      }
+    },
+    "response": "\n    <html><head><link rel=\"stylesheet\" href=\"/css/fyuan4bk\"></head><body>\n      <div class=\"JobInfoBox\">\n        <a class=\"row jobElement\"\n           href=\"fyuan4bk/ef8b03a4-9219-4c19-a351-d01c0e07cc4f/detail?lang=DE\">Role 1</a>\n        <a class=\"row jobElement\"\n           href=\"fyuan4bk/ffc75823-9ee1-4edb-9c65-dc6c8e0992af/detail?lang=DE\">Role 2</a>\n        <a class=\"row jobElement\" href=\"https://evil.example/portal/fyuan4bk/ffc75823-9ee1-4edb-9c65-dc6c8e0992af/detail\">Injected</a>\n      </div>\n    </body></html>\n    ",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.dualoo.com/portal/fyuan4bk?lang=DE",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "\n    <html><head><link rel=\"stylesheet\" href=\"/css/fyuan4bk\"></head><body>\n      <div class=\"JobInfoBox\">\n        <a class=\"row jobElement\"\n           href=\"fyuan4bk/ef8b03a4-9219-4c19-a351-d01c0e07cc4f/detail?lang=DE\">Role 1</a>\n        <a class=\"row jobElement\"\n           href=\"fyuan4bk/ffc75823-9ee1-4edb-9c65-dc6c8e0992af/detail?lang=DE\">Role 2</a>\n        <a class=\"row jobElement\" href=\"https://evil.example/portal/fyuan4bk/ffc75823-9ee1-4edb-9c65-dc6c8e0992af/detail\">Injected</a>\n      </div>\n    </body></html>\n    "
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://jobs.dualoo.com/portal/fyuan4bk/ef8b03a4-9219-4c19-a351-d01c0e07cc4f/detail?lang=DE",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "\n    <html><head><link rel=\"stylesheet\" href=\"/css/fyuan4bk\"></head><body>\n      <div class=\"JobInfoBox\">\n        <a class=\"row jobElement\"\n           href=\"fyuan4bk/ef8b03a4-9219-4c19-a351-d01c0e07cc4f/detail?lang=DE\">Role 1</a>\n        <a class=\"row jobElement\"\n           href=\"fyuan4bk/ffc75823-9ee1-4edb-9c65-dc6c8e0992af/detail?lang=DE\">Role 2</a>\n        <a class=\"row jobElement\" href=\"https://evil.example/portal/fyuan4bk/ffc75823-9ee1-4edb-9c65-dc6c8e0992af/detail\">Injected</a>\n      </div>\n    </body></html>\n    "
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://jobs.dualoo.com/portal/fyuan4bk/ffc75823-9ee1-4edb-9c65-dc6c8e0992af/detail?lang=DE",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "\n    <html><head><link rel=\"stylesheet\" href=\"/css/fyuan4bk\"></head><body>\n      <div class=\"JobInfoBox\">\n        <a class=\"row jobElement\"\n           href=\"fyuan4bk/ef8b03a4-9219-4c19-a351-d01c0e07cc4f/detail?lang=DE\">Role 1</a>\n        <a class=\"row jobElement\"\n           href=\"fyuan4bk/ffc75823-9ee1-4edb-9c65-dc6c8e0992af/detail?lang=DE\">Role 2</a>\n        <a class=\"row jobElement\" href=\"https://evil.example/portal/fyuan4bk/ffc75823-9ee1-4edb-9c65-dc6c8e0992af/detail\">Injected</a>\n      </div>\n    </body></html>\n    "
+        }
+      }
+    ],
+    "expected": [],
+    "status": "complete"
+  },
+  {
+    "name": "inert-marker-lucca_board",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/",
+      "metadata": {
+        "lucca_board": true,
+        "url_filter": "^https://jobs\\.example\\.com/jobs/\\d+$",
+        "scraper_type": "dom"
+      }
+    },
+    "response": "<html><a href=\"/jobs/101\">Engineer</a></html>",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<html><a href=\"/jobs/101\">Engineer</a></html>"
+        }
+      }
+    ],
+    "expected": [
+      {
+        "url": "https://jobs.example.com/jobs/101"
+      }
+    ],
+    "status": "complete"
+  },
+  {
+    "name": "inert-marker-lg_portal",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/",
+      "metadata": {
+        "lg_portal": true,
+        "url_filter": "^https://jobs\\.example\\.com/jobs/\\d+$",
+        "scraper_type": "dom"
+      }
+    },
+    "response": "<html><a href=\"/jobs/101\">Engineer</a></html>",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<html><a href=\"/jobs/101\">Engineer</a></html>"
+        }
+      }
+    ],
+    "expected": [
+      {
+        "url": "https://jobs.example.com/jobs/101"
+      }
+    ],
+    "status": "complete"
+  },
+  {
+    "name": "inert-marker-bunge_bigredsky_board",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/",
+      "metadata": {
+        "bunge_bigredsky_board": true,
+        "url_filter": "^https://jobs\\.example\\.com/jobs/\\d+$",
+        "scraper_type": "dom"
+      }
+    },
+    "response": "<html><a href=\"/jobs/101\">Engineer</a></html>",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<html><a href=\"/jobs/101\">Engineer</a></html>"
+        }
+      }
+    ],
+    "expected": [
+      {
+        "url": "https://jobs.example.com/jobs/101"
+      }
+    ],
+    "status": "complete"
+  },
+  {
+    "name": "inert-marker-vagas_tenant",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/",
+      "metadata": {
+        "vagas_tenant": "fixture",
+        "url_filter": "^https://jobs\\.example\\.com/jobs/\\d+$",
+        "scraper_type": "dom"
+      }
+    },
+    "response": "<html><a href=\"/jobs/101\">Engineer</a></html>",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<html><a href=\"/jobs/101\">Engineer</a></html>"
+        }
+      }
+    ],
+    "expected": [
+      {
+        "url": "https://jobs.example.com/jobs/101"
+      }
+    ],
+    "status": "complete"
+  },
+  {
+    "name": "inert-marker-hotelcareer_profile",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/",
+      "metadata": {
+        "hotelcareer_profile": "hotel-fixture-123",
+        "url_filter": "^https://jobs\\.example\\.com/jobs/\\d+$",
+        "scraper_type": "dom"
+      }
+    },
+    "response": "<html><a href=\"/jobs/101\">Engineer</a></html>",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<html><a href=\"/jobs/101\">Engineer</a></html>"
+        }
+      }
+    ],
+    "expected": [
+      {
+        "url": "https://jobs.example.com/jobs/101"
+      }
+    ],
+    "status": "complete"
+  },
+  {
+    "name": "inert-marker-dualoo_portal",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/",
+      "metadata": {
+        "dualoo_portal": "fixture",
+        "url_filter": "^https://jobs\\.example\\.com/jobs/\\d+$",
+        "scraper_type": "dom"
+      }
+    },
+    "response": "<html><a href=\"/jobs/101\">Engineer</a></html>",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<html><a href=\"/jobs/101\">Engineer</a></html>"
+        }
+      }
+    ],
+    "expected": [
+      {
+        "url": "https://jobs.example.com/jobs/101"
+      }
+    ],
+    "status": "complete"
+  },
+  {
+    "name": "inert-marker-jobtoolz_tenant",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/",
+      "metadata": {
+        "jobtoolz_tenant": "fixture",
+        "url_filter": "^https://jobs\\.example\\.com/jobs/\\d+$",
+        "scraper_type": "dom"
+      }
+    },
+    "response": "<html><a href=\"/jobs/101\">Engineer</a></html>",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<html><a href=\"/jobs/101\">Engineer</a></html>"
+        }
+      }
+    ],
+    "expected": [
+      {
+        "url": "https://jobs.example.com/jobs/101"
+      }
+    ],
+    "status": "complete"
+  },
+  {
+    "name": "inert-marker-yousty_organization",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/",
+      "metadata": {
+        "yousty_organization": "123-fixture",
+        "url_filter": "^https://jobs\\.example\\.com/jobs/\\d+$",
+        "scraper_type": "dom"
+      }
+    },
+    "response": "<html><a href=\"/jobs/101\">Engineer</a></html>",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<html><a href=\"/jobs/101\">Engineer</a></html>"
+        }
+      }
+    ],
+    "expected": [
+      {
+        "url": "https://jobs.example.com/jobs/101"
+      }
+    ],
+    "status": "complete"
+  }
+]

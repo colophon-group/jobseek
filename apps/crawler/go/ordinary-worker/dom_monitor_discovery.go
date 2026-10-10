@@ -105,6 +105,9 @@ func parseDOMInventory(ctx context.Context, result RichDiscovery, profile queue.
 	if err != nil || classification["classification"] == "challenge" {
 		return result, &DiscoveryError{Kind: "inventory_failed", cause: errors.New("DOM listing origin challenge")}
 	}
+	if err := c.ProviderProof.Validate(source, profile.Endpoint); err != nil {
+		return RichDiscovery{Response: result.Response}, &DiscoveryError{Kind: "inventory_failed", cause: err}
+	}
 	if c.ScriptLinks != nil || c.OnclickSelector != "" {
 		if c.ScriptLinks != nil {
 			rows, err := dom.ParseScriptLinks(ctx, source, profile.Endpoint, c.ScriptLinks, c.Include)
@@ -155,9 +158,26 @@ func parseDOMInventory(ctx context.Context, result RichDiscovery, profile queue.
 		if c.Include == "" {
 			include = nil
 		}
-		rows, err := dom.ParseRichRows(ctx, source, base, c.RichRows, dom.RichRowsPolicy{Include: include, AllowEmpty: len(allowEmpty) > 0 && allowEmpty[0], JoinURL: pythonJoinURL})
+		join := pythonJoinURL
+		if c.ProviderProof != nil {
+			join = func(base, ref string) (string, error) {
+				joined, err := pythonJoinURL(base, ref)
+				if err != nil {
+					return "", err
+				}
+				return c.ProviderProof.Canonicalize(joined, profile.Endpoint)
+			}
+		}
+		configuredEmpty := c.EmptySelector != "" || c.Proofs != nil && len(c.Proofs.EmptyStates) > 0
+		rows, err := dom.ParseRichRows(ctx, source, base, c.RichRows, dom.RichRowsPolicy{Include: include, AllowEmpty: len(allowEmpty) > 0 && allowEmpty[0] || configuredEmpty, JoinURL: join})
 		if err != nil {
 			return RichDiscovery{Response: result.Response}, &DiscoveryError{Kind: "inventory_failed", cause: err}
+		}
+		if configuredEmpty {
+			c.JoinProofURL = pythonJoinURL
+			if err := dom.ValidateListingEmpty(source, c, len(rows)); err != nil {
+				return RichDiscovery{Response: result.Response}, &DiscoveryError{Kind: "inventory_failed", cause: err}
+			}
 		}
 		if len(rows) > 50_000 {
 			result.Truncated = true

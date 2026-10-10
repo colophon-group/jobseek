@@ -40,7 +40,11 @@ func directDOMMonitorOptions(config map[string]string) (dom.ListingConfig, error
 		return dom.ListingConfig{}, ErrUnsupportedProfile
 	}
 	options := dom.Object{}
+	if raw := md["rich_rows"]; raw != nil {
+		options["rich_rows"] = raw // Preserve ordered replacement mappings.
+	}
 	keys := []string{"onclick_selector", "script_json_links", "include_board_url", "require_jsonld_jobposting", "advertised_total", "empty_states", "empty_selector", "empty_text", "url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "url_transform"}
+	keys = append(keys, dom.ListingProviderKeys...)
 	for _, key := range keys {
 		if raw, ok := md[key]; ok {
 			if (key == "url_filter" || key == "request_headers") && strings.HasPrefix(strings.TrimSpace(string(raw)), "{") {
@@ -61,17 +65,16 @@ func directDOMMonitorOptions(config map[string]string) (dom.ListingConfig, error
 	if err != nil {
 		return dom.ListingConfig{}, err
 	}
-	listing.RichRows, err = dom.RichRowsOptions(md["rich_rows"])
 	if err == nil && listing.RichRows != nil && (listing.ScriptLinks != nil || listing.OnclickSelector != "") {
 		return dom.ListingConfig{}, ErrUnsupportedProfile
 	}
-	if err == nil && listing.RichRows != nil && (listing.Proofs != nil || listing.IncludeBoardURL || listing.RequireJSONLD) {
-		return dom.ListingConfig{}, ErrUnsupportedProfile
-	}
-	if err == nil && listing.RichRows != nil && listing.EmptySelector != "" {
+	if err == nil && listing.RichRows != nil && (listing.Proofs != nil && listing.ProviderProof == nil || listing.IncludeBoardURL || listing.RequireJSONLD) {
 		return dom.ListingConfig{}, ErrUnsupportedProfile
 	}
 	if err == nil && listing.RichRows != nil && listing.RichRows.TotalSelector != "" && listing.Pagination != nil {
+		return dom.ListingConfig{}, ErrUnsupportedProfile
+	}
+	if err == nil && listing.ProviderProof != nil && (listing.RichRows == nil || listing.RichRows.TotalSelector == "" || listing.Proofs == nil || len(listing.Proofs.EmptyStates) == 0 || listing.Proofs.TotalSelector != "" || listing.Pagination != nil) {
 		return dom.ListingConfig{}, ErrUnsupportedProfile
 	}
 	if err == nil {

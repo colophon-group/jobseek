@@ -28,7 +28,7 @@ func listingEmptyOptions(config Object, c *ListingConfig) error {
 		}
 		return nil
 	}
-	if c.Selector == "" && c.OnclickSelector == "" || c.Pagination != nil || c.Encoding != "" && c.OnclickSelector == "" {
+	if c.Selector == "" && c.OnclickSelector == "" && c.RichRows == nil || c.Pagination != nil || c.Encoding != "" && c.OnclickSelector == "" {
 		return ErrListingEmpty
 	}
 	_, err := cascadia.Parse(c.EmptySelector)
