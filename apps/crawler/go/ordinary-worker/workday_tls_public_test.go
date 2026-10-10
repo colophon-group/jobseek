@@ -2,6 +2,8 @@ package worker
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,6 +13,7 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+	"time"
 
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 	workday "github.com/colophon-group/jobseek/apps/crawler/go/workday-monitor"
@@ -128,4 +131,60 @@ func TestWorkdayExplicitTLSOriginalPublicInventoryAndDetails(t *testing.T) {
 		t.Fatal("original detail request count changed")
 	}
 	t.Log("all eight original URLs and five original detail projections match")
+}
+
+func TestWorkdayLivePublicConfiguredTLSInventory(t *testing.T) {
+	if os.Getenv("JOBSEEK_WORKDAY_TLS_LIVE_PUBLIC") != "1" {
+		t.Skip("requires explicit bounded live public qualification")
+	}
+	dir := os.Getenv("JOBSEEK_WORKDAY_TLS_PUBLIC_CAPTURE_DIR")
+	raw, e := os.ReadFile(filepath.Join(dir, "native1007-workday-tls-wachtell-careers-workday-original-public-capture2-2026-10-10.json"))
+	if e != nil {
+		t.Fatal("original configured TLS capture unavailable")
+	}
+	var c struct {
+		Board  map[string]any
+		Jobs   []struct{ URL string }
+		Status string
+	}
+	if json.Unmarshal(raw, &c) != nil || c.Status != "complete" || len(c.Jobs) != 8 {
+		t.Fatal("complete original reference unavailable")
+	}
+	md := c.Board["metadata"].(map[string]any)
+	if md["ssl_verify"] != false {
+		t.Fatal("original explicit exception absent")
+	}
+	options, e := workday.ParseInventoryConfig(c.Board["board_url"].(string), md)
+	if e != nil {
+		t.Fatal(e)
+	}
+	bundle, e := os.ReadFile(os.Getenv("JOBSEEK_WORKDAY_TLS_CA_FILE"))
+	if e != nil {
+		t.Fatal("pinned public CA unavailable")
+	}
+	hash := sha256.Sum256(bundle)
+	if hex.EncodeToString(hash[:]) != pinnedCASHA256 {
+		t.Fatal("public CA pin differs")
+	}
+	client, e := NewVerifiedDirectHTTP(DirectHTTPConfig{CABundlePEM: bundle, EnableHTTP2: true, SkipSSL: true})
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer client.CloseIdleConnections()
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	result, e := DiscoverWorkdayInventory(ctx, client, options)
+	if e != nil || result.Truncated {
+		t.Fatal("live configured Go HTTP2 inventory failed", e)
+	}
+	got, want := append([]string{}, result.URLs...), []string{}
+	for _, j := range c.Jobs {
+		want = append(want, j.URL)
+	}
+	sort.Strings(got)
+	sort.Strings(want)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatal("live configured original inventory changed", len(got), len(want))
+	}
+	t.Log("actual Go HTTP2 configured TLS exception matches all8 original URLs")
 }

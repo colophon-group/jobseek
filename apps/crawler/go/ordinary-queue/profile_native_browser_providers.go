@@ -6,14 +6,20 @@ import (
 )
 
 func NativeBrowserProvider(provider string) bool {
-	return provider == "darwinbox" || provider == "bytedance" || provider == "accenture"
+	return provider == "darwinbox" || provider == "bytedance" || provider == "accenture" || provider == "candidatus"
 }
 func NativeBrowserProfile(profile string) bool {
-	return profile == "darwinbox.session-items/v1" || profile == "bytedance.partition-items/v1" || profile == "accenture.http-items/v1"
+	return profile == "darwinbox.session-items/v1" || profile == "bytedance.partition-items/v1" || profile == "accenture.http-items/v1" || profile == CandidatusHTTPProfile
 }
 func inspectNativeBrowserMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
 	if config["monitor_needs_browser"] != "1" || config["scraper_needs_browser"] != "0" {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+	}
+	if config["crawler_type"] == "candidatus" {
+		if _, err := CandidatusMonitorOptions(config); err != nil {
+			return GreenhouseMonitorProfile{}, err
+		}
+		return inspectURLOnlyMonitor(boardID, config, md, "candidatus", CandidatusHTTPProfile, "candidatus", config["board_url"])
 	}
 	var scraper string
 	if json.Unmarshal(md["scraper_type"], &scraper) != nil || scraper != "skip" {
@@ -40,6 +46,10 @@ func inspectNativeBrowserMonitor(boardID string, config map[string]string, md ma
 	return inspectURLOnlyMonitor(boardID, config, md, config["crawler_type"], profile, config["crawler_type"], listing)
 }
 func NativeBrowserMonitorResourceMatches(p GreenhouseMonitorProfile, config map[string]string, resource string) bool {
+	if p.Provider == "candidatus" {
+		c, err := CandidatusMonitorOptions(config)
+		return err == nil && p.Profile == CandidatusHTTPProfile && p.Endpoint == c.ListingURL && c.ResourceMatches(resource)
+	}
 	if p.Provider == "accenture" {
 		_, options, err := api.AccentureHTTPOptions(config["board_url"], config["metadata"])
 		return err == nil && config["crawler_type"] == p.Provider && p.Profile == "accenture.http-items/v1" && p.Endpoint == config["board_url"] && (resource == p.Endpoint || resource == options.Endpoint)
@@ -49,6 +59,9 @@ func NativeBrowserMonitorResourceMatches(p GreenhouseMonitorProfile, config map[
 }
 
 func apiNativeBrowserProfileResourceMatches(p GreenhouseMonitorProfile, resource string) bool {
+	if p.Provider == "candidatus" {
+		return p.Profile == CandidatusHTTPProfile && (CandidatusConfig{ListingURL: p.Endpoint}).ResourceMatches(resource)
+	}
 	if p.Provider == "accenture" {
 		return p.Profile == "accenture.http-items/v1" && (resource == p.Endpoint || resource == "https://www.accenture.com/api/accenture/"+api.AccentureFindJobs)
 	}

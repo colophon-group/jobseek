@@ -73,8 +73,8 @@ retains the exact identities and bounded natural samples.
 
 ## Following grouped publisher candidate — unpublished source1007
 
-The isolated next batch implements **Slaughter and May form pagination and
-Workday explicit TLS handling together**, retaining 195 compiled profiles.
+The isolated next batch implements **Slaughter and May, Workday and Candidatus
+together**, with196 compiled profiles.
 Slaughter's published PageSize50 form command matches all23 saved original
 URLs with fresh session fields/cookies and complete advertised counts. Eight
 session/failure cases, six real PostgreSQL/Redis terminal cases and three cold
@@ -93,14 +93,26 @@ Two real monitor TLS cases, two detail TLS cases, actual executable client
 selection, three monitor cold cases and six detail cold cases pass. Default
 certificate verification remains required for other configured clients.
 
+Candidatus resolves all15 original browser URLs through30 published HTTP form
+requests in one fresh cookie session. Native replay matches every URL and
+ordered request body; a live Go HTTP1 session with the pinned public CA also
+matches all15. Nine real database/queue cases and three cold cases pass. Card
+indexes must stay unchanged before every postback, each advertised card must
+produce a unique canonical redirect, and any later failure or reservation
+withholds the full inventory. Its browser queue and separate configured details
+remain. The expanded196-profile executable startup and pipeline checks pass
+12 groups/subcases with zero skips. A live configured Go HTTP2 Workday inventory
+also matches all8 original URLs.
+
 This candidate is unpublished and grants no serving authority. VERSION is0.13.1007. The final focused aggregate passes29 queue and85 worker
 cases with mandatory private PostgreSQL/Redis and zero skips, including native
 executable selection/startup/identity/health/signal drain and transport regressions.
 Rebase to the actual delivered source1006 and publish the grouped PR. Fresh exact-head
 CI, original whole-service rollout and complete preserved-cohort admission still
 apply. See [candidate proof and limits](evidence/go-native-publisher-pagination-candidate-2026-10-10.json).
-Njoyn's full two-pass session pagination and Candidatus's per-card WinDev
-postbacks remain the following group; neither has been implemented or admitted.
+Njoyn's full two-pass session pagination and remaining shared DOM/API options
+remain the following group. Candidatus is implemented in this candidate and
+has not been admitted in production.
 
 PR #10404's first native CI failed on the obsolete API registry expectation
 (31 supported/5 retained rather than32/4 after token-refresh support). Commit

@@ -2,8 +2,8 @@
   "schema": "jobseek.go-native-publisher-pagination-candidate/v1",
   "candidate_version": "0.13.1007",
   "base_revision": "8ce8f01a3936008030c5b3db0f22853d880cc899",
-  "status": "unpublished two-provider candidate; no production ownership grant",
-  "compiled_profiles": 195,
+  "status": "unpublished three-provider candidate; no production ownership grant",
+  "compiled_profiles": 196,
   "selected_additions": [
     {
       "board_slug": "slaughter-and-may-careers",
@@ -14,6 +14,11 @@
       "board_slug": "wachtell-careers-workday",
       "monitor_type": "workday",
       "CSV_row_sha256": "520245f506a2b44ec9aae68ad0a2db65800264945450d11b7352650c01e1051e"
+    },
+    {
+      "board_slug": "fresenius-kabi-france",
+      "monitor_type": "candidatus",
+      "CSV_row_sha256": "08c24a912309967348a684620ff3bb9337cda2416da75f7caf375157b9c8f29d"
     }
   ],
   "preservation_requirement": "Preserve the complete actually deployed parent monitor/detail cohort. Reconcile fresh canonical/cache configs and every scheduled detail route before staging; never shrink to fit a timer.",
@@ -48,7 +53,8 @@
       "detail_cold_cases": 6,
       "existing_detail_terminal_regression": "final aggregate passes existing detail policy/failure and new TLS monitor/detail cases"
     },
-    "limit": "original extractor functions given the explicit configured exception, not parity with the broken legacy monitor transport"
+    "limit": "original extractor functions given the explicit configured exception, not parity with the broken legacy monitor transport",
+    "actual_live_Go_HTTP2": "all8 original URLs match using the existing explicit canonical TLS exception and the narrow published underscore-tenant hostname fix"
   },
   "pending": [
     "rebase to source1006 actual merged revision",
@@ -57,7 +63,7 @@
   ],
   "following_group": [
     "Njoyn full session POST/two-pass inventory",
-    "Candidatus per-card WinDev postback; neither implemented nor admitted"
+    "shared remaining DOM/API transport and pagination options"
   ],
   "full_migration_complete": false,
   "local_aggregate": {
@@ -67,6 +73,23 @@
     "skipped": 0,
     "profile_identity": 195,
     "VERSION": "0.13.1007",
-    "included": "explicit TLS monitor/detail, complete/failed WebForms inventories, original public request/field replay, cold retirement, native executable selection/startup/identity/health/drain, existing detail terminal and direct transport regressions"
+    "included": "explicit TLS monitor/detail, complete/failed WebForms inventories, original public request/field replay, cold retirement, native executable selection/startup/identity/health/drain, existing detail terminal and direct transport regressions",
+    "compiled_profile_note": "29 queue/85 worker aggregate proves preceding two-provider snapshot at195; Candidatus addition independently passes public replay,9 PG/Redis cases,3 cold cases and196-profile native startup. New exact-head CI still required."
+  },
+  "Candidatus": {
+    "profile": "candidatus.http-postback-urls/v1",
+    "original_browser_URLs": 15,
+    "original_browser_capture_sha256": "d81feefa7603d391d2240e80230002a79d2566f09105b536148d7e357e92b4d3",
+    "complete_public_form_capture_sha256": "6a8d4ba6655a8d3bda3531d46ed1773ad4fcc67f7e30d84db662273b46321c93",
+    "captured_HTTP_requests": 30,
+    "original_URLs_and_ordered_form_requests_exact": true,
+    "actual_live_Go_HTTP1": "all15 original URLs match with pinned public CA, public-address/socket guards, fresh operation cookies and redirects refused by the transport",
+    "inventory_contract": "stable card indexes before every POST, exact published WinDev form fields/tenant query, one unique canonical redirect per advertised card; no prefix on later failure or publisher reservation",
+    "local_proofs": {
+      "real_PG_Redis_cases": 9,
+      "cold_cases": 3,
+      "196_profile_native_startup_pipeline_and_original_public_checks": "12 passing test groups/subcases, zero skips"
+    },
+    "queue": "original browser boundary with URL-only postings and independent configured details; no Lightpanda reservation"
   }
 }
