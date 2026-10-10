@@ -14,20 +14,29 @@ import (
 
 const Protocol = "jobseek.lightpanda.document-actions/v1"
 const RequestLimit = 128 << 10
-const ResponseLimit = 2 << 20
-const MaxActions = 32
-const MaxBudget = 300 * time.Second
+// The JSON envelope base64-encodes the typed, chunked two-million-byte HTML.
+const ResponseLimit = 3 << 20
+const ResultLimit = 2 << 20
+const MaxActions = 64
+const MaxBudget = 600 * time.Second
 
 var ErrActions = errors.New("unsupported browser action pipeline")
 var digest = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 type Action struct {
-	Kind         string  `json:"action"`
-	Script       string  `json:"script,omitempty"`
-	Selector     string  `json:"selector,omitempty"`
-	Milliseconds float64 `json:"ms,omitempty"`
-	TimeoutMS    uint64  `json:"timeout_ms"`
-	Required     bool    `json:"required,omitempty"`
+	Kind             string  `json:"action"`
+	Script           string  `json:"script,omitempty"`
+	Selector         string  `json:"selector,omitempty"`
+	Milliseconds     float64 `json:"ms,omitempty"`
+	TimeoutMS        uint64  `json:"timeout_ms"`
+	Required         bool    `json:"required,omitempty"`
+	State            string  `json:"state,omitempty"`
+	Maximum          uint64  `json:"max,omitempty"`
+	WaitMS           float64 `json:"wait_ms,omitempty"`
+	NextSelector     string  `json:"next_selector,omitempty"`
+	MaxPages         uint64  `json:"max_pages,omitempty"`
+	PageSizeSelector string  `json:"page_size_selector,omitempty"`
+	PageSize         string  `json:"page_size,omitempty"`
 }
 
 func (Action) String() string   { return "browser action" }
@@ -38,10 +47,18 @@ func Valid(actions []Action) bool {
 	}
 	var budget uint64
 	for _, a := range actions {
-		if a.TimeoutMS == 0 || a.TimeoutMS > 120000 {
+		limit := uint64(120000)
+		if a.Kind == "repeat" || a.Kind == "paginate_collect" {
+			limit = 300000
+		}
+		if a.TimeoutMS == 0 || a.TimeoutMS > limit {
 			return false
 		}
 		budget += a.TimeoutMS
+		interaction := a.Kind == "click" || a.Kind == "wait_for" || a.Kind == "repeat" || a.Kind == "paginate_collect"
+		if !interaction && (a.State != "" || a.Maximum != 0 || a.WaitMS != 0 || a.NextSelector != "" || a.MaxPages != 0 || a.PageSizeSelector != "" || a.PageSize != "") {
+			return false
+		}
 		switch a.Kind {
 		case "wait":
 			if a.Script != "" || a.Selector != "" || math.IsNaN(a.Milliseconds) || math.IsInf(a.Milliseconds, 0) || a.Milliseconds < 0 || a.Milliseconds > 120000 {
@@ -57,6 +74,10 @@ func Valid(actions []Action) bool {
 			}
 		case "dismiss_overlays":
 			if a.Selector != "" || a.Script != "" || a.Milliseconds != 0 {
+				return false
+			}
+		case "click", "wait_for", "repeat", "paginate_collect":
+			if !validInteraction(a) {
 				return false
 			}
 		default:
@@ -95,8 +116,11 @@ func Parse(raw any) ([]Action, error) {
 		}
 		a := Action{TimeoutMS: 10000}
 		a.Kind, _ = m["action"].(string)
+		if a.Kind == "repeat" || a.Kind == "paginate_collect" {
+			a.TimeoutMS = 300000
+		}
 		for k := range m {
-			if k != "action" && k != "required" && k != "timeout" && !(k == "script" && a.Kind == "evaluate") && !(k == "selector" && a.Kind == "remove") && !(k == "ms" && a.Kind == "wait") {
+			if !actionKeyAllowed(a.Kind, k) {
 				return nil, ErrActions
 			}
 		}
@@ -108,7 +132,11 @@ func Parse(raw any) ([]Action, error) {
 		}
 		if v, exists := m["timeout"]; exists {
 			n, yes := v.(float64)
-			if !yes || math.IsNaN(n) || math.IsInf(n, 0) || n <= 0 || n > 120 || n*1000 != math.Trunc(n*1000) {
+			limit := float64(120)
+			if a.Kind == "repeat" || a.Kind == "paginate_collect" {
+				limit = 300
+			}
+			if !yes || math.IsNaN(n) || math.IsInf(n, 0) || n <= 0 || n > limit || n*1000 != math.Trunc(n*1000) {
 				return nil, ErrActions
 			}
 			a.TimeoutMS = uint64(n * 1000)
@@ -133,6 +161,10 @@ func Parse(raw any) ([]Action, error) {
 				return nil, ErrActions
 			}
 		case "dismiss_overlays":
+		case "click", "wait_for", "repeat", "paginate_collect":
+			if err := parseInteraction(&a, m); err != nil {
+				return nil, err
+			}
 		default:
 			return nil, ErrActions
 		}
@@ -166,7 +198,7 @@ type Response struct {
 }
 
 func (r Response) Valid() bool {
-	return r.Protocol == Protocol && digest.MatchString(r.RequestID) && digest.MatchString(r.ConfigFingerprint) && len(r.Result) > 0 && len(r.Result) <= 1049600
+	return r.Protocol == Protocol && digest.MatchString(r.RequestID) && digest.MatchString(r.ConfigFingerprint) && len(r.Result) > 0 && len(r.Result) <= ResultLimit
 }
 func Decode(body []byte, limit int, out any) error { return replay.Decode(body, limit, out) }
 

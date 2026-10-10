@@ -359,11 +359,14 @@ func validateResult(task Task, result Result) error {
 		return errors.New("main-document outerHTML is missing")
 	}
 	htmlLimit := maxHTMLBytes
+	if len(task.Actions) > 0 {
+		htmlLimit = 2_000_000
+	}
 	if task.Dayforce != nil || task.APIReplay != nil {
 		htmlLimit = 1_000_000 - 1
 	}
 	if len(result.HTML) > htmlLimit {
-		return fmt.Errorf("%w: main-document outerHTML exceeds %d bytes", errResourceLimit, maxHTMLBytes)
+		return fmt.Errorf("%w: main-document outerHTML exceeds %d bytes", errResourceLimit, htmlLimit)
 	}
 	if task.Evaluation == nil {
 		if result.Expression != nil {
@@ -792,12 +795,13 @@ func fetchVersion(ctx context.Context, client *http.Client, endpoint string) (st
 type chromedpExecutor struct{ egressPolicy EgressPolicy }
 
 type mainDocumentResponse struct {
-	resourcePolicy *runtimev1.ResourcePolicySignals
-	policyInvalid  bool
-	status         int64
-	url            string
-	loaderID       cdp.LoaderID
-	requestID      network.RequestID
+	resourcePolicy  *runtimev1.ResourcePolicySignals
+	policyInvalid   bool
+	status          int64
+	url             string
+	loaderID        cdp.LoaderID
+	requestID       network.RequestID
+	sameDocumentURL string
 }
 
 type mainDocumentFrame struct {
@@ -825,7 +829,17 @@ func correlateMainDocumentSnapshot(response mainDocumentResponse, frame mainDocu
 		return 0, fmt.Errorf("invalid captured final URL: %w", err)
 	}
 	if responseURL != frameURL || capturedURL != frameURL {
-		return 0, errors.New("main-document response URL does not match the captured document")
+		// A witnessed History API transition retains the response's loader and
+		// policy. Accept only its exact final URL within the original origin;
+		// an unwitnessed URL change or another document still fails closed.
+		transitionURL, transitionErr := comparableDocumentURL(response.sameDocumentURL)
+		original, _ := url.Parse(responseURL)
+		transition, _ := url.Parse(transitionURL)
+		if transitionErr != nil || original == nil || transition == nil ||
+			original.Scheme != transition.Scheme || original.Host != transition.Host ||
+			capturedURL != transitionURL || (frameURL != responseURL && frameURL != transitionURL) {
+			return 0, errors.New("main-document response URL does not match the captured document")
+		}
 	}
 	return response.status, nil
 }
@@ -925,6 +939,14 @@ func executeOnTarget(ctx, target context.Context, task Task) (Result, error) {
 		chromedp.ListenTarget(targetCtx, dayforceCapture.observe)
 	}
 	chromedp.ListenTarget(targetCtx, func(event any) {
+		if transition, ok := event.(*page.EventNavigatedWithinDocument); ok {
+			responseMu.Lock()
+			if transition.FrameID == mainFrame && latestResponse.loaderID != "" {
+				latestResponse.sameDocumentURL = transition.URL
+			}
+			responseMu.Unlock()
+			return
+		}
 		eventResponse, ok := event.(*network.EventResponseReceived)
 		if !ok || eventResponse.Response == nil || eventResponse.Type != network.ResourceTypeDocument || eventResponse.FrameID != mainFrame {
 			return
@@ -1016,7 +1038,14 @@ func executeOnTarget(ctx, target context.Context, task Task) (Result, error) {
 			}
 			return false, err
 		}
-		if err := runDocumentActions(targetCtx, task.Actions, executeDocumentAction, check); err != nil {
+		execute := func(ctx context.Context, action actions.Action) error {
+			switch action.Kind {
+			case "click", "wait_for", "repeat", "paginate_collect":
+				return executeDocumentInteraction(ctx, action, check)
+			}
+			return executeDocumentAction(ctx, action)
+		}
+		if err := runDocumentActions(targetCtx, task.Actions, execute, check); err != nil {
 			return Result{}, err
 		}
 	}

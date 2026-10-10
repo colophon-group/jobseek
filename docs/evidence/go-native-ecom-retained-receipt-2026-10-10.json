@@ -1,0 +1,34 @@
+{
+  "schema": "jobseek.go-native-rss-retained-receipt-qualification/v1",
+  "source_base": "17a3c03eb9e7c053d2b891195993d0d235ff8f54",
+  "board_slug": "ecom-agroindustrial-global",
+  "status": "qualified local candidate; not production admission",
+  "inventory": {
+    "raw_and_dispatched_all_fields": 54,
+    "requests": 1,
+    "truncated": false,
+    "collision_policy": "original prefer_source dispatcher exact identities"
+  },
+  "representation_only_comparison": [
+    "DatePosted pointer JSON scalar",
+    "absent optional maps represented as empty objects",
+    "absent location list compared as empty content"
+  ],
+  "original_dispatch_sha256": "8d3e51bdaffbfeae32407847839489005551e7a4a0f98fa1e25eb7b179298ecc",
+  "original_normalization_oracle_sha256": "3f437d030fde345bccdeb4ab63a3c76f1ebe842f823d76a35f1f433c42874041",
+  "real_postgres_redis": {
+    "inserted": 54,
+    "canonical_titles_and_original_normalized_descriptions": 54,
+    "absence_increment": 1,
+    "unsolicited_detail_work": 0,
+    "settled": true,
+    "canonical_deadline_and_lease": true,
+    "retained_receipt_unchanged": true
+  },
+  "configuration_guard": {
+    "retained_receipt_bound_to_snapshot_and_effective_fingerprints": true,
+    "active_identity_migration_rejected": true
+  },
+  "worker_race_log_sha256": "780a5fed5c0e2b75155e0c2a44ab2fc4d0f99f66d2e83510ba70c33acd1eb6e0",
+  "qualification_scope": "same captured original source/request/fields/dispatcher and real local processing; no production ownership or fleet freshness claim"
+}

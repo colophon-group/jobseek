@@ -2,6 +2,7 @@ package queue
 
 import (
 	"encoding/json"
+	api "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
 	"net/url"
 	"regexp"
 	"strings"
@@ -28,6 +29,23 @@ func inspectRSSRich(boardID string, config map[string]string, md map[string]json
 	}
 	if preset == "successfactors" && variant == "legacy" {
 		return inspectLegacySFSessionMonitor(boardID, config, md)
+	}
+	if preset == "successfactors" && variant == "rmk" {
+		o, err := api.SuccessFactorsRMKOptionsFromMetadata(config["board_url"], config["metadata"])
+		if err != nil || config["monitor_needs_browser"] != "0" || string(md["render"]) == "true" {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		if feedRichDetailAssignment(config) != nil {
+			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
+		}
+		if _, err := FeedMonitorURLRules(config); err != nil {
+			return GreenhouseMonitorProfile{}, err
+		}
+		profile := "rss.successfactors-rmk-skip/v1"
+		if feedHasDetailAssignment(md) {
+			profile = "rss.successfactors-rmk-items/v1"
+		}
+		return inspectURLOnlyMonitor(boardID, config, md, "rss", profile, o.Brand, o.BoardURL)
 	}
 	if preset != "successfactors" && variant != "" || preset == "successfactors" && variant != "" && variant != "feed" && variant != "legacy_xml" {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
@@ -182,4 +200,21 @@ func validZohoRSSIdentity(source, identity string) bool {
 	}
 	prefix := "zoho_recruit:" + tenant[1] + "." + tenant[2] + ":"
 	return strings.HasPrefix(identity, prefix) && zohoRSSID.MatchString(strings.TrimPrefix(identity, prefix))
+}
+
+func RSSRMKProfile(profile string) bool {
+	switch profile {
+	case "rss.successfactors-rmk-skip/v1", "rss.successfactors-rmk-items/v1", "rss.successfactors-rmk-proxy-skip/v1", "rss.successfactors-rmk-proxy-items/v1":
+		return true
+	}
+	return false
+}
+
+func rssRMKProfileResourceMatches(p GreenhouseMonitorProfile, resource string) bool {
+	if !RSSRMKProfile(p.Profile) {
+		return false
+	}
+	md, _ := json.Marshal(map[string]any{"preset": "successfactors", "variant": "rmk", "brand": p.Token})
+	o, err := api.SuccessFactorsRMKOptionsFromMetadata(p.Endpoint, string(md))
+	return err == nil && o.ResourceMatches(resource)
 }

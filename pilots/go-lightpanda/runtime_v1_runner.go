@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	actions "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/documentactions"
 	"time"
 
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
@@ -13,8 +14,9 @@ import (
 // adapter to the existing one-shot Lightpanda lifecycle. It owns no service,
 // queue, retry, fallback, persistence, or production-routing behavior.
 type runtimeV1Runner struct {
-	config Config
-	run    taskRunner
+	config          Config
+	run             taskRunner
+	documentActions []actions.Action
 }
 
 var _ lightpandaadapter.Runner = runtimeV1Runner{}
@@ -33,6 +35,9 @@ func (runner runtimeV1Runner) Run(
 	}
 
 	task := Task{URL: input.Plan.TargetUrl}
+	if len(runner.documentActions) > 0 {
+		task.Actions = append([]actions.Action(nil), runner.documentActions...)
+	}
 	if len(input.Plan.Captures) == 1 {
 		task.ResponseBodyLimit = input.Plan.Captures[0].MaxBytes
 	}
@@ -63,6 +68,7 @@ func (runner runtimeV1Runner) Run(
 
 	config := runner.config
 	config.TaskTimeout = lightpandaadapter.NavigationExecutionBudget(navigation)
+	config.TaskTimeout += actions.Budget(task.Actions)
 	run := runner.run
 	if run == nil {
 		run = runTask

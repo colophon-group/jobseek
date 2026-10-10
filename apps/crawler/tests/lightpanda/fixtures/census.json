@@ -2,11 +2,11 @@
   "format": "jobseek.lightpanda.capability-census/v1",
   "input": {
     "boards_row_count": 7885,
-    "boards_sha256": "a821444027907364165c5070cac0d80b2c9012062605cff35e285f98c25b57a2",
+    "boards_sha256": "09f3f0095598bc05c62f4b106d2fac0b5e8ed6b12a0f44fa9c6fe44882ab2dc6",
     "network_access": false,
     "sanitization": "structural-values-only-v1"
   },
-  "manifest_sha256": "ca46afd578e913d6b47aca37254bd02310615b69d60e8009163775a00db4daa9",
+  "manifest_sha256": "05c1a29b770cb123bd3a134734270359c830b9407606eea93cbd16cf90f388be",
   "records": [
     {
       "blocker": "pinned_lightpanda_replay_required",
@@ -2798,33 +2798,6 @@
       "profile_kind": "configured",
       "source_count": 1,
       "source_refs_sha256": "3edb83fddb5bdb5483f1dcd563597b85d1b479fe94e0ac45b8e432a5d9797693",
-      "status": "pending_replay",
-      "surface": "monitor"
-    },
-    {
-      "blocker": "pinned_lightpanda_replay_required",
-      "browser_capable": true,
-      "browser_required": true,
-      "capabilities": [
-        "action.dismiss_overlays",
-        "action.evaluate",
-        "action.wait",
-        "cdp.navigation",
-        "dom.snapshot",
-        "javascript.evaluate",
-        "navigation.wait.load",
-        "navigation.wait_fallback"
-      ],
-      "chain_role": "primary",
-      "compatibility_class": "javascript_execution",
-      "config_shape_sha256": "68edce8c9e1f102068a90f249c3b64feeb35f06dbf0b390433ec51b9110e14f8",
-      "crawler_type": "dom",
-      "digest_sha256": "7e370d675f30dab493ee721447d04af634b47fdf0716144c0a1e0aa96c5086d1",
-      "fixture": "synthetic.javascript_execution.v1",
-      "id": "profile.monitor.dom.5712340386707087",
-      "profile_kind": "configured",
-      "source_count": 1,
-      "source_refs_sha256": "aa64b7c350ee4630510689e3ade9396e6029fbde4f6f7951a1cc3b149a828271",
       "status": "pending_replay",
       "surface": "monitor"
     },
@@ -7534,12 +7507,12 @@
       "compatibility_class": "network_session",
       "config_shape_sha256": "71af8679effa34adf4669829bff2a837eecd1ac6f02252dedf7c0ce91a3314de",
       "crawler_type": "api_sniffer",
-      "digest_sha256": "0085b6ffdfc92d212826d1749c6dfd65d1b8e7e6a6d3688f1af0d7d294e3665f",
+      "digest_sha256": "6fa4fb7ac72b3b3cdfb113186a3e8f84e507255d2b6a633522aa17b64a386e69",
       "fixture": "synthetic.network_session.v1",
       "id": "registry.monitor.api_sniffer",
       "profile_kind": "registry",
-      "source_count": 326,
-      "source_refs_sha256": "c8d657efb41a5cf840a8b5d4502f21ae7070ec7d186b43337aa80d21ee2bc067",
+      "source_count": 327,
+      "source_refs_sha256": "72569f05ca15ffc9dea9e54e197c1a29b4ae59ba5d850ea8a6da3e44c32e4e00",
       "status": "inventory",
       "surface": "monitor"
     },
@@ -7667,12 +7640,12 @@
       "compatibility_class": "navigation_dom",
       "config_shape_sha256": "76f6578053b67be7ee7cd41dee516f3bd30347f5622c81bd84292b4010de6831",
       "crawler_type": "dom",
-      "digest_sha256": "5ac133cba5188d0eed0108b0344c526eedfdc8c75a0cd886445a63cfc534660e",
+      "digest_sha256": "08add28daf4e18d9b9770cfa2b0996684bcfb4047fe43bd5309929e057931e6f",
       "fixture": "synthetic.navigation_dom.v1",
       "id": "registry.monitor.dom",
       "profile_kind": "registry",
-      "source_count": 836,
-      "source_refs_sha256": "95478e3f265cb11cdef0363682dddff99a3cd2f58093d8732f8b5c2455e6abe7",
+      "source_count": 835,
+      "source_refs_sha256": "979a960193db65bfb4d907489b8358d31810e7ef122a45bf3ed29058996e24af",
       "status": "inventory",
       "surface": "monitor"
     },
@@ -7878,12 +7851,12 @@
     }
   ],
   "summary": {
-    "browser_board_count": 520,
-    "browser_required_step_count": 680,
-    "configured_profile_occurrence_count": 681,
-    "configured_record_count": 313,
+    "browser_board_count": 519,
+    "browser_required_step_count": 679,
+    "configured_profile_occurrence_count": 680,
+    "configured_record_count": 312,
     "registry_record_count": 17,
-    "total_record_count": 330,
+    "total_record_count": 329,
     "zero_browser_config_registry_count": 1
   }
 }

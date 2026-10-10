@@ -30,12 +30,7 @@ func (execution *runtimeV1ServiceExecution) executeDocumentActions(ctx context.C
 	}
 	// Reuse the same strict navigation adapter and cleanup sanitizer. Actions are
 	// attached only after navigation input validation, and never to B1 evaluation.
-	run := func(ctx context.Context, config Config, task Task) (Result, error) {
-		task.Actions = append([]actions.Action(nil), request.Actions...)
-		config.TaskTimeout += actions.Budget(request.Actions)
-		return execution.dayforceRun(ctx, config, task)
-	}
-	adapter, err := lightpandaadapter.NewNavigationRenderOnly(runtimeV1Runner{config: execution.dayforceConfig, run: run})
+	adapter, err := lightpandaadapter.NewNavigationRenderOnly(runtimeV1Runner{config: execution.dayforceConfig, run: execution.dayforceRun, documentActions: append([]actions.Action(nil), request.Actions...)})
 	if err != nil {
 		return response, err
 	}

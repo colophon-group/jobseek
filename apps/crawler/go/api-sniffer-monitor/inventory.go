@@ -206,6 +206,7 @@ func Discover(ctx context.Context, o Options, fetch Fetch, join JoinURL) (Invent
 		}
 		return result, nil
 	}
+	first = decryptInitialResponse(first, o.ResponseDecrypt)
 	if o.HTML {
 		return discoverHTML(ctx, o, first, fetch, join)
 	}

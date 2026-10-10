@@ -41,6 +41,14 @@ func firstSharedDOMAPIFixture(t *testing.T, variant string) firstOwnerFixture {
 	if kind == "api-root" {
 		md["json_path"] = "$"
 	}
+	if kind == "api-decrypt" || kind == "api-decrypt-fixed" {
+		md["json_path"] = "Data.jobs"
+		decrypt := map[string]any{"key": "fixture-key-1234"}
+		if kind == "api-decrypt-fixed" {
+			decrypt["iv_mode"] = "fixed:0123456789abcdef"
+		}
+		md["response_decrypt"] = decrypt
+	}
 	if kind == "dom-provider" {
 		md["lg_portal"] = true
 	}
@@ -105,4 +113,8 @@ func TestRealSharedDOMAPIVariantColdRetirement(t *testing.T) {
 
 func TestRealDOMProviderAndAPIRootColdRetirement(t *testing.T) {
 	testProviderColdRetirement(t, []string{"dom-provider/direct", "dom-provider/proxy", "dom-provider/rendered", "dom-rich-empty/direct", "dom-rich-empty/proxy", "dom-rich-empty/rendered", "dom-prospective/direct", "dom-prospective/proxy", "api-root/direct", "api-root/proxy", "api-root/rendered"}, firstSharedDOMAPIFixture)
+}
+
+func TestRealEncryptedInitialAPIVariantColdRetirement(t *testing.T) {
+	testProviderColdRetirement(t, []string{"api-decrypt/direct", "api-decrypt-fixed/direct"}, firstSharedDOMAPIFixture)
 }

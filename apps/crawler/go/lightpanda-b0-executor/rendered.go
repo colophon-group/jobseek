@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	HTMLLimit      = 1024 * 1024
+	HTMLLimit      = 2_000_000
 	HTMLChunkLimit = 64 * 1024
 )
 

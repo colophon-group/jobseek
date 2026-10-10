@@ -1,0 +1,98 @@
+{
+  "schema": "jobseek.go-native-grouped-progress/v1",
+  "observed_at_utc": "2026-10-10T13:56:26.772112+00:00",
+  "status": "local qualified RSS RMK port within combined source1005 browser/API/RSS candidate; not merged, deployed or admitted",
+  "candidate_version": "0.13.1005",
+  "compiled_profiles": 194,
+  "parent_source_revision": "17a3c03eb9e7c053d2b891195993d0d235ff8f54",
+  "new_canonical_boards": [
+    "zhengda-group-careers-my-cpf",
+    "zhengda-group-careers-vn-cpf",
+    "zhengda-group-careers-th-cpf"
+  ],
+  "transport": "Go verified HTTP, immutable direct/proxy profiles, isolated fresh cookie jar, exact source-bound bootstrap and API resources",
+  "original_synthetic_fixtures": 16,
+  "original_fixture_sha256": "8cfa77c73316f032bf03cad30edc3db09c1b2b39d5ef90b6098dd8490fbdd53e",
+  "original_public_capture1": {
+    "scope": "SDK all fields and explicit requests; capture did not retain response cookies and is not worker session proof",
+    "jobs": [
+      5,
+      33,
+      85
+    ],
+    "truncated": [
+      false,
+      true,
+      true
+    ]
+  },
+  "original_public_capture2": {
+    "scope": "fresh immutable original Python HTTP traces including Set-Cookie, all actual Go worker fields and requests, cookie lifetime shifted to captured observation clock",
+    "jobs": [
+      5,
+      36,
+      83
+    ],
+    "truncated": [
+      false,
+      false,
+      true
+    ],
+    "cookie_request_counts": [
+      1,
+      4,
+      9
+    ],
+    "inventory_change": "independent live captures vary; each compared against its own exact original requests and complete records"
+  },
+  "real_required_PostgreSQL_Redis": {
+    "worker_settlement_cases": 16,
+    "cold_retirement_cases": 12,
+    "scope": [
+      "direct and authenticated proxy",
+      "skip and explicit description enrichment",
+      "complete and identical duplicate inventory",
+      "later-page failure retains no publication or absence authority",
+      "later 503 publisher reservation stops publication",
+      "interrupted and committed-before-ack retirement preserves canonical deadlines",
+      "operator setting drift rejects retirement"
+    ]
+  },
+  "status_policy_and_retry_cases": 4,
+  "invariants": [
+    "stable advertised total and exact ten-row pages",
+    "conflicting duplicate fails entire inventory",
+    "identical duplicate retains first record and suppresses absence",
+    "bootstrap CSRF and cookies stay scoped and private",
+    "first error-status publisher header or body signal stops retries",
+    "original direct three-attempt and proxy six-attempt retry bounds",
+    "unsupported identity migrations and job-invite resolvers remain outside this port"
+  ],
+  "checks": {
+    "native1005-rmk-sdk-full-race-qualification1-2026-10-10.log": {
+      "status": "PASS",
+      "sha256": "fae325ce9fd010f3f41fc9971233249fb32a793ad75e577559503903ef57e953",
+      "final_package_output": "ok  \tgithub.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor\t6.929s"
+    },
+    "native1005-rmk-worker-real-public-qualification1-2026-10-10.log": {
+      "status": "PASS",
+      "sha256": "e2926080ccb41b704233348eafb3a2f0c7c0d73e5cdc7665b9b0aaa78ee6dfb3",
+      "final_package_output": "ok  \tgithub.com/colophon-group/jobseek/apps/crawler/go/ordinary-worker\t7.293s"
+    },
+    "native1005-rmk-queue-real-cold-qualification1-2026-10-10.log": {
+      "status": "PASS",
+      "sha256": "766ccfcdacc6245ab81d987ca96a6fd15a40f82b97f24227416cf0b4ad709a4b",
+      "final_package_output": "ok  \tgithub.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue\t12.091s"
+    }
+  },
+  "static_checks": "SDK, queue and worker go vet and go mod tidy -diff passed; generator Ruff check and format passed",
+  "remaining_RSS_scope": [
+    "Postfinance stable-ID migration",
+    "Implenia job-invite identity resolver (original fresh public capture failed)",
+    "Ecom retained migration receipt annotation",
+    "BNP browser feed options",
+    "Exeter browser/proxy feed options"
+  ],
+  "production_monitor_remaining": 172,
+  "goal": "full migration remains active and incomplete"
+}

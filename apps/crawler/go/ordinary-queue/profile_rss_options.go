@@ -52,6 +52,9 @@ func RSSOptions(config map[string]string) (string, *RSSPagination, map[string]an
 	return preset, pagination, options, nil
 }
 func RSSMonitorResourceMatches(profile GreenhouseMonitorProfile, config map[string]string, resource string) bool {
+	if RSSRMKProfile(profile.Profile) {
+		return profile.Endpoint == config["board_url"] && rssRMKProfileResourceMatches(profile, resource)
+	}
 	if profile.Profile == legacySFSessionProfile {
 		return LegacySFSessionResourceMatches(profile, config, resource)
 	}

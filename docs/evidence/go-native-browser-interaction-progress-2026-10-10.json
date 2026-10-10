@@ -1,0 +1,98 @@
+{
+  "schema": "jobseek.go-native-grouped-progress/v1",
+  "observed_at_utc": "2026-10-10T14:02:03.002432+00:00",
+  "status": "local committed interaction candidate; public mismatches remain; no production admission or delivery",
+  "parent_candidate_pr": "https://github.com/colophon-group/jobseek/pull/10401",
+  "parent_version": "0.13.1004",
+  "scope": [
+    "click",
+    "attached/detached wait_for",
+    "repeat",
+    "paginate_collect"
+  ],
+  "canonical_monitor_candidates": 26,
+  "bounds": {
+    "actions": 64,
+    "total_action_budget_seconds": 600,
+    "repeat_and_collector_default_seconds": 300,
+    "qualified_text_selector_subset": "single text predicate on selected element, optional disabled suffix; ancestor/union/layout/frame selectors rejected",
+    "action_HTML_bytes": 2000000,
+    "typed_result_bytes": 2097152,
+    "JSON_response_bytes": 3145728,
+    "ordinary_navigation_HTML_bytes": 524288
+  },
+  "checks": {
+    "contracts_full_race": "PASS11.371s",
+    "pilot_full_race": "PASS8.918s after all result guard fixes",
+    "physical_pinned_macos_arm64": "13 isolated interaction cases PASS, including delegated ancestor click, mouse-down click, page-changing collector and history transition; private log sha25681c21032df072c6d85849c2a07e5922d14165044b0df2a8b983fc342b1328cb3",
+    "physical_linux": "PR10403 head988a4cd33 physical Lightpanda run38058040924 passed Linux amd64 and arm64. Later source changes require fresh exact-head checks",
+    "real_required_PostgreSQL_Redis": {
+      "cold_retirement_cases": 15,
+      "settlement_cases": 15,
+      "cold_log_sha256": "5bf2a6d769317415722e62628e8ccc26a0b701110043e481ab75a74a06e9c185",
+      "worker_log_sha256": "160082f1fa4f895a4e79c2229f5064676e0ae2ed26ab8d02c6cc9cd006f40bf6",
+      "status": "PASS; services mandatory, five variants including36-action pipeline"
+    },
+    "large_typed_document": "Maximum2,000,000 bytes passes producer, service envelope and consumer bounds;2,000,001 fails; focused race PASS3.779s",
+    "B0_executor_full_race": "PASS18.697s"
+  },
+  "public": "Final exact committed code captures all26 typed Lightpanda documents (262.42s, log sha256205d13593b50127017b79b34d5ace0784fb6d887f2662890bf5cc297af8441ab). Canonical worker comparison passes18 cases and retains8 unresolved outcomes (log sha256cdb77a73cfb30097a5e7115f89b49ad0ae2def1af371efed3803168d93479953). RSM143 and CRH15 complete jobs now match original after the scoped action bounds fix. No blanket success or admission claim.",
+  "required_remaining": [
+    "original contract fixtures",
+    "final public outcomes and complete fields/request replay; resolve every mismatch",
+    "physical Linux fixtures on both architectures",
+    "held-session DOM/API pagination/options grouped continuation",
+    "fresh main VERSION and exact-head required CI before any delivery"
+  ],
+  "public_remaining": [
+    "Lockheed APAC/Canada/EMEA: native403 with final fragment, original empty",
+    "H3: five native versus six original",
+    "Lufthansa: witnessed history now executes; native0 versus373 original",
+    "Slaughter and May: ten native versus23 original"
+  ],
+  "parent_merge_commit": "17a3c03eb9e7c053d2b891195993d0d235ff8f54",
+  "parent_delivery": "original crawler rollout38052065286 success attempt1; renderer38052084321 success attempt2; exact images/cold/exporter proved; B0active271; complete7710monitor/2751detail cohort staged and original full activation in progress",
+  "next_API_family": {
+    "scope": "initial response AES-CBC suffix or fixed IV, strict bounded config, no optional production Python crypto dependency",
+    "canonical_monitor_candidates": 1,
+    "original_decoder_oracle_cases": 15,
+    "public_jobs_all_original_fields_and_request": 18,
+    "oracle_environment": "optional decoder absent from frozen Python runtime; separate immutable original read-only oracle uses isolated pycryptodome3.23.0; no production dependency changed",
+    "full_SDK_race": "PASS9.494s",
+    "public_and_SDK_log_sha256": "b0ebed8b9e85c5e0ba8dcfe1d0ab8cc0a5ee238213e1e6e3d514140689be6145",
+    "real_PostgreSQL_Redis": {
+      "cold_cases": 6,
+      "worker_cases": 12,
+      "cold_log_sha256": "6dfe411af6ee665d4995065943430b9839af73fb3938687b48597f75f9cb2260",
+      "worker_log_sha256": "8a75e17fea124ae48b5d686481983d94590240d0c4f8fc666a3fa7c9d337d60d",
+      "semantics": "first response only; plain tail pages retained; larger known-count gaps suppress disappearance while initial valid rows retain original insertion authority; malformed data unchanged; publisher precedence retained"
+    },
+    "browser_decryption": "unsupported pending capture ranking qualification"
+  },
+  "history_API_contract": {
+    "scope": "witnessed same-document CDP event plus unchanged loader and original origin; exact final URL required; unwitnessed URL changes, foreign origin and loader rejected; original response publisher signals retained",
+    "physical_and_correlation": "12 physical macOS interaction cases plus correlation cases PASS3.504s",
+    "physical_log_sha256": "3c2ae4f6bcc59bd4f3561f9053c2777015c7a8b293335247feee5677a20ed993",
+    "full_pilot_race_before_hover_extension": "PASS8.848s logsha14b1645ddcfdf0e6cdca412569211b77a2bd8c585b53076b91e19b2cfba2b929",
+    "JBS_public": "134jobs exact originalURLs match from final history capture6; capture logshae0baf414d6b16ee6b6eaebe4e5d2bc12fbead034042a1d58fdb2a26d84135391",
+    "Lufthansa_public": "typed execution succeeds but0vs373 original inventory; remains unqualified"
+  },
+  "Pictet_session_provenance": {
+    "original_independent_sessions": 2,
+    "jobs_each": 58,
+    "only_varying_query_key": "_s.crb",
+    "native_document_original_parser_replay": "58 exact same-document original URLs match; actual native issued session tokens retained; no production URL normalization",
+    "scope": "separate same-document original HTML projection plus complete cross-session logical identity comparison; does not claim identical URLs between distinct browser sessions"
+  },
+  "public_latest_scope": "18 prior exact comparison passes (including original gone outcome); JBS134 exact URLs added; Pictet58 separate same-document original projection and two-original-session variance proof. Twenty of26 candidate boards qualified through those distinct checks, six still unqualified. No production admission or delivery for this batch.",
+  "public_count_verification": "Counts recomputed from all26 named subtest outcomes in retained final replay log:18 PASS,8 FAIL; prior prose miscounted17/9.",
+  "published_draft_PR": "https://github.com/colophon-group/jobseek/pull/10403",
+  "public_lufthansa_replacement": {
+    "scope": "separate published HTTP API route replaces canonical DOM pipeline; native scrolling result remains unqualified",
+    "exact_original_URLs": 373,
+    "real_canonical_rows_and_detail_routes": 373,
+    "proof": "go-native-lufthansa-published-api-2026-10-10.json"
+  },
+  "current_canonical_browser_candidates": 25,
+  "current_unqualified_browser_candidates": 5
+}

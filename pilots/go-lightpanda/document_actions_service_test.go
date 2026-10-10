@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	actions "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/documentactions"
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	lp "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/lightpandaclient"
@@ -14,7 +15,7 @@ import (
 )
 
 func TestDocumentActionsServicePreflightCleanupAndBinding(t *testing.T) {
-	for _, mode := range []string{"success", "cleanup", "evaluation", "malformed"} {
+	for _, mode := range []string{"success", "large-document", "oversized-document", "cleanup", "evaluation", "malformed"} {
 		t.Run(mode, func(t *testing.T) {
 			input, err := lp.NavigationInput(lp.Navigation{URL: "https://example.com/careers", RoutingRevision: "actions-test", OriginRequestID: "test-origin", Wait: "load", TimeoutMS: 1000})
 			if err != nil {
@@ -39,7 +40,14 @@ func TestDocumentActionsServicePreflightCleanupAndBinding(t *testing.T) {
 					return Result{}, errCleanupUnproved
 				}
 				cleaned = true
-				return Result{Status: 200, FinalURL: task.URL, HTML: "<html><body>Engineer</body></html>", HTMLPresent: true}, nil
+				html := "<html><body>Engineer</body></html>"
+				if mode == "large-document" || mode == "oversized-document" {
+					html = strings.Repeat("x", 2_000_000)
+					if mode == "oversized-document" {
+						html += "x"
+					}
+				}
+				return Result{Status: 200, FinalURL: task.URL, HTML: html, HTMLPresent: true}, nil
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -58,9 +66,16 @@ func TestDocumentActionsServicePreflightCleanupAndBinding(t *testing.T) {
 			if proto.Unmarshal(response.Result, result) != nil {
 				t.Fatal("typed result invalid")
 			}
-			if mode == "success" {
+			if mode == "success" || mode == "large-document" {
 				if !cleaned || result.GetSuccess() == nil {
-					t.Fatal("completed document withheld")
+					t.Fatal("completed document withheld", "native_code", result.GetError().GetError().GetCode(), "html_limit", actions.ResponseLimit)
+				}
+				if mode == "large-document" {
+					body, err := json.Marshal(response)
+					var decoded actions.Response
+					if err != nil || len(body) > actions.ResponseLimit || actions.Decode(body, actions.ResponseLimit, &decoded) != nil || !decoded.Valid() || result.GetSuccess().Html.TotalSizeBytes != 2_000_000 {
+						t.Fatal("large typed document lost its bounded JSON envelope")
+					}
 				}
 			} else {
 				if result.GetSuccess() != nil || (result.GetError() == nil && result.GetUnsupported() == nil) {

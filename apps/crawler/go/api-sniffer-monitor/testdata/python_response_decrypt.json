@@ -1,0 +1,247 @@
+[
+  {
+    "name": "suffix",
+    "input": {
+      "before": 2,
+      "Data": "l+08fpMJBNsS3HhCX8LvZ17DnznaIqG8lKMSv2Q3ckM+BJ7nwNktnwdczei1qSS0VCUwh/ZY5C7Uj6imkrW1IMK4bA2NRbJE9Z+ggilUECFdOVerQ0zJKhpwg4u9XAo0wTfYVopNFC3ccv7oR71F8g==0123456789abcdef",
+      "after": "retained"
+    },
+    "config": {
+      "key": "fixture-key-1234"
+    },
+    "expected": {
+      "before": 2,
+      "Data": {
+        "jobs": [
+          {
+            "id": "one",
+            "title": "Engineer",
+            "description": "<p>Systems</p>"
+          }
+        ],
+        "ordered": {
+          "z": 2,
+          "a": 1
+        }
+      },
+      "after": "retained"
+    }
+  },
+  {
+    "name": "fixed",
+    "input": {
+      "Data": "l+08fpMJBNsS3HhCX8LvZ17DnznaIqG8lKMSv2Q3ckM+BJ7nwNktnwdczei1qSS0VCUwh/ZY5C7Uj6imkrW1IMK4bA2NRbJE9Z+ggilUECFdOVerQ0zJKhpwg4u9XAo0wTfYVopNFC3ccv7oR71F8g=="
+    },
+    "config": {
+      "key": "fixture-key-1234",
+      "iv_mode": "fixed:0123456789abcdef"
+    },
+    "expected": {
+      "Data": {
+        "jobs": [
+          {
+            "id": "one",
+            "title": "Engineer",
+            "description": "<p>Systems</p>"
+          }
+        ],
+        "ordered": {
+          "z": 2,
+          "a": 1
+        }
+      }
+    }
+  },
+  {
+    "name": "array",
+    "input": [
+      {
+        "before": 2,
+        "Data": "l+08fpMJBNsS3HhCX8LvZ17DnznaIqG8lKMSv2Q3ckM+BJ7nwNktnwdczei1qSS0VCUwh/ZY5C7Uj6imkrW1IMK4bA2NRbJE9Z+ggilUECFdOVerQ0zJKhpwg4u9XAo0wTfYVopNFC3ccv7oR71F8g==0123456789abcdef",
+        "after": "retained"
+      }
+    ],
+    "config": {
+      "key": "fixture-key-1234"
+    },
+    "expected": [
+      {
+        "before": 2,
+        "Data": "l+08fpMJBNsS3HhCX8LvZ17DnznaIqG8lKMSv2Q3ckM+BJ7nwNktnwdczei1qSS0VCUwh/ZY5C7Uj6imkrW1IMK4bA2NRbJE9Z+ggilUECFdOVerQ0zJKhpwg4u9XAo0wTfYVopNFC3ccv7oR71F8g==0123456789abcdef",
+        "after": "retained"
+      }
+    ]
+  },
+  {
+    "name": "missing",
+    "input": {
+      "other": 1
+    },
+    "config": {
+      "key": "fixture-key-1234"
+    },
+    "expected": {
+      "other": 1
+    }
+  },
+  {
+    "name": "null",
+    "input": {
+      "Data": null
+    },
+    "config": {
+      "key": "fixture-key-1234"
+    },
+    "expected": {
+      "Data": null
+    }
+  },
+  {
+    "name": "number",
+    "input": {
+      "Data": 42
+    },
+    "config": {
+      "key": "fixture-key-1234"
+    },
+    "expected": {
+      "Data": 42
+    }
+  },
+  {
+    "name": "empty",
+    "input": {
+      "Data": ""
+    },
+    "config": {
+      "key": "fixture-key-1234"
+    },
+    "expected": {
+      "Data": ""
+    }
+  },
+  {
+    "name": "short",
+    "input": {
+      "Data": "short"
+    },
+    "config": {
+      "key": "fixture-key-1234"
+    },
+    "expected": {
+      "Data": "short"
+    }
+  },
+  {
+    "name": "invalid-base64",
+    "input": {
+      "Data": "%%%%0123456789abcdef"
+    },
+    "config": {
+      "key": "fixture-key-1234"
+    },
+    "expected": {
+      "Data": "%%%%0123456789abcdef"
+    }
+  },
+  {
+    "name": "invalid-utf8",
+    "input": {
+      "Data": "YrytOG6DdfIclteIBQWhJQ==0123456789abcdef"
+    },
+    "config": {
+      "key": "fixture-key-1234"
+    },
+    "expected": {
+      "Data": "YrytOG6DdfIclteIBQWhJQ==0123456789abcdef"
+    }
+  },
+  {
+    "name": "invalid-padding",
+    "input": {
+      "Data": "IjzghQYUrKIU0lfWjTPQcw==0123456789abcdef"
+    },
+    "config": {
+      "key": "fixture-key-1234"
+    },
+    "expected": {
+      "Data": "IjzghQYUrKIU0lfWjTPQcw==0123456789abcdef"
+    }
+  },
+  {
+    "name": "base64-whitespace",
+    "input": {
+      "Data": "l+08fpMJBNsS3HhCX8LvZ17DnznaIqG8lKMSv2Q3ckM+BJ7nwNktnwdczei1qSS0VCUwh/ZY5C7Uj6imkrW1IMK4bA2NRbJE9Z+ggilUECFdOVerQ0zJKhpwg4u9XAo0wTfYVopNFC3ccv7oR71F8g== \n0123456789abcdef"
+    },
+    "config": {
+      "key": "fixture-key-1234"
+    },
+    "expected": {
+      "Data": {
+        "jobs": [
+          {
+            "id": "one",
+            "title": "Engineer",
+            "description": "<p>Systems</p>"
+          }
+        ],
+        "ordered": {
+          "z": 2,
+          "a": 1
+        }
+      }
+    }
+  },
+  {
+    "name": "base64-ignored-ascii",
+    "input": {
+      "Data": "l+08fpMJBNsS3HhCX8LvZ17DnznaIqG8lKMSv2Q3ckM+BJ7nwNktnwdczei1qSS0VCUwh/ZY5C7Uj6imkrW1IMK4bA2NRbJE9Z+ggilUECFdOVerQ0zJKhpwg4u9XAo0wTfYVopNFC3ccv7oR71F8g==!%?0123456789abcdef"
+    },
+    "config": {
+      "key": "fixture-key-1234"
+    },
+    "expected": {
+      "Data": {
+        "jobs": [
+          {
+            "id": "one",
+            "title": "Engineer",
+            "description": "<p>Systems</p>"
+          }
+        ],
+        "ordered": {
+          "z": 2,
+          "a": 1
+        }
+      }
+    }
+  },
+  {
+    "name": "unicode-iv",
+    "input": {
+      "Data": "l+08fpMJBNsS3HhCX8LvZ17DnznaIqG8lKMSv2Q3ckM+BJ7nwNktnwdczei1qSS0VCUwh/ZY5C7Uj6imkrW1IMK4bA2NRbJE9Z+ggilUECFdOVerQ0zJKhpwg4u9XAo0wTfYVopNFC3ccv7oR71F8g==éééééééééééééééé"
+    },
+    "config": {
+      "key": "fixture-key-1234"
+    },
+    "expected": {
+      "Data": "l+08fpMJBNsS3HhCX8LvZ17DnznaIqG8lKMSv2Q3ckM+BJ7nwNktnwdczei1qSS0VCUwh/ZY5C7Uj6imkrW1IMK4bA2NRbJE9Z+ggilUECFdOVerQ0zJKhpwg4u9XAo0wTfYVopNFC3ccv7oR71F8g==éééééééééééééééé"
+    }
+  },
+  {
+    "name": "wrong-key",
+    "input": {
+      "before": 2,
+      "Data": "l+08fpMJBNsS3HhCX8LvZ17DnznaIqG8lKMSv2Q3ckM+BJ7nwNktnwdczei1qSS0VCUwh/ZY5C7Uj6imkrW1IMK4bA2NRbJE9Z+ggilUECFdOVerQ0zJKhpwg4u9XAo0wTfYVopNFC3ccv7oR71F8g==0123456789abcdef",
+      "after": "retained"
+    },
+    "config": {
+      "key": "wrong-key-123456"
+    },
+    "expected": {
+      "before": 2,
+      "Data": "l+08fpMJBNsS3HhCX8LvZ17DnznaIqG8lKMSv2Q3ckM+BJ7nwNktnwdczei1qSS0VCUwh/ZY5C7Uj6imkrW1IMK4bA2NRbJE9Z+ggilUECFdOVerQ0zJKhpwg4u9XAo0wTfYVopNFC3ccv7oR71F8g==0123456789abcdef",
+      "after": "retained"
+    }
+  }
+]
