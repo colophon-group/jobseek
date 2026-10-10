@@ -218,6 +218,7 @@ if (( renderer_exists )); then
     && "$(stat -c '%u:%g:%a:%h' "$existing_generation/pki/server-key.pem")" == 10001:10001:400:1 ]] || exit 1
   existing_running="$(docker container inspect --format '{{json .State.Running}}' "$existing_id")"
   existing_status="$(docker container inspect --format '{{.State.Status}}' "$existing_id")"
+  existing_oom="$(docker container inspect --format '{{json .State.OOMKilled}}' "$existing_id")"
   if [[ "$existing_running" == true ]]; then
     python3 "$existing_generation/verify.py" running \
       "$existing_generation/release.env" --expected-id "$existing_id" >/dev/null
@@ -226,6 +227,13 @@ if (( renderer_exists )); then
   elif [[ "$existing_running" == false && "$existing_status" == created ]]; then
     python3 "$existing_generation/verify.py" owned-created \
       "$existing_generation/release.env" --expected-id "$existing_id" >/dev/null
+  elif [[ "$existing_running" == false && "$existing_status" == exited && "$existing_oom" == true ]]; then
+    # Historical OOM flags survive a graceful stop. Authenticate the exact cold
+    # predecessor with the incoming verifier; its immutable verifier predates
+    # this recovery path. Running/candidate health remains OOM-free.
+    python3 "$STAGE/verify.py" owned \
+      "$existing_generation/release.env" --expected-id "$existing_id" \
+      --allow-stopped-oom >/dev/null
   elif [[ "$existing_running" == false ]]; then
     python3 "$existing_generation/verify.py" owned \
       "$existing_generation/release.env" --expected-id "$existing_id" >/dev/null

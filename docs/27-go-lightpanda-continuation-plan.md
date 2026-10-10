@@ -2,6 +2,22 @@
 
 ## Current checkpoint — 2026-10-10
 
+PR #10395 merged as `0f3ae8c040ba084a63a96de488015756945ebddc`, version0.13.999,
+after required/native/installed-image checks and supported full cold264 reversal
+passed. Original crawler rollout38019366166 is in progress. Renderer rollout
+38019413181 failed before replacement: its exactly owned source998 predecessor
+has a historical OOM flag under the existing1GiB ceiling. The failed workflow
+left that renderer cold, with Go ownership and selectors already absent.
+Version0.13.1000 adds explicit authenticated cold OOM predecessor recovery to the
+original renderer deployment workflow. Running/candidate readiness still rejects
+OOM; no host verifier replacement, manual restart or ceiling increase is used.
+Added smoke causes a bounded cgroup OOM before supported replacement; physical
+CI must pass before delivery.
+Deploy this repair before full source999-or-newer B0/admission/activation. The
+Accenture/BrassRing candidate must rebase and use the next main version; its
+public BrassRing qualification remains open.
+
+
 Production **0.13.998**, source `f00f27048b778f68c6d87ea232a84a2fabd10d58`,
 was delivered through [PR #10393](https://github.com/colophon-group/jobseek/pull/10393).
 The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38007256533)
