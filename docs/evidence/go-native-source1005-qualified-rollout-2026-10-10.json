@@ -1,0 +1,182 @@
+{
+  "schema": "jobseek.go-native-qualified-rollout-selection/v1",
+  "observed_at_utc": "2026-10-10T14:40:58.902345+00:00",
+  "status": "verified local additions proposed for supported source1005 rollout; not production admission",
+  "PR": "https://github.com/colophon-group/jobseek/pull/10403",
+  "source_base": "17a3c03eb9e7c053d2b891195993d0d235ff8f54",
+  "compiled_profiles": 194,
+  "selected_additions": [
+    {
+      "board_slug": "sysco-menigo-sweden",
+      "monitor_type": "dom",
+      "source_CSV_row_sha256": "2eda6b4eb348c33a2f96a34db7faddc7dff8afbb27ac45bbc2a2797ebe2ac7d6"
+    },
+    {
+      "board_slug": "planet-pharma-careers",
+      "monitor_type": "dom",
+      "source_CSV_row_sha256": "9f0dc0317b121de8ccb28bfe23a36eb38aa196af64d0c783a8fa4d7118b584f6"
+    },
+    {
+      "board_slug": "alten-romania",
+      "monitor_type": "dom",
+      "source_CSV_row_sha256": "c9f82ba1378cafa37e96394e259717d7de93616f7475f6182b2b51930f92d385"
+    },
+    {
+      "board_slug": "immunocore-peoplecore",
+      "monitor_type": "dom",
+      "source_CSV_row_sha256": "09540024d71aecdde75cbbd7b4c9fce2a7822378ffe088b7d6bb51c713c5a65e"
+    },
+    {
+      "board_slug": "caterpillar-progressrail-global",
+      "monitor_type": "dom",
+      "source_CSV_row_sha256": "1661b54c0d48c67acc92f3fce151d44d0f03e6da71410fd3320871d2f9803413"
+    },
+    {
+      "board_slug": "css-main",
+      "monitor_type": "dom",
+      "source_CSV_row_sha256": "1e596efaa3fba71ca0bc88a5312a4d81825f84171bab17cc0373618580bddf33"
+    },
+    {
+      "board_slug": "tokyo-electron-careers-jp-kyushu",
+      "monitor_type": "dom",
+      "source_CSV_row_sha256": "7fcb0fa9ad8a0301109b29a5a3a34711e3a67711e4a033eca0d23b443bdca436"
+    },
+    {
+      "board_slug": "iproov-gohire",
+      "monitor_type": "dom",
+      "source_CSV_row_sha256": "e28dbb083bed3b77fe09863b7f555f0bf7c371ae22a2b5fb9d1a2bcf9ac6ca73"
+    },
+    {
+      "board_slug": "acrisure-international",
+      "monitor_type": "dom",
+      "source_CSV_row_sha256": "3b52cf680a1ac36b9e26754c5072edd587d2b77478b3d1af2a7c1ab7b89779a8"
+    },
+    {
+      "board_slug": "rsm-netherlands",
+      "monitor_type": "dom",
+      "source_CSV_row_sha256": "6ac62605104546a5ffd576191c5d6c5df68cbd73fff4dea60283d19e7b2fa0d7"
+    },
+    {
+      "board_slug": "crh-careers-adbri",
+      "monitor_type": "dom",
+      "source_CSV_row_sha256": "c2f9589b09707872a863535379a07176767e62e10735eb564ed7f3c0a51c29ef"
+    },
+    {
+      "board_slug": "red-lobster-japan",
+      "monitor_type": "dom",
+      "source_CSV_row_sha256": "cd8b4bf51890d05b79dee81757cb5a212a67a84c74672181efd616a49f3eee34"
+    },
+    {
+      "board_slug": "projective-group-careers-talent",
+      "monitor_type": "dom",
+      "source_CSV_row_sha256": "4f2d8e1d4b9d7009d4b594a1f875c928cbdf7d53bb22605aa6b7b37b722dd87e"
+    },
+    {
+      "board_slug": "icbc-careers-standard",
+      "monitor_type": "dom",
+      "source_CSV_row_sha256": "fc4b646820e934cd302f14ec29857e25484c672814fdfea1f8dadb606a6b3c07"
+    },
+    {
+      "board_slug": "etisalat-careers-eg",
+      "monitor_type": "dom",
+      "source_CSV_row_sha256": "d3422f39971551b8f8081d1d670b792bfea6ddff60a23d923f01c19eefd3cf54"
+    },
+    {
+      "board_slug": "hr-block-australia",
+      "monitor_type": "dom",
+      "source_CSV_row_sha256": "e05d49a7bf9f2a05fef8988f912b85169f1d0e1fe3695b348fbf7a91a17ed217"
+    },
+    {
+      "board_slug": "sygnum-bank-salesforce",
+      "monitor_type": "dom",
+      "source_CSV_row_sha256": "f126ce38aab437199c818bcc5cdc8c5909f3e5e7e83c6ddb262d7ca331ffd4f0"
+    },
+    {
+      "board_slug": "airbus-careers-au-pacific",
+      "monitor_type": "dom",
+      "source_CSV_row_sha256": "d9c19523e787a048e68be356e3a39629bc96643e8ebd294853bb0038d92ffab1"
+    },
+    {
+      "board_slug": "jbs-usa-jbs-carriers-drivers",
+      "monitor_type": "dom",
+      "source_CSV_row_sha256": "eb08ddbfc4c6237f0aa7be27f90092a0249afec05892ab25912bfac45389f253"
+    },
+    {
+      "board_slug": "pictet-group-careers",
+      "monitor_type": "dom",
+      "source_CSV_row_sha256": "99778de26cc44ad06aa4404a1b3d09d7fa80cf873eb1b09857aaae28d7c676ac"
+    },
+    {
+      "board_slug": "icici-bank-careers",
+      "monitor_type": "api_sniffer",
+      "source_CSV_row_sha256": "c1038007ed8c92196e4f9f549847b5ee61f57d42dedf2090a0b6e5a9b4e4bf34"
+    },
+    {
+      "board_slug": "lufthansa-group-careers",
+      "monitor_type": "api_sniffer",
+      "source_CSV_row_sha256": "54e2fb97dd36ccca644bacc1cab9185506e61cad2ba83fa03577f13e17d8fb1f"
+    },
+    {
+      "board_slug": "zhengda-group-careers-my-cpf",
+      "monitor_type": "rss",
+      "source_CSV_row_sha256": "c8bd456a4031e93b56e2f78631b583bca4acfded1c617a37fc299987479b59f1"
+    },
+    {
+      "board_slug": "zhengda-group-careers-vn-cpf",
+      "monitor_type": "rss",
+      "source_CSV_row_sha256": "52522d920c5cb77fe029f606a3b71c6ebc931cabbce16999ee97345ee3d1c55c"
+    },
+    {
+      "board_slug": "zhengda-group-careers-th-cpf",
+      "monitor_type": "rss",
+      "source_CSV_row_sha256": "3c89e83af44cf04af253c37159e4086150cb324671f57aee6b5083b0eab7396d"
+    }
+  ],
+  "selected_addition_count": 25,
+  "selected_family_counts": {
+    "browser": 20,
+    "api_sniffer": 2,
+    "rss": 3
+  },
+  "explicit_qualification_exclusions": [
+    {
+      "board_slug": "lockheed-martin-intl-apac",
+      "reason": "native public HTTP403 and final-fragment outcome differs from original empty inventory",
+      "admission": "retain current owner; omit from proposed monitor cohort"
+    },
+    {
+      "board_slug": "lockheed-martin-intl-canada",
+      "reason": "native public HTTP403 and final-fragment outcome differs from original empty inventory",
+      "admission": "retain current owner; omit from proposed monitor cohort"
+    },
+    {
+      "board_slug": "h3-dynamics-careers",
+      "reason": "native five URLs versus original six; published sitemap has no jobs",
+      "admission": "retain current owner; omit from proposed monitor cohort"
+    },
+    {
+      "board_slug": "slaughter-and-may-careers",
+      "reason": "native page-size selection returns ten URLs versus original23",
+      "admission": "retain current owner; omit from proposed monitor cohort"
+    },
+    {
+      "board_slug": "lockheed-martin-intl-emea",
+      "reason": "native public HTTP403 and final-fragment outcome differs from original empty inventory",
+      "admission": "retain current owner; omit from proposed monitor cohort"
+    }
+  ],
+  "scope_guards": [
+    "preserve the entire previously admitted monitor/detail fleet",
+    "perform a fresh complete source and scheduled-route census",
+    "record five public qualification exclusions independently from compiler support",
+    "original stage accepts a protected explicit cohort; no unsupported owner grants",
+    "bind all source, image, epoch, B0 receipt, projection and exact-head checks",
+    "retirement, cutover and reversal keep full writer quiescence and original wrappers"
+  ],
+  "qualification_evidence": [
+    "go-native-browser-interaction-progress-2026-10-10.json",
+    "go-native-rss-rmk-progress-2026-10-10.json",
+    "go-native-lufthansa-published-api-2026-10-10.json"
+  ],
+  "full_migration_goal": "active; these five and the other remaining families still require completion"
+}

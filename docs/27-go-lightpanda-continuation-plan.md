@@ -70,8 +70,17 @@ enrichment retains downstream scheduling. See the
 
 The published draft head passed physical Lightpanda on Linux amd64 and arm64.
 The latest source changes still require exact-head CI and parity checks. Current
-canonical scope is 30 boards: 25 browser, two API and three RSS. Resolve the five
-recorded public browser mismatches before admitting the grouped candidate.
+candidate scope is 30 boards: 25 browser, two API and three RSS. Advance the
+**25 qualified additions together** (20 browser, two API and three RSS), preserving
+the entire previously admitted fleet. Keep H3, Slaughter and the three Lockheed
+boards on their current owner until their public results qualify. The fresh
+complete source census must record those five explicit qualification exclusions;
+the supported staging cohort must omit them. This selects a verified rollout
+subset and does not grant those unresolved boards native ownership. Resolve them
+while continuing the remaining grouped ports. H3’s complete published sitemap has
+zero job URLs and cannot replace its six-job monitor; enabling stylesheet loading
+also failed to fix H3 and Slaughter and was not adopted. Lufthansa additionally
+passes a real Go request with the pinned CA bundle and verified public egress.
 
 Continue the remaining shared browser/API pagination options and enabled
 monitor/detail profiles in broad batches. Prove fleet freshness, conservation,

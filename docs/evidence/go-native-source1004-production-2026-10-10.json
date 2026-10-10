@@ -103,5 +103,37 @@
     "writer_restarts": 0,
     "initial_completion_lease": "cleared naturally by existing acknowledgement/scheduler; no mutation or reaping injected",
     "scope": "bounded natural readback; not whole-fleet freshness or cost proof"
+  },
+  "latest_bounded_natural_readback": {
+    "observed_at_utc": "2026-10-10T14:32:23.137543+00:00",
+    "proof_sha256": "9eebe3069f1a17e4b9bba8d7ae047830294f0cfa17c7ad2fde3b044bf7e4072f",
+    "completed_monitors": 804,
+    "exact_settled_original_recurring_schedules": 803,
+    "completion_leases_observed_between_commit_and_ack": 1,
+    "earlier_two_retained_leases_cleared_naturally": true,
+    "completed_scrapes": 579,
+    "writer_restart_counts": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "health_status": {
+      "worker-1": 200,
+      "worker-2": 200,
+      "worker-3": 200,
+      "browser-1": 200,
+      "drain": 200,
+      "exporter": 200,
+      "lightpanda-claimant": 204,
+      "ordinary-go": 204
+    },
+    "scope": "bounded naturally scheduled read-only sample; one new commit/ack observation; no whole-fleet freshness, cost or global conservation claim"
   }
 }

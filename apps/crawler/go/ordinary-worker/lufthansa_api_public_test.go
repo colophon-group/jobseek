@@ -2,7 +2,9 @@ package worker
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/csv"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
@@ -13,6 +15,7 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+	"time"
 )
 
 func TestLufthansaPublishedAPIOriginalInventoryAndSourceConfig(t *testing.T) {
@@ -155,4 +158,58 @@ func TestRealLufthansaPublishedAPIURLOnlySettlement(t *testing.T) {
 		}
 	}
 	t.Log("373 original URL-only rows and 373 independent detail routes settled with canonical deadline and zero retained completion lease")
+}
+
+func TestLufthansaPublishedAPIActualGoVerifiedLive(t *testing.T) {
+	if os.Getenv("JOBSEEK_MIGRATION_PUBLIC_LIVE") != "1" {
+		t.Skip("explicit read-only publisher qualification only")
+	}
+	directory := os.Getenv("JOBSEEK_INTERACTION_PUBLIC_CAPTURE_DIR")
+	raw, err := os.ReadFile(filepath.Join(directory, "native1005-lufthansa-published-api-original-replay1-2026-10-10.json"))
+	if err != nil {
+		t.Fatal("private original oracle unavailable")
+	}
+	var c struct {
+		Board map[string]string
+		URLs  []string
+	}
+	if json.Unmarshal(raw, &c) != nil || len(c.URLs) != 373 {
+		t.Fatal("original oracle unavailable")
+	}
+	ca, err := os.ReadFile(os.Getenv("JOBSEEK_MIGRATION_PUBLIC_CA_FILE"))
+	if err != nil {
+		t.Fatal("pinned public CA bundle unavailable")
+	}
+	digest := sha256.Sum256(ca)
+	if hex.EncodeToString(digest[:]) != pinnedCASHA256 {
+		t.Fatal("production CA identity differs")
+	}
+	client, err := NewVerifiedDirectHTTP(DirectHTTPConfig{CABundlePEM: ca})
+	if err != nil {
+		t.Fatal("verified public transport unavailable")
+	}
+	defer client.CloseIdleConnections()
+	p, err := queue.InspectRichMonitor("11111111-1111-4111-8111-111111111111", c.Board)
+	if err != nil {
+		t.Fatal("reviewed config rejected")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	out, err := discoverAPISnifferInventory(ctx, client.client, p, c.Board)
+	if err != nil {
+		t.Fatalf("actual Go public request failed: %T", err)
+	}
+	got := []string{}
+	for _, j := range out.Jobs {
+		if !j.URLOnly {
+			t.Fatal("live URL-only authority changed")
+		}
+		got = append(got, j.URL)
+	}
+	sort.Strings(got)
+	sort.Strings(c.URLs)
+	if out.Truncated || len(got) != 373 || !reflect.DeepEqual(got, c.URLs) {
+		t.Fatal("actual Go public inventory differs from original current oracle", len(got))
+	}
+	t.Log("actual Go verified TLS and public DNS egress reproduce all 373 exact original URLs with URL-only authority")
 }

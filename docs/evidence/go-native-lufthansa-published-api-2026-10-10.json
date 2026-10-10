@@ -22,9 +22,11 @@
     "native1005-lufthansa-public-api-german-diagnostic2-2026-10-10.json": "dc1329a22fa18000e81e7d30ce24f795216518b51b9a291969388704eebf30c8",
     "native1005-lufthansa-public-api-url-only-diagnostic3-2026-10-10.json": "de11691aabfa78d187dc8c61bd8084ca889923b3c779cc5c44439f710211a71d",
     "native1005-lufthansa-published-api-original-replay1-2026-10-10.json": "180e378da088ea7c711b661cc2df0c16d81bc86251b298706394697da0cbaf76",
-    "native1005-lufthansa-published-api-real-worker-qualification1-2026-10-10.log": "8a1fc51950905870cbf264bb1481e895f3d05ff1a3ce333e0c0517aa76e20f95"
+    "native1005-lufthansa-published-api-real-worker-qualification1-2026-10-10.log": "8a1fc51950905870cbf264bb1481e895f3d05ff1a3ce333e0c0517aa76e20f95",
+    "native1005-lufthansa-published-api-actual-go-live-qualification1-2026-10-10.log": "9bd5bc706b6027c01aa578f83d710c11750bbd711ad7a43e04355f277b372041"
   },
   "original_public_browser_group_remaining": 5,
   "production_monitors_remaining": 172,
-  "full_migration_goal": "active and incomplete"
+  "full_migration_goal": "active and incomplete",
+  "actual_Go_verified_live": "PASS: deployed pinned certifi CA identity, public DNS and TLS, one actual published API fetch, all 373 exact original URLs and URL-only authority"
 }
