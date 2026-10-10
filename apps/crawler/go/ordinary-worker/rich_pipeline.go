@@ -73,6 +73,9 @@ func WriteGreenhouseInventory(ctx context.Context, sink GreenhouseSink, preparer
 		}
 		seen[job.URL] = true
 	}
+	if inventory.UnisanteMigration && (inventory.Truncated || filtered != 0 || inventory.Discovered != len(inventory.Jobs) || len(inventory.Jobs) < 1 || len(inventory.Jobs) > 50) {
+		return nil, errors.New("Unisante migration requires a complete unfiltered bounded inventory")
+	}
 	result := &GreenhouseProcessingResult{}
 	for start := 0; start < len(inventory.Jobs); start += 500 {
 		end := min(start+500, len(inventory.Jobs))
@@ -98,7 +101,17 @@ func WriteGreenhouseInventory(ctx context.Context, sink GreenhouseSink, preparer
 		counts := &queue.GreenhouseRichBatchResult{}
 		if len(batch) > 0 {
 			var err error
-			counts, err = sink.WriteRichBatch(ctx, batch)
+			if inventory.UnisanteMigration {
+				writer, ok := sink.(interface {
+					WriteCompleteUnisanteBatch(context.Context, []queue.GreenhouseRichPosting, queue.GreenhouseInventorySummary) (*queue.GreenhouseRichBatchResult, error)
+				})
+				if !ok || len(urls) > 0 || len(batch) != len(inventory.Jobs) {
+					return result, errors.New("Unisante complete inventory writer unavailable")
+				}
+				counts, err = writer.WriteCompleteUnisanteBatch(ctx, batch, queue.GreenhouseInventorySummary{Discovered: inventory.Discovered})
+			} else {
+				counts, err = sink.WriteRichBatch(ctx, batch)
+			}
 			if err != nil {
 				return result, claimRunError("posting_write", err)
 			}

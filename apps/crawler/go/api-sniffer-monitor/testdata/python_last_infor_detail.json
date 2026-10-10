@@ -1,0 +1,639 @@
+[
+  {
+    "name": "normal",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "source": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+        "body": "<html>Anonymous context</html>",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30",
+          "content-type": "text/plain; charset=utf-8"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/Find_PostingDisplay_FormOperation?JobPosting=7&JobRequisition=42&Description=+&__Description_translation___=+&PositionDescription=+&__PositionDescription_translation___=+&LocationOfJob.Description=+&__LocationOfJob.Description_translation___=+&Category.Description=+&RelationshipToOrganization.Description=+&PostingDateRange.Begin=+&PostingDateRange.End=+&SalaryRangeAmount=+&SalaryRange.BeginningPay=+&SalaryRange.EndingPay=+&SalaryEntered=+&StatusSwitchForCandidateSpace=+&SalaryRange.PayRangeCurrencyCode=+&Live=+&JobRequisitionLocation=+&JobRequisitionConsentAgreement=+&JobRequisitionAcknowledgement=+&JobRequisitionSelfIdConfiguration=+&JobRequisitionShowDependents=+&JobReqTSAssessment=+&csk.IsoLocale=en&HROrganization=1&JobRequisitionApplicationProcessEntered=+",
+        "body": "{\"Find_PostingDisplay_FormOperationResponse\":{\"JobRequisition\":\"42\",\"JobPosting\":\"7\",\"__Description_translation___\":\" Nurse \",\"Description\":\"Fallback title\",\"__PositionDescription_translation___\":\" <p>Clinical role.</p> \",\"PositionDescription\":\"Fallback description\",\"LocationOfJob.Description\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"20261001\",\"Category.Description\":\" Health \",\"RelationshipToOrganization.Description\":\" Employee \",\"JobRequisitionLocation\":\"South Nassau\"}}",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-length": "478",
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "job": {
+      "title": "Nurse",
+      "description": "<p>Clinical role.</p>",
+      "locations": [
+        "Oceanside, NY, US"
+      ],
+      "date_posted": "2026-10-01",
+      "language": "en",
+      "metadata": {
+        "job_requisition": "42",
+        "job_posting": "7",
+        "category": "Health",
+        "relationship": "Employee",
+        "job_requisition_location": "South Nassau"
+      }
+    }
+  },
+  {
+    "name": "fallback-title",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "source": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+        "body": "<html>Anonymous context</html>",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30",
+          "content-type": "text/plain; charset=utf-8"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/Find_PostingDisplay_FormOperation?JobPosting=7&JobRequisition=42&Description=+&__Description_translation___=+&PositionDescription=+&__PositionDescription_translation___=+&LocationOfJob.Description=+&__LocationOfJob.Description_translation___=+&Category.Description=+&RelationshipToOrganization.Description=+&PostingDateRange.Begin=+&PostingDateRange.End=+&SalaryRangeAmount=+&SalaryRange.BeginningPay=+&SalaryRange.EndingPay=+&SalaryEntered=+&StatusSwitchForCandidateSpace=+&SalaryRange.PayRangeCurrencyCode=+&Live=+&JobRequisitionLocation=+&JobRequisitionConsentAgreement=+&JobRequisitionAcknowledgement=+&JobRequisitionSelfIdConfiguration=+&JobRequisitionShowDependents=+&JobReqTSAssessment=+&csk.IsoLocale=en&HROrganization=1&JobRequisitionApplicationProcessEntered=+",
+        "body": "{\"Find_PostingDisplay_FormOperationResponse\":{\"JobRequisition\":\"42\",\"JobPosting\":\"7\",\"__Description_translation___\":null,\"Description\":\"Fallback title\",\"__PositionDescription_translation___\":\" <p>Clinical role.</p> \",\"PositionDescription\":\"Fallback description\",\"LocationOfJob.Description\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"20261001\",\"Category.Description\":\" Health \",\"RelationshipToOrganization.Description\":\" Employee \",\"JobRequisitionLocation\":\"South Nassau\"}}",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-length": "473",
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "job": {
+      "title": "Fallback title",
+      "description": "<p>Clinical role.</p>",
+      "locations": [
+        "Oceanside, NY, US"
+      ],
+      "date_posted": "2026-10-01",
+      "language": "en",
+      "metadata": {
+        "job_requisition": "42",
+        "job_posting": "7",
+        "category": "Health",
+        "relationship": "Employee",
+        "job_requisition_location": "South Nassau"
+      }
+    }
+  },
+  {
+    "name": "fallback-description",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "source": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+        "body": "<html>Anonymous context</html>",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30",
+          "content-type": "text/plain; charset=utf-8"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/Find_PostingDisplay_FormOperation?JobPosting=7&JobRequisition=42&Description=+&__Description_translation___=+&PositionDescription=+&__PositionDescription_translation___=+&LocationOfJob.Description=+&__LocationOfJob.Description_translation___=+&Category.Description=+&RelationshipToOrganization.Description=+&PostingDateRange.Begin=+&PostingDateRange.End=+&SalaryRangeAmount=+&SalaryRange.BeginningPay=+&SalaryRange.EndingPay=+&SalaryEntered=+&StatusSwitchForCandidateSpace=+&SalaryRange.PayRangeCurrencyCode=+&Live=+&JobRequisitionLocation=+&JobRequisitionConsentAgreement=+&JobRequisitionAcknowledgement=+&JobRequisitionSelfIdConfiguration=+&JobRequisitionShowDependents=+&JobReqTSAssessment=+&csk.IsoLocale=en&HROrganization=1&JobRequisitionApplicationProcessEntered=+",
+        "body": "{\"Find_PostingDisplay_FormOperationResponse\":{\"JobRequisition\":\"42\",\"JobPosting\":\"7\",\"__Description_translation___\":\" Nurse \",\"Description\":\"Fallback title\",\"__PositionDescription_translation___\":null,\"PositionDescription\":\"Fallback description\",\"LocationOfJob.Description\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"20261001\",\"Category.Description\":\" Health \",\"RelationshipToOrganization.Description\":\" Employee \",\"JobRequisitionLocation\":\"South Nassau\"}}",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-length": "457",
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "job": {
+      "title": "Nurse",
+      "description": "Fallback description",
+      "locations": [
+        "Oceanside, NY, US"
+      ],
+      "date_posted": "2026-10-01",
+      "language": "en",
+      "metadata": {
+        "job_requisition": "42",
+        "job_posting": "7",
+        "category": "Health",
+        "relationship": "Employee",
+        "job_requisition_location": "South Nassau"
+      }
+    }
+  },
+  {
+    "name": "fallback-location",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "source": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+        "body": "<html>Anonymous context</html>",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30",
+          "content-type": "text/plain; charset=utf-8"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/Find_PostingDisplay_FormOperation?JobPosting=7&JobRequisition=42&Description=+&__Description_translation___=+&PositionDescription=+&__PositionDescription_translation___=+&LocationOfJob.Description=+&__LocationOfJob.Description_translation___=+&Category.Description=+&RelationshipToOrganization.Description=+&PostingDateRange.Begin=+&PostingDateRange.End=+&SalaryRangeAmount=+&SalaryRange.BeginningPay=+&SalaryRange.EndingPay=+&SalaryEntered=+&StatusSwitchForCandidateSpace=+&SalaryRange.PayRangeCurrencyCode=+&Live=+&JobRequisitionLocation=+&JobRequisitionConsentAgreement=+&JobRequisitionAcknowledgement=+&JobRequisitionSelfIdConfiguration=+&JobRequisitionShowDependents=+&JobReqTSAssessment=+&csk.IsoLocale=en&HROrganization=1&JobRequisitionApplicationProcessEntered=+",
+        "body": "{\"Find_PostingDisplay_FormOperationResponse\":{\"JobRequisition\":\"42\",\"JobPosting\":\"7\",\"__Description_translation___\":\" Nurse \",\"Description\":\"Fallback title\",\"__PositionDescription_translation___\":\" <p>Clinical role.</p> \",\"PositionDescription\":\"Fallback description\",\"LocationOfJob.Description\":null,\"PostingDateRange.Begin\":\"20261001\",\"Category.Description\":\" Health \",\"RelationshipToOrganization.Description\":\" Employee \",\"JobRequisitionLocation\":\"South Nassau\",\"__LocationOfJob.Description_translation___\":\"CH:Lausanne\"}}",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-length": "524",
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "job": {
+      "title": "Nurse",
+      "description": "<p>Clinical role.</p>",
+      "locations": [
+        "Lausanne, CH"
+      ],
+      "date_posted": "2026-10-01",
+      "language": "en",
+      "metadata": {
+        "job_requisition": "42",
+        "job_posting": "7",
+        "category": "Health",
+        "relationship": "Employee",
+        "job_requisition_location": "South Nassau"
+      }
+    }
+  },
+  {
+    "name": "empty-title",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "source": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+        "body": "<html>Anonymous context</html>",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30",
+          "content-type": "text/plain; charset=utf-8"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/Find_PostingDisplay_FormOperation?JobPosting=7&JobRequisition=42&Description=+&__Description_translation___=+&PositionDescription=+&__PositionDescription_translation___=+&LocationOfJob.Description=+&__LocationOfJob.Description_translation___=+&Category.Description=+&RelationshipToOrganization.Description=+&PostingDateRange.Begin=+&PostingDateRange.End=+&SalaryRangeAmount=+&SalaryRange.BeginningPay=+&SalaryRange.EndingPay=+&SalaryEntered=+&StatusSwitchForCandidateSpace=+&SalaryRange.PayRangeCurrencyCode=+&Live=+&JobRequisitionLocation=+&JobRequisitionConsentAgreement=+&JobRequisitionAcknowledgement=+&JobRequisitionSelfIdConfiguration=+&JobRequisitionShowDependents=+&JobReqTSAssessment=+&csk.IsoLocale=en&HROrganization=1&JobRequisitionApplicationProcessEntered=+",
+        "body": "{\"Find_PostingDisplay_FormOperationResponse\":{\"JobRequisition\":\"42\",\"JobPosting\":\"7\",\"__Description_translation___\":\"   \",\"Description\":\"Fallback title\",\"__PositionDescription_translation___\":\" <p>Clinical role.</p> \",\"PositionDescription\":\"Fallback description\",\"LocationOfJob.Description\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"20261001\",\"Category.Description\":\" Health \",\"RelationshipToOrganization.Description\":\" Employee \",\"JobRequisitionLocation\":\"South Nassau\"}}",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-length": "474",
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "job": {
+      "description": "<p>Clinical role.</p>",
+      "locations": [
+        "Oceanside, NY, US"
+      ],
+      "date_posted": "2026-10-01",
+      "language": "en",
+      "metadata": {
+        "job_requisition": "42",
+        "job_posting": "7",
+        "category": "Health",
+        "relationship": "Employee",
+        "job_requisition_location": "South Nassau"
+      }
+    }
+  },
+  {
+    "name": "nonstring-title",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "source": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+        "body": "<html>Anonymous context</html>",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30",
+          "content-type": "text/plain; charset=utf-8"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/Find_PostingDisplay_FormOperation?JobPosting=7&JobRequisition=42&Description=+&__Description_translation___=+&PositionDescription=+&__PositionDescription_translation___=+&LocationOfJob.Description=+&__LocationOfJob.Description_translation___=+&Category.Description=+&RelationshipToOrganization.Description=+&PostingDateRange.Begin=+&PostingDateRange.End=+&SalaryRangeAmount=+&SalaryRange.BeginningPay=+&SalaryRange.EndingPay=+&SalaryEntered=+&StatusSwitchForCandidateSpace=+&SalaryRange.PayRangeCurrencyCode=+&Live=+&JobRequisitionLocation=+&JobRequisitionConsentAgreement=+&JobRequisitionAcknowledgement=+&JobRequisitionSelfIdConfiguration=+&JobRequisitionShowDependents=+&JobReqTSAssessment=+&csk.IsoLocale=en&HROrganization=1&JobRequisitionApplicationProcessEntered=+",
+        "body": "{\"Find_PostingDisplay_FormOperationResponse\":{\"JobRequisition\":\"42\",\"JobPosting\":\"7\",\"__Description_translation___\":42,\"Description\":\"Fallback title\",\"__PositionDescription_translation___\":\" <p>Clinical role.</p> \",\"PositionDescription\":\"Fallback description\",\"LocationOfJob.Description\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"20261001\",\"Category.Description\":\" Health \",\"RelationshipToOrganization.Description\":\" Employee \",\"JobRequisitionLocation\":\"South Nassau\"}}",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-length": "471",
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "job": {
+      "description": "<p>Clinical role.</p>",
+      "locations": [
+        "Oceanside, NY, US"
+      ],
+      "date_posted": "2026-10-01",
+      "language": "en",
+      "metadata": {
+        "job_requisition": "42",
+        "job_posting": "7",
+        "category": "Health",
+        "relationship": "Employee",
+        "job_requisition_location": "South Nassau"
+      }
+    }
+  },
+  {
+    "name": "nonstring-description",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "source": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+        "body": "<html>Anonymous context</html>",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30",
+          "content-type": "text/plain; charset=utf-8"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/Find_PostingDisplay_FormOperation?JobPosting=7&JobRequisition=42&Description=+&__Description_translation___=+&PositionDescription=+&__PositionDescription_translation___=+&LocationOfJob.Description=+&__LocationOfJob.Description_translation___=+&Category.Description=+&RelationshipToOrganization.Description=+&PostingDateRange.Begin=+&PostingDateRange.End=+&SalaryRangeAmount=+&SalaryRange.BeginningPay=+&SalaryRange.EndingPay=+&SalaryEntered=+&StatusSwitchForCandidateSpace=+&SalaryRange.PayRangeCurrencyCode=+&Live=+&JobRequisitionLocation=+&JobRequisitionConsentAgreement=+&JobRequisitionAcknowledgement=+&JobRequisitionSelfIdConfiguration=+&JobRequisitionShowDependents=+&JobReqTSAssessment=+&csk.IsoLocale=en&HROrganization=1&JobRequisitionApplicationProcessEntered=+",
+        "body": "{\"Find_PostingDisplay_FormOperationResponse\":{\"JobRequisition\":\"42\",\"JobPosting\":\"7\",\"__Description_translation___\":\" Nurse \",\"Description\":\"Fallback title\",\"__PositionDescription_translation___\":42,\"PositionDescription\":\"Fallback description\",\"LocationOfJob.Description\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"20261001\",\"Category.Description\":\" Health \",\"RelationshipToOrganization.Description\":\" Employee \",\"JobRequisitionLocation\":\"South Nassau\"}}",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-length": "455",
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "job": {
+      "title": "Nurse",
+      "locations": [
+        "Oceanside, NY, US"
+      ],
+      "date_posted": "2026-10-01",
+      "language": "en",
+      "metadata": {
+        "job_requisition": "42",
+        "job_posting": "7",
+        "category": "Health",
+        "relationship": "Employee",
+        "job_requisition_location": "South Nassau"
+      }
+    }
+  },
+  {
+    "name": "empty-all",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "source": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+        "body": "<html>Anonymous context</html>",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30",
+          "content-type": "text/plain; charset=utf-8"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/Find_PostingDisplay_FormOperation?JobPosting=7&JobRequisition=42&Description=+&__Description_translation___=+&PositionDescription=+&__PositionDescription_translation___=+&LocationOfJob.Description=+&__LocationOfJob.Description_translation___=+&Category.Description=+&RelationshipToOrganization.Description=+&PostingDateRange.Begin=+&PostingDateRange.End=+&SalaryRangeAmount=+&SalaryRange.BeginningPay=+&SalaryRange.EndingPay=+&SalaryEntered=+&StatusSwitchForCandidateSpace=+&SalaryRange.PayRangeCurrencyCode=+&Live=+&JobRequisitionLocation=+&JobRequisitionConsentAgreement=+&JobRequisitionAcknowledgement=+&JobRequisitionSelfIdConfiguration=+&JobRequisitionShowDependents=+&JobReqTSAssessment=+&csk.IsoLocale=en&HROrganization=1&JobRequisitionApplicationProcessEntered=+",
+        "body": "{\"Find_PostingDisplay_FormOperationResponse\":{\"JobRequisition\":null,\"JobPosting\":null,\"__Description_translation___\":null,\"Description\":null,\"__PositionDescription_translation___\":null,\"PositionDescription\":null,\"LocationOfJob.Description\":null,\"PostingDateRange.Begin\":null,\"Category.Description\":null,\"RelationshipToOrganization.Description\":null,\"JobRequisitionLocation\":null}}",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-length": "380",
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "job": {
+      "language": "en"
+    }
+  },
+  {
+    "name": "nonstring-metadata",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "source": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+        "body": "<html>Anonymous context</html>",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30",
+          "content-type": "text/plain; charset=utf-8"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/Find_PostingDisplay_FormOperation?JobPosting=7&JobRequisition=42&Description=+&__Description_translation___=+&PositionDescription=+&__PositionDescription_translation___=+&LocationOfJob.Description=+&__LocationOfJob.Description_translation___=+&Category.Description=+&RelationshipToOrganization.Description=+&PostingDateRange.Begin=+&PostingDateRange.End=+&SalaryRangeAmount=+&SalaryRange.BeginningPay=+&SalaryRange.EndingPay=+&SalaryEntered=+&StatusSwitchForCandidateSpace=+&SalaryRange.PayRangeCurrencyCode=+&Live=+&JobRequisitionLocation=+&JobRequisitionConsentAgreement=+&JobRequisitionAcknowledgement=+&JobRequisitionSelfIdConfiguration=+&JobRequisitionShowDependents=+&JobReqTSAssessment=+&csk.IsoLocale=en&HROrganization=1&JobRequisitionApplicationProcessEntered=+",
+        "body": "{\"Find_PostingDisplay_FormOperationResponse\":{\"JobRequisition\":42,\"JobPosting\":\"7\",\"__Description_translation___\":\" Nurse \",\"Description\":\"Fallback title\",\"__PositionDescription_translation___\":\" <p>Clinical role.</p> \",\"PositionDescription\":\"Fallback description\",\"LocationOfJob.Description\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"20261001\",\"Category.Description\":\" Health \",\"RelationshipToOrganization.Description\":\" Employee \",\"JobRequisitionLocation\":\"South Nassau\"}}",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-length": "476",
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "job": {
+      "title": "Nurse",
+      "description": "<p>Clinical role.</p>",
+      "locations": [
+        "Oceanside, NY, US"
+      ],
+      "date_posted": "2026-10-01",
+      "language": "en",
+      "metadata": {
+        "job_posting": "7",
+        "category": "Health",
+        "relationship": "Employee",
+        "job_requisition_location": "South Nassau"
+      }
+    }
+  },
+  {
+    "name": "date-zero",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "source": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+        "body": "<html>Anonymous context</html>",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30",
+          "content-type": "text/plain; charset=utf-8"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/Find_PostingDisplay_FormOperation?JobPosting=7&JobRequisition=42&Description=+&__Description_translation___=+&PositionDescription=+&__PositionDescription_translation___=+&LocationOfJob.Description=+&__LocationOfJob.Description_translation___=+&Category.Description=+&RelationshipToOrganization.Description=+&PostingDateRange.Begin=+&PostingDateRange.End=+&SalaryRangeAmount=+&SalaryRange.BeginningPay=+&SalaryRange.EndingPay=+&SalaryEntered=+&StatusSwitchForCandidateSpace=+&SalaryRange.PayRangeCurrencyCode=+&Live=+&JobRequisitionLocation=+&JobRequisitionConsentAgreement=+&JobRequisitionAcknowledgement=+&JobRequisitionSelfIdConfiguration=+&JobRequisitionShowDependents=+&JobReqTSAssessment=+&csk.IsoLocale=en&HROrganization=1&JobRequisitionApplicationProcessEntered=+",
+        "body": "{\"Find_PostingDisplay_FormOperationResponse\":{\"JobRequisition\":\"42\",\"JobPosting\":\"7\",\"__Description_translation___\":\" Nurse \",\"Description\":\"Fallback title\",\"__PositionDescription_translation___\":\" <p>Clinical role.</p> \",\"PositionDescription\":\"Fallback description\",\"LocationOfJob.Description\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"00000000\",\"Category.Description\":\" Health \",\"RelationshipToOrganization.Description\":\" Employee \",\"JobRequisitionLocation\":\"South Nassau\"}}",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-length": "478",
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "job": {
+      "title": "Nurse",
+      "description": "<p>Clinical role.</p>",
+      "locations": [
+        "Oceanside, NY, US"
+      ],
+      "language": "en",
+      "metadata": {
+        "job_requisition": "42",
+        "job_posting": "7",
+        "category": "Health",
+        "relationship": "Employee",
+        "job_requisition_location": "South Nassau"
+      }
+    }
+  },
+  {
+    "name": "date-impossible",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "source": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+        "body": "<html>Anonymous context</html>",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30",
+          "content-type": "text/plain; charset=utf-8"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/Find_PostingDisplay_FormOperation?JobPosting=7&JobRequisition=42&Description=+&__Description_translation___=+&PositionDescription=+&__PositionDescription_translation___=+&LocationOfJob.Description=+&__LocationOfJob.Description_translation___=+&Category.Description=+&RelationshipToOrganization.Description=+&PostingDateRange.Begin=+&PostingDateRange.End=+&SalaryRangeAmount=+&SalaryRange.BeginningPay=+&SalaryRange.EndingPay=+&SalaryEntered=+&StatusSwitchForCandidateSpace=+&SalaryRange.PayRangeCurrencyCode=+&Live=+&JobRequisitionLocation=+&JobRequisitionConsentAgreement=+&JobRequisitionAcknowledgement=+&JobRequisitionSelfIdConfiguration=+&JobRequisitionShowDependents=+&JobReqTSAssessment=+&csk.IsoLocale=en&HROrganization=1&JobRequisitionApplicationProcessEntered=+",
+        "body": "{\"Find_PostingDisplay_FormOperationResponse\":{\"JobRequisition\":\"42\",\"JobPosting\":\"7\",\"__Description_translation___\":\" Nurse \",\"Description\":\"Fallback title\",\"__PositionDescription_translation___\":\" <p>Clinical role.</p> \",\"PositionDescription\":\"Fallback description\",\"LocationOfJob.Description\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"20260229\",\"Category.Description\":\" Health \",\"RelationshipToOrganization.Description\":\" Employee \",\"JobRequisitionLocation\":\"South Nassau\"}}",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-length": "478",
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "date-backtracking",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "source": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+        "body": "<html>Anonymous context</html>",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30",
+          "content-type": "text/plain; charset=utf-8"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/Find_PostingDisplay_FormOperation?JobPosting=7&JobRequisition=42&Description=+&__Description_translation___=+&PositionDescription=+&__PositionDescription_translation___=+&LocationOfJob.Description=+&__LocationOfJob.Description_translation___=+&Category.Description=+&RelationshipToOrganization.Description=+&PostingDateRange.Begin=+&PostingDateRange.End=+&SalaryRangeAmount=+&SalaryRange.BeginningPay=+&SalaryRange.EndingPay=+&SalaryEntered=+&StatusSwitchForCandidateSpace=+&SalaryRange.PayRangeCurrencyCode=+&Live=+&JobRequisitionLocation=+&JobRequisitionConsentAgreement=+&JobRequisitionAcknowledgement=+&JobRequisitionSelfIdConfiguration=+&JobRequisitionShowDependents=+&JobReqTSAssessment=+&csk.IsoLocale=en&HROrganization=1&JobRequisitionApplicationProcessEntered=+",
+        "body": "{\"Find_PostingDisplay_FormOperationResponse\":{\"JobRequisition\":\"42\",\"JobPosting\":\"7\",\"__Description_translation___\":\" Nurse \",\"Description\":\"Fallback title\",\"__PositionDescription_translation___\":\" <p>Clinical role.</p> \",\"PositionDescription\":\"Fallback description\",\"LocationOfJob.Description\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"2026110\",\"Category.Description\":\" Health \",\"RelationshipToOrganization.Description\":\" Employee \",\"JobRequisitionLocation\":\"South Nassau\"}}",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-length": "477",
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "job": {
+      "title": "Nurse",
+      "description": "<p>Clinical role.</p>",
+      "locations": [
+        "Oceanside, NY, US"
+      ],
+      "date_posted": "2026-01-10",
+      "language": "en",
+      "metadata": {
+        "job_requisition": "42",
+        "job_posting": "7",
+        "category": "Health",
+        "relationship": "Employee",
+        "job_requisition_location": "South Nassau"
+      }
+    }
+  },
+  {
+    "name": "missing-wrapper",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "source": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+        "body": "<html>Anonymous context</html>",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30",
+          "content-type": "text/plain; charset=utf-8"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/Find_PostingDisplay_FormOperation?JobPosting=7&JobRequisition=42&Description=+&__Description_translation___=+&PositionDescription=+&__PositionDescription_translation___=+&LocationOfJob.Description=+&__LocationOfJob.Description_translation___=+&Category.Description=+&RelationshipToOrganization.Description=+&PostingDateRange.Begin=+&PostingDateRange.End=+&SalaryRangeAmount=+&SalaryRange.BeginningPay=+&SalaryRange.EndingPay=+&SalaryEntered=+&StatusSwitchForCandidateSpace=+&SalaryRange.PayRangeCurrencyCode=+&Live=+&JobRequisitionLocation=+&JobRequisitionConsentAgreement=+&JobRequisitionAcknowledgement=+&JobRequisitionSelfIdConfiguration=+&JobRequisitionShowDependents=+&JobReqTSAssessment=+&csk.IsoLocale=en&HROrganization=1&JobRequisitionApplicationProcessEntered=+",
+        "body": "{}",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-length": "2",
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "wrong-wrapper",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "source": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+        "body": "<html>Anonymous context</html>",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30",
+          "content-type": "text/plain; charset=utf-8"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/Find_PostingDisplay_FormOperation?JobPosting=7&JobRequisition=42&Description=+&__Description_translation___=+&PositionDescription=+&__PositionDescription_translation___=+&LocationOfJob.Description=+&__LocationOfJob.Description_translation___=+&Category.Description=+&RelationshipToOrganization.Description=+&PostingDateRange.Begin=+&PostingDateRange.End=+&SalaryRangeAmount=+&SalaryRange.BeginningPay=+&SalaryRange.EndingPay=+&SalaryEntered=+&StatusSwitchForCandidateSpace=+&SalaryRange.PayRangeCurrencyCode=+&Live=+&JobRequisitionLocation=+&JobRequisitionConsentAgreement=+&JobRequisitionAcknowledgement=+&JobRequisitionSelfIdConfiguration=+&JobRequisitionShowDependents=+&JobReqTSAssessment=+&csk.IsoLocale=en&HROrganization=1&JobRequisitionApplicationProcessEntered=+",
+        "body": "{\"Find_PostingDisplay_FormOperationResponse\":[]}",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-length": "48",
+          "content-type": "application/json"
+        }
+      }
+    ],
+    "error": true
+  }
+]

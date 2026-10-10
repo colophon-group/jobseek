@@ -31,6 +31,14 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 		board, metadata = "https://fixture.jobs.cz/", `{"scraper_type":"skip"}`
 	}
 	switch provider {
+	case "infor":
+		board, metadata = "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1", `{"scraper_type":"infor","scraper_config":{"enrich":["description"]}}`
+	case "peoplesoft":
+		board, metadata = "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL", `{"scraper_type":"peoplesoft","scraper_config":{"enrich":["description"]}}`
+	case "papa_johns":
+		board, metadata = "https://jobs.papajohns.com/jobs/", `{"scraper_type":"json-ld"}`
+	case "unisante":
+		board, metadata = "https://emploi.unisante.ch/index.php/offres", `{"scraper_type":"skip","identity_migration":"unisante-provider-reference-v1"}`
 	case "johdi":
 		board, metadata = "https://employer.example/careers", `{"company_key":"synthetic_company_key_12345","flow":"web","locale":"fr","scraper_type":"johdi","scraper_config":{"company_key":"synthetic_company_key_12345","flow":"web","locale":"fr"}}`
 	case "jobdiva":
@@ -201,6 +209,18 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 	config := profileConfig()
 	config["board_url"], config["crawler_type"], config["metadata"] = board, provider, metadata
 	config["company_id"], config["board_slug"] = f.company, "ordinary-"+f.company
+	if provider == "unisante" {
+		config["board_slug"] = "unisante-emploi"
+		if _, err := f.observer.Exec(ctx, "UPDATE job_board SET board_slug='unisante-emploi' WHERE id=$1::uuid", f.task.ID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := f.observer.Exec(ctx, "UPDATE company SET slug='unisante' WHERE id=$1::uuid", f.company); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := f.observer.Exec(ctx, "UPDATE job_posting SET source_url='https://emploi.unisante.ch/index.php/offre/42-clinical-role',source_identity='https://emploi.unisante.ch/index.php/offre/42-clinical-role' WHERE id=$1::uuid", f.task.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
 	config["domain"], config["throttle_key"] = provider, provider
 	if e := f.client.redis.HSet(ctx, "board:"+f.task.ID, config).Err(); e != nil {
 		t.Fatal(e)
@@ -274,6 +294,13 @@ func testProviderColdRetirement(t *testing.T, providers []string, fixture func(*
 						t.Fatal(e)
 					}
 					summary := GreenhouseInventorySummary{}
+					if strings.Split(provider, "/")[0] == "unisante" {
+						summary.Discovered = 1
+						batch := []GreenhouseRichPosting{{URL: "https://emploi.unisante.ch/index.php/offre/42-clinical-role", SourceIdentity: "unisante:emploi:42", Content: &GreenhouseRichContent{Fields: GreenhouseRichFields{Titles: []string{"Native clinical role"}, Locales: []string{"fr"}}}}}
+						if _, err := cycle.WriteCompleteUnisanteBatch(ctx, batch, summary); err != nil {
+							t.Fatal("bounded adoption before cold retirement failed", err)
+						}
+					}
 					if strings.Split(provider, "/")[0] == "eightfold" {
 						summary.MetadataUpdates = map[string]any{"pcsx_watermark": map[string]any{"max_ts": 123, "interval_days": 7, "auto_full_crawl": true, "enabled": true, "last_full_at": "2026-10-06T03:00:00.120000+00:00", "last_incremental_at": "2026-10-06T03:00:00.120000+00:00", "extra": map[string]any{"host": "example.com", "domain": "fixture"}}}
 					}

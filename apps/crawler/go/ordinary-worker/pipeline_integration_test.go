@@ -176,15 +176,22 @@ func privateRichPipelineFixtureURL(t *testing.T, provider, metadata, configuredU
 	if configuredURL != "" {
 		boardURL = configuredURL
 	}
+	boardSlug := "native-" + f.board
+	if provider == "unisante" {
+		boardSlug = "unisante-emploi"
+		if _, err := pg.Exec(ctx, "UPDATE company SET slug='unisante' WHERE id=$1::uuid", f.company); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if _, err := pg.Exec(ctx, `INSERT INTO job_board(id,company_id,board_slug,board_url,crawler_type,metadata,throttle_key,check_interval_minutes,scrape_interval_hours,next_check_at,monitor_needs_browser,scraper_needs_browser)
- VALUES($1::uuid,$2::uuid,$3,$5,$6,$4::jsonb,$6,60,24,now()-interval '1 minute',$7,$8)`, f.board, f.company, "native-"+f.board, metadata, boardURL, provider, worker == queue.Browser, detailBrowser); err != nil {
+ VALUES($1::uuid,$2::uuid,$3,$5,$6,$4::jsonb,$6,60,24,now()-interval '1 minute',$7,$8)`, f.board, f.company, boardSlug, metadata, boardURL, provider, worker == queue.Browser, detailBrowser); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pg.Exec(ctx, `INSERT INTO job_posting(id,company_id,board_id,source_url,titles,locales,last_seen_at,next_scrape_at)
  VALUES($1::uuid,$2::uuid,$3::uuid,$4,ARRAY['Original'],ARRAY['en'],now()-interval '1 day',now())`, f.original, f.company, f.board, "https://example.com/old/"+f.original); err != nil {
 		t.Fatal(err)
 	}
-	projection := map[string]string{"board_slug": "native-" + f.board, "board_url": boardURL, "crawler_type": provider, "company_id": f.company, "domain": provider, "throttle_key": provider, "monitor_needs_browser": flag, "scraper_needs_browser": detailFlag, "check_interval_minutes": "60", "scrape_interval_hours": "24", "metadata": metadata}
+	projection := map[string]string{"board_slug": boardSlug, "board_url": boardURL, "crawler_type": provider, "company_id": f.company, "domain": provider, "throttle_key": provider, "monitor_needs_browser": flag, "scraper_needs_browser": detailFlag, "check_interval_minutes": "60", "scrape_interval_hours": "24", "metadata": metadata}
 	if err := r.HSet(ctx, "board:"+f.board, projection).Err(); err != nil {
 		t.Fatal(err)
 	}

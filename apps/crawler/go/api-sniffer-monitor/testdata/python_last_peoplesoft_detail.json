@@ -1,0 +1,415 @@
+[
+  {
+    "name": "normal",
+    "source": "<html><body><span id=\"HRS_SCH_WRK2_HRS_JOB_OPENING_ID\">42</span><span id=\"HRS_SCH_WRK2_POSTING_TITLE\">Remote Nurse</span><span id=\"HRS_SCH_WRK_HRS_DESCRLONG\">Oceanside</span><span id=\"HRS_SCH_WRK_HRS_FULL_PART_TIME\">Full-time</span><span id=\"HRS_SCH_WRK_HRS_REG_TEMP\">Regular</span><div id=\"win0divHRS_SCH_PSTDSC_row$0\"><h2><span class=\"ps-text\">What your job will be like</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$0\"><p>Work with clinical teams.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$1\"><h2><span class=\"ps-text\">Required Qualifications</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$1\"><p>Registered nurse license.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$2\"><h2><span class=\"ps-text\">Salary</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$2\">USD 100000-120000</span></div></body></html>",
+    "expected_id": "42",
+    "adapters": {
+      "employment": {
+        "input": "Full-time",
+        "value": "full_time"
+      },
+      "workplace": {
+        "input": "Remote",
+        "value": "remote"
+      },
+      "salary": {
+        "input": "USD 100000-120000 per year",
+        "value": null
+      }
+    },
+    "job": {
+      "title": "Remote Nurse",
+      "description": "<h2>What your job will be like</h2>\n<p>Work with clinical teams.</p>\n<h2>Required Qualifications</h2>\n<p>Registered nurse license.</p>\n<h2>Salary</h2>\nUSD 100000-120000",
+      "locations": [
+        "Oceanside"
+      ],
+      "employment_type": "full_time",
+      "job_location_type": "remote",
+      "extras": {
+        "qualifications": "<h2>Required Qualifications</h2>\n<p>Registered nurse license.</p>",
+        "responsibilities": "<h2>What your job will be like</h2>\n<p>Work with clinical teams.</p>"
+      },
+      "metadata": {
+        "job_id": "42",
+        "regular_or_temporary": "Regular"
+      }
+    }
+  },
+  {
+    "name": "hybrid",
+    "source": "<html><body><span id=\"HRS_SCH_WRK2_HRS_JOB_OPENING_ID\">42</span><span id=\"HRS_SCH_WRK2_POSTING_TITLE\">Hybrid Engineer</span><span id=\"HRS_SCH_WRK_HRS_DESCRLONG\">Oceanside</span><span id=\"HRS_SCH_WRK_HRS_FULL_PART_TIME\">Full-time</span><span id=\"HRS_SCH_WRK_HRS_REG_TEMP\">Regular</span><div id=\"win0divHRS_SCH_PSTDSC_row$0\"><h2><span class=\"ps-text\">What your job will be like</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$0\"><p>Work with clinical teams.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$1\"><h2><span class=\"ps-text\">Required Qualifications</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$1\"><p>Registered nurse license.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$2\"><h2><span class=\"ps-text\">Salary</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$2\">USD 100000-120000</span></div></body></html>",
+    "expected_id": "42",
+    "adapters": {
+      "employment": {
+        "input": "Full-time",
+        "value": "full_time"
+      },
+      "workplace": {
+        "input": "Hybrid",
+        "value": "hybrid"
+      },
+      "salary": {
+        "input": "USD 100000-120000 per year",
+        "value": null
+      }
+    },
+    "job": {
+      "title": "Hybrid Engineer",
+      "description": "<h2>What your job will be like</h2>\n<p>Work with clinical teams.</p>\n<h2>Required Qualifications</h2>\n<p>Registered nurse license.</p>\n<h2>Salary</h2>\nUSD 100000-120000",
+      "locations": [
+        "Oceanside"
+      ],
+      "employment_type": "full_time",
+      "job_location_type": "hybrid",
+      "extras": {
+        "qualifications": "<h2>Required Qualifications</h2>\n<p>Registered nurse license.</p>",
+        "responsibilities": "<h2>What your job will be like</h2>\n<p>Work with clinical teams.</p>"
+      },
+      "metadata": {
+        "job_id": "42",
+        "regular_or_temporary": "Regular"
+      }
+    }
+  },
+  {
+    "name": "onsite",
+    "source": "<html><body><span id=\"HRS_SCH_WRK2_HRS_JOB_OPENING_ID\">42</span><span id=\"HRS_SCH_WRK2_POSTING_TITLE\">On-site Nurse</span><span id=\"HRS_SCH_WRK_HRS_DESCRLONG\">Oceanside</span><span id=\"HRS_SCH_WRK_HRS_FULL_PART_TIME\">Full-time</span><span id=\"HRS_SCH_WRK_HRS_REG_TEMP\">Regular</span><div id=\"win0divHRS_SCH_PSTDSC_row$0\"><h2><span class=\"ps-text\">What your job will be like</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$0\"><p>Work with clinical teams.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$1\"><h2><span class=\"ps-text\">Required Qualifications</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$1\"><p>Registered nurse license.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$2\"><h2><span class=\"ps-text\">Salary</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$2\">USD 100000-120000</span></div></body></html>",
+    "expected_id": "42",
+    "adapters": {
+      "employment": {
+        "input": "Full-time",
+        "value": "full_time"
+      },
+      "workplace": {
+        "input": "On-site",
+        "value": "onsite"
+      },
+      "salary": {
+        "input": "USD 100000-120000 per year",
+        "value": null
+      }
+    },
+    "job": {
+      "title": "On-site Nurse",
+      "description": "<h2>What your job will be like</h2>\n<p>Work with clinical teams.</p>\n<h2>Required Qualifications</h2>\n<p>Registered nurse license.</p>\n<h2>Salary</h2>\nUSD 100000-120000",
+      "locations": [
+        "Oceanside"
+      ],
+      "employment_type": "full_time",
+      "job_location_type": "onsite",
+      "extras": {
+        "qualifications": "<h2>Required Qualifications</h2>\n<p>Registered nurse license.</p>",
+        "responsibilities": "<h2>What your job will be like</h2>\n<p>Work with clinical teams.</p>"
+      },
+      "metadata": {
+        "job_id": "42",
+        "regular_or_temporary": "Regular"
+      }
+    }
+  },
+  {
+    "name": "unknown-workplace",
+    "source": "<html><body><span id=\"HRS_SCH_WRK2_HRS_JOB_OPENING_ID\">42</span><span id=\"HRS_SCH_WRK2_POSTING_TITLE\">Engineer</span><span id=\"HRS_SCH_WRK_HRS_DESCRLONG\">Oceanside</span><span id=\"HRS_SCH_WRK_HRS_FULL_PART_TIME\">Full-time</span><span id=\"HRS_SCH_WRK_HRS_REG_TEMP\">Regular</span><div id=\"win0divHRS_SCH_PSTDSC_row$0\"><h2><span class=\"ps-text\">What your job will be like</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$0\"><p>Work with clinical teams.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$1\"><h2><span class=\"ps-text\">Required Qualifications</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$1\"><p>Registered nurse license.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$2\"><h2><span class=\"ps-text\">Salary</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$2\">USD 100000-120000</span></div></body></html>",
+    "expected_id": "42",
+    "adapters": {
+      "employment": {
+        "input": "Full-time",
+        "value": "full_time"
+      },
+      "workplace": {
+        "input": "",
+        "value": null
+      },
+      "salary": {
+        "input": "USD 100000-120000 per year",
+        "value": null
+      }
+    },
+    "job": {
+      "title": "Engineer",
+      "description": "<h2>What your job will be like</h2>\n<p>Work with clinical teams.</p>\n<h2>Required Qualifications</h2>\n<p>Registered nurse license.</p>\n<h2>Salary</h2>\nUSD 100000-120000",
+      "locations": [
+        "Oceanside"
+      ],
+      "employment_type": "full_time",
+      "extras": {
+        "qualifications": "<h2>Required Qualifications</h2>\n<p>Registered nurse license.</p>",
+        "responsibilities": "<h2>What your job will be like</h2>\n<p>Work with clinical teams.</p>"
+      },
+      "metadata": {
+        "job_id": "42",
+        "regular_or_temporary": "Regular"
+      }
+    }
+  },
+  {
+    "name": "parttime",
+    "source": "<html><body><span id=\"HRS_SCH_WRK2_HRS_JOB_OPENING_ID\">42</span><span id=\"HRS_SCH_WRK2_POSTING_TITLE\">Remote Nurse</span><span id=\"HRS_SCH_WRK_HRS_DESCRLONG\">Oceanside</span><span id=\"HRS_SCH_WRK_HRS_FULL_PART_TIME\">Part Time</span><span id=\"HRS_SCH_WRK_HRS_REG_TEMP\">Regular</span><div id=\"win0divHRS_SCH_PSTDSC_row$0\"><h2><span class=\"ps-text\">What your job will be like</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$0\"><p>Work with clinical teams.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$1\"><h2><span class=\"ps-text\">Required Qualifications</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$1\"><p>Registered nurse license.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$2\"><h2><span class=\"ps-text\">Salary</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$2\">USD 100000-120000</span></div></body></html>",
+    "expected_id": "42",
+    "adapters": {
+      "employment": {
+        "input": "Part Time",
+        "value": "part_time"
+      },
+      "workplace": {
+        "input": "Remote",
+        "value": "remote"
+      },
+      "salary": {
+        "input": "USD 100000-120000 per year",
+        "value": null
+      }
+    },
+    "job": {
+      "title": "Remote Nurse",
+      "description": "<h2>What your job will be like</h2>\n<p>Work with clinical teams.</p>\n<h2>Required Qualifications</h2>\n<p>Registered nurse license.</p>\n<h2>Salary</h2>\nUSD 100000-120000",
+      "locations": [
+        "Oceanside"
+      ],
+      "employment_type": "part_time",
+      "job_location_type": "remote",
+      "extras": {
+        "qualifications": "<h2>Required Qualifications</h2>\n<p>Registered nurse license.</p>",
+        "responsibilities": "<h2>What your job will be like</h2>\n<p>Work with clinical teams.</p>"
+      },
+      "metadata": {
+        "job_id": "42",
+        "regular_or_temporary": "Regular"
+      }
+    }
+  },
+  {
+    "name": "unknown-employment",
+    "source": "<html><body><span id=\"HRS_SCH_WRK2_HRS_JOB_OPENING_ID\">42</span><span id=\"HRS_SCH_WRK2_POSTING_TITLE\">Remote Nurse</span><span id=\"HRS_SCH_WRK_HRS_DESCRLONG\">Oceanside</span><span id=\"HRS_SCH_WRK_HRS_FULL_PART_TIME\">Unknown</span><span id=\"HRS_SCH_WRK_HRS_REG_TEMP\">Regular</span><div id=\"win0divHRS_SCH_PSTDSC_row$0\"><h2><span class=\"ps-text\">What your job will be like</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$0\"><p>Work with clinical teams.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$1\"><h2><span class=\"ps-text\">Required Qualifications</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$1\"><p>Registered nurse license.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$2\"><h2><span class=\"ps-text\">Salary</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$2\">USD 100000-120000</span></div></body></html>",
+    "expected_id": "42",
+    "adapters": {
+      "employment": {
+        "input": "Unknown",
+        "value": null
+      },
+      "workplace": {
+        "input": "Remote",
+        "value": "remote"
+      },
+      "salary": {
+        "input": "USD 100000-120000 per year",
+        "value": null
+      }
+    },
+    "job": {
+      "title": "Remote Nurse",
+      "description": "<h2>What your job will be like</h2>\n<p>Work with clinical teams.</p>\n<h2>Required Qualifications</h2>\n<p>Registered nurse license.</p>\n<h2>Salary</h2>\nUSD 100000-120000",
+      "locations": [
+        "Oceanside"
+      ],
+      "job_location_type": "remote",
+      "extras": {
+        "qualifications": "<h2>Required Qualifications</h2>\n<p>Registered nurse license.</p>",
+        "responsibilities": "<h2>What your job will be like</h2>\n<p>Work with clinical teams.</p>"
+      },
+      "metadata": {
+        "job_id": "42",
+        "regular_or_temporary": "Regular"
+      }
+    }
+  },
+  {
+    "name": "missing-employment",
+    "source": "<html><body><span id=\"HRS_SCH_WRK2_HRS_JOB_OPENING_ID\">42</span><span id=\"HRS_SCH_WRK2_POSTING_TITLE\">Remote Nurse</span><span id=\"HRS_SCH_WRK_HRS_DESCRLONG\">Oceanside</span><span id=\"HRS_SCH_WRK_HRS_REG_TEMP\">Regular</span><div id=\"win0divHRS_SCH_PSTDSC_row$0\"><h2><span class=\"ps-text\">What your job will be like</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$0\"><p>Work with clinical teams.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$1\"><h2><span class=\"ps-text\">Required Qualifications</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$1\"><p>Registered nurse license.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$2\"><h2><span class=\"ps-text\">Salary</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$2\">USD 100000-120000</span></div></body></html>",
+    "expected_id": "42",
+    "adapters": {
+      "employment": {
+        "input": "",
+        "value": null
+      },
+      "workplace": {
+        "input": "Remote",
+        "value": "remote"
+      },
+      "salary": {
+        "input": "USD 100000-120000 per year",
+        "value": null
+      }
+    },
+    "job": {
+      "title": "Remote Nurse",
+      "description": "<h2>What your job will be like</h2>\n<p>Work with clinical teams.</p>\n<h2>Required Qualifications</h2>\n<p>Registered nurse license.</p>\n<h2>Salary</h2>\nUSD 100000-120000",
+      "locations": [
+        "Oceanside"
+      ],
+      "job_location_type": "remote",
+      "extras": {
+        "qualifications": "<h2>Required Qualifications</h2>\n<p>Registered nurse license.</p>",
+        "responsibilities": "<h2>What your job will be like</h2>\n<p>Work with clinical teams.</p>"
+      },
+      "metadata": {
+        "job_id": "42",
+        "regular_or_temporary": "Regular"
+      }
+    }
+  },
+  {
+    "name": "missing-location",
+    "source": "<html><body><span id=\"HRS_SCH_WRK2_HRS_JOB_OPENING_ID\">42</span><span id=\"HRS_SCH_WRK2_POSTING_TITLE\">Remote Nurse</span><span id=\"HRS_SCH_WRK_HRS_FULL_PART_TIME\">Full-time</span><span id=\"HRS_SCH_WRK_HRS_REG_TEMP\">Regular</span><div id=\"win0divHRS_SCH_PSTDSC_row$0\"><h2><span class=\"ps-text\">What your job will be like</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$0\"><p>Work with clinical teams.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$1\"><h2><span class=\"ps-text\">Required Qualifications</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$1\"><p>Registered nurse license.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$2\"><h2><span class=\"ps-text\">Salary</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$2\">USD 100000-120000</span></div></body></html>",
+    "expected_id": "42",
+    "adapters": {
+      "employment": {
+        "input": "Full-time",
+        "value": "full_time"
+      },
+      "workplace": {
+        "input": "Remote",
+        "value": "remote"
+      },
+      "salary": {
+        "input": "USD 100000-120000 per year",
+        "value": null
+      }
+    },
+    "job": {
+      "title": "Remote Nurse",
+      "description": "<h2>What your job will be like</h2>\n<p>Work with clinical teams.</p>\n<h2>Required Qualifications</h2>\n<p>Registered nurse license.</p>\n<h2>Salary</h2>\nUSD 100000-120000",
+      "employment_type": "full_time",
+      "job_location_type": "remote",
+      "extras": {
+        "qualifications": "<h2>Required Qualifications</h2>\n<p>Registered nurse license.</p>",
+        "responsibilities": "<h2>What your job will be like</h2>\n<p>Work with clinical teams.</p>"
+      },
+      "metadata": {
+        "job_id": "42",
+        "regular_or_temporary": "Regular"
+      }
+    }
+  },
+  {
+    "name": "missing-id",
+    "source": "<html><body><span id=\"HRS_SCH_WRK2_POSTING_TITLE\">Remote Nurse</span><span id=\"HRS_SCH_WRK_HRS_DESCRLONG\">Oceanside</span><span id=\"HRS_SCH_WRK_HRS_FULL_PART_TIME\">Full-time</span><span id=\"HRS_SCH_WRK_HRS_REG_TEMP\">Regular</span><div id=\"win0divHRS_SCH_PSTDSC_row$0\"><h2><span class=\"ps-text\">What your job will be like</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$0\"><p>Work with clinical teams.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$1\"><h2><span class=\"ps-text\">Required Qualifications</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$1\"><p>Registered nurse license.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$2\"><h2><span class=\"ps-text\">Salary</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$2\">USD 100000-120000</span></div></body></html>",
+    "expected_id": "42",
+    "adapters": {},
+    "error": true
+  },
+  {
+    "name": "changed-id",
+    "source": "<html><body><span id=\"HRS_SCH_WRK2_HRS_JOB_OPENING_ID\">43</span><span id=\"HRS_SCH_WRK2_POSTING_TITLE\">Remote Nurse</span><span id=\"HRS_SCH_WRK_HRS_DESCRLONG\">Oceanside</span><span id=\"HRS_SCH_WRK_HRS_FULL_PART_TIME\">Full-time</span><span id=\"HRS_SCH_WRK_HRS_REG_TEMP\">Regular</span><div id=\"win0divHRS_SCH_PSTDSC_row$0\"><h2><span class=\"ps-text\">What your job will be like</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$0\"><p>Work with clinical teams.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$1\"><h2><span class=\"ps-text\">Required Qualifications</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$1\"><p>Registered nurse license.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$2\"><h2><span class=\"ps-text\">Salary</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$2\">USD 100000-120000</span></div></body></html>",
+    "expected_id": "42",
+    "adapters": {},
+    "error": true
+  },
+  {
+    "name": "missing-title",
+    "source": "<html><body><span id=\"HRS_SCH_WRK2_HRS_JOB_OPENING_ID\">42</span><span id=\"HRS_SCH_WRK_HRS_DESCRLONG\">Oceanside</span><span id=\"HRS_SCH_WRK_HRS_FULL_PART_TIME\">Full-time</span><span id=\"HRS_SCH_WRK_HRS_REG_TEMP\">Regular</span><div id=\"win0divHRS_SCH_PSTDSC_row$0\"><h2><span class=\"ps-text\">What your job will be like</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$0\"><p>Work with clinical teams.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$1\"><h2><span class=\"ps-text\">Required Qualifications</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$1\"><p>Registered nurse license.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$2\"><h2><span class=\"ps-text\">Salary</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$2\">USD 100000-120000</span></div></body></html>",
+    "expected_id": "42",
+    "adapters": {},
+    "error": true
+  },
+  {
+    "name": "missing-sections",
+    "source": "<html><body><span id=\"HRS_SCH_WRK2_HRS_JOB_OPENING_ID\">42</span><span id=\"HRS_SCH_WRK2_POSTING_TITLE\">Remote Nurse</span><span id=\"HRS_SCH_WRK_HRS_DESCRLONG\">Oceanside</span><span id=\"HRS_SCH_WRK_HRS_FULL_PART_TIME\">Full-time</span><span id=\"HRS_SCH_WRK_HRS_REG_TEMP\">Regular</span></body></html>",
+    "expected_id": "42",
+    "adapters": {},
+    "error": true
+  },
+  {
+    "name": "empty-salary",
+    "source": "<html><body><span id=\"HRS_SCH_WRK2_HRS_JOB_OPENING_ID\">42</span><span id=\"HRS_SCH_WRK2_POSTING_TITLE\">Remote Nurse</span><span id=\"HRS_SCH_WRK_HRS_DESCRLONG\">Oceanside</span><span id=\"HRS_SCH_WRK_HRS_FULL_PART_TIME\">Full-time</span><span id=\"HRS_SCH_WRK_HRS_REG_TEMP\">Regular</span><div id=\"win0divHRS_SCH_PSTDSC_row$0\"><h2><span class=\"ps-text\">What your job will be like</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$0\"><p>Work with clinical teams.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$1\"><h2><span class=\"ps-text\">Required Qualifications</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$1\"><p>Registered nurse license.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$2\"><h2><span class=\"ps-text\">Salary</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$2\"></span></div></body></html>",
+    "expected_id": "42",
+    "adapters": {
+      "employment": {
+        "input": "Full-time",
+        "value": "full_time"
+      },
+      "workplace": {
+        "input": "Remote",
+        "value": "remote"
+      }
+    },
+    "job": {
+      "title": "Remote Nurse",
+      "description": "<h2>What your job will be like</h2>\n<p>Work with clinical teams.</p>\n<h2>Required Qualifications</h2>\n<p>Registered nurse license.</p>",
+      "locations": [
+        "Oceanside"
+      ],
+      "employment_type": "full_time",
+      "job_location_type": "remote",
+      "extras": {
+        "qualifications": "<h2>Required Qualifications</h2>\n<p>Registered nurse license.</p>",
+        "responsibilities": "<h2>What your job will be like</h2>\n<p>Work with clinical teams.</p>"
+      },
+      "metadata": {
+        "job_id": "42",
+        "regular_or_temporary": "Regular"
+      }
+    }
+  },
+  {
+    "name": "hourly-salary",
+    "source": "<html><body><span id=\"HRS_SCH_WRK2_HRS_JOB_OPENING_ID\">42</span><span id=\"HRS_SCH_WRK2_POSTING_TITLE\">Remote Nurse</span><span id=\"HRS_SCH_WRK_HRS_DESCRLONG\">Oceanside</span><span id=\"HRS_SCH_WRK_HRS_FULL_PART_TIME\">Full-time</span><span id=\"HRS_SCH_WRK_HRS_REG_TEMP\">Regular</span><div id=\"win0divHRS_SCH_PSTDSC_row$0\"><h2><span class=\"ps-text\">What your job will be like</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$0\"><p>Work with clinical teams.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$1\"><h2><span class=\"ps-text\">Required Qualifications</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$1\"><p>Registered nurse license.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$2\"><h2><span class=\"ps-text\">Salary</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$2\">USD 40-50 per hour</span></div></body></html>",
+    "expected_id": "42",
+    "adapters": {
+      "employment": {
+        "input": "Full-time",
+        "value": "full_time"
+      },
+      "workplace": {
+        "input": "Remote",
+        "value": "remote"
+      },
+      "salary": {
+        "input": "USD 40-50 per hour per year",
+        "value": null
+      }
+    },
+    "job": {
+      "title": "Remote Nurse",
+      "description": "<h2>What your job will be like</h2>\n<p>Work with clinical teams.</p>\n<h2>Required Qualifications</h2>\n<p>Registered nurse license.</p>\n<h2>Salary</h2>\nUSD 40-50 per hour",
+      "locations": [
+        "Oceanside"
+      ],
+      "employment_type": "full_time",
+      "job_location_type": "remote",
+      "extras": {
+        "qualifications": "<h2>Required Qualifications</h2>\n<p>Registered nurse license.</p>",
+        "responsibilities": "<h2>What your job will be like</h2>\n<p>Work with clinical teams.</p>"
+      },
+      "metadata": {
+        "job_id": "42",
+        "regular_or_temporary": "Regular"
+      }
+    }
+  },
+  {
+    "name": "missing-regular",
+    "source": "<html><body><span id=\"HRS_SCH_WRK2_HRS_JOB_OPENING_ID\">42</span><span id=\"HRS_SCH_WRK2_POSTING_TITLE\">Remote Nurse</span><span id=\"HRS_SCH_WRK_HRS_DESCRLONG\">Oceanside</span><span id=\"HRS_SCH_WRK_HRS_FULL_PART_TIME\">Full-time</span><div id=\"win0divHRS_SCH_PSTDSC_row$0\"><h2><span class=\"ps-text\">What your job will be like</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$0\"><p>Work with clinical teams.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$1\"><h2><span class=\"ps-text\">Required Qualifications</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$1\"><p>Registered nurse license.</p></span></div><div id=\"win0divHRS_SCH_PSTDSC_row$2\"><h2><span class=\"ps-text\">Salary</span></h2><span id=\"HRS_SCH_PSTDSC_DESCRLONG$2\">USD 100000-120000</span></div></body></html>",
+    "expected_id": "42",
+    "adapters": {
+      "employment": {
+        "input": "Full-time",
+        "value": "full_time"
+      },
+      "workplace": {
+        "input": "Remote",
+        "value": "remote"
+      },
+      "salary": {
+        "input": "USD 100000-120000 per year",
+        "value": null
+      }
+    },
+    "job": {
+      "title": "Remote Nurse",
+      "description": "<h2>What your job will be like</h2>\n<p>Work with clinical teams.</p>\n<h2>Required Qualifications</h2>\n<p>Registered nurse license.</p>\n<h2>Salary</h2>\nUSD 100000-120000",
+      "locations": [
+        "Oceanside"
+      ],
+      "employment_type": "full_time",
+      "job_location_type": "remote",
+      "extras": {
+        "qualifications": "<h2>Required Qualifications</h2>\n<p>Registered nurse license.</p>",
+        "responsibilities": "<h2>What your job will be like</h2>\n<p>Work with clinical teams.</p>"
+      },
+      "metadata": {
+        "job_id": "42"
+      }
+    }
+  }
+]

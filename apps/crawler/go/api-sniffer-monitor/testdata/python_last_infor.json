@@ -1,0 +1,1007 @@
+[
+  {
+    "name": "normal",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "body": {
+      "JobPostingListWebServices_ListOperationResponseArray": [
+        {
+          "JobPostingListWebServices_ListOperationResponse": {
+            "JobRequisition": "42",
+            "JobPosting": "7",
+            "__Description_translation___": " Registered Nurse ",
+            "LocationOfJob": "US:NY:Oceanside",
+            "PostingDateRange.Begin": "20261001",
+            "WorkType": " Full Time ",
+            "Category": "Clinical",
+            "SubCategory": "Nursing"
+          }
+        }
+      ]
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30"
+        },
+        "body": "<html>Anonymous context</html>"
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/JobPostingListWebServices_ListOperation?_clientType=INTERNAL&JobBoard=PUBLIC&LocationOfJob=+&Category=+&SubCategory=+&WorkType=+&JobRequisition=+&__Description_translation___=+&JobPosting=+&PostingStatus=2&PostingDateRange.Begin=+&PostingDateRange.End=+&JobRequisitionPriority=+&csk.IsoLocale=en&HROrganization=1&_limit=-1&AtApplicationLimit=+",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "content-length": "344"
+        },
+        "body": "{\"JobPostingListWebServices_ListOperationResponseArray\":[{\"JobPostingListWebServices_ListOperationResponse\":{\"JobRequisition\":\"42\",\"JobPosting\":\"7\",\"__Description_translation___\":\" Registered Nurse \",\"LocationOfJob\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"20261001\",\"WorkType\":\" Full Time \",\"Category\":\"Clinical\",\"SubCategory\":\"Nursing\"}}]}"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+        "title": "Registered Nurse",
+        "locations": [
+          "Oceanside, NY, US"
+        ],
+        "date_posted": "2026-10-01",
+        "language": "en",
+        "metadata": {
+          "job_requisition": "42",
+          "job_posting": "7",
+          "work_type": "Full Time",
+          "category": "Clinical",
+          "subcategory": "Nursing"
+        }
+      }
+    ]
+  },
+  {
+    "name": "numeric-id",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "body": {
+      "JobPostingListWebServices_ListOperationResponseArray": [
+        {
+          "JobPostingListWebServices_ListOperationResponse": {
+            "JobRequisition": 42,
+            "JobPosting": "7",
+            "__Description_translation___": " Registered Nurse ",
+            "LocationOfJob": "US:NY:Oceanside",
+            "PostingDateRange.Begin": "20261001",
+            "WorkType": " Full Time ",
+            "Category": "Clinical",
+            "SubCategory": "Nursing"
+          }
+        }
+      ]
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30"
+        },
+        "body": "<html>Anonymous context</html>"
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/JobPostingListWebServices_ListOperation?_clientType=INTERNAL&JobBoard=PUBLIC&LocationOfJob=+&Category=+&SubCategory=+&WorkType=+&JobRequisition=+&__Description_translation___=+&JobPosting=+&PostingStatus=2&PostingDateRange.Begin=+&PostingDateRange.End=+&JobRequisitionPriority=+&csk.IsoLocale=en&HROrganization=1&_limit=-1&AtApplicationLimit=+",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "content-length": "342"
+        },
+        "body": "{\"JobPostingListWebServices_ListOperationResponseArray\":[{\"JobPostingListWebServices_ListOperationResponse\":{\"JobRequisition\":42,\"JobPosting\":\"7\",\"__Description_translation___\":\" Registered Nurse \",\"LocationOfJob\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"20261001\",\"WorkType\":\" Full Time \",\"Category\":\"Clinical\",\"SubCategory\":\"Nursing\"}}]}"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+        "title": "Registered Nurse",
+        "locations": [
+          "Oceanside, NY, US"
+        ],
+        "date_posted": "2026-10-01",
+        "language": "en",
+        "metadata": {
+          "job_requisition": "42",
+          "job_posting": "7",
+          "work_type": "Full Time",
+          "category": "Clinical",
+          "subcategory": "Nursing"
+        }
+      }
+    ]
+  },
+  {
+    "name": "float-id",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "body": {
+      "JobPostingListWebServices_ListOperationResponseArray": [
+        {
+          "JobPostingListWebServices_ListOperationResponse": {
+            "JobRequisition": 42.5,
+            "JobPosting": "7",
+            "__Description_translation___": " Registered Nurse ",
+            "LocationOfJob": "US:NY:Oceanside",
+            "PostingDateRange.Begin": "20261001",
+            "WorkType": " Full Time ",
+            "Category": "Clinical",
+            "SubCategory": "Nursing"
+          }
+        }
+      ]
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30"
+        },
+        "body": "<html>Anonymous context</html>"
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/JobPostingListWebServices_ListOperation?_clientType=INTERNAL&JobBoard=PUBLIC&LocationOfJob=+&Category=+&SubCategory=+&WorkType=+&JobRequisition=+&__Description_translation___=+&JobPosting=+&PostingStatus=2&PostingDateRange.Begin=+&PostingDateRange.End=+&JobRequisitionPriority=+&csk.IsoLocale=en&HROrganization=1&_limit=-1&AtApplicationLimit=+",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "content-length": "344"
+        },
+        "body": "{\"JobPostingListWebServices_ListOperationResponseArray\":[{\"JobPostingListWebServices_ListOperationResponse\":{\"JobRequisition\":42.5,\"JobPosting\":\"7\",\"__Description_translation___\":\" Registered Nurse \",\"LocationOfJob\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"20261001\",\"WorkType\":\" Full Time \",\"Category\":\"Clinical\",\"SubCategory\":\"Nursing\"}}]}"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42.5&context.session.key.noheader=true",
+        "title": "Registered Nurse",
+        "locations": [
+          "Oceanside, NY, US"
+        ],
+        "date_posted": "2026-10-01",
+        "language": "en",
+        "metadata": {
+          "job_requisition": "42.5",
+          "job_posting": "7",
+          "work_type": "Full Time",
+          "category": "Clinical",
+          "subcategory": "Nursing"
+        }
+      }
+    ]
+  },
+  {
+    "name": "boolean-id",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "body": {
+      "JobPostingListWebServices_ListOperationResponseArray": [
+        {
+          "JobPostingListWebServices_ListOperationResponse": {
+            "JobRequisition": true,
+            "JobPosting": "7",
+            "__Description_translation___": " Registered Nurse ",
+            "LocationOfJob": "US:NY:Oceanside",
+            "PostingDateRange.Begin": "20261001",
+            "WorkType": " Full Time ",
+            "Category": "Clinical",
+            "SubCategory": "Nursing"
+          }
+        }
+      ]
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30"
+        },
+        "body": "<html>Anonymous context</html>"
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/JobPostingListWebServices_ListOperation?_clientType=INTERNAL&JobBoard=PUBLIC&LocationOfJob=+&Category=+&SubCategory=+&WorkType=+&JobRequisition=+&__Description_translation___=+&JobPosting=+&PostingStatus=2&PostingDateRange.Begin=+&PostingDateRange.End=+&JobRequisitionPriority=+&csk.IsoLocale=en&HROrganization=1&_limit=-1&AtApplicationLimit=+",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "content-length": "344"
+        },
+        "body": "{\"JobPostingListWebServices_ListOperationResponseArray\":[{\"JobPostingListWebServices_ListOperationResponse\":{\"JobRequisition\":true,\"JobPosting\":\"7\",\"__Description_translation___\":\" Registered Nurse \",\"LocationOfJob\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"20261001\",\"WorkType\":\" Full Time \",\"Category\":\"Clinical\",\"SubCategory\":\"Nursing\"}}]}"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=True&context.session.key.noheader=true",
+        "title": "Registered Nurse",
+        "locations": [
+          "Oceanside, NY, US"
+        ],
+        "date_posted": "2026-10-01",
+        "language": "en",
+        "metadata": {
+          "job_requisition": "True",
+          "job_posting": "7",
+          "work_type": "Full Time",
+          "category": "Clinical",
+          "subcategory": "Nursing"
+        }
+      }
+    ]
+  },
+  {
+    "name": "false-id",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "body": {
+      "JobPostingListWebServices_ListOperationResponseArray": [
+        {
+          "JobPostingListWebServices_ListOperationResponse": {
+            "JobRequisition": false,
+            "JobPosting": "7",
+            "__Description_translation___": " Registered Nurse ",
+            "LocationOfJob": "US:NY:Oceanside",
+            "PostingDateRange.Begin": "20261001",
+            "WorkType": " Full Time ",
+            "Category": "Clinical",
+            "SubCategory": "Nursing"
+          }
+        }
+      ]
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30"
+        },
+        "body": "<html>Anonymous context</html>"
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/JobPostingListWebServices_ListOperation?_clientType=INTERNAL&JobBoard=PUBLIC&LocationOfJob=+&Category=+&SubCategory=+&WorkType=+&JobRequisition=+&__Description_translation___=+&JobPosting=+&PostingStatus=2&PostingDateRange.Begin=+&PostingDateRange.End=+&JobRequisitionPriority=+&csk.IsoLocale=en&HROrganization=1&_limit=-1&AtApplicationLimit=+",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "content-length": "345"
+        },
+        "body": "{\"JobPostingListWebServices_ListOperationResponseArray\":[{\"JobPostingListWebServices_ListOperationResponse\":{\"JobRequisition\":false,\"JobPosting\":\"7\",\"__Description_translation___\":\" Registered Nurse \",\"LocationOfJob\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"20261001\",\"WorkType\":\" Full Time \",\"Category\":\"Clinical\",\"SubCategory\":\"Nursing\"}}]}"
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "missing-title",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "body": {
+      "JobPostingListWebServices_ListOperationResponseArray": [
+        {
+          "JobPostingListWebServices_ListOperationResponse": {
+            "JobRequisition": "42",
+            "JobPosting": "7",
+            "__Description_translation___": null,
+            "LocationOfJob": "US:NY:Oceanside",
+            "PostingDateRange.Begin": "20261001",
+            "WorkType": " Full Time ",
+            "Category": "Clinical",
+            "SubCategory": "Nursing"
+          }
+        }
+      ]
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30"
+        },
+        "body": "<html>Anonymous context</html>"
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/JobPostingListWebServices_ListOperation?_clientType=INTERNAL&JobBoard=PUBLIC&LocationOfJob=+&Category=+&SubCategory=+&WorkType=+&JobRequisition=+&__Description_translation___=+&JobPosting=+&PostingStatus=2&PostingDateRange.Begin=+&PostingDateRange.End=+&JobRequisitionPriority=+&csk.IsoLocale=en&HROrganization=1&_limit=-1&AtApplicationLimit=+",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "content-length": "328"
+        },
+        "body": "{\"JobPostingListWebServices_ListOperationResponseArray\":[{\"JobPostingListWebServices_ListOperationResponse\":{\"JobRequisition\":\"42\",\"JobPosting\":\"7\",\"__Description_translation___\":null,\"LocationOfJob\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"20261001\",\"WorkType\":\" Full Time \",\"Category\":\"Clinical\",\"SubCategory\":\"Nursing\"}}]}"
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "container-title",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "body": {
+      "JobPostingListWebServices_ListOperationResponseArray": [
+        {
+          "JobPostingListWebServices_ListOperationResponse": {
+            "JobRequisition": "42",
+            "JobPosting": "7",
+            "__Description_translation___": {
+              "a": "b"
+            },
+            "LocationOfJob": "US:NY:Oceanside",
+            "PostingDateRange.Begin": "20261001",
+            "WorkType": " Full Time ",
+            "Category": "Clinical",
+            "SubCategory": "Nursing"
+          }
+        }
+      ]
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30"
+        },
+        "body": "<html>Anonymous context</html>"
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/JobPostingListWebServices_ListOperation?_clientType=INTERNAL&JobBoard=PUBLIC&LocationOfJob=+&Category=+&SubCategory=+&WorkType=+&JobRequisition=+&__Description_translation___=+&JobPosting=+&PostingStatus=2&PostingDateRange.Begin=+&PostingDateRange.End=+&JobRequisitionPriority=+&csk.IsoLocale=en&HROrganization=1&_limit=-1&AtApplicationLimit=+",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "content-length": "333"
+        },
+        "body": "{\"JobPostingListWebServices_ListOperationResponseArray\":[{\"JobPostingListWebServices_ListOperationResponse\":{\"JobRequisition\":\"42\",\"JobPosting\":\"7\",\"__Description_translation___\":{\"a\":\"b\"},\"LocationOfJob\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"20261001\",\"WorkType\":\" Full Time \",\"Category\":\"Clinical\",\"SubCategory\":\"Nursing\"}}]}"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+        "title": "{'a': 'b'}",
+        "locations": [
+          "Oceanside, NY, US"
+        ],
+        "date_posted": "2026-10-01",
+        "language": "en",
+        "metadata": {
+          "job_requisition": "42",
+          "job_posting": "7",
+          "work_type": "Full Time",
+          "category": "Clinical",
+          "subcategory": "Nursing"
+        }
+      }
+    ]
+  },
+  {
+    "name": "empty-location",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "body": {
+      "JobPostingListWebServices_ListOperationResponseArray": [
+        {
+          "JobPostingListWebServices_ListOperationResponse": {
+            "JobRequisition": "42",
+            "JobPosting": "7",
+            "__Description_translation___": " Registered Nurse ",
+            "LocationOfJob": " :: ",
+            "PostingDateRange.Begin": "20261001",
+            "WorkType": " Full Time ",
+            "Category": "Clinical",
+            "SubCategory": "Nursing"
+          }
+        }
+      ]
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30"
+        },
+        "body": "<html>Anonymous context</html>"
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/JobPostingListWebServices_ListOperation?_clientType=INTERNAL&JobBoard=PUBLIC&LocationOfJob=+&Category=+&SubCategory=+&WorkType=+&JobRequisition=+&__Description_translation___=+&JobPosting=+&PostingStatus=2&PostingDateRange.Begin=+&PostingDateRange.End=+&JobRequisitionPriority=+&csk.IsoLocale=en&HROrganization=1&_limit=-1&AtApplicationLimit=+",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "content-length": "333"
+        },
+        "body": "{\"JobPostingListWebServices_ListOperationResponseArray\":[{\"JobPostingListWebServices_ListOperationResponse\":{\"JobRequisition\":\"42\",\"JobPosting\":\"7\",\"__Description_translation___\":\" Registered Nurse \",\"LocationOfJob\":\" :: \",\"PostingDateRange.Begin\":\"20261001\",\"WorkType\":\" Full Time \",\"Category\":\"Clinical\",\"SubCategory\":\"Nursing\"}}]}"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+        "title": "Registered Nurse",
+        "date_posted": "2026-10-01",
+        "language": "en",
+        "metadata": {
+          "job_requisition": "42",
+          "job_posting": "7",
+          "work_type": "Full Time",
+          "category": "Clinical",
+          "subcategory": "Nursing"
+        }
+      }
+    ]
+  },
+  {
+    "name": "date-single",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "body": {
+      "JobPostingListWebServices_ListOperationResponseArray": [
+        {
+          "JobPostingListWebServices_ListOperationResponse": {
+            "JobRequisition": "42",
+            "JobPosting": "7",
+            "__Description_translation___": " Registered Nurse ",
+            "LocationOfJob": "US:NY:Oceanside",
+            "PostingDateRange.Begin": "202611",
+            "WorkType": " Full Time ",
+            "Category": "Clinical",
+            "SubCategory": "Nursing"
+          }
+        }
+      ]
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30"
+        },
+        "body": "<html>Anonymous context</html>"
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/JobPostingListWebServices_ListOperation?_clientType=INTERNAL&JobBoard=PUBLIC&LocationOfJob=+&Category=+&SubCategory=+&WorkType=+&JobRequisition=+&__Description_translation___=+&JobPosting=+&PostingStatus=2&PostingDateRange.Begin=+&PostingDateRange.End=+&JobRequisitionPriority=+&csk.IsoLocale=en&HROrganization=1&_limit=-1&AtApplicationLimit=+",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "content-length": "342"
+        },
+        "body": "{\"JobPostingListWebServices_ListOperationResponseArray\":[{\"JobPostingListWebServices_ListOperationResponse\":{\"JobRequisition\":\"42\",\"JobPosting\":\"7\",\"__Description_translation___\":\" Registered Nurse \",\"LocationOfJob\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"202611\",\"WorkType\":\" Full Time \",\"Category\":\"Clinical\",\"SubCategory\":\"Nursing\"}}]}"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+        "title": "Registered Nurse",
+        "locations": [
+          "Oceanside, NY, US"
+        ],
+        "date_posted": "2026-01-01",
+        "language": "en",
+        "metadata": {
+          "job_requisition": "42",
+          "job_posting": "7",
+          "work_type": "Full Time",
+          "category": "Clinical",
+          "subcategory": "Nursing"
+        }
+      }
+    ]
+  },
+  {
+    "name": "date-backtracking",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "body": {
+      "JobPostingListWebServices_ListOperationResponseArray": [
+        {
+          "JobPostingListWebServices_ListOperationResponse": {
+            "JobRequisition": "42",
+            "JobPosting": "7",
+            "__Description_translation___": " Registered Nurse ",
+            "LocationOfJob": "US:NY:Oceanside",
+            "PostingDateRange.Begin": "2026110",
+            "WorkType": " Full Time ",
+            "Category": "Clinical",
+            "SubCategory": "Nursing"
+          }
+        }
+      ]
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30"
+        },
+        "body": "<html>Anonymous context</html>"
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/JobPostingListWebServices_ListOperation?_clientType=INTERNAL&JobBoard=PUBLIC&LocationOfJob=+&Category=+&SubCategory=+&WorkType=+&JobRequisition=+&__Description_translation___=+&JobPosting=+&PostingStatus=2&PostingDateRange.Begin=+&PostingDateRange.End=+&JobRequisitionPriority=+&csk.IsoLocale=en&HROrganization=1&_limit=-1&AtApplicationLimit=+",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "content-length": "343"
+        },
+        "body": "{\"JobPostingListWebServices_ListOperationResponseArray\":[{\"JobPostingListWebServices_ListOperationResponse\":{\"JobRequisition\":\"42\",\"JobPosting\":\"7\",\"__Description_translation___\":\" Registered Nurse \",\"LocationOfJob\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"2026110\",\"WorkType\":\" Full Time \",\"Category\":\"Clinical\",\"SubCategory\":\"Nursing\"}}]}"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+        "title": "Registered Nurse",
+        "locations": [
+          "Oceanside, NY, US"
+        ],
+        "date_posted": "2026-01-10",
+        "language": "en",
+        "metadata": {
+          "job_requisition": "42",
+          "job_posting": "7",
+          "work_type": "Full Time",
+          "category": "Clinical",
+          "subcategory": "Nursing"
+        }
+      }
+    ]
+  },
+  {
+    "name": "date-impossible",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "body": {
+      "JobPostingListWebServices_ListOperationResponseArray": [
+        {
+          "JobPostingListWebServices_ListOperationResponse": {
+            "JobRequisition": "42",
+            "JobPosting": "7",
+            "__Description_translation___": " Registered Nurse ",
+            "LocationOfJob": "US:NY:Oceanside",
+            "PostingDateRange.Begin": "20260229",
+            "WorkType": " Full Time ",
+            "Category": "Clinical",
+            "SubCategory": "Nursing"
+          }
+        }
+      ]
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30"
+        },
+        "body": "<html>Anonymous context</html>"
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/JobPostingListWebServices_ListOperation?_clientType=INTERNAL&JobBoard=PUBLIC&LocationOfJob=+&Category=+&SubCategory=+&WorkType=+&JobRequisition=+&__Description_translation___=+&JobPosting=+&PostingStatus=2&PostingDateRange.Begin=+&PostingDateRange.End=+&JobRequisitionPriority=+&csk.IsoLocale=en&HROrganization=1&_limit=-1&AtApplicationLimit=+",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "content-length": "344"
+        },
+        "body": "{\"JobPostingListWebServices_ListOperationResponseArray\":[{\"JobPostingListWebServices_ListOperationResponse\":{\"JobRequisition\":\"42\",\"JobPosting\":\"7\",\"__Description_translation___\":\" Registered Nurse \",\"LocationOfJob\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"20260229\",\"WorkType\":\" Full Time \",\"Category\":\"Clinical\",\"SubCategory\":\"Nursing\"}}]}"
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "date-numeric",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "body": {
+      "JobPostingListWebServices_ListOperationResponseArray": [
+        {
+          "JobPostingListWebServices_ListOperationResponse": {
+            "JobRequisition": "42",
+            "JobPosting": "7",
+            "__Description_translation___": " Registered Nurse ",
+            "LocationOfJob": "US:NY:Oceanside",
+            "PostingDateRange.Begin": 20261001,
+            "WorkType": " Full Time ",
+            "Category": "Clinical",
+            "SubCategory": "Nursing"
+          }
+        }
+      ]
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30"
+        },
+        "body": "<html>Anonymous context</html>"
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/JobPostingListWebServices_ListOperation?_clientType=INTERNAL&JobBoard=PUBLIC&LocationOfJob=+&Category=+&SubCategory=+&WorkType=+&JobRequisition=+&__Description_translation___=+&JobPosting=+&PostingStatus=2&PostingDateRange.Begin=+&PostingDateRange.End=+&JobRequisitionPriority=+&csk.IsoLocale=en&HROrganization=1&_limit=-1&AtApplicationLimit=+",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "content-length": "342"
+        },
+        "body": "{\"JobPostingListWebServices_ListOperationResponseArray\":[{\"JobPostingListWebServices_ListOperationResponse\":{\"JobRequisition\":\"42\",\"JobPosting\":\"7\",\"__Description_translation___\":\" Registered Nurse \",\"LocationOfJob\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":20261001,\"WorkType\":\" Full Time \",\"Category\":\"Clinical\",\"SubCategory\":\"Nursing\"}}]}"
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "metadata-non-string",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "body": {
+      "JobPostingListWebServices_ListOperationResponseArray": [
+        {
+          "JobPostingListWebServices_ListOperationResponse": {
+            "JobRequisition": "42",
+            "JobPosting": "7",
+            "__Description_translation___": " Registered Nurse ",
+            "LocationOfJob": "US:NY:Oceanside",
+            "PostingDateRange.Begin": "20261001",
+            "WorkType": 42,
+            "Category": "Clinical",
+            "SubCategory": "Nursing"
+          }
+        }
+      ]
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30"
+        },
+        "body": "<html>Anonymous context</html>"
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/JobPostingListWebServices_ListOperation?_clientType=INTERNAL&JobBoard=PUBLIC&LocationOfJob=+&Category=+&SubCategory=+&WorkType=+&JobRequisition=+&__Description_translation___=+&JobPosting=+&PostingStatus=2&PostingDateRange.Begin=+&PostingDateRange.End=+&JobRequisitionPriority=+&csk.IsoLocale=en&HROrganization=1&_limit=-1&AtApplicationLimit=+",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "content-length": "333"
+        },
+        "body": "{\"JobPostingListWebServices_ListOperationResponseArray\":[{\"JobPostingListWebServices_ListOperationResponse\":{\"JobRequisition\":\"42\",\"JobPosting\":\"7\",\"__Description_translation___\":\" Registered Nurse \",\"LocationOfJob\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"20261001\",\"WorkType\":42,\"Category\":\"Clinical\",\"SubCategory\":\"Nursing\"}}]}"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&webappname=CandidateSelfService&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&_saveKeys=true&JobPost=7&JobReq=42&context.session.key.noheader=true",
+        "title": "Registered Nurse",
+        "locations": [
+          "Oceanside, NY, US"
+        ],
+        "date_posted": "2026-10-01",
+        "language": "en",
+        "metadata": {
+          "job_requisition": "42",
+          "job_posting": "7",
+          "category": "Clinical",
+          "subcategory": "Nursing"
+        }
+      }
+    ]
+  },
+  {
+    "name": "complete-zero",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "body": {
+      "JobPostingListWebServices_ListOperationResponseArray": []
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30"
+        },
+        "body": "<html>Anonymous context</html>"
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/JobPostingListWebServices_ListOperation?_clientType=INTERNAL&JobBoard=PUBLIC&LocationOfJob=+&Category=+&SubCategory=+&WorkType=+&JobRequisition=+&__Description_translation___=+&JobPosting=+&PostingStatus=2&PostingDateRange.Begin=+&PostingDateRange.End=+&JobRequisitionPriority=+&csk.IsoLocale=en&HROrganization=1&_limit=-1&AtApplicationLimit=+",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "content-length": "59"
+        },
+        "body": "{\"JobPostingListWebServices_ListOperationResponseArray\":[]}"
+      }
+    ],
+    "jobs": []
+  },
+  {
+    "name": "missing-array",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "body": {},
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30"
+        },
+        "body": "<html>Anonymous context</html>"
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/JobPostingListWebServices_ListOperation?_clientType=INTERNAL&JobBoard=PUBLIC&LocationOfJob=+&Category=+&SubCategory=+&WorkType=+&JobRequisition=+&__Description_translation___=+&JobPosting=+&PostingStatus=2&PostingDateRange.Begin=+&PostingDateRange.End=+&JobRequisitionPriority=+&csk.IsoLocale=en&HROrganization=1&_limit=-1&AtApplicationLimit=+",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "content-length": "2"
+        },
+        "body": "{}"
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "missing-wrapper",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "body": {
+      "JobPostingListWebServices_ListOperationResponseArray": [
+        {
+          "JobRequisition": "42",
+          "JobPosting": "7",
+          "__Description_translation___": " Registered Nurse ",
+          "LocationOfJob": "US:NY:Oceanside",
+          "PostingDateRange.Begin": "20261001",
+          "WorkType": " Full Time ",
+          "Category": "Clinical",
+          "SubCategory": "Nursing"
+        }
+      ]
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30"
+        },
+        "body": "<html>Anonymous context</html>"
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/JobPostingListWebServices_ListOperation?_clientType=INTERNAL&JobBoard=PUBLIC&LocationOfJob=+&Category=+&SubCategory=+&WorkType=+&JobRequisition=+&__Description_translation___=+&JobPosting=+&PostingStatus=2&PostingDateRange.Begin=+&PostingDateRange.End=+&JobRequisitionPriority=+&csk.IsoLocale=en&HROrganization=1&_limit=-1&AtApplicationLimit=+",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "content-length": "292"
+        },
+        "body": "{\"JobPostingListWebServices_ListOperationResponseArray\":[{\"JobRequisition\":\"42\",\"JobPosting\":\"7\",\"__Description_translation___\":\" Registered Nurse \",\"LocationOfJob\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"20261001\",\"WorkType\":\" Full Time \",\"Category\":\"Clinical\",\"SubCategory\":\"Nursing\"}]}"
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "duplicate-identity",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "body": {
+      "JobPostingListWebServices_ListOperationResponseArray": [
+        {
+          "JobPostingListWebServices_ListOperationResponse": {
+            "JobRequisition": "42",
+            "JobPosting": "7",
+            "__Description_translation___": " Registered Nurse ",
+            "LocationOfJob": "US:NY:Oceanside",
+            "PostingDateRange.Begin": "20261001",
+            "WorkType": " Full Time ",
+            "Category": "Clinical",
+            "SubCategory": "Nursing"
+          }
+        },
+        {
+          "JobPostingListWebServices_ListOperationResponse": {
+            "JobRequisition": "42",
+            "JobPosting": "7",
+            "__Description_translation___": " Registered Nurse ",
+            "LocationOfJob": "US:NY:Oceanside",
+            "PostingDateRange.Begin": "20261001",
+            "WorkType": " Full Time ",
+            "Category": "Clinical",
+            "SubCategory": "Nursing"
+          }
+        }
+      ]
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "set-cookie": "SSO.CSRF=synthetic-csrf; Path=/",
+          "content-length": "30"
+        },
+        "body": "<html>Anonymous context</html>"
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/soapExt/ldrest/JobPosting/JobPostingListWebServices_ListOperation?_clientType=INTERNAL&JobBoard=PUBLIC&LocationOfJob=+&Category=+&SubCategory=+&WorkType=+&JobRequisition=+&__Description_translation___=+&JobPosting=+&PostingStatus=2&PostingDateRange.Begin=+&PostingDateRange.End=+&JobRequisitionPriority=+&csk.IsoLocale=en&HROrganization=1&_limit=-1&AtApplicationLimit=+",
+        "headers": {
+          "accept": "application/json",
+          "cookie": "SSO.CSRF=synthetic-csrf",
+          "sso.csrf": "synthetic-csrf"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "content-length": "630"
+        },
+        "body": "{\"JobPostingListWebServices_ListOperationResponseArray\":[{\"JobPostingListWebServices_ListOperationResponse\":{\"JobRequisition\":\"42\",\"JobPosting\":\"7\",\"__Description_translation___\":\" Registered Nurse \",\"LocationOfJob\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"20261001\",\"WorkType\":\" Full Time \",\"Category\":\"Clinical\",\"SubCategory\":\"Nursing\"}},{\"JobPostingListWebServices_ListOperationResponse\":{\"JobRequisition\":\"42\",\"JobPosting\":\"7\",\"__Description_translation___\":\" Registered Nurse \",\"LocationOfJob\":\"US:NY:Oceanside\",\"PostingDateRange.Begin\":\"20261001\",\"WorkType\":\" Full Time \",\"Category\":\"Clinical\",\"SubCategory\":\"Nursing\"}}]}"
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "missing-csrf",
+    "board": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+    "body": {
+      "JobPostingListWebServices_ListOperationResponseArray": []
+    },
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.dataarea=fixture&context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1",
+        "headers": {
+          "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "content-length": "30"
+        },
+        "body": "<html>Anonymous context</html>"
+      }
+    ],
+    "error": true
+  }
+]

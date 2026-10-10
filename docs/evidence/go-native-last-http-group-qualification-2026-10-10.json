@@ -1,0 +1,141 @@
+{
+  "schema": "jobseek.native-last-http-group-qualification/v1",
+  "observed_at_utc": "2026-10-10T07:23:27.881755+00:00",
+  "base_source_revision": "b4a7446a917f551ab0b34c06af30b219911e52d2",
+  "original_public_source_revision": "45624acc963f99cb49797d7b537f6db2ecbbfe07",
+  "candidate_version": "0.13.1002",
+  "compiled_profiles": 184,
+  "new_profiles": 7,
+  "frozen_original_contracts": 153,
+  "monitor_public": [
+    {
+      "slug": "mount-sinai-health-system-south-nassau",
+      "provider": "infor",
+      "original_outcome": "complete",
+      "complete_jobs": 239,
+      "capture_sha256": "e8a24733a8c61fee19a0f64bb6e4a698c7915bb43eba5d9ad56181b3508d02bc",
+      "go_replay": "complete original fields and requests"
+    },
+    {
+      "slug": "honeywell-aerospace-sandia",
+      "provider": "peoplesoft",
+      "original_outcome": "complete",
+      "complete_jobs": 193,
+      "capture_sha256": "5715c02a0fb1062b2d03d1bf7c261ecef776ed5f03d922ab578ae7cf6d403f84",
+      "go_replay": "complete original fields and requests"
+    },
+    {
+      "slug": "papa-johns-jobs",
+      "provider": "papa_johns",
+      "original_outcome": "failed",
+      "complete_jobs": 0,
+      "capture_sha256": "1b2ef968d812fee38380b7f4a2105648cfa3a6862f482f8d3d1417c665fda62d",
+      "go_replay": "atomic failure with no returned prefix"
+    },
+    {
+      "slug": "unisante-emploi",
+      "provider": "unisante",
+      "original_outcome": "failed",
+      "complete_jobs": 0,
+      "capture_sha256": "3a03d5742d6edbd84953862a8f949f68663cf883d33a7428033cd261edf0f8c3",
+      "go_replay": "atomic failure with no returned prefix"
+    }
+  ],
+  "paired_public": [
+    {
+      "slug": "mount-sinai-health-system-south-nassau",
+      "complete_details": 4,
+      "capture_sha256": "5c2397cd5aa7ee88c0670bc0508e9e865bc9f3737bfd02e9ecf9237056851cae",
+      "go_replay": "complete original fields and session requests through verified HTTPS fixture"
+    },
+    {
+      "slug": "honeywell-aerospace-sandia",
+      "complete_details": 4,
+      "capture_sha256": "9bca3d49c9fb55af5892c71a7a3e5806c44b7a8bf22ab660f1456ad003bcaf7f",
+      "go_replay": "complete original fields and session requests through verified HTTPS fixture"
+    }
+  ],
+  "real_postgres_redis_cases": {
+    "monitor_settlement": 12,
+    "paired_detail_settlement": 8,
+    "peoplesoft_gone_publisher": 12,
+    "unisante_adoption_and_rollback": 7,
+    "unisante_incomplete_authority_rejections": 4,
+    "monitor_and_detail_cold_retirement": 27,
+    "total": 70
+  },
+  "qualification_logs_sha256": {
+    "native1002-next-four-api-original-public-race-qualification1-2026-10-10.log": "2469e9fedf47e1eb5ada2c28897639ac7b54b02632ddcb8c1f62ad4f575da933",
+    "native1002-next-four-queue-original-canonical-real-cold-race-qualification1-2026-10-10.log": "4a3e5c7c7c54ec45ac12b036639ac7993f78b1169ed2d08e7a94dde2801f8a14",
+    "native1002-next-four-worker-original-public-real-race-qualification1-2026-10-10.log": "626980d1aa8fac6866c3186e55cfe3e9f7ff00adbd655d48b72e9cecbc6cc88b"
+  },
+  "candidate_files_sha256": {
+    ".github/workflows/crawler-runtime-contracts.yml": "8c55a38f1a0c7ce285a5c95770d75bdb08f3b5a4fbc5700c85a6dcaa7aa310f2",
+    "apps/crawler/VERSION": "42780c9c99476c96f5a354c91c74a206ab28c7d0221ee64b9e2e94dc5e3caee3",
+    "apps/crawler/go/api-sniffer-monitor/last_http_cookies.go": "28b625f51474328e7415f391c806dcbc75728c2c369c6204e7348b96503cec1b",
+    "apps/crawler/go/api-sniffer-monitor/last_http_detail.go": "704103faef7443e4b470fb2296a4b2c5ccbfe7b66596883f310cd9bf4d117db8",
+    "apps/crawler/go/api-sniffer-monitor/last_http_detail_test.go": "3d52dd048465c10f632448eb60bc9c5184f0d27ca393ef0391f0321bd6114725",
+    "apps/crawler/go/api-sniffer-monitor/last_http_provider_options.go": "9f433e4781d31c9879294d69c61fc211f761e14d8f4e91f596dde07efd62bc89",
+    "apps/crawler/go/api-sniffer-monitor/last_http_provider_test.go": "867e7676bdca05fe1c3107979a7360204e970bb58f6588f7c8afedd4939caff1",
+    "apps/crawler/go/api-sniffer-monitor/last_http_public_test.go": "e19b32929e46ee2cbb6f42d67ec75f97649c18e4840c1b5c86594f0f4f79a497",
+    "apps/crawler/go/api-sniffer-monitor/last_infor.go": "58d096ec458646a23b6df6802f9f47d532ff16add17047282f83fd08aa73d2b5",
+    "apps/crawler/go/api-sniffer-monitor/last_papa_johns.go": "91252d51c3852ba26e85d09c4b7d23c40431481b90984ee50f9349ae7a8a7373",
+    "apps/crawler/go/api-sniffer-monitor/last_peoplesoft.go": "3f29fe2c554ce62b6e802fc12ea78b56efe223366e5785fe044a218508ea9daa",
+    "apps/crawler/go/api-sniffer-monitor/last_unisante.go": "1002f592df76ea66be8a9ee43b2c6d40733cbe3c24d0e414e7d62b0696e78303",
+    "apps/crawler/go/api-sniffer-monitor/testdata/generate_last_http_details.py": "b3bc9442b2a2baddc04f3ff783cf0695ad77c4806cbb5314e0c6d15ce285119a",
+    "apps/crawler/go/api-sniffer-monitor/testdata/generate_last_http_infor_papa.py": "5cd339f51903b898438cac506485aaa2fa8c31f4ec8c65705e0f2a30cf0f0249",
+    "apps/crawler/go/api-sniffer-monitor/testdata/generate_last_papa_inventory.py": "36854e2754fc2ed6405a30057b7ee41170fbce9af94ae0ae4bf15232b9f0c876",
+    "apps/crawler/go/api-sniffer-monitor/testdata/generate_last_peoplesoft.py": "f51797f1402b64c1771614edc143f4e138dcb19106a33eec5297a8557d9c42ac",
+    "apps/crawler/go/api-sniffer-monitor/testdata/generate_last_unisante.py": "a738f842df9cbbeb445fc550166267fd44ea0024c603f6618ba19cf8b6f3915d",
+    "apps/crawler/go/api-sniffer-monitor/testdata/generate_unisante_migration_receipts.py": "d22731599c5d6e18a0cb33577e6e267907d4f50cc42b565b304f0eb7b075acf6",
+    "apps/crawler/go/api-sniffer-monitor/testdata/python_last_infor.json": "cb09a84ec6a4a956d175382a5e1760aae083c3ed4f71defc06561ace385920d7",
+    "apps/crawler/go/api-sniffer-monitor/testdata/python_last_infor_detail.json": "211a1956b0b549fb75d37ec318b169c7fdde5cf8db61291f03e0ed090fe768b0",
+    "apps/crawler/go/api-sniffer-monitor/testdata/python_last_papa.json": "d56f58d96d5a937ac1c789fb0e19cc6bd1222912f2ad636551543c220957dd12",
+    "apps/crawler/go/api-sniffer-monitor/testdata/python_last_papa_inventory.json": "dc7e80cb48310e7655a6dba2a7f80a7b0289b6479a0f2285044d8c15c4cde50c",
+    "apps/crawler/go/api-sniffer-monitor/testdata/python_last_peoplesoft.json": "d3cede6d7fa47ee164553d6a87a96b52f673da9d8e8e408e5bf9c14f28e4153b",
+    "apps/crawler/go/api-sniffer-monitor/testdata/python_last_peoplesoft_detail.json": "fa8fc0e0527517ef9a54b4fd3897dd3e558f86441c625783bf5e301b5338768b",
+    "apps/crawler/go/api-sniffer-monitor/testdata/python_last_unisante.json": "904957510f27635508c83219624f4f36ffaa49c63d05081052adbab3afea867b",
+    "apps/crawler/go/api-sniffer-monitor/testdata/python_unisante_migration_receipts.json": "26def4c9128f77eeaa748277626582d57cf4e95120b2cbf8f49dc725123546a3",
+    "apps/crawler/go/ordinary-queue/first_last_http_retirement_test.go": "b4484851d7e99b429faf58fbf1e8ec1e9f1b7f05d64d8258f8b2497cef824aa8",
+    "apps/crawler/go/ordinary-queue/first_ownership.go": "9740e1e6aa56d052b1addb47d26192797ad4b1d6a3a019a7e8b96d2fe595b5f1",
+    "apps/crawler/go/ordinary-queue/first_provider_batch_retirement_test.go": "fc0bb6ca3825122ab8da86275409e3a17fb7902f288d15047dd99d91d103fd11",
+    "apps/crawler/go/ordinary-queue/first_workday_detail_retirement_test.go": "ad9363d70a29423bdeeb3be4c42e68fb9153ed2c189e44ba963e0d14b6a360ac",
+    "apps/crawler/go/ordinary-queue/lifecycle_greenhouse.go": "c8f49a549f321515b0732ae1ce87922b44997760eb3cec6e69dfa84a46c06c00",
+    "apps/crawler/go/ordinary-queue/profile.go": "b035ef53707b09c0714b49a0627810315da1e73e1bfb56697c49eb20711712ac",
+    "apps/crawler/go/ordinary-queue/profile_api_detail.go": "7567fbd88199d0cb9b29e421489860b7839b5127b490a921c4758020049e17ba",
+    "apps/crawler/go/ordinary-queue/profile_api_monitor.go": "38a3000893323f499d8890f7e6a67e0200ab548a1d5583351d37f50b35186fe6",
+    "apps/crawler/go/ordinary-queue/profile_jsonld_detail.go": "c04155ea3ba0909e8177a6ffb94414341765ef0bce6f5918f3417b1cff6e73b8",
+    "apps/crawler/go/ordinary-queue/profile_last_http.go": "bdbe14b80f2ec6f9bdad6078668eae367d7f6cf572d6a8b8fe47da6446b6822c",
+    "apps/crawler/go/ordinary-queue/profile_last_http_detail.go": "7239c47785082481cc2d66cf5df1e213c26c0af624affcf3eb3234210728545b",
+    "apps/crawler/go/ordinary-queue/profile_last_http_test.go": "2f83c0b4e5398da039c012309a16c4f79904fd661557ad264abe4117f7ded13f",
+    "apps/crawler/go/ordinary-queue/profile_proxy.go": "fd8184a6692ec1be7ab04a6af7d279982859a47d60431a42c47e532e3f4b1ada",
+    "apps/crawler/go/ordinary-queue/profile_rich.go": "57ef7472876d987571689f61d4257d78c86c3b669d9b42ecc165cc82e857bb23",
+    "apps/crawler/go/ordinary-queue/profile_secondary_providers.go": "7a38c49195b44421d36a9fabc8f7406c417414dabda68fe8a3908f53edc06fff",
+    "apps/crawler/go/ordinary-queue/profile_secondary_providers_test.go": "a6b7618ee3e973fb71cda3735471552e6f90de234b6bae5b9f83d8f56e800f39",
+    "apps/crawler/go/ordinary-queue/rich_monitor.go": "f9a878c6bc68916cf2e4e79eab5664e4fafc7f0013ac270b7d52f161c5515637",
+    "apps/crawler/go/ordinary-queue/unisante_identity_migration.go": "4198c618ff78d06d963bfe28a79d4d56b0198c14800caee90cb85bb4fed7a56b",
+    "apps/crawler/go/ordinary-queue/unisante_identity_migration.sql": "8c029f590ceea1d08361d2bd3884f73071f0df7ee66eadd0e0b6855723e55c49",
+    "apps/crawler/go/ordinary-queue/unisante_identity_migration_test.go": "6ef55543695e479fd52839b2ab4b5318461deac899755edcd2a93ea0bfca5ded",
+    "apps/crawler/go/ordinary-worker/api_detail_fetch.go": "b8ff7c5862f6e30973149cc8c1238c21aa6a38913ab914b076d177ff395f39ca",
+    "apps/crawler/go/ordinary-worker/claim_run.go": "b8f0812c1a04e0dae938f61bbb5ae07d83480960dec368fd4f4a813af88bedc6",
+    "apps/crawler/go/ordinary-worker/environment.go": "7c1409513cff0fef7a44a65fafc87adf9a6d27abc42500f530fff886d91572fe",
+    "apps/crawler/go/ordinary-worker/inventory.go": "91c4ba7b923f30485dbba78e861ba539ab906901b681f2fbc0116813b8c6d474",
+    "apps/crawler/go/ordinary-worker/jsonld_detail_run_test.go": "be0398a0dd9d69a53220ccbc7537caf86357bddab99156c01772af717bf688b6",
+    "apps/crawler/go/ordinary-worker/last_http_detail_fetch.go": "b7e54aa16a66ed10d5351cbda052d3f495826fa3d7195441d624742c8af73c47",
+    "apps/crawler/go/ordinary-worker/last_http_detail_integration_test.go": "5d9cbb6446685d6557589a1736657ef635c2c7a9b1318e047a020268d30b44f6",
+    "apps/crawler/go/ordinary-worker/last_http_integration_test.go": "dffde10c836edf0efe46e3435d23dbd62554eb4f5e1e18c46d4069551d41ab12",
+    "apps/crawler/go/ordinary-worker/last_http_transport.go": "1ed48a096629ba4fe89f03de0f0a20d79a517cad35641654faa157e27b566679",
+    "apps/crawler/go/ordinary-worker/last_http_transport_test.go": "d4228ae6c56b13d91c175116c966f32213a3ba20b798a16dd7d5e7f979c23e9b",
+    "apps/crawler/go/ordinary-worker/pipeline_integration_test.go": "95142302ae201cbf61127ad6fabc56eaf0d0b7d6aa5ae6a2dcd79ddc385445eb",
+    "apps/crawler/go/ordinary-worker/rich_pipeline.go": "d91af55e0945d975ad6adf52e7f04d8b3dc809379784d3af9ad8986f37755a00",
+    "apps/crawler/go/ordinary-worker/runtime_integration_test.go": "8d19bb2498c506c465997959bb54074e97c63be5401891b8cdf82bbd2ee2de8e",
+    "apps/crawler/go/ordinary-worker/workday_detail_run.go": "432bc9425c6b40ebbbc05a9beecd614dbfafae278e4888e27598770f02495781"
+  },
+  "lightpanda": {
+    "version": "1.0.0",
+    "upstream_release_id": 401714696,
+    "upstream_release_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
+    "upstream_image": "lightpanda/browser@sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e"
+  },
+  "scope": "Original frozen contracts, verified original public captures replayed without network, and real dedicated loopback PG/Redis authority/effects. Public Papa Johns proxy pagination and Unisante content scopes fail in Python and Go; no healthy or partial inventory claimed. No source1002 production admission or whole-fleet freshness/cost claim."
+}

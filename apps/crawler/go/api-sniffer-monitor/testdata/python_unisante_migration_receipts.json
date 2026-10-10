@@ -1,0 +1,448 @@
+[
+  {
+    "name": "normal",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": 2
+    },
+    "matches": true
+  },
+  {
+    "name": "null",
+    "receipt": null,
+    "matches": false
+  },
+  {
+    "name": "array",
+    "receipt": [],
+    "matches": false
+  },
+  {
+    "name": "extra",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": 2,
+      "extra": 1
+    },
+    "matches": false
+  },
+  {
+    "name": "id-0",
+    "receipt": {
+      "id": null,
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "id-1",
+    "receipt": {
+      "id": "wrong",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "id-2",
+    "receipt": {
+      "id": 1,
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "id-missing",
+    "receipt": {
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "version-0",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": null,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "version-1",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": true,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": 2
+    },
+    "matches": true
+  },
+  {
+    "name": "version-2",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": false,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "version-3",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1.0,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": 2
+    },
+    "matches": true
+  },
+  {
+    "name": "version-4",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 2,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "version-5",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": "1",
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "version-6",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": [],
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "version-missing",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "completed_at-0",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": null,
+      "updated_count": 1,
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "completed_at-1",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "",
+      "updated_count": 1,
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "completed_at-2",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": " ",
+      "updated_count": 1,
+      "retired_count": 2
+    },
+    "matches": true
+  },
+  {
+    "name": "completed_at-3",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": 1,
+      "updated_count": 1,
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "completed_at-4",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": [],
+      "updated_count": 1,
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "completed_at-missing",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "updated_count": 1,
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "updated_count-0",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": null,
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "updated_count-1",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": true,
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "updated_count-2",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": false,
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "updated_count-3",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1.0,
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "updated_count-4",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": -1,
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "updated_count-5",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 0,
+      "retired_count": 2
+    },
+    "matches": true
+  },
+  {
+    "name": "updated_count-6",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 50,
+      "retired_count": 2
+    },
+    "matches": true
+  },
+  {
+    "name": "updated_count-7",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 51,
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "updated_count-8",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": "1",
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "updated_count-missing",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "retired_count": 2
+    },
+    "matches": false
+  },
+  {
+    "name": "retired_count-0",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": null
+    },
+    "matches": false
+  },
+  {
+    "name": "retired_count-1",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": true
+    },
+    "matches": false
+  },
+  {
+    "name": "retired_count-2",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": false
+    },
+    "matches": false
+  },
+  {
+    "name": "retired_count-3",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": 1.0
+    },
+    "matches": false
+  },
+  {
+    "name": "retired_count-4",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": -1
+    },
+    "matches": false
+  },
+  {
+    "name": "retired_count-5",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": 0
+    },
+    "matches": true
+  },
+  {
+    "name": "retired_count-6",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": 50
+    },
+    "matches": true
+  },
+  {
+    "name": "retired_count-7",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": 51
+    },
+    "matches": false
+  },
+  {
+    "name": "retired_count-8",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1,
+      "retired_count": "1"
+    },
+    "matches": false
+  },
+  {
+    "name": "retired_count-missing",
+    "receipt": {
+      "id": "unisante-provider-reference-v1",
+      "version": 1,
+      "completed_at": "2026-10-10T00:00:00+00:00",
+      "updated_count": 1
+    },
+    "matches": false
+  }
+]

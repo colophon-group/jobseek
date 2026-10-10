@@ -34,6 +34,8 @@ func fetchAPIDetail(ctx context.Context, verified *VerifiedDirectHTTP, profile q
 	var content any
 	var reservation *publisherpolicy.Reservation
 	switch profile.Profile {
+	case "infor.session-detail/v1", "peoplesoft.session-detail/v1":
+		content, reservation, err = fetchLastHTTPDetail(ctx, &client, profile, pauseRich)
 	case "johdi.api-detail/v1", "headhunter.api-detail/v1", "headhunter.proxy-api-detail/v1":
 		content, reservation, err = fetchRemainingHTTPDetail(ctx, &client, profile, pauseRich)
 	case "jobconvo.public-detail/v1":

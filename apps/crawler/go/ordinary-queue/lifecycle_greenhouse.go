@@ -33,13 +33,15 @@ func lifecycleQuery(name string) string {
 // installed claim. Network/CPU work remains outside the bounded SQL transaction.
 // Its methods serialize chunk writes and terminal decisions for that attempt.
 type GreenhouseCycle struct {
-	mu           sync.Mutex
-	authority    *Authority
-	claim        *Claim
-	startedAt    time.Time
-	processed    int
-	identities   map[string]bool
-	failed, done bool
+	mu               sync.Mutex
+	authority        *Authority
+	claim            *Claim
+	startedAt        time.Time
+	processed        int
+	legacyRetired    int
+	unisanteComplete bool
+	identities       map[string]bool
+	failed, done     bool
 }
 
 type GreenhouseInventorySummary struct {
@@ -124,6 +126,32 @@ func (c *GreenhouseCycle) WriteRichBatch(ctx context.Context, batch []Greenhouse
 	return result, nil
 }
 
+// Unisanté's first identity transition must see the whole bounded inventory in
+// one existing claim-fenced transaction. Ordinary chunk writes cannot adopt or
+// retire legacy aliases without this explicit completeness check.
+func (c *GreenhouseCycle) WriteCompleteUnisanteBatch(ctx context.Context, batch []GreenhouseRichPosting, summary GreenhouseInventorySummary) (*GreenhouseRichBatchResult, error) {
+	if c == nil || c.authority == nil {
+		return nil, ErrConfiguration
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.done || c.failed || c.processed != 0 || c.claim.task.Config["crawler_type"] != "unisante" || len(batch) < 1 || len(batch) > 50 || summary.Discovered != len(batch) || summary.ProcessingFiltered != 0 || summary.Truncated || len(summary.MetadataUpdates) > 0 {
+		return nil, ErrConfiguration
+	}
+	result, err := c.authority.writeGreenhouseRichBatch(ctx, c.claim, batch, true)
+	if err != nil {
+		c.failed = true
+		return nil, err
+	}
+	c.processed += len(batch)
+	c.legacyRetired += result.LegacyRetired
+	c.unisanteComplete = true
+	for _, posting := range batch {
+		c.identities[posting.URL] = true
+	}
+	return result, nil
+}
+
 // FinishSuccess records guarded disappearance/empty/partial state and the
 // canonical due time atomically with the terminal attempt receipt. Runtime
 // lifecycle metadata is read freshly from PostgreSQL, never from the detached
@@ -136,6 +164,17 @@ func (c *GreenhouseCycle) FinishSuccess(ctx context.Context, inventory Greenhous
 	defer c.mu.Unlock()
 	if c.done || c.failed || inventory.Discovered < c.processed || inventory.ProcessingFiltered < 0 || inventory.ProcessingFiltered > inventory.Discovered-c.processed {
 		return nil, ErrConfiguration
+	}
+	if c.claim.task.Config["crawler_type"] == "unisante" {
+		md, err := unisanteMigrationConfig(c.claim.task.Config)
+		if err != nil {
+			return nil, err
+		}
+		if unisanteMigrationRequested(md) && !validUnisanteMigrationReceipt(md["_identity_migration_receipt"]) {
+			if !c.unisanteComplete || inventory.Discovered != c.processed || c.processed < 1 || inventory.ProcessingFiltered != 0 || inventory.Truncated {
+				return nil, ErrConfiguration
+			}
+		}
 	}
 	result := &GreenhouseCycleResult{Status: "succeeded"}
 	receipt, err := c.authority.Write(ctx, c.claim, true, func(ctx context.Context, tx pgx.Tx) error {
@@ -200,6 +239,7 @@ func (c *GreenhouseCycle) FinishSuccess(ctx context.Context, inventory Greenhous
 		return nil, err
 	}
 	receipt.terminalOutcome = "succeeded"
+	result.Gone += c.legacyRetired
 	c.done, result.Receipt = true, receipt
 	return result, nil
 }

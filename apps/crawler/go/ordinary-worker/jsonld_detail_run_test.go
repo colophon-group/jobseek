@@ -31,7 +31,7 @@ func independentDetailOwnedFixture(t *testing.T, metadata, source string, worker
 	return f, owned, claim
 }
 
-func independentDetailOwnedSetup(t *testing.T, metadata, source string, worker queue.WorkerType) (nativePipelineFixture, *queue.Authority) {
+func independentDetailOwnedSetup(t *testing.T, metadata, source string, worker queue.WorkerType, configuredURL ...string) (nativePipelineFixture, *queue.Authority) {
 	t.Helper()
 	f := privatePipelineFixture(t)
 	ctx := context.Background()
@@ -43,11 +43,15 @@ func independentDetailOwnedSetup(t *testing.T, metadata, source string, worker q
 		t.Fatal(err)
 	}
 	board := fixtureID(t)
-	if _, err := f.pg.Exec(ctx, `INSERT INTO job_board(id,company_id,board_slug,board_url,crawler_type,metadata,check_interval_minutes,scrape_interval_hours,throttle_key,monitor_needs_browser,scraper_needs_browser) VALUES($1::uuid,$2::uuid,$3,'https://careers.example.net/jobs','dom',$4::jsonb,60,24,'careers.example.net',true,$5)`, board, f.company, "jsonld-"+board, metadata, worker == queue.Browser); err != nil {
+	boardURL := "https://careers.example.net/jobs"
+	if len(configuredURL) == 1 {
+		boardURL = configuredURL[0]
+	}
+	if _, err := f.pg.Exec(ctx, `INSERT INTO job_board(id,company_id,board_slug,board_url,crawler_type,metadata,check_interval_minutes,scrape_interval_hours,throttle_key,monitor_needs_browser,scraper_needs_browser) VALUES($1::uuid,$2::uuid,$3,$6,'dom',$4::jsonb,60,24,'careers.example.net',true,$5)`, board, f.company, "jsonld-"+board, metadata, worker == queue.Browser, boardURL); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _, _ = f.pg.Exec(context.Background(), "DELETE FROM job_board WHERE id=$1::uuid", board) })
-	config := map[string]string{"board_slug": "jsonld-" + board, "company_id": f.company, "board_url": "https://careers.example.net/jobs", "crawler_type": "dom", "metadata": metadata, "domain": "careers.example.net", "throttle_key": "careers.example.net", "monitor_needs_browser": "1", "scraper_needs_browser": "0", "check_interval_minutes": "60", "scrape_interval_hours": "24"}
+	config := map[string]string{"board_slug": "jsonld-" + board, "company_id": f.company, "board_url": boardURL, "crawler_type": "dom", "metadata": metadata, "domain": "careers.example.net", "throttle_key": "careers.example.net", "monitor_needs_browser": "1", "scraper_needs_browser": "0", "check_interval_minutes": "60", "scrape_interval_hours": "24"}
 	if worker == queue.Browser {
 		config["scraper_needs_browser"] = "1"
 	}

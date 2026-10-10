@@ -2,6 +2,84 @@
 
 ## Current checkpoint — 2026-10-10
 
+Production **0.13.1001**, source `b4a7446a917f551ab0b34c06af30b219911e52d2`,
+is delivered through [PR #10397](https://github.com/colophon-group/jobseek/pull/10397).
+The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38028260526)
+and [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38028282090)
+succeeded at attempt one. Source1000 ordinary and B0 owners were retired through
+the supported workflow; independent cold266 verification preceded this rollout.
+The exact new renderer is independently running. **Lightpanda 1.0.0** remains the
+latest official stable release, verified October 10 and pinned by immutable digest
+and Linux checksums.
+
+Full admitted Go ownership is **active at epoch267**: **7,690 monitors and 2,749
+detail boards**, covering **1,474,500 of 1,504,860 actual scheduled postings** in
+the fresh complete census. The staged digest and projection match independent
+canonical SQL and Redis readback; all ten exact-image writers and eight HTTP
+health endpoints passed. The later natural sample contains 539 completed monitor receipts with 539
+exact recurring schedules and zero retained leases.
+This bounded sample does not establish whole-fleet freshness or cost. Forty-two
+cached-route mismatch boards and one unsupported Eightfold route retain their
+existing owner. See [portable production proof](evidence/go-native-source1001-production-2026-10-10.json).
+
+This delivered batch ports **three monitor families and six boards together**:
+both PwC South Africa inventories, Covenant Health physicians, NYC Council
+scripts, GoNET's legacy JMESPath literals and Retraites Populaires RSS description
+enrichment. Its 75 complete public jobs, original field/request replay, fifteen
+real settlement cases and fifteen real cold-retirement cases passed. GoNET's
+macOS verified response and original Python replay are preserved alongside the
+original issuer-verification failure; Linux public success is not claimed and
+TLS remains verified. See [grouped qualification](evidence/go-native-shared-dom-api-rss-public-parity-2026-10-10.json).
+
+## Next grouped delivery
+
+Continue **Infor + PeopleSoft + Papa John's + Unisanté together**, including paired
+Infor/PeopleSoft details. The four parsers and session transport are implemented
+in `fix-crawler/native-final-provider-families` on source1001. Candidate **0.13.1002** wires seven new compiled profiles (184 total);
+it is not yet admitted or deployed. The 153 original frozen parser/receipt contracts pass
+under the race detector. Original complete public monitor captures contain 239
+Infor and 193 PeopleSoft jobs; eight complete original paired details have verified
+Go session/field replay. Papa John's configured proxy pagination and Unisanté's
+public content scopes fail in the original Python route too. Preserve those
+atomic failures and investigate discriminating evidence rather than granting
+partial inventories absence authority.
+
+The Unisanté receipt-backed adoption transaction is implemented. Its
+pending `unisante-provider-reference-v1` flag is retained. The original SQL has
+been copied exactly into Go; seven real SQL cases verify the existing
+fifty-row bound, in-place posting-ID preservation, duplicate/expired alias
+retirement, foreign/unknown collision rejection, valid receipt reuse and atomic
+rollback. The complete inventory uses the existing claim-fenced transaction;
+Four real incomplete-inventory cases reject pending empty/filtered/truncated
+migrations and ordinary chunk writes. Twelve real monitor settlements,
+eight paired detail settlements, twelve PeopleSoft gone/publisher cases and 27
+cold-retirement cases pass: 70 real PG/Redis cases in total.
+[Consolidated qualification](evidence/go-native-last-http-group-qualification-2026-10-10.json)
+passed. Use one PR,
+required CI, original whole-service rollout, fresh actual-route
+admission and supported full activation. VERSION is bumped from actual main.
+
+The Accenture/BrassRing [candidate #10394](https://github.com/colophon-group/jobseek/pull/10394)
+remains draft at `94abee09606927e837ad1a3198c661634499d0b4`. All twelve Accenture
+inventories have original parity (31,752 jobs); complete public qualification
+remains open for all four BrassRing boards. Keep all sixteen in scope, rebase onto
+actual main and repeat exact-head checks before delivery.
+
+Continue multiple related types per iteration: remaining Candidatus/Njoyn browser
+sessions, KIPT PDF inventories, Prospective localized inventories and Talemetry,
+plus the remaining DOM/API/inline/RSS options. Reuse existing transport, preparation,
+queue and persistence contracts; introduce a provider-specific boundary only
+where the original behavior requires it. Qualify complete output and operational
+effects once per grouped batch and proceed to delivery after the required checks.
+
+Finish all runtime/deployment/maintenance consumers, natural whole-fleet freshness
+and queue conservation, comparable whole-service cost and the supported reversal
+observation window. Then retire production Python, Playwright, Chromium and their
+runtime-only assets, preserving every enabled board and useful isolated offline
+Python tooling. The full delivery goal remains active and incomplete.
+
+## Historical checkpoint — source1000 delivered before retirement
+
 Production **0.13.1000**, source `45624acc963f99cb49797d7b537f6db2ecbbfe07`,
 was delivered through [PR #10396](https://github.com/colophon-group/jobseek/pull/10396).
 Original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38022724428)
@@ -49,6 +127,7 @@ natural whole-fleet freshness and queue conservation, comparable whole-service
 cost and the supported reversal observation window before retiring production
 Python, Playwright and Chromium. Preserve every enabled board and useful isolated
 offline Python tooling. The full delivery goal remains active.
+
 
 ## Historical checkpoint — sources998–1000 before rollout
 

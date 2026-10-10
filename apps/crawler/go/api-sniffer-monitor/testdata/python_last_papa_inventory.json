@@ -1,0 +1,135 @@
+[
+  {
+    "name": "complete",
+    "responses": {
+      "https://jobs.papajohns.com/jobs/": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/1/delivery-driver/\">Driver</a><a href=\"/job/2/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=2": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/3/delivery-driver/\">Driver</a><a href=\"/job/4/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=3": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/5/delivery-driver/\">Driver</a><a href=\"/job/6/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=4": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/7/delivery-driver/\">Driver</a><a href=\"/job/8/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=5": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/9/delivery-driver/\">Driver</a><a href=\"/job/10/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=6": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/11/delivery-driver/\">Driver</a><a href=\"/job/12/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=7": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/13/delivery-driver/\">Driver</a><a href=\"/job/14/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>"
+    },
+    "requests": [
+      "https://jobs.papajohns.com/jobs/",
+      "https://jobs.papajohns.com/jobs/?page_jobs=2",
+      "https://jobs.papajohns.com/jobs/?page_jobs=3",
+      "https://jobs.papajohns.com/jobs/?page_jobs=4",
+      "https://jobs.papajohns.com/jobs/?page_jobs=5",
+      "https://jobs.papajohns.com/jobs/?page_jobs=6",
+      "https://jobs.papajohns.com/jobs/?page_jobs=7"
+    ],
+    "urls": [
+      "https://jobs.papajohns.com/job/1/delivery-driver/",
+      "https://jobs.papajohns.com/job/10/delivery-driver/",
+      "https://jobs.papajohns.com/job/11/delivery-driver/",
+      "https://jobs.papajohns.com/job/12/delivery-driver/",
+      "https://jobs.papajohns.com/job/13/delivery-driver/",
+      "https://jobs.papajohns.com/job/14/delivery-driver/",
+      "https://jobs.papajohns.com/job/2/delivery-driver/",
+      "https://jobs.papajohns.com/job/3/delivery-driver/",
+      "https://jobs.papajohns.com/job/4/delivery-driver/",
+      "https://jobs.papajohns.com/job/5/delivery-driver/",
+      "https://jobs.papajohns.com/job/6/delivery-driver/",
+      "https://jobs.papajohns.com/job/7/delivery-driver/",
+      "https://jobs.papajohns.com/job/8/delivery-driver/",
+      "https://jobs.papajohns.com/job/9/delivery-driver/"
+    ]
+  },
+  {
+    "name": "changed-total",
+    "responses": {
+      "https://jobs.papajohns.com/jobs/": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/1/delivery-driver/\">Driver</a><a href=\"/job/2/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=2": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/3/delivery-driver/\">Driver</a><a href=\"/job/4/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=3": "<p>Found 15 jobs at Papa Johns</p><a href=\"/job/5/delivery-driver/\">Driver</a><a href=\"/job/6/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=4": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/7/delivery-driver/\">Driver</a><a href=\"/job/8/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=5": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/9/delivery-driver/\">Driver</a><a href=\"/job/10/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>"
+    },
+    "requests": [
+      "https://jobs.papajohns.com/jobs/",
+      "https://jobs.papajohns.com/jobs/?page_jobs=2",
+      "https://jobs.papajohns.com/jobs/?page_jobs=3",
+      "https://jobs.papajohns.com/jobs/?page_jobs=4",
+      "https://jobs.papajohns.com/jobs/?page_jobs=5"
+    ],
+    "error": true
+  },
+  {
+    "name": "changed-pages",
+    "responses": {
+      "https://jobs.papajohns.com/jobs/": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/1/delivery-driver/\">Driver</a><a href=\"/job/2/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=2": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/3/delivery-driver/\">Driver</a><a href=\"/job/4/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=3": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/5/delivery-driver/\">Driver</a><a href=\"/job/6/delivery-driver/\">Driver</a><a href=\"?page_jobs=8\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=4": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/7/delivery-driver/\">Driver</a><a href=\"/job/8/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=5": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/9/delivery-driver/\">Driver</a><a href=\"/job/10/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>"
+    },
+    "requests": [
+      "https://jobs.papajohns.com/jobs/",
+      "https://jobs.papajohns.com/jobs/?page_jobs=2",
+      "https://jobs.papajohns.com/jobs/?page_jobs=3",
+      "https://jobs.papajohns.com/jobs/?page_jobs=4",
+      "https://jobs.papajohns.com/jobs/?page_jobs=5"
+    ],
+    "error": true
+  },
+  {
+    "name": "duplicate-prefix",
+    "responses": {
+      "https://jobs.papajohns.com/jobs/": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/1/delivery-driver/\">Driver</a><a href=\"/job/2/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=2": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/3/delivery-driver/\">Driver</a><a href=\"/job/4/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=3": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/5/delivery-driver/\">Driver</a><a href=\"/job/6/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=4": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/7/delivery-driver/\">Driver</a><a href=\"/job/8/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=5": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/9/delivery-driver/\">Driver</a><a href=\"/job/10/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=6": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/11/delivery-driver/\">Driver</a><a href=\"/job/12/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=7": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/1/delivery-driver/\">Driver</a><a href=\"/job/2/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>"
+    },
+    "requests": [
+      "https://jobs.papajohns.com/jobs/",
+      "https://jobs.papajohns.com/jobs/?page_jobs=2",
+      "https://jobs.papajohns.com/jobs/?page_jobs=3",
+      "https://jobs.papajohns.com/jobs/?page_jobs=4",
+      "https://jobs.papajohns.com/jobs/?page_jobs=5",
+      "https://jobs.papajohns.com/jobs/?page_jobs=6",
+      "https://jobs.papajohns.com/jobs/?page_jobs=7"
+    ],
+    "error": true
+  },
+  {
+    "name": "missing-count",
+    "responses": {
+      "https://jobs.papajohns.com/jobs/": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/1/delivery-driver/\">Driver</a><a href=\"/job/2/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=2": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/3/delivery-driver/\">Driver</a><a href=\"/job/4/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=3": "<p>Unavailable inventory</p>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=4": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/7/delivery-driver/\">Driver</a><a href=\"/job/8/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>",
+      "https://jobs.papajohns.com/jobs/?page_jobs=5": "<p>Found 14 jobs at Papa Johns</p><a href=\"/job/9/delivery-driver/\">Driver</a><a href=\"/job/10/delivery-driver/\">Driver</a><a href=\"?page_jobs=7\">Last</a>"
+    },
+    "requests": [
+      "https://jobs.papajohns.com/jobs/",
+      "https://jobs.papajohns.com/jobs/?page_jobs=2",
+      "https://jobs.papajohns.com/jobs/?page_jobs=3",
+      "https://jobs.papajohns.com/jobs/?page_jobs=4",
+      "https://jobs.papajohns.com/jobs/?page_jobs=5"
+    ],
+    "error": true
+  },
+  {
+    "name": "zero",
+    "responses": {
+      "https://jobs.papajohns.com/jobs/": "<p>Found 0 jobs at Papa Johns</p><a href=\"?page_jobs=1\">Last</a>"
+    },
+    "requests": [
+      "https://jobs.papajohns.com/jobs/"
+    ],
+    "urls": []
+  },
+  {
+    "name": "zero-with-job",
+    "responses": {
+      "https://jobs.papajohns.com/jobs/": "<p>Found 0 jobs at Papa Johns</p><a href=\"/job/1/delivery-driver/\">Driver</a><a href=\"?page_jobs=1\">Last</a>"
+    },
+    "requests": [
+      "https://jobs.papajohns.com/jobs/"
+    ],
+    "error": true
+  }
+]
