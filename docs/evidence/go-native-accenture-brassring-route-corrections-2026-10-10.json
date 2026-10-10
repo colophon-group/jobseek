@@ -1,0 +1,35 @@
+{
+  "observed_on": "2026-10-10",
+  "scope": "Anonymous public route observation and complete pure-Go/Python HTTP parity; no production serving or public Lightpanda success claim",
+  "candidate_version": "0.13.999",
+  "compiled_profiles": 172,
+  "configured_boards": {
+    "accenture_http": 12,
+    "brassring_lightpanda": 4
+  },
+  "accenture_regional_routes": {
+    "fr": {
+      "site": "fr-fr",
+      "language": "fr-fr",
+      "endpoint": "elastic/findjobs",
+      "jobs": 169,
+      "request_mismatches": 0,
+      "field_mismatches": 0
+    },
+    "br": {
+      "site": "br-pt",
+      "language": "pt-br",
+      "endpoint": "elastic/findjobs",
+      "jobs": 177,
+      "request_mismatches": 0,
+      "field_mismatches": 0
+    }
+  },
+  "combined_findjobs_inventory_jobs": 31752,
+  "brassring_ajax_prefix": "/TgNewUI/Search/Ajax/",
+  "retained_failed_public_workflow": 38007131898,
+  "public_brassring_qualification": "required on corrected head",
+  "cold_retirement_cases_expected": 12,
+  "removed_production_profile": "accenture.jobsearch-items/v1",
+  "historical_evidence": "go-native-accenture-brassring-public-inventory-2026-10-09.json"
+}

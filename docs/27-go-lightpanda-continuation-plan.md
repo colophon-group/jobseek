@@ -2,6 +2,16 @@
 
 ## Current checkpoint — 2026-10-10
 
+Renderer recovery [PR #10396](https://github.com/colophon-group/jobseek/pull/10396)
+merged as `45624acc963f99cb49797d7b537f6db2ecbbfe07`, version0.13.1000, after
+required native/image checks, real cgroup OOM replacement smoke and read-only
+verification of the actual failed predecessor passed. Original renderer
+rollout38022818940 succeeded; original crawler rollout38022724428 is in progress.
+The Accenture/BrassRing candidate is rebased on this source at version0.13.1001
+with179 compiled profiles. It remains draft until all four BrassRing public
+inventories and fresh exact-head checks are qualified; all16 boards remain in scope.
+
+
 PR #10395 merged as `0f3ae8c040ba084a63a96de488015756945ebddc`, version0.13.999,
 after required/native/installed-image checks and supported full cold264 reversal
 passed. Original crawler rollout38019366166 is in progress. Renderer rollout
@@ -38,7 +48,7 @@ October 10. Its immutable image and Linux fixture checksums remain pinned.
 
 The exact source998 frontier contains **204 unsupported monitor configurations**.
 The independent Accenture/BrassRing candidate [PR #10394](https://github.com/colophon-group/jobseek/pull/10394)
-is draft at `ef06c3c44dc49316e5043b3a35f65f6c5e2dc356`. Required CI passes, and
+is draft on `fix-crawler/native-accenture-brassring`. Its prior required checks passed before this rebase; fresh checks are required, and
 explicit BrassRing fixture tests pass on amd64 and arm64. All twelve Accenture
 HTTP sites have original request/field parity, totaling 31,752 jobs in their
 captured inventories. BrassRing public execution remains unqualified: all four
@@ -82,7 +92,11 @@ Keep every enabled board and useful isolated offline Python tooling.
 
 Historical checkpoint, 2026-10-09: production is source997 (`961e6e444d95131303be46dd99deffdf5da0cbe9`), version0.13.997. Original crawler rollout37999490462 and renderer rollout37999806482 succeeded; independent source/image and cold260 checks passed. Supported B0 is active at epoch261, with seven passing health endpoints. The admin-only staging repair passed the complete7,678-monitor/2,746-detail cohort on its first attempt. SQL/Redis activation accepted the full plan, but readiness failed because Python's legacy ownership projection omitted the Darwinbox and ByteDance browser profiles. Supported pending recovery retired that exact plan and restored healthy service; ordinary ownership is absent. Candidate0.13.998 fixes both mappings, preserving their browser worker boundary. The original regression failed exactly those two profiles; the repaired ownership suite passes69 cases. The native worker also reported a locations startup failure during containment; its six-second lifetime rules out the60s deadline, and an exact-source read-only host probe loads current locations successfully in3.64s. An independent native startup defect is unproved; do not increase timeouts on this evidence. Lightpanda1.0.0 remains the latest verified stable release.
 
-The next delivery steps are exact-head required checks for the compatibility repair, supported B0 reversal and complete cold verification, fresh merge authority, original whole crawler/renderer rollout, fresh full admission and activation. Retain the entire supported cohort, including all five Darwinbox and three ByteDance boards. Then finish Accenture and BrassRing together (16 boards), rebasing their local candidate and reserving the next version after this repair. Ten Accenture findjobs sites now have original request/field parity, including India's100-page scan of28,728 unique jobs. India's124,390,603-byte projection uses the Go HTTP route rather than widening the8MiB browser frame. The paired branch has the HTTP worker and held BrassRing page driver; physical Lightpanda, service/queue binding and writer qualification remain required. The source996 census has207 boards outside the ordinary cohort: DOM127, API-sniffer27, the paired providers16 and other types37. These counts include B0-owned boards and cache/route rejections; they are not a missing-engine count. Full conservation/freshness, whole-lane cost, supported reversal and the rollback window still gate retiring production Python/Playwright/Chromium. The goal remains active.
+The paired candidate in [draft PR #10394](https://github.com/colophon-group/jobseek/pull/10394), version 0.13.999, now contains two native profiles and 172 compiled profiles: all twelve Accenture configurations use Go HTTP, and all four BrassRing configurations use Lightpanda search/sort/next actions followed by verified public-detail location hydration. Public frontend observation showed that France and Brazil now call FindJobs with regional languages `fr-fr` and `pt-br`; the old short languages falsely returned empty inventories. The two CSV routes are corrected, with complete original request/field parity for 169 French and 177 Brazilian jobs. Across all twelve sites, public FindJobs qualification covers 31,752 jobs. India's 28,728 jobs over the original 100 requests produce a 124,390,603-byte projected inventory, which stays in the native process instead of crossing the 8 MiB browser frame. The unused captured Accenture production runtime is removed.
+
+Initial public Lightpanda run 38007131898 failed all six attempted boards. France/Brazil used obsolete endpoint matching, and all four BrassRing boards used the board link's capitalization instead of the actual `/TgNewUI/Search/Ajax/` application. Those failures remain evidence. Corrected public BrassRing qualification, current-head Linux amd64/arm64 fixtures, required CI and deployment gate must pass before readiness or merger. Local SDK, service and protocol race suites and Python ownership checks pass after the correction. Dedicated PostgreSQL/Redis verification passes ten paired canonical terminal cases and twelve cold-retirement cases for the final scope. Finish the entire paired batch, then advance the next grouped DOM/API/provider work. Lightpanda 1.0.0 is still the latest stable official release, freshly checked on 2026-10-10 and immutably pinned.
+
+Full conservation/freshness, comparable whole-lane cost, supported reversal and the rollback window still gate retiring production Python/Playwright/Chromium. Full migration remains incomplete and the goal remains active.
 
 Historical checkpoints follow.
 
@@ -1221,3 +1235,166 @@ original deploy workflows. Renderer Go/Debian mirrors match their unchanged
 digests; the observed cache serves the exact Lightpanda1.0.0 source digest, with
 original binary/architecture verification intact. Renew fresh head checks and
 physical renderer qualification; no production native-owner change has occurred.
+### Authoritative checkpoint — 2026-10-09, source995 serving
+
+Version **0.13.995** is deployed and both native owners are independently verified active at epoch257. Source`7eb25bb7e43c3b594100803d12cd124dc5736d95` binds crawler`sha256:3884f406bc648904bcbc56c981f5f173be89bdef12a82f6af595bdd355a6cc14`, browser`sha256:d732af3b7e2663500efdb81357e4e7fe9ef7c1d24a1671d40aead50bda0d58d3`, and matching Lightpanda renderer`sha256:a5903e9d7063b4692e714e47c0bdf7295707129dc87c0543dbfe869829add82a`. Original crawler37975662463 and renderer37975734142 succeeded. Independent incoming cold readiness and export progress passed (1,076 rows, zero errors).
+
+Fresh canonical/cache/actual-route admission covers7,670 monitor boards,2,746 detail boards and1,476,275 scheduled owned postings. Forty-one boards with stale posting-cache evidence and one Eightfold route remain excluded from detail ownership; every enabled board remains preserved. Supported B0 stage/activation/readback passed. The exact ordinary plan`e737e1629b2b7a64878b180e54d2a29e9c1f374d2a2a68a3b5be0cfe3cb8663c` and queue projection`ba7ab29dbbb202785c7e9ceb8dfc2535f8caac7c` were staged and activated through the original wrapper. Independent19:39:29 UTC verification passed: exact receipts, active SQL plan, queue projection, restart-armed fleet and eight health endpoints. Initial natural work includes one completed monitor and17 completed details; this is an initial serving proof, not full sustained freshness or whole-lane cost proof.
+
+Darwinbox/ByteDance PR #10391 is ready at reviewed head`52db6b26d5562e440a7843f7629217e93ed42c08`, based on source995. Required CI37975852615 (actual full native job), installed contracts37975856467, physical Lightpanda37976070141 (both architectures) and deploy gate37975750943 all succeeded. Its worker/SDK/queue/contracts/renderer bytes are unchanged from the qualified pre-squash parent update. Keep source995 serving through meaningful observations while the next grouped work proceeds. Before merging996, use supported outgoing retirement/B0 rollback/selector clearing, independently prove complete cold readiness, then renew current head/base/checks/holds and bind merge to that exact head. Deploy the original complete crawler and matching renderer, and repeat fresh actual-route admission.
+
+The next paired prototype implements Accenture's original fields and multipart/captured-body pagination together with BrassRing's original fields, stable sort/page-count/identity and required location hydration. It has55 field,4 identity,2 exact multipart,3 detail,3 captured-body-format and10 full original pagination comparisons, plus six snapshot/hydration cases; full SDK race passes9.885s. Browser/controller/worker ownership and real settlement are **not wired yet**, and no production authority is claimed. Finish both types together for all16 configured boards, then group the largest shared DOM/API frontier (125 DOM and27 API configurations) around transport, headers/encoding, pagination and clicked-detail controls. Preserve proxy, stealth and session semantics or qualify concrete replacement routes; do not ignore unsupported controls.
+
+Lightpanda1.0.0 remains the latest stable release, officially rechecked18:43:30 UTC on2026-10-09. Full sustained canonical/freshness/conservation, comparable whole-lane CPU/RAM/cost, final supported reversal and the rollback window still gate production Python/Playwright/Chromium retirement. The full migration goal remains **active and incomplete**.
+
+
+### Paired Accenture/BrassRing factory checkpoint — 2026-10-09
+
+Both pure inventory collectors and their strict browser factories are now local
+prototypes. Factory validation covers all 12 configured Accenture and four
+BrassRing boards. Accenture jobsearch/result deliberately requires the page's
+captured request body; it never substitutes the findjobs multipart request.
+BrassRing retains its TGnewUI application prefix and verifies configured
+partner/site identity. Unknown proxy, stealth, persistent-context, actions,
+headers and response-limit controls are rejected. Full API SDK race tests passed
+in 9.684 seconds after this addition, with vet and diff checks passing.
+
+No new runtime profile or queue ownership is admitted by these factories.
+Remaining paired delivery work is the held-target request capture and UI
+controller, publisher/cleanup handling, original BrassRing snapshot retry and
+location hydration, service/worker/profile wiring, real database settlement and
+cold/startup coverage, and actual pinned-Lightpanda qualification. Publish the
+paired PR only once both families meet that contract.
+
+The paired factories also retain the original shared navigation contract:
+Accenture networkidle/30 seconds, domcontentloaded fallback and one transport
+retry; BrassRing domcontentloaded/60 seconds with validated wait/timeout and
+explicit fallback-disable controls. These factory values still require the
+held-target controller adapter before admission. Full SDK race validation passed
+again in 9.693 seconds after preserving these defaults.
+
+
+### Authoritative transition after source995 — 2026-10-09 20:19 UTC
+
+Source995 served the admitted 7,670 monitor / 2,746 detail board cohort. Its
+19:49 observation recorded 114 naturally completed monitor claims and 94 detail
+claims with eight healthy endpoints and sampled exact retained schedules.
+Failed-detail diagnostics remain unclassified; this is not full freshness proof.
+
+The original ordinary wrapper retired that owner successfully. Independent
+source/image, receipt/projection absence and full base/B0 restoration checks
+passed. Original B0 rollback restored 24 ready tasks, dropped zero terminal
+tasks and left zero write fences. Selector clear and independent complete cold
+reversal passed at epoch258, preserving retained audit fences and schedules.
+
+PR #10391 was then head-bound merged from reviewed52db6b26d5562e440a7843f7629217e93ed42c08
+against exact7eb25bb7e43c3b594100803d12cd124dc5736d95 to
+ce4964b76a76a99cd839b14c3608033846ccf7bd. Current-head Required CI37975852615
+(including actual Native ordinary execution), installed contracts37975856467,
+physical pinned-Lightpanda AMD64/ARM64 qualification37976070141, and Crawler
+Deploy Gate37975750943 all passed. No deployment holds were open.
+
+Original whole-crawler deployment37985084996 is in progress. Matching renderer
+workflow37985143171 succeeded and was independently verified at immutable image
+`ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:23a3be01487152ddaaf038decf3fad14e795ca512621fb8143f83abe184fb86f`.
+Source996 crawler deployment identity, full cold readiness, fresh canonical/cache
+and actual-posting-route admission, and supported Go ownership activation remain
+pending. Do not claim incoming serving coverage before those checks complete.
+The incoming code has170 profiles, adding all five Darwinbox and three ByteDance
+boards. Lightpanda remains the latest stable1.0.0, bound to the verified digest.
+
+The paired Accenture/BrassRing local prototype is rebased onto merged source996
+with unchanged runtime bytes across that rebase. Its all16-board strict factories
+and original navigation settings pass full SDK race9.693s plus vet/diff checks.
+A fresh anonymous Accenture India first page contains500 jobs /7,519,977 response
+bytes. Actual Go projection matches every original Python field (zero differences)
+and produces2,275,340 bytes; ten50-row chunks peak at305,586 bytes, with the
+largest row20,394 bytes. The reported total10000 is not proven complete inventory.
+These are direct-HTTP first-page observations, not browser or production writer
+qualification. The next controller must preserve original initial-sequence,
+partition, prefix, policy and cleanup semantics while using existing rich chunk
+writing and bounded renderer framing where real inventory size requires it.
+BrassRing public ADM and Progress Rail listings return200 and retain the expected
+Angular/search-results markers; UI snapshot/hydration execution is still pending.
+
+Full migration remains ACTIVE. Finish the paired browser controllers and all16
+board settlement/physical qualification, then batch the largest shared DOM/API
+frontier. Full freshness/conservation/cost and Python retirement remain outstanding.
+
+
+Paired prototype follow-up: the original Accenture US500-row public response is
+17,246,836 bytes, exceeding16MiB. All500 rows match original fields with zero
+differences and project to3,030,477 bytes;50-row chunks peak at318,488 bytes.
+The fixed Accenture factory and existing fetch/capture bridge now accept32MiB.
+BrassRing and the existing Darwinbox/ByteDance factories retain16MiB, generic
+replay retains2MiB, and metadata overrides remain rejected. The fixed32MiB
+upper bound is tested; unknown larger internal limits revert to the generic cap.
+Focused original/factory SDK race tests passed4.731s; renderer body-limit race
+checks passed2.110s. VERSION0.13.997 reserves the next paired delivery. No new
+profiles are installed and no paired runtime ownership is admitted yet. The
+service constructor, held capture/UI/hydration, worker bindings, actual complete
+inventory sizing, real settlement and physical qualification are still required.
+
+
+### Source996 deployment verified — 2026-10-09 20:28 UTC
+
+Original whole-crawler run37985084996 and matching renderer37985143171 both
+succeeded. Independent selected identities and complete incoming cold258 checks
+passed. Active source is `ce4964b76a76a99cd839b14c3608033846ccf7bd` in generation
+`release-ce4964b76a76a99cd839b14c3608033846ccf7bd.zywVcI`. Crawler image is
+`ghcr.io/colophon-group/jobseek-crawler@sha256:3a1b56330ae41f3e1a36085775324c947c85aa7e0840c089f048c7483357500d`; browser image is
+`ghcr.io/colophon-group/jobseek-crawler-browser@sha256:73b5b2668584a5ee2e509ebd13456577f8a1cc8dfce5d8c09033065bceb730cd`. Renderer23a3be… was verified
+independently above. The full base fleet is healthy and restart-armed; outgoing
+ordinary/B0 receipts and routing projections are absent, selectors are cleared,
+and native actors remain cold. Historical audit receipts are preserved.
+
+Source996 Go ownership is not yet staged or active. Next refresh source-bound
+canonical/cache and actual scheduled-posting-route admission, then use original
+B0 stage/activate at259 and ordinary stage/activate. Independently verify serving
+authority and the newly migrated Darwinbox/ByteDance outcomes. No local mutation
+or deployment is running at this checkpoint. Full migration remains ACTIVE.
+
+
+### Paired full US inventory and current staging blocker — 2026-10-09
+
+A fresh complete anonymous Accenture US capture has952 unique jobs across the
+original offsets0/500. Raw pages are17,246,762 and13,539,363 bytes. The pure Go
+collector makes exactly both original multipart requests and matches every
+original Python field with zero differences. Its complete projection is5,283,000
+bytes, within the unchanged8MiB inventory frame. Keep the existing framing for
+this board; the fixed32MiB response bound covers both pages. This direct-HTTP
+replay establishes neither a physical Lightpanda nor serving outcome. India
+partition completeness and the remaining boards still need actual qualification.
+Sanitized evidence is in [the paired snapshot](evidence/go-native-accenture-brassring-public-inventory-2026-10-09.json).
+
+Source996 B0 is now active259, with full original-route admission covering7,678
+monitors/2,746 detail boards/1,484,140 scheduled postings. Ordinary staging hit
+the original15s administrative snapshot budget and left no ordinary ownership.
+PR#10392 reserves0.13.997 for its narrow admin-only30s transaction/40s CLI fix;
+runtime15s limits remain intact. Its complete private PostgreSQL/Redis queue race
+passes663.428s and both real staging CLI tests pass5.036s. Observed Docker Hub
+pull limits required verified identical-digest build/CI mirrors; final head
+82f5a4c1c63bdccc021050c71d0ef51b362f16ed is in fresh required/physical CI.
+Supported B0 reversal/cold260 precedes merge and original full rollout. This
+paired prototype's earlier997 reservation is superseded: rebase and bump to the
+actual next version after that delivery. Finish both Accenture/BrassRing browser
+drivers, worker profiles and settlement together. Full migration remains active.
+
+
+Eight additional configured Accenture findjobs sites (AU/CA/CH/DE/GB/IT/JP/SG)
+now have complete anonymous public snapshots. All1,726 jobs match every original
+Python field and all eight requests exactly in the pure Go collector. Each full
+projection fits the existing8MiB frame; GB is largest at2,079,428 bytes. Together
+with US this establishes nine complete public snapshots and2,678 matching jobs.
+Prefer proven Go HTTP/API for these fixed findjobs variants. India completeness
+and the BR/FR captured-jobsearch variants remain unproved; those qualifications
+and original BrassRing UI/network capture still gate the combined delivery.
+
+The ADM BrassRing public UI exposes556 results over12 pages. Search control
+`clearResumeJobsBtn`, sort control`sortBy-button`, the second alphabetical option
+and committed page2 (`.pagewise-pagination[aria-current="page"]`) were observed
+in a generic browser. The temporary tab was closed. This is UI control evidence,
+not network inventory, Lightpanda, writer or serving proof. PR#10392 latest head
+55638c07746d8d22001f9105c055792b56484272 now passes full physical Lightpanda on
+both architectures and installed-image parity. Required native CI is still
+finishing; production remains source996/B0active259 before supported handoff.

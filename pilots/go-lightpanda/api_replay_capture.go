@@ -15,6 +15,7 @@ import (
 )
 
 var errReplayCapture = errors.New("API browser capture failed")
+var errReplayRequestHeaders = errors.Join(errReplayCapture, errors.New("API request headers malformed"))
 var errReplayCredentialResponse = errors.Join(errReplayCapture, errors.New("API response reflected private credentials"))
 
 const replayCaptureLimit = 32
@@ -31,14 +32,15 @@ type replayPending struct {
 // events; response bodies are read outside the listener so CDP cannot deadlock.
 // Request credentials never become task, result or diagnostic fields.
 type replayCapture struct {
-	mu        sync.Mutex
-	endpoint  *url.URL
-	method    string
-	bodyLimit int
-	pending   map[network.RequestID]replayPending
-	completed chan network.RequestID
-	failure   error
-	closed    bool
+	mu            sync.Mutex
+	endpoint      *url.URL
+	method        string
+	bodyLimit     int
+	requireStatus int64
+	pending       map[network.RequestID]replayPending
+	completed     chan network.RequestID
+	failure       error
+	closed        bool
 }
 
 func (*replayCapture) String() string               { return "private API browser capture" }
@@ -82,7 +84,7 @@ func (c *replayCapture) observe(event any) {
 			value, ok := raw.(string)
 			total += len(name) + len(value)
 			if !ok || len(name) > 256 || len(value) > 8192 || strings.ContainsAny(name+value, "\x00\r\n") || total > 64<<10 {
-				c.failure = errReplayCapture
+				c.failure = errReplayRequestHeaders
 				return
 			}
 			headers.Set(name, value)
@@ -95,6 +97,10 @@ func (c *replayCapture) observe(event any) {
 		}
 		if e.Response == nil || !c.matches(e.Response.URL, pending.method) || e.Type != network.ResourceTypeXHR && e.Type != network.ResourceTypeFetch {
 			delete(c.pending, e.RequestID)
+			return
+		}
+		if c.requireStatus != 0 && e.Response.Status != c.requireStatus {
+			c.failure = &replayStatusError{status: int(e.Response.Status)}
 			return
 		}
 		signals, invalid := mainDocumentPolicySignals(e.Response.Headers)

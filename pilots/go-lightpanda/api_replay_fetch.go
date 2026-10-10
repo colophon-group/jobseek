@@ -164,5 +164,8 @@ func replayBodyLimit(o api.BrowserReplayOptions) int {
 	if o.ResponseBodyLimit == 16<<20 {
 		return 16 << 20
 	}
+	if o.ResponseBodyLimit == 32<<20 {
+		return 32 << 20
+	}
 	return replayCaptureBodyLimit
 }

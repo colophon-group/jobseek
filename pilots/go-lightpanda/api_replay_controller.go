@@ -23,8 +23,20 @@ type apiReplayTask struct {
 	boardURL                       string
 	options                        api.BrowserReplayOptions
 	converse                       func(context.Context, api.Fetch, bool) error
+	brassRingConverse              func(context.Context, api.BrassRingPageLoader) error
 	fallback                       api.Fetch
 	nativeProvider, nativeMetadata string
+}
+
+func (task *apiReplayTask) hasOneConversation() bool {
+	count := 0
+	if task.converse != nil {
+		count++
+	}
+	if task.brassRingConverse != nil {
+		count++
+	}
+	return count == 1
 }
 
 func readReplayResponseBody(ctx context.Context, id network.RequestID) ([]byte, error) {
@@ -55,11 +67,23 @@ func newAPIReplayTask(boardURL, metadata string, converse func(context.Context, 
 }
 
 func executeAPIReplayConversation(ctx context.Context, task *apiReplayTask, capture *replayCapture, status int, finalURL, html string, signals *runtimev1.ResourcePolicySignals) error {
-	if task == nil || capture == nil || status < 200 || status >= 300 {
+	if task == nil || capture == nil {
 		return errReplayCapture
+	}
+	if status < 200 || status >= 300 {
+		return &replayStatusError{status: status}
 	}
 	if err := policy.Check(signals, html, finalURL); err != nil {
 		return err
+	}
+	if task.brassRingConverse != nil {
+		capture.mu.Lock()
+		failure := capture.failure
+		capture.mu.Unlock()
+		if failure != nil {
+			return &brassRingPhaseError{phase: "initial-capture", err: failure}
+		}
+		return executeBrassRingConversation(ctx, task, finalURL)
 	}
 	if task.nativeProvider != "" {
 		if task.nativeProvider == "darwinbox" {

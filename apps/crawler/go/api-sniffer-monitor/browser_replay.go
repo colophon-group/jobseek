@@ -51,6 +51,8 @@ type BrowserReplayOptions struct {
 	ResponseBodyLimit   int // Fixed native provider factory only; never metadata-controlled.
 	Inventory           Options
 	Wait                string
+	WaitFallback        string // Trusted provider navigation factory only.
+	TransportRetries    uint64 // Trusted provider navigation factory only.
 	TimeoutMS, SettleMS uint64
 	pageCapConfigured   bool
 }

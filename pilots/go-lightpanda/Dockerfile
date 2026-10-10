@@ -78,7 +78,7 @@ FROM pilot-base AS integration-test
 COPY --from=integration-build /out/go-lightpanda.test /usr/local/bin/go-lightpanda.test
 ENV LIGHTPANDA_INTEGRATION_BIN=/usr/local/bin/lightpanda
 RUN --network=none /usr/local/bin/go-lightpanda.test \
-    -test.run '^(TestLightpandaIntegration|TestLightpandaDayforceSessionIntegration|TestLightpandaAPIReplaySessionIntegration|TestLightpandaNativeBrowserProviderSessionIntegration|TestLightpandaDocumentActionsIntegration|TestLightpandaNavigationReadinessIntegration|TestLightpandaRuntimeV1BridgeIntegration|TestLightpandaRuntimeV1StdioIntegration|TestLightpandaPoolRuntimeV1IntegrationC4|TestLightpandaEgressPolicyIntegration)$' \
+    -test.run '^(TestLightpandaIntegration|TestLightpandaDayforceSessionIntegration|TestLightpandaAPIReplaySessionIntegration|TestLightpandaNativeBrowserProviderSessionIntegration|TestLightpandaBrassRingCommittedPaginationIntegration|TestLightpandaDocumentActionsIntegration|TestLightpandaNavigationReadinessIntegration|TestLightpandaRuntimeV1BridgeIntegration|TestLightpandaRuntimeV1StdioIntegration|TestLightpandaPoolRuntimeV1IntegrationC4|TestLightpandaEgressPolicyIntegration)$' \
     -test.count=1 -test.v
 
 FROM pilot-base AS runtime

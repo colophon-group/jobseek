@@ -1,0 +1,675 @@
+{
+  "schema_version": 1,
+  "prototype_base_source": "961e6e444d95131303be46dd99deffdf5da0cbe9",
+  "paired_scope": {
+    "accenture_boards": 12,
+    "brassring_boards": 4
+  },
+  "complete_accenture_us_snapshot": {
+    "observed_at": "2026-10-09T21:40:57.834335+00:00",
+    "advertised_total": 952,
+    "unique_identities": true,
+    "public_pages": [
+      {
+        "offset": 0,
+        "response_bytes": 17246762,
+        "body_sha256": "634ec4154e9d5501a3fb7fef45d86ae232df4312ebd9d62040998d6c82a9afe8"
+      },
+      {
+        "offset": 500,
+        "response_bytes": 13539363,
+        "body_sha256": "6cdc99a427e03c3b11d6a320a7fb48da5b851488361a3c1d8a2cbde7dddec74f"
+      }
+    ],
+    "pure_go_original_parity": {
+      "complete_inventory_projected_bytes": 5283000,
+      "fits_existing_8MiB_inventory_frame": true,
+      "largest_row_bytes": 25986,
+      "original_field_mismatches": 0,
+      "original_multipart_requests_identical": true,
+      "requests": 2,
+      "rows": 952,
+      "scope": "complete anonymous direct-HTTP snapshot replay through the pure Go collector; no physical renderer, writer or serving claim",
+      "truncated": false
+    }
+  },
+  "limits": {
+    "fixed_accenture_response_bytes": 33554432,
+    "generic_replay_response_bytes": 2000000,
+    "inventory_frame_bytes": 8388608,
+    "metadata_override": "rejected"
+  },
+  "proof_limits": [
+    "Ten configured findjobs sites have bounded complete original-pagination snapshots and pure collector field/request parity; no writer or serving authority",
+    "The two captured-jobsearch variants remain unproved",
+    "BrassRing public UI controls observed in Chromium only; held Lightpanda inventory and hydration remain required"
+  ],
+  "next_steps": [
+    "Bind the ten qualified Accenture findjobs sites to the Go HTTP route, preserving publisher policy, cookies, retries, original page ceilings and rich writer settlement; finish both captured-jobsearch variants and BrassRing held-session driver",
+    "bind both providers to ordinary profiles and rich writer",
+    "exercise real terminal/cold settlement and physical pinned-Lightpanda cases",
+    "publish both providers together through required checks and original whole rollout"
+  ],
+  "additional_eight_complete_snapshots": {
+    "jobs": 1726,
+    "results": [
+      {
+        "complete_inventory_projected_bytes": 1538845,
+        "fits_existing_8MiB_frame": true,
+        "jobs": 275,
+        "original_field_mismatches": 0,
+        "original_request_mismatches": 0,
+        "requests": 1,
+        "slug": "accenture-careers-au"
+      },
+      {
+        "complete_inventory_projected_bytes": 1164302,
+        "fits_existing_8MiB_frame": true,
+        "jobs": 212,
+        "original_field_mismatches": 0,
+        "original_request_mismatches": 0,
+        "requests": 1,
+        "slug": "accenture-careers-ca"
+      },
+      {
+        "complete_inventory_projected_bytes": 71105,
+        "fits_existing_8MiB_frame": true,
+        "jobs": 22,
+        "original_field_mismatches": 0,
+        "original_request_mismatches": 0,
+        "requests": 1,
+        "slug": "accenture-careers-ch"
+      },
+      {
+        "complete_inventory_projected_bytes": 802724,
+        "fits_existing_8MiB_frame": true,
+        "jobs": 230,
+        "original_field_mismatches": 0,
+        "original_request_mismatches": 0,
+        "requests": 1,
+        "slug": "accenture-careers-de"
+      },
+      {
+        "complete_inventory_projected_bytes": 2079428,
+        "fits_existing_8MiB_frame": true,
+        "jobs": 352,
+        "original_field_mismatches": 0,
+        "original_request_mismatches": 0,
+        "requests": 1,
+        "slug": "accenture-careers-gb"
+      },
+      {
+        "complete_inventory_projected_bytes": 637901,
+        "fits_existing_8MiB_frame": true,
+        "jobs": 156,
+        "original_field_mismatches": 0,
+        "original_request_mismatches": 0,
+        "requests": 1,
+        "slug": "accenture-careers-it"
+      },
+      {
+        "complete_inventory_projected_bytes": 934951,
+        "fits_existing_8MiB_frame": true,
+        "jobs": 309,
+        "original_field_mismatches": 0,
+        "original_request_mismatches": 0,
+        "requests": 1,
+        "slug": "accenture-careers-jp"
+      },
+      {
+        "complete_inventory_projected_bytes": 487313,
+        "fits_existing_8MiB_frame": true,
+        "jobs": 170,
+        "original_field_mismatches": 0,
+        "original_request_mismatches": 0,
+        "requests": 1,
+        "slug": "accenture-careers-sg"
+      }
+    ],
+    "scope": "complete bounded anonymous direct-HTTP inventories through pure Go collector; no Lightpanda, writer or serving claim",
+    "sites": 8
+  },
+  "brassring_adm_controls": {
+    "observed_at_utc": "2026-10-09T21:54:49.978542+00:00",
+    "board": "adm-us",
+    "url": "https://sjobs.brassring.com/TGnewUI/Search/Home/Home?partnerid=25416&siteid=5998",
+    "engine": "Codex in-app browser, generic Chromium UI; not Lightpanda",
+    "observations": {
+      "initial_search_button_id": "clearResumeJobsBtn",
+      "search_result_count": 556,
+      "page_count": 12,
+      "initial_sort": "Date",
+      "alphabetical_option_position": 2,
+      "sort_button_id": "sortBy-button",
+      "selected_sort": "Alphabetical",
+      "committed_next_page": 2,
+      "current_page_button_classes": "pagewise-pagination ng-binding ng-scope primaryButton",
+      "current_page_button_aria_current": "page",
+      "top_and_bottom_pagination_visible": true
+    },
+    "scope": "public read-only search/sort/next-page controls; no network JSON capture, complete inventory, Lightpanda, writer or serving claim",
+    "cleanup": "temporary tab closed"
+  },
+  "candidate_version": "0.13.998",
+  "accenture_india_original_initial_scan": {
+    "observed_at": "2026-10-09T22:46:48.348262+00:00",
+    "rows": 28728,
+    "advertised_cosmetic_total": 10000,
+    "unique_identities": true,
+    "public_pages": [
+      {
+        "offset": 0,
+        "response_bytes": 7519860,
+        "body_sha256": "842e532106d889c342fbbac3c79de24ff8398cb3e02ca51d261708dcb58bc1f8"
+      },
+      {
+        "offset": 500,
+        "response_bytes": 7409605,
+        "body_sha256": "4c57eb162b160f7e91fed08ba5fa4894b7388aa7a211157d73ad6b3ca41d6f48"
+      },
+      {
+        "offset": 1000,
+        "response_bytes": 7067238,
+        "body_sha256": "b95f66d17cafce3922b24fb61ccde4574b31c329b0180ac5a245aaa79ebeb03d"
+      },
+      {
+        "offset": 1500,
+        "response_bytes": 8446345,
+        "body_sha256": "0208dded7584317c31ebab9247161ed9a3ecbee720591a0ff0545045bce8e09d"
+      },
+      {
+        "offset": 2000,
+        "response_bytes": 7651486,
+        "body_sha256": "072dd956052161984861c35820285ee5bfe5611a97458715a25ff17e6d6414a2"
+      },
+      {
+        "offset": 2500,
+        "response_bytes": 8605593,
+        "body_sha256": "98d07cf2ec0905e821bab30127cd66d085d590ecc633120bf05f772cebecadeb"
+      },
+      {
+        "offset": 3000,
+        "response_bytes": 7911047,
+        "body_sha256": "60bc7b4e907ed5b8a99de1e722717ebcd32cb73eb3d884413ad4f41b0935bde5"
+      },
+      {
+        "offset": 3500,
+        "response_bytes": 8058443,
+        "body_sha256": "ddeff1485d1ab39ab0acf5d920f49bcec2a2714497eb72ea310f8bc153e30737"
+      },
+      {
+        "offset": 4000,
+        "response_bytes": 7450577,
+        "body_sha256": "20e198179c12970b7c77ded29304f75b2783f1f2c426cc36a1b7b00005e4e242"
+      },
+      {
+        "offset": 4500,
+        "response_bytes": 6664177,
+        "body_sha256": "4162634675001d29b612aadd85e4f66e2d25d0bbfdb30b8fed26b5f5d36c8a37"
+      },
+      {
+        "offset": 5000,
+        "response_bytes": 6911622,
+        "body_sha256": "76228026a2f818392b7b1bf59e93eee1f1f0423efb75686bf9673bad337c2ae5"
+      },
+      {
+        "offset": 5500,
+        "response_bytes": 7241604,
+        "body_sha256": "1221c83d132c8d1d006dd15638814dadfe83a46d5b7a03dc080876071efa1dfb"
+      },
+      {
+        "offset": 6000,
+        "response_bytes": 7120272,
+        "body_sha256": "9cbdfbbaee404f87a662006b9244be3f424716539028cfcf276c6d3a010b612a"
+      },
+      {
+        "offset": 6500,
+        "response_bytes": 7162407,
+        "body_sha256": "b7ebbae389039d7a733a44c5b4c7536466da06de0f5f31eca5ca2ca38cb0fb9e"
+      },
+      {
+        "offset": 7000,
+        "response_bytes": 7168860,
+        "body_sha256": "6bf90bf01e463f0c00d8e9d935180fdd33e13f9799f944b5a1067ad73d4479d1"
+      },
+      {
+        "offset": 7500,
+        "response_bytes": 7300417,
+        "body_sha256": "a167cd403f4cd97203ac29777648a3706390df28f590a5cb5798b1f6da97aeff"
+      },
+      {
+        "offset": 8000,
+        "response_bytes": 6881888,
+        "body_sha256": "b603a751f50faa740feca5200214f3c8f15ecb6d28adebd8caf8d2ed95bf41e7"
+      },
+      {
+        "offset": 8500,
+        "response_bytes": 7019871,
+        "body_sha256": "a8421a36f1e516c51ded24a387c7d57f3b8152341e41ae58c31c8080fa125686"
+      },
+      {
+        "offset": 9000,
+        "response_bytes": 6590254,
+        "body_sha256": "3638c8c5f5bf576a40fadce119518a9467343fa3dd4e4450aebe24b6c45bcc28"
+      },
+      {
+        "offset": 9500,
+        "response_bytes": 6698062,
+        "body_sha256": "caa6c2c7bc44f8c7e1bc9c2d61985880550819b530917fa7aebff6d71e53e1a6"
+      },
+      {
+        "offset": 10000,
+        "response_bytes": 7339090,
+        "body_sha256": "bbd144a28ab7f8840ab481061933c8c6f28638fd35bad18aeaf3545c19f3075a"
+      },
+      {
+        "offset": 10500,
+        "response_bytes": 6743619,
+        "body_sha256": "34ff9dda08e0651e9088c83cd3442bcf25f5ae88c9230ba09c40a74ef315f7a6"
+      },
+      {
+        "offset": 11000,
+        "response_bytes": 6660999,
+        "body_sha256": "6c3f5a79dda6dfb8478e04f569ed4ab0b7e75ddaca7c00d71f7d83c6908d7c5e"
+      },
+      {
+        "offset": 11500,
+        "response_bytes": 6999044,
+        "body_sha256": "1fdef5a9c415f8e666d5c816e639eb863daa513f2b4a8f9ce6288a9c7e7457fb"
+      },
+      {
+        "offset": 12000,
+        "response_bytes": 7491365,
+        "body_sha256": "5ddf28fde1c054a55b4db689df33ec366c7a1b01080fecda66b28bd4f8b6755e"
+      },
+      {
+        "offset": 12500,
+        "response_bytes": 7213093,
+        "body_sha256": "d4db6749e6b1680ff05227e6b978a13fd316d6ba62ff13cf5bf10dd9e6f138eb"
+      },
+      {
+        "offset": 13000,
+        "response_bytes": 7202194,
+        "body_sha256": "9408279eb06b94d66edebd593603f3f023dd9bfb30bccaf1c85a783fdaab311a"
+      },
+      {
+        "offset": 13500,
+        "response_bytes": 6951625,
+        "body_sha256": "ef0e08b3def8cc2e47159886ed0a82b2dc5255bd74d12da1eaa2d1e093bdd482"
+      },
+      {
+        "offset": 14000,
+        "response_bytes": 6932859,
+        "body_sha256": "0a62ecc0eafa69a8aa698e63f41eb579b17a63b30c74be90ad963361393763c3"
+      },
+      {
+        "offset": 14500,
+        "response_bytes": 6978400,
+        "body_sha256": "2fa0ecc0ea57e66b6d7c8d9f774864a54c889171314a2d0f48f64b762d26488b"
+      },
+      {
+        "offset": 15000,
+        "response_bytes": 6974469,
+        "body_sha256": "7f93ff255af60b6026c3328f1234b4391d1aa121599acdcea811da614b9adac7"
+      },
+      {
+        "offset": 15500,
+        "response_bytes": 7313385,
+        "body_sha256": "75262e206e9b314e12844826277098f0ba9567aa3e92aee157691911551994a7"
+      },
+      {
+        "offset": 16000,
+        "response_bytes": 7004049,
+        "body_sha256": "ba922096f8aa35f923fb41dac08f4235bbb179ad4100dac4eb2058b7fb3694a1"
+      },
+      {
+        "offset": 16500,
+        "response_bytes": 6839959,
+        "body_sha256": "6de4923545ba9b236fb9941e3ec6adfd0b86634a3c17f06084a45d74b0ea11d4"
+      },
+      {
+        "offset": 17000,
+        "response_bytes": 6690500,
+        "body_sha256": "dc03afc06a8da00845315530d88a0881801c3c4cafe3e59771a20a22d97f0472"
+      },
+      {
+        "offset": 17500,
+        "response_bytes": 7356280,
+        "body_sha256": "2fa55d31719d6118947f0db425eade6c52ec926abb9bc0340990bb90dbedb978"
+      },
+      {
+        "offset": 18000,
+        "response_bytes": 7156658,
+        "body_sha256": "fe59b863950265670632577efa0f8501508e02db06c42156665c1e6ba92b84c0"
+      },
+      {
+        "offset": 18500,
+        "response_bytes": 6772199,
+        "body_sha256": "b69c813ccd72683bac70b0826435074332b53e45a9c3f2a8f17d896831a4648a"
+      },
+      {
+        "offset": 19000,
+        "response_bytes": 7322568,
+        "body_sha256": "bc8f3f4360433d4c4588fbf7861e8391a484911cb0153374910316871c60d628"
+      },
+      {
+        "offset": 19500,
+        "response_bytes": 7378388,
+        "body_sha256": "2f44efcf840961a9f0fc45e664423852355270a70ad198ff346838b4778c53fc"
+      },
+      {
+        "offset": 20000,
+        "response_bytes": 8959573,
+        "body_sha256": "c8adc89c6e7b52ee1372b6896bb58ed622b547bf81695d4fa51ace994d0cff1b"
+      },
+      {
+        "offset": 20500,
+        "response_bytes": 6896195,
+        "body_sha256": "e77235e1f6966e893944ba45bdca2aa6b2e9213ec69a5c8f4f8f2b01ce263466"
+      },
+      {
+        "offset": 21000,
+        "response_bytes": 6817686,
+        "body_sha256": "44c3f1d9dc2de31c94c78c6bd83b8ce63a8916e1fc9938f0110e46da04f1ca22"
+      },
+      {
+        "offset": 21500,
+        "response_bytes": 6997872,
+        "body_sha256": "f0fe5cde372267fa041e8916d52f55c4187005ddd193953f06849316dc61e81d"
+      },
+      {
+        "offset": 22000,
+        "response_bytes": 7037106,
+        "body_sha256": "7b09465706bc151b282b5ade9447fb21ac8d9c848302c48eb57d7f850013b0bd"
+      },
+      {
+        "offset": 22500,
+        "response_bytes": 6750173,
+        "body_sha256": "775a8bd49559e72abd5d2e615a50fccaae849139b4f23d0f9ac4a0469720fc32"
+      },
+      {
+        "offset": 23000,
+        "response_bytes": 6886455,
+        "body_sha256": "bf00151f7989b70c4a462ee3407509be69b6c6599b4c9381caadf9a35ca6a0d5"
+      },
+      {
+        "offset": 23500,
+        "response_bytes": 6990350,
+        "body_sha256": "0e5590796a1a5fa594108a09d9e9ce9afd93b6eb4f9d54a99ddcd6adad1249cb"
+      },
+      {
+        "offset": 24000,
+        "response_bytes": 7615892,
+        "body_sha256": "0b7ccc1583451ed3471b9722b5395f0a1811aed6402e751632083cd16fda4f4d"
+      },
+      {
+        "offset": 24500,
+        "response_bytes": 7121500,
+        "body_sha256": "f617e62d6ea3c19380e5bd740e5a70f59a48fb62414e4185d7c2c30b972984ff"
+      },
+      {
+        "offset": 25000,
+        "response_bytes": 7752831,
+        "body_sha256": "d6dabf0c2c19177853b600ce3c0d4d3982fc0582841545614365f39fb1f28db2"
+      },
+      {
+        "offset": 25500,
+        "response_bytes": 6345412,
+        "body_sha256": "f8c005c24f4e307d0a0635163cef09fabf1eb59811b03ed3783e3f7cd866f502"
+      },
+      {
+        "offset": 26000,
+        "response_bytes": 7249332,
+        "body_sha256": "2f3f620c53ce3a83e194f17b929957b959f00a2864f89bc507cb8043efa59a3c"
+      },
+      {
+        "offset": 26500,
+        "response_bytes": 6398130,
+        "body_sha256": "b318476776fd210819c01a7f1fd9ec20391de9f353d6a7fe23f488e83213d22b"
+      },
+      {
+        "offset": 27000,
+        "response_bytes": 6586286,
+        "body_sha256": "a1d9742f78325b963c924cece17f2188b02045168aaed0d5426c91846d1e9c40"
+      },
+      {
+        "offset": 27500,
+        "response_bytes": 6646475,
+        "body_sha256": "643e49381e2fdf100570682fe6ac8cea86c94882754d3a32372d36fd9a00230b"
+      },
+      {
+        "offset": 28000,
+        "response_bytes": 6682635,
+        "body_sha256": "232da42ba429f2d6d658c6de8e2ee6f2ee07ff1db03ba46eeb9ef61a8c933e60"
+      },
+      {
+        "offset": 28500,
+        "response_bytes": 2946807,
+        "body_sha256": "06ba75d27021dc9d5cc1ba7efdb65112e068b557769f008caeb3325a94f26f81"
+      },
+      {
+        "offset": 29000,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 29500,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 30000,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 30500,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 31000,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 31500,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 32000,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 32500,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 33000,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 33500,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 34000,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 34500,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 35000,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 35500,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 36000,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 36500,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 37000,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 37500,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 38000,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 38500,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 39000,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 39500,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 40000,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 40500,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 41000,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 41500,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 42000,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 42500,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 43000,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 43500,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 44000,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 44500,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 45000,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 45500,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 46000,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 46500,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 47000,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 47500,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 48000,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 48500,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 49000,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      },
+      {
+        "offset": 49500,
+        "response_bytes": 2469,
+        "body_sha256": "d6875097d2a74d500996d212817168c5b8049fe3d06314644876fb73d80313f3"
+      }
+    ],
+    "pure_go_original_parity": {
+      "complete_inventory_projected_bytes": 124390603,
+      "fits_existing_8MiB_inventory_frame": false,
+      "largest_row_bytes": 25072,
+      "original_field_mismatches": 0,
+      "original_multipart_requests_identical": true,
+      "requests": 100,
+      "rows": 28728,
+      "scope": "original100-page initial anonymous direct-HTTP scan replay through the pure Go collector; no physical renderer, writer or serving claim",
+      "truncated": false
+    },
+    "decision": "Use the qualified Go HTTP route for findjobs; do not widen the browser protocol to carry this124MB inventory. The captured-jobsearch variants and BrassRing still need held Lightpanda qualification.",
+    "probe_repair": "First probe required nonempty totalHits on empty pages and failed after28728 rows. The corrected probe preserves each response and accepts the original empty-page contract."
+  }
+}

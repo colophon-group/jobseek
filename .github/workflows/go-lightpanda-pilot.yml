@@ -32,6 +32,10 @@ on:
         description: "Read-only qualification of current public Dayforce boards"
         type: boolean
         default: false
+      qualify_paired_live:
+        description: "Read-only full public BrassRing qualification and Accenture HTTP bindings"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -41,6 +45,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  qualify-paired-live:
+    name: Qualify public BrassRing inventories
+    if: github.event_name == 'workflow_dispatch' && inputs.qualify_paired_live
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    defaults:
+      run:
+        working-directory: pilots/go-lightpanda
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build checksum-pinned integration image
+        run: docker build --build-context contracts=../../apps/crawler/contracts --build-context api-sniffer-monitor=../../apps/crawler/go/api-sniffer-monitor --build-context dom-detail=../../apps/crawler/go/dom-detail --build-context jsonld-detail=../../apps/crawler/go/jsonld-detail --build-context publisher-policy=../../apps/crawler/go/publisher-policy --platform linux/amd64 --target integration-test --tag jobseek-lightpanda-paired:${{ github.run_id }} .
+      - name: Qualify complete public inventories without production authority
+        env:
+          QUALIFICATION_IMAGE: jobseek-lightpanda-paired:${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          docker run --rm --init --read-only --cap-drop ALL \
+            --security-opt no-new-privileges:true \
+            --cpus 1 --memory 1g --memory-swap 1g --pids-limit 128 \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m,uid=10001,gid=10001,mode=0700 \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/apps/crawler/data/boards.csv,target=/qualification/boards.csv,readonly" \
+            --env LIGHTPANDA_PAIRED_LIVE_REGISTRY=/qualification/boards.csv \
+            "$QUALIFICATION_IMAGE" /usr/local/bin/go-lightpanda.test \
+            -test.run '^TestLightpandaPairedPublicRegistryQualification$' -test.count=1 -test.v -test.timeout=32m \
+            | tee paired-live-evidence.log
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: lightpanda-paired-public-qualification
+          path: pilots/go-lightpanda/paired-live-evidence.log
   test:
     name: Test Go Lightpanda Pilot (${{ matrix.arch }})
     strategy:
