@@ -190,6 +190,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		allowed["slug"], allowed["language"], allowed["backfill_languages"] = true, true, true
 	case "rss":
 		allowed["preset"], allowed["feed_url"] = true, true
+		allowed["identity_migration"] = true
 		// A retained receipt without an active migration marker is inert in
 		// the original processor. Bind it without enabling identity retirement.
 		allowed["_identity_migration_receipt"] = true

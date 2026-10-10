@@ -13,6 +13,9 @@ var rssCategoryQuery = regexp.MustCompile(`^catid=[1-9][0-9]{0,15}$`)
 // Native ownership of direct Teamtailor and SuccessFactors feeds preserves
 // their configured detail assignment and downstream URL policy.
 func inspectRSSRich(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
+	if err := postfinanceMigrationConfig(config, md); err != nil {
+		return GreenhouseMonitorProfile{}, err
+	}
 	var preset, feed, variant string
 	if raw, ok := md["preset"]; ok {
 		if json.Unmarshal(raw, &preset) != nil {

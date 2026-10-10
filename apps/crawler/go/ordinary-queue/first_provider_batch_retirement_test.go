@@ -306,6 +306,13 @@ func testProviderColdRetirement(t *testing.T, providers []string, fixture func(*
 						t.Fatal(e)
 					}
 					summary := GreenhouseInventorySummary{}
+					if provider == "rss/postfinance" {
+						summary.Discovered = 1
+						posting := richPosting(t, "https://jobs.postfinance.ch/job/_/42/", "Native PostFinance role", "<p>Build services in Go.</p>")
+						if _, err := cycle.WriteRichBatch(ctx, []GreenhouseRichPosting{posting}); err != nil {
+							t.Fatal("canonical write before cold migration failed", err)
+						}
+					}
 					if strings.Split(provider, "/")[0] == "unisante" {
 						summary.Discovered = 1
 						batch := []GreenhouseRichPosting{{URL: "https://emploi.unisante.ch/index.php/offre/42-clinical-role", SourceIdentity: "unisante:emploi:42", Content: &GreenhouseRichContent{Fields: GreenhouseRichFields{Titles: []string{"Native clinical role"}, Locales: []string{"fr"}}}}}

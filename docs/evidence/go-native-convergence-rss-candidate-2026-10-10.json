@@ -1,0 +1,62 @@
+{
+  "version": "0.13.1008",
+  "base_revision": "f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77",
+  "observed_at_utc": "2026-10-10T22:41:18.466105+00:00",
+  "status": "local candidate; not published, deployed or given serving authority",
+  "types": [
+    "API pagination convergence",
+    "RSS PostFinance canonical identity transition"
+  ],
+  "selected_monitor_additions": [
+    "bupa-saudi-arabia",
+    "publicis-main",
+    "postfinance-careers"
+  ],
+  "api": {
+    "original_synthetic_cases": 14,
+    "original_synthetic_sha256": "d2f4256d1acd0b25c31e3403902275289d57576c923c36467c26d3f35495bc5b",
+    "real_pg_redis_settlement_cases": 14,
+    "unproved_zero_and_publisher_cases": 4,
+    "cold_retirement_cases": 3,
+    "public_references": {
+      "bupa-saudi-arabia": {
+        "jobs": 55,
+        "requests": 18,
+        "truncated": false,
+        "sha256": "220e69d1800355fe8bea2c66f8b091cc16bab79fea1d3cfb1e171a48ca4771f7"
+      },
+      "publicis-main": {
+        "urls": 2958,
+        "requests": 32,
+        "truncated": true,
+        "sha256": "f70153553eba3cdfc3c6ff0ae77478f93c343e9d9f46ec5838e33cb0fde54616"
+      }
+    },
+    "scope": "explicit numeric total and object-array page/offset inventories; original first-observation union, stable identity/projection, two no-growth passes; truncated validated prefixes never authorize absence",
+    "correction": "capture2 retains URL-only MonitorResult URLs; capture1 was not an inventory authority",
+    "remaining": "automatic total convergence (IHG) unsupported; no live Go public convergence qualification yet"
+  },
+  "rss": {
+    "original_raw_feed_records": 277,
+    "original_requests": 1,
+    "original_public_sha256": "45097c1dbb539f7a48aaa389d3a0cdf19d11348923f5b5b02ad9cd8238c4e460",
+    "all_original_feed_fields_match": true,
+    "original_sql_port_sha256": "e731216785adde0db0eebaaaae19e59db05b5a964216b85c5d68224e4f11ccea",
+    "real_pg_safety_cases": 13,
+    "ordinary_worker_cases": 5,
+    "cold_retirement_cases": 3,
+    "contract": "exact postfinance-careers URL/type/fingerprint, company slug postfinance; complete unique fresh canonical rows, three healthy history counts, 2000-row cap, unknown URL rejection, permanent exact receipt, retirement and receipt atomic before ordinary gone guards",
+    "remaining": "Implenia original identity resolution failed; no authority assigned"
+  },
+  "lifecycle_repair": {
+    "policy": "Reject zero-processed truncated success before mutation; use original failure receipt/backoff/settlement",
+    "real_pg_redis_regression_passed": true,
+    "preserved": "active postings, empty counter, recurring schedule and lease conservation; confirmed complete-empty and nonempty-partial behavior"
+  },
+  "pending": [
+    "publish exact candidate and pass full required CI/Crawler Deploy Gate",
+    "original supported full deployment and all-route admission preserving previous cohort",
+    "natural freshness/conservation and whole-service resources/cost/reversal",
+    "remaining enabled profiles/consumers and eventual production Python retirement"
+  ]
+}

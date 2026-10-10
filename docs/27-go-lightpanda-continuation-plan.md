@@ -1,6 +1,55 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1006 deployed, native owners cold274
+## Current checkpoint — source1007 merged, original rollout underway
+
+[PR #10405](https://github.com/colophon-group/jobseek/pull/10405) merged as
+`f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77`, version0.13.1007, with196 profiles.
+Its exact reviewed head7dafe149 passed Required CI38089346647, actual Crawler
+Deploy Gate38089345115, installed parity38089346537, Linux physical Lightpanda
+38089346679, ARM whole-lane admission38089346639 and renderer qualification
+38089346579. Fresh independent source1006 cold274 verification preceded the
+expected-head merge. The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38092011667)
+is underway. The original [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38092045413)
+succeeded at attempt1. Independent readback matches source1007 and renderer digest
+`sha256:99d6ccb52b6999514a00adff83a3d44e6219562481d48e78d7ae6bc9034c0091`,
+running without sticky OOM evidence. This is a bounded readiness observation;
+post-activation resources and the predecessor OOM recurrence remain to be measured.
+
+Lightpanda1.0.0 is still the latest official stable release, verified October10
+at22:35UTC, and remains pinned. The renderer now bounds each child V8 heap at128MiB;
+its existing four-child/1GiB service envelope remains in place. Pinned physical
+tests prove resource failure withholding and subsequent normal navigation.
+
+Keep native owners cold until the whole crawler deployment and independent
+identity/health/export/cold verification succeed. Reconcile a fresh complete
+canonical board census and every actual scheduled detail route. Stage and activate
+through the original wrappers, preserving all7,736 previous monitors and2,751
+detail boards plus all15 source1006 and3 source1007 qualified monitor additions.
+Do not shrink coverage to fit a timer or treat compiled support as serving authority.
+
+Candidate0.13.1008 groups API pagination convergence and PostFinance RSS canonical
+identity migration. It has local original-output, PostgreSQL/Redis settlement and
+cold-retirement proofs; it is not published or activated. Publicis preserves the
+original truncated2958-URL prefix and withholds absence authority; Bupa matches55
+complete jobs. PostFinance matches277 raw RSS records, retains the published
+filter/collision policy, and ports the original company-wide atomic retirement SQL
+with the exact code-owned board/fingerprint/receipt and healthy inventory gates.
+Zero processed results from an unproved truncated inventory now fail before empty
+accounting; ordinary failure settlement retains existing postings and the empty
+counter. This deliberately repairs the original empty-before-truncation ordering.
+See [candidate evidence](evidence/go-native-convergence-rss-candidate-2026-10-10.json).
+IHG automatic-total convergence, Implenia identity resolution and Njoyn remain
+unqualified. Njoyn's unchanged original probe ended at its WAF error page; no
+publisher or configured transport bypass is authorized by that evidence.
+
+The full migration goal remains active. Finish full-cohort activation and natural
+freshness/conservation, then continue grouped ports of the remaining enabled
+profiles and runtime consumers. Whole-service resources/cost and supported cold
+reversal precede production Python/Playwright/Chromium retirement; retain isolated
+offline Python tools and every enabled board.
+
+
+## Historical predecessor — source1006 deployed, native owners cold274
 
 [PR #10404](https://github.com/colophon-group/jobseek/pull/10404) merged as
 `e81c5a488856113808fa60925fb069fcca128e47`, version0.13.1006 with195 profiles.

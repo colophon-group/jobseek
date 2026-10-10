@@ -40,9 +40,11 @@ type Options struct {
 	Enrichment                             []string
 	ResponseDecrypt                        *responseDecrypt
 	PostDataRefresh                        *postDataRefresh
+	Convergence                            *PaginationConvergence
+	collectRows                            func([]inventorySourceRow)
 }
 
-var ConfigKeys = []string{"api_url", "method", "json_path", "json_path_values", "total_path", "url_field", "url_template", "url_template_fields", "fields", "params", "post_data", "post_body", "request_headers", "headers", "pagination", "max_items", "transient_403", "transport_attempts", "browser", "render", "proxy", "skip_ssl", "ssl_verify", "wait", "timeout", "settle", "items", "score", "total", "empty_response", "item_filter", "url_filter", "resource_policy", "url_regex", "url_allowlist", "defaults", "rescrape_policy", "enrich", "slug_fields", "response_decrypt", "post_data_refresh"}
+var ConfigKeys = []string{"api_url", "method", "json_path", "json_path_values", "total_path", "url_field", "url_template", "url_template_fields", "fields", "params", "post_data", "post_body", "request_headers", "headers", "pagination", "pagination_convergence", "url_field_match", "max_items", "transient_403", "transport_attempts", "browser", "render", "proxy", "skip_ssl", "ssl_verify", "wait", "timeout", "settle", "items", "score", "total", "empty_response", "item_filter", "url_filter", "resource_policy", "url_regex", "url_allowlist", "defaults", "rescrape_policy", "enrich", "slug_fields", "response_decrypt", "post_data_refresh"}
 
 // Explicit HTTP configurations share the production client and the original
 // inventory writer. Browser captures, rotating auth, provider-specific filters
@@ -434,6 +436,10 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 		}
 	}
 	o.PostDataRefresh, err = parsePostDataRefresh(m["post_data_refresh"], o, d)
+	if err != nil {
+		return o, err
+	}
+	o.Convergence, err = parsePaginationConvergence(m["pagination_convergence"], m["url_field_match"], o)
 	if err != nil {
 		return o, err
 	}

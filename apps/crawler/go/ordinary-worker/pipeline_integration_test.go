@@ -177,6 +177,12 @@ func privateRichPipelineFixtureURL(t *testing.T, provider, metadata, configuredU
 		boardURL = configuredURL
 	}
 	boardSlug := "native-" + f.board
+	if provider == "rss" && configuredURL == "https://jobs.postfinance.ch/search/?locale=de_DE" {
+		boardSlug = "postfinance-careers"
+		if _, err := pg.Exec(ctx, "UPDATE company SET slug='postfinance' WHERE id=$1::uuid", f.company); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if provider == "unisante" {
 		boardSlug = "unisante-emploi"
 		if _, err := pg.Exec(ctx, "UPDATE company SET slug='unisante' WHERE id=$1::uuid", f.company); err != nil {

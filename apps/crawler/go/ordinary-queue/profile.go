@@ -188,6 +188,14 @@ func stableGreenhouseConfig(config map[string]string, metadata map[string]json.R
 			delete(stableMetadata, "_identity_migration_receipt")
 		}
 	}
+	if config["crawler_type"] == "rss" {
+		if err := postfinanceMigrationConfig(config, metadata); err != nil {
+			return nil, err
+		}
+		if postfinanceMigrationRequested(metadata) {
+			delete(stableMetadata, "_identity_migration_receipt")
+		}
+	}
 	if config["crawler_type"] == "ukg" {
 		board, err := api.UKGOptionsFromMetadata(config["board_url"], config["metadata"])
 		if err != nil {

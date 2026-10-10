@@ -8,7 +8,7 @@ import (
 )
 
 func TestCollisionPoliciesCurrentRegistryRetainProfileAndConfigurationFence(t *testing.T) {
-	expected := map[string]string{"canton-of-fribourg-main": "rss.successfactors-skip/v1", "capgemini-frog": "dom.direct-rows/v1", "mediamarktsaturn-careers-global": "rss.successfactors-skip/v1", "chuv-careers": "api_sniffer.http-items/v1", "swiss-post-main": "rss.successfactors-skip/v1", "capgemini-global": "api_sniffer.http-items/v1"}
+	expected := map[string]string{"postfinance-careers": "rss.successfactors-skip/v1", "canton-of-fribourg-main": "rss.successfactors-skip/v1", "capgemini-frog": "dom.direct-rows/v1", "mediamarktsaturn-careers-global": "rss.successfactors-skip/v1", "chuv-careers": "api_sniffer.http-items/v1", "swiss-post-main": "rss.successfactors-skip/v1", "capgemini-global": "api_sniffer.http-items/v1"}
 	f, err := os.Open("../../data/boards.csv")
 	if err != nil {
 		t.Fatal(err)
@@ -43,6 +43,7 @@ func TestCollisionPoliciesCurrentRegistryRetainProfileAndConfigurationFence(t *t
 		}
 		body, _ := json.Marshal(md)
 		config := profileConfig()
+		config["board_slug"] = slug
 		config["metadata"] = string(body)
 		config["crawler_type"] = row[headers["monitor_type"]]
 		config["board_url"] = row[headers["board_url"]]

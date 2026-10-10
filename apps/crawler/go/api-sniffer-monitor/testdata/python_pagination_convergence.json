@@ -1,0 +1,1823 @@
+[
+  {
+    "name": "complete",
+    "board_url": "https://careers.example.test/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs?page=1&limit=100",
+      "json_path": "jobs",
+      "total_path": "total",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "metadata.id": "id"
+      },
+      "pagination": {
+        "style": "page",
+        "param_name": "page",
+        "start_value": 1,
+        "increment": 1,
+        "max_pages": 3
+      },
+      "pagination_convergence": {
+        "max_passes": 4,
+        "required_no_growth_passes": 2,
+        "identity_by": [
+          "id"
+        ],
+        "stable_fields": [
+          "title",
+          "url"
+        ]
+      },
+      "scraper_type": "skip"
+    },
+    "responses": [
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "3",
+            "title": "Role 3",
+            "url": "https://careers.example.test/jobs/3"
+          },
+          {
+            "id": "4",
+            "title": "Role 4",
+            "url": "https://careers.example.test/jobs/4"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "3",
+            "title": "Role 3",
+            "url": "https://careers.example.test/jobs/3"
+          },
+          {
+            "id": "4",
+            "title": "Role 4",
+            "url": "https://careers.example.test/jobs/4"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "3",
+            "title": "Role 3",
+            "url": "https://careers.example.test/jobs/3"
+          },
+          {
+            "id": "4",
+            "title": "Role 4",
+            "url": "https://careers.example.test/jobs/4"
+          }
+        ],
+        "total": 4
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Role 1",
+        "metadata": {
+          "id": "1"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Role 2",
+        "metadata": {
+          "id": "2"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/3",
+        "title": "Role 3",
+        "metadata": {
+          "id": "3"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/4",
+        "title": "Role 4",
+        "metadata": {
+          "id": "4"
+        }
+      }
+    ],
+    "truncated": false,
+    "error": false
+  },
+  {
+    "name": "empty",
+    "board_url": "https://careers.example.test/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs?page=1&limit=100",
+      "json_path": "jobs",
+      "total_path": "total",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "metadata.id": "id"
+      },
+      "pagination": {
+        "style": "page",
+        "param_name": "page",
+        "start_value": 1,
+        "increment": 1,
+        "max_pages": 3
+      },
+      "pagination_convergence": {
+        "max_passes": 4,
+        "required_no_growth_passes": 2,
+        "identity_by": [
+          "id"
+        ],
+        "stable_fields": [
+          "title",
+          "url"
+        ]
+      },
+      "scraper_type": "skip"
+    },
+    "responses": [
+      {
+        "jobs": [],
+        "total": 0
+      },
+      {
+        "jobs": [],
+        "total": 0
+      },
+      {
+        "jobs": [],
+        "total": 0
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      }
+    ],
+    "jobs": [],
+    "truncated": false,
+    "error": false
+  },
+  {
+    "name": "duplicate_identity",
+    "board_url": "https://careers.example.test/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs?page=1&limit=100",
+      "json_path": "jobs",
+      "total_path": "total",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "metadata.id": "id"
+      },
+      "pagination": {
+        "style": "page",
+        "param_name": "page",
+        "start_value": 1,
+        "increment": 1,
+        "max_pages": 3
+      },
+      "pagination_convergence": {
+        "max_passes": 4,
+        "required_no_growth_passes": 2,
+        "identity_by": [
+          "id"
+        ],
+        "stable_fields": [
+          "title",
+          "url"
+        ]
+      },
+      "scraper_type": "skip"
+    },
+    "responses": [
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Role 1",
+        "metadata": {
+          "id": "1"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Role 2",
+        "metadata": {
+          "id": "2"
+        }
+      }
+    ],
+    "truncated": true,
+    "error": false
+  },
+  {
+    "name": "numeric_identity",
+    "board_url": "https://careers.example.test/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs?page=1&limit=100",
+      "json_path": "jobs",
+      "total_path": "total",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "metadata.id": "id"
+      },
+      "pagination": {
+        "style": "page",
+        "param_name": "page",
+        "start_value": 1,
+        "increment": 1,
+        "max_pages": 3
+      },
+      "pagination_convergence": {
+        "max_passes": 4,
+        "required_no_growth_passes": 2,
+        "identity_by": [
+          "id"
+        ],
+        "stable_fields": [
+          "title",
+          "url"
+        ]
+      },
+      "scraper_type": "skip"
+    },
+    "responses": [
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": 3,
+            "title": "Role 3",
+            "url": "https://careers.example.test/jobs/3"
+          },
+          {
+            "id": "4",
+            "title": "Role 4",
+            "url": "https://careers.example.test/jobs/4"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": 3,
+            "title": "Role 3",
+            "url": "https://careers.example.test/jobs/3"
+          },
+          {
+            "id": "4",
+            "title": "Role 4",
+            "url": "https://careers.example.test/jobs/4"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": 3,
+            "title": "Role 3",
+            "url": "https://careers.example.test/jobs/3"
+          },
+          {
+            "id": "4",
+            "title": "Role 4",
+            "url": "https://careers.example.test/jobs/4"
+          }
+        ],
+        "total": 4
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Role 1",
+        "metadata": {
+          "id": "1"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Role 2",
+        "metadata": {
+          "id": "2"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/3",
+        "title": "Role 3",
+        "metadata": {
+          "id": "3"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/4",
+        "title": "Role 4",
+        "metadata": {
+          "id": "4"
+        }
+      }
+    ],
+    "truncated": false,
+    "error": false
+  },
+  {
+    "name": "missing_identity",
+    "board_url": "https://careers.example.test/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs?page=1&limit=100",
+      "json_path": "jobs",
+      "total_path": "total",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "metadata.id": "id"
+      },
+      "pagination": {
+        "style": "page",
+        "param_name": "page",
+        "start_value": 1,
+        "increment": 1,
+        "max_pages": 3
+      },
+      "pagination_convergence": {
+        "max_passes": 4,
+        "required_no_growth_passes": 2,
+        "identity_by": [
+          "id"
+        ],
+        "stable_fields": [
+          "title",
+          "url"
+        ]
+      },
+      "scraper_type": "skip"
+    },
+    "responses": [
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "title": "Role 3",
+            "url": "https://careers.example.test/jobs/3"
+          },
+          {
+            "id": "4",
+            "title": "Role 4",
+            "url": "https://careers.example.test/jobs/4"
+          }
+        ],
+        "total": 4
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Role 1",
+        "metadata": {
+          "id": "1"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Role 2",
+        "metadata": {
+          "id": "2"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/4",
+        "title": "Role 4",
+        "metadata": {
+          "id": "4"
+        }
+      }
+    ],
+    "truncated": true,
+    "error": false
+  },
+  {
+    "name": "total_drift",
+    "board_url": "https://careers.example.test/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs?page=1&limit=100",
+      "json_path": "jobs",
+      "total_path": "total",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "metadata.id": "id"
+      },
+      "pagination": {
+        "style": "page",
+        "param_name": "page",
+        "start_value": 1,
+        "increment": 1,
+        "max_pages": 3
+      },
+      "pagination_convergence": {
+        "max_passes": 4,
+        "required_no_growth_passes": 2,
+        "identity_by": [
+          "id"
+        ],
+        "stable_fields": [
+          "title",
+          "url"
+        ]
+      },
+      "scraper_type": "skip"
+    },
+    "responses": [
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "3",
+            "title": "Role 3",
+            "url": "https://careers.example.test/jobs/3"
+          },
+          {
+            "id": "4",
+            "title": "Role 4",
+            "url": "https://careers.example.test/jobs/4"
+          }
+        ],
+        "total": 5
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Role 1",
+        "metadata": {
+          "id": "1"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Role 2",
+        "metadata": {
+          "id": "2"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/3",
+        "title": "Role 3",
+        "metadata": {
+          "id": "3"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/4",
+        "title": "Role 4",
+        "metadata": {
+          "id": "4"
+        }
+      }
+    ],
+    "truncated": true,
+    "error": false
+  },
+  {
+    "name": "missing_later_total",
+    "board_url": "https://careers.example.test/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs?page=1&limit=100",
+      "json_path": "jobs",
+      "total_path": "total",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "metadata.id": "id"
+      },
+      "pagination": {
+        "style": "page",
+        "param_name": "page",
+        "start_value": 1,
+        "increment": 1,
+        "max_pages": 3
+      },
+      "pagination_convergence": {
+        "max_passes": 4,
+        "required_no_growth_passes": 2,
+        "identity_by": [
+          "id"
+        ],
+        "stable_fields": [
+          "title",
+          "url"
+        ]
+      },
+      "scraper_type": "skip"
+    },
+    "responses": [
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "3",
+            "title": "Role 3",
+            "url": "https://careers.example.test/jobs/3"
+          },
+          {
+            "id": "4",
+            "title": "Role 4",
+            "url": "https://careers.example.test/jobs/4"
+          }
+        ]
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Role 1",
+        "metadata": {
+          "id": "1"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Role 2",
+        "metadata": {
+          "id": "2"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/3",
+        "title": "Role 3",
+        "metadata": {
+          "id": "3"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/4",
+        "title": "Role 4",
+        "metadata": {
+          "id": "4"
+        }
+      }
+    ],
+    "truncated": true,
+    "error": false
+  },
+  {
+    "name": "later_invalid_shape",
+    "board_url": "https://careers.example.test/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs?page=1&limit=100",
+      "json_path": "jobs",
+      "total_path": "total",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "metadata.id": "id"
+      },
+      "pagination": {
+        "style": "page",
+        "param_name": "page",
+        "start_value": 1,
+        "increment": 1,
+        "max_pages": 3
+      },
+      "pagination_convergence": {
+        "max_passes": 4,
+        "required_no_growth_passes": 2,
+        "identity_by": [
+          "id"
+        ],
+        "stable_fields": [
+          "title",
+          "url"
+        ]
+      },
+      "scraper_type": "skip"
+    },
+    "responses": [
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": {},
+        "total": 4
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Role 1",
+        "metadata": {
+          "id": "1"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Role 2",
+        "metadata": {
+          "id": "2"
+        }
+      }
+    ],
+    "truncated": true,
+    "error": false
+  },
+  {
+    "name": "mixed_later_rows",
+    "board_url": "https://careers.example.test/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs?page=1&limit=100",
+      "json_path": "jobs",
+      "total_path": "total",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "metadata.id": "id"
+      },
+      "pagination": {
+        "style": "page",
+        "param_name": "page",
+        "start_value": 1,
+        "increment": 1,
+        "max_pages": 3
+      },
+      "pagination_convergence": {
+        "max_passes": 4,
+        "required_no_growth_passes": 2,
+        "identity_by": [
+          "id"
+        ],
+        "stable_fields": [
+          "title",
+          "url"
+        ]
+      },
+      "scraper_type": "skip"
+    },
+    "responses": [
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "3",
+            "title": "Role 3",
+            "url": "https://careers.example.test/jobs/3"
+          },
+          "invalid"
+        ],
+        "total": 4
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Role 1",
+        "metadata": {
+          "id": "1"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Role 2",
+        "metadata": {
+          "id": "2"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/3",
+        "title": "Role 3",
+        "metadata": {
+          "id": "3"
+        }
+      }
+    ],
+    "truncated": true,
+    "error": false
+  },
+  {
+    "name": "projection_drift",
+    "board_url": "https://careers.example.test/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs?page=1&limit=100",
+      "json_path": "jobs",
+      "total_path": "total",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "metadata.id": "id"
+      },
+      "pagination": {
+        "style": "page",
+        "param_name": "page",
+        "start_value": 1,
+        "increment": 1,
+        "max_pages": 3
+      },
+      "pagination_convergence": {
+        "max_passes": 4,
+        "required_no_growth_passes": 2,
+        "identity_by": [
+          "id"
+        ],
+        "stable_fields": [
+          "title",
+          "url"
+        ]
+      },
+      "scraper_type": "skip"
+    },
+    "responses": [
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "3",
+            "title": "Role 3",
+            "url": "https://careers.example.test/jobs/3"
+          },
+          {
+            "id": "4",
+            "title": "Role 4",
+            "url": "https://careers.example.test/jobs/4"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Changed",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "3",
+            "title": "Role 3",
+            "url": "https://careers.example.test/jobs/3"
+          },
+          {
+            "id": "4",
+            "title": "Role 4",
+            "url": "https://careers.example.test/jobs/4"
+          }
+        ],
+        "total": 4
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Role 1",
+        "metadata": {
+          "id": "1"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Role 2",
+        "metadata": {
+          "id": "2"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/3",
+        "title": "Role 3",
+        "metadata": {
+          "id": "3"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/4",
+        "title": "Role 4",
+        "metadata": {
+          "id": "4"
+        }
+      }
+    ],
+    "truncated": true,
+    "error": false
+  },
+  {
+    "name": "exhausted_growth",
+    "board_url": "https://careers.example.test/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs?page=1&limit=100",
+      "json_path": "jobs",
+      "total_path": "total",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "metadata.id": "id"
+      },
+      "pagination": {
+        "style": "page",
+        "param_name": "page",
+        "start_value": 1,
+        "increment": 1,
+        "max_pages": 3
+      },
+      "pagination_convergence": {
+        "max_passes": 3,
+        "required_no_growth_passes": 2,
+        "identity_by": [
+          "id"
+        ],
+        "stable_fields": [
+          "title",
+          "url"
+        ]
+      },
+      "scraper_type": "skip"
+    },
+    "responses": [
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "3",
+            "title": "Role 3",
+            "url": "https://careers.example.test/jobs/3"
+          }
+        ],
+        "total": 4
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Role 1",
+        "metadata": {
+          "id": "1"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Role 2",
+        "metadata": {
+          "id": "2"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/3",
+        "title": "Role 3",
+        "metadata": {
+          "id": "3"
+        }
+      }
+    ],
+    "truncated": true,
+    "error": false
+  },
+  {
+    "name": "legacy_duplicates",
+    "board_url": "https://careers.example.test/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs?page=1&limit=100",
+      "json_path": "jobs",
+      "total_path": "total",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "metadata.id": "id"
+      },
+      "pagination": {
+        "style": "page",
+        "param_name": "page",
+        "start_value": 1,
+        "increment": 1,
+        "max_pages": 3
+      },
+      "pagination_convergence": {
+        "max_passes": 4,
+        "required_no_growth_passes": 2
+      },
+      "scraper_type": "skip",
+      "item_filter": {
+        "dedupe_by": [
+          "id"
+        ]
+      }
+    },
+    "responses": [
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "3",
+            "title": "Role 3",
+            "url": "https://careers.example.test/jobs/3"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "3",
+            "title": "Role 3",
+            "url": "https://careers.example.test/jobs/3"
+          },
+          {
+            "id": "4",
+            "title": "Role 4",
+            "url": "https://careers.example.test/jobs/4"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "3",
+            "title": "Role 3",
+            "url": "https://careers.example.test/jobs/3"
+          },
+          {
+            "id": "4",
+            "title": "Role 4",
+            "url": "https://careers.example.test/jobs/4"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "3",
+            "title": "Role 3",
+            "url": "https://careers.example.test/jobs/3"
+          },
+          {
+            "id": "4",
+            "title": "Role 4",
+            "url": "https://careers.example.test/jobs/4"
+          }
+        ],
+        "total": 4
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Role 1",
+        "metadata": {
+          "id": "1"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Role 2",
+        "metadata": {
+          "id": "2"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/3",
+        "title": "Role 3",
+        "metadata": {
+          "id": "3"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/4",
+        "title": "Role 4",
+        "metadata": {
+          "id": "4"
+        }
+      }
+    ],
+    "truncated": false,
+    "error": false
+  },
+  {
+    "name": "url_match",
+    "board_url": "https://careers.example.test/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs?page=1&limit=100",
+      "json_path": "jobs",
+      "total_path": "total",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "metadata.id": "id"
+      },
+      "pagination": {
+        "style": "page",
+        "param_name": "page",
+        "start_value": 1,
+        "increment": 1,
+        "max_pages": 3
+      },
+      "pagination_convergence": {
+        "max_passes": 4,
+        "required_no_growth_passes": 2,
+        "identity_by": [
+          "id"
+        ],
+        "stable_fields": [
+          "title",
+          "url"
+        ]
+      },
+      "scraper_type": "skip",
+      "url_field_match": {
+        "pattern": "^https://careers\\.example\\.test/jobs/(?P<id>[0-9]+)$",
+        "fields": {
+          "id": "id"
+        }
+      }
+    },
+    "responses": [
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "3",
+            "title": "Role 3",
+            "url": "https://careers.example.test/jobs/3"
+          },
+          {
+            "id": "4",
+            "title": "Role 4",
+            "url": "https://careers.example.test/jobs/4"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "3",
+            "title": "Role 3",
+            "url": "https://careers.example.test/jobs/3"
+          },
+          {
+            "id": "4",
+            "title": "Role 4",
+            "url": "https://careers.example.test/jobs/4"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "3",
+            "title": "Role 3",
+            "url": "https://careers.example.test/jobs/3"
+          },
+          {
+            "id": "4",
+            "title": "Role 4",
+            "url": "https://careers.example.test/jobs/4"
+          }
+        ],
+        "total": 4
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Role 1",
+        "metadata": {
+          "id": "1"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Role 2",
+        "metadata": {
+          "id": "2"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/3",
+        "title": "Role 3",
+        "metadata": {
+          "id": "3"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/4",
+        "title": "Role 4",
+        "metadata": {
+          "id": "4"
+        }
+      }
+    ],
+    "truncated": false,
+    "error": false
+  },
+  {
+    "name": "url_match_conflict",
+    "board_url": "https://careers.example.test/",
+    "metadata": {
+      "api_url": "https://api.example.test/jobs?page=1&limit=100",
+      "json_path": "jobs",
+      "total_path": "total",
+      "url_field": "url",
+      "fields": {
+        "title": "title",
+        "metadata.id": "id"
+      },
+      "pagination": {
+        "style": "page",
+        "param_name": "page",
+        "start_value": 1,
+        "increment": 1,
+        "max_pages": 3
+      },
+      "pagination_convergence": {
+        "max_passes": 4,
+        "required_no_growth_passes": 2,
+        "identity_by": [
+          "id"
+        ],
+        "stable_fields": [
+          "title",
+          "url"
+        ]
+      },
+      "scraper_type": "skip",
+      "url_field_match": {
+        "pattern": "^https://careers\\.example\\.test/jobs/(?P<id>[0-9]+)$",
+        "fields": {
+          "id": "id"
+        }
+      }
+    },
+    "responses": [
+      {
+        "jobs": [
+          {
+            "id": "1",
+            "title": "Role 1",
+            "url": "https://careers.example.test/jobs/1"
+          },
+          {
+            "id": "2",
+            "title": "Role 2",
+            "url": "https://careers.example.test/jobs/2"
+          }
+        ],
+        "total": 4
+      },
+      {
+        "jobs": [
+          {
+            "id": "3",
+            "title": "Role 3",
+            "url": "https://careers.example.test/jobs/999"
+          },
+          {
+            "id": "4",
+            "title": "Role 4",
+            "url": "https://careers.example.test/jobs/4"
+          }
+        ],
+        "total": 4
+      }
+    ],
+    "requests": [
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=1&limit=100",
+        "body": ""
+      },
+      {
+        "method": "GET",
+        "url": "https://api.example.test/jobs?page=2&limit=100",
+        "body": ""
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://careers.example.test/jobs/1",
+        "title": "Role 1",
+        "metadata": {
+          "id": "1"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/2",
+        "title": "Role 2",
+        "metadata": {
+          "id": "2"
+        }
+      },
+      {
+        "url": "https://careers.example.test/jobs/4",
+        "title": "Role 4",
+        "metadata": {
+          "id": "4"
+        }
+      }
+    ],
+    "truncated": true,
+    "error": false
+  }
+]
