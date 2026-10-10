@@ -688,6 +688,82 @@ def test_protected_snapshot_is_stopped_exact_and_secret_safe() -> None:
         verify.protected_snapshot_from_inspects(running)
 
 
+def stopped_oom_inspect() -> dict[str, object]:
+    return {
+        "RestartCount": 0,
+        "State": {
+            "Status": "exited",
+            "Running": False,
+            "OOMKilled": True,
+            "Paused": False,
+            "Restarting": False,
+            "Dead": False,
+            "Pid": 0,
+            "ExitCode": 137,
+            "Error": "",
+        },
+    }
+
+
+@pytest.mark.parametrize("exit_code", [0, 137])
+def test_historical_oom_requires_explicit_cold_recovery(exit_code: int) -> None:
+    inspect = stopped_oom_inspect()
+    inspect["State"]["ExitCode"] = exit_code
+    verify.validate_renderer_state(inspect, expected_state="stopped_oom")
+    for mode in ("running", "stopped", "created"):
+        with pytest.raises(verify.VerificationError):
+            verify.validate_renderer_state(inspect, expected_state=mode)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("Status", "running"),
+        ("Running", True),
+        ("OOMKilled", False),
+        ("OOMKilled", None),
+        ("Paused", True),
+        ("Restarting", True),
+        ("Dead", True),
+        ("Pid", 12),
+        ("Pid", False),
+        ("ExitCode", 1),
+        ("ExitCode", False),
+        ("Error", "runtime failure"),
+    ],
+)
+def test_oom_recovery_rejects_unstable_or_unexplained_state(field: str, value: object) -> None:
+    inspect = stopped_oom_inspect()
+    inspect["State"][field] = value
+    with pytest.raises(verify.VerificationError):
+        verify.validate_renderer_state(inspect, expected_state="stopped_oom")
+
+
+@pytest.mark.parametrize("restarts", [-1, 4, False, "0", None])
+def test_oom_recovery_rejects_unknown_or_exhausted_restart_history(restarts: object) -> None:
+    inspect = stopped_oom_inspect()
+    inspect["RestartCount"] = restarts
+    with pytest.raises(verify.VerificationError):
+        verify.validate_renderer_state(inspect, expected_state="stopped_oom")
+
+
+def test_oom_recovery_uses_incoming_verifier_for_exact_stopped_predecessor() -> None:
+    deploy = (DEPLOY / "install-host.sh").read_text(encoding="utf-8")
+    recovery = deploy.index('"$existing_oom" == true')
+    authentication = deploy.index('python3 "$STAGE/verify.py" owned', recovery)
+    stop = deploy.index('docker stop --time 30 "$existing_id"', authentication)
+    assert recovery < authentication < stop
+    assert "--allow-stopped-oom >/dev/null" in deploy[authentication:stop]
+    assert (
+        '"$existing_generation/release.env" --expected-id "$existing_id"'
+        in deploy[authentication:stop]
+    )
+    smoke = (DEPLOY / "ci-smoke.sh").read_text(encoding="utf-8")
+    assert "phase historical-oom-cold-predecessor" in smoke
+    assert "oom_score_adj" in smoke
+    assert '"$oom_status" -eq 137' in smoke
+
+
 def test_idle_process_verifier_accepts_only_root_init_and_uid_10001_controller(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

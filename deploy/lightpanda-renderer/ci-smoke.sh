@@ -438,6 +438,26 @@ second_container_id="$(sudo -u deploy python3 "$SECOND_RELEASE/verify.py" runnin
   "$SECOND_RELEASE/release.env")"
 [[ "$second_container_id" =~ ^[0-9a-f]{64}$ && "$second_container_id" != "$candidate_container_id" ]]
 
+phase historical-oom-cold-predecessor
+# Cause a real cgroup OOM in an expendable child, within the existing 1GiB
+# ceiling. Prefer the allocator over the idle controller as the OOM victim.
+set +e
+timeout --foreground --signal=TERM --kill-after=5s 45s \
+  docker exec --user 10002:10002 "$second_container_id" /bin/sh -c \
+    'echo 1000 > /proc/self/oom_score_adj; data=x; while :; do data="$data$data"; done'
+oom_status=$?
+set -e
+[[ "$oom_status" -eq 137 ]]
+[[ "$(docker container inspect --format '{{json .State.OOMKilled}}' "$second_container_id")" == true ]]
+docker stop --time 30 "$second_container_id" >/dev/null
+set +e
+sudo -u deploy python3 "$SECOND_RELEASE/verify.py" owned \
+  "$SECOND_RELEASE/release.env" --expected-id "$second_container_id" >/dev/null 2>&1
+normal_owned_status=$?
+set -e
+[[ "$normal_owned_status" -ne 0 ]]
+python3 deploy/lightpanda-renderer/verify.py assert-protected "$work/protected-before.json"
+
 phase stopped-controlled-predecessor
 write_stage_release "$CREATED_ID" "$CREATED_RELEASE"
 set +e

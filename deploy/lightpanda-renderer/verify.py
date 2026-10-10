@@ -1219,23 +1219,15 @@ def validate_cold_network_settings(
             fail("cold renderer MAC address is invalid")
 
 
-def validate_running_inspect(
+def validate_renderer_state(
     inspect: dict[str, Any],
     *,
-    image_ref: str,
-    image_id: str,
-    source_commit: str,
-    release_dir: str,
-    release_id: str,
-    environment: dict[str, str],
-    inventory: dict[str, object],
-    expected_state: Literal["running", "stopped", "created"] = "running",
+    expected_state: Literal["running", "stopped", "created", "stopped_oom"],
 ) -> None:
-    name = str(inspect.get("Name", "")).removeprefix("/")
-    if name != CONTAINER or inspect.get("Image") != image_id:
-        fail("running renderer image/container identity drifted")
     state = inspect.get("State") or {}
-    if state.get("OOMKilled") is not False or not isinstance(state.get("Running"), bool):
+    if state.get("OOMKilled") is not (expected_state == "stopped_oom") or not isinstance(
+        state.get("Running"), bool
+    ):
         fail("renderer state is not an owned stable state")
     if expected_state == "created" and (
         state.get("Status") != "created"
@@ -1248,7 +1240,7 @@ def validate_running_inspect(
         or inspect.get("RestartCount") != 0
     ):
         fail("renderer is not an exact created candidate")
-    if expected_state == "stopped" and (
+    if expected_state in {"stopped", "stopped_oom"} and (
         state.get("Status") != "exited"
         or state.get("Running") is not False
         or state.get("Paused") is not False
@@ -1261,6 +1253,33 @@ def validate_running_inspect(
         state.get("Running") is not True or state.get("ExitCode") != 0
     ):
         fail("renderer is not stably running")
+    if expected_state == "stopped_oom" and (
+        type(state.get("Pid")) is not int
+        or state.get("Pid") != 0
+        or type(state.get("ExitCode")) is not int
+        or state.get("ExitCode") not in (0, 137)
+        or type(inspect.get("RestartCount")) is not int
+        or not 0 <= inspect["RestartCount"] <= 3
+    ):
+        fail("OOM predecessor is not cold within its restart budget")
+
+
+def validate_running_inspect(
+    inspect: dict[str, Any],
+    *,
+    image_ref: str,
+    image_id: str,
+    source_commit: str,
+    release_dir: str,
+    release_id: str,
+    environment: dict[str, str],
+    inventory: dict[str, object],
+    expected_state: Literal["running", "stopped", "created", "stopped_oom"] = "running",
+) -> None:
+    name = str(inspect.get("Name", "")).removeprefix("/")
+    if name != CONTAINER or inspect.get("Image") != image_id:
+        fail("running renderer image/container identity drifted")
+    validate_renderer_state(inspect, expected_state=expected_state)
     config = inspect.get("Config") or {}
     labels = config.get("Labels") or {}
     expected_labels = {
@@ -1361,7 +1380,7 @@ def validate_running_inspect(
 
     network_settings = inspect.get("NetworkSettings") or {}
     networks = network_settings.get("Networks") or {}
-    if expected_state in {"stopped", "created"}:
+    if expected_state in {"stopped", "created", "stopped_oom"}:
         validate_cold_network_settings(
             network_settings,
             inventory,
@@ -1550,7 +1569,7 @@ def verify_running(environment: Path, *, expected_id: str | None) -> str:
     )
 
 
-def verify_owned(environment: Path, *, expected_id: str) -> str:
+def verify_owned(environment: Path, *, expected_id: str, allow_stopped_oom: bool = False) -> str:
     env = read_env(environment)
     ci_release_id = (
         env["RELEASE_ID"]
@@ -1579,7 +1598,7 @@ def verify_owned(environment: Path, *, expected_id: str) -> str:
         release_id=env["RELEASE_ID"],
         environment=env,
         inventory=inventory,
-        expected_state="stopped",
+        expected_state="stopped_oom" if allow_stopped_oom else "stopped",
     )
     return expected_id
 
@@ -1802,6 +1821,7 @@ def parser() -> argparse.ArgumentParser:
     owned = sub.add_parser("owned")
     owned.add_argument("environment", type=Path)
     owned.add_argument("--expected-id", required=True)
+    owned.add_argument("--allow-stopped-oom", action="store_true")
     created = sub.add_parser("owned-created")
     created.add_argument("environment", type=Path)
     created.add_argument("--expected-id", required=True)
@@ -1859,7 +1879,13 @@ def main() -> int:
         elif args.command == "running":
             print(verify_running(args.environment, expected_id=args.expected_id))
         elif args.command == "owned":
-            print(verify_owned(args.environment, expected_id=args.expected_id))
+            print(
+                verify_owned(
+                    args.environment,
+                    expected_id=args.expected_id,
+                    allow_stopped_oom=args.allow_stopped_oom,
+                )
+            )
         elif args.command == "owned-created":
             print(verify_owned_created(args.environment, expected_id=args.expected_id))
         elif args.command == "owned-predecessor":
