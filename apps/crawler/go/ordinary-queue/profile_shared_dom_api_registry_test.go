@@ -25,6 +25,8 @@ func TestSharedDOMAPICurrentRegistryPreservesDeclaredTransports(t *testing.T) {
 	retained := map[string]int{}
 	explicitBoards := map[string]bool{"jd-sports-greece-cyprus": true, "screenpoint-medical-bamboohr": true, "wonderflow-bamboohr": true, "loccitane-group-australia-new-zealand": true}
 	explicitCount := 0
+	providerMarkerCount := 0
+	providerMarkerBoards := map[string]bool{"implenia-apprenticeships-ch": true, "ge-healthcare-icometrix": true, "ammann-abg": true}
 	for _, row := range rows[1:] {
 		provider := row[h["monitor_type"]]
 		if provider != "dom" && provider != "api_sniffer" {
@@ -62,6 +64,12 @@ func TestSharedDOMAPICurrentRegistryPreservesDeclaredTransports(t *testing.T) {
 			config["monitor_needs_browser"] = "1"
 		}
 		profile, e := InspectRichMonitor(profileBoardID, config)
+		if providerMarkerBoards[row[h["board_slug"]]] {
+			if e != nil {
+				t.Fatal("qualified provider marker configuration lost native coverage", row[h["board_slug"]])
+			}
+			providerMarkerCount++
+		}
 		if e != nil {
 			retained[provider]++
 			continue
@@ -89,7 +97,7 @@ func TestSharedDOMAPICurrentRegistryPreservesDeclaredTransports(t *testing.T) {
 		}
 		supported[provider]++
 	}
-	if explicitCount != 4 || supported["api_sniffer"] != 30 || supported["dom"] != 18 || retained["api_sniffer"] != 5 || retained["dom"] != 5 {
+	if explicitCount != 4 || providerMarkerCount != 3 || supported["api_sniffer"] != 30 || supported["dom"] != 21 || retained["api_sniffer"] != 5 || retained["dom"] != 2 {
 		t.Fatal("registry coverage changed", supported, retained)
 	}
 	t.Logf("configuration binding only; production route admission pending: supported=%v retained=%v", supported, retained)

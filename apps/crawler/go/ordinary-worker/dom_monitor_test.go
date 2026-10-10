@@ -45,6 +45,12 @@ func TestStaticDOMListingRetainsFrozenPythonURLsAndFilters(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		// The frozen URLs are the original shared monitor's dispatched result.
+		// DOM discovery verifies every included URL before shared exclusions.
+		result.Jobs, err = applyFeedMonitorURLs(context.Background(), config, result.Jobs)
+		if err != nil {
+			t.Fatal(err)
+		}
 		got := []string{}
 		for _, job := range result.Jobs {
 			got = append(got, job.URL)

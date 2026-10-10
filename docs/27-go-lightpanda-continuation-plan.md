@@ -39,8 +39,10 @@ exact native field/request replay. Original Chromium navigation captures both
 API inventories; actual pinned Lightpanda 1.0.0 on macOS reproduces **10 jobs with
 all original fields** and proves child cleanup. These observations do not claim
 Linux live-public success. The grouped candidate has 34 frozen original cases,
-real PostgreSQL/Redis settlement and cold-retirement qualification. Complete
-remaining broad checks and physical Linux root-array session coverage before
+67 real PostgreSQL/Redis settlement and cold-retirement cases passing. Full local
+queue and worker suites each exposed one obsolete test expectation; both corrected
+focused race tests and vet/tidy pass. See [portable qualification](evidence/go-native-dom-provider-api-root-qualification-2026-10-10.json). Require
+complete exact-head CI and physical Linux root-array session coverage before
 fresh exact-head required CI, deploy gate, merge and original whole-service
 rollout. Keep every board and configuration intact, including provider markers.
 
