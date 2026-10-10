@@ -26,13 +26,22 @@ func newBrassRingBrowserTask(board, metadata string, converse func(context.Conte
 	return Task{URL: board, Navigation: navigation, APIReplay: &apiReplayTask{boardURL: board, options: options, brassRingConverse: converse, nativeMetadata: metadata}}, nil
 }
 
+// Only fixed code-owned phases cross diagnostics; CDP and publisher payloads stay private.
+type brassRingPhaseError struct {
+	phase string
+	err   error
+}
+
+func (e *brassRingPhaseError) Error() string { return "BrassRing conversation failed: " + e.phase }
+func (e *brassRingPhaseError) Unwrap() error { return e.err }
+
 func executeBrassRingConversation(ctx context.Context, task *apiReplayTask, finalURL string) error {
 	expected, err := api.BrassRingBoardFromURL(task.boardURL)
 	actual, parseErr := api.BrassRingBoardFromURL(finalURL)
 	board, _ := url.Parse(task.boardURL)
 	final, _ := url.Parse(finalURL)
 	if err != nil || parseErr != nil || expected != actual || board.Scheme != final.Scheme || board.Host != final.Host || task.brassRingConverse == nil {
-		return errReplayCapture
+		return &brassRingPhaseError{phase: "board-identity", err: errReplayCapture}
 	}
 	var mu sync.Mutex
 	open, sorted, current := true, false, 0
@@ -59,7 +68,13 @@ func executeBrassRingConversation(ctx context.Context, task *apiReplayTask, fina
 // The caller owns a fresh held target. Register the response capture before
 // clicking, then await Angular's committed page before another page can run.
 // This driver alone does not admit a protocol provider or a queue profile.
-func loadBrassRingBrowserPage(ctx context.Context, board, metadata string, page int, sorted bool) (*api.Document, error) {
+func loadBrassRingBrowserPage(ctx context.Context, board, metadata string, page int, sorted bool) (document *api.Document, failure error) {
+	phase := "options"
+	defer func() {
+		if failure != nil {
+			failure = &brassRingPhaseError{phase: phase, err: failure}
+		}
+	}()
 	_, options, err := api.BrassRingBrowserOptions(board, metadata)
 	if err != nil || page < 1 || page > 50000 || sorted && page != 1 {
 		return nil, errReplayCapture
@@ -76,6 +91,7 @@ func loadBrassRingBrowserPage(ctx context.Context, board, metadata string, page 
 	defer cancel()
 	defer capture.erase()
 	chromedp.ListenTarget(call, capture.observe)
+	phase = "click"
 	if sorted {
 		var opened bool
 		err = chromedp.Run(call, chromedp.Evaluate(`(()=>{const options=Array.from(document.querySelectorAll('#sortBy option'));const button=document.querySelector('#sortBy-button');if(!button||!options.some(x=>x.value==='1'))return false;button.click();return true})()`, &opened))
@@ -117,6 +133,7 @@ func loadBrassRingBrowserPage(ctx context.Context, board, metadata string, page 
 			return nil, api.ErrBrassRingSnapshot
 		}
 	}
+	phase = "response-event"
 	ticker := time.NewTicker(25 * time.Millisecond)
 	defer ticker.Stop()
 	for {
@@ -135,22 +152,27 @@ func loadBrassRingBrowserPage(ctx context.Context, board, metadata string, page 
 		case <-ticker.C:
 		}
 	}
+	phase = "response-body"
 	exchanges, err := capture.exchanges(call, readReplayResponseBody)
 	if err != nil {
 		return nil, err
 	}
+	phase = "single-exchange"
 	if len(exchanges) != 1 {
 		return nil, errReplayCapture
 	}
+	phase = "exchange-selection"
 	headers, document, matched, err := api.SelectBrowserReplayExchange(options, exchanges)
 	clear(headers)
 	if err != nil || !matched || document == nil {
 		return nil, errReplayCapture
 	}
+	phase = "page-schema"
 	total, rows, err := api.BrassRingPage(document)
 	if err != nil {
 		return nil, err
 	}
+	phase = "committed-page"
 	if page > 1 || total > len(rows) {
 		expression := fmt.Sprintf(`(()=>{const current=document.querySelector('.pagewise-pagination[aria-current="page"]');return !!current&&current.textContent.trim()==='%d'})()`, page)
 		if err = waitBrassRingDOM(call, expression); err != nil {
