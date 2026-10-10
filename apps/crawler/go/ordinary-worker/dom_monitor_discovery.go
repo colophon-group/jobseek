@@ -206,10 +206,6 @@ func parseDOMInventory(ctx context.Context, result RichDiscovery, profile queue.
 	if err != nil {
 		return result, err
 	}
-	exclude, err := dom.CompileURLPattern(c.Exclude)
-	if err != nil {
-		return result, err
-	}
 	urls := map[string]struct{}{}
 	for _, href := range hrefs {
 		if ctx.Err() != nil {
@@ -249,15 +245,8 @@ func parseDOMInventory(ctx context.Context, result RichDiscovery, profile queue.
 		if !keep {
 			continue
 		}
-		if c.Exclude != "" {
-			reject, err := exclude.MatchString(absolute)
-			if err != nil {
-				return RichDiscovery{}, err
-			}
-			if reject {
-				continue
-			}
-		}
+		// Original DOM extraction applies only the include expression. The
+		// shared monitor policy excludes URLs after all verification reads.
 		p, ok := parsePythonURL(absolute)
 		if !ok {
 			continue

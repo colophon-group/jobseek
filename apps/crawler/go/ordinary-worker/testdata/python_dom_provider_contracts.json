@@ -1198,5 +1198,70 @@
       }
     ],
     "status": "complete"
+  },
+  {
+    "name": "excluded-url-verified-before-dispatch",
+    "board": {
+      "provider": "dom",
+      "board_url": "https://jobs.example.com/",
+      "metadata": {
+        "dualoo_portal": "fixture",
+        "link_selector": "a.job",
+        "url_filter": {
+          "include": "/jobs/",
+          "exclude": "/excluded$"
+        },
+        "require_jsonld_jobposting": true,
+        "scraper_type": "dom"
+      }
+    },
+    "response": "<html><a class=\"job\" href=\"/jobs/keep\">Engineer</a><a class=\"job\" href=\"/jobs/excluded\">Intern</a><script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\",\"description\":\"Build services\"}</script></html>",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<html><a class=\"job\" href=\"/jobs/keep\">Engineer</a><a class=\"job\" href=\"/jobs/excluded\">Intern</a><script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\",\"description\":\"Build services\"}</script></html>"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/jobs/excluded",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<html><a class=\"job\" href=\"/jobs/keep\">Engineer</a><a class=\"job\" href=\"/jobs/excluded\">Intern</a><script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\",\"description\":\"Build services\"}</script></html>"
+        }
+      },
+      {
+        "method": "GET",
+        "url": "https://jobs.example.com/jobs/keep",
+        "body": "",
+        "response": {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<html><a class=\"job\" href=\"/jobs/keep\">Engineer</a><a class=\"job\" href=\"/jobs/excluded\">Intern</a><script type=\"application/ld+json\">{\"@type\":\"JobPosting\",\"title\":\"Engineer\",\"description\":\"Build services\"}</script></html>"
+        }
+      }
+    ],
+    "expected": [
+      {
+        "url": "https://jobs.example.com/jobs/excluded"
+      },
+      {
+        "url": "https://jobs.example.com/jobs/keep"
+      }
+    ],
+    "status": "complete"
   }
 ]

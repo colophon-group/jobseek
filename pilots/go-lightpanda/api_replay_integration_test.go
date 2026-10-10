@@ -22,6 +22,14 @@ import (
 // Reuse the isolated HTTPS fixture transport. No production URL, proxy or
 // destination-policy exemption is introduced by this test.
 func TestLightpandaAPIReplaySessionIntegration(t *testing.T) {
+	testLightpandaAPIReplaySession(t, false)
+}
+
+func TestLightpandaAPIRootArraySessionIntegration(t *testing.T) {
+	testLightpandaAPIReplaySession(t, true)
+}
+
+func testLightpandaAPIReplaySession(t *testing.T, rootArray bool) {
 	binary := integrationBinary(t)
 	for _, denied := range []bool{false, true} {
 		name := "private-cookie-and-pagination"
@@ -56,7 +64,11 @@ func TestLightpandaAPIReplaySessionIntegration(t *testing.T) {
 					if page == "2" {
 						id = "2"
 					}
-					_, _ = io.WriteString(w, `{"total":2,"jobs":[{"id":"`+id+`","title":"Engineer"}]}`)
+					if rootArray {
+						_, _ = io.WriteString(w, `[{"id":"`+id+`","title":"Engineer"}]`)
+					} else {
+						_, _ = io.WriteString(w, `{"total":2,"jobs":[{"id":"`+id+`","title":"Engineer"}]}`)
+					}
 				default:
 					http.NotFound(w, r)
 				}
@@ -71,6 +83,10 @@ func TestLightpandaAPIReplaySessionIntegration(t *testing.T) {
 			defer origin.Close()
 			proxy := dayforceConnectProxy(t, origin)
 			metadata := strings.ReplaceAll(replayControllerMetadata, "https://example.com", "https://jobs.dayforcehcm.com")
+			if rootArray {
+				metadata = strings.Replace(metadata, `"json_path":"jobs"`, `"json_path":"$"`, 1)
+				metadata = strings.Replace(metadata, `"style":"page"`, `"style":"page","max_pages":2`, 1)
+			}
 			metadata = strings.Replace(metadata, `https://jobs.dayforcehcm.com/api"`, `https://jobs.dayforcehcm.com/api/replay"`, 1)
 			metadata = strings.Replace(metadata, `"settle":0`, `"settle":0.25`, 1)
 			// The actual page must replace this stale configured header.
@@ -103,7 +119,7 @@ func TestLightpandaAPIReplaySessionIntegration(t *testing.T) {
 				if response.Outcome != "publisher_reserved" || len(response.Inventory) != 0 {
 					t.Fatal("later denial persisted partial inventory")
 				}
-			} else if response.Outcome != "success" || json.Unmarshal(response.Inventory, &inventory) != nil || len(inventory.Jobs) != 2 || inventory.Truncated || strings.Contains(string(response.Inventory), "private-fresh-csrf") || strings.Contains(string(response.Inventory), "private-cookie") {
+			} else if response.Outcome != "success" || json.Unmarshal(response.Inventory, &inventory) != nil || len(inventory.Jobs) != 2 || inventory.Truncated != rootArray || strings.Contains(string(response.Inventory), "private-fresh-csrf") || strings.Contains(string(response.Inventory), "private-cookie") {
 				t.Fatal("real replay service/capture/cookie/pagination/cleanup failed", response.Outcome, len(inventory.Jobs))
 			}
 			mu.Lock()

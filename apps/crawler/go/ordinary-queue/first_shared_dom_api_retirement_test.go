@@ -38,6 +38,23 @@ func firstSharedDOMAPIFixture(t *testing.T, variant string) firstOwnerFixture {
 			md["url_allowlist"] = `^https://example\.com/jobs/[^/]+$`
 		}
 	}
+	if kind == "api-root" {
+		md["json_path"] = "$"
+	}
+	if kind == "dom-provider" {
+		md["lg_portal"] = true
+	}
+	if kind == "dom-rich-empty" || kind == "dom-prospective" {
+		md["rich_rows"] = map[string]any{"row_selector": ".job", "link_selector": "a[href]"}
+		md["empty_selector"], md["empty_text"] = ".empty", "No jobs"
+	}
+	if kind == "dom-prospective" {
+		delete(md, "empty_selector")
+		delete(md, "empty_text")
+		md["prospective_board"], md["prospective_canonical_path"] = "1000973", "/offene-stellen/job/"
+		md["rich_rows"] = map[string]any{"row_selector": "#jobs-list .job", "link_selector": "a[href]", "total_selector": ".total"}
+		md["empty_states"] = []any{map[string]any{"selector": "body.career-center:has(#jobs-list) .total", "exact_text": "0"}}
+	}
 	if kind == "dom-none" || kind == "api-none" {
 		md["resource_policy"] = "none"
 	}
@@ -84,4 +101,8 @@ func TestRealSharedNavigationHTMLVariantColdRetirement(t *testing.T) {
 }
 func TestRealSharedDOMAPIVariantColdRetirement(t *testing.T) {
 	testProviderColdRetirement(t, []string{"api-auto/direct", "api-auto/proxy", "api-auto/rendered", "dom-jsonld/direct", "dom-jsonld/proxy", "dom-jsonld/rendered", "dom-include/direct", "dom-include/proxy", "dom-include/rendered"}, firstSharedDOMAPIFixture)
+}
+
+func TestRealDOMProviderAndAPIRootColdRetirement(t *testing.T) {
+	testProviderColdRetirement(t, []string{"dom-provider/direct", "dom-provider/proxy", "dom-provider/rendered", "dom-rich-empty/direct", "dom-rich-empty/proxy", "dom-rich-empty/rendered", "dom-prospective/direct", "dom-prospective/proxy", "api-root/direct", "api-root/proxy", "api-root/rendered"}, firstSharedDOMAPIFixture)
 }

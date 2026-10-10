@@ -125,6 +125,24 @@ async def main():
             {key: value, "url_filter": r"^https://jobs\.example\.com/jobs/\d+$"},
         )
 
+    # The core DOM extractor uses the include pattern. Exclusion belongs to
+    # shared dispatcher policy, after verification of the whole raw inventory.
+    add(
+        "excluded-url-verified-before-dispatch",
+        '<html><a class="job" href="/jobs/keep">Engineer</a>'
+        '<a class="job" href="/jobs/excluded">Intern</a>'
+        '<script type="application/ld+json">'
+        '{"@type":"JobPosting","title":"Engineer","description":"Build services"}'
+        "</script></html>",
+        "https://jobs.example.com/",
+        {
+            "dualoo_portal": "fixture",
+            "link_selector": "a.job",
+            "url_filter": {"include": "/jobs/", "exclude": "/excluded$"},
+            "require_jsonld_jobposting": True,
+        },
+    )
+
     output = []
     for name, source, board_url, config in cases:
         exchanges = []
