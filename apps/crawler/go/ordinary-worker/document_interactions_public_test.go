@@ -33,6 +33,13 @@ func TestDocumentInteractionsPublicOriginalInventories(t *testing.T) {
 	if !regexp.MustCompile(`^[1-9][0-9]?$`).MatchString(attempt) {
 		t.Fatal("invalid public capture attempt")
 	}
+	originalAttempt := os.Getenv("JOBSEEK_INTERACTION_PUBLIC_ORIGINAL_ATTEMPT")
+	if originalAttempt == "" {
+		originalAttempt = "1"
+	}
+	if !regexp.MustCompile(`^[1-9][0-9]?$`).MatchString(originalAttempt) {
+		t.Fatal("invalid original oracle attempt")
+	}
 	raw, err := os.ReadFile(filepath.Join(directory, "native1005-interaction-original-selected26-2026-10-10.json"))
 	var rows []struct {
 		ID        string
@@ -44,7 +51,7 @@ func TestDocumentInteractionsPublicOriginalInventories(t *testing.T) {
 	for _, row := range rows {
 		slug := row.Canonical["board_slug"]
 		t.Run(slug, func(t *testing.T) {
-			body, err := os.ReadFile(filepath.Join(directory, "native1005-interaction-"+slug+"-original-public-capture1-2026-10-10.json"))
+			body, err := os.ReadFile(filepath.Join(directory, "native1005-interaction-"+slug+"-original-public-capture"+originalAttempt+"-2026-10-10.json"))
 			var original struct {
 				Status    string
 				Jobs      []struct{ URL string }

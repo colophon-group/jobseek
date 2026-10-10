@@ -1,6 +1,6 @@
 {
   "schema": "jobseek.go-native-grouped-progress/v1",
-  "observed_at_utc": "2026-10-10T12:40:16.166851+00:00",
+  "observed_at_utc": "2026-10-10T13:04:03.088491+00:00",
   "status": "local committed interaction candidate; public mismatches remain; no production admission or delivery",
   "parent_candidate_pr": "https://github.com/colophon-group/jobseek/pull/10401",
   "parent_version": "0.13.1004",
@@ -36,7 +36,7 @@
     "large_typed_document": "Maximum2,000,000 bytes passes producer, service envelope and consumer bounds;2,000,001 fails; focused race PASS3.779s",
     "B0_executor_full_race": "PASS18.697s"
   },
-  "public": "Final exact committed code captures all26 typed Lightpanda documents (262.42s, log sha256205d13593b50127017b79b34d5ace0784fb6d887f2662890bf5cc297af8441ab). Canonical worker comparison passes17 cases and retains9 unresolved outcomes (log sha256cdb77a73cfb30097a5e7115f89b49ad0ae2def1af371efed3803168d93479953). RSM143 and CRH15 complete jobs now match original after the scoped action bounds fix. No blanket success or admission claim.",
+  "public": "Final exact committed code captures all26 typed Lightpanda documents (262.42s, log sha256205d13593b50127017b79b34d5ace0784fb6d887f2662890bf5cc297af8441ab). Canonical worker comparison passes18 cases and retains8 unresolved outcomes (log sha256cdb77a73cfb30097a5e7115f89b49ad0ae2def1af371efed3803168d93479953). RSM143 and CRH15 complete jobs now match original after the scoped action bounds fix. No blanket success or admission claim.",
   "required_remaining": [
     "original contract fixtures",
     "final public outcomes and complete fields/request replay; resolve every mismatch",
@@ -46,14 +46,12 @@
   ],
   "public_remaining": [
     "Lockheed APAC/Canada/EMEA: native403 with final fragment, original empty",
-    "Pictet: all58 job IDs match, independently issued _s.crb values differ; no normalization or waiver granted",
     "H3: five native versus six original",
-    "Lufthansa: native internal error",
-    "Slaughter and May: ten native versus23 original",
-    "JBS Carriers: native internal error"
+    "Lufthansa: witnessed history now executes; native0 versus373 original",
+    "Slaughter and May: ten native versus23 original"
   ],
   "parent_merge_commit": "17a3c03eb9e7c053d2b891195993d0d235ff8f54",
-  "parent_delivery": "merged PR10401; original crawler rollout38052065286 and renderer38052084321 in progress; cold270 after supported source1003 retirement; full activation271 still required",
+  "parent_delivery": "original crawler rollout38052065286 success attempt1; renderer38052084321 success attempt2; exact images/cold/exporter proved; B0active271; complete7710monitor/2751detail cohort staged and original full activation in progress",
   "next_API_family": {
     "scope": "initial response AES-CBC suffix or fixed IV, strict bounded config, no optional production Python crypto dependency",
     "canonical_monitor_candidates": 1,
@@ -70,5 +68,22 @@
       "semantics": "first response only; plain tail pages retained; larger known-count gaps suppress disappearance while initial valid rows retain original insertion authority; malformed data unchanged; publisher precedence retained"
     },
     "browser_decryption": "unsupported pending capture ranking qualification"
-  }
+  },
+  "history_API_contract": {
+    "scope": "witnessed same-document CDP event plus unchanged loader and original origin; exact final URL required; unwitnessed URL changes, foreign origin and loader rejected; original response publisher signals retained",
+    "physical_and_correlation": "12 physical macOS interaction cases plus correlation cases PASS3.504s",
+    "physical_log_sha256": "3c2ae4f6bcc59bd4f3561f9053c2777015c7a8b293335247feee5677a20ed993",
+    "full_pilot_race_before_hover_extension": "PASS8.848s logsha14b1645ddcfdf0e6cdca412569211b77a2bd8c585b53076b91e19b2cfba2b929",
+    "JBS_public": "134jobs exact originalURLs match from final history capture6; capture logshae0baf414d6b16ee6b6eaebe4e5d2bc12fbead034042a1d58fdb2a26d84135391",
+    "Lufthansa_public": "typed execution succeeds but0vs373 original inventory; remains unqualified"
+  },
+  "Pictet_session_provenance": {
+    "original_independent_sessions": 2,
+    "jobs_each": 58,
+    "only_varying_query_key": "_s.crb",
+    "native_document_original_parser_replay": "58 exact same-document original URLs match; actual native issued session tokens retained; no production URL normalization",
+    "scope": "separate same-document original HTML projection plus complete cross-session logical identity comparison; does not claim identical URLs between distinct browser sessions"
+  },
+  "public_latest_scope": "18 prior exact comparison passes (including original gone outcome); JBS134 exact URLs added; Pictet58 separate same-document original projection and two-original-session variance proof. Twenty of26 candidate boards qualified through those distinct checks, six still unqualified. No production admission or delivery for this batch.",
+  "public_count_verification": "Counts recomputed from all26 named subtest outcomes in retained final replay log:18 PASS,8 FAIL; prior prose miscounted17/9."
 }

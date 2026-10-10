@@ -7,9 +7,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -86,7 +88,30 @@ func TestLightpandaDocumentInteractionsPublicOriginalCapture(t *testing.T) {
 			identity := hex.EncodeToString(digest[:])
 			ctx, cancel := context.WithTimeout(context.Background(), 150*time.Second+actions.Budget(pipeline))
 			defer cancel()
-			execution := &runtimeV1ServiceExecution{dayforceConfig: Config{Binary: binary, EgressPolicy: defaultEgressPolicy()}, dayforceRun: runTask}
+			execution := &runtimeV1ServiceExecution{dayforceConfig: Config{Binary: binary, EgressPolicy: defaultEgressPolicy()}, dayforceRun: func(ctx context.Context, cfg Config, task Task) (Result, error) {
+				result, err := runTask(ctx, cfg, task)
+				if err != nil {
+					cause := "other execution error"
+					switch {
+					case errors.Is(err, errDocumentAction):
+						cause = "required action failed"
+					case errors.Is(err, errResourceLimit):
+						cause = "bounded resource limit"
+					case errors.Is(err, errCleanupUnproved):
+						cause = "cleanup unproved"
+					case strings.Contains(err.Error(), "main-document loader correlation is unavailable"):
+						cause = "main document loader unavailable"
+					case strings.Contains(err.Error(), "does not match the captured frame loader"):
+						cause = "main document loader mismatch"
+					case strings.Contains(err.Error(), "main-document response URL does not match"):
+						cause = "main document URL mismatch"
+					case errors.Is(err, context.DeadlineExceeded):
+						cause = "execution deadline"
+					}
+					t.Log("physical execution failure class", cause)
+				}
+				return result, err
+			}}
 			response, err := execution.executeDocumentActions(ctx, actions.Request{Protocol: actions.Protocol, RequestID: identity, ConfigFingerprint: identity, Input: payload, Actions: pipeline})
 			if err != nil {
 				t.Fatal("public typed document execution failed")

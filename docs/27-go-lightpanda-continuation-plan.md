@@ -12,23 +12,27 @@ inventories and API root arrays for **12 boards**, with 34 original fixtures,
 Source1003 ordinary and B0 ownership have retired through the original wrappers;
 independent cold **epoch270** verification preceded the head-bound merge.
 The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38052065286)
-is in progress. The [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38052084321)
+succeeded at attempt one. The [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38052084321)
 succeeded at attempt two: attempt one rejected a running predecessor with a
 sticky OOM flag; the original workflow left that predecessor cold, and the original
 installer recovered it on retry. Independent readback confirms the new exact
 renderer image is running without OOM evidence. Lightpanda **1.0.0**, reverified
 against the official release API October 10, remains pinned by immutable digest.
 
-Finish independent crawler image, cold-state and exporter verification, then
-activate B0 at **epoch271** and the complete ordinary cohort through the original
-wrappers using a fresh canonical and whole scheduled-route census. A merged
-batch is not counted as active coverage until that readback passes.
+Independent crawler image, cold-state, exporter and renderer verification pass.
+B0 is active at **epoch271**. The fresh complete census qualifies **7,710 monitors
+and 2,751 detail boards**, covering **1,473,641 of 1,503,925** inspected scheduled
+postings. The exact full ordinary plan is staged and its original supported
+activation is in progress. Independent full readback remains required before
+counting this batch as delivered Go coverage.
 
 The next local batch combines **click, attached/detached wait, repeat and page
 collection**, plus **encrypted initial HTTP API responses**. The browser group
 has 26 canonical candidates, 30 real database/queue cases and 11 physical macOS
-cases; public comparison currently passes 17 candidates with nine unresolved
-outcomes. The API group adds one canonical candidate: 15 original decrypt
+cases; public comparison initially passed 18 candidates with eight unresolved
+outcomes; JBS now passes with 134 exact original URLs, and Pictet has 58 exact
+same-document original parser URLs with independent session-token provenance.
+Six candidates remain unqualified. The API group adds one canonical candidate: 15 original decrypt
 fixtures, 18 public jobs with all original fields/request matching, full SDK race
 checks and 18 real database/queue cases pass. Python's optional crypto package is
 absent from the normal frozen runtime; the original oracle uses a separate

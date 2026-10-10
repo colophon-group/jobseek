@@ -449,6 +449,10 @@ func TestCorrelateMainDocumentSnapshot(t *testing.T) {
 		url:      "https://example.test/jobs#frame-fragment",
 		loaderID: cdp.LoaderID("loader-a"),
 	}
+	transitionResponse := validResponse
+	transitionResponse.sameDocumentURL = "https://example.test/jobs?page=2"
+	foreignTransition := validResponse
+	foreignTransition.sameDocumentURL = "https://foreign.test/jobs"
 	tests := []struct {
 		name      string
 		response  mainDocumentResponse
@@ -461,6 +465,11 @@ func TestCorrelateMainDocumentSnapshot(t *testing.T) {
 		{name: "different loader", response: mainDocumentResponse{status: http.StatusCreated, url: validResponse.url, loaderID: cdp.LoaderID("loader-b")}, frame: validFrame, finalURL: validFrame.url, wantError: true},
 		{name: "different response URL", response: mainDocumentResponse{status: http.StatusCreated, url: "https://example.test/other", loaderID: validResponse.loaderID}, frame: validFrame, finalURL: validFrame.url, wantError: true},
 		{name: "different captured URL", response: validResponse, frame: validFrame, finalURL: "https://example.test/other", wantError: true},
+		{name: "witnessed history with original frame URL", response: transitionResponse, frame: validFrame, finalURL: transitionResponse.sameDocumentURL},
+		{name: "witnessed history with updated frame URL", response: transitionResponse, frame: mainDocumentFrame{url: transitionResponse.sameDocumentURL, loaderID: validFrame.loaderID}, finalURL: transitionResponse.sameDocumentURL},
+		{name: "history event final URL mismatch", response: transitionResponse, frame: validFrame, finalURL: "https://example.test/jobs?page=3", wantError: true},
+		{name: "history event foreign origin", response: foreignTransition, frame: validFrame, finalURL: foreignTransition.sameDocumentURL, wantError: true},
+		{name: "history event foreign loader", response: transitionResponse, frame: mainDocumentFrame{url: transitionResponse.sameDocumentURL, loaderID: "other-loader"}, finalURL: transitionResponse.sameDocumentURL, wantError: true},
 	}
 	for _, test := range tests {
 		test := test

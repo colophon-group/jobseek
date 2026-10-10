@@ -93,7 +93,7 @@ func interactionClick(ctx context.Context, selector string) error {
 	})
 	encoded, _ := json.Marshal(selector)
 	var clicked bool
-	if err := interactionValue(ctx, `(()=>{`+interactionPickerJS+`;const node=pick(`+string(encoded)+`);if(!node)return false;const focus=node.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true,button:0,buttons:1,view:window}));if(focus&&typeof node.focus==='function')node.focus();node.dispatchEvent(new MouseEvent('mouseup',{bubbles:true,cancelable:true,button:0,buttons:0,view:window}));node.click();return true})()`, &clicked); err != nil || !clicked {
+	if err := interactionValue(ctx, `(()=>{`+interactionPickerJS+`;const node=pick(`+string(encoded)+`);if(!node)return false;node.dispatchEvent(new MouseEvent('mouseover',{bubbles:true,cancelable:true,view:window}));node.dispatchEvent(new MouseEvent('mouseenter',{bubbles:false,cancelable:false,view:window}));node.dispatchEvent(new MouseEvent('mousemove',{bubbles:true,cancelable:true,view:window}));const focus=node.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true,button:0,buttons:1,view:window}));if(focus&&typeof node.focus==='function')node.focus();node.dispatchEvent(new MouseEvent('mouseup',{bubbles:true,cancelable:true,button:0,buttons:0,view:window}));node.click();return true})()`, &clicked); err != nil || !clicked {
 		return errDocumentAction
 	}
 	if err := interactionDelay(ctx, 100); err != nil {

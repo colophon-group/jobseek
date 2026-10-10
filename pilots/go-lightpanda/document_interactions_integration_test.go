@@ -46,7 +46,7 @@ func TestLightpandaDocumentInteractionsIntegration(t *testing.T) {
 	if runtime.GOOS == "darwin" {
 		address = "127.0.0.1"
 	}
-	for _, mode := range []string{"navigation", "later-publisher", "no-progress", "cap", "repeat", "has-text-click", "mouse-down-click", "wait-attached-detached", "missing-required", "missing-optional", "page-size"} {
+	for _, mode := range []string{"navigation", "later-publisher", "no-progress", "cap", "repeat", "has-text-click", "mouse-down-click", "wait-attached-detached", "missing-required", "missing-optional", "page-size", "history-transition"} {
 		t.Run(mode, func(t *testing.T) {
 			certificate, ca := dayforceOriginTLS(t)
 			var mu sync.Mutex
@@ -80,7 +80,9 @@ func TestLightpandaDocumentInteractionsIntegration(t *testing.T) {
 				case "has-text-click":
 					html += `<button onclick="document.body.dataset.wrong='1'">Other</button><button onclick="document.body.dataset.clicked='1'">  Load   MORE </button>`
 				case "mouse-down-click":
-					html += `<button id="dropdown" onmousedown="this.dataset.down='1'" onclick="if(this.dataset.down==='1')document.body.dataset.opened='1'">Open</button>`
+					html += `<button id="dropdown" onmousedown="this.dataset.down='1'" onclick="if(this.dataset.entered==='1'&&this.dataset.down==='1')document.body.dataset.opened='1'">Open</button><script>document.querySelector('#dropdown').addEventListener('mouseover',function(){this.dataset.entered='1'})</script>`
+				case "history-transition":
+					html += `<button id="history" onclick="history.replaceState({},'', '/page/1?page=2');document.body.dataset.history='1'">Next</button>`
 				case "wait-attached-detached":
 					html += `<span id="old">Old</span><script>setTimeout(()=>{document.querySelector('#old').remove();const n=document.createElement('span');n.id='new';document.body.appendChild(n)},20)</script>`
 				case "page-size":
@@ -107,6 +109,8 @@ func TestLightpandaDocumentInteractionsIntegration(t *testing.T) {
 				pipeline = []actions.Action{{Kind: "click", Selector: `button:has-text("load more")`, TimeoutMS: 5000, Required: true}}
 			case "mouse-down-click":
 				pipeline = []actions.Action{{Kind: "click", Selector: "#dropdown", TimeoutMS: 5000, Required: true}}
+			case "history-transition":
+				pipeline = []actions.Action{{Kind: "click", Selector: "#history", TimeoutMS: 5000, Required: true}}
 			case "wait-attached-detached":
 				pipeline = []actions.Action{{Kind: "wait_for", Selector: "#new", State: "attached", TimeoutMS: 5000, Required: true}, {Kind: "wait_for", Selector: "#old", State: "detached", TimeoutMS: 5000, Required: true}}
 			case "missing-required", "missing-optional":
@@ -130,6 +134,10 @@ func TestLightpandaDocumentInteractionsIntegration(t *testing.T) {
 			}
 			html := result.HTML
 			switch mode {
+			case "history-transition":
+				if result.FinalURL != "https://jobs.dayforcehcm.com/page/1?page=2" || !strings.Contains(html, `data-history="1"`) || result.Status != 200 {
+					t.Fatal("witnessed history transition lost document provenance")
+				}
 			case "navigation":
 				if !strings.Contains(html, "/jobs/one") || !strings.Contains(html, "/jobs/two") {
 					t.Fatal("navigation lost an earlier inventory")
