@@ -48,6 +48,11 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 	if err := validateRenderedNavigation(options, true); err != nil {
 		return fail()
 	}
+	for _, key := range []string{"onclick_selector", "script_json_links"} {
+		if raw := md[key]; raw != nil && string(raw) != "null" {
+			return fail()
+		}
+	}
 	cloneMD := make(map[string]json.RawMessage, len(md))
 	for key, value := range md {
 		cloneMD[key] = value

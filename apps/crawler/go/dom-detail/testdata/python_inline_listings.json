@@ -1,0 +1,638 @@
+[
+  {
+    "name": "two",
+    "source": "const jobs=[{\"slug\":\"one\"},{\"slug\":\"two\"}]; trailing();",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": "https://jobs.example/jobs/{value}/"
+    },
+    "include": "",
+    "jobs": [
+      {
+        "url": "https://jobs.example/jobs/one/"
+      },
+      {
+        "url": "https://jobs.example/jobs/two/"
+      }
+    ]
+  },
+  {
+    "name": "unicode",
+    "source": "const jobs=[{\"slug\":\"Genève\"}]; trailing();",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": "https://jobs.example/jobs/{value}/"
+    },
+    "include": "",
+    "jobs": [
+      {
+        "url": "https://jobs.example/jobs/Genève/"
+      }
+    ]
+  },
+  {
+    "name": "zero",
+    "source": "const jobs=[]; trailing();",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": "https://jobs.example/jobs/{value}/"
+    },
+    "include": "",
+    "jobs": []
+  },
+  {
+    "name": "duplicate",
+    "source": "const jobs=[{\"slug\":\"one\"},{\"slug\":\"one\"}]; trailing();",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": "https://jobs.example/jobs/{value}/"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "not-array",
+    "source": "const jobs={}; trailing();",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": "https://jobs.example/jobs/{value}/"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "non-object",
+    "source": "const jobs=[42]; trailing();",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": "https://jobs.example/jobs/{value}/"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "missing",
+    "source": "const jobs=[{}]; trailing();",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": "https://jobs.example/jobs/{value}/"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "numeric",
+    "source": "const jobs=[{\"slug\":42}]; trailing();",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": "https://jobs.example/jobs/{value}/"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "null",
+    "source": "const jobs=[{\"slug\":null}]; trailing();",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": "https://jobs.example/jobs/{value}/"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "nul",
+    "source": "const jobs=[{\"slug\": \"a\\u0000b\"}]; trailing();",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": "https://jobs.example/jobs/{value}/"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "oversized",
+    "source": "const jobs=[{\"slug\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}]; trailing();",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": "https://jobs.example/jobs/{value}/"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "multiple-assignments",
+    "source": "const jobs=[]; let jobs=[];",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": "https://jobs.example/jobs/{value}/"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "missing-assignment",
+    "source": "const other=[];",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": "https://jobs.example/jobs/{value}/"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "whitespace",
+    "source": "\u001cconst jobs =\u001f[{\"slug\":\"one\"}];",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": "https://jobs.example/jobs/{value}/"
+    },
+    "include": "",
+    "jobs": [
+      {
+        "url": "https://jobs.example/jobs/one/"
+      }
+    ]
+  },
+  {
+    "name": "filter-reject",
+    "source": "const jobs=[{\"slug\":\"one\"}];",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": "https://jobs.example/jobs/{value}/"
+    },
+    "include": "/other/",
+    "error": true
+  },
+  {
+    "name": "filter-match",
+    "source": "const jobs=[{\"slug\":\"one\"}];",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": "https://jobs.example/jobs/{value}/"
+    },
+    "include": "/one/",
+    "jobs": [
+      {
+        "url": "https://jobs.example/jobs/one/"
+      }
+    ]
+  },
+  {
+    "name": "cross-origin",
+    "source": "const jobs=[{\"slug\": \"https://other.example/jobs/one\"}];",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": "{value}"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "relative",
+    "source": "const jobs=[{\"slug\": \"/jobs/one\"}];",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": "{value}"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "nested-args",
+    "source": "grid({nested:[1,2]}, \"a,b)\", [{\"link\": \"https://jobs.example/jobs/one/\", \"title\": \"  R&amp;D Engineer  \", \"locations\": [\" Geneva \", \"Geneva\", \" Z&uuml;rich \"]}], trailing);",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "function": "grid",
+      "argument_index": 2,
+      "url_field": "link",
+      "url_template": "{value}",
+      "title_field": "title",
+      "locations_field": "locations"
+    },
+    "include": "",
+    "jobs": [
+      {
+        "url": "https://jobs.example/jobs/one/",
+        "title": "R&D Engineer",
+        "locations": [
+          "Geneva",
+          "Zürich"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "comments",
+    "source": "grid(/* first */1, // next\n2, /* inventory */[{\"link\": \"https://jobs.example/jobs/one/\", \"title\": \"  R&amp;D Engineer  \", \"locations\": [\" Geneva \", \"Geneva\", \" Z&uuml;rich \"]}]);",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "function": "grid",
+      "argument_index": 2,
+      "url_field": "link",
+      "url_template": "{value}",
+      "title_field": "title",
+      "locations_field": "locations"
+    },
+    "include": "",
+    "jobs": [
+      {
+        "url": "https://jobs.example/jobs/one/",
+        "title": "R&D Engineer",
+        "locations": [
+          "Geneva",
+          "Zürich"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "html-escape",
+    "source": "grid(1,2,[{&quot;link&quot;: &quot;https://jobs.example/jobs/one/&quot;, &quot;title&quot;: &quot;  R&amp;amp;D Engineer  &quot;, &quot;locations&quot;: [&quot; Geneva &quot;, &quot;Geneva&quot;, &quot; Z&amp;uuml;rich &quot;]}]);",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "function": "grid",
+      "argument_index": 2,
+      "url_field": "link",
+      "url_template": "{value}",
+      "title_field": "title",
+      "locations_field": "locations",
+      "html_unescape": true
+    },
+    "include": "",
+    "jobs": [
+      {
+        "url": "https://jobs.example/jobs/one/",
+        "title": "R&D Engineer",
+        "locations": [
+          "Geneva",
+          "Zürich"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "function-identity",
+    "source": "notgrid(1,2,[]); grid(1,2,[{\"link\": \"https://jobs.example/jobs/one/\", \"title\": \"  R&amp;D Engineer  \", \"locations\": [\" Geneva \", \"Geneva\", \" Z&uuml;rich \"]}]);",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "function": "grid",
+      "argument_index": 2,
+      "url_field": "link",
+      "url_template": "{value}",
+      "title_field": "title",
+      "locations_field": "locations"
+    },
+    "include": "",
+    "jobs": [
+      {
+        "url": "https://jobs.example/jobs/one/",
+        "title": "R&D Engineer",
+        "locations": [
+          "Geneva",
+          "Zürich"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "duplicate-function",
+    "source": "grid(1,2,[]); grid(1,2,[]);",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "function": "grid",
+      "argument_index": 2,
+      "url_field": "link",
+      "url_template": "{value}",
+      "title_field": "title",
+      "locations_field": "locations"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "malformed-prefix",
+    "source": "grid([},2,[]);",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "function": "grid",
+      "argument_index": 2,
+      "url_field": "link",
+      "url_template": "{value}",
+      "title_field": "title",
+      "locations_field": "locations"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "missing-argument",
+    "source": "grid(1,2);",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "function": "grid",
+      "argument_index": 2,
+      "url_field": "link",
+      "url_template": "{value}",
+      "title_field": "title",
+      "locations_field": "locations"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "missing-title",
+    "source": "grid(1,2,[{\"link\": \"https://jobs.example/jobs/one/\", \"title\": null, \"locations\": [\" Geneva \", \"Geneva\", \" Z&uuml;rich \"]}]);",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "function": "grid",
+      "argument_index": 2,
+      "url_field": "link",
+      "url_template": "{value}",
+      "title_field": "title",
+      "locations_field": "locations"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "blank-title",
+    "source": "grid(1,2,[{\"link\": \"https://jobs.example/jobs/one/\", \"title\": \"  \", \"locations\": [\" Geneva \", \"Geneva\", \" Z&uuml;rich \"]}]);",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "function": "grid",
+      "argument_index": 2,
+      "url_field": "link",
+      "url_template": "{value}",
+      "title_field": "title",
+      "locations_field": "locations"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "missing-locations",
+    "source": "grid(1,2,[{\"link\": \"https://jobs.example/jobs/one/\", \"title\": \"  R&amp;D Engineer  \", \"locations\": null}]);",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "function": "grid",
+      "argument_index": 2,
+      "url_field": "link",
+      "url_template": "{value}",
+      "title_field": "title",
+      "locations_field": "locations"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "empty-locations",
+    "source": "grid(1,2,[{\"link\": \"https://jobs.example/jobs/one/\", \"title\": \"  R&amp;D Engineer  \", \"locations\": []}]);",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "function": "grid",
+      "argument_index": 2,
+      "url_field": "link",
+      "url_template": "{value}",
+      "title_field": "title",
+      "locations_field": "locations"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "location-cap",
+    "source": "grid(1,2,[{\"link\": \"https://jobs.example/jobs/one/\", \"title\": \"  R&amp;D Engineer  \", \"locations\": [\"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\", \"Geneva\"]}]);",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "function": "grid",
+      "argument_index": 2,
+      "url_field": "link",
+      "url_template": "{value}",
+      "title_field": "title",
+      "locations_field": "locations"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "blank-location",
+    "source": "grid(1,2,[{\"link\": \"https://jobs.example/jobs/one/\", \"title\": \"  R&amp;D Engineer  \", \"locations\": [\" \"]}]);",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "function": "grid",
+      "argument_index": 2,
+      "url_field": "link",
+      "url_template": "{value}",
+      "title_field": "title",
+      "locations_field": "locations"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "scalar-location",
+    "source": "grid(1,2,[{\"link\": \"https://jobs.example/jobs/one/\", \"title\": \"  R&amp;D Engineer  \", \"locations\": \" Geneva \"}]);",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "function": "grid",
+      "argument_index": 2,
+      "url_field": "link",
+      "url_template": "{value}",
+      "title_field": "title",
+      "locations_field": "locations"
+    },
+    "include": "",
+    "jobs": [
+      {
+        "url": "https://jobs.example/jobs/one/",
+        "title": "R&D Engineer",
+        "locations": [
+          "Geneva"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "numeric-location",
+    "source": "grid(1,2,[{\"link\": \"https://jobs.example/jobs/one/\", \"title\": \"  R&amp;D Engineer  \", \"locations\": [1]}]);",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "function": "grid",
+      "argument_index": 2,
+      "url_field": "link",
+      "url_template": "{value}",
+      "title_field": "title",
+      "locations_field": "locations"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "entity-empty-title",
+    "source": "grid(1,2,[{\"link\": \"https://jobs.example/jobs/one/\", \"title\": \"&nbsp;\", \"locations\": [\" Geneva \", \"Geneva\", \" Z&uuml;rich \"]}]);",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "function": "grid",
+      "argument_index": 2,
+      "url_field": "link",
+      "url_template": "{value}",
+      "title_field": "title",
+      "locations_field": "locations"
+    },
+    "include": "",
+    "jobs": [
+      {
+        "url": "https://jobs.example/jobs/one/",
+        "title": "",
+        "locations": [
+          "Geneva",
+          "Zürich"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "unknown-option",
+    "source": "const jobs=[];",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": "https://jobs.example/jobs/{value}/",
+      "unknown": true
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "both-source",
+    "source": "const jobs=[];",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": "https://jobs.example/jobs/{value}/",
+      "function": "grid",
+      "argument_index": 0
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "missing-template",
+    "source": "const jobs=[];",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": null
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "bad-name",
+    "source": "const jobs=[];",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "invalid.name",
+      "url_field": "slug",
+      "url_template": "https://jobs.example/jobs/{value}/"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "unpaired-rich",
+    "source": "const jobs=[];",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": "https://jobs.example/jobs/{value}/",
+      "title_field": "title"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "integer-boolean",
+    "source": "const jobs=[];",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "variable": "jobs",
+      "url_field": "slug",
+      "url_template": "https://jobs.example/jobs/{value}/",
+      "html_unescape": 1
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "boolean-argument",
+    "source": "grid([]);",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "function": "grid",
+      "argument_index": true,
+      "url_field": "link",
+      "url_template": "{value}",
+      "title_field": "title",
+      "locations_field": "locations"
+    },
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "argument-cap",
+    "source": "grid([]);",
+    "base": "https://jobs.example/jobs/",
+    "config": {
+      "function": "grid",
+      "argument_index": 16,
+      "url_field": "link",
+      "url_template": "{value}",
+      "title_field": "title",
+      "locations_field": "locations"
+    },
+    "include": "",
+    "error": true
+  }
+]

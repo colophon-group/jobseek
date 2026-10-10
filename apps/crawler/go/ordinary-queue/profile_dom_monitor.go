@@ -40,7 +40,7 @@ func directDOMMonitorOptions(config map[string]string) (dom.ListingConfig, error
 		return dom.ListingConfig{}, ErrUnsupportedProfile
 	}
 	options := dom.Object{}
-	keys := []string{"include_board_url", "require_jsonld_jobposting", "advertised_total", "empty_states", "empty_selector", "empty_text", "url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "url_transform"}
+	keys := []string{"onclick_selector", "script_json_links", "include_board_url", "require_jsonld_jobposting", "advertised_total", "empty_states", "empty_selector", "empty_text", "url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "url_transform"}
 	for _, key := range keys {
 		if raw, ok := md[key]; ok {
 			if (key == "url_filter" || key == "request_headers") && strings.HasPrefix(strings.TrimSpace(string(raw)), "{") {
@@ -62,6 +62,9 @@ func directDOMMonitorOptions(config map[string]string) (dom.ListingConfig, error
 		return dom.ListingConfig{}, err
 	}
 	listing.RichRows, err = dom.RichRowsOptions(md["rich_rows"])
+	if err == nil && listing.RichRows != nil && (listing.ScriptLinks != nil || listing.OnclickSelector != "") {
+		return dom.ListingConfig{}, ErrUnsupportedProfile
+	}
 	if err == nil && listing.RichRows != nil && (listing.Proofs != nil || listing.IncludeBoardURL || listing.RequireJSONLD) {
 		return dom.ListingConfig{}, ErrUnsupportedProfile
 	}
@@ -93,7 +96,7 @@ func inspectDOMMonitor(boardID string, config map[string]string, md map[string]j
 	if monitorWorkerProfile(config) == Browser {
 		profile = domRenderedMonitorProfile
 	}
-	if listing.RichRows != nil {
+	if listing.RichRows != nil || listing.ScriptLinks.Rich() {
 		if _, err := DOMRichMonitorEnrichment(config); err != nil {
 			return GreenhouseMonitorProfile{}, err
 		}

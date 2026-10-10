@@ -1,0 +1,102 @@
+{
+  "schema": "jobseek.native-shared-dom-api-rss-public-parity/v1",
+  "candidate_base_source": "45624acc963f99cb49797d7b537f6db2ecbbfe07",
+  "candidate_version": "0.13.1001",
+  "compiled_profiles": 177,
+  "provider_types": [
+    "dom",
+    "api_sniffer",
+    "rss"
+  ],
+  "boards": [
+    {
+      "board_slug": "pwc-careers-za-school",
+      "provider": "dom",
+      "complete_jobs": 2,
+      "exchanges": 1,
+      "statuses": [
+        200
+      ],
+      "original_capture_sha256": "fc1491c060d3b6edccaa6632728ffb121d358c5cbba30c2e10980a2b0d593321",
+      "go_verified_request_inventory_and_fields": "passed",
+      "platform_limit": null
+    },
+    {
+      "board_slug": "pwc-careers-za-graduate",
+      "provider": "dom",
+      "complete_jobs": 9,
+      "exchanges": 1,
+      "statuses": [
+        200
+      ],
+      "original_capture_sha256": "ad6914316cfb6f7f3a92cddaeffb2bf8eee2256eef53c12e1a6902e1048acdef",
+      "go_verified_request_inventory_and_fields": "passed",
+      "platform_limit": null
+    },
+    {
+      "board_slug": "covenant-health-physician-opportunities",
+      "provider": "dom",
+      "complete_jobs": 42,
+      "exchanges": 1,
+      "statuses": [
+        200
+      ],
+      "original_capture_sha256": "cf89d2a2c81257e855cfc780657a866c27c080084986dd64111165ab1b2f9d23",
+      "go_verified_request_inventory_and_fields": "passed",
+      "platform_limit": null
+    },
+    {
+      "board_slug": "city-of-new-york-nyc-city-council",
+      "provider": "dom",
+      "complete_jobs": 18,
+      "exchanges": 1,
+      "statuses": [
+        200
+      ],
+      "original_capture_sha256": "4c81a63ca3e50b75e19477036f6827a0f7b945ac4b0e3734225f14645066655f",
+      "go_verified_request_inventory_and_fields": "passed",
+      "platform_limit": null
+    },
+    {
+      "board_slug": "retraites-populaires-careers",
+      "provider": "rss",
+      "complete_jobs": 2,
+      "exchanges": 1,
+      "statuses": [
+        200
+      ],
+      "original_capture_sha256": "3cb6af594299daec698b7d8879c8d07fc5ec8706004971ed737501fbad8b2a1f",
+      "go_verified_request_inventory_and_fields": "passed",
+      "platform_limit": null
+    },
+    {
+      "board_slug": "gonet-careers",
+      "provider": "api_sniffer",
+      "complete_jobs": 2,
+      "exchanges": 1,
+      "statuses": [
+        200
+      ],
+      "original_capture_sha256": "e94d9cc222a4097dbe1988ebfe0ca7836bd125040ea017502d8eb21fefad5b25",
+      "go_verified_request_inventory_and_fields": "passed",
+      "platform_limit": "macOS system trust verifies public response; original Python replay matches fields; Linux public success not claimed"
+    }
+  ],
+  "complete_jobs": 75,
+  "original_parser_contracts": {
+    "inline_scripts": 42,
+    "onclick_rows": 14,
+    "jmespath_literals": 20
+  },
+  "real_database_cases": {
+    "dom_monitor": 9,
+    "rss_description_enrichment": 3,
+    "api_legacy_literals": 3,
+    "cold_retirement": 15
+  },
+  "qualification_limits": [
+    "GoNET Python direct certificate failure is retained; no TLS relaxation.",
+    "Fresh exact-head CI, original whole deployment and fresh complete admission/activation remain required.",
+    "No whole-fleet freshness or cost claim."
+  ]
+}

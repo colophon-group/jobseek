@@ -1,0 +1,53 @@
+{
+  "schema": "jobseek.native-source1000-production/v1",
+  "observed_at_utc": "2026-10-10T04:44:22.177419+00:00",
+  "source_revision": "45624acc963f99cb49797d7b537f6db2ecbbfe07",
+  "version": "0.13.1000",
+  "merged_pr": 10396,
+  "original_rollouts": {
+    "crawler": 38022724428,
+    "renderer": 38022818940,
+    "conclusion": "success"
+  },
+  "identities": {
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:57932d4796f6df4490d88ae6babe059182501eb26c14b3d19dacb2b10f85e0e1",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:9c75080950fb252697bdfdea97173e0b48504e4d0f352ed365926a5f1009998a",
+    "JOBSEEK_DEPLOY_REVISION": "45624acc963f99cb49797d7b537f6db2ecbbfe07"
+  },
+  "renderer_image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:e3c9576b7cc61afb3fd9015939f2fe1c48b503efae7adf0b9723d579b223cf72",
+  "renderer_running": true,
+  "routing_epoch": 265,
+  "ordinary_plan_sha256": "083a4b3080e6a3b70c4c10f5a2d2bfa5872aa669c04e4ec1e083a7e578d00a5f",
+  "ordinary_projection_sha1": "1783afc5629bfa82c4609effb94cd648ff49f773",
+  "ordinary_receipt_sha256": "b2bf071e265819a11adafc1bc0303947ff3b52eafb3a4ff6f2eb7ba558e0fb8e",
+  "b0_receipt_sha256": "2d7a116a0932aee18f2c8704587d703858c15de8f485daa431b28547a07f29e8",
+  "cohort": {
+    "monitor_boards": 7684,
+    "detail_boards": 2749,
+    "scheduled_owned_postings": 1474517,
+    "scheduled_detail_postings": 1504892,
+    "cache_rejected_boards": 42,
+    "route_rejected_boards": 1
+  },
+  "health": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200,
+    "lightpanda-claimant": 204,
+    "ordinary-go": 204
+  },
+  "natural_sample": {
+    "completed_monitors": 1,
+    "exact_schedules": 1,
+    "retained_completion_leases": 0
+  },
+  "prior_detail_exception": {
+    "slug": "korn-ferry-early-careers",
+    "reason": "two cached posting mismatches; retained existing owner"
+  },
+  "private_proof_sha256": "05c26cb3b9171359d4224152976915fa9db96ec100116e0f97d1e676e31b21ed",
+  "scope": "Original supported full activation and independent exact owner/SQL/Redis/health. Natural sample is not whole-fleet freshness or cost. Full migration remains incomplete."
+}

@@ -88,7 +88,7 @@ func discoverDOMSingleInventory(ctx context.Context, verified *http.Client, prof
 	// Preserve the existing 500,000-codepoint single-page listing preview.
 	count := 0
 	for offset := range source {
-		if c.RichRows == nil && !later && count == 500_000 {
+		if c.RichRows == nil && c.ScriptLinks == nil && c.OnclickSelector == "" && !later && count == 500_000 {
 			source = source[:offset]
 			break
 		}
@@ -104,6 +104,44 @@ func parseDOMInventory(ctx context.Context, result RichDiscovery, profile queue.
 	}
 	if err != nil || classification["classification"] == "challenge" {
 		return result, &DiscoveryError{Kind: "inventory_failed", cause: errors.New("DOM listing origin challenge")}
+	}
+	if c.ScriptLinks != nil || c.OnclickSelector != "" {
+		if c.ScriptLinks != nil {
+			rows, err := dom.ParseScriptLinks(ctx, source, profile.Endpoint, c.ScriptLinks, c.Include)
+			if err != nil {
+				return RichDiscovery{Response: result.Response}, &DiscoveryError{Kind: "inventory_failed", cause: err}
+			}
+			for _, row := range rows {
+				job := RichMonitorJob{URL: row.URL, URLOnly: !c.ScriptLinks.Rich()}
+				if c.ScriptLinks.Rich() {
+					title := row.Title
+					job.Title = &title
+					job.Locations = row.Locations
+				}
+				result.Jobs = append(result.Jobs, job)
+			}
+		} else {
+			urls, err := dom.ParseOnclickLinks(ctx, source, profile.Endpoint, c.OnclickSelector, c.Include, true, pythonJoinURL)
+			if err != nil {
+				return RichDiscovery{Response: result.Response}, &DiscoveryError{Kind: "inventory_failed", cause: err}
+			}
+			if len(urls) == 0 && c.EmptySelector == "" && (c.Proofs == nil || len(c.Proofs.EmptyStates) == 0) {
+				return RichDiscovery{Response: result.Response}, dom.ErrListingEmpty
+			}
+			c.JoinProofURL = pythonJoinURL
+			if err := dom.ValidateListingEmpty(source, c, len(urls)); err != nil {
+				return RichDiscovery{Response: result.Response}, err
+			}
+			sort.Strings(urls)
+			if len(urls) > 50_000 {
+				result.Truncated = true
+				urls = urls[:50_000]
+			}
+			for _, raw := range urls {
+				result.Jobs = append(result.Jobs, RichMonitorJob{URL: raw, URLOnly: true})
+			}
+		}
+		return result, nil
 	}
 	if c.RichRows != nil {
 		base := profile.Endpoint

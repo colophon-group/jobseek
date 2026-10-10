@@ -17,7 +17,7 @@ func domMonitorFetchURL(config map[string]string, md map[string]json.RawMessage,
 	if !present || string(raw) == "null" {
 		return "", nil
 	}
-	if monitorWorkerProfile(config) == Browser || c.Pagination != nil || c.RichRows != nil || c.Proofs != nil || c.RequireJSONLD {
+	if monitorWorkerProfile(config) == Browser || c.Pagination != nil || c.RichRows != nil || c.ScriptLinks != nil || c.OnclickSelector != "" || c.Proofs != nil || c.RequireJSONLD {
 		return "", ErrUnsupportedProfile
 	}
 	f, err := profileMetadataFields(string(raw), map[string]bool{"find": true, "replace": true})

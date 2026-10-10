@@ -16,7 +16,6 @@ import (
 	"unicode"
 
 	dom "github.com/colophon-group/jobseek/apps/crawler/go/dom-detail"
-	"github.com/jmespath/go-jmespath"
 )
 
 var ErrField = errors.New("invalid configured JSON field extraction")
@@ -128,11 +127,11 @@ func Search(value any, path string) (any, error) {
 	// Plain paths/projections preserve integer-vs-float coercion. Numeric
 	// predicates use the JMESPath implementation's standard JSON number type.
 	if !strings.Contains(path, "[?") {
-		if found, err := jmespath.Search(path, value); err == nil {
+		if found, err := searchJMESPath(path, value); err == nil {
 			return found, nil
 		}
 	}
-	return jmespath.Search(path, floatJSON(value))
+	return searchJMESPath(path, floatJSON(value))
 }
 
 func quote(value string) string {

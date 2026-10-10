@@ -21,11 +21,21 @@ func feedRichDetailAssignment(config map[string]string) error {
 	if json.Unmarshal(md["scraper_type"], &scraper) != nil || (scraper != "skip" && scraper != "json-ld" && scraper != "dom" && scraper != "embedded") {
 		return ErrUnsupportedProfile
 	}
-	fields, err := monitorEnrichmentFields(config, map[string]bool{})
-	if err != nil || len(fields) != 0 {
+	allowed := map[string]bool{}
+	if config["crawler_type"] == "rss" {
+		allowed["description"] = true
+	}
+	_, err = monitorEnrichmentFields(config, allowed)
+	if err != nil {
 		return ErrUnsupportedProfile
 	}
 	return nil
+}
+
+// The original rich-feed processor refreshes only explicit description enrichment.
+// Other delegated fields retain their owner until their full semantics qualify.
+func RSSMonitorEnrichment(config map[string]string) ([]string, error) {
+	return monitorEnrichmentFields(config, map[string]bool{"description": true})
 }
 
 func feedHasDetailAssignment(md map[string]json.RawMessage) bool {
