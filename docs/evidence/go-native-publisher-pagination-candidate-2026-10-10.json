@@ -1,7 +1,7 @@
 {
   "schema": "jobseek.go-native-publisher-pagination-candidate/v1",
   "candidate_version": "0.13.1007",
-  "base_revision": "8ce8f01a3936008030c5b3db0f22853d880cc899",
+  "base_revision": "e81c5a488856113808fa60925fb069fcca128e47",
   "status": "unpublished three-provider candidate; no production ownership grant",
   "compiled_profiles": 196,
   "selected_additions": [
@@ -21,7 +21,7 @@
       "CSV_row_sha256": "08c24a912309967348a684620ff3bb9337cda2416da75f7caf375157b9c8f29d"
     }
   ],
-  "preservation_requirement": "Preserve the complete actually deployed parent monitor/detail cohort. Reconcile fresh canonical/cache configs and every scheduled detail route before staging; never shrink to fit a timer.",
+  "preservation_requirement": "Last active full source1005 cohort7736 monitors/2751 details plus all15 qualified source1006 additions and3 source1007 additions. Native ownership remains closed between the adjacent releases; reconcile fresh canonical/cache configs and every scheduled detail route before one original full activation.",
   "Slaughter": {
     "original_capture_jobs": 23,
     "original_capture_sha256": "452a279f165cef1e81e9c9abd0644a07de9a7d33ad4ec234283e69c4f4634f65",

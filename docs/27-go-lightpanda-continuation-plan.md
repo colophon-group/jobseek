@@ -1,6 +1,32 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1005 delivered, next grouped HTTP batch qualified
+## Current checkpoint — source1006 merged, supported rollout pending
+
+[PR #10404](https://github.com/colophon-group/jobseek/pull/10404) merged as
+`e81c5a488856113808fa60925fb069fcca128e47`, version0.13.1006 with195 profiles.
+Required CI38084533646, actual Crawler Deploy Gate38084532422, installed parity
+38084533668 and both physical Linux architectures38084533677 passed on reviewed
+head8ce8f01. The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38087698034)
+and [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38087725795)
+have started. They have not yet established an incoming serving checkpoint.
+
+The complete source1005 ordinary owner and B0 owner retired through their
+original wrappers. Selector clearing and independent cold epoch274 verification
+preceded the fresh head-bound merge. Last active native authority was the full
+7,736-monitor/2,751-detail cohort. Its last bounded natural sample has639 completed
+monitor receipts with639 exact recurring schedules, no retained completion
+leases and73 completed scrape receipts. Full-fleet freshness and cost remain open.
+
+Keep native ownership cold across these adjacent releases while the following
+three-type source1007 candidate qualifies. Then perform one complete admission
+and original full activation preserving the entire last-active source1005 cohort
+plus all15 qualified source1006 and3 source1007 monitor additions. Reconcile every
+actual scheduled detail route; do not equate compiler support with ownership or
+shrink the cohort to fit a timer. Full Python/Playwright/Chromium retirement still
+requires all enabled profiles/consumers, freshness/conservation, comparable
+whole-service resources/cost and the supported reversal window.
+
+## Historical checkpoint — source1005 served before supported retirement
 
 [PR #10403](https://github.com/colophon-group/jobseek/pull/10403) merged as
 `26d98bd3fe5afa9f77e5a11358ffcf8ed490dbbf`, version **0.13.1005**, with **194**
@@ -107,7 +133,8 @@ also matches all8 original URLs.
 This candidate is unpublished and grants no serving authority. VERSION is0.13.1007. The final focused aggregate passes29 queue and85 worker
 cases with mandatory private PostgreSQL/Redis and zero skips, including native
 executable selection/startup/identity/health/signal drain and transport regressions.
-Rebase to the actual delivered source1006 and publish the grouped PR. Fresh exact-head
+The candidate is rebased to merged source1006 e81c5a4. Publish the grouped PR
+and renew all exact-head gates. Fresh exact-head
 CI, original whole-service rollout and complete preserved-cohort admission still
 apply. See [candidate proof and limits](evidence/go-native-publisher-pagination-candidate-2026-10-10.json).
 Njoyn's full two-pass session pagination and remaining shared DOM/API options
