@@ -35,7 +35,7 @@ TLS remains verified. See [grouped qualification](evidence/go-native-shared-dom-
 
 Continue **Infor + PeopleSoft + Papa John's + Unisanté together**, including paired
 Infor/PeopleSoft details. The four parsers and session transport are implemented
-in `fix-crawler/native-final-provider-families` on source1001. Candidate **0.13.1002** wires seven new compiled profiles (184 total);
+in [PR #10398](https://github.com/colophon-group/jobseek/pull/10398) on source1001. Candidate **0.13.1002** wires seven new compiled profiles (184 total);
 it is not yet admitted or deployed. The 153 original frozen parser/receipt contracts pass
 under the race detector. Original complete public monitor captures contain 239
 Infor and 193 PeopleSoft jobs; eight complete original paired details have verified
@@ -55,7 +55,8 @@ migrations and ordinary chunk writes. Twelve real monitor settlements,
 eight paired detail settlements, twelve PeopleSoft gone/publisher cases and 27
 cold-retirement cases pass: 70 real PG/Redis cases in total.
 [Consolidated qualification](evidence/go-native-last-http-group-qualification-2026-10-10.json)
-passed. Use one PR,
+passed. The legacy owner projection also accepts both independently routed paired
+detail profiles; its focused ownership/runtime contract tests pass (90 cases). Use one PR,
 required CI, original whole-service rollout, fresh actual-route
 admission and supported full activation. VERSION is bumped from actual main.
 

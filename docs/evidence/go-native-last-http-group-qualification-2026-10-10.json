@@ -129,7 +129,8 @@
     "apps/crawler/go/ordinary-worker/pipeline_integration_test.go": "95142302ae201cbf61127ad6fabc56eaf0d0b7d6aa5ae6a2dcd79ddc385445eb",
     "apps/crawler/go/ordinary-worker/rich_pipeline.go": "d91af55e0945d975ad6adf52e7f04d8b3dc809379784d3af9ad8986f37755a00",
     "apps/crawler/go/ordinary-worker/runtime_integration_test.go": "8d19bb2498c506c465997959bb54074e97c63be5401891b8cdf82bbd2ee2de8e",
-    "apps/crawler/go/ordinary-worker/workday_detail_run.go": "432bc9425c6b40ebbbc05a9beecd614dbfafae278e4888e27598770f02495781"
+    "apps/crawler/go/ordinary-worker/workday_detail_run.go": "432bc9425c6b40ebbbc05a9beecd614dbfafae278e4888e27598770f02495781",
+    "apps/crawler/src/ordinary_ownership.py": "6188e584d912b8f9a30f6bed177f88e088a60218a7021f240d6dd9b0ee87d02f"
   },
   "lightpanda": {
     "version": "1.0.0",
@@ -137,5 +138,10 @@
     "upstream_release_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
     "upstream_image": "lightpanda/browser@sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e"
   },
-  "scope": "Original frozen contracts, verified original public captures replayed without network, and real dedicated loopback PG/Redis authority/effects. Public Papa Johns proxy pagination and Unisante content scopes fail in Python and Go; no healthy or partial inventory claimed. No source1002 production admission or whole-fleet freshness/cost claim."
+  "scope": "Original frozen contracts, verified original public captures replayed without network, and real dedicated loopback PG/Redis authority/effects. Public Papa Johns proxy pagination and Unisante content scopes fail in Python and Go; no healthy or partial inventory claimed. No source1002 production admission or whole-fleet freshness/cost claim.",
+  "legacy_projection_qualification": {
+    "cases_passed": 90,
+    "skipped": 9,
+    "scope": "Original Python ownership projection and runtime contract tests; both new paired-detail profiles remain independently routed to simple workers with the original company/config/domain checks."
+  }
 }

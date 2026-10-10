@@ -207,6 +207,8 @@ def ownership_projection(payload: str) -> str:
                     "johdi.api-detail/v1",
                     "headhunter.api-detail/v1",
                     "headhunter.proxy-api-detail/v1",
+                    "infor.session-detail/v1",
+                    "peoplesoft.session-detail/v1",
                 )
                 or (d["profile"] == "workday.cxs-detail/v1" and d["board_id"] not in members)
                 or (
