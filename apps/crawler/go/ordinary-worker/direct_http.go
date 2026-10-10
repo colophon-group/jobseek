@@ -30,7 +30,7 @@ type DirectHTTPConfig struct {
 	// Workday's API needs HTTP/2 negotiation. This is a compiled runtime
 	// transport choice; the explicit sealed SkipSSL client retains that protocol choice.
 	EnableHTTP2 bool
-	// Explicit canonical HTTP monitor exception; no retry/fallback can enable it.
+	// Explicit canonical HTTP exception; no retry/fallback can enable it.
 	SkipSSL bool
 }
 
@@ -212,6 +212,24 @@ func directHost(host string) (string, error) {
 	host = strings.ToLower(host)
 	if address, err := netip.ParseAddr(host); err == nil {
 		return address.String(), nil
+	}
+	// Workday publishes DNS tenant labels containing underscores. Python's
+	// existing HTTP client resolves these labels; IDNA's stricter domain-name
+	// validation otherwise prevents Go from reaching an explicitly configured
+	// CXS endpoint. Keep this exception to ASCII Workday tenant hosts; the same
+	// public-address resolution and pinned socket checks still apply.
+	parts := strings.Split(host, ".")
+	if len(parts) == 4 && parts[2] == "myworkdayjobs" && parts[3] == "com" && strings.HasPrefix(parts[1], "wd") && len(parts[1]) > 2 && len(parts[0]) > 0 && len(parts[0]) <= 63 && strings.Contains(parts[0], "_") {
+		valid := true
+		for _, c := range parts[1][2:] {
+			valid = valid && c >= '0' && c <= '9'
+		}
+		for _, c := range parts[0] {
+			valid = valid && (c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '_' || c == '-')
+		}
+		if valid {
+			return host, nil
+		}
 	}
 	return idna.Lookup.ToASCII(host)
 }

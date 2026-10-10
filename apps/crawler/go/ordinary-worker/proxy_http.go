@@ -45,6 +45,28 @@ func runtimeClaimUsesProxy(ctx context.Context, authority *queue.Authority, clai
 	return queue.ProfileRequiresProxy(detail.Profile().Profile), nil
 }
 
+// Monitor TLS settings and Workday detail exceptions are resolved from
+// the same immutable canonical configuration used by execution.
+func runtimeClaimSkipsSSL(ctx context.Context, authority *queue.Authority, claim *queue.Claim) (bool, error) {
+	if authority == nil || claim == nil || !claim.OwnershipBound() {
+		return false, queue.ErrConfiguration
+	}
+	if claim.Descriptor().Kind == queue.Monitor {
+		return queue.MonitorSkipsSSL(claim.Descriptor().Config)
+	}
+	if claim.Descriptor().Kind != queue.Scrape {
+		return false, queue.ErrConfiguration
+	}
+	if claim.RecoveredReceipt() != nil {
+		return false, nil
+	}
+	detail, err := authority.ReadWorkdayDetail(ctx, claim)
+	if err != nil {
+		return false, err
+	}
+	return detail.Profile().SkipSSL, nil
+}
+
 // All endpoint authority comes from protected startup settings. Configs and
 // errors deliberately have no printable credentials or provider response text.
 type proxyRuntimeConfig struct {

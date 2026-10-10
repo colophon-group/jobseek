@@ -30,6 +30,22 @@ func MonitorSkipsSSL(config map[string]string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	// The Workday probe records ssl_verify=false for a publisher with a
+	// broken chain. Honor that explicit board setting for CXS discovery as
+	// well as details, without enabling fallback or proxy/browser overrides.
+	if config["crawler_type"] == "workday" {
+		if raw := md["skip_ssl"]; raw != nil && string(raw) != "null" && string(raw) != "false" {
+			return false, ErrUnsupportedProfile
+		}
+		raw, present := md["ssl_verify"]
+		if !present || string(raw) == "null" || string(raw) == "true" {
+			return false, nil
+		}
+		if string(raw) != "false" || config["monitor_needs_browser"] != "0" || string(md["proxy"]) == "true" {
+			return false, ErrUnsupportedProfile
+		}
+		return true, nil
+	}
 	raw, present := md["skip_ssl"]
 	if !present || string(raw) == "null" || string(raw) == `""` {
 		return false, nil

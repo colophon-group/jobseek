@@ -44,6 +44,12 @@ func (r *NativeRenderedDetails) FetchMonitor(ctx context.Context, profile queue.
 	if profile.Profile == "accenture.http-items/v1" {
 		return discoverAccentureHTTPInventory(ctx, verified, profile, config)
 	}
+	if profile.Profile == queue.CandidatusHTTPProfile {
+		return discoverCandidatusHTTP(ctx, verified, config)
+	}
+	if slaughterWebFormsConfigured(profile, config) {
+		return discoverSlaughterWebForms(ctx, verified)
+	}
 	if queue.NativeBrowserProfile(profile.Profile) {
 		return r.fetchNativeBrowserProvider(ctx, profile, config)
 	}

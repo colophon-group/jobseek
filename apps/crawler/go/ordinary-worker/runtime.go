@@ -439,14 +439,17 @@ func Run(ctx context.Context, c RuntimeConfig) error {
 		if err != nil {
 			return nil, claimRunError("transport_selection", err)
 		}
+		skip, err := runtimeClaimSkipsSSL(ctx, authority, claim)
+		if err != nil {
+			return nil, claimRunError("transport_selection", err)
+		}
+		if skip && claim.Descriptor().Kind == queue.Scrape {
+			return RunDetail(ctx, authority, claim, skipSSLHTTP2, preparer.Processor, circuits, renderer)
+		}
 		if claim.Descriptor().Kind == queue.Monitor {
-			skip, err := queue.MonitorSkipsSSL(claim.Descriptor().Config)
-			if err != nil {
-				return nil, claimRunError("transport_selection", err)
-			}
 			if skip {
 				transport := skipSSLHTTP
-				if claim.Descriptor().Config["crawler_type"] == "sitemap" {
+				if provider := claim.Descriptor().Config["crawler_type"]; provider == "sitemap" || provider == "workday" {
 					transport = skipSSLHTTP2
 				}
 				return RunGreenhouseClaim(ctx, authority, claim, transport, preparer, circuits)

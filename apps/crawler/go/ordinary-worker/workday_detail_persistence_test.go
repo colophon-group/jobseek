@@ -18,9 +18,16 @@ func workdayDetailPersistenceFixture(t *testing.T) (nativePipelineFixture, *queu
 	return workdayDetailFixture(t, false)
 }
 
-func workdayDetailFixture(t *testing.T, owned bool) (nativePipelineFixture, *queue.Authority, *queue.Claim, *queue.CurrentWorkdayDetail) {
+func workdayDetailFixture(t *testing.T, owned bool, metadata ...string) (nativePipelineFixture, *queue.Authority, *queue.Claim, *queue.CurrentWorkdayDetail) {
 	t.Helper()
-	f := privateRichPipelineFixture(t, "workday", `{"all_sites":false,"scraper_type":"workday"}`)
+	md := `{"all_sites":false,"scraper_type":"workday"}`
+	if len(metadata) > 1 {
+		t.Fatal("ambiguous fixture metadata")
+	}
+	if len(metadata) == 1 {
+		md = metadata[0]
+	}
+	f := privateRichPipelineFixture(t, "workday", md)
 	ctx := context.Background()
 	var epoch int64
 	if err := f.pg.QueryRow(ctx, `UPDATE ordinary_worker_ownership_plan SET state='retired'

@@ -60,6 +60,9 @@ func firstAPIDetailFixture(t *testing.T, requested string) firstOwnerFixture {
 	p := firstOwnershipFixture(t)
 	f, ctx := p.f, context.Background()
 	provider, boardURL, source, metadata := "workday", "https://fixture.wd1.myworkdayjobs.com/Careers", "https://fixture.wd1.myworkdayjobs.com/Careers/job/JR001", `{"scraper_type":"workday"}`
+	if requested == "workday/ssl-exception" {
+		metadata = `{"scraper_type":"workday","ssl_verify":false}`
+	}
 	if requested == "seek" {
 		provider, boardURL, source, metadata = "seek", "https://au.seek.com/jobs?advertiserid=9094357", "https://au.seek.com/job/123", `{"scraper_type":"seek"}`
 	}
@@ -269,4 +272,8 @@ func TestRealFirstRetirementRetainsHistoricalDetailReceiptAfterPostingDeletion(t
 	if _, err := authority.Write(ctx, claim, true, func(context.Context, pgx.Tx) error { t.Fatal("retired deleted detail wrote"); return nil }); !errors.Is(err, ErrAuthorityLost) {
 		t.Fatal("retired detail regained authority", err)
 	}
+}
+
+func TestRealWorkdayDetailTLSExceptionColdRetirement(t *testing.T) {
+	testFirstAPIDetailRetirement(t, "workday/ssl-exception")
 }

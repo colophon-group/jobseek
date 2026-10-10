@@ -272,6 +272,7 @@ func TestCommandStarterHasExactBoundedEgressArguments(t *testing.T) {
 		"--cdp-max-connections", "2",
 		"--cdp-max-pending-connections", "1",
 		"--http-max-concurrent", "8",
+		"--v8-max-heap-mb", "128",
 		"--http-max-host-open", "4",
 		"--http-connect-timeout", "5000",
 		"--http-max-response-size", "8388608",

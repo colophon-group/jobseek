@@ -20,12 +20,14 @@ type WorkdayDetailProfile struct {
 	EmbeddedConfig                                  map[string]any
 	HTTPAPIConfig                                   map[string]any
 	EmbeddedNextdata                                bool
-	JSONLDConfig                                    map[string]any
-	DOMConfig                                       map[string]any
-	PDFConfig                                       map[string]any
-	APITokenOverride                                string
-	APILocale                                       string
-	JoinDetailConfig                                map[string]json.RawMessage
+	// The explicit board setting selects this detail's sealed HTTP client.
+	SkipSSL          bool
+	JSONLDConfig     map[string]any
+	DOMConfig        map[string]any
+	PDFConfig        map[string]any
+	APITokenOverride string
+	APILocale        string
+	JoinDetailConfig map[string]json.RawMessage
 }
 
 // Admission binds the configured tenant/domain without enumerating postings.
@@ -109,5 +111,5 @@ func InspectWorkdayDetail(boardID string, config map[string]string, sourceURL st
 	if err != nil || monitorErr != nil || parsed.Host != monitorEndpoint.Host {
 		return fail()
 	}
-	return WorkdayDetailProfile{BoardID: boardID, CompanyID: monitor.CompanyID, SourceURL: sourceURL, Endpoint: endpoint, Domain: parsed.Hostname(), Profile: "workday.cxs-detail/v1", EffectiveBoardSHA256: monitor.EffectiveConfigSHA256, FacilityTenantAliases: aliases}, nil
+	return WorkdayDetailProfile{BoardID: boardID, CompanyID: monitor.CompanyID, SourceURL: sourceURL, Endpoint: endpoint, Domain: parsed.Hostname(), Profile: "workday.cxs-detail/v1", EffectiveBoardSHA256: monitor.EffectiveConfigSHA256, FacilityTenantAliases: aliases, SkipSSL: string(metadata["ssl_verify"]) == "false"}, nil
 }

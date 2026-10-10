@@ -32,6 +32,8 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 		board, metadata = "https://fixture.jobs.cz/", `{"scraper_type":"skip"}`
 	}
 	switch provider {
+	case "workday":
+		board, metadata = "https://fixture.wd1.myworkdayjobs.com/Careers", `{"all_sites":false,"scraper_type":"workday"}`
 	case "talemetry":
 		board, metadata = "https://careers.example.com/search/jobs", `{"scraper_type":"json-ld"}`
 		if talemetryJSON {
