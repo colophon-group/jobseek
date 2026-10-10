@@ -32,7 +32,7 @@ type Request struct {
 func (Request) String() string   { return "API replay request" }
 func (Request) GoString() string { return "API replay request" }
 func (r Request) Valid() bool {
-	if r.Provider != "" && r.Provider != "darwinbox" && r.Provider != "bytedance" && r.Provider != "brassring" && r.Provider != "accenture" {
+	if r.Provider != "" && r.Provider != "darwinbox" && r.Provider != "bytedance" && r.Provider != "brassring" {
 		return false
 	}
 	u, err := url.Parse(r.BoardURL)

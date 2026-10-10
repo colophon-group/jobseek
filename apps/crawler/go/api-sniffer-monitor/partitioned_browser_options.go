@@ -77,6 +77,10 @@ func BrassRingBrowserOptions(board, raw string) (BrassRingBoard, BrowserReplayOp
 	}
 	u, _ := url.Parse(board)
 	prefix := u.Path[:strings.Index(strings.ToLower(u.Path), "/search/")]
+	// Public TGnewUI board links use several capitalizations. The actual
+	// provider AJAX application is TgNewUI, including on the configured ADM
+	// boards; matching the link's spelling misses every captured response.
+	prefix = prefix[:strings.LastIndex(prefix, "/")+1] + "TgNewUI"
 	u.Path, u.RawPath, u.RawQuery, u.Fragment = prefix+"/Search/Ajax/MatchedJobs", "", "", ""
 	o.Inventory = Options{Endpoint: u.String(), Method: "POST"}
 	return b, o, nil

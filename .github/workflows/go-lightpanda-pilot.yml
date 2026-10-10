@@ -33,7 +33,7 @@ on:
         type: boolean
         default: false
       qualify_paired_live:
-        description: "Read-only full public qualification of Accenture capture and BrassRing"
+        description: "Read-only full public BrassRing qualification and Accenture HTTP bindings"
         type: boolean
         default: false
 
@@ -46,7 +46,7 @@ concurrency:
 
 jobs:
   qualify-paired-live:
-    name: Qualify public Accenture and BrassRing
+    name: Qualify public BrassRing inventories
     if: github.event_name == 'workflow_dispatch' && inputs.qualify_paired_live
     runs-on: ubuntu-24.04
     timeout-minutes: 55

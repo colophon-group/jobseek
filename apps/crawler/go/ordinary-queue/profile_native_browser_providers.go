@@ -9,7 +9,7 @@ func NativeBrowserProvider(provider string) bool {
 	return provider == "darwinbox" || provider == "bytedance" || provider == "brassring" || provider == "accenture"
 }
 func NativeBrowserProfile(profile string) bool {
-	return profile == "darwinbox.session-items/v1" || profile == "bytedance.partition-items/v1" || profile == "brassring.session-items/v1" || profile == "accenture.http-items/v1" || profile == "accenture.captured-items/v1"
+	return profile == "darwinbox.session-items/v1" || profile == "bytedance.partition-items/v1" || profile == "brassring.session-items/v1" || profile == "accenture.http-items/v1"
 }
 func inspectNativeBrowserMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
 	if config["monitor_needs_browser"] != "1" || config["scraper_needs_browser"] != "0" {
@@ -33,13 +33,10 @@ func inspectNativeBrowserMonitor(boardID string, config map[string]string, md ma
 		profile = "brassring.session-items/v1"
 	} else if config["crawler_type"] == "accenture" {
 		options, _, err := api.AccentureBrowserOptions(config["board_url"], config["metadata"])
-		if err != nil {
+		if err != nil || options.Endpoint != api.AccentureFindJobs {
 			return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 		}
 		profile = "accenture.http-items/v1"
-		if options.Endpoint == api.AccentureJobSearch {
-			profile = "accenture.captured-items/v1"
-		}
 	}
 	return inspectURLOnlyMonitor(boardID, config, md, config["crawler_type"], profile, config["crawler_type"], listing)
 }
@@ -50,13 +47,7 @@ func NativeBrowserMonitorResourceMatches(p GreenhouseMonitorProfile, config map[
 
 func apiNativeBrowserProfileResourceMatches(p GreenhouseMonitorProfile, resource string) bool {
 	if p.Provider == "accenture" {
-		endpoint := api.AccentureFindJobs
-		if p.Profile == "accenture.captured-items/v1" {
-			endpoint = api.AccentureJobSearch
-		} else if p.Profile != "accenture.http-items/v1" {
-			return false
-		}
-		return resource == p.Endpoint || resource == "https://www.accenture.com/api/accenture/"+endpoint
+		return p.Profile == "accenture.http-items/v1" && (resource == p.Endpoint || resource == "https://www.accenture.com/api/accenture/"+api.AccentureFindJobs)
 	}
 	return NativeBrowserProfile(p.Profile) && api.NativeBrowserResourceMatches(p.Provider, p.Endpoint, "{}", resource)
 }

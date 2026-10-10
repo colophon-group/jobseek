@@ -1001,7 +1001,7 @@ def test_renderer_build_callers_supply_all_named_library_contexts() -> None:
             supplied = set(re.findall(r"--build-context\s+([\w-]+)=", command))
             assert required <= supplied, (name, sorted(required - supplied))
         calls += len(commands)
-    assert calls == 6
+    assert calls == 7
     publish_contexts = re.search(
         r"(?m)^          build-contexts: \|\n((?:            [^\n]+\n)+)",
         WORKFLOW.read_text(),

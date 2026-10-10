@@ -47,12 +47,6 @@ func executeNativeBrowserConversation(ctx context.Context, task *apiReplayTask, 
 // One affine scope, fixed public headers, original three-attempt retry classes,
 // and the same target's cookies; no captured private credentials or HTTP fallback.
 func converseNativeBrowser(ctx context.Context, task *apiReplayTask, fetch api.Fetch) error {
-	return converseNativeBrowserValidated(ctx, task, fetch, func(r api.Request) bool {
-		return api.NativeBrowserRequestMatches(task.nativeProvider, task.boardURL, task.nativeMetadata, r)
-	})
-}
-
-func converseNativeBrowserValidated(ctx context.Context, task *apiReplayTask, fetch api.Fetch, matches func(api.Request) bool) error {
 	if task == nil || fetch == nil || task.converse == nil {
 		return errReplayCapture
 	}
@@ -63,7 +57,7 @@ func converseNativeBrowserValidated(ctx context.Context, task *apiReplayTask, fe
 	err := task.converse(ctx, func(call context.Context, r api.Request) (*api.Document, error) {
 		mu.Lock()
 		defer mu.Unlock()
-		if !open || terminal != nil || ctx.Err() != nil || call.Err() != nil || !matches(r) {
+		if !open || terminal != nil || ctx.Err() != nil || call.Err() != nil || !api.NativeBrowserRequestMatches(task.nativeProvider, task.boardURL, task.nativeMetadata, r) {
 			return nil, errReplayCapture
 		}
 		var failure error

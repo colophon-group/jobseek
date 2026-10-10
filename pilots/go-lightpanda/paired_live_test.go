@@ -51,6 +51,7 @@ func TestLightpandaPairedPublicRegistryQualification(t *testing.T) {
 		}
 	}
 	counts := map[string]int{}
+	httpBoards := 0
 	for _, row := range rows[1:] {
 		provider := row[columns["monitor_type"]]
 		board, metadata := row[columns["board_url"]], row[columns["monitor_config"]]
@@ -65,9 +66,11 @@ func TestLightpandaPairedPublicRegistryQualification(t *testing.T) {
 			if err != nil {
 				t.Fatal("registry factory invalid")
 			}
-			if a.Endpoint != api.AccentureJobSearch {
-				continue
+			if a.Endpoint != api.AccentureFindJobs {
+				t.Fatal("unqualified legacy Accenture route remains")
 			}
+			httpBoards++
+			continue
 		}
 		counts[provider]++
 		t.Run(row[columns["board_slug"]], func(t *testing.T) {
@@ -134,7 +137,7 @@ func TestLightpandaPairedPublicRegistryQualification(t *testing.T) {
 			t.Logf("provider=%s jobs=%d truncated=%t frame_bytes=%d native_bytes=%d titles=%d descriptions=%d locations=%d dates=%d hydrated_missing=%d inventory_sha256=%s", provider, len(inventory.Jobs), inventory.Truncated, len(response.Inventory), len(body), titles, descriptions, locations, dates, missing, hex.EncodeToString(digest[:]))
 		})
 	}
-	if counts["accenture"] != 2 || counts["brassring"] != 4 {
+	if httpBoards != 12 || counts["brassring"] != 4 {
 		t.Fatal("paired public census changed", counts)
 	}
 }

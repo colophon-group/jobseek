@@ -53,7 +53,7 @@ func TestPairedNativeBrowserConfiguredRouting(t *testing.T) {
 			t.Fatal("unsupported control silently removed")
 		}
 	}
-	if !reflect.DeepEqual(counts, map[string]int{"accenture.http-items/v1": 10, "accenture.captured-items/v1": 2, "brassring.session-items/v1": 4}) {
+	if !reflect.DeepEqual(counts, map[string]int{"accenture.http-items/v1": 12, "brassring.session-items/v1": 4}) {
 		t.Fatal("paired census changed", counts)
 	}
 }

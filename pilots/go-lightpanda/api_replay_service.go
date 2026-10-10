@@ -70,20 +70,7 @@ func (execution *runtimeV1ServiceExecution) executeAPIReplay(ctx context.Context
 		collected = err == nil
 		return err
 	}
-	var err error
-	if request.Provider == "accenture" {
-		task, err = newAccentureCapturedTask(request.BoardURL, string(request.Metadata), func(ctx context.Context, fetch api.Fetch, captured api.Request) error {
-			options, _, e := api.AccentureBrowserOptions(request.BoardURL, string(request.Metadata))
-			if e != nil {
-				return e
-			}
-			inventory, e = api.DiscoverAccenture(ctx, options, fetch, &captured, nil)
-			collected = e == nil
-			return e
-		})
-	} else {
-		task, err = constructor(request.BoardURL, string(request.Metadata), converse)
-	}
+	task, err := constructor(request.BoardURL, string(request.Metadata), converse)
 	if err != nil {
 		response.Outcome = "invalid_config"
 		return response, nil

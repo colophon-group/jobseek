@@ -40,7 +40,7 @@ func TestLightpandaBrassRingCommittedPaginationIntegration(t *testing.T) {
 <ul id="sortBy-menu" style="display:none"><li>Date</li><li onclick="loadPage(1,true)">Alphabetical</li></ul>
 <button title="Next Page" onclick="loadPage(Number(document.getElementById('current').textContent)+1,true)">Next</button>
 <button class="pagewise-pagination" aria-current="page" id="current">1</button>
-<script>async function loadPage(page,stable){const path=!stable?'/TGnewUI/Search/Ajax/MatchedJobs':'/TGnewUI/Search/Ajax/ProcessSortAndShowMoreJobs';await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({page:page,stable:stable})});setTimeout(()=>{document.getElementById('current').textContent=String(page)},150)}</script>
+<script>async function loadPage(page,stable){const path=!stable?'/TgNewUI/Search/Ajax/MatchedJobs':'/TgNewUI/Search/Ajax/ProcessSortAndShowMoreJobs';await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({page:page,stable:stable})});setTimeout(()=>{document.getElementById('current').textContent=String(page)},150)}</script>
 </body></html>`)
 					return
 				}

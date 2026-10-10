@@ -840,7 +840,7 @@ func comparableDocumentURL(raw string) (string, error) {
 }
 
 func (executor chromedpExecutor) Execute(ctx context.Context, cdpURL string, task Task) (Result, error) {
-	if task.APIReplay != nil && task.APIReplay.brassRingConverse == nil && task.APIReplay.accentureConverse == nil && task.APIReplay.fallback == nil {
+	if task.APIReplay != nil && task.APIReplay.brassRingConverse == nil && task.APIReplay.fallback == nil {
 		copyTask := *task.APIReplay
 		fetch, closeHTTP, err := newReplayHTTPFallback(copyTask.options, executor.egressPolicy)
 		if err != nil {
@@ -913,7 +913,6 @@ func executeOnTarget(ctx, target context.Context, task Task) (Result, error) {
 			return Result{}, err
 		}
 		defer apiCapture.erase()
-		apiCapture.retainTemplate = task.APIReplay.accentureConverse != nil
 		chromedp.ListenTarget(targetCtx, apiCapture.observe)
 	}
 	if task.Dayforce != nil {

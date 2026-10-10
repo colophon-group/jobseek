@@ -44,7 +44,12 @@ func AccentureOptionsFromMetadata(board, raw string) (AccentureOptions, error) {
 			return o, ErrOptions
 		}
 	}
-	if !accentureSite.MatchString(o.Site) || o.Country == "" || o.Language != strings.Split(o.Site, "-")[1] || (o.Endpoint != AccentureFindJobs && o.Endpoint != AccentureJobSearch) || u.Path != "/"+o.Site+"/careers/jobsearch" {
+	if !accentureSite.MatchString(o.Site) || o.Country == "" || (o.Endpoint != AccentureFindJobs && o.Endpoint != AccentureJobSearch) || u.Path != "/"+o.Site+"/careers/jobsearch" {
+		return o, ErrOptions
+	}
+	parts := strings.Split(o.Site, "-")
+	locale := parts[1] + "-" + parts[0]
+	if o.Language != parts[1] && o.Language != locale || o.Endpoint == AccentureFindJobs && (o.Site == "fr-fr" || o.Site == "br-pt") && o.Language != locale {
 		return o, ErrOptions
 	}
 	return o, nil

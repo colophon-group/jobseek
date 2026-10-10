@@ -43,7 +43,7 @@ func TestPartitionedBrowserFactoriesAllConfiguredBoards(t *testing.T) {
 				}
 			} else {
 				_, o, err = BrassRingBrowserOptions(board, raw)
-				if !strings.HasSuffix(o.Inventory.Endpoint, "/TGnewUI/Search/Ajax/MatchedJobs") {
+				if !strings.HasSuffix(o.Inventory.Endpoint, "/TgNewUI/Search/Ajax/MatchedJobs") {
 					t.Fatal("provider application path lost")
 				}
 			}
@@ -91,5 +91,33 @@ func TestBrassRingFactoryIdentityAndNavigationBounds(t *testing.T) {
 	_, o, e = BrassRingBrowserOptions(board, `{"wait_fallback":null}`)
 	if e != nil || o.WaitFallback != "" || o.TransportRetries != 1 {
 		t.Fatal("explicit fallback disable lost", e)
+	}
+}
+
+func TestAccentureCurrentRegionalLanguageCannotBecomeFalseEmptyInventory(t *testing.T) {
+	for _, entry := range []struct{ site, country, language, short string }{{"fr-fr", "France", "fr-fr", "fr"}, {"br-pt", "Brasil", "pt-br", "pt"}} {
+		board := "https://www.accenture.com/" + entry.site + "/careers/jobsearch"
+		metadata, _ := json.Marshal(map[string]string{"country": entry.country, "site": entry.site, "language": entry.language, "endpoint": AccentureFindJobs})
+		options, _, err := AccentureBrowserOptions(board, string(metadata))
+		if err != nil || options.Language != entry.language {
+			t.Fatal("actual regional locale rejected", err)
+		}
+		metadata, _ = json.Marshal(map[string]string{"country": entry.country, "site": entry.site, "language": entry.short, "endpoint": AccentureFindJobs})
+		if _, _, err = AccentureBrowserOptions(board, string(metadata)); err == nil {
+			t.Fatal("short locale that returned false zero results was admitted")
+		}
+	}
+}
+
+func TestBrassRingAjaxCasingMatchesPublicApplicationInsteadOfBoardLink(t *testing.T) {
+	for _, application := range []string{"TGnewUI", "TgNewUI", "TGNewUI"} {
+		board := "https://sjobs.brassring.com/" + application + "/Search/Home/Home?partnerid=25416&siteid=5998"
+		_, options, err := BrassRingBrowserOptions(board, `{}`)
+		if err != nil || options.Inventory.Endpoint != "https://sjobs.brassring.com/TgNewUI/Search/Ajax/MatchedJobs" {
+			t.Fatal("public AJAX path differs", err)
+		}
+		if !NativeBrowserResourceMatches("brassring", board, `{}`, options.Inventory.Endpoint) || NativeBrowserResourceMatches("brassring", board, `{}`, "https://evil.test/TgNewUI/Search/Ajax/MatchedJobs") {
+			t.Fatal("application normalization changed origin authority")
+		}
 	}
 }
