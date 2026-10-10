@@ -46,7 +46,7 @@ func TestLightpandaDocumentInteractionsIntegration(t *testing.T) {
 	if runtime.GOOS == "darwin" {
 		address = "127.0.0.1"
 	}
-	for _, mode := range []string{"navigation", "later-publisher", "no-progress", "cap", "repeat", "has-text-click", "wait-attached-detached", "missing-required", "missing-optional", "page-size"} {
+	for _, mode := range []string{"navigation", "later-publisher", "no-progress", "cap", "repeat", "has-text-click", "mouse-down-click", "wait-attached-detached", "missing-required", "missing-optional", "page-size"} {
 		t.Run(mode, func(t *testing.T) {
 			certificate, ca := dayforceOriginTLS(t)
 			var mu sync.Mutex
@@ -79,6 +79,8 @@ func TestLightpandaDocumentInteractionsIntegration(t *testing.T) {
 					html += `<button id="more" onclick="window.n=(window.n||0)+1;const a=document.createElement('a');a.href='/jobs/added'+window.n;document.body.appendChild(a);if(window.n===2)this.remove()">More</button>`
 				case "has-text-click":
 					html += `<button onclick="document.body.dataset.wrong='1'">Other</button><button onclick="document.body.dataset.clicked='1'">  Load   MORE </button>`
+				case "mouse-down-click":
+					html += `<button id="dropdown" onmousedown="this.dataset.down='1'" onclick="if(this.dataset.down==='1')document.body.dataset.opened='1'">Open</button>`
 				case "wait-attached-detached":
 					html += `<span id="old">Old</span><script>setTimeout(()=>{document.querySelector('#old').remove();const n=document.createElement('span');n.id='new';document.body.appendChild(n)},20)</script>`
 				case "page-size":
@@ -103,6 +105,8 @@ func TestLightpandaDocumentInteractionsIntegration(t *testing.T) {
 				pipeline = []actions.Action{{Kind: "repeat", Selector: "#more", Maximum: 5, WaitMS: 5, TimeoutMS: 5000, Required: true}}
 			case "has-text-click":
 				pipeline = []actions.Action{{Kind: "click", Selector: `button:has-text("load more")`, TimeoutMS: 5000, Required: true}}
+			case "mouse-down-click":
+				pipeline = []actions.Action{{Kind: "click", Selector: "#dropdown", TimeoutMS: 5000, Required: true}}
 			case "wait-attached-detached":
 				pipeline = []actions.Action{{Kind: "wait_for", Selector: "#new", State: "attached", TimeoutMS: 5000, Required: true}, {Kind: "wait_for", Selector: "#old", State: "detached", TimeoutMS: 5000, Required: true}}
 			case "missing-required", "missing-optional":
@@ -148,6 +152,10 @@ func TestLightpandaDocumentInteractionsIntegration(t *testing.T) {
 			case "has-text-click":
 				if !strings.Contains(html, `data-clicked="1"`) || strings.Contains(html, `data-wrong="1"`) {
 					t.Fatal("quoted text selector changed first matching target")
+				}
+			case "mouse-down-click":
+				if !strings.Contains(html, `data-opened="1"`) {
+					t.Fatal("click lost the mouse-down dropdown transition")
 				}
 			case "wait-attached-detached":
 				if !strings.Contains(html, `id="new"`) || strings.Contains(html, `id="old"`) {

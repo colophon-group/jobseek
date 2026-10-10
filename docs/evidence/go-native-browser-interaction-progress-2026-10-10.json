@@ -1,7 +1,7 @@
 {
   "schema": "jobseek.go-native-grouped-progress/v1",
   "observed_at_utc": "2026-10-10T11:33:32.611326+00:00",
-  "status": "local prototype; no production admission or delivery",
+  "status": "local committed interaction candidate; public mismatches remain; no production admission or delivery",
   "parent_candidate_pr": "https://github.com/colophon-group/jobseek/pull/10401",
   "parent_version": "0.13.1004",
   "scope": [
@@ -15,19 +15,32 @@
     "actions": 64,
     "total_action_budget_seconds": 600,
     "repeat_and_collector_default_seconds": 300,
-    "qualified_text_selector_subset": "single text predicate on selected element, optional disabled suffix; ancestor/union/layout/frame selectors rejected"
+    "qualified_text_selector_subset": "single text predicate on selected element, optional disabled suffix; ancestor/union/layout/frame selectors rejected",
+    "action_HTML_bytes": 2000000,
+    "typed_result_bytes": 2097152,
+    "JSON_response_bytes": 3145728,
+    "ordinary_navigation_HTML_bytes": 524288
   },
   "checks": {
     "contracts_full_race": "PASS11.371s",
-    "pilot_full_race": "PASS9.377s",
-    "physical_pinned_macos_arm64": "10 isolated interaction cases PASS1.60s; verified official1.0.0 asset; private log sha256862fa71d3fbf28ea6e2a4b467549d9323b4926dffc38024d63e568dc0d82a502",
-    "physical_linux": "pending original integration target includes new suite on both architectures"
+    "pilot_full_race": "PASS8.918s after all result guard fixes",
+    "physical_pinned_macos_arm64": "11 isolated interaction cases PASS1.87s, including mouse-down click and page-changing collector; private log sha2565f14bc3f653d63c3bd7445fdc77919fa7232eee0e19e7ee33ac066d25b99be77",
+    "physical_linux": "pending original integration target includes new suite on both architectures",
+    "real_required_PostgreSQL_Redis": {
+      "cold_retirement_cases": 15,
+      "settlement_cases": 15,
+      "cold_log_sha256": "5bf2a6d769317415722e62628e8ccc26a0b701110043e481ab75a74a06e9c185",
+      "worker_log_sha256": "160082f1fa4f895a4e79c2229f5064676e0ae2ed26ab8d02c6cc9cd006f40bf6",
+      "status": "PASS; services mandatory, five variants including36-action pipeline"
+    },
+    "large_typed_document": "Maximum2,000,000 bytes passes producer, service envelope and consumer bounds;2,000,001 fails; focused race PASS3.779s",
+    "B0_executor_full_race": "PASS18.697s"
   },
-  "public": "26 original public probes captured; actual Lightpanda documents and canonical parser/request comparison in progress; raw documents remain private",
+  "public": "26 original and physical public captures; initial exact comparison passes15 cases and exposes11 unresolved outcomes. Second physical capture has24 documents; two large-page envelopes failed before the final ResultLimit correction. Final exact-code capture/comparison pending. Pictet differences isolate to session-issued _s.crb while all58 job IDs match; no broad normalization or waiver granted.",
   "required_remaining": [
     "original contract fixtures",
-    "all public outcomes and complete fields/request replay",
-    "real PostgreSQL/Redis settlement and supported cold reversal for new interactions",
+    "final public outcomes and complete fields/request replay; resolve every mismatch",
+    "physical Linux fixtures on both architectures",
     "held-session DOM/API pagination/options grouped continuation",
     "fresh main VERSION and exact-head required CI before any delivery"
   ]

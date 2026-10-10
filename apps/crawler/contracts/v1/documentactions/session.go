@@ -14,7 +14,9 @@ import (
 
 const Protocol = "jobseek.lightpanda.document-actions/v1"
 const RequestLimit = 128 << 10
-const ResponseLimit = 2 << 20
+// The JSON envelope base64-encodes the typed, chunked two-million-byte HTML.
+const ResponseLimit = 3 << 20
+const ResultLimit = 2 << 20
 const MaxActions = 64
 const MaxBudget = 600 * time.Second
 
@@ -196,7 +198,7 @@ type Response struct {
 }
 
 func (r Response) Valid() bool {
-	return r.Protocol == Protocol && digest.MatchString(r.RequestID) && digest.MatchString(r.ConfigFingerprint) && len(r.Result) > 0 && len(r.Result) <= 1049600
+	return r.Protocol == Protocol && digest.MatchString(r.RequestID) && digest.MatchString(r.ConfigFingerprint) && len(r.Result) > 0 && len(r.Result) <= ResultLimit
 }
 func Decode(body []byte, limit int, out any) error { return replay.Decode(body, limit, out) }
 

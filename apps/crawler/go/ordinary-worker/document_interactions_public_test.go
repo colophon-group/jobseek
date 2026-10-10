@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -23,6 +24,13 @@ func TestDocumentInteractionsPublicOriginalInventories(t *testing.T) {
 	directory := os.Getenv("JOBSEEK_INTERACTION_PUBLIC_CAPTURE_DIR")
 	if directory == "" {
 		t.Skip("requires private original and physical Lightpanda captures")
+	}
+	attempt := os.Getenv("JOBSEEK_INTERACTION_PUBLIC_ATTEMPT")
+	if attempt == "" {
+		attempt = "1"
+	}
+	if !regexp.MustCompile(`^[1-9][0-9]?$`).MatchString(attempt) {
+		t.Fatal("invalid public capture attempt")
 	}
 	raw, err := os.ReadFile(filepath.Join(directory, "native1005-interaction-original-selected26-2026-10-10.json"))
 	var rows []struct {
@@ -49,7 +57,7 @@ func TestDocumentInteractionsPublicOriginalInventories(t *testing.T) {
 			if err != nil || json.Unmarshal(body, &original) != nil {
 				t.Fatal("original case unavailable")
 			}
-			body, err = os.ReadFile(filepath.Join(directory, "native1005-interaction-"+slug+"-lightpanda-public-capture1-2026-10-10.pb"))
+			body, err = os.ReadFile(filepath.Join(directory, "native1005-interaction-"+slug+"-lightpanda-public-capture"+attempt+"-2026-10-10.pb"))
 			if err != nil {
 				t.Fatal("physical typed document unavailable")
 			}
@@ -90,7 +98,7 @@ func TestDocumentInteractionsPublicOriginalInventories(t *testing.T) {
 				return
 			}
 			if failure != nil || found.Truncated || calls != 1 {
-				t.Fatal("original complete inventory did not reproduce", "error", failure, "navigation_calls", calls)
+				t.Fatal("original complete inventory did not reproduce", "error", failure, "native_code", value.GetError().GetError().GetCode(), "navigation_calls", calls)
 			}
 			want, got := []string{}, []string{}
 			for _, job := range original.Jobs {
@@ -105,6 +113,13 @@ func TestDocumentInteractionsPublicOriginalInventories(t *testing.T) {
 			sort.Strings(want)
 			sort.Strings(got)
 			if !reflect.DeepEqual(got, want) {
+				trace, _ := json.Marshal(map[string]any{"native": got, "original": want})
+				path := filepath.Join(directory, "native1005-interaction-"+slug+"-private-inventory-difference1-2026-10-10.json")
+				file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+				if err == nil {
+					_, _ = file.Write(trace)
+					_ = file.Close()
+				}
 				t.Fatal("original full inventory differs", "native_count", len(got), "original_count", len(want))
 			}
 			for _, done := range used {

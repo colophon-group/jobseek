@@ -359,11 +359,14 @@ func validateResult(task Task, result Result) error {
 		return errors.New("main-document outerHTML is missing")
 	}
 	htmlLimit := maxHTMLBytes
+	if len(task.Actions) > 0 {
+		htmlLimit = 2_000_000
+	}
 	if task.Dayforce != nil || task.APIReplay != nil {
 		htmlLimit = 1_000_000 - 1
 	}
 	if len(result.HTML) > htmlLimit {
-		return fmt.Errorf("%w: main-document outerHTML exceeds %d bytes", errResourceLimit, maxHTMLBytes)
+		return fmt.Errorf("%w: main-document outerHTML exceeds %d bytes", errResourceLimit, htmlLimit)
 	}
 	if task.Evaluation == nil {
 		if result.Expression != nil {

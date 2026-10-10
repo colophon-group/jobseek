@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 	"time"
 
@@ -25,6 +26,14 @@ func TestLightpandaDocumentInteractionsPublicOriginalCapture(t *testing.T) {
 		t.Skip("requires private original public captures")
 	}
 	binary := interactionIntegrationBinary(t)
+	attempt := os.Getenv("JOBSEEK_INTERACTION_PUBLIC_ATTEMPT")
+	if attempt == "" {
+		attempt = "1"
+	}
+	if !regexp.MustCompile(`^[1-9][0-9]?$`).MatchString(attempt) {
+		t.Fatal("invalid public capture attempt")
+	}
+	selectedSlug := os.Getenv("JOBSEEK_INTERACTION_PUBLIC_SLUG")
 	selected, err := os.ReadFile(filepath.Join(directory, "native1005-interaction-original-selected26-2026-10-10.json"))
 	var rows []struct{ Canonical map[string]string }
 	if err != nil || json.Unmarshal(selected, &rows) != nil || len(rows) != 26 {
@@ -32,6 +41,9 @@ func TestLightpandaDocumentInteractionsPublicOriginalCapture(t *testing.T) {
 	}
 	for _, row := range rows {
 		slug := row.Canonical["board_slug"]
+		if selectedSlug != "" && slug != selectedSlug {
+			continue
+		}
 		t.Run(slug, func(t *testing.T) {
 			path := filepath.Join(directory, "native1005-interaction-"+slug+"-original-public-capture1-2026-10-10.json")
 			original, err := os.ReadFile(path)
@@ -79,7 +91,7 @@ func TestLightpandaDocumentInteractionsPublicOriginalCapture(t *testing.T) {
 			if err != nil {
 				t.Fatal("public typed document execution failed")
 			}
-			out := filepath.Join(directory, "native1005-interaction-"+slug+"-lightpanda-public-capture1-2026-10-10.pb")
+			out := filepath.Join(directory, "native1005-interaction-"+slug+"-lightpanda-public-capture"+attempt+"-2026-10-10.pb")
 			file, err := os.OpenFile(out, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 			if err != nil {
 				t.Fatal("private typed result creation failed")

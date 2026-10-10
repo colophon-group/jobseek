@@ -33,7 +33,7 @@ const (
 	// EvaluationPayloadLimit is the registered evaluation-envelope ceiling.
 	EvaluationPayloadLimit uint64 = 64 * 1024
 	// HTMLPayloadLimit keeps the inactive adapter's materialized HTML bounded.
-	HTMLPayloadLimit uint64 = 1024 * 1024
+	HTMLPayloadLimit uint64 = 2_000_000
 	// ResponseBodyPayloadLimit matches the existing browser RSS body ceiling.
 	ResponseBodyPayloadLimit uint64 = 2_000_000
 	// InputPayloadLimit bounds the complete serialized BrowserExecutionInput.
