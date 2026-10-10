@@ -70,8 +70,13 @@ enrichment retains downstream scheduling. See the
 
 The published draft head passed physical Lightpanda on Linux amd64 and arm64.
 The latest source changes still require exact-head CI and parity checks. Current
-candidate scope is 30 boards: 25 browser, two API and three RSS. Advance the
-**25 qualified additions together** (20 browser, two API and three RSS), preserving
+candidate scope is 31 boards: 25 browser, two API and four RSS. Ecom additionally
+qualifies all 54 original RSS records and collision identities, with real
+PostgreSQL/Redis settlement and exact original normalized descriptions. Its
+historical migration receipt remains unchanged and fingerprint-bound; an active
+unimplemented migration marker remains rejected. See the
+[Ecom proof](evidence/go-native-ecom-retained-receipt-2026-10-10.json). Advance the
+**26 qualified additions together** (20 browser, two API and four RSS), preserving
 the entire previously admitted fleet. Keep H3, Slaughter and the three Lockheed
 boards on their current owner until their public results qualify. The fresh
 complete source census must record those five explicit qualification exclusions;

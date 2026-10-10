@@ -1,6 +1,6 @@
 {
   "schema": "jobseek.go-native-qualified-rollout-selection/v1",
-  "observed_at_utc": "2026-10-10T14:40:58.902345+00:00",
+  "observed_at_utc": "2026-10-10T15:32:59.591751+00:00",
   "status": "verified local additions proposed for supported source1005 rollout; not production admission",
   "PR": "https://github.com/colophon-group/jobseek/pull/10403",
   "source_base": "17a3c03eb9e7c053d2b891195993d0d235ff8f54",
@@ -130,13 +130,18 @@
       "board_slug": "zhengda-group-careers-th-cpf",
       "monitor_type": "rss",
       "source_CSV_row_sha256": "3c89e83af44cf04af253c37159e4086150cb324671f57aee6b5083b0eab7396d"
+    },
+    {
+      "board_slug": "ecom-agroindustrial-global",
+      "monitor_type": "rss",
+      "source_CSV_row_sha256": "6b12d54e7ac1b2bed26db527ebc83a1b3a0bac738ba11d5bfa36b2ec66e679dc"
     }
   ],
-  "selected_addition_count": 25,
+  "selected_addition_count": 26,
   "selected_family_counts": {
     "browser": 20,
     "api_sniffer": 2,
-    "rss": 3
+    "rss": 4
   },
   "explicit_qualification_exclusions": [
     {
