@@ -1016,7 +1016,14 @@ func executeOnTarget(ctx, target context.Context, task Task) (Result, error) {
 			}
 			return false, err
 		}
-		if err := runDocumentActions(targetCtx, task.Actions, executeDocumentAction, check); err != nil {
+		execute := func(ctx context.Context, action actions.Action) error {
+			switch action.Kind {
+			case "click", "wait_for", "repeat", "paginate_collect":
+				return executeDocumentInteraction(ctx, action, check)
+			}
+			return executeDocumentAction(ctx, action)
+		}
+		if err := runDocumentActions(targetCtx, task.Actions, execute, check); err != nil {
 			return Result{}, err
 		}
 	}

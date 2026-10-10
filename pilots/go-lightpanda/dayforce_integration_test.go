@@ -29,11 +29,18 @@ import (
 // Test-only native proxy and CA allow real HTTPS/cookies/fetch/CDP I/O for the
 // exact production URL in a network-none fixture. Production constructors have
 // no equivalent proxy, CA override, request field or address exemption.
-type dayforceFixtureStarter struct{ binary, proxy, ca string }
+type dayforceFixtureStarter struct{ binary, proxy, ca, fixtureLoopback string }
 
 func (s dayforceFixtureStarter) Start(port int) (managedProcess, error) {
 	logs := &boundedBuffer{limit: maxProcessLogBytes}
-	args := fixedLightpandaServeArgs(port, baselineBlockedCIDRs+",-127.0.0.2/32")
+	address := s.fixtureLoopback
+	if address == "" {
+		address = "127.0.0.2"
+	}
+	if address != "127.0.0.1" && address != "127.0.0.2" {
+		return nil, errors.New("invalid fixture loopback")
+	}
+	args := fixedLightpandaServeArgs(port, baselineBlockedCIDRs+",-"+address+"/32")
 	args = append(args, "--http-proxy", s.proxy, "--ca-cert", s.ca)
 	cmd := exec.Command(s.binary, args...)
 	cmd.Env = append([]string(nil), lightpandaChildEnvironment...)
@@ -82,12 +89,19 @@ func dayforceOriginTLS(t *testing.T, hosts ...string) (tls.Certificate, string) 
 }
 
 func dayforceConnectProxy(t *testing.T, origin *httptest.Server, hosts ...string) *httptest.Server {
+	return dayforceConnectProxyAt(t, origin, "127.0.0.2", hosts...)
+}
+
+func dayforceConnectProxyAt(t *testing.T, origin *httptest.Server, address string, hosts ...string) *httptest.Server {
 	t.Helper()
+	if address != "127.0.0.1" && address != "127.0.0.2" {
+		t.Fatal("invalid fixture loopback")
+	}
 	allowed := map[string]bool{"jobs.dayforcehcm.com:443": true}
 	for _, host := range hosts {
 		allowed[host+":443"] = true
 	}
-	return newTestLoopbackServer(t, "127.0.0.2", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return newTestLoopbackServer(t, address, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "CONNECT" || !allowed[r.Host] {
 			http.Error(w, "fixture scope", 403)
 			return

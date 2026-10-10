@@ -1,0 +1,34 @@
+{
+  "schema": "jobseek.go-native-grouped-progress/v1",
+  "observed_at_utc": "2026-10-10T11:33:32.611326+00:00",
+  "status": "local prototype; no production admission or delivery",
+  "parent_candidate_pr": "https://github.com/colophon-group/jobseek/pull/10401",
+  "parent_version": "0.13.1004",
+  "scope": [
+    "click",
+    "attached/detached wait_for",
+    "repeat",
+    "paginate_collect"
+  ],
+  "canonical_monitor_candidates": 26,
+  "bounds": {
+    "actions": 64,
+    "total_action_budget_seconds": 600,
+    "repeat_and_collector_default_seconds": 300,
+    "qualified_text_selector_subset": "single text predicate on selected element, optional disabled suffix; ancestor/union/layout/frame selectors rejected"
+  },
+  "checks": {
+    "contracts_full_race": "PASS11.371s",
+    "pilot_full_race": "PASS9.377s",
+    "physical_pinned_macos_arm64": "10 isolated interaction cases PASS1.60s; verified official1.0.0 asset; private log sha256862fa71d3fbf28ea6e2a4b467549d9323b4926dffc38024d63e568dc0d82a502",
+    "physical_linux": "pending original integration target includes new suite on both architectures"
+  },
+  "public": "26 original public probes captured; actual Lightpanda documents and canonical parser/request comparison in progress; raw documents remain private",
+  "required_remaining": [
+    "original contract fixtures",
+    "all public outcomes and complete fields/request replay",
+    "real PostgreSQL/Redis settlement and supported cold reversal for new interactions",
+    "held-session DOM/API pagination/options grouped continuation",
+    "fresh main VERSION and exact-head required CI before any delivery"
+  ]
+}

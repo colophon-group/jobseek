@@ -16,16 +16,20 @@ func TestParseSequentialPythonDefaultsAndExplicitFailurePolicy(t *testing.T) {
 	if err != nil || len(got) != 3 || !got[0].Required || got[0].TimeoutMS != 125 || got[1].Required || got[1].Milliseconds != 1000 || got[2].Milliseconds != 0 || Budget(got) != 20125*time.Millisecond {
 		t.Fatal("defaults or order changed", err)
 	}
-	for _, fixture := range []string{`[{"action":"click","selector":"button"}]`, `[{"action":"evaluate","script":"x","frame":"iframe"}]`, `[{"action":"wait","required":"false"}]`, `[{"action":"wait","timeout":0}]`, `[{"action":"wait","ms":-1}]`, `[{"action":"evaluate"}]`, `[{"action":"wait","foo":1}]`} {
+	for _, fixture := range []string{`[{"action":"click"}]`, `[{"action":"evaluate","script":"x","frame":"iframe"}]`, `[{"action":"wait","required":"false"}]`, `[{"action":"wait","timeout":0}]`, `[{"action":"wait","ms":-1}]`, `[{"action":"evaluate"}]`, `[{"action":"wait","foo":1}]`} {
 		json.Unmarshal([]byte(fixture), &raw)
 		if _, err := Parse(raw); err == nil {
 			t.Fatal("unsupported action admitted", fixture)
 		}
 	}
-	if Valid(make([]Action, 33)) {
+	tooMany := make([]Action, MaxActions+1)
+	for i := range tooMany {
+		tooMany[i] = Action{Kind: "wait", TimeoutMS: 1}
+	}
+	if Valid(tooMany) {
 		t.Fatal("unbounded action count")
 	}
-	if Valid([]Action{{Kind: "wait", TimeoutMS: 120000}, {Kind: "wait", TimeoutMS: 120000}, {Kind: "wait", TimeoutMS: 120000}}) {
+	if Valid([]Action{{Kind: "wait", TimeoutMS: 120000}, {Kind: "wait", TimeoutMS: 120000}, {Kind: "wait", TimeoutMS: 120000}, {Kind: "wait", TimeoutMS: 120000}, {Kind: "wait", TimeoutMS: 120000}, {Kind: "wait", TimeoutMS: 120000}}) {
 		t.Fatal("unbounded aggregate timeout")
 	}
 }
