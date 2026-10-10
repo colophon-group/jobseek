@@ -39,13 +39,21 @@ API-sniffer24, Accenture12, BrassRing4, RSS8, inline5, Nextdata2, Oracle HCM2,
 and one each Njoyn, Candidatus, Workday and Amazon. This delivered batch adds
 12 monitor boards without removing any previously admitted board.
 
-The next local batch combines **click, attached/detached wait, repeat and page
+[Draft PR #10403](https://github.com/colophon-group/jobseek/pull/10403), version
+**0.13.1005**, combines **click, attached/detached wait, repeat and page
 collection**, plus **encrypted initial HTTP API responses**. The browser group
 has 26 canonical candidates, 30 real database/queue cases and 13 physical macOS
 cases; public comparison initially passed 18 candidates with eight unresolved
 outcomes; JBS now passes with 134 exact original URLs, and Pictet has 58 exact
 same-document original parser URLs with independent session-token provenance.
-Six candidates remain unqualified. The API group adds one canonical candidate: 15 original decrypt
+Five browser candidates remain unqualified. Lufthansa is now qualified through
+its published HTTP API: all 373 exact original German URLs match in one request.
+The real worker settles all 373 URL-only rows and independent detail routes,
+retaining the existing JSON-LD scraper. The reviewed CSV switches that board from
+scrolling DOM discovery to the existing API-sniffer family. English returned 55
+different identities despite the same count and was rejected. See the
+[Lufthansa API proof](evidence/go-native-lufthansa-published-api-2026-10-10.json).
+The encrypted API group adds one other canonical candidate: 15 original decrypt
 fixtures, 18 public jobs with all original fields/request matching, full SDK race
 checks and 18 real database/queue cases pass. Python's optional crypto package is
 absent from the normal frozen runtime; the original oracle uses a separate
@@ -60,8 +68,10 @@ conflicting rows and later-page failures publish no prefix. Explicit description
 enrichment retains downstream scheduling. See the
 [RSS progress proof](evidence/go-native-rss-rmk-progress-2026-10-10.json).
 
-Resolve the recorded public browser mismatches, qualify the complete grouped scope
-on Linux and run exact-head required checks before admitting this candidate.
+The published draft head passed physical Lightpanda on Linux amd64 and arm64.
+The latest source changes still require exact-head CI and parity checks. Current
+canonical scope is 30 boards: 25 browser, two API and three RSS. Resolve the five
+recorded public browser mismatches before admitting the grouped candidate.
 
 Continue the remaining shared browser/API pagination options and enabled
 monitor/detail profiles in broad batches. Prove fleet freshness, conservation,

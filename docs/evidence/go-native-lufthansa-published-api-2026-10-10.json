@@ -1,0 +1,30 @@
+{
+  "schema": "jobseek.go-native-grouped-progress/v1",
+  "observed_at_utc": "2026-10-10T14:19:39.498349+00:00",
+  "status": "qualified local configuration change within draft PR10403; not deployed or admitted",
+  "board_slug": "lufthansa-group-careers",
+  "original_browser_source": "17a3c03eb9e7c053d2b891195993d0d235ff8f54",
+  "old_monitor": "DOM render with 17 scroll actions; Lightpanda public inventory was empty",
+  "replacement": "published Go HTTP API, German language matching original board, full advertised inventory, URL-only projection; existing JSON-LD scraper retained",
+  "canonical_URLs": 373,
+  "public_API_advertised_total": 373,
+  "HTTP_requests": 1,
+  "max_items": 10000,
+  "authentication": "no authentication required by public API; no tokens or credentials in source config",
+  "request_provenance": "publisher jobboard.config.json and jquery.jobboard.container.js expose endpoint, descriptor, language, sort and complete map inventory request",
+  "language_qualification": "English returned the same count but 55 different identities; rejected. German returns all 373 exact original URLs",
+  "field_projection": "only ID and PositionURI requested; server additionally returns PublicationStartDate. Both original Python and actual Go worker retain URL-only authority",
+  "no_production_URL_normalization": true,
+  "original_python_API_result": "373 URL set, not truncated, one exact request, matches complete original DOM inventory",
+  "real_PostgreSQL_Redis": "373 URL-only rows and 373 exact independent detail queue routes, original canonical monitor deadline and completion lease settlement PASS",
+  "registry_checks": "16 CSV validation and Go registry sync tests PASS",
+  "private_proofs": {
+    "native1005-lufthansa-public-api-german-diagnostic2-2026-10-10.json": "dc1329a22fa18000e81e7d30ce24f795216518b51b9a291969388704eebf30c8",
+    "native1005-lufthansa-public-api-url-only-diagnostic3-2026-10-10.json": "de11691aabfa78d187dc8c61bd8084ca889923b3c779cc5c44439f710211a71d",
+    "native1005-lufthansa-published-api-original-replay1-2026-10-10.json": "180e378da088ea7c711b661cc2df0c16d81bc86251b298706394697da0cbaf76",
+    "native1005-lufthansa-published-api-real-worker-qualification1-2026-10-10.log": "8a1fc51950905870cbf264bb1481e895f3d05ff1a3ce333e0c0517aa76e20f95"
+  },
+  "original_public_browser_group_remaining": 5,
+  "production_monitors_remaining": 172,
+  "full_migration_goal": "active and incomplete"
+}

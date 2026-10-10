@@ -25,7 +25,7 @@
     "contracts_full_race": "PASS11.371s",
     "pilot_full_race": "PASS8.918s after all result guard fixes",
     "physical_pinned_macos_arm64": "13 isolated interaction cases PASS, including delegated ancestor click, mouse-down click, page-changing collector and history transition; private log sha25681c21032df072c6d85849c2a07e5922d14165044b0df2a8b983fc342b1328cb3",
-    "physical_linux": "pending original integration target includes new suite on both architectures",
+    "physical_linux": "PR10403 head988a4cd33 physical Lightpanda run38058040924 passed Linux amd64 and arm64. Later source changes require fresh exact-head checks",
     "real_required_PostgreSQL_Redis": {
       "cold_retirement_cases": 15,
       "settlement_cases": 15,
@@ -85,5 +85,14 @@
     "scope": "separate same-document original HTML projection plus complete cross-session logical identity comparison; does not claim identical URLs between distinct browser sessions"
   },
   "public_latest_scope": "18 prior exact comparison passes (including original gone outcome); JBS134 exact URLs added; Pictet58 separate same-document original projection and two-original-session variance proof. Twenty of26 candidate boards qualified through those distinct checks, six still unqualified. No production admission or delivery for this batch.",
-  "public_count_verification": "Counts recomputed from all26 named subtest outcomes in retained final replay log:18 PASS,8 FAIL; prior prose miscounted17/9."
+  "public_count_verification": "Counts recomputed from all26 named subtest outcomes in retained final replay log:18 PASS,8 FAIL; prior prose miscounted17/9.",
+  "published_draft_PR": "https://github.com/colophon-group/jobseek/pull/10403",
+  "public_lufthansa_replacement": {
+    "scope": "separate published HTTP API route replaces canonical DOM pipeline; native scrolling result remains unqualified",
+    "exact_original_URLs": 373,
+    "real_canonical_rows_and_detail_routes": 373,
+    "proof": "go-native-lufthansa-published-api-2026-10-10.json"
+  },
+  "current_canonical_browser_candidates": 25,
+  "current_unqualified_browser_candidates": 5
 }
