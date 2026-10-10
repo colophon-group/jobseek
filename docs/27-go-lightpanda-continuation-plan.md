@@ -1,6 +1,6 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1004 merged, full activation pending
+## Current checkpoint — source1004 delivered, grouped browser/API/RSS continuation
 
 [PR #10401](https://github.com/colophon-group/jobseek/pull/10401) merged as
 `17a3c03eb9e7c053d2b891195993d0d235ff8f54`, version **0.13.1004**. Exact-head
@@ -22,9 +22,19 @@ against the official release API October 10, remains pinned by immutable digest.
 Independent crawler image, cold-state, exporter and renderer verification pass.
 B0 is active at **epoch271**. The fresh complete census qualifies **7,710 monitors
 and 2,751 detail boards**, covering **1,473,641 of 1,503,925** inspected scheduled
-postings. The exact full ordinary plan is staged and its original supported
-activation is in progress. Independent full readback remains required before
-counting this batch as delivered Go coverage.
+postings. The original supported full activation has completed. Independent SQL/Redis
+readback matches the exact active plan and projection; all ten exact-image
+writers are running with zero restarts, and all eight HTTP health endpoints pass.
+Forty-two cached-route mismatch boards and one unsupported Eightfold route retain
+their current owner. The first natural sample contains 20 completed scrapes and
+two completed monitor receipts; one receipt was observed between database commit
+and queue acknowledgement. This bounded sample does not establish fleet
+freshness, cost or global conservation. See the [portable production proof](evidence/go-native-source1004-production-2026-10-10.json).
+
+The complete current monitor census leaves **172** outside Go: DOM111,
+API-sniffer24, Accenture12, BrassRing4, RSS8, inline5, Nextdata2, Oracle HCM2,
+and one each Njoyn, Candidatus, Workday and Amazon. This delivered batch adds
+12 monitor boards without removing any previously admitted board.
 
 The next local batch combines **click, attached/detached wait, repeat and page
 collection**, plus **encrypted initial HTTP API responses**. The browser group

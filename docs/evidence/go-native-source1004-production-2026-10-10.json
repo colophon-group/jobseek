@@ -1,0 +1,95 @@
+{
+  "schema": "jobseek.go-native-production/v1",
+  "observed_at_utc": "2026-10-10T13:15:56.352052+00:00",
+  "status": "delivered through original whole rollout and supported full activation",
+  "pr": "https://github.com/colophon-group/jobseek/pull/10401",
+  "source_revision": "17a3c03eb9e7c053d2b891195993d0d235ff8f54",
+  "crawler_version": "0.13.1004",
+  "compiled_profiles": 190,
+  "exact_head_CI": {
+    "head": "977cfabf57a2002d4d0c86f161181afd6ba2cf33",
+    "Required_CI": 38048167251,
+    "Crawler_Deploy_Gate": 38048164473,
+    "installed_image_parity": 38048167257,
+    "physical_Lightpanda_both_Linux_architectures": 38048167252,
+    "all": "SUCCESSattempt1"
+  },
+  "rollouts": {
+    "crawler": {
+      "run": 38052065286,
+      "attempt": 1,
+      "conclusion": "success"
+    },
+    "renderer": {
+      "run": 38052084321,
+      "attempt": 2,
+      "conclusion": "success",
+      "attempt1": "running predecessor sticky OOM rejected; original failed workflow left exact stopped OOM predecessor; original installer cold recovery succeeded without host patch or bypass"
+    }
+  },
+  "images": {
+    "JOBSEEK_DEPLOY_REVISION": "17a3c03eb9e7c053d2b891195993d0d235ff8f54",
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:a1ab6e613112b2dca89664eaecddfe908c29e4476f95c17a84760b9f05c41944",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:a9d75c288b6e7bdc1440a5903d7562baa792559e4a5adb473969100443e4dea3",
+    "RENDERER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:6771440697cc7bf31f91becc88c7598a9eaea1a25eca9701d200a90537b2b35e"
+  },
+  "lightpanda": {
+    "release": "1.0.0",
+    "official_latest_stable_rechecked_utc": "2026-10-10",
+    "release_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
+    "immutable_upstream_digest": "sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e"
+  },
+  "supported_transition": {
+    "outgoing_source": "a482884ba54c83e528067932c7563a3197c62c04",
+    "ordinary_retirement": "original full wrapper; natural SQL lease expiry",
+    "B0_retirement": "original rollback and selector clear",
+    "independent_cold_epoch": 270,
+    "active_epoch": 271,
+    "plan_sha256": "47f502d509f4d996a4d036db5b064bad0edeb2084680626f00000d228b94232a",
+    "projection_sha1": "7dfd64bb03b20b0654a4732e7c7cc0d508044945",
+    "ordinary_receipt_sha256": "50365b929835e84f49769395a84d72e8b626e5137d7ea0c8685433f7faea595d",
+    "b0_receipt_sha256": "a7127ed2a358d9ca56c94ea4b983e4dae0977c94897dad439972d037c28aba51",
+    "historical_audit_evidence": "retained; no forced leases, locks, or receipt removal"
+  },
+  "coverage": {
+    "newly_owned_monitor_boards": 12,
+    "removed_monitor_boards": 0,
+    "monitor_boards": 7710,
+    "detail_boards": 2751,
+    "scheduled_postings_inspected": 1503925,
+    "scheduled_postings_admitted": 1473641,
+    "cached_route_mismatch_boards_retaining_legacy_owner": 42,
+    "unsupported_Eightfold_route_boards_retaining_legacy_owner": 1,
+    "remaining_monitors": 172,
+    "remaining_by_type": {
+      "dom": 111,
+      "api_sniffer": 24,
+      "accenture": 12,
+      "brassring": 4,
+      "rss": 8,
+      "inline": 5,
+      "nextdata": 2,
+      "oracle_hcm": 2,
+      "njoyn": 1,
+      "candidatus": 1,
+      "workday": 1,
+      "amazon": 1
+    }
+  },
+  "initial_independent_readback": {
+    "running_exact_image_writers": 10,
+    "writer_restarts": 0,
+    "HTTP_health_endpoints": 8,
+    "SQL_active_plans": 1,
+    "Redis_projection_matches": true,
+    "foreign_administrative_oneoffs": 0,
+    "renderer_running_OOM_free": true,
+    "natural_completed_scrapes_at_first_snapshot": 20,
+    "completed_monitor_receipts_later_in_same_read": 2,
+    "settled_exact_monitor_schedules": 1,
+    "completion_leases_observed_between_commit_and_ack": 1,
+    "scope": "bounded initial SQL/Redis cross-read; follow-up natural readback required; no whole-fleet freshness, cost or global conservation claim"
+  },
+  "qualification": "34 frozen original contracts,67 real PostgreSQL/Redis cases,159 public DOM jobs plus10 API jobs with original fields/request replay; physical Linux CI passed",
+  "next": "finish broader grouped browser/API/RSS coverage; retained detail routes, runtime/deployment consumers, fleet freshness/resource/cost and supported reversal window; retire production Python/Playwright/Chromium after replacement authority; full goal remains incomplete"
+}
