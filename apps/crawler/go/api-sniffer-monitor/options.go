@@ -187,6 +187,16 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 		}
 	}
 	o.Method = strings.ToUpper(o.Method)
+	// The original inventory selector uses "$" for the entire API response;
+	// fields retain normal JMESPath syntax. Normalize this inventory path only.
+	if o.Path == "$" {
+		if m["json_path_values"] == true {
+			// Original values conversion calls JMESPath directly, which rejects
+			// "$". Its inventory-only root alias cannot change that contract.
+			return o, ErrOptions
+		}
+		o.Path = "@"
+	}
 	if o.Method != "GET" && o.Method != "POST" {
 		return o, ErrOptions
 	}

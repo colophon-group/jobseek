@@ -13,10 +13,21 @@ import (
 )
 
 func TestRealDOMVerificationDirectProxyRenderedConservation(t *testing.T) {
+	realDOMVerificationConservation(t, false)
+}
+
+func TestRealDOMExcludedVerificationPublisherPrecedence(t *testing.T) {
+	realDOMVerificationConservation(t, true)
+}
+
+func realDOMVerificationConservation(t *testing.T, exclude bool) {
 	for _, route := range []string{"direct", "proxy", "rendered"} {
 		for _, mode := range []string{"complete", "failed-detail", "reserved-detail"} {
 			t.Run(route+"/"+mode, func(t *testing.T) {
 				md := `{"link_selector":"a.job","url_filter":"/jobs/","require_jsonld_jobposting":true,"scraper_type":"skip"}`
+				if exclude {
+					md = strings.Replace(md, `"url_filter":"/jobs/"`, `"url_filter":{"include":"/jobs/","exclude":"/2$"}`, 1)
+				}
 				worker := queue.Simple
 				if route == "proxy" {
 					md = proxyFixtureMetadata(t, md, true)

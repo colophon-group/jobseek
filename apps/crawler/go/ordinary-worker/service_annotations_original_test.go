@@ -160,7 +160,7 @@ func runServiceAnnotationOriginalCases(t *testing.T, cases []sharedServiceOrigin
 				}
 			}
 			if e != nil || got.Truncated || len(got.Jobs) != len(c.Expected) || calls == 0 || !c.Browser && calls != len(c.Exchanges) {
-				t.Fatal("original inventory differs", e)
+				t.Fatal("original inventory differs", e, "jobs", len(got.Jobs), "expected", len(c.Expected), "requests", calls, "expected requests", len(c.Exchanges))
 			}
 			sort.Slice(got.Jobs, func(i, j int) bool { return got.Jobs[i].URL < got.Jobs[j].URL })
 			sort.Slice(c.Expected, func(i, j int) bool { return c.Expected[i]["url"].(string) < c.Expected[j]["url"].(string) })

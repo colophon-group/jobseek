@@ -1,68 +1,66 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1002 delivered, grouped source1003 candidate
+## Current checkpoint — source1003 active, grouped DOM/API continuation
 
-[PR #10398](https://github.com/colophon-group/jobseek/pull/10398) merged as
-`560b761a108ec4b25d813ad24227d4894efc7419`, version **0.13.1002**, with seven
-new compiled profiles (184 total). Its original
-[crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38038078508)
-succeeded at attempt one; the original
-[renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38038188224)
-succeeded at attempt two using the existing stopped-OOM recovery path. Independent
-observation binds both crawler images and the running OOM-free renderer to that
-source. Successful exporter progress is independently verified; see the
-[portable deployment proof](evidence/go-native-source1002-deployment-2026-10-10.json). The earlier full
-source1001 owner and B0 were retired through the supported workflows; outgoing
-cold268 verification preserved all historical SQL/fences. Production currently
-uses the restored legacy owners. Incoming full native activation is deferred:
-review found a missing Papa John's runtime proxy selection, now corrected in the
-next grouped release. Do not give that known invalid source1002 monitor native
-ownership. Scheduled cross-store reconciliation retains its normal mutation lock.
+[PR #10399](https://github.com/colophon-group/jobseek/pull/10399) is delivered as
+`a482884ba54c83e528067932c7563a3197c62c04`, version **0.13.1003**, with **190**
+compiled profiles. It ports Talemetry, Prospective and KIPT together and fixes
+proxy client selection from the compiled ownership profile. The original
+[crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38042470612)
+and [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38042709007)
+both succeeded at attempt one. Lightpanda **1.0.0** remains the latest official
+stable release, rechecked October 10; production uses its immutable upstream digest.
 
-Candidate **0.13.1003** ports **Talemetry, Prospective and KIPT together**, with six
-new profiles (190 total), and selects scheduler proxy
-clients from the compiled ownership profile, fixing Papa John's and Talemetry
-and preventing provider allowlist drift. Real authenticated CONNECT fixtures verify the selected client reaches
-the existing canonical writer. Fifty original frozen contracts, four complete
-canonical registry bindings, 33 verified synthetic inventories, six publisher
-precedence cases and 36 real PostgreSQL/Redis cases pass: twelve grouped monitor
-settlements, three public PDF settlements, three Papa John's proxy regressions
-and eighteen cold retirements. Both original
-Talemetry public inventories have full verified offline transport replay (1,436
-jobs). Prospective's 68 original concurrent responses preserve its atomic failure;
-returned cookies must have been issued by captured responses and respect jar scope.
-Offline session expiry is shifted by the capture clock, preserving cookie lifetime,
-deletion, scope and opaque values. No expiry policy changes at runtime.
+Supported full Go ownership is **active at epoch269**, independently verified
+against SQL, Redis, exact installed images and HTTP health: **7,698 monitors and
+2,751 detail boards**, with **1,472,358 of 1,502,631 inspected scheduled detail
+postings** admitted. Forty-two detail boards with cached-route mismatches and one
+unsupported Eightfold route retain their existing owner. All ten writers have
+zero restarts in the initial readback. The later natural sample has 203 completed
+monitor receipts with 203 exact recurring schedules and zero retained leases,
+plus eleven completed scrapes and five active monitor claims. This bounded
+sample does not establish whole-fleet freshness or cost. See [portable production proof](evidence/go-native-source1003-production-2026-10-10.json).
+Activation completed through the original wrapper after its PostgreSQL WAL wait;
+no lock, ownership, writer-quiescence or recovery guard was bypassed.
 
-KIPT's complete original public inventory fails atomically on its second bulletin;
-Go preserves that failure. The first PDF has exact posting identity, title and date.
-A rendered-page and word-bounds review found one spurious Python space inside a
-continuous word. Native extraction retains the corrected word, six paragraphs and
-all other characters. The qualification exception is bound to that exact PDF and
-both description hashes; no general text normalization waiver is permitted.
-Native PDF extraction uses bounded Poppler without Python. Real complete, partial
-and publisher-reserved PDF settlements verify the writer and reject partial-prefix
-publication. Linux live-public success and production activation are not claimed
-by the macOS offline replays. See the [grouped qualification](evidence/go-native-localized-pdf-talemetry-qualification-2026-10-10.json) before
-admission. All enabled boards and the Unisante pending migration flag are retained.
+Candidate **0.13.1004** extends the existing **DOM and API-sniffer families together**.
+Fresh screening of the source1003 remaining cohort identifies **12** newly
+supported boards: ten DOM inventories across Prospective, Vagas, LG, Yousty,
+Jobtoolz, Dualoo, Lucca and explicit empty rows, plus Cox and Fresenius Kabi root
+API arrays. Probe markers remain bound in ownership metadata. Prospective medium
+identity, publisher scope, UUID canonicalization and explicit-empty authority are
+verified before accepting rows. API inventory root `$` preserves the original
+root shortcut; `json_path_values` with that shortcut remains rejected. Original
+DOM extraction checks excluded detail URLs before shared dispatcher filtering,
+preserving failure and publisher precedence.
 
-Deliver this grouped PR with fresh exact-head required checks and the deploy gate.
-Retire any current native owner through the original workflow, independently
-verify source1002 cold state after reconciliation, and deploy source1003 through
-the original whole-service and renderer workflows. Bind exact installed images,
-verify incoming cold/export readiness, then stage B0 and reconcile all actual
-scheduled routes before full native owner staging/activation/readback. Avoid an
-intermediate source1002 cutover that would immediately need retirement.
-Lightpanda stays pinned to latest official stable **1.0.0**, verified October 10.
+Original full public DOM captures contain **159 jobs across ten boards**, with
+exact native field/request replay. Original Chromium navigation captures both
+API inventories; actual pinned Lightpanda 1.0.0 on macOS reproduces **10 jobs with
+all original fields** and proves child cleanup. These observations do not claim
+Linux live-public success. The grouped candidate has 34 frozen original cases,
+67 real PostgreSQL/Redis settlement and cold-retirement cases passing. Full local
+queue and worker suites each exposed one obsolete test expectation; both corrected
+focused race tests and vet/tidy pass. See [portable qualification](evidence/go-native-dom-provider-api-root-qualification-2026-10-10.json). Require
+complete exact-head CI and physical Linux root-array session coverage before
+fresh exact-head required CI, deploy gate, merge and original whole-service
+rollout. Keep every board and configuration intact, including provider markers.
 
-The source1001 census left 195 monitors outside its ordinary cohort, including
-three already native B0 boards: DOM 123, API-sniffer 26, Accenture 12, BrassRing
-four and RSS eight. The source1002 admission was not activated; recensus after
-source1003 and target shared DOM provider/action/pagination and API browser options
-**together** next. Keep cached-route exceptions on their working owner until
-qualified. Whole-fleet freshness, queue conservation, comparable whole-service
-cost, supported reversal observation and production Python/browser retirement
-remain required. The full migration goal is active and incomplete.
+The current full census leaves **184 monitors outside Go ownership**: DOM 121,
+API-sniffer 26, Accenture 12, BrassRing 4, RSS 8, inline 5, Nextdata 2, Oracle HCM 2,
+and one each Njoyn, Candidatus, Workday and Amazon. The grouped candidate closes
+12 of these after qualification and actual activation. Prioritize shared DOM
+browser actions/pagination and API browser options in broad batches next. The
+[Accenture/BrassRing candidate #10394](https://github.com/colophon-group/jobseek/pull/10394)
+retains all sixteen boards; original Accenture parity is established while
+BrassRing public Lightpanda qualification remains open.
+
+Deliver the remaining enabled monitor/detail profiles, runtime/deployment and
+maintenance consumers. Prove natural fleet freshness and queue conservation,
+comparable whole-service CPU/RAM/density/cost and the supported reversal window.
+Then retire production Python execution, Playwright, Chromium and runtime-only
+assets, preserving useful isolated offline Python tooling and every enabled
+board. The full migration goal remains active and incomplete.
 
 ## Historical checkpoint — source1001 active before supported retirement
 
@@ -131,8 +129,7 @@ remains open for all four BrassRing boards. Keep all sixteen in scope, rebase on
 actual main and repeat exact-head checks before delivery.
 
 Continue multiple related types per iteration: remaining Candidatus/Njoyn browser
-sessions, KIPT PDF inventories, Prospective localized inventories and Talemetry,
-plus the remaining DOM/API/inline/RSS options. Reuse existing transport, preparation,
+sessions and the remaining DOM/API/inline/RSS options. Reuse existing transport, preparation,
 queue and persistence contracts; introduce a provider-specific boundary only
 where the original behavior requires it. Qualify complete output and operational
 effects once per grouped batch and proceed to delivery after the required checks.

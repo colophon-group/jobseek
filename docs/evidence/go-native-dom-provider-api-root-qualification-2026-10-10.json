@@ -1,0 +1,235 @@
+{
+  "schema": "jobseek.go-native-grouped-qualification/v1",
+  "observed_at_utc": "2026-10-10T11:17:39.380870+00:00",
+  "base_source": "a482884ba54c83e528067932c7563a3197c62c04",
+  "candidate_version": "0.13.1004",
+  "candidate_profiles": 190,
+  "new_canonical_boards": 12,
+  "scope": [
+    "shared DOM provider metadata and Prospective medium/UUID/empty proofs",
+    "API root inventories and physical captured-session replay",
+    "DOM excluded-detail verification before shared dispatch filtering"
+  ],
+  "original_frozen_contracts": {
+    "DOM": 26,
+    "API": 8,
+    "total": 34,
+    "additional_browser_replay_executions": 8
+  },
+  "real_pg_redis_cases": {
+    "DOM_provider_settlement": 16,
+    "API_root_settlement": 9,
+    "excluded_detail_verification_precedence": 9,
+    "cold_retirement": 33,
+    "total": 67
+  },
+  "public_original_captures": [
+    {
+      "family": "DOM",
+      "board_slug": "ammann-abg",
+      "status": "complete",
+      "complete_jobs": 18,
+      "capture_sha256": "3b6da79cd43bdacfef031622dd13041467f454d0def746701726f2704dd91213",
+      "exchanges": 19
+    },
+    {
+      "family": "DOM",
+      "board_slug": "bdo-brazil",
+      "status": "complete",
+      "complete_jobs": 13,
+      "capture_sha256": "c253878c9b416ed851496ecd3ab96bc896ff8252b7fc9ad29cb5ebfadabe5287",
+      "exchanges": 5
+    },
+    {
+      "family": "DOM",
+      "board_slug": "cencora-profarma-lg",
+      "status": "complete",
+      "complete_jobs": 61,
+      "capture_sha256": "0d98833457e3fc2448bd3799321c55a8c7505dc0bce062a1e48d7a4a4b9bc38a",
+      "exchanges": 8
+    },
+    {
+      "family": "DOM",
+      "board_slug": "finma-careers",
+      "status": "complete",
+      "complete_jobs": 10,
+      "capture_sha256": "13e8ee1c745da61a83e40550b12be584ab644f09f7c7ce9a5315d98258dd15f6",
+      "exchanges": 1
+    },
+    {
+      "family": "DOM",
+      "board_slug": "ge-healthcare-icometrix",
+      "status": "complete",
+      "complete_jobs": 2,
+      "capture_sha256": "92d83beee88fe4b20bc4905792700ccd5edf36d512951219895890884941e739",
+      "exchanges": 3
+    },
+    {
+      "family": "DOM",
+      "board_slug": "implenia-apprenticeships-ch",
+      "status": "complete",
+      "complete_jobs": 17,
+      "capture_sha256": "84da7259faee9f9977ffe8a24879525ba212bcee1a7a9d22207263dabcfb6f17",
+      "exchanges": 23
+    },
+    {
+      "family": "DOM",
+      "board_slug": "international-skating-union-lucca",
+      "status": "complete",
+      "complete_jobs": 2,
+      "capture_sha256": "34e16d9aecc1cd2ff27095a57506e0af2949c220c4243e62ebe6292f199e10d3",
+      "exchanges": 1
+    },
+    {
+      "family": "DOM",
+      "board_slug": "swiss-medical-network-spital-zofingen",
+      "status": "complete",
+      "complete_jobs": 30,
+      "capture_sha256": "9a2687e017ee18481f9f87d797bcc73ec56a089dd54df35fa7cb25bd50f96914",
+      "exchanges": 1
+    },
+    {
+      "family": "DOM",
+      "board_slug": "unaids-consulting",
+      "status": "complete",
+      "complete_jobs": 1,
+      "capture_sha256": "93eb56a12a95764f9496d831894b46dde1d98194f8a0464e35d028709f7670b3",
+      "exchanges": 1
+    },
+    {
+      "family": "DOM",
+      "board_slug": "world-aquatics-lucca",
+      "status": "complete",
+      "complete_jobs": 5,
+      "capture_sha256": "1a3ad66331bca35502721782a6b7e5e0a30472031127e5e9284d32974daf851b",
+      "exchanges": 1
+    },
+    {
+      "family": "API",
+      "board_slug": "cox-careers-au",
+      "status": "complete",
+      "complete_jobs": 7,
+      "capture_sha256": "664ccc8a3e20dd4a42ddd591e9f0338bb0fb3e7eb2f2dc456e81759ddc17930e",
+      "exchanges": 0
+    },
+    {
+      "family": "API",
+      "board_slug": "fresenius-kabi-australia-new-zealand",
+      "status": "complete",
+      "complete_jobs": 3,
+      "capture_sha256": "7954e180094b3892ecf489990e469d7dba1e65dcfae52b6cbadc9cb5fd13730a",
+      "exchanges": 0
+    }
+  ],
+  "public_complete_jobs": 169,
+  "public_validation": {
+    "DOM": "All original fields and requests replayed for ten complete original inventories (159 jobs).",
+    "API": "Both original Chromium navigation-captured inventories reproduce all fields through actual pinned Lightpanda 1.0.0 on macOS arm64 (10 jobs), session59657 PASS12.651s; child cleanup proved. No Linux live-public claim.",
+    "DOM_public_replay_log_sha256": "b4f03f709a3ec73325a9b00d1ce6f4848450486bf9eeb6182439fd16d70367fc"
+  },
+  "lightpanda": {
+    "version": "1.0.0",
+    "release_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
+    "upstream_digest": "sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e",
+    "official_macos_arm64_sha256": "955440053a84754dd64c62f970449a56a2b350cdf43ea5f2e809a73047b8173d"
+  },
+  "local_checks": [
+    {
+      "module": "api-sniffer-monitor",
+      "check": "full race with required PostgreSQL/Redis for queue/worker",
+      "log_sha256": "d6256a69ecac01c6602c4ffec10a4b130d7640b68e63eb59e4be719b18d2fcbc",
+      "outcome": "PASS",
+      "failed_test": null
+    },
+    {
+      "module": "dom-detail",
+      "check": "full race with required PostgreSQL/Redis for queue/worker",
+      "log_sha256": "d41040386ce2e5c279c51156bd0c005ffa89d220dfd2c5cddcc5ea11d60c28ed",
+      "outcome": "PASS",
+      "failed_test": null
+    },
+    {
+      "module": "ordinary-queue",
+      "check": "full race with required PostgreSQL/Redis for queue/worker",
+      "log_sha256": "d17e13bd276e2759133684d30e9b6c984e739e7345c355aee227429d1ae050ec",
+      "outcome": "All tests passed except one outdated expectation corrected by focused race test",
+      "failed_test": "TestSharedDOMAPICurrentRegistryPreservesDeclaredTransports"
+    },
+    {
+      "module": "ordinary-worker",
+      "check": "full race with required PostgreSQL/Redis for queue/worker",
+      "log_sha256": "9c3b43c6124ae9a44279be131f6d2c0bee8562546143c4ce108cc0265e108e65",
+      "outcome": "All tests passed except one outdated expectation corrected by focused race test",
+      "failed_test": "TestStaticDOMListingRetainsFrozenPythonURLsAndFilters"
+    },
+    {
+      "module": "ordinary-queue",
+      "check": "focused-race",
+      "returncode": 0,
+      "seconds": 2.283,
+      "log": "native-dom-api-final-ordinary-queue-focused-race6-2026-10-10.log",
+      "sha256": "632e62fccc82beddeaeda795c091ac5a288b3f80ac215db51a86b73740a1cd75"
+    },
+    {
+      "module": "ordinary-queue",
+      "check": "vet",
+      "returncode": 0,
+      "seconds": 0.173,
+      "log": "native-dom-api-final-ordinary-queue-vet6-2026-10-10.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "module": "ordinary-queue",
+      "check": "tidy",
+      "returncode": 0,
+      "seconds": 0.042,
+      "log": "native-dom-api-final-ordinary-queue-tidy6-2026-10-10.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "module": "ordinary-worker",
+      "check": "focused-race",
+      "returncode": 0,
+      "seconds": 2.613,
+      "log": "native-dom-api-final-ordinary-worker-focused-race6-2026-10-10.log",
+      "sha256": "619bc34ce42f263181c6c90fb24e77cfd25a0db634839be6df120910efe0884f"
+    },
+    {
+      "module": "ordinary-worker",
+      "check": "vet",
+      "returncode": 0,
+      "seconds": 0.243,
+      "log": "native-dom-api-final-ordinary-worker-vet6-2026-10-10.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "module": "ordinary-worker",
+      "check": "tidy",
+      "returncode": 0,
+      "seconds": 0.073,
+      "log": "native-dom-api-final-ordinary-worker-tidy6-2026-10-10.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "local_broad_test_limit": "Full queue/worker suites each found one obsolete expectation; focused corrected tests and vet/tidy pass. Required CI must run all suites and physical Linux amd64/arm64 root-array navigation/session/publisher tests on the final exact head.",
+  "runtime_sha256": {
+    "apps/crawler/go/api-sniffer-monitor/options.go": "6f18dca654d57fcd382b84e4815ae4c665e50c4751942c1dd8919a4d77e6e3ed",
+    "apps/crawler/go/dom-detail/listing.go": "37f4f373480876698cd557daf361a927e1f42a779ede7569f9020fecdf8191be",
+    "apps/crawler/go/dom-detail/listing_empty.go": "d880178997dbedd42e735bce6c729912ca3a8d4d5d494ea437196fd1a9e235dc",
+    "apps/crawler/go/dom-detail/listing_provider.go": "5f1f4531a6bee1d927941a9b28485092b4b4f97f4828a0129d40f415acadc650",
+    "apps/crawler/go/ordinary-queue/profile_dom_monitor.go": "5bdcb42ba8c9cd836bc03b3623f9187cd48b5ea428fbe12896049a371a3e7372",
+    "apps/crawler/go/ordinary-queue/profile_rendered_monitor.go": "72d196f868f1b0a7edcc12f8a6fd6817ae56961b5db13607feb24fe20ab75b02",
+    "apps/crawler/go/ordinary-queue/profile_rich.go": "fce48ae1f254393d802df95c66d829405b9c71ba901a65b234e799a643042c97",
+    "apps/crawler/go/ordinary-worker/dom_monitor_discovery.go": "6909edb008db052995b4d8302bc86a67a82c7017c79824606eb10993fab144ac",
+    "pilots/go-lightpanda/Dockerfile": "72516ce2784396955ce488d5359e7c7e97f6d7e3a41cab1a7f7887eb310b3dd1"
+  },
+  "required_ci": "pending final exact-head CI; merge blocked until green Required CI and Crawler Deploy Gate, including physical renderer checks",
+  "production": "Source1003 remains independently verified active269. Candidate1004 not yet pushed, merged or deployed.",
+  "physical_ci_first_head": {
+    "head": "606b5190dbc9fcefa7bb60933f586b66a0790d77",
+    "run": 38047938844,
+    "arm64_job": 114201144822,
+    "result": "Root-array session succeeded with two jobs; later publisher denial PASS. Test incorrectly expected unknown-total page-cap truncation. Corrected to original _item_result_is_truncated(... total=None, cap=50000) == False. Runtime unchanged. Final exact-head physical CI still required.",
+    "private_failure_log_sha256": "9a223841d4c0c818778353458e50026f2092dc69a07d6400abc757ba242beb7c"
+  }
+}

@@ -1,0 +1,147 @@
+{
+  "schema": "jobseek.native-source-production/v1",
+  "observed_at_utc": "2026-10-10T10:38:32.854441+00:00",
+  "source_revision": "a482884ba54c83e528067932c7563a3197c62c04",
+  "version": "0.13.1003",
+  "pr": "https://github.com/colophon-group/jobseek/pull/10399",
+  "crawler_workflow": {
+    "run_id": 38042470612,
+    "attempt": 1,
+    "conclusion": "success"
+  },
+  "renderer_workflow": {
+    "run_id": 38042709007,
+    "attempt": 1,
+    "conclusion": "success"
+  },
+  "latest_lightpanda": {
+    "release": "1.0.0",
+    "official_release": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
+    "upstream_image": "lightpanda/browser@sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e",
+    "verified_on_utc": "2026-10-10"
+  },
+  "identities": {
+    "JOBSEEK_DEPLOY_REVISION": "a482884ba54c83e528067932c7563a3197c62c04",
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:326eb83e4a1ca6fc042fc705d8217cf36cfcac1499c0e27e84c2e58dffdc72c2",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:7194f3cea09d029a644f62279f9a67e5b46b1d4275406051de92f24dd2792971"
+  },
+  "renderer_image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:c9c343ed38f496640662104184c4fe9c28db3d9d0150c8abe5dba2c7b1274a58",
+  "active_authority": {
+    "routing_epoch": 269,
+    "plan_sha256": "0411923b5d23fc8e7881577c4c4f544d7eaefa8d23acf9cd1988eb4196996115",
+    "projection_sha1": "d79da9f87318a7118ac98b1e2bfcd0b3abafb010",
+    "ordinary_receipt_sha256": "ca83d2bdc2d4c2e14cfff62685dfb5e9a978fda8ebbed6819c9f39a95c801a8d",
+    "b0_receipt_sha256": "fc7ffd021d913b1558d63ac39db2eec2b1f8dca30e2df1ae03ae53e159044756",
+    "monitor_boards": 7698,
+    "detail_boards": 2751
+  },
+  "admission": {
+    "actual_posting_routes_reconciled": true,
+    "scheduled_detail_postings": 1502631,
+    "scheduled_owned_postings": 1472358,
+    "changed_projection": 0,
+    "cached_unsupported": 0,
+    "cache_rejected_boards": 42,
+    "route_rejected_boards": 1,
+    "excluded_verified_b0_boards": 3
+  },
+  "health_status": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200,
+    "lightpanda-claimant": 204,
+    "ordinary-go": 204
+  },
+  "writers": [
+    {
+      "service": "worker-1",
+      "running": true,
+      "restart": "unless-stopped",
+      "restart_count": 0
+    },
+    {
+      "service": "worker-2",
+      "running": true,
+      "restart": "unless-stopped",
+      "restart_count": 0
+    },
+    {
+      "service": "worker-3",
+      "running": true,
+      "restart": "unless-stopped",
+      "restart_count": 0
+    },
+    {
+      "service": "browser-1",
+      "running": true,
+      "restart": "unless-stopped",
+      "restart_count": 0
+    },
+    {
+      "service": "drain",
+      "running": true,
+      "restart": "unless-stopped",
+      "restart_count": 0
+    },
+    {
+      "service": "exporter",
+      "running": true,
+      "restart": "unless-stopped",
+      "restart_count": 0
+    },
+    {
+      "service": "lightpanda-producer",
+      "running": true,
+      "restart": "unless-stopped",
+      "restart_count": 0
+    },
+    {
+      "service": "lightpanda-executor",
+      "running": true,
+      "restart": "unless-stopped",
+      "restart_count": 0
+    },
+    {
+      "service": "lightpanda-claimant",
+      "running": true,
+      "restart": "unless-stopped",
+      "restart_count": 0
+    },
+    {
+      "service": "ordinary-go",
+      "running": true,
+      "restart": "unless-stopped",
+      "restart_count": 0
+    }
+  ],
+  "natural_summary": {
+    "observed_at": "2026-10-10T10:38:31.971061+00:00",
+    "fences_by_task": [
+      {
+        "task_kind": "monitor",
+        "state": "active",
+        "count": 5
+      },
+      {
+        "task_kind": "monitor",
+        "state": "completed",
+        "count": 203
+      },
+      {
+        "task_kind": "scrape",
+        "state": "completed",
+        "count": 11
+      }
+    ],
+    "scope": "naturally scheduled active269 native claims; no replay or synthetic work injected"
+  },
+  "bounded_receipt_observation": {
+    "completed_monitors": 203,
+    "retained_completion_leases": 0,
+    "exact_committed_schedules": 203
+  },
+  "scope": "Original whole-service deployment and supported full Go activation, independently bound in SQL/Redis/HTTP. Natural sample is bounded; whole-fleet freshness, cost and full Python/browser retirement are not established. Cache/route exceptions retain existing ownership."
+}

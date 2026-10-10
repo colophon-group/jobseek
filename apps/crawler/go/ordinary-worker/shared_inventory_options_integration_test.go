@@ -22,10 +22,21 @@ func TestRealAPILegacyRootEnrichPreservesNoDetailScheduling(t *testing.T) {
 }
 
 func TestRealAPISlugFieldsDirectProxyRenderedTerminalEffects(t *testing.T) {
+	realAPISlugFields(t, false)
+}
+
+func TestRealAPIRootArrayDirectProxyRenderedTerminalEffects(t *testing.T) {
+	realAPISlugFields(t, true)
+}
+
+func realAPISlugFields(t *testing.T, rootArray bool) {
 	for _, route := range []string{"direct", "proxy", "rendered"} {
 		for _, mode := range []string{"complete", "publisher", "failed"} {
 			t.Run(route+"/"+mode, func(t *testing.T) {
 				md := map[string]any{"api_url": "https://example.com/api", "json_path": "jobs", "url_template": "https://example.com/jobs/{id}/{slug}", "slug_fields": []string{"title"}, "fields": map[string]string{"title": "title", "description": "body", "locations": "city"}, "enrich": []string{"description"}, "scraper_type": "skip", "transport_attempts": 1}
+				if rootArray {
+					md["json_path"] = "$"
+				}
 				worker := queue.Simple
 				if route == "proxy" {
 					md["proxy"] = true
@@ -45,7 +56,12 @@ func TestRealAPISlugFieldsDirectProxyRenderedTerminalEffects(t *testing.T) {
 				if e != nil {
 					t.Fatal(e)
 				}
-				body, _ := json.Marshal(map[string]any{"jobs": []any{map[string]any{"id": f.company, "title": "Senior Software Engineer & Platform + été", "body": "<p>Build Go services in Zurich.</p>", "city": "Zurich"}}})
+				items := []any{map[string]any{"id": f.company, "title": "Senior Software Engineer & Platform + été", "body": "<p>Build Go services in Zurich.</p>", "city": "Zurich"}}
+				var payload any = map[string]any{"jobs": items}
+				if rootArray {
+					payload = items
+				}
+				body, _ := json.Marshal(payload)
 				calls := 0
 				client := verifiedClaimFixtureClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					calls++
