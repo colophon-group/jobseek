@@ -1,0 +1,124 @@
+[
+  {
+    "name": "relative",
+    "source": "<table><tr class=\"item\" onclick=\"window.location = &#x27;one/&#x27;;\"><td>Role</td></tr></table>",
+    "base": "https://jobs.example/jobs/",
+    "selector": "tr.item",
+    "include": "",
+    "urls": [
+      "https://jobs.example/jobs/one/"
+    ]
+  },
+  {
+    "name": "href",
+    "source": "<table><tr class=\"item\" onclick=\"window.location.href=&#x27;two/&#x27;;\"><td>Role</td></tr></table>",
+    "base": "https://jobs.example/jobs/",
+    "selector": "tr.item",
+    "include": "",
+    "urls": [
+      "https://jobs.example/jobs/two/"
+    ]
+  },
+  {
+    "name": "javascript",
+    "source": "<table><tr class=\"item\" onclick=\" JaVaScRiPt: WINDOW.LOCATION = &#x27;one/?a=1&amp;amp;b=2&#x27;; \"><td>Role</td></tr></table>",
+    "base": "https://jobs.example/jobs/",
+    "selector": "tr.item",
+    "include": "",
+    "urls": [
+      "https://jobs.example/jobs/one/?a=1&b=2"
+    ]
+  },
+  {
+    "name": "unicode",
+    "source": "<table><tr class=\"item\" onclick=\"window.location=&#x27;/jobs/Genève&#x27;;\"><td>Role</td></tr></table>",
+    "base": "https://jobs.example/jobs/",
+    "selector": "tr.item",
+    "include": "",
+    "urls": [
+      "https://jobs.example/jobs/Genève"
+    ]
+  },
+  {
+    "name": "malformed",
+    "source": "<table><tr class=\"item\" onclick=\"window.open(&#x27;/jobs/one&#x27;);\"><td>Role</td></tr></table>",
+    "base": "https://jobs.example/jobs/",
+    "selector": "tr.item",
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "cross-origin",
+    "source": "<table><tr class=\"item\" onclick=\"window.location=&#x27;https://other.example/role&#x27;;\"><td>Role</td></tr></table>",
+    "base": "https://jobs.example/jobs/",
+    "selector": "tr.item",
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "quote-mismatch",
+    "source": "<table><tr class=\"item\" onclick=\"window.location=&#x27;one/&quot;;\"><td>Role</td></tr></table>",
+    "base": "https://jobs.example/jobs/",
+    "selector": "tr.item",
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "multiple-actions",
+    "source": "<table><tr class=\"item\" onclick=\"window.location=&#x27;one/&#x27;; alert(1);\"><td>Role</td></tr></table>",
+    "base": "https://jobs.example/jobs/",
+    "selector": "tr.item",
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "overlong",
+    "source": "<table><tr class=\"item\" onclick=\"window.location=&#x27;xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&#x27;;\"><td>Role</td></tr></table>",
+    "base": "https://jobs.example/jobs/",
+    "selector": "tr.item",
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "duplicate",
+    "source": "<table><tr class=\"item\" onclick=\"window.location=&#x27;one/&#x27;;\"><td>Role</td></tr><table><tr class=\"item\" onclick=\"window.location=&#x27;one/&#x27;;\"><td>Role</td></tr></table>",
+    "base": "https://jobs.example/jobs/",
+    "selector": "tr.item",
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "missing-action",
+    "source": "<table><tr class=\"item\"><td>Role</td></tr></table>",
+    "base": "https://jobs.example/jobs/",
+    "selector": "tr.item",
+    "include": "",
+    "error": true
+  },
+  {
+    "name": "empty",
+    "source": "<table></table>",
+    "base": "https://jobs.example/jobs/",
+    "selector": "tr.item",
+    "include": "",
+    "urls": []
+  },
+  {
+    "name": "filter-match",
+    "source": "<table><tr class=\"item\" onclick=\"window.location=&#x27;one/&#x27;;\"><td>Role</td></tr></table>",
+    "base": "https://jobs.example/jobs/",
+    "selector": "tr.item",
+    "include": "/one/",
+    "urls": [
+      "https://jobs.example/jobs/one/"
+    ]
+  },
+  {
+    "name": "filter-reject",
+    "source": "<table><tr class=\"item\" onclick=\"window.location=&#x27;one/&#x27;;\"><td>Role</td></tr></table>",
+    "base": "https://jobs.example/jobs/",
+    "selector": "tr.item",
+    "include": "/other/",
+    "error": true
+  }
+]

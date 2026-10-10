@@ -1,0 +1,219 @@
+[
+  {
+    "name": "legacy-city",
+    "query": "contains(text, `Geneva`)",
+    "data": {
+      "text": "Geneva"
+    },
+    "failed": false,
+    "result": true
+  },
+  {
+    "name": "legacy-unicode",
+    "query": "contains(text, `Genève`)",
+    "data": {
+      "text": "Genève"
+    },
+    "failed": false,
+    "result": true
+  },
+  {
+    "name": "legacy-whitespace",
+    "query": "`  Geneva `",
+    "data": {},
+    "failed": false,
+    "result": "Geneva "
+  },
+  {
+    "name": "number",
+    "query": "`123`",
+    "data": {},
+    "failed": false,
+    "result": 123
+  },
+  {
+    "name": "boolean",
+    "query": "`true`",
+    "data": {},
+    "failed": false,
+    "result": true
+  },
+  {
+    "name": "null",
+    "query": "`null`",
+    "data": {},
+    "failed": false,
+    "result": null
+  },
+  {
+    "name": "array",
+    "query": "`[1,2]`",
+    "data": {},
+    "failed": false,
+    "result": [
+      1,
+      2
+    ]
+  },
+  {
+    "name": "object",
+    "query": "`{\"a\":1}`",
+    "data": {},
+    "failed": false,
+    "result": {
+      "a": 1
+    }
+  },
+  {
+    "name": "escaped-backtick",
+    "query": "`a\\`b`",
+    "data": {},
+    "failed": false,
+    "result": "a`b"
+  },
+  {
+    "name": "escaped-backslash",
+    "query": "`a\\\\b`",
+    "data": {},
+    "failed": false,
+    "result": "a\\b"
+  },
+  {
+    "name": "escaped-tab",
+    "query": "`a\\tb`",
+    "data": {},
+    "failed": false,
+    "result": "a\tb"
+  },
+  {
+    "name": "raw-string-backtick",
+    "query": "contains(text, 'literal`tick')",
+    "data": {
+      "text": "literal`tick"
+    },
+    "failed": false,
+    "result": true
+  },
+  {
+    "name": "quoted-key-backtick",
+    "query": "\"has`tick\"",
+    "data": {
+      "has`tick": "value"
+    },
+    "failed": false,
+    "result": "value"
+  },
+  {
+    "name": "empty-legacy",
+    "query": "``",
+    "data": {},
+    "failed": false,
+    "result": ""
+  },
+  {
+    "name": "invalid-quote",
+    "query": "`broken\"quote`",
+    "data": {},
+    "failed": true
+  },
+  {
+    "name": "invalid-escape",
+    "query": "`bad\\q`",
+    "data": {},
+    "failed": true
+  },
+  {
+    "name": "unterminated",
+    "query": "`unfinished",
+    "data": {},
+    "failed": true
+  },
+  {
+    "name": "valid-string",
+    "query": "`\"plain\"`",
+    "data": {},
+    "failed": false,
+    "result": "plain"
+  },
+  {
+    "name": "legacy-array-projection",
+    "query": "rows[?role == `Engineer`].name",
+    "data": {
+      "rows": [
+        {
+          "role": "Engineer",
+          "name": "A"
+        },
+        {
+          "role": "Writer",
+          "name": "B"
+        }
+      ]
+    },
+    "failed": false,
+    "result": [
+      "A"
+    ]
+  },
+  {
+    "name": "configured-gonet-legacy-literals",
+    "query": "[1].children[8].collections[0].pages[].{title:title,content:content,job_description:fields.job_description.value,slug:slug,source_id:id,seo_title:fields.seo_title.value,seo_description:fields.seo_description.value,locations:[contains(fields.job_description.value, `Geneva`) && `Geneva`, contains(fields.job_description.value, `Genève`) && `Genève`, contains(fields.job_description.value, `Lausanne`) && `Lausanne`, contains(fields.job_description.value, `Zurich`) && `Zurich`, contains(fields.job_description.value, `Lugano`) && `Lugano`][?@]}",
+    "data": [
+      null,
+      {
+        "children": [
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {},
+          {
+            "collections": [
+              {
+                "pages": [
+                  {
+                    "id": 42,
+                    "title": "Software Engineer",
+                    "slug": "software-engineer",
+                    "content": "<p>Build reliable systems.</p>",
+                    "fields": {
+                      "job_description": {
+                        "value": "Geneva and Genève, Zurich"
+                      },
+                      "seo_title": {
+                        "value": "Engineer"
+                      },
+                      "seo_description": {
+                        "value": "Engineering role"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "failed": false,
+    "result": [
+      {
+        "title": "Software Engineer",
+        "content": "<p>Build reliable systems.</p>",
+        "job_description": "Geneva and Genève, Zurich",
+        "slug": "software-engineer",
+        "source_id": 42,
+        "seo_title": "Engineer",
+        "seo_description": "Engineering role",
+        "locations": [
+          "Geneva",
+          "Genève",
+          "Zurich"
+        ]
+      }
+    ]
+  }
+]

@@ -19,6 +19,8 @@ type ListingConfig struct {
 	IncludeBoardURL, RequireJSONLD       bool
 	Pagination                           *ListingPagination
 	RichRows                             *RichRowsConfig
+	ScriptLinks                          *ScriptLinksConfig
+	OnclickSelector                      string
 	EmptySelector, EmptyText             string
 	FetchURL                             string
 	BoardURL                             string
@@ -32,7 +34,7 @@ type ListingConfig struct {
 func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 	c := ListingConfig{Attempts: 3, BoardURL: endpoint}
 	allowed := map[string]bool{}
-	for _, key := range []string{"include_board_url", "require_jsonld_jobposting", "advertised_total", "empty_states", "empty_selector", "empty_text", "url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "url_transform"} {
+	for _, key := range []string{"onclick_selector", "script_json_links", "include_board_url", "require_jsonld_jobposting", "advertised_total", "empty_states", "empty_selector", "empty_text", "url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "url_transform"} {
 		allowed[key] = true
 	}
 	for key := range config {
@@ -120,6 +122,20 @@ func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 		}
 	}
 	var err error
+	c.ScriptLinks, err = ScriptLinksOptions(config["script_json_links"])
+	if err != nil {
+		return c, err
+	}
+	c.OnclickSelector, err = proofSelector(config["onclick_selector"], false)
+	if err != nil {
+		return c, err
+	}
+	if c.ScriptLinks != nil && (c.OnclickSelector != "" || c.Selector != "" || config["pagination"] != nil || config["empty_states"] != nil || config["empty_selector"] != nil || config["empty_text"] != nil || config["advertised_total"] != nil || c.IncludeBoardURL) {
+		return c, errScriptListing
+	}
+	if c.OnclickSelector != "" && (config["pagination"] != nil || c.IncludeBoardURL) {
+		return c, errScriptListing
+	}
 	c.Pagination, err = listingPagination(config["pagination"], endpoint)
 	if err != nil {
 		return c, err

@@ -152,10 +152,14 @@ func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[stri
 	// normalized. Bind the sequence without changing the stored config shape.
 	if DOMMonitorUsesRichRows(profile) {
 		options, err := DOMMonitorOptions(config)
-		if err != nil || options.RichRows == nil {
+		if err != nil || options.RichRows == nil && !options.ScriptLinks.Rich() {
 			return fail()
 		}
-		ordered, err := json.Marshal(options.RichRows.Replacements)
+		var replacements any
+		if options.RichRows != nil {
+			replacements = options.RichRows.Replacements
+		}
+		ordered, err := json.Marshal(replacements)
 		if err != nil {
 			return fail()
 		}

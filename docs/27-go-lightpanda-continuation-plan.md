@@ -2,6 +2,56 @@
 
 ## Current checkpoint — 2026-10-10
 
+Production **0.13.1000**, source `45624acc963f99cb49797d7b537f6db2ecbbfe07`,
+was delivered through [PR #10396](https://github.com/colophon-group/jobseek/pull/10396).
+Original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38022724428)
+and [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38022818940)
+succeeded. The renderer repair passed a physical cgroup OOM/replacement smoke;
+the installed replacement is independently running with OOMfalse at the exact
+immutable source/image. Lightpanda **1.0.0** is the latest official stable release,
+verified October 10 and pinned by digest and Linux checksums.
+
+Supported full Go ownership is active at **epoch265**: **7,684 monitors and 2,749
+detail boards**, covering **1,474,517 of 1,504,892 scheduled postings** in the fresh
+complete route census. All six Johdi/JobDiva/HeadHunter monitors and four detail
+boards are admitted. Forty-two cached-route mismatch boards and one unsupported
+Eightfold route retain their existing owner. Korn Ferry early careers accounts
+for the additional mismatch board (two posting records); this exception is kept
+explicitly. Independent exact owner/SQL/Redis and eight HTTP health checks passed.
+The initial natural sample has one completed monitor, one exact recurring
+schedule and no retained completion lease; it proves neither whole-fleet
+freshness nor cost. See [portable production proof](evidence/go-native-source1000-production-2026-10-10.json).
+
+Deliver the next shared **DOM + API-sniffer + RSS** batch together: both PwC South
+Africa inventories, Covenant Health physician roles, NYC Council scripts,
+GoNET's legacy JMESPath literals and Retraites Populaires description enrichment.
+The six complete public inventories contain **75 jobs**, with original
+request/inventory/field replay. GoNET's direct Python diagnostic has a certificate
+issuer failure. Go's macOS system trust verifies a complete two-job response, and
+the original Python monitor reproduces its fields over that response. Keep both
+observations; Linux public success is not claimed and TLS remains verified. Static variants reuse existing profiles,
+with complete bodies, bounded non-executing script extraction, Python URL joins,
+explicit zero evidence and original delegated detail queues. Fifteen real settlement and fifteen cold-retirement cases pass. See
+[portable grouped qualification](evidence/go-native-shared-dom-api-rss-public-parity-2026-10-10.json).
+Full CI and the original deployment/admission cycle precede production use.
+
+The Accenture/BrassRing [candidate #10394](https://github.com/colophon-group/jobseek/pull/10394)
+is draft at `94abee09606927e837ad1a3198c661634499d0b4`, rebased onto source1000,
+with 179 compiled profiles and candidate version0.13.1001. All twelve Accenture
+inventories have original parity (31,752 jobs); complete public BrassRing
+qualification remains open for all four boards. Preserve all sixteen in scope.
+Whichever independent candidate merges second rebases and bumps from actual main.
+
+Continue grouped browser actions/pagination, API and RSS variants, then remaining
+provider families. Use fresh complete census and existing bounded qualification
+for each delivered batch. Finish every runtime/deployment/maintenance consumer,
+natural whole-fleet freshness and queue conservation, comparable whole-service
+cost and the supported reversal observation window before retiring production
+Python, Playwright and Chromium. Preserve every enabled board and useful isolated
+offline Python tooling. The full delivery goal remains active.
+
+## Historical checkpoint — sources998–1000 before rollout
+
 PR #10395 merged as `0f3ae8c040ba084a63a96de488015756945ebddc`, version0.13.999,
 after required/native/installed-image checks and supported full cold264 reversal
 passed. Original crawler rollout38019366166 is in progress. Renderer rollout

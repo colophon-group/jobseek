@@ -11,8 +11,6 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
-
-	"github.com/jmespath/go-jmespath"
 )
 
 var ErrOptions = errors.New("unsupported configured HTTP API monitor")
@@ -204,7 +202,7 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 	}
 	for _, p := range []string{o.Path, o.TotalPath} {
 		if p != "" {
-			if _, err := jmespath.Compile(p); err != nil {
+			if _, err := compileJMESPath(p); err != nil {
 				return o, ErrOptions
 			}
 		}
@@ -351,7 +349,7 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 	}
 	o.AutoFields = !o.HTML && len(o.Fields) == 0
 	if o.URLField != "" {
-		if _, err := jmespath.Compile(o.URLField); err != nil {
+		if _, err := compileJMESPath(o.URLField); err != nil {
 			return o, ErrOptions
 		}
 	}
@@ -453,7 +451,7 @@ func ValidateField(spec any) error {
 		if strings.HasPrefix(v, "=") {
 			return nil
 		}
-		_, err := jmespath.Compile(v)
+		_, err := compileJMESPath(v)
 		return err
 	case []any:
 		for _, x := range v {
@@ -465,7 +463,7 @@ func ValidateField(spec any) error {
 				if _, ok := o["wrap"].(string); !ok || len(o) != 2 {
 					return ErrOptions
 				}
-				if _, err := jmespath.Compile(p); err != nil {
+				if _, err := compileJMESPath(p); err != nil {
 					return ErrOptions
 				}
 			} else if _, ok := x.(string); !ok || ValidateField(x) != nil {
@@ -493,17 +491,17 @@ func ValidateField(spec any) error {
 			if !ok || len(v) != 2 {
 				return ErrOptions
 			}
-			if _, err := jmespath.Compile(p); err != nil {
+			if _, err := compileJMESPath(p); err != nil {
 				return ErrOptions
 			}
-			_, err := jmespath.Compile(key)
+			_, err := compileJMESPath(key)
 			return err
 		}
 		p, ok := v["path"].(string)
 		if !ok {
 			return ErrOptions
 		}
-		if _, err := jmespath.Compile(p); err != nil {
+		if _, err := compileJMESPath(p); err != nil {
 			return ErrOptions
 		}
 		for k, x := range v {
