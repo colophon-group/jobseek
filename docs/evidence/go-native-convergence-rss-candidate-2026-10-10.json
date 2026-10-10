@@ -68,5 +68,13 @@
     "natural freshness/conservation and whole-service resources/cost/reversal",
     "remaining enabled profiles/consumers and eventual production Python retirement"
   ],
-  "pr": "https://github.com/colophon-group/jobseek/pull/10407"
+  "pr": "https://github.com/colophon-group/jobseek/pull/10407",
+  "ci_fixture_repair": {
+    "failed_head": "8e4046878ae28935aa13ba2b8f7d89f36ad37d08",
+    "failed_run": 38092875112,
+    "failed_job": 114332931318,
+    "reason": "PostFinance cold-retirement fixture left its newly inserted synthetic canonical posting; later migration fixtures collided with its unique URL.",
+    "change": "Delete only the cold fixture own-company additional postings during cleanup; independently require exact migration receipt/Gone count before cold retirement.",
+    "validation": "Both cold/safety test groups pass twice sequentially with required PostgreSQL/Redis and race detection,9.863s; no runtime changes."
+  }
 }

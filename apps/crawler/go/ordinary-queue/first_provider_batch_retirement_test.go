@@ -327,6 +327,12 @@ func testProviderColdRetirement(t *testing.T, providers []string, fixture func(*
 					if e != nil {
 						t.Fatal(e)
 					}
+					if provider == "rss/postfinance" {
+						var receipt json.RawMessage
+						if err := p.f.observer.QueryRow(ctx, "SELECT metadata->'_identity_migration_receipt' FROM job_board WHERE id=$1::uuid", p.f.task.ID).Scan(&receipt); err != nil || result.Gone != 1 || !validPostfinanceMigrationReceipt(receipt) {
+							t.Fatal("cold retirement fixture did not commit exact migration", err)
+						}
+					}
 					if strings.Split(provider, "/")[0] == "eightfold" && strings.Contains(p.f.client.redis.HGet(ctx, "board:"+claim.task.ID, "metadata").Val(), "max_ts") {
 						t.Fatal("watermark cache advanced before canonical settlement")
 					}

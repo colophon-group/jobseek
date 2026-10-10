@@ -28,6 +28,9 @@ func firstPostfinanceFixture(t *testing.T, _ string) firstOwnerFixture {
 	}
 	p.plan = plan
 	t.Cleanup(func() {
+		_, _ = f.observer.Exec(context.Background(), "DELETE FROM job_posting WHERE company_id=$1::uuid AND id<>$2::uuid", f.company, f.task.ID)
+	})
+	t.Cleanup(func() {
 		_, _ = f.observer.Exec(context.Background(), "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE plan_sha256=$1 AND state='active'", plan.SHA256())
 	})
 	return p
