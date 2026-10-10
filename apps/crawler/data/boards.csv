@@ -7725,6 +7725,7 @@ world-vision-international,world-vision-international-workday,https://worldvisio
 worldcoin,worldcoin-careers,https://jobs.ashbyhq.com/Tools%20for%20Humanity,ashby,"{""token"": ""Tools for Humanity""}",skip,
 worldcoin,worldcoin-world-foundation,https://jobs.ashbyhq.com/world-foundation,ashby,"{""token"": ""world-foundation""}",skip,
 worldly,worldly-ashby,https://jobs.ashbyhq.com/worldly,ashby,"{""token"": ""worldly""}",skip,
+worldmarket,worldmarket-careers,https://worldmarket.wd5.myworkdayjobs.com/cost_plus_world_market_jobs,workday,,workday,
 worldpay,worldpay-careers-wd,https://worldpay.wd5.myworkdayjobs.com/Worldpay_External_Careers_Site,workday,"{""tenant"": ""worldpay"", ""board_id"": ""Worldpay_External_Careers_Site""}",json-ld,
 worldquant,worldquant-greenhouse,https://job-boards.greenhouse.io/worldquant,greenhouse,"{""token"": ""worldquant""}",skip,
 woven-care,woven-care-greenhouse,https://job-boards.greenhouse.io/wovencare,greenhouse,"{""token"": ""wovencare""}",skip,
