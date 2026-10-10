@@ -27,11 +27,12 @@ through the original wrappers, preserving all7,736 previous monitors and2,751
 detail boards plus all15 source1006 and3 source1007 qualified monitor additions.
 Do not shrink coverage to fit a timer or treat compiled support as serving authority.
 
-Candidate0.13.1008 groups API pagination convergence and PostFinance RSS canonical
-identity migration. It has local original-output, PostgreSQL/Redis settlement and
-cold-retirement proofs; it is not published or activated. Publicis preserves the
+[Candidate PR#10407](https://github.com/colophon-group/jobseek/pull/10407), version0.13.1008,
+groups API pagination convergence and PostFinance RSS canonical identity migration.
+Its local original-output, PostgreSQL/Redis settlement and cold-retirement proofs
+pass; it is published for CI and has no serving authority. Publicis preserves the
 original truncated2958-URL prefix and withholds absence authority; Bupa matches55
-complete jobs. PostFinance matches277 raw RSS records, retains the published
+complete jobs. PostFinance matches277 raw RSS records and all24 postprocessed canonical jobs, retaining the published
 filter/collision policy, and ports the original company-wide atomic retirement SQL
 with the exact code-owned board/fingerprint/receipt and healthy inventory gates.
 Zero processed results from an unproved truncated inventory now fail before empty

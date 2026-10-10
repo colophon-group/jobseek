@@ -77,4 +77,30 @@ func TestPublicPostfinanceOriginalRSSInventory(t *testing.T) {
 			}
 		}
 	}
+	policyRaw, err := os.ReadFile(directory + "/native1008-postfinance-original-postprocessed-policy1-2026-10-10.json")
+	var policy struct {
+		CanonicalRecords int `json:"canonical_records"`
+		SecurityFiltered int `json:"security_filtered_count"`
+		Truncated        bool
+		Jobs             []map[string]any
+	}
+	if err != nil || json.Unmarshal(policyRaw, &policy) != nil || policy.CanonicalRecords != 24 || len(policy.Jobs) != 24 || policy.SecurityFiltered != 0 || policy.Truncated {
+		t.Fatal("original complete postprocessed policy reference unavailable")
+	}
+	canonical, err := applyFeedMonitorURLs(context.Background(), config, got.Jobs)
+	if err != nil || len(canonical) != len(policy.Jobs) {
+		t.Fatal("published PostFinance filter/collision inventory changed", err, len(canonical))
+	}
+	sort.Slice(canonical, func(i, j int) bool { return canonical[i].URL < canonical[j].URL })
+	for n, j := range canonical {
+		fields := map[string]any{"url": j.URL, "title": j.Title, "description": j.Description, "locations": j.Locations, "metadata": j.Metadata, "employment_type": j.EmploymentType, "date_posted": j.DatePosted, "job_location_type": j.JobLocationType, "source_identity": nullableNextdataIdentity(j.SourceIdentity), "extras": j.Extras}
+		raw, _ := json.Marshal(fields)
+		var actual map[string]any
+		json.Unmarshal(raw, &actual)
+		for k, want := range policy.Jobs[n] {
+			if !reflect.DeepEqual(actual[k], want) {
+				t.Fatal("original postprocessed canonical field changed", n, k)
+			}
+		}
+	}
 }

@@ -2,7 +2,7 @@
   "version": "0.13.1008",
   "base_revision": "f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77",
   "observed_at_utc": "2026-10-10T22:41:18.466105+00:00",
-  "status": "local candidate; not published, deployed or given serving authority",
+  "status": "published candidate PR#10407; required gates pending; no deployment or serving authority",
   "types": [
     "API pagination convergence",
     "RSS PostFinance canonical identity transition"
@@ -34,7 +34,8 @@
     },
     "scope": "explicit numeric total and object-array page/offset inventories; original first-observation union, stable identity/projection, two no-growth passes; truncated validated prefixes never authorize absence",
     "correction": "capture2 retains URL-only MonitorResult URLs; capture1 was not an inventory authority",
-    "remaining": "automatic total convergence (IHG) unsupported; no live Go public convergence qualification yet"
+    "remaining": "automatic total convergence (IHG) unsupported; no live Go public convergence qualification yet",
+    "all_sdk_race_seconds": 13.609
   },
   "rss": {
     "original_raw_feed_records": 277,
@@ -46,7 +47,12 @@
     "ordinary_worker_cases": 5,
     "cold_retirement_cases": 3,
     "contract": "exact postfinance-careers URL/type/fingerprint, company slug postfinance; complete unique fresh canonical rows, three healthy history counts, 2000-row cap, unknown URL rejection, permanent exact receipt, retirement and receipt atomic before ordinary gone guards",
-    "remaining": "Implenia original identity resolution failed; no authority assigned"
+    "remaining": "Implenia original identity resolution failed; no authority assigned",
+    "original_postprocessed_canonical_jobs": 24,
+    "original_postprocessing_filtered": 253,
+    "all_original_canonical_fields_match": true,
+    "original_postprocessing_sha256": "a7f8f553c35ae604cfff84c514d3d8b255c5f52375aa2c9c997fdca4fe42888b",
+    "public_raw_and_canonical_race_seconds": 2.818
   },
   "lifecycle_repair": {
     "policy": "Reject zero-processed truncated success before mutation; use original failure receipt/backoff/settlement",
@@ -54,9 +60,10 @@
     "preserved": "active postings, empty counter, recurring schedule and lease conservation; confirmed complete-empty and nonempty-partial behavior"
   },
   "pending": [
-    "publish exact candidate and pass full required CI/Crawler Deploy Gate",
+    "pass exact-head full required CI/Crawler Deploy Gate",
     "original supported full deployment and all-route admission preserving previous cohort",
     "natural freshness/conservation and whole-service resources/cost/reversal",
     "remaining enabled profiles/consumers and eventual production Python retirement"
-  ]
+  ],
+  "pr": "https://github.com/colophon-group/jobseek/pull/10407"
 }
