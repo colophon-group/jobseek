@@ -74,6 +74,7 @@ type GreenhouseRichPosting struct {
 
 type GreenhouseRichBatchResult struct {
 	Inserted, Touched, Relisted, Foreign, ForeignRelisted, Deduplicated int
+	LegacyRetired                                                       int
 	Details                                                             []URLOnlyDetail
 }
 
@@ -83,12 +84,29 @@ type GreenhouseRichBatchResult struct {
 // acknowledges a claim. Finalization must separately prove inventory completeness
 // and commit the canonical monitor schedule before settlement.
 func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, batch []GreenhouseRichPosting) (*GreenhouseRichBatchResult, error) {
+	return a.writeGreenhouseRichBatch(ctx, claim, batch, false)
+}
+
+func (a *Authority) writeGreenhouseRichBatch(ctx context.Context, claim *Claim, batch []GreenhouseRichPosting, completeUnisante bool) (*GreenhouseRichBatchResult, error) {
 	if !a.valid(claim) || a.ownership == nil || claim.task.Kind != Monitor || len(batch) < 1 || len(batch) > 500 {
 		return nil, ErrConfiguration
 	}
 	profile, err := InspectRichMonitor(claim.task.ID, claim.task.Config)
 	if err != nil {
 		return nil, err
+	}
+	unisante := profile.Provider == "unisante"
+	if unisante {
+		md, e := unisanteMigrationConfig(claim.task.Config)
+		if e != nil {
+			return nil, e
+		}
+		if unisanteMigrationRequested(md) && !validUnisanteMigrationReceipt(md["_identity_migration_receipt"]) && !completeUnisante {
+			return nil, ErrConfiguration
+		}
+	}
+	if completeUnisante && !unisante {
+		return nil, ErrConfiguration
 	}
 	var enrich []string
 	if profile.Provider == "api_sniffer" {
@@ -189,7 +207,7 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 			return nil, ErrConfiguration
 		}
 	}
-	identityEnabled := smartIdentity || identityConfig != nil || zohoIdentity || hrIdentity || woowaIdentity || tenthIdentity || job51Identity || finalIdentity
+	identityEnabled := unisante || smartIdentity || identityConfig != nil || zohoIdentity || hrIdentity || woowaIdentity || tenthIdentity || job51Identity || finalIdentity
 	identities := []string{}
 	explicit := []bool{}
 	identityByURL := map[string]string{}
@@ -197,6 +215,9 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 	byURL := make(map[string]*GreenhouseRichContent, len(batch))
 	hybridByURL := map[string]bool{}
 	for _, posting := range batch {
+		if unisante && (!unisanteIdentity.MatchString(posting.SourceIdentity) || !unisanteOfficialDetail.MatchString(posting.URL)) {
+			return nil, ErrConfiguration
+		}
 		if smartIdentity && !smartOptions.IdentityMatches(posting.URL, posting.SourceIdentity) {
 			return nil, ErrConfiguration
 		}
@@ -244,6 +265,13 @@ func (a *Authority) WriteGreenhouseRichBatch(ctx context.Context, claim *Claim, 
 			}
 			if reserved {
 				return ErrPublisherReserved
+			}
+			if completeUnisante {
+				n, e := migrateUnisanteProviderIdentities(ctx, tx, profile.BoardID, profile.CompanyID, claim.task.Config, identities, urls)
+				if e != nil {
+					return e
+				}
+				result.LegacyRetired = n
 			}
 			var rows pgx.Rows
 			var err error

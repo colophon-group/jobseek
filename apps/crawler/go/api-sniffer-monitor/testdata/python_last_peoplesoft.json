@@ -1,0 +1,586 @@
+[
+  {
+    "name": "normal",
+    "board": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psp/site/EMPLOYEE/HRMS/?cmd=logout",
+        "request_body": "",
+        "body": "<html>anonymous</html>",
+        "cookie": null,
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL",
+        "request_body": "",
+        "body": "<html><body>HRS_AGNT_RSLT_I Search Results List <b>1</b> jobs found<ul><li id=\"HRS_AGNT_RSLT_I$0_row_42\"><span id=\"HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0\">42</span><span id=\"SCH_JOB_TITLE$0\">Nurse</span><span id=\"LOCATION$0\">Oceanside</span><span id=\"SCH_OPENED$0\">10/1/2026</span><span id=\"HRS_APP_JBSCH_I_HRS_DEPT_DESCR$0\">Clinical</span><span id=\"JOB_FAMILY_LABEL$0\">Health</span></li></ul><div class=\"ps_box-more\" onclick=\"action(\\'HRS_AGNT_RSLT_I$hdown$0\\')\"></div><form><input name=\"ICSID\" value=\"synthetic-session\"><input name=\"duplicate\" value=\"first\"><input name=\"duplicate\" value=\"second\"><input name=\"blank\"><input name=\"ICAction\" value=\"old\"><input name=\"unchecked\" type=\"checkbox\"><input name=\"checked\" type=\"checkbox\" checked value=\"yes\"><input name=\"disabled\" disabled><input name=\"submit\" type=\"submit\"><input name=\"unicode\" value=\"café + x\"></form></body></html>",
+        "cookie": "anonymous=synthetic",
+        "content_type": null
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&FOCUS=Applicant&JobOpeningId=42&Page=HRS_APP_JBPST_FL&PostingSeq=1&SiteId=1",
+        "title": "Nurse",
+        "locations": [
+          "Oceanside"
+        ],
+        "date_posted": "2026-10-01",
+        "metadata": {
+          "job_id": "42",
+          "department": "Clinical",
+          "job_family": "Health"
+        }
+      }
+    ]
+  },
+  {
+    "name": "nested-text",
+    "board": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psp/site/EMPLOYEE/HRMS/?cmd=logout",
+        "request_body": "",
+        "body": "<html>anonymous</html>",
+        "cookie": null,
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL",
+        "request_body": "",
+        "body": "<html><body>HRS_AGNT_RSLT_I Search Results List <b>1</b> jobs found<ul><li id=\"HRS_AGNT_RSLT_I$0_row_42\"><span id=\"HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0\">42</span><span id=\"SCH_JOB_TITLE$0\">  Registered <b>Nurse</b>  </span><span id=\"LOCATION$0\">Oceanside</span><span id=\"SCH_OPENED$0\">10/1/2026</span><span id=\"HRS_APP_JBSCH_I_HRS_DEPT_DESCR$0\">Clinical</span><span id=\"JOB_FAMILY_LABEL$0\">Health</span></li></ul><div class=\"ps_box-more\" onclick=\"action(\\'HRS_AGNT_RSLT_I$hdown$0\\')\"></div><form><input name=\"ICSID\" value=\"synthetic-session\"><input name=\"duplicate\" value=\"first\"><input name=\"duplicate\" value=\"second\"><input name=\"blank\"><input name=\"ICAction\" value=\"old\"><input name=\"unchecked\" type=\"checkbox\"><input name=\"checked\" type=\"checkbox\" checked value=\"yes\"><input name=\"disabled\" disabled><input name=\"submit\" type=\"submit\"><input name=\"unicode\" value=\"café + x\"></form></body></html>",
+        "cookie": "anonymous=synthetic",
+        "content_type": null
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&FOCUS=Applicant&JobOpeningId=42&Page=HRS_APP_JBPST_FL&PostingSeq=1&SiteId=1",
+        "title": "RegisteredNurse",
+        "locations": [
+          "Oceanside"
+        ],
+        "date_posted": "2026-10-01",
+        "metadata": {
+          "job_id": "42",
+          "department": "Clinical",
+          "job_family": "Health"
+        }
+      }
+    ]
+  },
+  {
+    "name": "missing-title",
+    "board": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psp/site/EMPLOYEE/HRMS/?cmd=logout",
+        "request_body": "",
+        "body": "<html>anonymous</html>",
+        "cookie": null,
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL",
+        "request_body": "",
+        "body": "<html><body>HRS_AGNT_RSLT_I Search Results List <b>1</b> jobs found<ul><li id=\"HRS_AGNT_RSLT_I$0_row_42\"><span id=\"HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0\">42</span><span id=\"LOCATION$0\">Oceanside</span><span id=\"SCH_OPENED$0\">10/1/2026</span><span id=\"HRS_APP_JBSCH_I_HRS_DEPT_DESCR$0\">Clinical</span><span id=\"JOB_FAMILY_LABEL$0\">Health</span></li></ul><div class=\"ps_box-more\" onclick=\"action(\\'HRS_AGNT_RSLT_I$hdown$0\\')\"></div><form><input name=\"ICSID\" value=\"synthetic-session\"><input name=\"duplicate\" value=\"first\"><input name=\"duplicate\" value=\"second\"><input name=\"blank\"><input name=\"ICAction\" value=\"old\"><input name=\"unchecked\" type=\"checkbox\"><input name=\"checked\" type=\"checkbox\" checked value=\"yes\"><input name=\"disabled\" disabled><input name=\"submit\" type=\"submit\"><input name=\"unicode\" value=\"café + x\"></form></body></html>",
+        "cookie": "anonymous=synthetic",
+        "content_type": null
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "missing-location",
+    "board": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psp/site/EMPLOYEE/HRMS/?cmd=logout",
+        "request_body": "",
+        "body": "<html>anonymous</html>",
+        "cookie": null,
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL",
+        "request_body": "",
+        "body": "<html><body>HRS_AGNT_RSLT_I Search Results List <b>1</b> jobs found<ul><li id=\"HRS_AGNT_RSLT_I$0_row_42\"><span id=\"HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0\">42</span><span id=\"SCH_JOB_TITLE$0\">Nurse</span><span id=\"SCH_OPENED$0\">10/1/2026</span><span id=\"HRS_APP_JBSCH_I_HRS_DEPT_DESCR$0\">Clinical</span><span id=\"JOB_FAMILY_LABEL$0\">Health</span></li></ul><div class=\"ps_box-more\" onclick=\"action(\\'HRS_AGNT_RSLT_I$hdown$0\\')\"></div><form><input name=\"ICSID\" value=\"synthetic-session\"><input name=\"duplicate\" value=\"first\"><input name=\"duplicate\" value=\"second\"><input name=\"blank\"><input name=\"ICAction\" value=\"old\"><input name=\"unchecked\" type=\"checkbox\"><input name=\"checked\" type=\"checkbox\" checked value=\"yes\"><input name=\"disabled\" disabled><input name=\"submit\" type=\"submit\"><input name=\"unicode\" value=\"café + x\"></form></body></html>",
+        "cookie": "anonymous=synthetic",
+        "content_type": null
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "bad-id",
+    "board": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psp/site/EMPLOYEE/HRMS/?cmd=logout",
+        "request_body": "",
+        "body": "<html>anonymous</html>",
+        "cookie": null,
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL",
+        "request_body": "",
+        "body": "<html><body>HRS_AGNT_RSLT_I Search Results List <b>1</b> jobs found<ul><li id=\"HRS_AGNT_RSLT_I$0_row_0\"><span id=\"HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0\">0</span><span id=\"SCH_JOB_TITLE$0\">Nurse</span><span id=\"LOCATION$0\">Oceanside</span><span id=\"SCH_OPENED$0\">10/1/2026</span><span id=\"HRS_APP_JBSCH_I_HRS_DEPT_DESCR$0\">Clinical</span><span id=\"JOB_FAMILY_LABEL$0\">Health</span></li></ul><div class=\"ps_box-more\" onclick=\"action(\\'HRS_AGNT_RSLT_I$hdown$0\\')\"></div><form><input name=\"ICSID\" value=\"synthetic-session\"><input name=\"duplicate\" value=\"first\"><input name=\"duplicate\" value=\"second\"><input name=\"blank\"><input name=\"ICAction\" value=\"old\"><input name=\"unchecked\" type=\"checkbox\"><input name=\"checked\" type=\"checkbox\" checked value=\"yes\"><input name=\"disabled\" disabled><input name=\"submit\" type=\"submit\"><input name=\"unicode\" value=\"café + x\"></form></body></html>",
+        "cookie": "anonymous=synthetic",
+        "content_type": null
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "date-single",
+    "board": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psp/site/EMPLOYEE/HRMS/?cmd=logout",
+        "request_body": "",
+        "body": "<html>anonymous</html>",
+        "cookie": null,
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL",
+        "request_body": "",
+        "body": "<html><body>HRS_AGNT_RSLT_I Search Results List <b>1</b> jobs found<ul><li id=\"HRS_AGNT_RSLT_I$0_row_42\"><span id=\"HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0\">42</span><span id=\"SCH_JOB_TITLE$0\">Nurse</span><span id=\"LOCATION$0\">Oceanside</span><span id=\"SCH_OPENED$0\">1/2/2026</span><span id=\"HRS_APP_JBSCH_I_HRS_DEPT_DESCR$0\">Clinical</span><span id=\"JOB_FAMILY_LABEL$0\">Health</span></li></ul><div class=\"ps_box-more\" onclick=\"action(\\'HRS_AGNT_RSLT_I$hdown$0\\')\"></div><form><input name=\"ICSID\" value=\"synthetic-session\"><input name=\"duplicate\" value=\"first\"><input name=\"duplicate\" value=\"second\"><input name=\"blank\"><input name=\"ICAction\" value=\"old\"><input name=\"unchecked\" type=\"checkbox\"><input name=\"checked\" type=\"checkbox\" checked value=\"yes\"><input name=\"disabled\" disabled><input name=\"submit\" type=\"submit\"><input name=\"unicode\" value=\"café + x\"></form></body></html>",
+        "cookie": "anonymous=synthetic",
+        "content_type": null
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&FOCUS=Applicant&JobOpeningId=42&Page=HRS_APP_JBPST_FL&PostingSeq=1&SiteId=1",
+        "title": "Nurse",
+        "locations": [
+          "Oceanside"
+        ],
+        "date_posted": "2026-01-02",
+        "metadata": {
+          "job_id": "42",
+          "department": "Clinical",
+          "job_family": "Health"
+        }
+      }
+    ]
+  },
+  {
+    "name": "date-leap",
+    "board": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psp/site/EMPLOYEE/HRMS/?cmd=logout",
+        "request_body": "",
+        "body": "<html>anonymous</html>",
+        "cookie": null,
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL",
+        "request_body": "",
+        "body": "<html><body>HRS_AGNT_RSLT_I Search Results List <b>1</b> jobs found<ul><li id=\"HRS_AGNT_RSLT_I$0_row_42\"><span id=\"HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0\">42</span><span id=\"SCH_JOB_TITLE$0\">Nurse</span><span id=\"LOCATION$0\">Oceanside</span><span id=\"SCH_OPENED$0\">2/29/2024</span><span id=\"HRS_APP_JBSCH_I_HRS_DEPT_DESCR$0\">Clinical</span><span id=\"JOB_FAMILY_LABEL$0\">Health</span></li></ul><div class=\"ps_box-more\" onclick=\"action(\\'HRS_AGNT_RSLT_I$hdown$0\\')\"></div><form><input name=\"ICSID\" value=\"synthetic-session\"><input name=\"duplicate\" value=\"first\"><input name=\"duplicate\" value=\"second\"><input name=\"blank\"><input name=\"ICAction\" value=\"old\"><input name=\"unchecked\" type=\"checkbox\"><input name=\"checked\" type=\"checkbox\" checked value=\"yes\"><input name=\"disabled\" disabled><input name=\"submit\" type=\"submit\"><input name=\"unicode\" value=\"café + x\"></form></body></html>",
+        "cookie": "anonymous=synthetic",
+        "content_type": null
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&FOCUS=Applicant&JobOpeningId=42&Page=HRS_APP_JBPST_FL&PostingSeq=1&SiteId=1",
+        "title": "Nurse",
+        "locations": [
+          "Oceanside"
+        ],
+        "date_posted": "2024-02-29",
+        "metadata": {
+          "job_id": "42",
+          "department": "Clinical",
+          "job_family": "Health"
+        }
+      }
+    ]
+  },
+  {
+    "name": "date-impossible",
+    "board": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psp/site/EMPLOYEE/HRMS/?cmd=logout",
+        "request_body": "",
+        "body": "<html>anonymous</html>",
+        "cookie": null,
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL",
+        "request_body": "",
+        "body": "<html><body>HRS_AGNT_RSLT_I Search Results List <b>1</b> jobs found<ul><li id=\"HRS_AGNT_RSLT_I$0_row_42\"><span id=\"HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0\">42</span><span id=\"SCH_JOB_TITLE$0\">Nurse</span><span id=\"LOCATION$0\">Oceanside</span><span id=\"SCH_OPENED$0\">2/29/2026</span><span id=\"HRS_APP_JBSCH_I_HRS_DEPT_DESCR$0\">Clinical</span><span id=\"JOB_FAMILY_LABEL$0\">Health</span></li></ul><div class=\"ps_box-more\" onclick=\"action(\\'HRS_AGNT_RSLT_I$hdown$0\\')\"></div><form><input name=\"ICSID\" value=\"synthetic-session\"><input name=\"duplicate\" value=\"first\"><input name=\"duplicate\" value=\"second\"><input name=\"blank\"><input name=\"ICAction\" value=\"old\"><input name=\"unchecked\" type=\"checkbox\"><input name=\"checked\" type=\"checkbox\" checked value=\"yes\"><input name=\"disabled\" disabled><input name=\"submit\" type=\"submit\"><input name=\"unicode\" value=\"café + x\"></form></body></html>",
+        "cookie": "anonymous=synthetic",
+        "content_type": null
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "date-short-year",
+    "board": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psp/site/EMPLOYEE/HRMS/?cmd=logout",
+        "request_body": "",
+        "body": "<html>anonymous</html>",
+        "cookie": null,
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL",
+        "request_body": "",
+        "body": "<html><body>HRS_AGNT_RSLT_I Search Results List <b>1</b> jobs found<ul><li id=\"HRS_AGNT_RSLT_I$0_row_42\"><span id=\"HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0\">42</span><span id=\"SCH_JOB_TITLE$0\">Nurse</span><span id=\"LOCATION$0\">Oceanside</span><span id=\"SCH_OPENED$0\">1/2/26</span><span id=\"HRS_APP_JBSCH_I_HRS_DEPT_DESCR$0\">Clinical</span><span id=\"JOB_FAMILY_LABEL$0\">Health</span></li></ul><div class=\"ps_box-more\" onclick=\"action(\\'HRS_AGNT_RSLT_I$hdown$0\\')\"></div><form><input name=\"ICSID\" value=\"synthetic-session\"><input name=\"duplicate\" value=\"first\"><input name=\"duplicate\" value=\"second\"><input name=\"blank\"><input name=\"ICAction\" value=\"old\"><input name=\"unchecked\" type=\"checkbox\"><input name=\"checked\" type=\"checkbox\" checked value=\"yes\"><input name=\"disabled\" disabled><input name=\"submit\" type=\"submit\"><input name=\"unicode\" value=\"café + x\"></form></body></html>",
+        "cookie": "anonymous=synthetic",
+        "content_type": null
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "missing-date",
+    "board": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psp/site/EMPLOYEE/HRMS/?cmd=logout",
+        "request_body": "",
+        "body": "<html>anonymous</html>",
+        "cookie": null,
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL",
+        "request_body": "",
+        "body": "<html><body>HRS_AGNT_RSLT_I Search Results List <b>1</b> jobs found<ul><li id=\"HRS_AGNT_RSLT_I$0_row_42\"><span id=\"HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0\">42</span><span id=\"SCH_JOB_TITLE$0\">Nurse</span><span id=\"LOCATION$0\">Oceanside</span><span id=\"HRS_APP_JBSCH_I_HRS_DEPT_DESCR$0\">Clinical</span><span id=\"JOB_FAMILY_LABEL$0\">Health</span></li></ul><div class=\"ps_box-more\" onclick=\"action(\\'HRS_AGNT_RSLT_I$hdown$0\\')\"></div><form><input name=\"ICSID\" value=\"synthetic-session\"><input name=\"duplicate\" value=\"first\"><input name=\"duplicate\" value=\"second\"><input name=\"blank\"><input name=\"ICAction\" value=\"old\"><input name=\"unchecked\" type=\"checkbox\"><input name=\"checked\" type=\"checkbox\" checked value=\"yes\"><input name=\"disabled\" disabled><input name=\"submit\" type=\"submit\"><input name=\"unicode\" value=\"café + x\"></form></body></html>",
+        "cookie": "anonymous=synthetic",
+        "content_type": null
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&FOCUS=Applicant&JobOpeningId=42&Page=HRS_APP_JBPST_FL&PostingSeq=1&SiteId=1",
+        "title": "Nurse",
+        "locations": [
+          "Oceanside"
+        ],
+        "metadata": {
+          "job_id": "42",
+          "department": "Clinical",
+          "job_family": "Health"
+        }
+      }
+    ]
+  },
+  {
+    "name": "missing-metadata",
+    "board": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psp/site/EMPLOYEE/HRMS/?cmd=logout",
+        "request_body": "",
+        "body": "<html>anonymous</html>",
+        "cookie": null,
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL",
+        "request_body": "",
+        "body": "<html><body>HRS_AGNT_RSLT_I Search Results List <b>1</b> jobs found<ul><li id=\"HRS_AGNT_RSLT_I$0_row_42\"><span id=\"HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0\">42</span><span id=\"SCH_JOB_TITLE$0\">Nurse</span><span id=\"LOCATION$0\">Oceanside</span><span id=\"SCH_OPENED$0\">10/1/2026</span></li></ul><div class=\"ps_box-more\" onclick=\"action(\\'HRS_AGNT_RSLT_I$hdown$0\\')\"></div><form><input name=\"ICSID\" value=\"synthetic-session\"><input name=\"duplicate\" value=\"first\"><input name=\"duplicate\" value=\"second\"><input name=\"blank\"><input name=\"ICAction\" value=\"old\"><input name=\"unchecked\" type=\"checkbox\"><input name=\"checked\" type=\"checkbox\" checked value=\"yes\"><input name=\"disabled\" disabled><input name=\"submit\" type=\"submit\"><input name=\"unicode\" value=\"café + x\"></form></body></html>",
+        "cookie": "anonymous=synthetic",
+        "content_type": null
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&FOCUS=Applicant&JobOpeningId=42&Page=HRS_APP_JBPST_FL&PostingSeq=1&SiteId=1",
+        "title": "Nurse",
+        "locations": [
+          "Oceanside"
+        ],
+        "date_posted": "2026-10-01",
+        "metadata": {
+          "job_id": "42"
+        }
+      }
+    ]
+  },
+  {
+    "name": "complete-zero",
+    "board": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psp/site/EMPLOYEE/HRMS/?cmd=logout",
+        "request_body": "",
+        "body": "<html>anonymous</html>",
+        "cookie": null,
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL",
+        "request_body": "",
+        "body": "<html><body>HRS_AGNT_RSLT_I Search Results List <b>0</b> jobs found<ul></ul></body></html>",
+        "cookie": "anonymous=synthetic",
+        "content_type": null
+      }
+    ],
+    "jobs": []
+  },
+  {
+    "name": "duplicate-id",
+    "board": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psp/site/EMPLOYEE/HRMS/?cmd=logout",
+        "request_body": "",
+        "body": "<html>anonymous</html>",
+        "cookie": null,
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL",
+        "request_body": "",
+        "body": "<html><body>HRS_AGNT_RSLT_I Search Results List <b>2</b> jobs found<ul><li id=\"HRS_AGNT_RSLT_I$0_row_42\"><span id=\"HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0\">42</span><span id=\"SCH_JOB_TITLE$0\">Nurse</span><span id=\"LOCATION$0\">Oceanside</span><span id=\"SCH_OPENED$0\">10/1/2026</span><span id=\"HRS_APP_JBSCH_I_HRS_DEPT_DESCR$0\">Clinical</span><span id=\"JOB_FAMILY_LABEL$0\">Health</span></li><li id=\"HRS_AGNT_RSLT_I$0_row_42\"><span id=\"HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0\">42</span><span id=\"SCH_JOB_TITLE$0\">Nurse</span><span id=\"LOCATION$0\">Oceanside</span><span id=\"SCH_OPENED$0\">10/1/2026</span><span id=\"HRS_APP_JBSCH_I_HRS_DEPT_DESCR$0\">Clinical</span><span id=\"JOB_FAMILY_LABEL$0\">Health</span></li></ul><div class=\"ps_box-more\" onclick=\"action(\\'HRS_AGNT_RSLT_I$hdown$0\\')\"></div><form><input name=\"ICSID\" value=\"synthetic-session\"><input name=\"duplicate\" value=\"first\"><input name=\"duplicate\" value=\"second\"><input name=\"blank\"><input name=\"ICAction\" value=\"old\"><input name=\"unchecked\" type=\"checkbox\"><input name=\"checked\" type=\"checkbox\" checked value=\"yes\"><input name=\"disabled\" disabled><input name=\"submit\" type=\"submit\"><input name=\"unicode\" value=\"café + x\"></form></body></html>",
+        "cookie": "anonymous=synthetic",
+        "content_type": null
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "missing-grid",
+    "board": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psp/site/EMPLOYEE/HRMS/?cmd=logout",
+        "request_body": "",
+        "body": "<html>anonymous</html>",
+        "cookie": null,
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL",
+        "request_body": "",
+        "body": "<html><b>0</b> jobs found</html>",
+        "cookie": "anonymous=synthetic",
+        "content_type": null
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "missing-count",
+    "board": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psp/site/EMPLOYEE/HRMS/?cmd=logout",
+        "request_body": "",
+        "body": "<html>anonymous</html>",
+        "cookie": null,
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL",
+        "request_body": "",
+        "body": "<html>HRS_AGNT_RSLT_I Search Results List</html>",
+        "cookie": "anonymous=synthetic",
+        "content_type": null
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "complete-cumulative",
+    "board": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psp/site/EMPLOYEE/HRMS/?cmd=logout",
+        "request_body": "",
+        "body": "<html>anonymous</html>",
+        "cookie": null,
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL",
+        "request_body": "",
+        "body": "<html><body>HRS_AGNT_RSLT_I Search Results List <b>2</b> jobs found<ul><li id=\"HRS_AGNT_RSLT_I$0_row_42\"><span id=\"HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0\">42</span><span id=\"SCH_JOB_TITLE$0\">Nurse</span><span id=\"LOCATION$0\">Oceanside</span><span id=\"SCH_OPENED$0\">10/1/2026</span><span id=\"HRS_APP_JBSCH_I_HRS_DEPT_DESCR$0\">Clinical</span><span id=\"JOB_FAMILY_LABEL$0\">Health</span></li></ul><div class=\"ps_box-more\" onclick=\"action(\\'HRS_AGNT_RSLT_I$hdown$0\\')\"></div><form><input name=\"ICSID\" value=\"synthetic-session\"><input name=\"duplicate\" value=\"first\"><input name=\"duplicate\" value=\"second\"><input name=\"blank\"><input name=\"ICAction\" value=\"old\"><input name=\"unchecked\" type=\"checkbox\"><input name=\"checked\" type=\"checkbox\" checked value=\"yes\"><input name=\"disabled\" disabled><input name=\"submit\" type=\"submit\"><input name=\"unicode\" value=\"café + x\"></form></body></html>",
+        "cookie": "anonymous=synthetic",
+        "content_type": null
+      },
+      {
+        "method": "POST",
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL",
+        "request_body": "ICSID=synthetic-session&duplicate=first&duplicate=second&blank=&checked=yes&unicode=caf%C3%A9+%2B+x&ICAction=HRS_AGNT_RSLT_I%24hdown%240&ICFocus=HRS_AGNT_RSLT_I%24hdown%240&ICXPos=0&ICYPos=0",
+        "body": "<html><body>HRS_AGNT_RSLT_I Search Results List <b>2</b> jobs found<ul><li id=\"HRS_AGNT_RSLT_I$0_row_42\"><span id=\"HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0\">42</span><span id=\"SCH_JOB_TITLE$0\">Nurse</span><span id=\"LOCATION$0\">Oceanside</span><span id=\"SCH_OPENED$0\">10/1/2026</span><span id=\"HRS_APP_JBSCH_I_HRS_DEPT_DESCR$0\">Clinical</span><span id=\"JOB_FAMILY_LABEL$0\">Health</span></li><li id=\"HRS_AGNT_RSLT_I$0_row_43\"><span id=\"HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0\">43</span><span id=\"SCH_JOB_TITLE$0\">Engineer</span><span id=\"LOCATION$0\">Oceanside</span><span id=\"SCH_OPENED$0\">10/1/2026</span><span id=\"HRS_APP_JBSCH_I_HRS_DEPT_DESCR$0\">Clinical</span><span id=\"JOB_FAMILY_LABEL$0\">Health</span></li></ul></body></html>",
+        "cookie": "anonymous=synthetic",
+        "content_type": "application/x-www-form-urlencoded"
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&FOCUS=Applicant&JobOpeningId=42&Page=HRS_APP_JBPST_FL&PostingSeq=1&SiteId=1",
+        "title": "Nurse",
+        "locations": [
+          "Oceanside"
+        ],
+        "date_posted": "2026-10-01",
+        "metadata": {
+          "job_id": "42",
+          "department": "Clinical",
+          "job_family": "Health"
+        }
+      },
+      {
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&FOCUS=Applicant&JobOpeningId=43&Page=HRS_APP_JBPST_FL&PostingSeq=1&SiteId=1",
+        "title": "Engineer",
+        "locations": [
+          "Oceanside"
+        ],
+        "date_posted": "2026-10-01",
+        "metadata": {
+          "job_id": "43",
+          "department": "Clinical",
+          "job_family": "Health"
+        }
+      }
+    ]
+  },
+  {
+    "name": "missing-continuation",
+    "board": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psp/site/EMPLOYEE/HRMS/?cmd=logout",
+        "request_body": "",
+        "body": "<html>anonymous</html>",
+        "cookie": null,
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL",
+        "request_body": "",
+        "body": "<html><body>HRS_AGNT_RSLT_I Search Results List <b>2</b> jobs found<ul><li id=\"HRS_AGNT_RSLT_I$0_row_42\"><span id=\"HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0\">42</span><span id=\"SCH_JOB_TITLE$0\">Nurse</span><span id=\"LOCATION$0\">Oceanside</span><span id=\"SCH_OPENED$0\">10/1/2026</span><span id=\"HRS_APP_JBSCH_I_HRS_DEPT_DESCR$0\">Clinical</span><span id=\"JOB_FAMILY_LABEL$0\">Health</span></li></ul></body></html>",
+        "cookie": "anonymous=synthetic",
+        "content_type": null
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "no-growth",
+    "board": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psp/site/EMPLOYEE/HRMS/?cmd=logout",
+        "request_body": "",
+        "body": "<html>anonymous</html>",
+        "cookie": null,
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL",
+        "request_body": "",
+        "body": "<html><body>HRS_AGNT_RSLT_I Search Results List <b>2</b> jobs found<ul><li id=\"HRS_AGNT_RSLT_I$0_row_42\"><span id=\"HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0\">42</span><span id=\"SCH_JOB_TITLE$0\">Nurse</span><span id=\"LOCATION$0\">Oceanside</span><span id=\"SCH_OPENED$0\">10/1/2026</span><span id=\"HRS_APP_JBSCH_I_HRS_DEPT_DESCR$0\">Clinical</span><span id=\"JOB_FAMILY_LABEL$0\">Health</span></li></ul><div class=\"ps_box-more\" onclick=\"action(\\'HRS_AGNT_RSLT_I$hdown$0\\')\"></div><form><input name=\"ICSID\" value=\"synthetic-session\"><input name=\"duplicate\" value=\"first\"><input name=\"duplicate\" value=\"second\"><input name=\"blank\"><input name=\"ICAction\" value=\"old\"><input name=\"unchecked\" type=\"checkbox\"><input name=\"checked\" type=\"checkbox\" checked value=\"yes\"><input name=\"disabled\" disabled><input name=\"submit\" type=\"submit\"><input name=\"unicode\" value=\"café + x\"></form></body></html>",
+        "cookie": "anonymous=synthetic",
+        "content_type": null
+      },
+      {
+        "method": "POST",
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL",
+        "request_body": "ICSID=synthetic-session&duplicate=first&duplicate=second&blank=&checked=yes&unicode=caf%C3%A9+%2B+x&ICAction=HRS_AGNT_RSLT_I%24hdown%240&ICFocus=HRS_AGNT_RSLT_I%24hdown%240&ICXPos=0&ICYPos=0",
+        "body": "<html><body>HRS_AGNT_RSLT_I Search Results List <b>2</b> jobs found<ul><li id=\"HRS_AGNT_RSLT_I$0_row_42\"><span id=\"HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0\">42</span><span id=\"SCH_JOB_TITLE$0\">Nurse</span><span id=\"LOCATION$0\">Oceanside</span><span id=\"SCH_OPENED$0\">10/1/2026</span><span id=\"HRS_APP_JBSCH_I_HRS_DEPT_DESCR$0\">Clinical</span><span id=\"JOB_FAMILY_LABEL$0\">Health</span></li></ul><div class=\"ps_box-more\" onclick=\"action(\\'HRS_AGNT_RSLT_I$hdown$0\\')\"></div><form><input name=\"ICSID\" value=\"synthetic-session\"><input name=\"duplicate\" value=\"first\"><input name=\"duplicate\" value=\"second\"><input name=\"blank\"><input name=\"ICAction\" value=\"old\"><input name=\"unchecked\" type=\"checkbox\"><input name=\"checked\" type=\"checkbox\" checked value=\"yes\"><input name=\"disabled\" disabled><input name=\"submit\" type=\"submit\"><input name=\"unicode\" value=\"café + x\"></form></body></html>",
+        "cookie": "anonymous=synthetic",
+        "content_type": "application/x-www-form-urlencoded"
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "too-many-rows",
+    "board": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psp/site/EMPLOYEE/HRMS/?cmd=logout",
+        "request_body": "",
+        "body": "<html>anonymous</html>",
+        "cookie": null,
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL",
+        "request_body": "",
+        "body": "<html><body>HRS_AGNT_RSLT_I Search Results List <b>1</b> jobs found<ul><li id=\"HRS_AGNT_RSLT_I$0_row_42\"><span id=\"HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0\">42</span><span id=\"SCH_JOB_TITLE$0\">Nurse</span><span id=\"LOCATION$0\">Oceanside</span><span id=\"SCH_OPENED$0\">10/1/2026</span><span id=\"HRS_APP_JBSCH_I_HRS_DEPT_DESCR$0\">Clinical</span><span id=\"JOB_FAMILY_LABEL$0\">Health</span></li><li id=\"HRS_AGNT_RSLT_I$0_row_43\"><span id=\"HRS_APP_JBSCH_I_HRS_JOB_OPENING_ID$0\">43</span><span id=\"SCH_JOB_TITLE$0\">Nurse</span><span id=\"LOCATION$0\">Oceanside</span><span id=\"SCH_OPENED$0\">10/1/2026</span><span id=\"HRS_APP_JBSCH_I_HRS_DEPT_DESCR$0\">Clinical</span><span id=\"JOB_FAMILY_LABEL$0\">Health</span></li></ul><div class=\"ps_box-more\" onclick=\"action(\\'HRS_AGNT_RSLT_I$hdown$0\\')\"></div><form><input name=\"ICSID\" value=\"synthetic-session\"><input name=\"duplicate\" value=\"first\"><input name=\"duplicate\" value=\"second\"><input name=\"blank\"><input name=\"ICAction\" value=\"old\"><input name=\"unchecked\" type=\"checkbox\"><input name=\"checked\" type=\"checkbox\" checked value=\"yes\"><input name=\"disabled\" disabled><input name=\"submit\" type=\"submit\"><input name=\"unicode\" value=\"café + x\"></form></body></html>",
+        "cookie": "anonymous=synthetic",
+        "content_type": null
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "over-cap",
+    "board": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL",
+    "exchanges": [
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psp/site/EMPLOYEE/HRMS/?cmd=logout",
+        "request_body": "",
+        "body": "<html>anonymous</html>",
+        "cookie": null,
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_SCHJOB_FL",
+        "request_body": "",
+        "body": "<html><body>HRS_AGNT_RSLT_I Search Results List <b>50001</b> jobs found<ul></ul><div class=\"ps_box-more\" onclick=\"action(\\'HRS_AGNT_RSLT_I$hdown$0\\')\"></div><form><input name=\"ICSID\" value=\"synthetic-session\"><input name=\"duplicate\" value=\"first\"><input name=\"duplicate\" value=\"second\"><input name=\"blank\"><input name=\"ICAction\" value=\"old\"><input name=\"unchecked\" type=\"checkbox\"><input name=\"checked\" type=\"checkbox\" checked value=\"yes\"><input name=\"disabled\" disabled><input name=\"submit\" type=\"submit\"><input name=\"unicode\" value=\"café + x\"></form></body></html>",
+        "cookie": "anonymous=synthetic",
+        "content_type": null
+      }
+    ],
+    "error": true
+  }
+]

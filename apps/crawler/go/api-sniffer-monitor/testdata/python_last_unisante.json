@@ -1,0 +1,328 @@
+{
+  "listings": [
+    {
+      "name": "normal",
+      "source": "\n    <html><body><main id=\"main\">\n      <h1>Nos offres d'emploi</h1>\n      <select id=\"offres-filter\"><option value=\"0\">Toutes</option></select>\n      <div class=\"row offres-items\"><div class=\"offres-item\"><a class=\"box-job__header_link\" href=\"/index.php/offre/1405-role\" title=\"Role\">Role</a></div></div>\n      <div id=\"no-ads\" style=\"display: none;\">\n        Aucune offre n'est disponible pour le moment.\n      </div>\n      \n    </main></body></html>\n    ",
+      "url": "https://emploi.unisante.ch/index.php/offres",
+      "jobs": {
+        "1405-role": {
+          "slug": "1405-role",
+          "title": "Role"
+        }
+      }
+    },
+    {
+      "name": "zero",
+      "source": "\n    <html><body><main id=\"main\">\n      <h1>Nos offres d'emploi</h1>\n      <select id=\"offres-filter\"><option value=\"0\">Toutes</option></select>\n      <div class=\"row offres-items\"></div>\n      <div id=\"no-ads\" >\n        Aucune offre n'est disponible pour le moment.\n      </div>\n      \n    </main></body></html>\n    ",
+      "url": "https://emploi.unisante.ch/index.php/offres",
+      "jobs": {}
+    },
+    {
+      "name": "hidden-zero",
+      "source": "\n    <html><body><main id=\"main\">\n      <h1>Nos offres d'emploi</h1>\n      <select id=\"offres-filter\"><option value=\"0\">Toutes</option></select>\n      <div class=\"row offres-items\"></div>\n      <div id=\"no-ads\" style=\"display: none;\">\n        Aucune offre n'est disponible pour le moment.\n      </div>\n      \n    </main></body></html>\n    ",
+      "url": "https://emploi.unisante.ch/index.php/offres",
+      "error": true
+    },
+    {
+      "name": "visible-nonempty",
+      "source": "\n    <html><body><main id=\"main\">\n      <h1>Nos offres d'emploi</h1>\n      <select id=\"offres-filter\"><option value=\"0\">Toutes</option></select>\n      <div class=\"row offres-items\"><div class=\"offres-item\"><a class=\"box-job__header_link\" href=\"/index.php/offre/1405-role\" title=\"Role\">Role</a></div></div>\n      <div id=\"no-ads\" >\n        Aucune offre n'est disponible pour le moment.\n      </div>\n      \n    </main></body></html>\n    ",
+      "url": "https://emploi.unisante.ch/index.php/offres",
+      "error": true
+    },
+    {
+      "name": "pagination",
+      "source": "\n    <html><body><main id=\"main\">\n      <h1>Nos offres d'emploi</h1>\n      <select id=\"offres-filter\"><option value=\"0\">Toutes</option></select>\n      <div class=\"row offres-items\"></div>\n      <div id=\"no-ads\" >\n        Aucune offre n'est disponible pour le moment.\n      </div>\n      <a rel=\"next\" href=\"?page=2\">Next</a>\n    </main></body></html>\n    ",
+      "url": "https://emploi.unisante.ch/index.php/offres",
+      "error": true
+    },
+    {
+      "name": "class-drift",
+      "source": "\n    <html><body><main id=\"main\">\n      <h1>Nos offres d'emploi</h1>\n      <select id=\"offres-filter\"><option value=\"0\">Toutes</option></select>\n      <div class=\"row offres-items\"><div class=\"offres-item\"><a class=\"changed-link\" href=\"/index.php/offre/1405-role\" title=\"Role\">Role</a></div></div>\n      <div id=\"no-ads\" style=\"display: none;\">\n        Aucune offre n'est disponible pour le moment.\n      </div>\n      \n    </main></body></html>\n    ",
+      "url": "https://emploi.unisante.ch/index.php/offres",
+      "error": true
+    },
+    {
+      "name": "duplicate",
+      "source": "\n    <html><body><main id=\"main\">\n      <h1>Nos offres d'emploi</h1>\n      <select id=\"offres-filter\"><option value=\"0\">Toutes</option></select>\n      <div class=\"row offres-items\"><div class=\"offres-item\"><a class=\"box-job__header_link\" href=\"/index.php/offre/1405-role\" title=\"Role\">Role</a></div><div class=\"offres-item\"><a class=\"box-job__header_link\" href=\"/index.php/offre/1405-role\" title=\"Role\">Role</a></div></div>\n      <div id=\"no-ads\" style=\"display: none;\">\n        Aucune offre n'est disponible pour le moment.\n      </div>\n      \n    </main></body></html>\n    ",
+      "url": "https://emploi.unisante.ch/index.php/offres",
+      "error": true
+    },
+    {
+      "name": "missing-empty",
+      "source": "\n    <html><body><main id=\"main\">\n      <h1>Nos offres d'emploi</h1>\n      <select id=\"offres-filter\"><option value=\"0\">Toutes</option></select>\n      <div class=\"row offres-items\"><div class=\"offres-item\"><a class=\"box-job__header_link\" href=\"/index.php/offre/1405-role\" title=\"Role\">Role</a></div></div>\n      <div id=\"other\" style=\"display: none;\">\n        Aucune offre n'est disponible pour le moment.\n      </div>\n      \n    </main></body></html>\n    ",
+      "url": "https://emploi.unisante.ch/index.php/offres",
+      "error": true
+    },
+    {
+      "name": "cross-origin",
+      "source": "\n    <html><body><main id=\"main\">\n      <h1>Nos offres d'emploi</h1>\n      <select id=\"offres-filter\"><option value=\"0\">Toutes</option></select>\n      <div class=\"row offres-items\"><div class=\"offres-item\"><a class=\"box-job__header_link\" href=\"https://foreign.example/offre/1405-role\" title=\"Role\">Role</a></div></div>\n      <div id=\"no-ads\" style=\"display: none;\">\n        Aucune offre n'est disponible pour le moment.\n      </div>\n      \n    </main></body></html>\n    ",
+      "url": "https://emploi.unisante.ch/index.php/offres",
+      "error": true
+    },
+    {
+      "name": "alternate-link",
+      "source": "\n    <html><body><main id=\"main\">\n      <h1>Nos offres d'emploi</h1>\n      <select id=\"offres-filter\"><option value=\"0\">Toutes</option></select>\n      <div class=\"row offres-items\"><div class=\"offres-item\"><a class=\"box-job__header_link\" href=\"/offre/1405-role\" title=\"Role\">Role</a></div></div>\n      <div id=\"no-ads\" style=\"display: none;\">\n        Aucune offre n'est disponible pour le moment.\n      </div>\n      \n    </main></body></html>\n    ",
+      "url": "https://emploi.unisante.ch/index.php/offres",
+      "jobs": {
+        "1405-role": {
+          "slug": "1405-role",
+          "title": "Role"
+        }
+      }
+    },
+    {
+      "name": "query-link",
+      "source": "\n    <html><body><main id=\"main\">\n      <h1>Nos offres d'emploi</h1>\n      <select id=\"offres-filter\"><option value=\"0\">Toutes</option></select>\n      <div class=\"row offres-items\"><div class=\"offres-item\"><a class=\"box-job__header_link\" href=\"/index.php/offre/1405-role?x=1\" title=\"Role\">Role</a></div></div>\n      <div id=\"no-ads\" style=\"display: none;\">\n        Aucune offre n'est disponible pour le moment.\n      </div>\n      \n    </main></body></html>\n    ",
+      "url": "https://emploi.unisante.ch/index.php/offres",
+      "error": true
+    },
+    {
+      "name": "outside-inventory",
+      "source": "\n    <html><body><main id=\"main\">\n      <h1>Nos offres d'emploi</h1>\n      <select id=\"offres-filter\"><option value=\"0\">Toutes</option></select>\n      <div class=\"row offres-items\"><div class=\"offres-item\"><a class=\"box-job__header_link\" href=\"/index.php/offre/1405-role\" title=\"Role\">Role</a></div></div>\n      <div id=\"no-ads\" style=\"display: none;\">\n        Aucune offre n'est disponible pour le moment.\n      </div>\n      \n    <a href=\"/offre/8-other\">Other</a></main></body></html>\n    ",
+      "url": "https://emploi.unisante.ch/index.php/offres",
+      "error": true
+    },
+    {
+      "name": "challenge",
+      "source": "\n    <html><body><main id=\"main\">\n      <h1>Nos offres d'emploi</h1>\n      <select id=\"offres-filter\"><option value=\"0\">Toutes</option></select>\n      <div class=\"row offres-items\"><div class=\"offres-item\"><a class=\"box-job__header_link\" href=\"/index.php/offre/1405-role\" title=\"Role\">Role</a></div></div>\n      <div id=\"no-ads\" style=\"display: none;\">\n        Aucune offre n'est disponible pour le moment.\n      </div>\n      \n    </main></body></html>\n    <title>Just a moment</title>",
+      "url": "https://emploi.unisante.ch/index.php/offres",
+      "error": true
+    },
+    {
+      "name": "missing-heading",
+      "source": "\n    <html><body><main id=\"main\">\n      <h1>Changed</h1>\n      <select id=\"offres-filter\"><option value=\"0\">Toutes</option></select>\n      <div class=\"row offres-items\"><div class=\"offres-item\"><a class=\"box-job__header_link\" href=\"/index.php/offre/1405-role\" title=\"Role\">Role</a></div></div>\n      <div id=\"no-ads\" style=\"display: none;\">\n        Aucune offre n'est disponible pour le moment.\n      </div>\n      \n    </main></body></html>\n    ",
+      "url": "https://emploi.unisante.ch/index.php/offres",
+      "error": true
+    }
+  ],
+  "details": [
+    {
+      "name": "normal",
+      "source": "\n    <html><head><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Structured title is not authoritative\", \"description\": \"secr&Atilde;&copy;tariat\", \"datePosted\": \"2026-08-20\", \"employmentType\": \"Temps plein\", \"hiringOrganization\": {\"@type\": \"Organization\", \"name\": \"Unisant\\u00e9, Centre universitaire de m\\u00e9decine g\\u00e9n\\u00e9rale\", \"sameAs\": \"https://www.unisante.ch\"}, \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Lausanne\", \"addressCountry\": \"Suisse\"}}}</script></head>\n    <body><main id=\"main\"><div class=\"container\"><div class=\"row\">\n      <div class=\"col-12 col-sm-12 col-md-10\">\n        <h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Référence : 1405</p>\n      </div>\n      <div class=\"col-md-2\"><form><input name=\"email\"></form></div>\n    </div></div></main></body></html>\n    ",
+      "slug": "1405-role",
+      "title": "Role",
+      "today": "2026-08-25",
+      "normalizations": [
+        {
+          "source": "\n        <h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Référence : 1405</p>\n      ",
+          "description": "<h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Référence : 1405</p>"
+        }
+      ],
+      "job": {
+        "url": "https://emploi.unisante.ch/index.php/offre/1405-role",
+        "title": "Role",
+        "description": "<h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Référence : 1405</p>",
+        "locations": [
+          "Lausanne, Suisse"
+        ],
+        "employment_type": "Temps plein",
+        "date_posted": "2026-08-20",
+        "language": "fr",
+        "metadata": {
+          "provider_reference": "1405",
+          "detail_slug": "1405-role",
+          "detail_url": "https://emploi.unisante.ch/index.php/offre/1405-role"
+        },
+        "source_identity": "unisante:emploi:1405"
+      }
+    },
+    {
+      "name": "evergreen",
+      "source": "\n    <html><head><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Structured title is not authoritative\", \"description\": \"secr&Atilde;&copy;tariat\", \"datePosted\": \"2026-08-20\", \"employmentType\": \"Temps plein\", \"hiringOrganization\": {\"@type\": \"Organization\", \"name\": \"Unisant\\u00e9, Centre universitaire de m\\u00e9decine g\\u00e9n\\u00e9rale\", \"sameAs\": \"https://www.unisante.ch\"}, \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Lausanne\", \"addressCountry\": \"Suisse\"}}}</script></head>\n    <body><main id=\"main\"><div class=\"container\"><div class=\"row\">\n      <div class=\"col-12 col-sm-12 col-md-10\">\n        <h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Référence : 8</p>\n      </div>\n      <div class=\"col-md-2\"><form><input name=\"email\"></form></div>\n    </div></div></main></body></html>\n    ",
+      "slug": "medecin-role",
+      "title": "Role",
+      "today": "2026-08-25",
+      "normalizations": [
+        {
+          "source": "\n        <h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Référence : 8</p>\n      ",
+          "description": "<h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Référence : 8</p>"
+        }
+      ],
+      "job": {
+        "url": "https://emploi.unisante.ch/index.php/offre/medecin-role",
+        "title": "Role",
+        "description": "<h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Référence : 8</p>",
+        "locations": [
+          "Lausanne, Suisse"
+        ],
+        "employment_type": "Temps plein",
+        "date_posted": "2026-08-20",
+        "language": "fr",
+        "metadata": {
+          "provider_reference": "8",
+          "detail_slug": "medecin-role",
+          "detail_url": "https://emploi.unisante.ch/index.php/offre/medecin-role"
+        },
+        "source_identity": "unisante:emploi:8"
+      }
+    },
+    {
+      "name": "numeric-mismatch",
+      "source": "\n    <html><head><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Structured title is not authoritative\", \"description\": \"secr&Atilde;&copy;tariat\", \"datePosted\": \"2026-08-20\", \"employmentType\": \"Temps plein\", \"hiringOrganization\": {\"@type\": \"Organization\", \"name\": \"Unisant\\u00e9, Centre universitaire de m\\u00e9decine g\\u00e9n\\u00e9rale\", \"sameAs\": \"https://www.unisante.ch\"}, \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Lausanne\", \"addressCountry\": \"Suisse\"}}}</script></head>\n    <body><main id=\"main\"><div class=\"container\"><div class=\"row\">\n      <div class=\"col-12 col-sm-12 col-md-10\">\n        <h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Référence : 8</p>\n      </div>\n      <div class=\"col-md-2\"><form><input name=\"email\"></form></div>\n    </div></div></main></body></html>\n    ",
+      "slug": "1405-role",
+      "title": "Role",
+      "today": "2026-08-25",
+      "normalizations": [],
+      "error": true
+    },
+    {
+      "name": "numeric-deadline",
+      "source": "\n    <html><head><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Structured title is not authoritative\", \"description\": \"secr&Atilde;&copy;tariat\", \"datePosted\": \"2026-08-20\", \"employmentType\": \"Temps plein\", \"hiringOrganization\": {\"@type\": \"Organization\", \"name\": \"Unisant\\u00e9, Centre universitaire de m\\u00e9decine g\\u00e9n\\u00e9rale\", \"sameAs\": \"https://www.unisante.ch\"}, \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Lausanne\", \"addressCountry\": \"Suisse\"}}}</script></head>\n    <body><main id=\"main\"><div class=\"container\"><div class=\"row\">\n      <div class=\"col-12 col-sm-12 col-md-10\">\n        <h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Délai de postulation : 13-09-2026</p><p>Référence : 1405</p>\n      </div>\n      <div class=\"col-md-2\"><form><input name=\"email\"></form></div>\n    </div></div></main></body></html>\n    ",
+      "slug": "1405-role",
+      "title": "Role",
+      "today": "2026-08-25",
+      "normalizations": [
+        {
+          "source": "\n        <h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Délai de postulation : 13-09-2026</p><p>Référence : 1405</p>\n      ",
+          "description": "<h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Délai de postulation : 13-09-2026</p><p>Référence : 1405</p>"
+        }
+      ],
+      "job": {
+        "url": "https://emploi.unisante.ch/index.php/offre/1405-role",
+        "title": "Role",
+        "description": "<h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Délai de postulation : 13-09-2026</p><p>Référence : 1405</p>",
+        "locations": [
+          "Lausanne, Suisse"
+        ],
+        "employment_type": "Temps plein",
+        "date_posted": "2026-08-20",
+        "language": "fr",
+        "metadata": {
+          "provider_reference": "1405",
+          "detail_slug": "1405-role",
+          "detail_url": "https://emploi.unisante.ch/index.php/offre/1405-role",
+          "application_deadline": "2026-09-13"
+        },
+        "source_identity": "unisante:emploi:1405"
+      }
+    },
+    {
+      "name": "french-deadline",
+      "source": "\n    <html><head><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Structured title is not authoritative\", \"description\": \"secr&Atilde;&copy;tariat\", \"datePosted\": \"2026-08-20\", \"employmentType\": \"Temps plein\", \"hiringOrganization\": {\"@type\": \"Organization\", \"name\": \"Unisant\\u00e9, Centre universitaire de m\\u00e9decine g\\u00e9n\\u00e9rale\", \"sameAs\": \"https://www.unisante.ch\"}, \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Lausanne\", \"addressCountry\": \"Suisse\"}}}</script></head>\n    <body><main id=\"main\"><div class=\"container\"><div class=\"row\">\n      <div class=\"col-12 col-sm-12 col-md-10\">\n        <h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Délai de postulation : 2 décembre 2026</p><p>Référence : 1405</p>\n      </div>\n      <div class=\"col-md-2\"><form><input name=\"email\"></form></div>\n    </div></div></main></body></html>\n    ",
+      "slug": "1405-role",
+      "title": "Role",
+      "today": "2026-08-25",
+      "normalizations": [
+        {
+          "source": "\n        <h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Délai de postulation : 2 décembre 2026</p><p>Référence : 1405</p>\n      ",
+          "description": "<h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Délai de postulation : 2 décembre 2026</p><p>Référence : 1405</p>"
+        }
+      ],
+      "job": {
+        "url": "https://emploi.unisante.ch/index.php/offre/1405-role",
+        "title": "Role",
+        "description": "<h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Délai de postulation : 2 décembre 2026</p><p>Référence : 1405</p>",
+        "locations": [
+          "Lausanne, Suisse"
+        ],
+        "employment_type": "Temps plein",
+        "date_posted": "2026-08-20",
+        "language": "fr",
+        "metadata": {
+          "provider_reference": "1405",
+          "detail_slug": "1405-role",
+          "detail_url": "https://emploi.unisante.ch/index.php/offre/1405-role",
+          "application_deadline": "2026-12-02"
+        },
+        "source_identity": "unisante:emploi:1405"
+      }
+    },
+    {
+      "name": "expired",
+      "source": "\n    <html><head><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Structured title is not authoritative\", \"description\": \"secr&Atilde;&copy;tariat\", \"datePosted\": \"2026-08-20\", \"employmentType\": \"Temps plein\", \"hiringOrganization\": {\"@type\": \"Organization\", \"name\": \"Unisant\\u00e9, Centre universitaire de m\\u00e9decine g\\u00e9n\\u00e9rale\", \"sameAs\": \"https://www.unisante.ch\"}, \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Lausanne\", \"addressCountry\": \"Suisse\"}}}</script></head>\n    <body><main id=\"main\"><div class=\"container\"><div class=\"row\">\n      <div class=\"col-12 col-sm-12 col-md-10\">\n        <h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Délai de postulation : 2 août 2026</p><p>Référence : 1405</p>\n      </div>\n      <div class=\"col-md-2\"><form><input name=\"email\"></form></div>\n    </div></div></main></body></html>\n    ",
+      "slug": "1405-role",
+      "title": "Role",
+      "today": "2026-08-25",
+      "normalizations": [
+        {
+          "source": "\n        <h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Délai de postulation : 2 août 2026</p><p>Référence : 1405</p>\n      ",
+          "description": "<h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Délai de postulation : 2 août 2026</p><p>Référence : 1405</p>"
+        }
+      ],
+      "job": null
+    },
+    {
+      "name": "malformed-deadline",
+      "source": "\n    <html><head><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Structured title is not authoritative\", \"description\": \"secr&Atilde;&copy;tariat\", \"datePosted\": \"2026-08-20\", \"employmentType\": \"Temps plein\", \"hiringOrganization\": {\"@type\": \"Organization\", \"name\": \"Unisant\\u00e9, Centre universitaire de m\\u00e9decine g\\u00e9n\\u00e9rale\", \"sameAs\": \"https://www.unisante.ch\"}, \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Lausanne\", \"addressCountry\": \"Suisse\"}}}</script></head>\n    <body><main id=\"main\"><div class=\"container\"><div class=\"row\">\n      <div class=\"col-12 col-sm-12 col-md-10\">\n        <h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Délai de postulation : prochainement</p><p>Référence : 1405</p>\n      </div>\n      <div class=\"col-md-2\"><form><input name=\"email\"></form></div>\n    </div></div></main></body></html>\n    ",
+      "slug": "1405-role",
+      "title": "Role",
+      "today": "2026-08-25",
+      "normalizations": [],
+      "error": true
+    },
+    {
+      "name": "mojibake",
+      "source": "\n    <html><head><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Structured title is not authoritative\", \"description\": \"secr&Atilde;&copy;tariat\", \"datePosted\": \"2026-08-20\", \"employmentType\": \"Temps plein\", \"hiringOrganization\": {\"@type\": \"Organization\", \"name\": \"Unisant\\u00e9, Centre universitaire de m\\u00e9decine g\\u00e9n\\u00e9rale\", \"sameAs\": \"https://www.unisante.ch\"}, \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Lausanne\", \"addressCountry\": \"Suisse\"}}}</script></head>\n    <body><main id=\"main\"><div class=\"container\"><div class=\"row\">\n      <div class=\"col-12 col-sm-12 col-md-10\">\n        <h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. secrÃ©tariat</p>\n        <p>Référence : 1405</p>\n      </div>\n      <div class=\"col-md-2\"><form><input name=\"email\"></form></div>\n    </div></div></main></body></html>\n    ",
+      "slug": "1405-role",
+      "title": "Role",
+      "today": "2026-08-25",
+      "normalizations": [
+        {
+          "source": "\n        <h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. secrÃ©tariat</p>\n        <p>Référence : 1405</p>\n      ",
+          "description": "<h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. secrÃ©tariat</p>\n        <p>Référence : 1405</p>"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "wrong-owner",
+      "source": "\n    <html><head><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Structured title is not authoritative\", \"description\": \"secr&Atilde;&copy;tariat\", \"datePosted\": \"2026-08-20\", \"employmentType\": \"Temps plein\", \"hiringOrganization\": {\"@type\": \"Organization\", \"name\": \"Foreign, Centre universitaire de m\\u00e9decine g\\u00e9n\\u00e9rale\", \"sameAs\": \"https://www.unisante.ch\"}, \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Lausanne\", \"addressCountry\": \"Suisse\"}}}</script></head>\n    <body><main id=\"main\"><div class=\"container\"><div class=\"row\">\n      <div class=\"col-12 col-sm-12 col-md-10\">\n        <h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Référence : 1405</p>\n      </div>\n      <div class=\"col-md-2\"><form><input name=\"email\"></form></div>\n    </div></div></main></body></html>\n    ",
+      "slug": "1405-role",
+      "title": "Role",
+      "today": "2026-08-25",
+      "normalizations": [
+        {
+          "source": "\n        <h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Référence : 1405</p>\n      ",
+          "description": "<h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Référence : 1405</p>"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "wrong-owner-url",
+      "source": "\n    <html><head><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Structured title is not authoritative\", \"description\": \"secr&Atilde;&copy;tariat\", \"datePosted\": \"2026-08-20\", \"employmentType\": \"Temps plein\", \"hiringOrganization\": {\"@type\": \"Organization\", \"name\": \"Unisant\\u00e9, Centre universitaire de m\\u00e9decine g\\u00e9n\\u00e9rale\", \"sameAs\": \"https://foreign.example\"}, \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Lausanne\", \"addressCountry\": \"Suisse\"}}}</script></head>\n    <body><main id=\"main\"><div class=\"container\"><div class=\"row\">\n      <div class=\"col-12 col-sm-12 col-md-10\">\n        <h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Référence : 1405</p>\n      </div>\n      <div class=\"col-md-2\"><form><input name=\"email\"></form></div>\n    </div></div></main></body></html>\n    ",
+      "slug": "1405-role",
+      "title": "Role",
+      "today": "2026-08-25",
+      "normalizations": [
+        {
+          "source": "\n        <h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Référence : 1405</p>\n      ",
+          "description": "<h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Référence : 1405</p>"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "invalid-posted",
+      "source": "\n    <html><head><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Structured title is not authoritative\", \"description\": \"secr&Atilde;&copy;tariat\", \"datePosted\": \"2026-02-30\", \"employmentType\": \"Temps plein\", \"hiringOrganization\": {\"@type\": \"Organization\", \"name\": \"Unisant\\u00e9, Centre universitaire de m\\u00e9decine g\\u00e9n\\u00e9rale\", \"sameAs\": \"https://www.unisante.ch\"}, \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Lausanne\", \"addressCountry\": \"Suisse\"}}}</script></head>\n    <body><main id=\"main\"><div class=\"container\"><div class=\"row\">\n      <div class=\"col-12 col-sm-12 col-md-10\">\n        <h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Référence : 1405</p>\n      </div>\n      <div class=\"col-md-2\"><form><input name=\"email\"></form></div>\n    </div></div></main></body></html>\n    ",
+      "slug": "1405-role",
+      "title": "Role",
+      "today": "2026-08-25",
+      "normalizations": [
+        {
+          "source": "\n        <h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Référence : 1405</p>\n      ",
+          "description": "<h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Référence : 1405</p>"
+        }
+      ],
+      "error": true
+    },
+    {
+      "name": "missing-main",
+      "source": "\n    <html><head><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Structured title is not authoritative\", \"description\": \"secr&Atilde;&copy;tariat\", \"datePosted\": \"2026-08-20\", \"employmentType\": \"Temps plein\", \"hiringOrganization\": {\"@type\": \"Organization\", \"name\": \"Unisant\\u00e9, Centre universitaire de m\\u00e9decine g\\u00e9n\\u00e9rale\", \"sameAs\": \"https://www.unisante.ch\"}, \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Lausanne\", \"addressCountry\": \"Suisse\"}}}</script></head>\n    <body><main id=\"other\"><div class=\"container\"><div class=\"row\">\n      <div class=\"col-12 col-sm-12 col-md-10\">\n        <h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Référence : 1405</p>\n      </div>\n      <div class=\"col-md-2\"><form><input name=\"email\"></form></div>\n    </div></div></main></body></html>\n    ",
+      "slug": "1405-role",
+      "title": "Role",
+      "today": "2026-08-25",
+      "normalizations": [],
+      "error": true
+    },
+    {
+      "name": "ambiguous-reference",
+      "source": "\n    <html><head><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"Structured title is not authoritative\", \"description\": \"secr&Atilde;&copy;tariat\", \"datePosted\": \"2026-08-20\", \"employmentType\": \"Temps plein\", \"hiringOrganization\": {\"@type\": \"Organization\", \"name\": \"Unisant\\u00e9, Centre universitaire de m\\u00e9decine g\\u00e9n\\u00e9rale\", \"sameAs\": \"https://www.unisante.ch\"}, \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Lausanne\", \"addressCountry\": \"Suisse\"}}}</script></head>\n    <body><main id=\"main\"><div class=\"container\"><div class=\"row\">\n      <div class=\"col-12 col-sm-12 col-md-10\">\n        <h1>Titre visible</h1><p>Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. Nous recherchons une personne qui contribue aux missions de santé publique, collabore avec les équipes cliniques et scientifiques, assure un travail rigoureux et participe activement à l'amélioration continue des prestations. </p>\n        <p>Référence : 1405 Référence : 8</p>\n      </div>\n      <div class=\"col-md-2\"><form><input name=\"email\"></form></div>\n    </div></div></main></body></html>\n    ",
+      "slug": "1405-role",
+      "title": "Role",
+      "today": "2026-08-25",
+      "normalizations": [],
+      "error": true
+    }
+  ]
+}

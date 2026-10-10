@@ -1,0 +1,49 @@
+{
+  "schema": "jobseek.native-source1001-production/v1",
+  "observed_at_utc": "2026-10-10T07:07:57.543037+00:00",
+  "source_revision": "b4a7446a917f551ab0b34c06af30b219911e52d2",
+  "version": "0.13.1001",
+  "merged_pr": 10397,
+  "original_rollouts": {
+    "crawler": 38028260526,
+    "renderer": 38028282090,
+    "conclusion": "success"
+  },
+  "identities": {
+    "JOBSEEK_DEPLOY_REVISION": "b4a7446a917f551ab0b34c06af30b219911e52d2",
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:7fdae54f564fe9c04f673f6bc94f71eb2c138b2abe93e1f06c419695bcdb7815",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:162fbe53b67e6d300aef2769b97de4131e1864956f5d6d7689d556d08f912290"
+  },
+  "renderer_image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:fa6ea9b788a32505d78899867cf3e0b67b94272013967deceb76efa83c1ef9c1",
+  "lightpanda_version": "1.0.0",
+  "routing_epoch": 267,
+  "ordinary_plan_sha256": "fa5762a635a5afe0ebbe6c0d9e4a701f7bfc974494800a65748676e7337b6c84",
+  "ordinary_projection_sha1": "82e3853e23a2fd7516241a4a71d2ba3ccd9a6aae",
+  "ordinary_receipt_sha256": "fe1738e4036129b0d5285d53b979b6f860124c9d3261a60f6dc8d2b0fbffd853",
+  "b0_receipt_sha256": "375a54c50a9fbd56b71b1115d9b5e9cdfb67f2b4328ec57acef2537027e2a332",
+  "cohort": {
+    "monitor_boards": 7690,
+    "detail_boards": 2749,
+    "scheduled_owned_postings": 1474500,
+    "scheduled_detail_postings": 1504860,
+    "cache_rejected_boards": 42,
+    "route_rejected_boards": 1
+  },
+  "health": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200,
+    "lightpanda-claimant": 204,
+    "ordinary-go": 204
+  },
+  "natural_sample": {
+    "completed_monitors": 539,
+    "exact_schedules": 539,
+    "retained_completion_leases": 0
+  },
+  "private_proof_sha256": "56d1b787a2b3651cc4f725873bf93a9e9208ee2222b853ea281db743efc9d2b5",
+  "scope": "Original supported full activation and independent exact owner/SQL/Redis/images/health. Natural sample is not whole-fleet freshness or cost. Full migration remains incomplete."
+}

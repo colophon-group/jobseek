@@ -178,6 +178,16 @@ func stableGreenhouseConfig(config map[string]string, metadata map[string]json.R
 			stableMetadata[key] = value
 		}
 	}
+	if config["crawler_type"] == "unisante" {
+		if _, err := unisanteMigrationConfig(config); err != nil {
+			return nil, ErrUnsupportedProfile
+		}
+		// This one code-owned receipt is runtime state. The migration flag and
+		// every operator field remain part of the immutable configuration.
+		if unisanteMigrationRequested(metadata) {
+			delete(stableMetadata, "_identity_migration_receipt")
+		}
+	}
 	if config["crawler_type"] == "ukg" {
 		board, err := api.UKGOptionsFromMetadata(config["board_url"], config["metadata"])
 		if err != nil {

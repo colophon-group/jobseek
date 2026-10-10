@@ -1,0 +1,74 @@
+[
+  {
+    "name": "one",
+    "source": "<p>Found 1 jobs at Papa Johns</p><a href='/job/42/nurse/'>Role</a>",
+    "urls": [
+      "https://jobs.papajohns.com/job/42/nurse/"
+    ],
+    "total": 1,
+    "pages": 1
+  },
+  {
+    "name": "zero",
+    "source": "<p>Found 0 jobs at Papa Johns</p>",
+    "urls": [],
+    "total": 0,
+    "pages": 1
+  },
+  {
+    "name": "missing-count",
+    "source": "<a href='/job/42/nurse/'>Role</a>",
+    "error": true
+  },
+  {
+    "name": "empty-with-count",
+    "source": "<p>Found 1 jobs at Papa Johns</p>",
+    "error": true
+  },
+  {
+    "name": "pages",
+    "source": "<p>Found 1,234 jobs at Papa Johns</p><a href='/job/42/nurse'>Role</a><a href='/jobs/?page_jobs=99'>Next</a>",
+    "urls": [
+      "https://jobs.papajohns.com/job/42/nurse/"
+    ],
+    "total": 1234,
+    "pages": 99
+  },
+  {
+    "name": "port",
+    "source": "<p>Found 1 jobs at Papa Johns</p><a href='https://jobs.papajohns.com:443/job/42/nurse/'>Role</a>",
+    "urls": [
+      "https://jobs.papajohns.com/job/42/nurse/"
+    ],
+    "total": 1,
+    "pages": 1
+  },
+  {
+    "name": "query-reject",
+    "source": "<p>Found 1 jobs at Papa Johns</p><a href='/job/42/nurse/?x=1'>Role</a>",
+    "error": true
+  },
+  {
+    "name": "cross-origin",
+    "source": "<p>Found 1 jobs at Papa Johns</p><a href='https://foreign.example/job/42/nurse/'>Role</a>",
+    "error": true
+  },
+  {
+    "name": "duplicate",
+    "source": "<p>Found 1 jobs at Papa Johns</p><a href='/job/42/nurse'>Role</a><a href='/job/42/nurse/'>Role</a>",
+    "urls": [
+      "https://jobs.papajohns.com/job/42/nurse/"
+    ],
+    "total": 1,
+    "pages": 1
+  },
+  {
+    "name": "noscript",
+    "source": "<p>Found 1 jobs at Papa Johns</p><noscript><a href='/job/42/nurse/'>Role</a></noscript>",
+    "urls": [
+      "https://jobs.papajohns.com/job/42/nurse/"
+    ],
+    "total": 1,
+    "pages": 1
+  }
+]

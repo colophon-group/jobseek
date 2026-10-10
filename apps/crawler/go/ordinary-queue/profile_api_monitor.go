@@ -95,6 +95,14 @@ func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[stri
 		return fail()
 	}
 	validation := cloneConfig(config)
+	if provider == "infor" {
+		// Provider validation binds the original allowed TLS port and tenant.
+		// Normalize only this reused Greenhouse validator's input.
+		if u, e := url.Parse(validation["board_url"]); e == nil {
+			u.Host = u.Hostname()
+			validation["board_url"] = u.String()
+		}
+	}
 	// Wecruit landing pages use a fragment-only SPA route. Provider validation
 	// binds the explicit API origin and tenant; preserve the original URL in
 	// the immutable profile while removing its fragment only for this validator.
@@ -107,7 +115,7 @@ func inspectURLOnlyMonitor(boardID string, config map[string]string, md map[stri
 	// JazzHR's strict first-party identity permits the explicit default TLS port.
 	// Normalize only this reused validator input; immutable binding keeps the
 	// original configured URL and the provider endpoint has no explicit port.
-	if provider == "jazzhr" || provider == "gupy" {
+	if provider == "jazzhr" || provider == "gupy" || LastHTTPProvider(provider) {
 		if u, err := url.Parse(validation["board_url"]); err == nil && u.Port() == "443" {
 			u.Host = u.Hostname()
 			validation["board_url"] = u.String()

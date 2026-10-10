@@ -69,6 +69,12 @@ func firstAPIDetailFixture(t *testing.T, requested string) firstOwnerFixture {
 		source = "https://fixture.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/123"
 		metadata = `{"scraper_type":"oracle_hcm","scraper_config":{"enrich":["description"]}}`
 	}
+	if requested == "infor" {
+		provider, boardURL, source, metadata = "infor", "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1", "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1&JobReq=42&JobPost=7", `{"scraper_type":"infor","scraper_config":{"enrich":["description"]}}`
+	}
+	if requested == "peoplesoft" {
+		provider, boardURL, source, metadata = "peoplesoft", "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL", "https://fixture.example/psc/site/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Action=U&Page=HRS_APP_JBPST_FL&JobOpeningId=42", `{"scraper_type":"peoplesoft","scraper_config":{"enrich":["description"]}}`
+	}
 	if _, err := f.observer.Exec(ctx, `UPDATE job_board SET board_url=$2,crawler_type=$3,throttle_key=$3,metadata=$4::jsonb WHERE id=$1::uuid`, f.task.ID, boardURL, provider, metadata); err != nil {
 		t.Fatal(err)
 	}
@@ -97,6 +103,12 @@ func firstAPIDetailFixture(t *testing.T, requested string) firstOwnerFixture {
 	}
 	p.plan = plan
 	p.f.task = &Task{Worker: Simple, Kind: Scrape, ID: f.task.ID, Domain: func() string {
+		if provider == "infor" {
+			return "fixture.cloud.infor.com"
+		}
+		if provider == "peoplesoft" {
+			return "fixture.example"
+		}
 		if provider == "seek" {
 			return "au.seek.com"
 		}

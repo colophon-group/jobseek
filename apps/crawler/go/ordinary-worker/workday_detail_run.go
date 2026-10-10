@@ -192,7 +192,7 @@ func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Cla
 			reservation.PolicyURL = nil
 			result.Diagnostics = append(result.Diagnostics, "invalid_policy_url")
 		}
-	} else if queue.RemainingHTTPDetailProfile(profile.Profile) || profile.Profile == "notion.public-detail/v1" || profile.Profile == "pdf.public-detail/v1" || profile.Profile == "jobstreet.graphql-detail/v1" || profile.Profile == "seek.graphql-detail/v1" || profile.Profile == "linkedin.guest-detail/v1" || profile.Profile == "jazzhr.public-detail/v1" || profile.Profile == "taleo.enterprise-detail/v1" || profile.Profile == "jobconvo.public-detail/v1" {
+	} else if queue.LastHTTPDetailProfile(profile.Profile) || queue.RemainingHTTPDetailProfile(profile.Profile) || profile.Profile == "notion.public-detail/v1" || profile.Profile == "pdf.public-detail/v1" || profile.Profile == "jobstreet.graphql-detail/v1" || profile.Profile == "seek.graphql-detail/v1" || profile.Profile == "linkedin.guest-detail/v1" || profile.Profile == "jazzhr.public-detail/v1" || profile.Profile == "taleo.enterprise-detail/v1" || profile.Profile == "jobconvo.public-detail/v1" {
 		content, reservation, err = fetchAPIDetail(ctx, http, profile)
 	} else {
 		fetched, failure := FetchWorkdayDetail(ctx, http, profile.SourceURL, profile.FacilityTenantAliases)
