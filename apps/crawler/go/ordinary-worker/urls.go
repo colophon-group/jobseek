@@ -51,6 +51,9 @@ func classifyJobURL(raw, board string) string {
 		if _, err := api.MokahrDetailRouteForSource(raw); err == nil {
 			return ""
 		}
+		if api.JohdiOfferFragment(p.fragment) {
+			return ""
+		}
 		return "board_homepage"
 	}
 	return ""

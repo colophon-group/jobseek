@@ -2131,6 +2131,25 @@ class TestClassifyJobUrl:
         board = "https://example.com/careers"
         assert self.classify(board + "#/job/first", board) == "board_homepage"
 
+    @pytest.mark.parametrize("fragment", ["#/offer/23/job", "#/offer/23/translated-title/"])
+    def test_johdi_offer_fragment_preserves_same_listing_path(self, fragment):
+        board = "https://employer.example/careers"
+        assert self.classify(board + fragment, board) is None
+
+    @pytest.mark.parametrize(
+        "fragment",
+        [
+            "#/offer/0/job",
+            "#/offer/023/job",
+            "#/offer/23",
+            "#/offer/23/job/extra",
+            "#/offer/word/job",
+        ],
+    )
+    def test_invalid_johdi_fragment_is_still_a_homepage(self, fragment):
+        board = "https://employer.example/careers"
+        assert self.classify(board + fragment, board) == "board_homepage"
+
     def test_invalid_reason(self):
         assert self.classify("") == "invalid"
         assert self.classify("not-a-url") == "invalid"

@@ -7,7 +7,7 @@ import (
 )
 
 func SecondaryProvider(provider string) bool {
-	if NativeBrowserProvider(provider) || provider == "jobstreet" || PortalHTTPProvider(provider) || FinalHTTPProvider(provider) || SmallProvider(provider) {
+	if RemainingHTTPProvider(provider) || NativeBrowserProvider(provider) || provider == "jobstreet" || PortalHTTPProvider(provider) || FinalHTTPProvider(provider) || SmallProvider(provider) {
 		return true
 	}
 	if provider == "linkedin" || provider == "taleo" || provider == "practicematch" {
@@ -28,6 +28,9 @@ func paycomEnrichmentFields(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, map[string]bool{"title": true, "description": true, "locations": true, "employment_type": true, "job_location_type": true, "date_posted": true, "base_salary": true})
 }
 func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
+	if RemainingHTTPProvider(config["crawler_type"]) {
+		return remainingHTTPEnrichment(config)
+	}
 	if NativeBrowserProvider(config["crawler_type"]) {
 		return monitorEnrichmentFields(config, map[string]bool{})
 	}
@@ -90,6 +93,9 @@ func secondaryMonitorEnrichment(config map[string]string) ([]string, error) {
 	return monitorEnrichmentFields(config, allowed)
 }
 func inspectSecondaryMonitor(boardID string, config map[string]string, md map[string]json.RawMessage) (GreenhouseMonitorProfile, error) {
+	if RemainingHTTPProvider(config["crawler_type"]) {
+		return inspectRemainingHTTPMonitor(boardID, config, md)
+	}
 	if NativeBrowserProvider(config["crawler_type"]) {
 		return inspectNativeBrowserMonitor(boardID, config, md)
 	}
@@ -320,6 +326,10 @@ func inspectSecondaryMonitor(boardID string, config map[string]string, md map[st
 	return inspectURLOnlyMonitor(boardID, config, md, provider, profile, provider, endpoint)
 }
 func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[string]string, resource string) bool {
+	if RemainingHTTPProvider(p.Provider) {
+		o, e := api.RemainingHTTPOptionsFromMetadata(p.Provider, config["board_url"], config["metadata"])
+		return e == nil && config["crawler_type"] == p.Provider && p.Profile == o.Profile() && p.Endpoint == o.ListingURL() && o.ResourceMatches(resource)
+	}
 	if NativeBrowserProvider(p.Provider) {
 		return NativeBrowserMonitorResourceMatches(p, config, resource)
 	}
@@ -439,6 +449,10 @@ func SecondaryMonitorResourceMatches(p GreenhouseMonitorProfile, config map[stri
 	return false
 }
 func SecondaryMonitorGone(config map[string]string, resource string, status int, disabled bool) bool {
+	if RemainingHTTPProvider(config["crawler_type"]) {
+		o, e := api.RemainingHTTPOptionsFromMetadata(config["crawler_type"], config["board_url"], config["metadata"])
+		return e == nil && o.Provider == "johdi" && resource == o.JohdiListURL() && !disabled && status == 404
+	}
 	if config["crawler_type"] == "darwinbox" {
 		b, e := api.DarwinboxBoardFromURL(config["board_url"])
 		return e == nil && resource == b.JobsURL() && !disabled && (status == 404 || status == 410)

@@ -32,6 +32,9 @@ const eightfoldDetailProfile = "eightfold.jsonld-api-detail/v1"
 const eightfoldProxyDetailProfile = "eightfold.proxy-jsonld-api-detail/v1"
 
 func independentDetailProfile(profile string) bool {
+	if RemainingHTTPDetailProfile(profile) {
+		return true
+	}
 	switch profile {
 	case jobStreetDetailProfile, notionDetailProfile, pdfDetailProfile, seekDetailProfile, linkedInDetailProfile, jazzHRDetailProfile, taleoEnterpriseDetailProfile, jobConvoDetailProfile:
 		return true

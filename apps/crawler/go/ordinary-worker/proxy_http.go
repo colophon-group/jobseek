@@ -33,7 +33,7 @@ func runtimeUsesProxy(task queue.Task) bool {
 			return false
 		}
 		switch task.Config["crawler_type"] {
-		case "dom", "api_sniffer", "inline", "sitemap", "eightfold", "phenom", "earcu", "computrabajo", "practicematch":
+		case "dom", "api_sniffer", "inline", "sitemap", "eightfold", "phenom", "earcu", "computrabajo", "practicematch", "headhunter":
 			return true
 		}
 		return false
@@ -46,7 +46,7 @@ func runtimeUsesProxy(task queue.Task) bool {
 		scraper = s
 	}
 	options, _ := md["scraper_config"].(map[string]any)
-	return (scraper == "paylocity" || scraper == "eightfold" || scraper == "dom" || scraper == "json-ld" || scraper == "api_sniffer") && options["proxy"] == true
+	return (scraper == "headhunter" || scraper == "paylocity" || scraper == "eightfold" || scraper == "dom" || scraper == "json-ld" || scraper == "api_sniffer") && options["proxy"] == true
 }
 
 func runtimeClaimUsesProxy(ctx context.Context, authority *queue.Authority, claim *queue.Claim) (bool, error) {

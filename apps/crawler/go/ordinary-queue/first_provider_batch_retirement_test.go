@@ -31,6 +31,12 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 		board, metadata = "https://fixture.jobs.cz/", `{"scraper_type":"skip"}`
 	}
 	switch provider {
+	case "johdi":
+		board, metadata = "https://employer.example/careers", `{"company_key":"synthetic_company_key_12345","flow":"web","locale":"fr","scraper_type":"johdi","scraper_config":{"company_key":"synthetic_company_key_12345","flow":"web","locale":"fr"}}`
+	case "jobdiva":
+		board, metadata = "https://www2.jobdiva.com/portal/?a=synthetic_public_tenant_12345&compid=0#/", `{"token":"synthetic_public_tenant_12345","scraper_type":"skip"}`
+	case "headhunter":
+		board, metadata = "https://hh.ru/employer/42", `{"employer_id":"42","scraper_type":"headhunter","scraper_config":{"enrich":["description"]}}`
 	case "jobstreet":
 		board, metadata = "https://my.jobstreet.com/companies/tecan-cdmo-solutions-pn-175608148114568/jobs", `{"host":"my.jobstreet.com","company_id":"175608148114568","organisation_id":"744981","scraper_type":"jobstreet","scraper_config":{"enrich":["title","description","locations","employment_type","date_posted","base_salary"]}}`
 	case "curately":

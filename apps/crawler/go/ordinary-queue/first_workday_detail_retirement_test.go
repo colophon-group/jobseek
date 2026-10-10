@@ -17,6 +17,16 @@ func firstWorkdayDetailFixture(t *testing.T) firstOwnerFixture {
 }
 func firstAPIDetailFixture(t *testing.T, requested string) firstOwnerFixture {
 	t.Helper()
+	if requested == "johdi" {
+		return firstIndependentDetailFixture(t, `{"scraper_type":"johdi","scraper_config":{"company_key":"synthetic_company_key_12345","flow":"web","locale":"fr"}}`, "https://careers.example.com/jobs#/offer/23/job", "careers.example.com")
+	}
+	if requested == "headhunter" || requested == "headhunter/proxy" {
+		md := `{"scraper_type":"headhunter","scraper_config":{"enrich":["description"]}}`
+		if requested == "headhunter/proxy" {
+			md = `{"scraper_type":"headhunter","scraper_config":{"proxy":true,"enrich":["description"]}}`
+		}
+		return firstIndependentDetailFixture(t, md, "https://hh.ru/vacancy/23", "hh.ru")
+	}
 	if requested == "pdf" {
 		return firstIndependentDetailFixture(t, `{"scraper_type":"pdf","scraper_config":{"title_source":"text"}}`, "https://documents.example.net/job.pdf", "documents.example.net")
 	}

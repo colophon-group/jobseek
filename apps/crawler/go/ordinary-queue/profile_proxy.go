@@ -85,7 +85,7 @@ func httpMonitorParsingConfig(config map[string]string) (map[string]string, erro
 // Transport choice is compiled into immutable profile identities; neither a
 // generic caller flag nor a runtime selector grants proxy write authority.
 func ProfileRequiresProxy(profile string) bool {
-	if profile == workableProxyDetailProfile || profile == "jobbank104.proxy-public-items/v1" || profile == "practicematch.proxy-listing-urls/v1" {
+	if profile == "headhunter.proxy-api-detail/v1" || profile == "headhunter.proxy-summary-items/v1" || profile == workableProxyDetailProfile || profile == "jobbank104.proxy-public-items/v1" || profile == "practicematch.proxy-listing-urls/v1" {
 		return true
 	}
 	if profile == "computrabajo.proxy-listing-urls/v1" || profile == "earcu.proxy-feed-items/v1" || profile == "paylocity.proxy-embedded-items/v1" || profile == paylocityProxyDetailProfile || profile == eightfoldProxyDetailProfile || profile == domProxyDetailProfile || profile == jsonldProxyDetailProfile || profile == httpAPIProxyDetailProfile {

@@ -1,6 +1,70 @@
 # Go and Lightpanda migration delivery plan
 
-Current checkpoint, 2026-10-09: production is source997 (`961e6e444d95131303be46dd99deffdf5da0cbe9`), version0.13.997. Original crawler rollout37999490462 and renderer rollout37999806482 succeeded; independent source/image and cold260 checks passed. Supported B0 is active at epoch261, with seven passing health endpoints. The admin-only staging repair passed the complete7,678-monitor/2,746-detail cohort on its first attempt. SQL/Redis activation accepted the full plan, but readiness failed because Python's legacy ownership projection omitted the Darwinbox and ByteDance browser profiles. Supported pending recovery retired that exact plan and restored healthy service; ordinary ownership is absent. Candidate0.13.998 fixes both mappings, preserving their browser worker boundary. The original regression failed exactly those two profiles; the repaired ownership suite passes69 cases. The native worker also reported a locations startup failure during containment; its six-second lifetime rules out the60s deadline, and an exact-source read-only host probe loads current locations successfully in3.64s. An independent native startup defect is unproved; do not increase timeouts on this evidence. Lightpanda1.0.0 remains the latest verified stable release.
+## Current checkpoint — 2026-10-10
+
+Production **0.13.998**, source `f00f27048b778f68c6d87ea232a84a2fabd10d58`,
+was delivered through [PR #10393](https://github.com/colophon-group/jobseek/pull/10393).
+The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38007256533)
+and [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38007291588)
+succeeded. Independent source, immutable image, cold262 and exporter proofs passed.
+Supported B0 is active at **epoch263**. The entire admitted ordinary cohort is
+active: **7,678 monitors and 2,746 detail boards**, covering **1,474,382 scheduled
+postings** in the captured census. Exact SQL/Redis ownership, all ten running
+writers and eight health endpoints passed independent readback. Natural execution
+at 01:24 UTC recorded 178 completed monitors with 178 recurring SQL/Redis schedules,
+225 successful and 31 failed scrapes, and 9,144 posting touches. These are an
+observation sample, not proof of whole-fleet freshness. JSON-LD detail failures
+remain to be diagnosed against the original route. Forty-one cache-mismatch
+boards and one unsupported Eightfold detail route retain their existing owner.
+
+**Lightpanda 1.0.0** remains the latest official stable release, rechecked on
+October 10. Its immutable image and Linux fixture checksums remain pinned.
+
+The exact source998 frontier contains **204 unsupported monitor configurations**.
+The independent Accenture/BrassRing candidate [PR #10394](https://github.com/colophon-group/jobseek/pull/10394)
+is draft at `ef06c3c44dc49316e5043b3a35f65f6c5e2dc356`. Required CI passes, and
+explicit BrassRing fixture tests pass on amd64 and arm64. All twelve Accenture
+HTTP sites have original request/field parity, totaling 31,752 jobs in their
+captured inventories. BrassRing public execution remains unqualified: all four
+Linux public runs return HTTP403 before the conversation; local official1.0.0
+also fails before complete inventory. No speculative browser workaround is
+committed. Keep all sixteen boards in the candidate scope and retain production
+ownership until the original complete BrassRing inventory is proved.
+
+Continue concurrently in delivery order with the **Johdi + JobDiva + HeadHunter
+HTTP batch** on `fix-crawler/native-final-http-provider-group`. It ports three
+monitor types across six enabled boards, Johdi and HeadHunter scheduled details,
+and the existing HeadHunter proxy boundary. Original Python replay covers 29
+inventory scenarios, six summary-field scenarios and thirteen detail-field
+scenarios. Public captures contain seven Montreux jobs, one FEI job, forty Kraft
+Heinz jobs, two Sucden jobs and 2,809 Mindlance jobs. NTT Data's original Python
+search returns HTTP400; preserve that failure and never claim an empty inventory.
+The candidate compiles 177 profiles and is locally version0.13.999; whichever
+independent candidate merges second must rebase and bump from the actual next
+main version. These are candidate facts, not a production rollout or completed
+provider qualification.
+
+Verified direct/required-proxy replay passes all six public inventories (including
+NTT Data's existing failure) and thirteen public detail records: all eight Johdi
+offers and five sampled HeadHunter vacancies. Forty-eight frozen inventory/field
+cases pass. Twelve real monitor settlement, seventeen detail settlement and thirty
+cold-retirement cases pass, alongside72 Python ownership cases. Database
+verification exposed a pre-existing Johdi URL guard defect: valid same-listing-path
+offer fragments were discarded in Python and Go. Both now preserve the bounded
+positive-offer-ID route, with bare/malformed fragments still rejected. See the
+[portable public proof](evidence/go-native-johdi-jobdiva-headhunter-public-parity-2026-10-10.json).
+Complete exact-head required checks for this batch. Deliver through the original whole
+crawler/renderer workflow, then take a fresh complete admission census. Next
+prioritize grouped DOM actions/pagination (125 current configurations), API
+variants (27), RSS variants (9), and remaining provider families. Finish all
+mandatory runtime/deployment/maintenance consumers, natural whole-fleet
+freshness/conservation, comparable whole-service cost and the supported reversal
+observation window before retiring production Python, Playwright and Chromium.
+Keep every enabled board and useful isolated offline Python tooling.
+
+## Historical checkpoint — source997
+
+Historical checkpoint, 2026-10-09: production is source997 (`961e6e444d95131303be46dd99deffdf5da0cbe9`), version0.13.997. Original crawler rollout37999490462 and renderer rollout37999806482 succeeded; independent source/image and cold260 checks passed. Supported B0 is active at epoch261, with seven passing health endpoints. The admin-only staging repair passed the complete7,678-monitor/2,746-detail cohort on its first attempt. SQL/Redis activation accepted the full plan, but readiness failed because Python's legacy ownership projection omitted the Darwinbox and ByteDance browser profiles. Supported pending recovery retired that exact plan and restored healthy service; ordinary ownership is absent. Candidate0.13.998 fixes both mappings, preserving their browser worker boundary. The original regression failed exactly those two profiles; the repaired ownership suite passes69 cases. The native worker also reported a locations startup failure during containment; its six-second lifetime rules out the60s deadline, and an exact-source read-only host probe loads current locations successfully in3.64s. An independent native startup defect is unproved; do not increase timeouts on this evidence. Lightpanda1.0.0 remains the latest verified stable release.
 
 The next delivery steps are exact-head required checks for the compatibility repair, supported B0 reversal and complete cold verification, fresh merge authority, original whole crawler/renderer rollout, fresh full admission and activation. Retain the entire supported cohort, including all five Darwinbox and three ByteDance boards. Then finish Accenture and BrassRing together (16 boards), rebasing their local candidate and reserving the next version after this repair. Ten Accenture findjobs sites now have original request/field parity, including India's100-page scan of28,728 unique jobs. India's124,390,603-byte projection uses the Go HTTP route rather than widening the8MiB browser frame. The paired branch has the HTTP worker and held BrassRing page driver; physical Lightpanda, service/queue binding and writer qualification remain required. The source996 census has207 boards outside the ordinary cohort: DOM127, API-sniffer27, the paired providers16 and other types37. These counts include B0-owned boards and cache/route rejections; they are not a missing-engine count. Full conservation/freshness, whole-lane cost, supported reversal and the rollback window still gate retiring production Python/Playwright/Chromium. The goal remains active.
 
