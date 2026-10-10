@@ -224,5 +224,12 @@
     "pilots/go-lightpanda/Dockerfile": "72516ce2784396955ce488d5359e7c7e97f6d7e3a41cab1a7f7887eb310b3dd1"
   },
   "required_ci": "pending final exact-head CI; merge blocked until green Required CI and Crawler Deploy Gate, including physical renderer checks",
-  "production": "Source1003 remains independently verified active269. Candidate1004 not yet pushed, merged or deployed."
+  "production": "Source1003 remains independently verified active269. Candidate1004 not yet pushed, merged or deployed.",
+  "physical_ci_first_head": {
+    "head": "606b5190dbc9fcefa7bb60933f586b66a0790d77",
+    "run": 38047938844,
+    "arm64_job": 114201144822,
+    "result": "Root-array session succeeded with two jobs; later publisher denial PASS. Test incorrectly expected unknown-total page-cap truncation. Corrected to original _item_result_is_truncated(... total=None, cap=50000) == False. Runtime unchanged. Final exact-head physical CI still required.",
+    "private_failure_log_sha256": "9a223841d4c0c818778353458e50026f2092dc69a07d6400abc757ba242beb7c"
+  }
 }

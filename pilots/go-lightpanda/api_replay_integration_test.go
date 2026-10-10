@@ -119,7 +119,9 @@ func testLightpandaAPIReplaySession(t *testing.T, rootArray bool) {
 				if response.Outcome != "publisher_reserved" || len(response.Inventory) != 0 {
 					t.Fatal("later denial persisted partial inventory")
 				}
-			} else if response.Outcome != "success" || json.Unmarshal(response.Inventory, &inventory) != nil || len(inventory.Jobs) != 2 || inventory.Truncated != rootArray || strings.Contains(string(response.Inventory), "private-fresh-csrf") || strings.Contains(string(response.Inventory), "private-cookie") {
+				// Original _item_result_is_truncated requires a row cap or a
+				// known-total gap; reaching this page cap alone is not truncation.
+			} else if response.Outcome != "success" || json.Unmarshal(response.Inventory, &inventory) != nil || len(inventory.Jobs) != 2 || inventory.Truncated || strings.Contains(string(response.Inventory), "private-fresh-csrf") || strings.Contains(string(response.Inventory), "private-cookie") {
 				t.Fatal("real replay service/capture/cookie/pagination/cleanup failed", response.Outcome, len(inventory.Jobs))
 			}
 			mu.Lock()
