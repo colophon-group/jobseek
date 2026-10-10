@@ -2,6 +2,16 @@
 
 ## Current checkpoint — 2026-10-10
 
+Renderer recovery [PR #10396](https://github.com/colophon-group/jobseek/pull/10396)
+merged as `45624acc963f99cb49797d7b537f6db2ecbbfe07`, version0.13.1000, after
+required native/image checks, real cgroup OOM replacement smoke and read-only
+verification of the actual failed predecessor passed. Original renderer
+rollout38022818940 succeeded; original crawler rollout38022724428 is in progress.
+The Accenture/BrassRing candidate is rebased on this source at version0.13.1001
+with179 compiled profiles. It remains draft until all four BrassRing public
+inventories and fresh exact-head checks are qualified; all16 boards remain in scope.
+
+
 PR #10395 merged as `0f3ae8c040ba084a63a96de488015756945ebddc`, version0.13.999,
 after required/native/installed-image checks and supported full cold264 reversal
 passed. Original crawler rollout38019366166 is in progress. Renderer rollout
@@ -38,7 +48,7 @@ October 10. Its immutable image and Linux fixture checksums remain pinned.
 
 The exact source998 frontier contains **204 unsupported monitor configurations**.
 The independent Accenture/BrassRing candidate [PR #10394](https://github.com/colophon-group/jobseek/pull/10394)
-is draft at `ef06c3c44dc49316e5043b3a35f65f6c5e2dc356`. Required CI passes, and
+is draft on `fix-crawler/native-accenture-brassring`. Its prior required checks passed before this rebase; fresh checks are required, and
 explicit BrassRing fixture tests pass on amd64 and arm64. All twelve Accenture
 HTTP sites have original request/field parity, totaling 31,752 jobs in their
 captured inventories. BrassRing public execution remains unqualified: all four
