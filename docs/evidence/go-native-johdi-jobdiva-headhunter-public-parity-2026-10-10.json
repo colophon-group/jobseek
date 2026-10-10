@@ -1,0 +1,217 @@
+{
+  "schema": "jobseek.native-provider-public-qualification/v1",
+  "observed_on": "2026-10-10",
+  "original_python_base_revision": "f00f27048b778f68c6d87ea232a84a2fabd10d58",
+  "candidate_branch": "fix-crawler/native-final-http-provider-group",
+  "providers": [
+    "johdi",
+    "jobdiva",
+    "headhunter"
+  ],
+  "enabled_monitor_boards": 6,
+  "candidate_compiled_profiles": 177,
+  "lightpanda_latest_stable_verified": "1.0.0",
+  "lightpanda_latest_release_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
+  "public_monitors": [
+    {
+      "board_slug": "city-of-montreux-careers",
+      "provider": "johdi",
+      "original_status": "complete",
+      "jobs": 7,
+      "truncated": false,
+      "response_statuses": [
+        200,
+        200
+      ],
+      "exchanges": 2,
+      "capture_sha256": "8b33bc54e915b58e950715eadbec9870914799117b9af3fb7e2b860715821a51",
+      "python_go_replay": "pass"
+    },
+    {
+      "board_slug": "fei-careers",
+      "provider": "johdi",
+      "original_status": "complete",
+      "jobs": 1,
+      "truncated": false,
+      "response_statuses": [
+        200,
+        200
+      ],
+      "exchanges": 2,
+      "capture_sha256": "321b280dbc6bb792c075728ced0b78bc63d19e0f9f818c1e8d406c5b081b0d87",
+      "python_go_replay": "pass"
+    },
+    {
+      "board_slug": "kraft-heinz-careers-ru",
+      "provider": "headhunter",
+      "original_status": "complete",
+      "jobs": 40,
+      "truncated": false,
+      "response_statuses": [
+        403,
+        200
+      ],
+      "exchanges": 2,
+      "capture_sha256": "36af26003e69d4f25e2763a9e2693e07c3b4f080804ba7433b0d2fafad620803",
+      "python_go_replay": "pass"
+    },
+    {
+      "board_slug": "mindlance-job-board",
+      "provider": "jobdiva",
+      "original_status": "complete",
+      "jobs": 2809,
+      "truncated": false,
+      "response_statuses": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "exchanges": 32,
+      "capture_sha256": "ef8c04016cd3529b16be64a44a40f4bcab9545d83214a2407fb199f196aa4325",
+      "python_go_replay": "pass"
+    },
+    {
+      "board_slug": "ntt-data-it-contract",
+      "provider": "jobdiva",
+      "original_status": "failed",
+      "jobs": null,
+      "truncated": null,
+      "response_statuses": [
+        200,
+        400
+      ],
+      "exchanges": 2,
+      "capture_sha256": "1bc27b61914d5ee354200cdbbe04ab18de595b7b3804e6ddf6c26d0e0f32c055",
+      "python_go_replay": "pass"
+    },
+    {
+      "board_slug": "sucden-russia-hh",
+      "provider": "headhunter",
+      "original_status": "complete",
+      "jobs": 2,
+      "truncated": false,
+      "response_statuses": [
+        403,
+        200
+      ],
+      "exchanges": 2,
+      "capture_sha256": "62490ef653f4be6e2d393e3885dabbd1b3d5e3d6875de6b87ae808d92f8f3c88",
+      "python_go_replay": "pass"
+    }
+  ],
+  "public_details": [
+    {
+      "board_slug": "city-of-montreux-careers",
+      "samples": 7,
+      "original_complete": 7,
+      "original_failed": 0,
+      "response_statuses": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "original_transport": "direct HTTP",
+      "capture_sha256": "95fbf952800e63220fecd5a066e2bf576cf8941230906695ae6580fc7703ec47",
+      "python_go_fields_and_verified_transport_replay": "pass"
+    },
+    {
+      "board_slug": "fei-careers",
+      "samples": 1,
+      "original_complete": 1,
+      "original_failed": 0,
+      "response_statuses": [
+        200
+      ],
+      "original_transport": "direct HTTP",
+      "capture_sha256": "f37bd3f34af1493d4f6be444f32b0be5db01b424ffaed5a964516111410fe8ad",
+      "python_go_fields_and_verified_transport_replay": "pass"
+    },
+    {
+      "board_slug": "kraft-heinz-careers-ru",
+      "samples": 3,
+      "original_complete": 3,
+      "original_failed": 0,
+      "response_statuses": [
+        403,
+        200,
+        403,
+        200,
+        403,
+        200
+      ],
+      "original_transport": "required proxy",
+      "capture_sha256": "579f8c6ae2d5395db88ca779caa35cf3d97a0bdef372b9e4bc539e00d10d184e",
+      "python_go_fields_and_verified_transport_replay": "pass"
+    },
+    {
+      "board_slug": "sucden-russia-hh",
+      "samples": 2,
+      "original_complete": 2,
+      "original_failed": 0,
+      "response_statuses": [
+        403,
+        200,
+        403,
+        200
+      ],
+      "original_transport": "required proxy",
+      "capture_sha256": "79d3f621b2e30725a3c73c80028684feb1697fb76dd353235482ae6c71c1f274",
+      "python_go_fields_and_verified_transport_replay": "pass"
+    }
+  ],
+  "complete_public_inventory_jobs": 2859,
+  "original_failure_retained": "NTT Data anonymous bootstrap succeeds but original search returns HTTP400. Go reproduces failure; no empty success or absence authority.",
+  "processing_correction": "Both existing Python and Go classified valid same-listing-path Johdi offer fragments as board_homepage. Both now accept the bounded positive-offer-ID route; bare and malformed fragments remain rejected.",
+  "verification": {
+    "original_inventory_scenarios": 29,
+    "original_summary_field_scenarios": 6,
+    "original_detail_field_scenarios": 13,
+    "verified_http_public_monitor_replays": 6,
+    "verified_http_public_detail_replays": 13,
+    "real_postgresql_redis_monitor_settlement_cases": 12,
+    "real_postgresql_redis_detail_settlement_cases": 17,
+    "real_postgresql_redis_cold_retirement_cases": 30,
+    "python_ownership_cases": 72,
+    "python_provider_and_batch_cases": 329
+  },
+  "scope_limits": [
+    "The13 public detail records are samples, not whole-fleet freshness proof.",
+    "Direct HeadHunter detail diagnostics failed403; protected original proxy captures succeed and retain the original403-to-public-JSON-LD fallback.",
+    "No production deployment or admission claim for this candidate.",
+    "No BrassRing public qualification or Python/Chromium retirement claim."
+  ],
+  "public_payload_handling": "Raw inventories, HTML, response bodies, session tokens and authenticated proxy settings remain in protected local evidence; this artifact contains counts/statuses and content hashes only."
+}

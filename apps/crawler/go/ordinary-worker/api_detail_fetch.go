@@ -34,6 +34,8 @@ func fetchAPIDetail(ctx context.Context, verified *VerifiedDirectHTTP, profile q
 	var content any
 	var reservation *publisherpolicy.Reservation
 	switch profile.Profile {
+	case "johdi.api-detail/v1", "headhunter.api-detail/v1", "headhunter.proxy-api-detail/v1":
+		content, reservation, err = fetchRemainingHTTPDetail(ctx, &client, profile, pauseRich)
 	case "jobconvo.public-detail/v1":
 		content, reservation, err = fetchJobConvoDetail(ctx, &client, profile)
 	case "linkedin.guest-detail/v1", "jazzhr.public-detail/v1", "taleo.enterprise-detail/v1":

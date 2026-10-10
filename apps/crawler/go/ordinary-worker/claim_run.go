@@ -310,6 +310,8 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		discovery, fetchErr = FetchJobStreetHTTP(ctx, http.client, profile, task.Config, pauseRich)
 	} else if profile.Profile == "rss.successfactors-legacy-session-items/v1" {
 		discovery, fetchErr = FetchSuccessFactorsLegacyHTTP(ctx, http.client, profile, task.Config, pauseRich)
+	} else if queue.RemainingHTTPProvider(profile.Provider) {
+		discovery, fetchErr = FetchRemainingHTTPProviders(ctx, http.client, profile, task.Config, pauseRich)
 	} else if queue.FinalHTTPProvider(profile.Provider) {
 		discovery, fetchErr = FetchFinalHTTPProvidersHTTP(ctx, http.client, profile, task.Config, pauseRich)
 	} else if queue.SmallProvider(profile.Provider) {
@@ -603,7 +605,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 		return failure("inventory", err)
 	}
 	inventory.MetadataUpdates = discovery.MetadataUpdates
-	if profile.Provider == "workday" || profile.Provider == "smartrecruiters" && profile.Profile != "smartrecruiters.canonical-items/v1" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "dom" && !queue.DOMMonitorUsesRichRows(profile.Profile) || profile.Provider == "icims" || profile.Provider == "breezy" || profile.Provider == "jazzhr" || profile.Provider == "gupy" || profile.Provider == "phenom" || profile.Provider == "jobconvo" {
+	if profile.Provider == "workday" || profile.Provider == "smartrecruiters" && profile.Profile != "smartrecruiters.canonical-items/v1" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "dom" && !queue.DOMMonitorUsesRichRows(profile.Profile) || profile.Provider == "icims" || profile.Provider == "breezy" || profile.Provider == "jazzhr" || profile.Provider == "gupy" || profile.Provider == "phenom" || profile.Provider == "jobconvo" || profile.Provider == "johdi" || profile.Provider == "jobdiva" {
 		for offset := 0; offset < len(inventory.Jobs); offset += 500 {
 			end := min(offset+500, len(inventory.Jobs))
 			urls := make([]string, 0, end-offset)

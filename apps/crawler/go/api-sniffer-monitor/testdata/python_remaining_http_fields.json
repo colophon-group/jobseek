@@ -1,0 +1,537 @@
+[
+  {
+    "mode": "complete",
+    "row": {
+      "id": "101",
+      "employer": {
+        "id": "42",
+        "name": " Example "
+      },
+      "name": " Senior  Engineer ",
+      "description": "<p>Build &amp; maintain Go services in Zurich.</p>",
+      "address": {
+        "city": " Zurich ",
+        "street": " Example ",
+        "building": "1"
+      },
+      "employment_form": {
+        "id": "FULL"
+      },
+      "work_format": [
+        {
+          "id": "HYBRID"
+        },
+        {
+          "id": "REMOTE"
+        }
+      ],
+      "published_at": "2026-10-10T10:00:00+0300",
+      "salary_range": {
+        "currency": "RUR",
+        "from": 1000,
+        "to": 2000,
+        "mode": {
+          "id": "MONTH"
+        }
+      },
+      "key_skills": [
+        {
+          "name": " Go "
+        }
+      ],
+      "professional_roles": [
+        {
+          "name": " Engineer "
+        }
+      ],
+      "languages": [
+        {
+          "name": " English "
+        }
+      ],
+      "experience": {
+        "name": "3–6 years"
+      },
+      "department": {
+        "name": "Platform"
+      },
+      "schedule": {
+        "id": "remote",
+        "name": "Remote"
+      }
+    },
+    "expected": {
+      "url": "https://hh.ru/vacancy/101",
+      "title": "Senior Engineer",
+      "description": "<p>Build &amp; maintain Go services in Zurich.</p>",
+      "locations": [
+        "Zurich, Example, 1"
+      ],
+      "employment_type": "full",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-10T10:00:00+0300",
+      "base_salary": {
+        "currency": "RUR",
+        "min": 1000,
+        "max": 2000,
+        "unit": "month"
+      },
+      "extras": {
+        "skills": [
+          "Go"
+        ],
+        "professional_roles": [
+          "Engineer"
+        ],
+        "languages": [
+          "English"
+        ]
+      },
+      "metadata": {
+        "vacancy_id": "101",
+        "headhunter_employer_id": "42",
+        "employer": "Example",
+        "department": "Platform",
+        "experience": "3–6 years",
+        "schedule": "Remote"
+      }
+    }
+  },
+  {
+    "mode": "legacy-salary",
+    "row": {
+      "id": "101",
+      "employer": {
+        "id": "42",
+        "name": " Example "
+      },
+      "name": " Senior  Engineer ",
+      "description": "<p>Build &amp; maintain Go services in Zurich.</p>",
+      "address": {
+        "city": " Zurich ",
+        "street": " Example ",
+        "building": "1"
+      },
+      "employment_form": {
+        "id": "FULL"
+      },
+      "work_format": [
+        {
+          "id": "HYBRID"
+        },
+        {
+          "id": "REMOTE"
+        }
+      ],
+      "published_at": "2026-10-10T10:00:00+0300",
+      "salary_range": null,
+      "key_skills": [
+        {
+          "name": " Go "
+        }
+      ],
+      "professional_roles": [
+        {
+          "name": " Engineer "
+        }
+      ],
+      "languages": [
+        {
+          "name": " English "
+        }
+      ],
+      "experience": {
+        "name": "3–6 years"
+      },
+      "department": {
+        "name": "Platform"
+      },
+      "schedule": {
+        "id": "remote",
+        "name": "Remote"
+      },
+      "salary": {
+        "currency": "USD",
+        "from": 1,
+        "to": null
+      }
+    },
+    "expected": {
+      "url": "https://hh.ru/vacancy/101",
+      "title": "Senior Engineer",
+      "description": "<p>Build &amp; maintain Go services in Zurich.</p>",
+      "locations": [
+        "Zurich, Example, 1"
+      ],
+      "employment_type": "full",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-10T10:00:00+0300",
+      "base_salary": {
+        "currency": "USD",
+        "min": 1,
+        "max": null,
+        "unit": "month"
+      },
+      "extras": {
+        "skills": [
+          "Go"
+        ],
+        "professional_roles": [
+          "Engineer"
+        ],
+        "languages": [
+          "English"
+        ]
+      },
+      "metadata": {
+        "vacancy_id": "101",
+        "headhunter_employer_id": "42",
+        "employer": "Example",
+        "department": "Platform",
+        "experience": "3–6 years",
+        "schedule": "Remote"
+      }
+    }
+  },
+  {
+    "mode": "shift-salary",
+    "row": {
+      "id": "101",
+      "employer": {
+        "id": "42",
+        "name": " Example "
+      },
+      "name": " Senior  Engineer ",
+      "description": "<p>Build &amp; maintain Go services in Zurich.</p>",
+      "address": {
+        "city": " Zurich ",
+        "street": " Example ",
+        "building": "1"
+      },
+      "employment_form": {
+        "id": "FULL"
+      },
+      "work_format": [
+        {
+          "id": "HYBRID"
+        },
+        {
+          "id": "REMOTE"
+        }
+      ],
+      "published_at": "2026-10-10T10:00:00+0300",
+      "salary_range": {
+        "currency": "RUR",
+        "from": 100,
+        "mode": {
+          "id": "SHIFT"
+        }
+      },
+      "key_skills": [
+        {
+          "name": " Go "
+        }
+      ],
+      "professional_roles": [
+        {
+          "name": " Engineer "
+        }
+      ],
+      "languages": [
+        {
+          "name": " English "
+        }
+      ],
+      "experience": {
+        "name": "3–6 years"
+      },
+      "department": {
+        "name": "Platform"
+      },
+      "schedule": {
+        "id": "remote",
+        "name": "Remote"
+      }
+    },
+    "expected": {
+      "url": "https://hh.ru/vacancy/101",
+      "title": "Senior Engineer",
+      "description": "<p>Build &amp; maintain Go services in Zurich.</p>",
+      "locations": [
+        "Zurich, Example, 1"
+      ],
+      "employment_type": "full",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-10T10:00:00+0300",
+      "extras": {
+        "skills": [
+          "Go"
+        ],
+        "professional_roles": [
+          "Engineer"
+        ],
+        "languages": [
+          "English"
+        ]
+      },
+      "metadata": {
+        "vacancy_id": "101",
+        "headhunter_employer_id": "42",
+        "employer": "Example",
+        "department": "Platform",
+        "experience": "3–6 years",
+        "schedule": "Remote"
+      }
+    }
+  },
+  {
+    "mode": "bool-salary",
+    "row": {
+      "id": "101",
+      "employer": {
+        "id": "42",
+        "name": " Example "
+      },
+      "name": " Senior  Engineer ",
+      "description": "<p>Build &amp; maintain Go services in Zurich.</p>",
+      "address": {
+        "city": " Zurich ",
+        "street": " Example ",
+        "building": "1"
+      },
+      "employment_form": {
+        "id": "FULL"
+      },
+      "work_format": [
+        {
+          "id": "HYBRID"
+        },
+        {
+          "id": "REMOTE"
+        }
+      ],
+      "published_at": "2026-10-10T10:00:00+0300",
+      "salary_range": {
+        "currency": "RUR",
+        "from": true,
+        "to": 20,
+        "mode": {
+          "id": "HOUR"
+        }
+      },
+      "key_skills": [
+        {
+          "name": " Go "
+        }
+      ],
+      "professional_roles": [
+        {
+          "name": " Engineer "
+        }
+      ],
+      "languages": [
+        {
+          "name": " English "
+        }
+      ],
+      "experience": {
+        "name": "3–6 years"
+      },
+      "department": {
+        "name": "Platform"
+      },
+      "schedule": {
+        "id": "remote",
+        "name": "Remote"
+      }
+    },
+    "expected": {
+      "url": "https://hh.ru/vacancy/101",
+      "title": "Senior Engineer",
+      "description": "<p>Build &amp; maintain Go services in Zurich.</p>",
+      "locations": [
+        "Zurich, Example, 1"
+      ],
+      "employment_type": "full",
+      "job_location_type": "hybrid",
+      "date_posted": "2026-10-10T10:00:00+0300",
+      "base_salary": {
+        "currency": "RUR",
+        "min": null,
+        "max": 20,
+        "unit": "hour"
+      },
+      "extras": {
+        "skills": [
+          "Go"
+        ],
+        "professional_roles": [
+          "Engineer"
+        ],
+        "languages": [
+          "English"
+        ]
+      },
+      "metadata": {
+        "vacancy_id": "101",
+        "headhunter_employer_id": "42",
+        "employer": "Example",
+        "department": "Platform",
+        "experience": "3–6 years",
+        "schedule": "Remote"
+      }
+    }
+  },
+  {
+    "mode": "foreign-employer",
+    "row": {
+      "id": "101",
+      "employer": {
+        "id": "43"
+      },
+      "name": " Senior  Engineer ",
+      "description": "<p>Build &amp; maintain Go services in Zurich.</p>",
+      "address": {
+        "city": " Zurich ",
+        "street": " Example ",
+        "building": "1"
+      },
+      "employment_form": {
+        "id": "FULL"
+      },
+      "work_format": [
+        {
+          "id": "HYBRID"
+        },
+        {
+          "id": "REMOTE"
+        }
+      ],
+      "published_at": "2026-10-10T10:00:00+0300",
+      "salary_range": {
+        "currency": "RUR",
+        "from": 1000,
+        "to": 2000,
+        "mode": {
+          "id": "MONTH"
+        }
+      },
+      "key_skills": [
+        {
+          "name": " Go "
+        }
+      ],
+      "professional_roles": [
+        {
+          "name": " Engineer "
+        }
+      ],
+      "languages": [
+        {
+          "name": " English "
+        }
+      ],
+      "experience": {
+        "name": "3–6 years"
+      },
+      "department": {
+        "name": "Platform"
+      },
+      "schedule": {
+        "id": "remote",
+        "name": "Remote"
+      }
+    },
+    "expected": null
+  },
+  {
+    "mode": "remote",
+    "row": {
+      "id": "101",
+      "employer": {
+        "id": "42",
+        "name": " Example "
+      },
+      "name": " Senior  Engineer ",
+      "description": "<p>Build &amp; maintain Go services in Zurich.</p>",
+      "address": null,
+      "employment_form": {
+        "id": "FULL"
+      },
+      "work_format": [],
+      "published_at": "2026-10-10T10:00:00+0300",
+      "salary_range": {
+        "currency": "RUR",
+        "from": 1000,
+        "to": 2000,
+        "mode": {
+          "id": "MONTH"
+        }
+      },
+      "key_skills": [
+        {
+          "name": " Go "
+        }
+      ],
+      "professional_roles": [
+        {
+          "name": " Engineer "
+        }
+      ],
+      "languages": [
+        {
+          "name": " English "
+        }
+      ],
+      "experience": {
+        "name": "3–6 years"
+      },
+      "department": {
+        "name": "Platform"
+      },
+      "schedule": {
+        "id": "remote",
+        "name": "Remote"
+      },
+      "area": {
+        "name": "Moscow"
+      }
+    },
+    "expected": {
+      "url": "https://hh.ru/vacancy/101",
+      "title": "Senior Engineer",
+      "description": "<p>Build &amp; maintain Go services in Zurich.</p>",
+      "locations": [
+        "Moscow"
+      ],
+      "employment_type": "full",
+      "job_location_type": "remote",
+      "date_posted": "2026-10-10T10:00:00+0300",
+      "base_salary": {
+        "currency": "RUR",
+        "min": 1000,
+        "max": 2000,
+        "unit": "month"
+      },
+      "extras": {
+        "skills": [
+          "Go"
+        ],
+        "professional_roles": [
+          "Engineer"
+        ],
+        "languages": [
+          "English"
+        ]
+      },
+      "metadata": {
+        "vacancy_id": "101",
+        "headhunter_employer_id": "42",
+        "employer": "Example",
+        "department": "Platform",
+        "experience": "3–6 years",
+        "schedule": "Remote"
+      }
+    }
+  }
+]

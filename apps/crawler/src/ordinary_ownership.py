@@ -204,6 +204,9 @@ def ownership_projection(payload: str) -> str:
                     "jazzhr.public-detail/v1",
                     "taleo.enterprise-detail/v1",
                     "jobconvo.public-detail/v1",
+                    "johdi.api-detail/v1",
+                    "headhunter.api-detail/v1",
+                    "headhunter.proxy-api-detail/v1",
                 )
                 or (d["profile"] == "workday.cxs-detail/v1" and d["board_id"] not in members)
                 or (

@@ -379,6 +379,12 @@ def _classify_job_url(url: str, board_url: str | None = None) -> str | None:
 
             if _mokahr_detail_url(url) is not None:
                 return None
+            # Johdi's verified widget API uses a stable offer-ID SPA route.
+            # Its listing path is also the detail path; a bare hash still fails.
+            from src.core.scrapers.johdi import _offer_id as _johdi_offer_id
+
+            if _johdi_offer_id(url) is not None:
+                return None
             return "board_homepage"
     return None
 
