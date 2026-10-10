@@ -442,6 +442,7 @@ phase historical-oom-cold-predecessor
 # Cause a real cgroup OOM in an expendable child, within the existing 1GiB
 # ceiling. Prefer the allocator over the idle controller as the OOM victim.
 set +e
+# shellcheck disable=SC2016 # Expansion belongs to the container child shell.
 timeout --foreground --signal=TERM --kill-after=5s 45s \
   docker exec --user 10002:10002 "$second_container_id" /bin/sh -c \
     'echo 1000 > /proc/self/oom_score_adj; data=x; while :; do data="$data$data"; done'
