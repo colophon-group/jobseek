@@ -14,6 +14,7 @@ import (
 func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture {
 	t.Helper()
 	proxy := strings.HasSuffix(provider, "/proxy")
+	talemetryJSON := strings.Contains(provider, "/json")
 	legacySession := provider == "rss/legacy-session"
 	variant := strings.TrimPrefix(provider, "smartrecruiters/")
 	provider = strings.Split(provider, "/")[0]
@@ -31,6 +32,15 @@ func firstProviderBatchFixture(t *testing.T, provider string) firstOwnerFixture 
 		board, metadata = "https://fixture.jobs.cz/", `{"scraper_type":"skip"}`
 	}
 	switch provider {
+	case "talemetry":
+		board, metadata = "https://careers.example.com/search/jobs", `{"scraper_type":"json-ld"}`
+		if talemetryJSON {
+			metadata = `{"scraper_type":"json-ld","transport":"jobs_json"}`
+		}
+	case "kipt":
+		board, metadata = "https://www.kipt.kharkov.ua/ua/vacancy.html", `{"scraper_type":"skip","max_age_days":30}`
+	case "prospective":
+		board, metadata = "https://jobs.example.com/?lang=de", `{"scraper_type":"skip","medium_id":"1000613","application_identity":{"link_texts":["Apply"],"source_url_allowlist":"^https://apply[.]example[.]com/jobs/[0-9a-f-]{36}$","canonical_url_allowlist":"^https://apply[.]example[.]com/jobs/[0-9a-f-]{36}$","locale_priority":["en","de"],"concurrency":3}}`
 	case "infor":
 		board, metadata = "https://fixture.cloud.infor.com:1443/fixture/CandidateSelfService/lm?context.session.key.JobBoard=PUBLIC&context.session.key.HROrganization=1", `{"scraper_type":"infor","scraper_config":{"enrich":["description"]}}`
 	case "peoplesoft":

@@ -1,6 +1,45 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — 2026-10-10
+## Current checkpoint — source1002 rollout, 2026-10-10
+
+[PR #10398](https://github.com/colophon-group/jobseek/pull/10398) merged as
+`560b761a108ec4b25d813ad24227d4894efc7419`, version **0.13.1002**, after all
+exact-head checks passed. Source1001's full ordinary owner and B0 were retired
+through the original workflows. Independent cold268 verification preserved
+historical SQL plans/fences and confirmed absent ownership, receipts and selectors,
+stopped native actors and healthy restored base writers.
+The original [crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38038078508)
+and [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38038188224)
+are in progress. Deployment and full owner activation are not yet confirmed.
+Bind their exact deployed image identities, prove incoming cold/export readiness,
+then use the supported B0/admission/full-owner workflow. Lightpanda remains pinned
+to official stable 1.0.0. The full migration goal remains active and incomplete.
+
+The next grouped source ports **Talemetry, Prospective and KIPT together** in
+`fix-crawler/native-localized-pdf-talemetry`. Six new profiles compile (190 total).
+Fifty original frozen contracts, four complete canonical registry bindings,
+33 verified synthetic inventories, six publisher precedence cases, nine real
+monitor settlements and eighteen real cold-retirement cases pass. Both original
+Talemetry public inventories have full verified offline transport replay (1,436 jobs).
+Prospective's original concurrent children are fully captured (68 responses);
+its original failure is retained, with returned cookies restricted to previously
+issued session values rather than a timing-specific winning cookie snapshot.
+KIPT's complete original public inventory fails atomically on its second bulletin;
+Go preserves that failure. Its first PDF has exact posting identity, title and date,
+but its description still differs by one word-space between extraction engines.
+Resolve that parity question before qualifying this batch. Do not substitute a
+successful prefix or remove an enabled board. The ports are not deployed.
+
+A full source1001 census leaves 195 monitors outside its ordinary cohort, including
+three already native B0 boards. DOM accounts for 123, API-sniffer 26, Accenture 12,
+BrassRing four and RSS eight. After this grouped batch, target shared DOM
+provider/action/pagination and API browser options together to close the larger
+remaining configuration groups. Preserve the cached-route exceptions and every
+enabled board. Whole-fleet freshness, queue conservation, comparable whole-service
+cost, the supported reversal window and production Python/browser retirement
+remain required.
+
+## Historical checkpoint — source1001 active before supported retirement
 
 Production **0.13.1001**, source `b4a7446a917f551ab0b34c06af30b219911e52d2`,
 is delivered through [PR #10397](https://github.com/colophon-group/jobseek/pull/10397).

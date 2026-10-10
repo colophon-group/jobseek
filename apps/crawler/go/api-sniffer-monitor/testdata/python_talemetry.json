@@ -1,0 +1,781 @@
+[
+  {
+    "name": "html-complete",
+    "board_url": "https://careers.example.com/search/jobs",
+    "responses": [
+      "<script>window.talemetry={};</script><p>Viewing 1-2 of 5 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/1-role-1?utm=a#x\">Role</a><a href=\"/jobs/2-role-2?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>",
+      "<script>window.talemetry={};</script><p>Viewing 3-4 of 5 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/3-role-3?utm=a#x\">Role</a><a href=\"/jobs/4-role-4?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>",
+      "<script>window.talemetry={};</script><p>Viewing 5-5 of 5 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/5-role-5?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>"
+    ],
+    "requests": [
+      {
+        "url": "https://careers.example.com/search/jobs",
+        "headers": {}
+      },
+      {
+        "url": "https://careers.example.com/search/jobs?page=2",
+        "headers": {}
+      },
+      {
+        "url": "https://careers.example.com/search/jobs?page=3",
+        "headers": {}
+      }
+    ],
+    "metadata": {},
+    "urls": [
+      "https://careers.example.com/jobs/1-role-1",
+      "https://careers.example.com/jobs/2-role-2",
+      "https://careers.example.com/jobs/3-role-3",
+      "https://careers.example.com/jobs/4-role-4",
+      "https://careers.example.com/jobs/5-role-5"
+    ]
+  },
+  {
+    "name": "html-changed",
+    "board_url": "https://careers.example.com/search/jobs",
+    "responses": [
+      "<script>window.talemetry={};</script><p>Viewing 1-2 of 5 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/1-role-1?utm=a#x\">Role</a><a href=\"/jobs/2-role-2?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>",
+      "<script>window.talemetry={};</script><p>Viewing 3-4 of 6 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/3-role-3?utm=a#x\">Role</a><a href=\"/jobs/4-role-4?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>",
+      "<script>window.talemetry={};</script><p>Viewing 1-2 of 5 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/1-role-1?utm=a#x\">Role</a><a href=\"/jobs/2-role-2?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>",
+      "<script>window.talemetry={};</script><p>Viewing 3-4 of 6 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/3-role-3?utm=a#x\">Role</a><a href=\"/jobs/4-role-4?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>"
+    ],
+    "requests": [
+      {
+        "url": "https://careers.example.com/search/jobs",
+        "headers": {}
+      },
+      {
+        "url": "https://careers.example.com/search/jobs?page=2",
+        "headers": {}
+      },
+      {
+        "url": "https://careers.example.com/search/jobs",
+        "headers": {}
+      },
+      {
+        "url": "https://careers.example.com/search/jobs?page=2",
+        "headers": {}
+      }
+    ],
+    "metadata": {},
+    "error": true
+  },
+  {
+    "name": "html-recover",
+    "board_url": "https://careers.example.com/search/jobs",
+    "responses": [
+      "<script>window.talemetry={};</script><p>Viewing 1-2 of 5 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/1-role-1?utm=a#x\">Role</a><a href=\"/jobs/2-role-2?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>",
+      "<script>window.talemetry={};</script><p>Viewing 3-4 of 6 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/3-role-3?utm=a#x\">Role</a><a href=\"/jobs/4-role-4?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>",
+      "<script>window.talemetry={};</script><p>Viewing 1-2 of 5 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/1-role-1?utm=a#x\">Role</a><a href=\"/jobs/2-role-2?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>",
+      "<script>window.talemetry={};</script><p>Viewing 3-4 of 5 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/3-role-3?utm=a#x\">Role</a><a href=\"/jobs/4-role-4?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>",
+      "<script>window.talemetry={};</script><p>Viewing 5-5 of 5 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/5-role-5?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>"
+    ],
+    "requests": [
+      {
+        "url": "https://careers.example.com/search/jobs",
+        "headers": {}
+      },
+      {
+        "url": "https://careers.example.com/search/jobs?page=2",
+        "headers": {}
+      },
+      {
+        "url": "https://careers.example.com/search/jobs",
+        "headers": {}
+      },
+      {
+        "url": "https://careers.example.com/search/jobs?page=2",
+        "headers": {}
+      },
+      {
+        "url": "https://careers.example.com/search/jobs?page=3",
+        "headers": {}
+      }
+    ],
+    "metadata": {},
+    "urls": [
+      "https://careers.example.com/jobs/1-role-1",
+      "https://careers.example.com/jobs/2-role-2",
+      "https://careers.example.com/jobs/3-role-3",
+      "https://careers.example.com/jobs/4-role-4",
+      "https://careers.example.com/jobs/5-role-5"
+    ]
+  },
+  {
+    "name": "html-duplicate",
+    "board_url": "https://careers.example.com/search/jobs",
+    "responses": [
+      "<script>window.talemetry={};</script><p>Viewing 1-2 of 5 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/1-role-1?utm=a#x\">Role</a><a href=\"/jobs/2-role-2?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>",
+      "<script>window.talemetry={};</script><p>Viewing 3-4 of 5 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/1-role-1?utm=a#x\">Role</a><a href=\"/jobs/4-role-4?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>",
+      "<script>window.talemetry={};</script><p>Viewing 1-2 of 5 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/1-role-1?utm=a#x\">Role</a><a href=\"/jobs/2-role-2?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>",
+      "<script>window.talemetry={};</script><p>Viewing 3-4 of 5 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/1-role-1?utm=a#x\">Role</a><a href=\"/jobs/4-role-4?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>"
+    ],
+    "requests": [
+      {
+        "url": "https://careers.example.com/search/jobs",
+        "headers": {}
+      },
+      {
+        "url": "https://careers.example.com/search/jobs?page=2",
+        "headers": {}
+      },
+      {
+        "url": "https://careers.example.com/search/jobs",
+        "headers": {}
+      },
+      {
+        "url": "https://careers.example.com/search/jobs?page=2",
+        "headers": {}
+      }
+    ],
+    "metadata": {},
+    "error": true
+  },
+  {
+    "name": "html-missing",
+    "board_url": "https://careers.example.com/search/jobs",
+    "responses": [
+      "<script>window.talemetry={};</script><p>Viewing 1-2 of 5 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/1-role-1?utm=a#x\">Role</a><a href=\"/jobs/2-role-2?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>",
+      "<script>window.talemetry={};</script><p>Viewing 3-4 of 5 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/3-role-3?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>"
+    ],
+    "requests": [
+      {
+        "url": "https://careers.example.com/search/jobs",
+        "headers": {}
+      },
+      {
+        "url": "https://careers.example.com/search/jobs?page=2",
+        "headers": {}
+      }
+    ],
+    "metadata": {},
+    "error": true
+  },
+  {
+    "name": "html-wrong-page",
+    "board_url": "https://careers.example.com/search/jobs",
+    "responses": [
+      "<script>window.talemetry={};</script><p>Viewing 1-2 of 5 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/1-role-1?utm=a#x\">Role</a><a href=\"/jobs/2-role-2?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>",
+      "<script>window.talemetry={};</script><p>Viewing 1-2 of 5 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/3-role-3?utm=a#x\">Role</a><a href=\"/jobs/4-role-4?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>",
+      "<script>window.talemetry={};</script><p>Viewing 1-2 of 5 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/1-role-1?utm=a#x\">Role</a><a href=\"/jobs/2-role-2?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>",
+      "<script>window.talemetry={};</script><p>Viewing 1-2 of 5 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/3-role-3?utm=a#x\">Role</a><a href=\"/jobs/4-role-4?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>"
+    ],
+    "requests": [
+      {
+        "url": "https://careers.example.com/search/jobs",
+        "headers": {}
+      },
+      {
+        "url": "https://careers.example.com/search/jobs?page=2",
+        "headers": {}
+      },
+      {
+        "url": "https://careers.example.com/search/jobs",
+        "headers": {}
+      },
+      {
+        "url": "https://careers.example.com/search/jobs?page=2",
+        "headers": {}
+      }
+    ],
+    "metadata": {},
+    "error": true
+  },
+  {
+    "name": "html-zero",
+    "board_url": "https://careers.example.com/search/jobs",
+    "responses": [
+      "<script>window.talemetry={};</script><p>Viewing 0-0 of 0 results</p><div class=\"jobs-section__list\"><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>"
+    ],
+    "requests": [
+      {
+        "url": "https://careers.example.com/search/jobs",
+        "headers": {}
+      }
+    ],
+    "metadata": {},
+    "urls": []
+  },
+  {
+    "name": "html-zero-with-job",
+    "board_url": "https://careers.example.com/search/jobs",
+    "responses": [
+      "<script>window.talemetry={};</script><p>Viewing 0-0 of 0 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/1-role-1?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>"
+    ],
+    "requests": [
+      {
+        "url": "https://careers.example.com/search/jobs",
+        "headers": {}
+      }
+    ],
+    "metadata": {},
+    "error": true
+  },
+  {
+    "name": "html-unmarked",
+    "board_url": "https://careers.example.com/search/jobs",
+    "responses": [
+      "<script>unknown={};</script><p>Viewing 1-2 of 5 results</p><div class=\"jobs-section__list\"><a href=\"/jobs/1-role-1?utm=a#x\">Role</a><a href=\"/jobs/2-role-2?utm=a#x\">Role</a><a href=\"https://foreign.example/jobs/900-foreign\">Foreign</a></div><a href=\"/jobs/800-navigation\">Navigation</a>"
+    ],
+    "requests": [
+      {
+        "url": "https://careers.example.com/search/jobs",
+        "headers": {}
+      }
+    ],
+    "metadata": {},
+    "error": true
+  },
+  {
+    "name": "json-complete",
+    "board_url": "https://careers.example.com/search/jobs",
+    "responses": [
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 1, \"entries\": [{\"id\": \"1\", \"talemetry_job_id\": \"1\", \"permalink\": \"role-1\"}, {\"id\": \"2\", \"talemetry_job_id\": \"2\", \"permalink\": \"role-2\"}]}",
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 2, \"entries\": [{\"id\": \"3\", \"talemetry_job_id\": \"3\", \"permalink\": \"role-3\"}, {\"id\": \"4\", \"talemetry_job_id\": \"4\", \"permalink\": \"role-4\"}]}",
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 3, \"entries\": [{\"id\": \"5\", \"talemetry_job_id\": \"5\", \"permalink\": \"role-5\"}]}"
+    ],
+    "requests": [
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=1",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=2",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=3",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      }
+    ],
+    "metadata": {
+      "transport": "jobs_json"
+    },
+    "urls": [
+      "https://careers.example.com/jobs/1-role-1",
+      "https://careers.example.com/jobs/2-role-2",
+      "https://careers.example.com/jobs/3-role-3",
+      "https://careers.example.com/jobs/4-role-4",
+      "https://careers.example.com/jobs/5-role-5"
+    ]
+  },
+  {
+    "name": "json-changed",
+    "board_url": "https://careers.example.com/search/jobs",
+    "responses": [
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 1, \"entries\": [{\"id\": \"1\", \"talemetry_job_id\": \"1\", \"permalink\": \"role-1\"}, {\"id\": \"2\", \"talemetry_job_id\": \"2\", \"permalink\": \"role-2\"}]}",
+      "{\"total_entries\": 6, \"per_page\": 2, \"current_page\": 2, \"entries\": [{\"id\": \"3\", \"talemetry_job_id\": \"3\", \"permalink\": \"role-3\"}, {\"id\": \"4\", \"talemetry_job_id\": \"4\", \"permalink\": \"role-4\"}]}",
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 1, \"entries\": [{\"id\": \"1\", \"talemetry_job_id\": \"1\", \"permalink\": \"role-1\"}, {\"id\": \"2\", \"talemetry_job_id\": \"2\", \"permalink\": \"role-2\"}]}",
+      "{\"total_entries\": 6, \"per_page\": 2, \"current_page\": 2, \"entries\": [{\"id\": \"3\", \"talemetry_job_id\": \"3\", \"permalink\": \"role-3\"}, {\"id\": \"4\", \"talemetry_job_id\": \"4\", \"permalink\": \"role-4\"}]}"
+    ],
+    "requests": [
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=1",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=2",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=1",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=2",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      }
+    ],
+    "metadata": {
+      "transport": "jobs_json"
+    },
+    "error": true
+  },
+  {
+    "name": "json-recover",
+    "board_url": "https://careers.example.com/search/jobs",
+    "responses": [
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 1, \"entries\": [{\"id\": \"1\", \"talemetry_job_id\": \"1\", \"permalink\": \"role-1\"}, {\"id\": \"2\", \"talemetry_job_id\": \"2\", \"permalink\": \"role-2\"}]}",
+      "{\"total_entries\": 6, \"per_page\": 2, \"current_page\": 2, \"entries\": [{\"id\": \"3\", \"talemetry_job_id\": \"3\", \"permalink\": \"role-3\"}, {\"id\": \"4\", \"talemetry_job_id\": \"4\", \"permalink\": \"role-4\"}]}",
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 1, \"entries\": [{\"id\": \"1\", \"talemetry_job_id\": \"1\", \"permalink\": \"role-1\"}, {\"id\": \"2\", \"talemetry_job_id\": \"2\", \"permalink\": \"role-2\"}]}",
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 2, \"entries\": [{\"id\": \"3\", \"talemetry_job_id\": \"3\", \"permalink\": \"role-3\"}, {\"id\": \"4\", \"talemetry_job_id\": \"4\", \"permalink\": \"role-4\"}]}",
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 3, \"entries\": [{\"id\": \"5\", \"talemetry_job_id\": \"5\", \"permalink\": \"role-5\"}]}"
+    ],
+    "requests": [
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=1",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=2",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=1",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=2",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=3",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      }
+    ],
+    "metadata": {
+      "transport": "jobs_json"
+    },
+    "urls": [
+      "https://careers.example.com/jobs/1-role-1",
+      "https://careers.example.com/jobs/2-role-2",
+      "https://careers.example.com/jobs/3-role-3",
+      "https://careers.example.com/jobs/4-role-4",
+      "https://careers.example.com/jobs/5-role-5"
+    ]
+  },
+  {
+    "name": "json-duplicate",
+    "board_url": "https://careers.example.com/search/jobs",
+    "responses": [
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 1, \"entries\": [{\"id\": \"1\", \"talemetry_job_id\": \"1\", \"permalink\": \"role-1\"}, {\"id\": \"2\", \"talemetry_job_id\": \"2\", \"permalink\": \"role-2\"}]}",
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 2, \"entries\": [{\"id\": \"1\", \"talemetry_job_id\": \"1\", \"permalink\": \"role-1\"}, {\"id\": \"4\", \"talemetry_job_id\": \"4\", \"permalink\": \"role-4\"}]}",
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 1, \"entries\": [{\"id\": \"1\", \"talemetry_job_id\": \"1\", \"permalink\": \"role-1\"}, {\"id\": \"2\", \"talemetry_job_id\": \"2\", \"permalink\": \"role-2\"}]}",
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 2, \"entries\": [{\"id\": \"1\", \"talemetry_job_id\": \"1\", \"permalink\": \"role-1\"}, {\"id\": \"4\", \"talemetry_job_id\": \"4\", \"permalink\": \"role-4\"}]}"
+    ],
+    "requests": [
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=1",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=2",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=1",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=2",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      }
+    ],
+    "metadata": {
+      "transport": "jobs_json"
+    },
+    "error": true
+  },
+  {
+    "name": "json-missing",
+    "board_url": "https://careers.example.com/search/jobs",
+    "responses": [
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 1, \"entries\": [{\"id\": \"1\", \"talemetry_job_id\": \"1\", \"permalink\": \"role-1\"}, {\"id\": \"2\", \"talemetry_job_id\": \"2\", \"permalink\": \"role-2\"}]}",
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 2, \"entries\": [{\"id\": \"3\", \"talemetry_job_id\": \"3\", \"permalink\": \"role-3\"}]}",
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 1, \"entries\": [{\"id\": \"1\", \"talemetry_job_id\": \"1\", \"permalink\": \"role-1\"}, {\"id\": \"2\", \"talemetry_job_id\": \"2\", \"permalink\": \"role-2\"}]}",
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 2, \"entries\": [{\"id\": \"3\", \"talemetry_job_id\": \"3\", \"permalink\": \"role-3\"}]}"
+    ],
+    "requests": [
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=1",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=2",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=1",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=2",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      }
+    ],
+    "metadata": {
+      "transport": "jobs_json"
+    },
+    "error": true
+  },
+  {
+    "name": "json-wrong-page",
+    "board_url": "https://careers.example.com/search/jobs",
+    "responses": [
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 1, \"entries\": [{\"id\": \"1\", \"talemetry_job_id\": \"1\", \"permalink\": \"role-1\"}, {\"id\": \"2\", \"talemetry_job_id\": \"2\", \"permalink\": \"role-2\"}]}",
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 1, \"entries\": [{\"id\": \"3\", \"talemetry_job_id\": \"3\", \"permalink\": \"role-3\"}, {\"id\": \"4\", \"talemetry_job_id\": \"4\", \"permalink\": \"role-4\"}]}",
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 1, \"entries\": [{\"id\": \"1\", \"talemetry_job_id\": \"1\", \"permalink\": \"role-1\"}, {\"id\": \"2\", \"talemetry_job_id\": \"2\", \"permalink\": \"role-2\"}]}",
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 1, \"entries\": [{\"id\": \"3\", \"talemetry_job_id\": \"3\", \"permalink\": \"role-3\"}, {\"id\": \"4\", \"talemetry_job_id\": \"4\", \"permalink\": \"role-4\"}]}"
+    ],
+    "requests": [
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=1",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=2",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=1",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=2",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      }
+    ],
+    "metadata": {
+      "transport": "jobs_json"
+    },
+    "error": true
+  },
+  {
+    "name": "json-zero",
+    "board_url": "https://careers.example.com/search/jobs",
+    "responses": [
+      "{\"total_entries\": 0, \"per_page\": 2, \"current_page\": 1, \"entries\": []}"
+    ],
+    "requests": [
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=1",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      }
+    ],
+    "metadata": {
+      "transport": "jobs_json"
+    },
+    "urls": []
+  },
+  {
+    "name": "json-zero-with-job",
+    "board_url": "https://careers.example.com/search/jobs",
+    "responses": [
+      "{\"total_entries\": 0, \"per_page\": 2, \"current_page\": 1, \"entries\": [{\"id\": \"1\", \"talemetry_job_id\": \"1\", \"permalink\": \"role-1\"}]}",
+      "{\"total_entries\": 0, \"per_page\": 2, \"current_page\": 1, \"entries\": [{\"id\": \"1\", \"talemetry_job_id\": \"1\", \"permalink\": \"role-1\"}]}"
+    ],
+    "requests": [
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=1",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=1",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      }
+    ],
+    "metadata": {
+      "transport": "jobs_json"
+    },
+    "error": true
+  },
+  {
+    "name": "json-bad-id",
+    "board_url": "https://careers.example.com/search/jobs",
+    "responses": [
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 1, \"entries\": [{\"id\": \"1\", \"talemetry_job_id\": \"1\", \"permalink\": \"role-1\"}, {\"id\": \"2\", \"talemetry_job_id\": \"2\", \"permalink\": \"role-2\"}]}",
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 2, \"entries\": [{\"id\": \"3\", \"talemetry_job_id\": \"999\", \"permalink\": \"role-3\"}, {\"id\": \"4\", \"talemetry_job_id\": \"4\", \"permalink\": \"role-4\"}]}",
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 1, \"entries\": [{\"id\": \"1\", \"talemetry_job_id\": \"1\", \"permalink\": \"role-1\"}, {\"id\": \"2\", \"talemetry_job_id\": \"2\", \"permalink\": \"role-2\"}]}",
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 2, \"entries\": [{\"id\": \"3\", \"talemetry_job_id\": \"999\", \"permalink\": \"role-3\"}, {\"id\": \"4\", \"talemetry_job_id\": \"4\", \"permalink\": \"role-4\"}]}"
+    ],
+    "requests": [
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=1",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=2",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=1",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=2",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      }
+    ],
+    "metadata": {
+      "transport": "jobs_json"
+    },
+    "error": true
+  },
+  {
+    "name": "json-bad-slug",
+    "board_url": "https://careers.example.com/search/jobs",
+    "responses": [
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 1, \"entries\": [{\"id\": \"1\", \"talemetry_job_id\": \"1\", \"permalink\": \"role-1\"}, {\"id\": \"2\", \"talemetry_job_id\": \"2\", \"permalink\": \"role-2\"}]}",
+      "{\"total_entries\": 5, \"per_page\": 2, \"current_page\": 2, \"entries\": [{\"id\": \"3\", \"talemetry_job_id\": \"3\", \"permalink\": \"../../foreign\"}, {\"id\": \"4\", \"talemetry_job_id\": \"4\", \"permalink\": \"role-4\"}]}"
+    ],
+    "requests": [
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=1",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      },
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=2",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      }
+    ],
+    "metadata": {
+      "transport": "jobs_json"
+    },
+    "error": true
+  },
+  {
+    "name": "json-float-count",
+    "board_url": "https://careers.example.com/search/jobs",
+    "responses": [
+      "{\"total_entries\": 5.0, \"per_page\": 2, \"current_page\": 1, \"entries\": [{\"id\": \"1\", \"talemetry_job_id\": \"1\", \"permalink\": \"role-1\"}, {\"id\": \"2\", \"talemetry_job_id\": \"2\", \"permalink\": \"role-2\"}]}"
+    ],
+    "requests": [
+      {
+        "url": "https://careers.example.com/search/jobs.json?page=1",
+        "headers": {
+          "Accept": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+          "Sec-Fetch-Dest": "empty",
+          "Sec-Fetch-Mode": "cors",
+          "Sec-Fetch-Site": "same-origin"
+        }
+      }
+    ],
+    "metadata": {
+      "transport": "jobs_json"
+    },
+    "error": true
+  }
+]

@@ -1,0 +1,1537 @@
+[
+  {
+    "name": "complete",
+    "board": "https://jobs.example.com/?lang=de",
+    "metadata": {
+      "medium_id": "1000613",
+      "application_identity": {
+        "link_texts": [
+          "Apply",
+          "Bewerben"
+        ],
+        "source_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "canonical_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "locale_priority": [
+          "en",
+          "de",
+          "fr",
+          "it"
+        ],
+        "concurrency": 1
+      },
+      "filters": {
+        "filter_10": [
+          "owned"
+        ]
+      }
+    },
+    "requests": [
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "POST",
+        "body": "offset=0&limit=10&lang=de&query=&filter_10=owned",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml",
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "Origin": "https://jobs.example.com",
+          "Referer": "https://jobs.example.com/?lang=de"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "POST",
+        "body": "offset=10&limit=10&lang=de&query=&filter_10=owned",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml",
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "Origin": "https://jobs.example.com",
+          "Referer": "https://jobs.example.com/?lang=de"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/11111111-1111-4111-8111-111111111111",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://apply.example.com/jobs/11111111-1111-4111-8111-111111111111",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/22222222-2222-4222-8222-222222222222",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://apply.example.com/jobs/22222222-2222-4222-8222-222222222222",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/33333333-3333-4333-8333-333333333333",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://apply.example.com/jobs/33333333-3333-4333-8333-333333333333",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      }
+    ],
+    "responses": [
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-22222222-2222-4222-8222-222222222222/22222222-2222-4222-8222-222222222222\">22222222-2222-4222-8222-222222222222</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a><a onclick=\"sendPagination(10); return false\">next</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"10\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-33333333-3333-4333-8333-333333333333/33333333-3333-4333-8333-333333333333\">33333333-3333-4333-8333-333333333333</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(10)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html lang=\"de\"><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"DE role 11111111-1111-4111-8111-111111111111\", \"description\": \"<p>DE description 11111111-1111-4111-8111-111111111111</p>\", \"datePosted\": \"2026-08-20\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Basel\", \"addressCountry\": \"Switzerland\"}}}</script><a href=\"https://apply.example.com/jobs/11111111-1111-4111-8111-111111111111\">Apply</a></html>",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html>Application</html>",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html lang=\"en\"><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"EN role 22222222-2222-4222-8222-222222222222\", \"description\": \"<p>EN description 22222222-2222-4222-8222-222222222222</p>\", \"datePosted\": \"2026-08-20\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Basel\", \"addressCountry\": \"Switzerland\"}}}</script><a href=\"https://apply.example.com/jobs/22222222-2222-4222-8222-222222222222\">Apply</a></html>",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html>Application</html>",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html lang=\"en\"><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"EN role 33333333-3333-4333-8333-333333333333\", \"description\": \"<p>EN description 33333333-3333-4333-8333-333333333333</p>\", \"datePosted\": \"2026-08-20\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Basel\", \"addressCountry\": \"Switzerland\"}}}</script><a href=\"https://apply.example.com/jobs/33333333-3333-4333-8333-333333333333\">Apply</a></html>",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html>Application</html>",
+        "status": 200,
+        "headers": {}
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://apply.example.com/jobs/11111111-1111-4111-8111-111111111111",
+        "title": "DE role 11111111-1111-4111-8111-111111111111",
+        "description": "<p>DE description 11111111-1111-4111-8111-111111111111</p>",
+        "locations": [
+          "Basel, Switzerland"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-08-20",
+        "base_salary": null,
+        "language": "de",
+        "localizations": {
+          "de": {
+            "title": "DE role 11111111-1111-4111-8111-111111111111",
+            "description": "<p>DE description 11111111-1111-4111-8111-111111111111</p>",
+            "locations": [
+              "Basel, Switzerland"
+            ]
+          }
+        },
+        "extras": null,
+        "metadata": {
+          "prospective_source_url": "https://jobs.example.com/offene-stellen/job/11111111-1111-4111-8111-111111111111",
+          "application_identity": "https://apply.example.com/jobs/11111111-1111-4111-8111-111111111111",
+          "prospective_source_urls": [
+            "https://jobs.example.com/offene-stellen/job/11111111-1111-4111-8111-111111111111"
+          ]
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://apply.example.com/jobs/22222222-2222-4222-8222-222222222222",
+        "title": "EN role 22222222-2222-4222-8222-222222222222",
+        "description": "<p>EN description 22222222-2222-4222-8222-222222222222</p>",
+        "locations": [
+          "Basel, Switzerland"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-08-20",
+        "base_salary": null,
+        "language": "en",
+        "localizations": {
+          "en": {
+            "title": "EN role 22222222-2222-4222-8222-222222222222",
+            "description": "<p>EN description 22222222-2222-4222-8222-222222222222</p>",
+            "locations": [
+              "Basel, Switzerland"
+            ]
+          }
+        },
+        "extras": null,
+        "metadata": {
+          "prospective_source_url": "https://jobs.example.com/offene-stellen/job/22222222-2222-4222-8222-222222222222",
+          "application_identity": "https://apply.example.com/jobs/22222222-2222-4222-8222-222222222222",
+          "prospective_source_urls": [
+            "https://jobs.example.com/offene-stellen/job/22222222-2222-4222-8222-222222222222"
+          ]
+        },
+        "source_identity": null
+      },
+      {
+        "url": "https://apply.example.com/jobs/33333333-3333-4333-8333-333333333333",
+        "title": "EN role 33333333-3333-4333-8333-333333333333",
+        "description": "<p>EN description 33333333-3333-4333-8333-333333333333</p>",
+        "locations": [
+          "Basel, Switzerland"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-08-20",
+        "base_salary": null,
+        "language": "en",
+        "localizations": {
+          "en": {
+            "title": "EN role 33333333-3333-4333-8333-333333333333",
+            "description": "<p>EN description 33333333-3333-4333-8333-333333333333</p>",
+            "locations": [
+              "Basel, Switzerland"
+            ]
+          }
+        },
+        "extras": null,
+        "metadata": {
+          "prospective_source_url": "https://jobs.example.com/offene-stellen/job/33333333-3333-4333-8333-333333333333",
+          "application_identity": "https://apply.example.com/jobs/33333333-3333-4333-8333-333333333333",
+          "prospective_source_urls": [
+            "https://jobs.example.com/offene-stellen/job/33333333-3333-4333-8333-333333333333"
+          ]
+        },
+        "source_identity": null
+      }
+    ]
+  },
+  {
+    "name": "localized",
+    "board": "https://jobs.example.com/?lang=de",
+    "metadata": {
+      "medium_id": "1000613",
+      "application_identity": {
+        "link_texts": [
+          "Apply",
+          "Bewerben"
+        ],
+        "source_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "canonical_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "locale_priority": [
+          "en",
+          "de",
+          "fr",
+          "it"
+        ],
+        "concurrency": 1
+      },
+      "filters": {
+        "filter_10": [
+          "owned"
+        ]
+      }
+    },
+    "requests": [
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "POST",
+        "body": "offset=0&limit=10&lang=de&query=&filter_10=owned",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml",
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "Origin": "https://jobs.example.com",
+          "Referer": "https://jobs.example.com/?lang=de"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/11111111-1111-4111-8111-111111111111",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://apply.example.com/jobs/99999999-9999-4999-8999-999999999999",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/22222222-2222-4222-8222-222222222222",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://apply.example.com/jobs/99999999-9999-4999-8999-999999999999",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      }
+    ],
+    "responses": [
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-22222222-2222-4222-8222-222222222222/22222222-2222-4222-8222-222222222222\">22222222-2222-4222-8222-222222222222</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html lang=\"de\"><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"DE role 11111111-1111-4111-8111-111111111111\", \"description\": \"<p>DE description 11111111-1111-4111-8111-111111111111</p>\", \"datePosted\": \"2026-08-20\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Basel\", \"addressCountry\": \"Switzerland\"}}}</script><a href=\"https://apply.example.com/jobs/99999999-9999-4999-8999-999999999999\">Apply</a></html>",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html>Application</html>",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html lang=\"en\"><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"EN role 22222222-2222-4222-8222-222222222222\", \"description\": \"<p>EN description 22222222-2222-4222-8222-222222222222</p>\", \"datePosted\": \"2026-08-20\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Basel\", \"addressCountry\": \"Switzerland\"}}}</script><a href=\"https://apply.example.com/jobs/99999999-9999-4999-8999-999999999999\">Apply</a></html>",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html>Application</html>",
+        "status": 200,
+        "headers": {}
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://apply.example.com/jobs/99999999-9999-4999-8999-999999999999",
+        "title": "EN role 22222222-2222-4222-8222-222222222222",
+        "description": "<p>EN description 22222222-2222-4222-8222-222222222222</p>",
+        "locations": [
+          "Basel, Switzerland"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-08-20",
+        "base_salary": null,
+        "language": "en",
+        "localizations": {
+          "de": {
+            "title": "DE role 11111111-1111-4111-8111-111111111111",
+            "description": "<p>DE description 11111111-1111-4111-8111-111111111111</p>",
+            "locations": [
+              "Basel, Switzerland"
+            ]
+          },
+          "en": {
+            "title": "EN role 22222222-2222-4222-8222-222222222222",
+            "description": "<p>EN description 22222222-2222-4222-8222-222222222222</p>",
+            "locations": [
+              "Basel, Switzerland"
+            ]
+          }
+        },
+        "extras": null,
+        "metadata": {
+          "prospective_source_url": "https://jobs.example.com/offene-stellen/job/22222222-2222-4222-8222-222222222222",
+          "application_identity": "https://apply.example.com/jobs/99999999-9999-4999-8999-999999999999",
+          "prospective_source_urls": [
+            "https://jobs.example.com/offene-stellen/job/11111111-1111-4111-8111-111111111111",
+            "https://jobs.example.com/offene-stellen/job/22222222-2222-4222-8222-222222222222"
+          ]
+        },
+        "source_identity": null
+      }
+    ]
+  },
+  {
+    "name": "aliases",
+    "board": "https://jobs.example.com/?lang=de",
+    "metadata": {
+      "medium_id": "1000613",
+      "application_identity": {
+        "link_texts": [
+          "Apply",
+          "Bewerben"
+        ],
+        "source_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "canonical_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "locale_priority": [
+          "en",
+          "de",
+          "fr",
+          "it"
+        ],
+        "concurrency": 1,
+        "source_url_aliases": {
+          "11111111-1111-4111-8111-111111111111": "11111111-1111-4111-8111-111111111111",
+          "22222222-2222-4222-8222-222222222222": "11111111-1111-4111-8111-111111111111"
+        }
+      },
+      "filters": {
+        "filter_10": [
+          "owned"
+        ]
+      }
+    },
+    "requests": [
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "POST",
+        "body": "offset=0&limit=10&lang=de&query=&filter_10=owned",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml",
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "Origin": "https://jobs.example.com",
+          "Referer": "https://jobs.example.com/?lang=de"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/11111111-1111-4111-8111-111111111111",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/22222222-2222-4222-8222-222222222222",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      }
+    ],
+    "responses": [
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-22222222-2222-4222-8222-222222222222/22222222-2222-4222-8222-222222222222\">22222222-2222-4222-8222-222222222222</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html lang=\"de\"><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"DE role 11111111-1111-4111-8111-111111111111\", \"description\": \"<p>DE description 11111111-1111-4111-8111-111111111111</p>\", \"datePosted\": \"2026-08-20\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Basel\", \"addressCountry\": \"Switzerland\"}}}</script></html>",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html lang=\"en\"><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"EN role 22222222-2222-4222-8222-222222222222\", \"description\": \"<p>EN description 22222222-2222-4222-8222-222222222222</p>\", \"datePosted\": \"2026-08-20\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Basel\", \"addressCountry\": \"Switzerland\"}}}</script></html>",
+        "status": 200,
+        "headers": {}
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/11111111-1111-4111-8111-111111111111",
+        "title": "EN role 22222222-2222-4222-8222-222222222222",
+        "description": "<p>EN description 22222222-2222-4222-8222-222222222222</p>",
+        "locations": [
+          "Basel, Switzerland"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-08-20",
+        "base_salary": null,
+        "language": "en",
+        "localizations": {
+          "de": {
+            "title": "DE role 11111111-1111-4111-8111-111111111111",
+            "description": "<p>DE description 11111111-1111-4111-8111-111111111111</p>",
+            "locations": [
+              "Basel, Switzerland"
+            ]
+          },
+          "en": {
+            "title": "EN role 22222222-2222-4222-8222-222222222222",
+            "description": "<p>EN description 22222222-2222-4222-8222-222222222222</p>",
+            "locations": [
+              "Basel, Switzerland"
+            ]
+          }
+        },
+        "extras": null,
+        "metadata": {
+          "prospective_source_url": "https://jobs.example.com/offene-stellen/job/22222222-2222-4222-8222-222222222222",
+          "application_identity": "https://jobs.example.com/offene-stellen/job/11111111-1111-4111-8111-111111111111",
+          "prospective_source_urls": [
+            "https://jobs.example.com/offene-stellen/job/11111111-1111-4111-8111-111111111111",
+            "https://jobs.example.com/offene-stellen/job/22222222-2222-4222-8222-222222222222"
+          ]
+        },
+        "source_identity": null
+      }
+    ]
+  },
+  {
+    "name": "alias-with-link",
+    "board": "https://jobs.example.com/?lang=de",
+    "metadata": {
+      "medium_id": "1000613",
+      "application_identity": {
+        "link_texts": [
+          "Apply",
+          "Bewerben"
+        ],
+        "source_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "canonical_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "locale_priority": [
+          "en",
+          "de",
+          "fr",
+          "it"
+        ],
+        "concurrency": 1,
+        "source_url_aliases": {
+          "11111111-1111-4111-8111-111111111111": "11111111-1111-4111-8111-111111111111",
+          "22222222-2222-4222-8222-222222222222": "11111111-1111-4111-8111-111111111111"
+        }
+      },
+      "filters": {
+        "filter_10": [
+          "owned"
+        ]
+      }
+    },
+    "requests": [
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "POST",
+        "body": "offset=0&limit=10&lang=de&query=&filter_10=owned",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml",
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "Origin": "https://jobs.example.com",
+          "Referer": "https://jobs.example.com/?lang=de"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/11111111-1111-4111-8111-111111111111",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/22222222-2222-4222-8222-222222222222",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      }
+    ],
+    "responses": [
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-22222222-2222-4222-8222-222222222222/22222222-2222-4222-8222-222222222222\">22222222-2222-4222-8222-222222222222</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html lang=\"de\"><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"DE role 11111111-1111-4111-8111-111111111111\", \"description\": \"<p>DE description 11111111-1111-4111-8111-111111111111</p>\", \"datePosted\": \"2026-08-20\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Basel\", \"addressCountry\": \"Switzerland\"}}}</script><a href=\"https://apply.example.com/jobs/99999999-9999-4999-8999-999999999999\">Apply</a></html>",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html lang=\"en\"><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"EN role 22222222-2222-4222-8222-222222222222\", \"description\": \"<p>EN description 22222222-2222-4222-8222-222222222222</p>\", \"datePosted\": \"2026-08-20\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Basel\", \"addressCountry\": \"Switzerland\"}}}</script><a href=\"https://apply.example.com/jobs/99999999-9999-4999-8999-999999999999\">Apply</a></html>",
+        "status": 200,
+        "headers": {}
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/11111111-1111-4111-8111-111111111111",
+        "title": "EN role 22222222-2222-4222-8222-222222222222",
+        "description": "<p>EN description 22222222-2222-4222-8222-222222222222</p>",
+        "locations": [
+          "Basel, Switzerland"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-08-20",
+        "base_salary": null,
+        "language": "en",
+        "localizations": {
+          "de": {
+            "title": "DE role 11111111-1111-4111-8111-111111111111",
+            "description": "<p>DE description 11111111-1111-4111-8111-111111111111</p>",
+            "locations": [
+              "Basel, Switzerland"
+            ]
+          },
+          "en": {
+            "title": "EN role 22222222-2222-4222-8222-222222222222",
+            "description": "<p>EN description 22222222-2222-4222-8222-222222222222</p>",
+            "locations": [
+              "Basel, Switzerland"
+            ]
+          }
+        },
+        "extras": null,
+        "metadata": {
+          "prospective_source_url": "https://jobs.example.com/offene-stellen/job/22222222-2222-4222-8222-222222222222",
+          "application_identity": "https://jobs.example.com/offene-stellen/job/11111111-1111-4111-8111-111111111111",
+          "prospective_source_urls": [
+            "https://jobs.example.com/offene-stellen/job/11111111-1111-4111-8111-111111111111",
+            "https://jobs.example.com/offene-stellen/job/22222222-2222-4222-8222-222222222222"
+          ]
+        },
+        "source_identity": null
+      }
+    ]
+  },
+  {
+    "name": "redirect",
+    "board": "https://jobs.example.com/?lang=de",
+    "metadata": {
+      "medium_id": "1000613",
+      "application_identity": {
+        "link_texts": [
+          "Apply",
+          "Bewerben"
+        ],
+        "source_url_allowlist": "^https://apply\\.example\\.com/(?:jobs|start)/[0-9a-f-]{36}$",
+        "canonical_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "locale_priority": [
+          "en",
+          "de",
+          "fr",
+          "it"
+        ],
+        "concurrency": 1
+      },
+      "filters": {
+        "filter_10": [
+          "owned"
+        ]
+      }
+    },
+    "requests": [
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "POST",
+        "body": "offset=0&limit=10&lang=de&query=&filter_10=owned",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml",
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "Origin": "https://jobs.example.com",
+          "Referer": "https://jobs.example.com/?lang=de"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/11111111-1111-4111-8111-111111111111",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://apply.example.com/start/99999999-9999-4999-8999-999999999999",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://apply.example.com/jobs/99999999-9999-4999-8999-999999999999",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/22222222-2222-4222-8222-222222222222",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://apply.example.com/start/99999999-9999-4999-8999-999999999999",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://apply.example.com/jobs/99999999-9999-4999-8999-999999999999",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      }
+    ],
+    "responses": [
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-22222222-2222-4222-8222-222222222222/22222222-2222-4222-8222-222222222222\">22222222-2222-4222-8222-222222222222</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html lang=\"de\"><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"DE role 11111111-1111-4111-8111-111111111111\", \"description\": \"<p>DE description 11111111-1111-4111-8111-111111111111</p>\", \"datePosted\": \"2026-08-20\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Basel\", \"addressCountry\": \"Switzerland\"}}}</script><a href=\"https://apply.example.com/start/99999999-9999-4999-8999-999999999999\">Apply</a></html>",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html>Application</html>",
+        "status": 302,
+        "headers": {
+          "Location": "https://apply.example.com/jobs/99999999-9999-4999-8999-999999999999"
+        }
+      },
+      {
+        "body": "<html>Application</html>",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html lang=\"en\"><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"EN role 22222222-2222-4222-8222-222222222222\", \"description\": \"<p>EN description 22222222-2222-4222-8222-222222222222</p>\", \"datePosted\": \"2026-08-20\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Basel\", \"addressCountry\": \"Switzerland\"}}}</script><a href=\"https://apply.example.com/start/99999999-9999-4999-8999-999999999999\">Apply</a></html>",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html>Application</html>",
+        "status": 302,
+        "headers": {
+          "Location": "https://apply.example.com/jobs/99999999-9999-4999-8999-999999999999"
+        }
+      },
+      {
+        "body": "<html>Application</html>",
+        "status": 200,
+        "headers": {}
+      }
+    ],
+    "jobs": [
+      {
+        "url": "https://apply.example.com/jobs/99999999-9999-4999-8999-999999999999",
+        "title": "EN role 22222222-2222-4222-8222-222222222222",
+        "description": "<p>EN description 22222222-2222-4222-8222-222222222222</p>",
+        "locations": [
+          "Basel, Switzerland"
+        ],
+        "employment_type": null,
+        "job_location_type": null,
+        "date_posted": "2026-08-20",
+        "base_salary": null,
+        "language": "en",
+        "localizations": {
+          "de": {
+            "title": "DE role 11111111-1111-4111-8111-111111111111",
+            "description": "<p>DE description 11111111-1111-4111-8111-111111111111</p>",
+            "locations": [
+              "Basel, Switzerland"
+            ]
+          },
+          "en": {
+            "title": "EN role 22222222-2222-4222-8222-222222222222",
+            "description": "<p>EN description 22222222-2222-4222-8222-222222222222</p>",
+            "locations": [
+              "Basel, Switzerland"
+            ]
+          }
+        },
+        "extras": null,
+        "metadata": {
+          "prospective_source_url": "https://jobs.example.com/offene-stellen/job/22222222-2222-4222-8222-222222222222",
+          "application_identity": "https://apply.example.com/jobs/99999999-9999-4999-8999-999999999999",
+          "prospective_source_urls": [
+            "https://jobs.example.com/offene-stellen/job/11111111-1111-4111-8111-111111111111",
+            "https://jobs.example.com/offene-stellen/job/22222222-2222-4222-8222-222222222222"
+          ]
+        },
+        "source_identity": null
+      }
+    ]
+  },
+  {
+    "name": "redirect-loop",
+    "board": "https://jobs.example.com/?lang=de",
+    "metadata": {
+      "medium_id": "1000613",
+      "application_identity": {
+        "link_texts": [
+          "Apply",
+          "Bewerben"
+        ],
+        "source_url_allowlist": "^https://apply\\.example\\.com/(?:jobs|start)/[0-9a-f-]{36}$",
+        "canonical_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "locale_priority": [
+          "en",
+          "de",
+          "fr",
+          "it"
+        ],
+        "concurrency": 1
+      },
+      "filters": {
+        "filter_10": [
+          "owned"
+        ]
+      }
+    },
+    "requests": [
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "POST",
+        "body": "offset=0&limit=10&lang=de&query=&filter_10=owned",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml",
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "Origin": "https://jobs.example.com",
+          "Referer": "https://jobs.example.com/?lang=de"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/11111111-1111-4111-8111-111111111111",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://apply.example.com/start/99999999-9999-4999-8999-999999999999",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/22222222-2222-4222-8222-222222222222",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://apply.example.com/start/99999999-9999-4999-8999-999999999999",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      }
+    ],
+    "responses": [
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-22222222-2222-4222-8222-222222222222/22222222-2222-4222-8222-222222222222\">22222222-2222-4222-8222-222222222222</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html lang=\"de\"><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"DE role 11111111-1111-4111-8111-111111111111\", \"description\": \"<p>DE description 11111111-1111-4111-8111-111111111111</p>\", \"datePosted\": \"2026-08-20\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Basel\", \"addressCountry\": \"Switzerland\"}}}</script><a href=\"https://apply.example.com/start/99999999-9999-4999-8999-999999999999\">Apply</a></html>",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html>Application</html>",
+        "status": 302,
+        "headers": {
+          "Location": "https://apply.example.com/start/99999999-9999-4999-8999-999999999999"
+        }
+      },
+      {
+        "body": "<html lang=\"en\"><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"EN role 22222222-2222-4222-8222-222222222222\", \"description\": \"<p>EN description 22222222-2222-4222-8222-222222222222</p>\", \"datePosted\": \"2026-08-20\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Basel\", \"addressCountry\": \"Switzerland\"}}}</script><a href=\"https://apply.example.com/start/99999999-9999-4999-8999-999999999999\">Apply</a></html>",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html>Application</html>",
+        "status": 302,
+        "headers": {
+          "Location": "https://apply.example.com/start/99999999-9999-4999-8999-999999999999"
+        }
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "redirect-foreign",
+    "board": "https://jobs.example.com/?lang=de",
+    "metadata": {
+      "medium_id": "1000613",
+      "application_identity": {
+        "link_texts": [
+          "Apply",
+          "Bewerben"
+        ],
+        "source_url_allowlist": "^https://apply\\.example\\.com/(?:jobs|start)/[0-9a-f-]{36}$",
+        "canonical_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "locale_priority": [
+          "en",
+          "de",
+          "fr",
+          "it"
+        ],
+        "concurrency": 1
+      },
+      "filters": {
+        "filter_10": [
+          "owned"
+        ]
+      }
+    },
+    "requests": [
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "POST",
+        "body": "offset=0&limit=10&lang=de&query=&filter_10=owned",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml",
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "Origin": "https://jobs.example.com",
+          "Referer": "https://jobs.example.com/?lang=de"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/11111111-1111-4111-8111-111111111111",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://apply.example.com/start/99999999-9999-4999-8999-999999999999",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/22222222-2222-4222-8222-222222222222",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://apply.example.com/start/99999999-9999-4999-8999-999999999999",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      }
+    ],
+    "responses": [
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-22222222-2222-4222-8222-222222222222/22222222-2222-4222-8222-222222222222\">22222222-2222-4222-8222-222222222222</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html lang=\"de\"><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"DE role 11111111-1111-4111-8111-111111111111\", \"description\": \"<p>DE description 11111111-1111-4111-8111-111111111111</p>\", \"datePosted\": \"2026-08-20\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Basel\", \"addressCountry\": \"Switzerland\"}}}</script><a href=\"https://apply.example.com/start/99999999-9999-4999-8999-999999999999\">Apply</a></html>",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html>Application</html>",
+        "status": 302,
+        "headers": {
+          "Location": "https://foreign.example/application"
+        }
+      },
+      {
+        "body": "<html lang=\"en\"><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"EN role 22222222-2222-4222-8222-222222222222\", \"description\": \"<p>EN description 22222222-2222-4222-8222-222222222222</p>\", \"datePosted\": \"2026-08-20\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Basel\", \"addressCountry\": \"Switzerland\"}}}</script><a href=\"https://apply.example.com/start/99999999-9999-4999-8999-999999999999\">Apply</a></html>",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html>Application</html>",
+        "status": 302,
+        "headers": {
+          "Location": "https://foreign.example/application"
+        }
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "duplicate-locale",
+    "board": "https://jobs.example.com/?lang=de",
+    "metadata": {
+      "medium_id": "1000613",
+      "application_identity": {
+        "link_texts": [
+          "Apply",
+          "Bewerben"
+        ],
+        "source_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "canonical_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "locale_priority": [
+          "en",
+          "de",
+          "fr",
+          "it"
+        ],
+        "concurrency": 1
+      },
+      "filters": {
+        "filter_10": [
+          "owned"
+        ]
+      }
+    },
+    "requests": [
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "POST",
+        "body": "offset=0&limit=10&lang=de&query=&filter_10=owned",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml",
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "Origin": "https://jobs.example.com",
+          "Referer": "https://jobs.example.com/?lang=de"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/11111111-1111-4111-8111-111111111111",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://apply.example.com/jobs/99999999-9999-4999-8999-999999999999",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/22222222-2222-4222-8222-222222222222",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://apply.example.com/jobs/99999999-9999-4999-8999-999999999999",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      }
+    ],
+    "responses": [
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-22222222-2222-4222-8222-222222222222/22222222-2222-4222-8222-222222222222\">22222222-2222-4222-8222-222222222222</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html lang=\"en\"><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"EN role 11111111-1111-4111-8111-111111111111\", \"description\": \"<p>EN description 11111111-1111-4111-8111-111111111111</p>\", \"datePosted\": \"2026-08-20\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Basel\", \"addressCountry\": \"Switzerland\"}}}</script><a href=\"https://apply.example.com/jobs/99999999-9999-4999-8999-999999999999\">Apply</a></html>",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html>Application</html>",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html lang=\"en\"><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"EN role 22222222-2222-4222-8222-222222222222\", \"description\": \"<p>EN description 22222222-2222-4222-8222-222222222222</p>\", \"datePosted\": \"2026-08-20\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Basel\", \"addressCountry\": \"Switzerland\"}}}</script><a href=\"https://apply.example.com/jobs/99999999-9999-4999-8999-999999999999\">Apply</a></html>",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html>Application</html>",
+        "status": 200,
+        "headers": {}
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "unknown-locale",
+    "board": "https://jobs.example.com/?lang=de",
+    "metadata": {
+      "medium_id": "1000613",
+      "application_identity": {
+        "link_texts": [
+          "Apply",
+          "Bewerben"
+        ],
+        "source_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "canonical_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "locale_priority": [
+          "en",
+          "de",
+          "fr",
+          "it"
+        ],
+        "concurrency": 1
+      },
+      "filters": {
+        "filter_10": [
+          "owned"
+        ]
+      }
+    },
+    "requests": [
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "POST",
+        "body": "offset=0&limit=10&lang=de&query=&filter_10=owned",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml",
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "Origin": "https://jobs.example.com",
+          "Referer": "https://jobs.example.com/?lang=de"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/11111111-1111-4111-8111-111111111111",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/22222222-2222-4222-8222-222222222222",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      }
+    ],
+    "responses": [
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-22222222-2222-4222-8222-222222222222/22222222-2222-4222-8222-222222222222\">22222222-2222-4222-8222-222222222222</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html lang=\"es\"><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"ES role 11111111-1111-4111-8111-111111111111\", \"description\": \"<p>ES description 11111111-1111-4111-8111-111111111111</p>\", \"datePosted\": \"2026-08-20\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Basel\", \"addressCountry\": \"Switzerland\"}}}</script><a href=\"https://apply.example.com/jobs/99999999-9999-4999-8999-999999999999\">Apply</a></html>",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html lang=\"es\"><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"ES role 22222222-2222-4222-8222-222222222222\", \"description\": \"<p>ES description 22222222-2222-4222-8222-222222222222</p>\", \"datePosted\": \"2026-08-20\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Basel\", \"addressCountry\": \"Switzerland\"}}}</script><a href=\"https://apply.example.com/jobs/99999999-9999-4999-8999-999999999999\">Apply</a></html>",
+        "status": 200,
+        "headers": {}
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "foreign-identity",
+    "board": "https://jobs.example.com/?lang=de",
+    "metadata": {
+      "medium_id": "1000613",
+      "application_identity": {
+        "link_texts": [
+          "Apply",
+          "Bewerben"
+        ],
+        "source_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "canonical_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "locale_priority": [
+          "en",
+          "de",
+          "fr",
+          "it"
+        ],
+        "concurrency": 1
+      },
+      "filters": {
+        "filter_10": [
+          "owned"
+        ]
+      }
+    },
+    "requests": [
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "POST",
+        "body": "offset=0&limit=10&lang=de&query=&filter_10=owned",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml",
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "Origin": "https://jobs.example.com",
+          "Referer": "https://jobs.example.com/?lang=de"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/11111111-1111-4111-8111-111111111111",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/offene-stellen/job/22222222-2222-4222-8222-222222222222",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      }
+    ],
+    "responses": [
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-22222222-2222-4222-8222-222222222222/22222222-2222-4222-8222-222222222222\">22222222-2222-4222-8222-222222222222</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html lang=\"de\"><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"DE role 11111111-1111-4111-8111-111111111111\", \"description\": \"<p>DE description 11111111-1111-4111-8111-111111111111</p>\", \"datePosted\": \"2026-08-20\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Basel\", \"addressCountry\": \"Switzerland\"}}}</script><a href=\"https://foreign.example/jobs/99999999-9999-4999-8999-999999999999\">Apply</a></html>",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "<html lang=\"en\"><script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@type\": \"JobPosting\", \"title\": \"EN role 22222222-2222-4222-8222-222222222222\", \"description\": \"<p>EN description 22222222-2222-4222-8222-222222222222</p>\", \"datePosted\": \"2026-08-20\", \"jobLocation\": {\"@type\": \"Place\", \"address\": {\"@type\": \"PostalAddress\", \"addressLocality\": \"Basel\", \"addressCountry\": \"Switzerland\"}}}</script><a href=\"https://foreign.example/jobs/99999999-9999-4999-8999-999999999999\">Apply</a></html>",
+        "status": 200,
+        "headers": {}
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "missing-filter",
+    "board": "https://jobs.example.com/?lang=de",
+    "metadata": {
+      "medium_id": "1000613",
+      "application_identity": {
+        "link_texts": [
+          "Apply",
+          "Bewerben"
+        ],
+        "source_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "canonical_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "locale_priority": [
+          "en",
+          "de",
+          "fr",
+          "it"
+        ],
+        "concurrency": 1
+      },
+      "filters": {
+        "filter_10": [
+          "owned"
+        ]
+      }
+    },
+    "requests": [
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      }
+    ],
+    "responses": [
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"removed\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      }
+    ],
+    "error": true
+  },
+  {
+    "name": "zero",
+    "board": "https://jobs.example.com/?lang=de",
+    "metadata": {
+      "medium_id": "1000613",
+      "application_identity": {
+        "link_texts": [
+          "Apply",
+          "Bewerben"
+        ],
+        "source_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "canonical_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "locale_priority": [
+          "en",
+          "de",
+          "fr",
+          "it"
+        ],
+        "concurrency": 1
+      },
+      "filters": {
+        "filter_10": [
+          "owned"
+        ]
+      }
+    },
+    "requests": [
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "POST",
+        "body": "offset=0&limit=10&lang=de&query=&filter_10=owned",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml",
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "Origin": "https://jobs.example.com",
+          "Referer": "https://jobs.example.com/?lang=de"
+        }
+      }
+    ],
+    "responses": [
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><p id=\"no-results\">There are currently no open positions.</p></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      }
+    ],
+    "jobs": []
+  },
+  {
+    "name": "unproved-zero",
+    "board": "https://jobs.example.com/?lang=de",
+    "metadata": {
+      "medium_id": "1000613",
+      "application_identity": {
+        "link_texts": [
+          "Apply",
+          "Bewerben"
+        ],
+        "source_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "canonical_url_allowlist": "^https://apply\\.example\\.com/jobs/[0-9a-f-]{36}$",
+        "locale_priority": [
+          "en",
+          "de",
+          "fr",
+          "it"
+        ],
+        "concurrency": 1
+      },
+      "filters": {
+        "filter_10": [
+          "owned"
+        ]
+      }
+    },
+    "requests": [
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "GET",
+        "body": "",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml"
+        }
+      },
+      {
+        "url": "https://jobs.example.com/?lang=de",
+        "method": "POST",
+        "body": "offset=0&limit=10&lang=de&query=&filter_10=owned",
+        "headers": {
+          "Accept": "text/html,application/xhtml+xml",
+          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          "Origin": "https://jobs.example.com",
+          "Referer": "https://jobs.example.com/?lang=de"
+        }
+      }
+    ],
+    "responses": [
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><a class=\"job-title\" href=\"https://jobs.example.com/offene-stellen/title-11111111-1111-4111-8111-111111111111/11111111-1111-4111-8111-111111111111\">11111111-1111-4111-8111-111111111111</a></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      },
+      {
+        "body": "\n        <html>\n          <link href=\"/careercenter/1000613/assets/site.css\">\n          <form id=\"careercenter-form\" method=\"post\">\n            <input name=\"offset\" value=\"0\">\n            <input name=\"limit\" value=\"10\">\n            <input name=\"lang\" value=\"de\">\n            <select name=\"filter_10\"><option value=\"owned\">owned</option><option value=\"affiliate\">affiliate</option></select>\n          </form>\n          <div id=\"jobs-list\"><p id=\"unknown\">There are currently no open positions.</p></div>\n          <div id=\"pagination\"><a class=\"page active\" onclick=\"sendPagination(0)\">current</a></div>\n        </html>\n    ",
+        "status": 200,
+        "headers": {}
+      }
+    ],
+    "error": true
+  }
+]

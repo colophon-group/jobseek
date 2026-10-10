@@ -3,6 +3,8 @@ package queue
 import "encoding/json"
 
 var httpMonitorProxyProfiles = map[string]string{
+	"talemetry.listing-urls/v1":  "talemetry.proxy-listing-urls/v1",
+	"talemetry.json-urls/v1":     "talemetry.proxy-json-urls/v1",
 	"papa_johns.listing-urls/v1": "papa_johns.proxy-listing-urls/v1",
 	"workable.api-urls/v1":       "workable.proxy-api-urls/v1",
 	"umantis.listing-urls/v1":    "umantis.proxy-listing-urls/v1",
