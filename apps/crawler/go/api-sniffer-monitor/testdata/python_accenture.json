@@ -1,0 +1,1711 @@
+{
+  "fields": [
+    {
+      "provider": "accenture",
+      "endpoint": "elastic/findjobs",
+      "name": "complete",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/us-en/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Berlin",
+          "Munich"
+        ],
+        "job_location_type": "Remote",
+        "date_posted": "2026-10-01",
+        "metadata": {
+          "businessArea": "Technology",
+          "careerLevel": "Senior",
+          "guid": "abc-123"
+        }
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "elastic/findjobs",
+      "name": "empty",
+      "row": {},
+      "expected": null
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "elastic/findjobs",
+      "name": "guid-2",
+      "row": {
+        "guid": null,
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": null
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "elastic/findjobs",
+      "name": "guid-3",
+      "row": {
+        "guid": false,
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": null
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "elastic/findjobs",
+      "name": "guid-4",
+      "row": {
+        "guid": 17,
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/us-en/careers/jobdetails?id=17",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Berlin",
+          "Munich"
+        ],
+        "job_location_type": "Remote",
+        "date_posted": "2026-10-01",
+        "metadata": {
+          "businessArea": "Technology",
+          "careerLevel": "Senior",
+          "guid": 17
+        }
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "elastic/findjobs",
+      "name": "guid-5",
+      "row": {
+        "guid": 1.0,
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/us-en/careers/jobdetails?id=1.0",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Berlin",
+          "Munich"
+        ],
+        "job_location_type": "Remote",
+        "date_posted": "2026-10-01",
+        "metadata": {
+          "businessArea": "Technology",
+          "careerLevel": "Senior",
+          "guid": 1.0
+        }
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "elastic/findjobs",
+      "name": "title-6",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": null,
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/us-en/careers/jobdetails?id=abc-123",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Berlin",
+          "Munich"
+        ],
+        "job_location_type": "Remote",
+        "date_posted": "2026-10-01",
+        "metadata": {
+          "businessArea": "Technology",
+          "careerLevel": "Senior",
+          "guid": "abc-123"
+        }
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "elastic/findjobs",
+      "name": "title-7",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": 17,
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/us-en/careers/jobdetails?id=abc-123",
+        "title": 17,
+        "description": "<p>Build</p>",
+        "locations": [
+          "Berlin",
+          "Munich"
+        ],
+        "job_location_type": "Remote",
+        "date_posted": "2026-10-01",
+        "metadata": {
+          "businessArea": "Technology",
+          "careerLevel": "Senior",
+          "guid": "abc-123"
+        }
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "elastic/findjobs",
+      "name": "jobDescription-8",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": null,
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/us-en/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "locations": [
+          "Berlin",
+          "Munich"
+        ],
+        "job_location_type": "Remote",
+        "date_posted": "2026-10-01",
+        "metadata": {
+          "businessArea": "Technology",
+          "careerLevel": "Senior",
+          "guid": "abc-123"
+        }
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "elastic/findjobs",
+      "name": "remoteType-9",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": null,
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/us-en/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Berlin",
+          "Munich"
+        ],
+        "date_posted": "2026-10-01",
+        "metadata": {
+          "businessArea": "Technology",
+          "careerLevel": "Senior",
+          "guid": "abc-123"
+        }
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "elastic/findjobs",
+      "name": "postedDate-10",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": null,
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/us-en/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Berlin",
+          "Munich"
+        ],
+        "job_location_type": "Remote",
+        "metadata": {
+          "businessArea": "Technology",
+          "careerLevel": "Senior",
+          "guid": "abc-123"
+        }
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "elastic/findjobs",
+      "name": "location-11",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": null,
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/us-en/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "job_location_type": "Remote",
+        "date_posted": "2026-10-01",
+        "metadata": {
+          "businessArea": "Technology",
+          "careerLevel": "Senior",
+          "guid": "abc-123"
+        }
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "elastic/findjobs",
+      "name": "location-12",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/us-en/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "job_location_type": "Remote",
+        "date_posted": "2026-10-01",
+        "metadata": {
+          "businessArea": "Technology",
+          "careerLevel": "Senior",
+          "guid": "abc-123"
+        }
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "elastic/findjobs",
+      "name": "location-13",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": "  New York  ",
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/us-en/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "  New York  "
+        ],
+        "job_location_type": "Remote",
+        "date_posted": "2026-10-01",
+        "metadata": {
+          "businessArea": "Technology",
+          "careerLevel": "Senior",
+          "guid": "abc-123"
+        }
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "elastic/findjobs",
+      "name": "jobCityState-14",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": [
+          "Paris",
+          "Lyon"
+        ],
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/us-en/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Berlin",
+          "Munich"
+        ],
+        "job_location_type": "Remote",
+        "date_posted": "2026-10-01",
+        "metadata": {
+          "businessArea": "Technology",
+          "careerLevel": "Senior",
+          "guid": "abc-123"
+        }
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "elastic/findjobs",
+      "name": "jobCityState-15",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": null,
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/us-en/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Berlin",
+          "Munich"
+        ],
+        "job_location_type": "Remote",
+        "date_posted": "2026-10-01",
+        "metadata": {
+          "businessArea": "Technology",
+          "careerLevel": "Senior",
+          "guid": "abc-123"
+        }
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "elastic/findjobs",
+      "name": "jobDetailUrl-16",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": null,
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/us-en/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Berlin",
+          "Munich"
+        ],
+        "job_location_type": "Remote",
+        "date_posted": "2026-10-01",
+        "metadata": {
+          "businessArea": "Technology",
+          "careerLevel": "Senior",
+          "guid": "abc-123"
+        }
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "elastic/findjobs",
+      "name": "jobDetailUrl-17",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "https://www.accenture.com/fr-fr/careers/jobdetails?id=1",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/us-en/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Berlin",
+          "Munich"
+        ],
+        "job_location_type": "Remote",
+        "date_posted": "2026-10-01",
+        "metadata": {
+          "businessArea": "Technology",
+          "careerLevel": "Senior",
+          "guid": "abc-123"
+        }
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "elastic/findjobs",
+      "name": "businessArea-18",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": {},
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/us-en/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Berlin",
+          "Munich"
+        ],
+        "job_location_type": "Remote",
+        "date_posted": "2026-10-01",
+        "metadata": {
+          "careerLevel": "Senior",
+          "guid": "abc-123"
+        }
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "elastic/findjobs",
+      "name": "careerLevel-19",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": true
+      },
+      "expected": {
+        "url": "https://www.accenture.com/us-en/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "description": "<p>Build</p>",
+        "locations": [
+          "Berlin",
+          "Munich"
+        ],
+        "job_location_type": "Remote",
+        "date_posted": "2026-10-01",
+        "metadata": {
+          "businessArea": "Technology",
+          "careerLevel": true,
+          "guid": "abc-123"
+        }
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "jobsearch/result",
+      "name": "complete",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "locations": [
+          "Paris"
+        ],
+        "date_posted": "2026-10-01"
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "jobsearch/result",
+      "name": "empty",
+      "row": {},
+      "expected": null
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "jobsearch/result",
+      "name": "guid-2",
+      "row": {
+        "guid": null,
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "locations": [
+          "Paris"
+        ],
+        "date_posted": "2026-10-01"
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "jobsearch/result",
+      "name": "guid-3",
+      "row": {
+        "guid": false,
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "locations": [
+          "Paris"
+        ],
+        "date_posted": "2026-10-01"
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "jobsearch/result",
+      "name": "guid-4",
+      "row": {
+        "guid": 17,
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "locations": [
+          "Paris"
+        ],
+        "date_posted": "2026-10-01"
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "jobsearch/result",
+      "name": "guid-5",
+      "row": {
+        "guid": 1.0,
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "locations": [
+          "Paris"
+        ],
+        "date_posted": "2026-10-01"
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "jobsearch/result",
+      "name": "title-6",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": null,
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/fr-fr/careers/jobdetails?id=abc-123",
+        "locations": [
+          "Paris"
+        ],
+        "date_posted": "2026-10-01"
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "jobsearch/result",
+      "name": "title-7",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": 17,
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/fr-fr/careers/jobdetails?id=abc-123",
+        "title": 17,
+        "locations": [
+          "Paris"
+        ],
+        "date_posted": "2026-10-01"
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "jobsearch/result",
+      "name": "jobDescription-8",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": null,
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "locations": [
+          "Paris"
+        ],
+        "date_posted": "2026-10-01"
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "jobsearch/result",
+      "name": "remoteType-9",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": null,
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "locations": [
+          "Paris"
+        ],
+        "date_posted": "2026-10-01"
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "jobsearch/result",
+      "name": "postedDate-10",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": null,
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "locations": [
+          "Paris"
+        ]
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "jobsearch/result",
+      "name": "location-11",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": null,
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "locations": [
+          "Paris"
+        ],
+        "date_posted": "2026-10-01"
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "jobsearch/result",
+      "name": "location-12",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "locations": [
+          "Paris"
+        ],
+        "date_posted": "2026-10-01"
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "jobsearch/result",
+      "name": "location-13",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": "  New York  ",
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "locations": [
+          "Paris"
+        ],
+        "date_posted": "2026-10-01"
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "jobsearch/result",
+      "name": "jobCityState-14",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": [
+          "Paris",
+          "Lyon"
+        ],
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "locations": [
+          "Paris",
+          "Lyon"
+        ],
+        "date_posted": "2026-10-01"
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "jobsearch/result",
+      "name": "jobCityState-15",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": null,
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "date_posted": "2026-10-01"
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "jobsearch/result",
+      "name": "jobDetailUrl-16",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": null,
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": null
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "jobsearch/result",
+      "name": "jobDetailUrl-17",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "https://www.accenture.com/fr-fr/careers/jobdetails?id=1",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/fr-fr/careers/jobdetails?id=1",
+        "title": "Engineer",
+        "locations": [
+          "Paris"
+        ],
+        "date_posted": "2026-10-01"
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "jobsearch/result",
+      "name": "businessArea-18",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": {},
+        "careerLevel": "Senior"
+      },
+      "expected": {
+        "url": "https://www.accenture.com/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "locations": [
+          "Paris"
+        ],
+        "date_posted": "2026-10-01"
+      }
+    },
+    {
+      "provider": "accenture",
+      "endpoint": "jobsearch/result",
+      "name": "careerLevel-19",
+      "row": {
+        "guid": "abc-123",
+        "jobDetailUrl": "/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "jobDescription": "<p>Build</p>",
+        "location": [
+          "Berlin",
+          "Munich"
+        ],
+        "jobCityState": "Paris",
+        "remoteType": "Remote",
+        "postedDate": "2026-10-01",
+        "businessArea": "Technology",
+        "careerLevel": true
+      },
+      "expected": {
+        "url": "https://www.accenture.com/fr-fr/careers/jobdetails?id=abc-123",
+        "title": "Engineer",
+        "locations": [
+          "Paris"
+        ],
+        "date_posted": "2026-10-01"
+      }
+    }
+  ],
+  "requests": [
+    {
+      "country": "USA",
+      "language": "en",
+      "site": "us-en",
+      "offset": 500,
+      "body": "------FormBoundary\r\nContent-Disposition: form-data; name=\"startIndex\"\r\n\r\n500\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"maxResultSize\"\r\n\r\n500\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"jobKeyword\"\r\n\r\n\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"jobCountry\"\r\n\r\nUSA\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"jobLanguage\"\r\n\r\nen\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"countrySite\"\r\n\r\nus-en\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"sortBy\"\r\n\r\n2\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"totalHits\"\r\n\r\ntrue\r\n------FormBoundary--"
+    },
+    {
+      "country": "日本",
+      "language": "ja",
+      "site": "jp-ja",
+      "offset": 500,
+      "body": "------FormBoundary\r\nContent-Disposition: form-data; name=\"startIndex\"\r\n\r\n500\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"maxResultSize\"\r\n\r\n500\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"jobKeyword\"\r\n\r\n\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"jobCountry\"\r\n\r\n日本\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"jobLanguage\"\r\n\r\nja\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"countrySite\"\r\n\r\njp-ja\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"sortBy\"\r\n\r\n2\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"totalHits\"\r\n\r\ntrue\r\n------FormBoundary--"
+    }
+  ],
+  "captured_requests": [
+    {
+      "body": "{\"startIndex\": 0, \"maxResultSize\": 20, \"keyword\": \"untouched\"}",
+      "expected": "{\"startIndex\": 1000, \"maxResultSize\": 500, \"keyword\": \"untouched\"}"
+    },
+    {
+      "body": "startIndex=0&maxResultSize=20&keyword=untouched",
+      "expected": "startIndex=1000&maxResultSize=500&keyword=untouched"
+    },
+    {
+      "body": "------FormBoundary\r\nContent-Disposition: form-data; name=\"startIndex\"\r\n\r\n0\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"maxResultSize\"\r\n\r\n500\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"jobKeyword\"\r\n\r\n\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"jobCountry\"\r\n\r\nFrance\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"jobLanguage\"\r\n\r\nfr\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"countrySite\"\r\n\r\nfr-fr\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"sortBy\"\r\n\r\n2\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"totalHits\"\r\n\r\ntrue\r\n------FormBoundary--",
+      "expected": "------FormBoundary\r\nContent-Disposition: form-data; name=\"startIndex\"\r\n\r\n1000\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"maxResultSize\"\r\n\r\n500\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"jobKeyword\"\r\n\r\n\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"jobCountry\"\r\n\r\nFrance\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"jobLanguage\"\r\n\r\nfr\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"countrySite\"\r\n\r\nfr-fr\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"sortBy\"\r\n\r\n2\r\n------FormBoundary\r\nContent-Disposition: form-data; name=\"totalHits\"\r\n\r\ntrue\r\n------FormBoundary--"
+    }
+  ],
+  "inventories": [
+    {
+      "endpoint": "elastic/findjobs",
+      "actual": 0,
+      "advertised": 0,
+      "rows": 0,
+      "capped": false,
+      "offsets": [
+        0
+      ],
+      "ids_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "endpoint": "elastic/findjobs",
+      "actual": 501,
+      "advertised": 501,
+      "rows": 501,
+      "capped": false,
+      "offsets": [
+        0,
+        500
+      ],
+      "ids_sha256": "8fc22ce03f56beefd41d00f7ed38ad8632f6fdc5df07a04063ca0de6bf6bbdda"
+    },
+    {
+      "endpoint": "elastic/findjobs",
+      "actual": 1500,
+      "advertised": 1500,
+      "rows": 1500,
+      "capped": false,
+      "offsets": [
+        0,
+        500,
+        1000
+      ],
+      "ids_sha256": "e09ab12a3e40c1133dacc316e0aa7437b98489598b48583ad3b298c301f06a6d"
+    },
+    {
+      "endpoint": "elastic/findjobs",
+      "actual": 1200,
+      "advertised": 10000,
+      "rows": 1200,
+      "capped": false,
+      "offsets": [
+        0,
+        500,
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        4000,
+        4500,
+        5000,
+        5500,
+        6000,
+        6500,
+        7000,
+        7500,
+        8000,
+        8500,
+        9000,
+        9500,
+        10000,
+        10500,
+        11000,
+        11500,
+        12000,
+        12500,
+        13000,
+        13500,
+        14000,
+        14500,
+        15000,
+        15500,
+        16000,
+        16500,
+        17000,
+        17500,
+        18000,
+        18500,
+        19000,
+        19500,
+        20000,
+        20500,
+        21000,
+        21500,
+        22000,
+        22500,
+        23000,
+        23500,
+        24000,
+        24500,
+        25000,
+        25500,
+        26000,
+        26500,
+        27000,
+        27500,
+        28000,
+        28500,
+        29000,
+        29500,
+        30000,
+        30500,
+        31000,
+        31500,
+        32000,
+        32500,
+        33000,
+        33500,
+        34000,
+        34500,
+        35000,
+        35500,
+        36000,
+        36500,
+        37000,
+        37500,
+        38000,
+        38500,
+        39000,
+        39500,
+        40000,
+        40500,
+        41000,
+        41500,
+        42000,
+        42500,
+        43000,
+        43500,
+        44000,
+        44500,
+        45000,
+        45500,
+        46000,
+        46500,
+        47000,
+        47500,
+        48000,
+        48500,
+        49000,
+        49500
+      ],
+      "ids_sha256": "5636ffab74b752cd21c050e627203865d03416fc370238c9315a4a5bed71119e"
+    },
+    {
+      "endpoint": "elastic/findjobs",
+      "actual": 50000,
+      "advertised": 10000,
+      "rows": 50000,
+      "capped": true,
+      "offsets": [
+        0,
+        500,
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        4000,
+        4500,
+        5000,
+        5500,
+        6000,
+        6500,
+        7000,
+        7500,
+        8000,
+        8500,
+        9000,
+        9500,
+        10000,
+        10500,
+        11000,
+        11500,
+        12000,
+        12500,
+        13000,
+        13500,
+        14000,
+        14500,
+        15000,
+        15500,
+        16000,
+        16500,
+        17000,
+        17500,
+        18000,
+        18500,
+        19000,
+        19500,
+        20000,
+        20500,
+        21000,
+        21500,
+        22000,
+        22500,
+        23000,
+        23500,
+        24000,
+        24500,
+        25000,
+        25500,
+        26000,
+        26500,
+        27000,
+        27500,
+        28000,
+        28500,
+        29000,
+        29500,
+        30000,
+        30500,
+        31000,
+        31500,
+        32000,
+        32500,
+        33000,
+        33500,
+        34000,
+        34500,
+        35000,
+        35500,
+        36000,
+        36500,
+        37000,
+        37500,
+        38000,
+        38500,
+        39000,
+        39500,
+        40000,
+        40500,
+        41000,
+        41500,
+        42000,
+        42500,
+        43000,
+        43500,
+        44000,
+        44500,
+        45000,
+        45500,
+        46000,
+        46500,
+        47000,
+        47500,
+        48000,
+        48500,
+        49000,
+        49500
+      ],
+      "ids_sha256": "1dc19e6791bdb9fad3762daddb48b976ab6a3f7ae2ed8969a0a045c37b467c5e"
+    },
+    {
+      "endpoint": "jobsearch/result",
+      "actual": 0,
+      "advertised": 0,
+      "rows": 0,
+      "capped": false,
+      "offsets": [
+        0
+      ],
+      "ids_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "endpoint": "jobsearch/result",
+      "actual": 501,
+      "advertised": 501,
+      "rows": 501,
+      "capped": false,
+      "offsets": [
+        0,
+        500
+      ],
+      "ids_sha256": "8fc22ce03f56beefd41d00f7ed38ad8632f6fdc5df07a04063ca0de6bf6bbdda"
+    },
+    {
+      "endpoint": "jobsearch/result",
+      "actual": 1500,
+      "advertised": 1500,
+      "rows": 1500,
+      "capped": false,
+      "offsets": [
+        0,
+        500,
+        1000
+      ],
+      "ids_sha256": "e09ab12a3e40c1133dacc316e0aa7437b98489598b48583ad3b298c301f06a6d"
+    },
+    {
+      "endpoint": "jobsearch/result",
+      "actual": 1200,
+      "advertised": 10000,
+      "rows": 1200,
+      "capped": false,
+      "offsets": [
+        0,
+        500,
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        4000,
+        4500,
+        5000,
+        5500,
+        6000,
+        6500,
+        7000,
+        7500,
+        8000,
+        8500,
+        9000,
+        9500,
+        10000,
+        10500,
+        11000,
+        11500,
+        12000,
+        12500,
+        13000,
+        13500,
+        14000,
+        14500,
+        15000,
+        15500,
+        16000,
+        16500,
+        17000,
+        17500,
+        18000,
+        18500,
+        19000,
+        19500,
+        20000,
+        20500,
+        21000,
+        21500,
+        22000,
+        22500,
+        23000,
+        23500,
+        24000,
+        24500,
+        25000,
+        25500,
+        26000,
+        26500,
+        27000,
+        27500,
+        28000,
+        28500,
+        29000,
+        29500,
+        30000,
+        30500,
+        31000,
+        31500,
+        32000,
+        32500,
+        33000,
+        33500,
+        34000,
+        34500,
+        35000,
+        35500,
+        36000,
+        36500,
+        37000,
+        37500,
+        38000,
+        38500,
+        39000,
+        39500,
+        40000,
+        40500,
+        41000,
+        41500,
+        42000,
+        42500,
+        43000,
+        43500,
+        44000,
+        44500,
+        45000,
+        45500,
+        46000,
+        46500,
+        47000,
+        47500,
+        48000,
+        48500,
+        49000,
+        49500
+      ],
+      "ids_sha256": "5636ffab74b752cd21c050e627203865d03416fc370238c9315a4a5bed71119e"
+    },
+    {
+      "endpoint": "jobsearch/result",
+      "actual": 50000,
+      "advertised": 10000,
+      "rows": 50000,
+      "capped": true,
+      "offsets": [
+        0,
+        500,
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        4000,
+        4500,
+        5000,
+        5500,
+        6000,
+        6500,
+        7000,
+        7500,
+        8000,
+        8500,
+        9000,
+        9500,
+        10000,
+        10500,
+        11000,
+        11500,
+        12000,
+        12500,
+        13000,
+        13500,
+        14000,
+        14500,
+        15000,
+        15500,
+        16000,
+        16500,
+        17000,
+        17500,
+        18000,
+        18500,
+        19000,
+        19500,
+        20000,
+        20500,
+        21000,
+        21500,
+        22000,
+        22500,
+        23000,
+        23500,
+        24000,
+        24500,
+        25000,
+        25500,
+        26000,
+        26500,
+        27000,
+        27500,
+        28000,
+        28500,
+        29000,
+        29500,
+        30000,
+        30500,
+        31000,
+        31500,
+        32000,
+        32500,
+        33000,
+        33500,
+        34000,
+        34500,
+        35000,
+        35500,
+        36000,
+        36500,
+        37000,
+        37500,
+        38000,
+        38500,
+        39000,
+        39500,
+        40000,
+        40500,
+        41000,
+        41500,
+        42000,
+        42500,
+        43000,
+        43500,
+        44000,
+        44500,
+        45000,
+        45500,
+        46000,
+        46500,
+        47000,
+        47500,
+        48000,
+        48500,
+        49000,
+        49500
+      ],
+      "ids_sha256": "1dc19e6791bdb9fad3762daddb48b976ab6a3f7ae2ed8969a0a045c37b467c5e"
+    }
+  ]
+}

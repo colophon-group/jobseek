@@ -1,0 +1,59 @@
+{
+  "schema": "jobseek.go-native-http-options/v1",
+  "observed_at_utc": "2026-10-10T20:12:43.502773+00:00",
+  "candidate_version": "0.13.1006",
+  "base_revision": "26d98bd3fe5afa9f77e5a11358ffcf8ed490dbbf",
+  "compiled_profiles": 195,
+  "status": "qualified grouped candidate; not merged, deployed or admitted",
+  "POST_token_refresh": {
+    "board": "credit-agricole-next-bank-careers",
+    "scope": "initial non-browser HTTP POST body refresh; exact same-origin bootstrap GET; fresh per-operation cookies; API-only headers stay on API requests; unchanged body/missing token and failed later pages publish no inventory",
+    "original_frozen_cases": 12,
+    "original_public_jobs": 0,
+    "original_public_requests": 2,
+    "original_public_capture_sha256": "5aee9622cdc482d9976a7c42068a24803b23372d461b14bd0ec7e6f1504bd4b0",
+    "public_worker_replay": "PASS2.221s; exact original API request, cookie session and empty inventory; no rich public field proof claimed",
+    "mandatory_real_PG_Redis_cases": 10,
+    "mandatory_real_PG_Redis_result": "PASS14.369s",
+    "cases": "direct/proxy complete,missing token,reserved bootstrap503meta,reserved later503header,invalid later JSON; canonical writes,absence,deadlines and leases verified",
+    "browser_replay": "explicitly rejects refresh until captured-browser behavior qualifies"
+  },
+  "EUC_JP": {
+    "boards": [
+      {
+        "board_slug": "bridgestone-careers-japan",
+        "original_public_jobs": 0,
+        "capture_sha256": "2e66f34029870ee5cc0e7433b93cf28f01ee6f693bb2b90eb6664d79b05bb03e"
+      },
+      {
+        "board_slug": "valeo-careers-jp",
+        "original_public_jobs": 29,
+        "capture_sha256": "f245777788d1bacc4a0e0cc3dd06e40d7f3a02b4df54c202655ef3bd6f9d4524"
+      }
+    ],
+    "public_worker_replay": "PASS2.230s; exact original URLs,encoding and requests; URL-only authority preserved",
+    "codec": "euc_jp and EUC-JP normalize to euc-jp; same existing Go decoder for monitor and detail",
+    "mandatory_real_PG_Redis_cases": 16,
+    "real_settlement": "PASS5.262s; complete,publisher and original empty-check states plus canonical Japanese detail text; both aliases direct/proxy",
+    "real_settlement_log_sha256": "580c34aa2633cd602fee046114d2c8fc2474b6fa7fdca0918b303f5910d5f486",
+    "empty_contract": "unchanged original DOM permits a nonempty HTML page with no links; original successful empty-check count1, no immediate posting absence/failure; blank HTTP bodies remain existing transient failures"
+  },
+  "cold_retirement": {
+    "cases": 12,
+    "result": "PASS14.198s",
+    "variants": "HTTP refresh and EUC-JP direct/proxy interrupted,committed-before-ack,changed-setting rejection; cold Redis restart retains exact schedules and canonical output"
+  },
+  "regressions": {
+    "API_SDK_full_race": "PASS9.378s",
+    "native_executable_195_profile_startup_identity_health_signal_drain_real_PG_Redis": "PASS4.980s",
+    "ordinary_Python_selector_tests": "74passed9skipped",
+    "generated_browser_census_tests": "57passed",
+    "profile_order_manifest_equal_in_build_Runtime_test_and_installed_image_assertion": true
+  },
+  "next": [
+    "exact-head CI and deployed source audit",
+    "stage only qualified additions and preserve previous7736/2751 fleet",
+    "full original deployment and cutover",
+    "remaining profiles,fleet freshness,resource/cost and supported final reversal before Python retirement"
+  ]
+}

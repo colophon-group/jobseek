@@ -1,0 +1,132 @@
+{
+  "schema": "jobseek.go-native-production/v1",
+  "observed_at_utc": "2026-10-10T20:15:30.443925+00:00",
+  "status": "delivered through original whole rollout and supported full activation",
+  "pr": "https://github.com/colophon-group/jobseek/pull/10403",
+  "source_revision": "26d98bd3fe5afa9f77e5a11358ffcf8ed490dbbf",
+  "crawler_version": "0.13.1005",
+  "compiled_profiles": 194,
+  "exact_head_CI": {
+    "head": "767a34906f059018cbe633ae84e4874be2f2f4c0",
+    "Required_CI": 38064107909,
+    "actual_ready_PR_Crawler_Deploy_Gate": 38066819796,
+    "installed_image_parity": 38064107965,
+    "physical_Lightpanda_both_Linux_architectures": 38064107922,
+    "all": "SUCCESSattempt1",
+    "draft_gate_note": "earlier successful draft workflow published a failing draft status; only the later actual ready status granted merge authority"
+  },
+  "rollouts": {
+    "crawler": {
+      "run": 38067534039,
+      "attempt": 1,
+      "conclusion": "success"
+    },
+    "renderer": {
+      "run": 38067638586,
+      "attempt": 2,
+      "conclusion": "success",
+      "attempt1": "running exact predecessor sticky OOM rejected; original workflow left it stopped; original installer owned cold recovery succeeded without host patch/manual restart/guard bypass"
+    }
+  },
+  "images": {
+    "JOBSEEK_DEPLOY_REVISION": "26d98bd3fe5afa9f77e5a11358ffcf8ed490dbbf",
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:d5270f10b5d76811a97e1bbe6d5b7f069108949c3fe419b792dcb548d017c468",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:32dd3eb551a21ddb2d1ed5e0f781aed43a5196a6c78732b06a9113a018a25c60",
+    "RENDERER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:90d292134f103ef9fbba0a5921b31050740e97af15853e2d32bcc88eb3843550"
+  },
+  "lightpanda": {
+    "release": "1.0.0",
+    "official_latest_stable_rechecked_utc": "2026-10-10T20:09:46Z",
+    "release_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
+    "immutable_upstream_digest": "sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e"
+  },
+  "supported_transition": {
+    "outgoing_source": "17a3c03eb9e7c053d2b891195993d0d235ff8f54",
+    "ordinary_retirement": "original full wrapper; natural lease expiry",
+    "B0_retirement": "original rollback and selector clear",
+    "independent_cold_epoch": 272,
+    "active_epoch": 273,
+    "plan_sha256": "93d2a21a76556e8c5c9c8f4a9f23e31c314d8f60cbc26660c6fb9aa7891a7422",
+    "projection_sha1": "21d35fedf5c3fbbba3c6d89d7fc6ace924381c6d",
+    "ordinary_receipt_sha256": "14d806cfc210c378fa519fc390bf4ad78ac2e843f550c6ee029c7810fe5b1b9b",
+    "b0_receipt_sha256": "468e88f65254aebc4dc5dbe59022b21005b60a4fcaa450b6e62ae4e51cbb62e6",
+    "historical_audit_evidence": "retained; no forced leases/locks/receipt removal"
+  },
+  "coverage": {
+    "newly_owned_monitor_boards": 26,
+    "removed_monitor_boards": 0,
+    "previous_monitor_count_preserved": 7710,
+    "previous_detail_count_preserved": 2751,
+    "monitor_boards": 7736,
+    "detail_boards": 2751,
+    "scheduled_postings_inspected": 1493835,
+    "scheduled_postings_admitted": 1463626,
+    "cached_route_mismatch_boards_retaining_legacy_owner": 42,
+    "unsupported_Eightfold_route_boards_retaining_legacy_owner": 1,
+    "remaining_monitors": 146,
+    "remaining_by_type": {
+      "dom": 90,
+      "api_sniffer": 23,
+      "accenture": 12,
+      "brassring": 4,
+      "rss": 4,
+      "inline": 5,
+      "nextdata": 2,
+      "oracle_hcm": 2,
+      "njoyn": 1,
+      "candidatus": 1,
+      "workday": 1,
+      "amazon": 1
+    },
+    "explicit_qualification_exclusions": [
+      "h3-dynamics-careers",
+      "lockheed-martin-intl-apac",
+      "lockheed-martin-intl-canada",
+      "lockheed-martin-intl-emea",
+      "slaughter-and-may-careers"
+    ]
+  },
+  "initial_independent_readback": {
+    "proof_sha256": "7a091da1fc99029b278d275501a15c23538a8c285147d5653ab4469460102797",
+    "running_exact_image_writers": 10,
+    "writer_restart_counts": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "HTTP_health_status": {
+      "worker-1": 200,
+      "worker-2": 200,
+      "worker-3": 200,
+      "browser-1": 200,
+      "drain": 200,
+      "exporter": 200,
+      "lightpanda-claimant": 204,
+      "ordinary-go": 204
+    },
+    "SQL_active_plans": 1,
+    "Redis_projection_matches": true,
+    "foreign_administrative_oneoffs": 0,
+    "known_scheduled_consumers": [],
+    "renderer_running_OOM_free": true,
+    "natural_fences": {
+      "monitor_active": 3,
+      "monitor_completed": 4,
+      "scrape_active": 3,
+      "scrape_completed": 14
+    },
+    "completed_monitor_receipts": 4,
+    "settled_exact_monitor_schedules": 4,
+    "retained_completion_leases": 0,
+    "scope": "bounded initial independent SQL/Redis/image/health and naturally scheduled observations; no replay injected; not whole-fleet freshness,cost or global conservation proof"
+  },
+  "resource_followup": "second predecessor sticky OOM recovery observed today; include remote renderer in whole-service restart/resource/cost investigation before final Python retirement; current exact new renderer running OOM-free",
+  "next": "deliver grouped15-board Accenture/token-refresh/EUC-JP batch; remaining profiles/runtime consumers,fleet freshness/resource/cost and supported final reversal window; retire production Python/Playwright/Chromium after full replacement authority; goal remains active and incomplete"
+}

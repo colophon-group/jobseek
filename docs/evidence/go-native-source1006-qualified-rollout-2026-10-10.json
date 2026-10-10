@@ -1,0 +1,116 @@
+{
+  "schema": "jobseek.go-native-qualified-rollout/v1",
+  "candidate_version": "0.13.1006",
+  "base_revision": "26d98bd3fe5afa9f77e5a11358ffcf8ed490dbbf",
+  "status": "qualified candidate selection; no production ownership",
+  "selected_addition_count": 15,
+  "selected_additions": [
+    {
+      "board_slug": "accenture-careers-au",
+      "monitor_type": "accenture",
+      "CSV_row_sha256": "32170d7f3ca29a4d49ac06def6e48b6ab4a2db8a36ba620697eeb1ed80ec9e1e"
+    },
+    {
+      "board_slug": "accenture-careers-br",
+      "monitor_type": "accenture",
+      "CSV_row_sha256": "c762030a4fa7a5168063c67948cbb7fa0327f3eef4dc1cc047782a3ff55f0abb"
+    },
+    {
+      "board_slug": "accenture-careers-ca",
+      "monitor_type": "accenture",
+      "CSV_row_sha256": "f38fdc3d15836fcba7d784a24cc6300af6a16ee097a19d89027dcef6153002a7"
+    },
+    {
+      "board_slug": "accenture-careers-ch",
+      "monitor_type": "accenture",
+      "CSV_row_sha256": "c5e75e72dd5c276b3e8704e0f26c224baa986efefe8309cc59bf29fa436a3e42"
+    },
+    {
+      "board_slug": "accenture-careers-de",
+      "monitor_type": "accenture",
+      "CSV_row_sha256": "d1db13ad57e044f638cbc71d108c7606a2253c717fefbcabb681ec080f128867"
+    },
+    {
+      "board_slug": "accenture-careers-fr",
+      "monitor_type": "accenture",
+      "CSV_row_sha256": "363b8f345d1a6a200665b09d52bb1769cb9fc134a2c8747cba76f914cf9bd21a"
+    },
+    {
+      "board_slug": "accenture-careers-gb",
+      "monitor_type": "accenture",
+      "CSV_row_sha256": "b2afee2087398bd3d717fa2e209a447b2fc5e6ee331b1f16e3e3f657df9afead"
+    },
+    {
+      "board_slug": "accenture-careers-in",
+      "monitor_type": "accenture",
+      "CSV_row_sha256": "be77478e3f57bad935fb16b7b14838c0aecd526ee205f9ac6b609dc608833410"
+    },
+    {
+      "board_slug": "accenture-careers-it",
+      "monitor_type": "accenture",
+      "CSV_row_sha256": "9d96744cf1e56c0066a2affed877027dfc1661b49f3a3e80b0cc5d73b184e6e5"
+    },
+    {
+      "board_slug": "accenture-careers-jp",
+      "monitor_type": "accenture",
+      "CSV_row_sha256": "5775c9c92251375bb9215f809e485ab95bdfb44b65ec7826a3ed3ab2385f172f"
+    },
+    {
+      "board_slug": "accenture-careers-sg",
+      "monitor_type": "accenture",
+      "CSV_row_sha256": "30aa0f25bb00ef0972f67001a7c6a78d419c3c883faf7824176ce1b5b05d0121"
+    },
+    {
+      "board_slug": "accenture-careers-us",
+      "monitor_type": "accenture",
+      "CSV_row_sha256": "fbdcc7548a4d8044a2e36294c1ee71a961c32dc59fca5368419b17413a75fbd1"
+    },
+    {
+      "board_slug": "bridgestone-careers-japan",
+      "monitor_type": "dom",
+      "CSV_row_sha256": "3114bcab78e35677d070ee7dc414188ae74a9853a7ca0d1c4e2785a765725974"
+    },
+    {
+      "board_slug": "credit-agricole-next-bank-careers",
+      "monitor_type": "api_sniffer",
+      "CSV_row_sha256": "71b9ac5b4e1c934930711ac22e98bff2fb21a0155f72f393a6261417f63455dd"
+    },
+    {
+      "board_slug": "valeo-careers-jp",
+      "monitor_type": "dom",
+      "CSV_row_sha256": "83bfbd457b4dc4f084a8d541f1f47b54283b8af77f00ff7bb1ff68a36edb84fe"
+    }
+  ],
+  "qualification_evidence": [
+    "go-native-accenture-http-qualification-2026-10-10.json",
+    "go-native-http-refresh-encoding-qualification-2026-10-10.json"
+  ],
+  "previous_source1005_preservation_floor": {
+    "monitor_boards": 7736,
+    "detail_boards": 2751,
+    "authority": "verify current full source1005 active readback before using as preceding cohort"
+  },
+  "explicit_qualification_exclusions": [
+    {
+      "board_slug": "h3-dynamics-careers",
+      "reason": "current five unresolved source1005 public browser outcomes; retain existing owner"
+    },
+    {
+      "board_slug": "slaughter-and-may-careers",
+      "reason": "current five unresolved source1005 public browser outcomes; retain existing owner"
+    },
+    {
+      "board_slug": "lockheed-martin-intl-apac",
+      "reason": "current five unresolved source1005 public browser outcomes; retain existing owner"
+    },
+    {
+      "board_slug": "lockheed-martin-intl-canada",
+      "reason": "current five unresolved source1005 public browser outcomes; retain existing owner"
+    },
+    {
+      "board_slug": "lockheed-martin-intl-emea",
+      "reason": "current five unresolved source1005 public browser outcomes; retain existing owner"
+    }
+  ],
+  "scope": "Advance all15 qualified additions together through fresh exact-source canonical/cache/actual-route census; do not remove prior ownership or admit unresolved newly compiled behavior"
+}

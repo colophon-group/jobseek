@@ -49,6 +49,13 @@ func firstSharedDOMAPIFixture(t *testing.T, variant string) firstOwnerFixture {
 		}
 		md["response_decrypt"] = decrypt
 	}
+	if kind == "api-refresh" {
+		md["method"], md["post_data"] = "POST", "nonce=old&page=1"
+		md["post_data_refresh"] = map[string]any{"fields": map[string]any{"nonce": "nonce=([a-z]+)"}}
+	}
+	if kind == "dom-euc-jp" {
+		md["encoding"] = "euc_jp"
+	}
 	if kind == "dom-provider" {
 		md["lg_portal"] = true
 	}
@@ -117,4 +124,8 @@ func TestRealDOMProviderAndAPIRootColdRetirement(t *testing.T) {
 
 func TestRealEncryptedInitialAPIVariantColdRetirement(t *testing.T) {
 	testProviderColdRetirement(t, []string{"api-decrypt/direct", "api-decrypt-fixed/direct"}, firstSharedDOMAPIFixture)
+}
+
+func TestRealHTTPTokenRefreshAndJapaneseEncodingColdRetirement(t *testing.T) {
+	testProviderColdRetirement(t, []string{"api-refresh/direct", "api-refresh/proxy", "dom-euc-jp/direct", "dom-euc-jp/proxy"}, firstSharedDOMAPIFixture)
 }

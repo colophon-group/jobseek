@@ -26,6 +26,7 @@ func TestSharedDOMAPICurrentRegistryPreservesDeclaredTransports(t *testing.T) {
 	explicitBoards := map[string]bool{"jd-sports-greece-cyprus": true, "screenpoint-medical-bamboohr": true, "wonderflow-bamboohr": true, "loccitane-group-australia-new-zealand": true}
 	explicitCount := 0
 	providerMarkerCount := 0
+	refreshCount := 0
 	providerMarkerBoards := map[string]bool{"implenia-apprenticeships-ch": true, "ge-healthcare-icometrix": true, "ammann-abg": true}
 	for _, row := range rows[1:] {
 		provider := row[h["monitor_type"]]
@@ -70,6 +71,12 @@ func TestSharedDOMAPICurrentRegistryPreservesDeclaredTransports(t *testing.T) {
 			}
 			providerMarkerCount++
 		}
+		if row[h["board_slug"]] == "credit-agricole-next-bank-careers" {
+			if e != nil || browser || md["post_data_refresh"] == nil {
+				t.Fatal("qualified initial HTTP token refresh lost coverage", e)
+			}
+			refreshCount++
+		}
 		if e != nil {
 			retained[provider]++
 			continue
@@ -97,7 +104,7 @@ func TestSharedDOMAPICurrentRegistryPreservesDeclaredTransports(t *testing.T) {
 		}
 		supported[provider]++
 	}
-	if explicitCount != 4 || providerMarkerCount != 3 || supported["api_sniffer"] != 31 || supported["dom"] != 22 || retained["api_sniffer"] != 5 || retained["dom"] != 1 {
+	if explicitCount != 4 || providerMarkerCount != 3 || refreshCount != 1 || supported["api_sniffer"] != 32 || supported["dom"] != 22 || retained["api_sniffer"] != 4 || retained["dom"] != 1 {
 		t.Fatal("registry coverage changed", supported, retained)
 	}
 	t.Logf("configuration binding only; production route admission pending: supported=%v retained=%v", supported, retained)

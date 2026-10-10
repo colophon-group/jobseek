@@ -3,7 +3,6 @@ package apisniffer
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	dom "github.com/colophon-group/jobseek/apps/crawler/go/dom-detail"
 	"net/http"
 	"net/url"
@@ -40,9 +39,10 @@ type Options struct {
 	Transient403                           bool
 	Enrichment                             []string
 	ResponseDecrypt                        *responseDecrypt
+	PostDataRefresh                        *postDataRefresh
 }
 
-var ConfigKeys = []string{"api_url", "method", "json_path", "json_path_values", "total_path", "url_field", "url_template", "url_template_fields", "fields", "params", "post_data", "post_body", "request_headers", "headers", "pagination", "max_items", "transient_403", "transport_attempts", "browser", "render", "proxy", "skip_ssl", "ssl_verify", "wait", "timeout", "settle", "items", "score", "total", "empty_response", "item_filter", "url_filter", "resource_policy", "url_regex", "url_allowlist", "defaults", "rescrape_policy", "enrich", "slug_fields", "response_decrypt"}
+var ConfigKeys = []string{"api_url", "method", "json_path", "json_path_values", "total_path", "url_field", "url_template", "url_template_fields", "fields", "params", "post_data", "post_body", "request_headers", "headers", "pagination", "max_items", "transient_403", "transport_attempts", "browser", "render", "proxy", "skip_ssl", "ssl_verify", "wait", "timeout", "settle", "items", "score", "total", "empty_response", "item_filter", "url_filter", "resource_policy", "url_regex", "url_allowlist", "defaults", "rescrape_policy", "enrich", "slug_fields", "response_decrypt", "post_data_refresh"}
 
 // Explicit HTTP configurations share the production client and the original
 // inventory writer. Browser captures, rotating auth, provider-specific filters
@@ -433,6 +433,10 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 			return o, ErrOptions
 		}
 	}
+	o.PostDataRefresh, err = parsePostDataRefresh(m["post_data_refresh"], o, d)
+	if err != nil {
+		return o, err
+	}
 	return o, nil
 }
 
@@ -608,21 +612,16 @@ func setBodyParam(body, param string, value any) (string, error) {
 		obj[key] = value
 		return d.jsonBody(d.Value, true)
 	}
-	q, err := url.ParseQuery(body)
-	if err != nil || len(q) == 0 {
-		return "", ErrOptions
-	}
-	if _, exists := q[param]; !exists {
-		return "", ErrOptions
-	}
-	q.Set(param, fmt.Sprint(value))
-	return q.Encode(), nil
+	return setOrderedFormParam(body, param, value)
 }
 
 // ResourceMatches permits only this immutable endpoint, its configured
 // pagination parameter and the existing bounded size probe. It grants no
 // claim or database authority and cannot change an origin or resource path.
 func (o Options) ResourceMatches(raw string) bool {
+	if o.PostDataRefresh != nil && raw == o.PostDataRefresh.source {
+		return true
+	}
 	if raw == o.Endpoint {
 		return true
 	}

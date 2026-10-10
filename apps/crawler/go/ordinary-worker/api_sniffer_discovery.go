@@ -10,9 +10,18 @@ import (
 	"time"
 
 	apisniffer "github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor"
+	jsonld "github.com/colophon-group/jobseek/apps/crawler/go/jsonld-detail"
 	executor "github.com/colophon-group/jobseek/apps/crawler/go/lightpanda-b0-executor"
 	queue "github.com/colophon-group/jobseek/apps/crawler/go/ordinary-queue"
 )
+
+type apiPostRefreshScope struct{ options apisniffer.Options }
+
+func (s apiPostRefreshScope) ResourceMatches(raw string) bool {
+	return s.options.IsPostDataRefreshRequest(apisniffer.Request{Method: http.MethodGet, URL: raw})
+}
+func (apiPostRefreshScope) AcceptSuccess2xx() bool        { return true }
+func (apiPostRefreshScope) RequestTimeout() time.Duration { return 30 * time.Second }
 
 // Configured API requests share the process-owned verified transport. Cookies
 // and observations belong to this discovery, never to another board's claim.
@@ -31,6 +40,33 @@ func discoverAPISnifferInventory(ctx context.Context, client *http.Client, profi
 	fetch := func(ctx context.Context, r apisniffer.Request) (*apisniffer.Document, error) {
 		if reserved != nil {
 			return nil, &DiscoveryError{Kind: "publisher_reserved", Status: reserved.status}
+		}
+		if o.IsPostDataRefreshRequest(r) {
+			var failure error
+			for attempt := 0; attempt < 3; attempt++ {
+				raw, _, observed, err := fetchLastHTTPOnce(ctx, &operationClient, apiPostRefreshScope{o}, r, 2000000)
+				normal = observed
+				if observed != nil && observed.reserved {
+					reserved = observed
+					return nil, err
+				}
+				if err == nil {
+					return &apisniffer.Document{Value: jsonld.DecodeDocument(raw, observed.contentType)}, nil
+				}
+				if ctx.Err() != nil {
+					return nil, ctx.Err()
+				}
+				failure = err
+				if observed != nil && observed.status < 500 && observed.status != 408 && observed.status != 425 && observed.status != 429 {
+					return nil, failure
+				}
+				if attempt < 2 {
+					if err := pauseRich(ctx, time.Duration(float64(time.Second)*float64(int64(1)<<attempt)*(0.5+rand.Float64()))); err != nil {
+						return nil, err
+					}
+				}
+			}
+			return nil, failure
 		}
 		if r.Method != o.Method || !o.ResourceMatches(r.URL) {
 			return nil, queue.ErrConfiguration
