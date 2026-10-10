@@ -7,13 +7,15 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 )
 
 func TestRealLocalizedHTTPSettlesCompleteFailedReserved(t *testing.T) {
-	for _, provider := range []string{"talemetry", "prospective", "kipt"} {
+	for _, variant := range []string{"talemetry", "talemetry/proxy", "prospective", "kipt"} {
+		provider := strings.Split(variant, "/")[0]
 		for _, mode := range []string{"complete", "failed", "reserved"} {
-			t.Run(provider+"/"+mode, func(t *testing.T) {
+			t.Run(variant+"/"+mode, func(t *testing.T) {
 				board := "https://careers.example.com/search/jobs"
 				metadata := `{"scraper_type":"json-ld"}`
 				responses := map[string]string{}
@@ -66,8 +68,14 @@ func TestRealLocalizedHTTPSettlesCompleteFailedReserved(t *testing.T) {
 					responses[board] = `<html><a href="/news/2000/vacancy_01_01_2000.pdf">Historical bulletin</a></html>`
 					wantCount = 0
 				}
+				proxy := strings.HasSuffix(variant, "/proxy")
+				metadata = proxyFixtureMetadata(t, metadata, proxy)
 				f := privateRichPipelineFixtureURL(t, provider, metadata, board)
 				claim, circuits := claimFixture(t, f)
+				selectedProxy, e := runtimeClaimUsesProxy(context.Background(), f.a, claim)
+				if e != nil || selectedProxy != proxy {
+					t.Fatal("installed runtime transport selection differs", e, selectedProxy)
+				}
 				client := &VerifiedDirectHTTP{client: verifiedLastHTTPFixture(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					if mode != "complete" {
 						if mode == "reserved" {
@@ -94,6 +102,9 @@ func TestRealLocalizedHTTPSettlesCompleteFailedReserved(t *testing.T) {
 					}
 					fmt.Fprint(w, source)
 				}))}
+				if proxy {
+					client = credentialedProxyFixture(t, client)
+				}
 				result, e := RunGreenhouseClaim(context.Background(), f.a, claim, client, richPipelinePreparer(t, f), circuits)
 				if e != nil || result == nil || !result.Settled {
 					t.Fatal("owned grouped settlement failed", e)

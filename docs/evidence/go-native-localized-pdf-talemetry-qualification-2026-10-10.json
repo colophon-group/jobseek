@@ -1,0 +1,143 @@
+{
+  "schema": "jobseek.go-native-grouped-qualification/v1",
+  "observed_at_utc": "2026-10-10T09:04:05.635188+00:00",
+  "base_source": "560b761a108ec4b25d813ad24227d4894efc7419",
+  "candidate_version": "0.13.1003",
+  "candidate_profiles": 190,
+  "scope": [
+    "talemetry",
+    "prospective",
+    "kipt"
+  ],
+  "runtime_correction": "Scheduler selects proxy from the same compiled ownership profile checked by claim execution, fixing PapaJohns/Talemetry and earlier/future valid proxy profiles without a separate provider allowlist. Actual credentialed CONNECT, runtime selection and canonical DB effects verified. Source1002 native activation deliberately deferred.",
+  "original_frozen_contracts": {
+    "talemetry": 20,
+    "prospective": 13,
+    "kipt": 17,
+    "total": 50
+  },
+  "canonical_csv_board_bindings": 4,
+  "verified_synthetic_inventories": 33,
+  "publisher_precedence_cases": 6,
+  "real_pg_redis_cases": {
+    "group_monitor_settlement": 12,
+    "public_KIPT_complete_partial_publisher": 3,
+    "PapaJohns_runtime_proxy_regression": 3,
+    "cold_retirement": 18,
+    "total": 36
+  },
+  "final_private_log_checksums": [
+    {
+      "suite": "worker",
+      "returncode": 0,
+      "log": "native1003-localized-final-worker-qualification2-2026-10-10.log",
+      "sha256": "da404ddbc3ee81c5f77e7eb605cfeef33b6998a33286c6ddabaccfd224ab99a2"
+    },
+    {
+      "suite": "cold",
+      "returncode": 0,
+      "log": "native1003-localized-final-cold-qualification2-2026-10-10.log",
+      "sha256": "7af826444507102074760c35576b9ca50967f0651c385b28c050fcee995efa3a"
+    }
+  ],
+  "broad_checks": {
+    "sdk_race_vet_mod_tidy": "PASS unchanged SDK after final runtime fix",
+    "queue_race_vet_mod_tidy": "PASS; final required PG+Redis18cold cases repeated",
+    "worker_full_race_seconds": 88.168,
+    "worker_full_vet_mod_tidy": "PASS",
+    "fixture_generators_ruff": "PASS"
+  },
+  "public_original_captures": [
+    {
+      "board_slug": "parker-hannifin-global",
+      "sha256": "e2c85f3664245f44a4f0b24e6b662bb11207e73194d2ffe26f04b26767977985",
+      "status": "complete",
+      "complete_jobs": 1338,
+      "http_exchanges": 54,
+      "transport": "Original verified public response capture, verified offline Go TLS replay; no live Linux Go success claim"
+    },
+    {
+      "board_slug": "ofi-north-america",
+      "sha256": "abb44f3d31b4c0aaaa67afdabe6156384ae5193b2f343581fafaee1ce74480a2",
+      "status": "complete",
+      "complete_jobs": 98,
+      "http_exchanges": 8,
+      "transport": "Original verified public response capture, verified offline Go TLS replay; no live Linux Go success claim"
+    },
+    {
+      "board_slug": "university-of-basel-main",
+      "sha256": "e0c40b10d662e7ed14fe5d19bd6da99f291af5e3f258a9b804acf6de558d6d2a",
+      "status": "failed",
+      "complete_jobs": 0,
+      "http_exchanges": 68,
+      "transport": "Original verified public response capture, verified offline Go TLS replay; no live Linux Go success claim"
+    },
+    {
+      "board_slug": "national-science-center-kharkiv-institute-of-physics-and-technology-vacancies",
+      "sha256": "7c97e285a36cf38ef4796e6415ff5ca840cdcc23eb694241b152169b68e837f5",
+      "status": "failed",
+      "complete_jobs": 0,
+      "http_exchanges": 3,
+      "transport": "Original verified public response capture, verified offline Go TLS replay; no live Linux Go success claim"
+    }
+  ],
+  "public_complete_jobs": 1436,
+  "prospective_concurrency": "Cookie timing can select another issued opaque value; only previously issued cookies accepted, production jar host/path/expiry scope enforced. Sequential original fixtures exact. Offline response expiry shifts by capture clock, retaining lifetime/deletion semantics; runtime unchanged.",
+  "kipt_reviewed_spacing": {
+    "schema": "jobseek.kipt-reviewed-pdf-spacing/v1",
+    "pdf_sha256": "3847f0f64441f682a828a9f993f41ccc6fb891c85b5ddb24a6190e584b3114c2",
+    "original_description_sha256": "9aca3b43a0ae1b0c72f9c1b1224df68192b6751e40aef25af5a852418eef3238",
+    "native_description_sha256": "b0add8f3e76557c44a7001318414baa69375179eca2782e8cc6b7a388305711d",
+    "original_description_characters": 753,
+    "native_description_characters": 752,
+    "paragraphs": 6,
+    "sole_difference": "Original pypdf inserts one space inside a continuous ten-letter word; native layout faithfully retains the rendered word. All other characters/paragraphs/identities/fields remain exact.",
+    "visual_and_bbox_review": true
+  },
+  "publisher_and_atomicity": "Original incomplete Prospective/KIPT inventories remain failures. Any publisher reservation wins over status/retries, parallel children and partial data; no unproved absence.",
+  "runtime_file_sha256": {
+    ".github/workflows/crawler-runtime-contracts.yml": "e0c85edd2f487edf2b08c5dfcb1ee86e053ed161347f048e987872bf2a1cba44",
+    "apps/crawler/VERSION": "3b76c96e8aec027e10f4fd7bcc4038098c616b75fa5e1506739dedc3f9220906",
+    "apps/crawler/go/api-sniffer-monitor/kipt.go": "62e5b6343cae8ee32734bee3a0feb076fb90a4d82496099ad538abe5e91d4180",
+    "apps/crawler/go/api-sniffer-monitor/kipt_test.go": "d030926a04e0ecc2973f7a3e92eb434c3d59511da92a3e97376fcddb5bceab2f",
+    "apps/crawler/go/api-sniffer-monitor/prospective.go": "207939cfb24a6ec50e6ce1f05f721ba1f1bad0d748d92fe502ced7b29c7430b1",
+    "apps/crawler/go/api-sniffer-monitor/prospective_test.go": "3ad0db795fcd0b916cb47eeae57d4dd380ac13cc34334ae13e7d9d8dfb8b309b",
+    "apps/crawler/go/api-sniffer-monitor/talemetry.go": "b24e6efc37251401326fe7c3080aaceae0c71b0d769afaf9a91c4ef08cd3ea4c",
+    "apps/crawler/go/api-sniffer-monitor/talemetry_test.go": "ff453b684826bd2ed93dfb67a7edf683a4c8a4acbfd10c4749e55200d9f9098d",
+    "apps/crawler/go/api-sniffer-monitor/testdata/generate_kipt.py": "2447a779f54b482872016b2b90e77f3a851318ad64388fef568106609071aaa6",
+    "apps/crawler/go/api-sniffer-monitor/testdata/generate_prospective.py": "0ab963d946c95fbb84d337b1b89218212b7fa0dd3bb1c5f105b37cbc00d1e486",
+    "apps/crawler/go/api-sniffer-monitor/testdata/generate_talemetry.py": "88cb47ec2762d239744a35f9f5f2c683a5579fbd3fa357490d2a4077004c92b9",
+    "apps/crawler/go/api-sniffer-monitor/testdata/python_kipt.json": "19c94d85a2711cc580bfc58b2f93a4bcc89c1153e2d82b13758ad6348a8b0f1e",
+    "apps/crawler/go/api-sniffer-monitor/testdata/python_prospective.json": "45d9f3001494701eaaafaa2d7011f167ab58494ad26b8237f14f29da292168ff",
+    "apps/crawler/go/api-sniffer-monitor/testdata/python_talemetry.json": "72d0e6a11920627eae9153b6868c978ad982f983d9fd8fbece378a397b42fc34",
+    "apps/crawler/go/ordinary-queue/first_localized_http_retirement_test.go": "1a341ae5f743d2c81e46608c90f931787cabe9f1c4b71b772ef296816278c53d",
+    "apps/crawler/go/ordinary-queue/first_provider_batch_retirement_test.go": "97da2ce72895ff1c6e1f898688d7652db661663e20254df8321324ff6967d117",
+    "apps/crawler/go/ordinary-queue/profile_localized_http.go": "8178dd1fa43cb5e43bda184f35e11d03422f6030949594e53185c8211373ebd9",
+    "apps/crawler/go/ordinary-queue/profile_localized_http_test.go": "48aef3adf9dabaeb60f6ea9d256cdd1d006fb288fc904e8e2fe77deec4f6f72a",
+    "apps/crawler/go/ordinary-queue/profile_proxy.go": "a42ed583bb3c864a1cfdb667daaccf5b4beb3209c30d5551cfcf7c42edbefcc1",
+    "apps/crawler/go/ordinary-queue/profile_rich.go": "76c831662396947e3891cf913d66e2c9f12a08043feff343a143998f74d39aad",
+    "apps/crawler/go/ordinary-queue/profile_secondary_providers.go": "203879fba80f2ad2821e3b53a6d54553648c118fbffbe3a9ca73349fc397e0ce",
+    "apps/crawler/go/ordinary-queue/profile_secondary_providers_test.go": "2f8466a6c9d35c10c450c7e1bbf97efcacda94dcee63cbe7703496a4c5117586",
+    "apps/crawler/go/ordinary-worker/claim_run.go": "84155e2d23b2037dddd107c275b9f98d790334a4d71122a41793ac4541fb347d",
+    "apps/crawler/go/ordinary-worker/environment.go": "d511cd32a1f019f298a0d69d43fea7044d0d1babc1dea72e0e9c59f74b4ad4e3",
+    "apps/crawler/go/ordinary-worker/last_http_integration_test.go": "434c22c64f7e373c89c9c12d7698afd8f2e08a9d011c5ac95aacb5d926a7c824",
+    "apps/crawler/go/ordinary-worker/localized_http_discovery.go": "bf8cd9ef5d8e82f2d5b0a6a9b5e1514704422ddb7556b99bf460c7c37d551b7a",
+    "apps/crawler/go/ordinary-worker/localized_http_integration_test.go": "cd1942b302d6c94eb3ed9438ac373864076da8b374a9f331c4a4fb065db22e49",
+    "apps/crawler/go/ordinary-worker/localized_http_public_integration_test.go": "b73474a6b7fea4b70401101ce279fd57f2f5047e62228dcceeec26a94bb9417c",
+    "apps/crawler/go/ordinary-worker/localized_http_public_test.go": "df496d0cfccf6497311452c62f4304b0daf94615264aa059187ab23e2e82b81a",
+    "apps/crawler/go/ordinary-worker/localized_http_test.go": "6fd53c0353fd4165491ad821fc5b75f6783b8a959ec83f22509d572ce9557cb6",
+    "apps/crawler/go/ordinary-worker/proxy_http.go": "99e4d521e5ea708897f2005ca2630187dc958882954d7fa654ef5ef8e36c3c79",
+    "apps/crawler/go/ordinary-worker/runtime_integration_test.go": "e162f71959ec32c53129f597c9f2bcdcdac4a476b9b87432b9f83b6b6c79e76d",
+    "apps/crawler/go/ordinary-worker/shared_proxy_integration_test.go": "ff9a45739b27a8930ae7a5806830390848fc0b99323fb113d2cac9f9e44746ec"
+  },
+  "admission_and_deployment": "Candidate only; original exact whole-service/renderer rollout, cold/export proof, current receipt/epoch and actual scheduled-route census required before full owner activation.",
+  "lightpanda": {
+    "version": "1.0.0",
+    "official_release_id": 401714696,
+    "published_at": "2026-10-02T10:12:01Z",
+    "verified_at_utc": "2026-10-10T09:00:35.314390+00:00",
+    "official_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
+    "upstream_image": "lightpanda/browser@sha256:5b84708cb3d9bef841aba4a4cd299f4de0609ac1bd7d4c6fbfcbf168d56b685e"
+  },
+  "remaining_goal": "Enabled-board completeness, whole-fleet freshness/conservation, whole-service cost and supported reversal window, production Python/Playwright/Chromium retirement remain open."
+}

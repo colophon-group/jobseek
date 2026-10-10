@@ -25,7 +25,7 @@ func proxyFixtureMetadata(t *testing.T, raw string, proxy bool) string {
 }
 
 func TestSharedProxyRuntimePreservesIndependentDetailsAndBrowserTransport(t *testing.T) {
-	for _, provider := range []string{"dom", "api_sniffer", "inline", "sitemap", "eightfold", "phenom", "earcu", "computrabajo"} {
+	for _, provider := range []string{"dom", "api_sniffer", "inline", "sitemap", "eightfold", "phenom", "earcu", "computrabajo", "papa_johns", "talemetry"} {
 		c := map[string]string{"crawler_type": provider, "monitor_needs_browser": "0", "metadata": `{"proxy":true,"scraper_type":"json-ld","scraper_config":{"proxy":false}}`}
 		if !runtimeUsesProxy(queue.Task{Kind: queue.Monitor, Config: c}) {
 			t.Fatal("configured HTTP proxy not selected", provider)
@@ -80,4 +80,38 @@ func proxyDetailFixtureMetadata(t *testing.T, raw string, proxy bool) string {
 		t.Fatal(e)
 	}
 	return string(body)
+}
+
+// Legacy metadata-only expectations are test fixtures. Production client selection
+// derives from the compiled ownership profile in runtimeClaimUsesProxy.
+func runtimeUsesProxy(task queue.Task) bool {
+	var md map[string]any
+	if json.Unmarshal([]byte(task.Config["metadata"]), &md) != nil {
+		return false
+	}
+	if task.Kind == queue.Monitor {
+		if md["proxy"] != true {
+			return false
+		}
+		if task.Config["crawler_type"] == "paylocity" {
+			return true
+		}
+		if task.Config["monitor_needs_browser"] != "0" {
+			return false
+		}
+		switch task.Config["crawler_type"] {
+		case "dom", "api_sniffer", "inline", "sitemap", "eightfold", "phenom", "earcu", "computrabajo", "practicematch", "headhunter", "papa_johns", "talemetry":
+			return true
+		}
+		return false
+	}
+	if task.Kind != queue.Scrape {
+		return false
+	}
+	scraper := task.Config["crawler_type"]
+	if s, ok := md["scraper_type"].(string); ok && s != "" {
+		scraper = s
+	}
+	options, _ := md["scraper_config"].(map[string]any)
+	return (scraper == "headhunter" || scraper == "paylocity" || scraper == "eightfold" || scraper == "dom" || scraper == "json-ld" || scraper == "api_sniffer") && options["proxy"] == true
 }

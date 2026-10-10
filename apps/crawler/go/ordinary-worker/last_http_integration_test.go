@@ -173,6 +173,10 @@ func TestRealLastHTTPFourProviderSettlement(t *testing.T) {
 					}
 				}
 				claim, circuits := claimFixture(t, f)
+				selectedProxy, selectionErr := runtimeClaimUsesProxy(ctx, f.a, claim)
+				if selectionErr != nil || selectedProxy != (provider == "papa_johns") {
+					t.Fatal("installed provider runtime transport differs", selectionErr, selectedProxy)
+				}
 				used := 0
 				client := &VerifiedDirectHTTP{client: verifiedLastHTTPFixture(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					if mode != "complete" {
