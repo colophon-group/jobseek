@@ -316,10 +316,29 @@ func discoverDOMInventory(ctx context.Context, client *http.Client, profile queu
 		}
 		return discoverDOMSingleInventory(ctx, client, p, c, later)
 	})
-	if err != nil || !c.RequireJSONLD {
+	if err != nil {
 		return found, err
 	}
-	return verifyDOMJobPostingInventory(ctx, client, profile, config, found)
+	if c.RequireJSONLD {
+		found, err = verifyDOMJobPostingInventory(ctx, client, profile, config, found)
+		if err != nil {
+			return found, err
+		}
+	}
+	if c.ExcludeDetailSelector != "" {
+		found, err = verifyDOMInventoryClassified(ctx, client, profile, config, found, pauseRich, func(body string) (bool, error) { return dom.DetailSelectorKeeps(body, c, false) }, true)
+		if err != nil {
+			return found, err
+		}
+	}
+	if len(c.InactiveDetailStates) > 0 {
+		candidates := len(found.Jobs)
+		found, err = verifyDOMInventoryClassified(ctx, client, profile, config, found, pauseRich, func(body string) (bool, error) { return dom.DetailSelectorKeeps(body, c, true) }, true)
+		if err == nil && candidates > 0 && len(found.Jobs) == 0 {
+			found.VerifiedEmptyReason = "all discovered detail pages matched an explicit inactive state"
+		}
+	}
+	return found, err
 }
 
 func collectDOMListingPages(ctx context.Context, profile queue.GreenhouseMonitorProfile, config map[string]string, c dom.ListingConfig, fetch func(queue.GreenhouseMonitorProfile, dom.ListingConfig, bool) (RichDiscovery, error)) (RichDiscovery, error) {

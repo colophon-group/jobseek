@@ -1,0 +1,43 @@
+{
+  "schema": "jobseek.migration.evidence/v1",
+  "candidate_version": "0.13.1011",
+  "base_revision": "f66597e848856310bea2c3a59b766f29a3dc1305",
+  "pr": 10409,
+  "scope": {
+    "retained_dom_api_hints": 3,
+    "static_dom_detail_filters": 6,
+    "api_identity_repair": 1,
+    "rendered_dom_resource_hints": 6,
+    "total_configurations": 16,
+    "maintenance_consumers": [
+      "currency refresh",
+      "location taxonomy source repair"
+    ],
+    "operational_correction": "bound retained per-instance idle claims during Go ownership"
+  },
+  "qualification": {
+    "combined_mandatory_postgres_redis_worker": "passed; full new hint/filter/resource settlement cases and original/public field/URL comparisons",
+    "combined_mandatory_cold_retirement": "passed; hints, filters and resources including interruption, committed-before-ack and config drift",
+    "skipped_go_checks": 0,
+    "python_pipeline_ownership_cutover_csv_tests": 185,
+    "skipped_python_checks": 0,
+    "vet": [
+      "dom-detail",
+      "ordinary-queue",
+      "ordinary-worker",
+      "go-lightpanda"
+    ],
+    "prior_physical_resource_proof": {
+      "run": 38111722898,
+      "head": "cc0ea0062af601cd8d875e61af16a826c0e73049",
+      "amd64": "passed",
+      "arm64": "passed"
+    }
+  },
+  "consolidation": "Fold the formerly separate 1012 candidate into 1011 to avoid a second required-check/whole-deployment/cutover cycle. Historical individual capture names stay unchanged.",
+  "limits": [
+    "All exact-head required, installed, physical and whole-lane gates must be renewed for the combined commit.",
+    "Production remains source1010 with verified B0/base restoration and no ordinary owner.",
+    "Local functional proof and synthetic physical fixtures do not establish full-fleet freshness or cost."
+  ]
+}

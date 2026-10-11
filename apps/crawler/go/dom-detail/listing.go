@@ -18,6 +18,8 @@ type ListingConfig struct {
 	Selector, Include, Exclude, Encoding string
 	Attempts                             int
 	IncludeBoardURL, RequireJSONLD       bool
+	ExcludeDetailSelector                string
+	InactiveDetailStates                 []InactiveDetailState
 	Pagination                           *ListingPagination
 	RichRows                             *RichRowsConfig
 	ScriptLinks                          *ScriptLinksConfig
@@ -40,7 +42,7 @@ func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 	for _, key := range ListingProviderKeys {
 		allowed[key] = true
 	}
-	for _, key := range []string{"onclick_selector", "script_json_links", "include_board_url", "require_jsonld_jobposting", "advertised_total", "empty_states", "empty_selector", "empty_text", "url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "retry_statuses", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "url_transform"} {
+	for _, key := range []string{"inactive_detail_states", "exclude_detail_selector", "onclick_selector", "script_json_links", "include_board_url", "require_jsonld_jobposting", "advertised_total", "empty_states", "empty_selector", "empty_text", "url_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "retry_statuses", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "url_transform"} {
 		allowed[key] = true
 	}
 	for key := range config {
@@ -183,6 +185,9 @@ func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 				return c, errors.New("public-header pagination requires the board origin")
 			}
 		}
+	}
+	if err == nil {
+		err = listingDetailVerificationOptions(config, &c)
 	}
 	return c, err
 }

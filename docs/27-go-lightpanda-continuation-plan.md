@@ -137,11 +137,19 @@ zero with missing-step warnings. Neither is admitted by this group. Continue
 those and the remaining enabled configurations in grouped iterations without
 delaying the verified Oracle/Nextdata/inline delivery.
 
-## Following combined release — maintenance and retained DOM/API configurations
+## Current combined release — sixteen configurations, maintenance and polling
 
 One combined candidate reserves **0.13.1011 / 201 profiles** on merged source1010 `f66597e848856310bea2c3a59b766f29a3dc1305`.
-It delivers both maintenance operations and the three DOM/API configurations
-below through a single required-check and whole-deployment cycle.
+It delivers both maintenance operations, the retained polling correction and
+**sixteen configurations**: three retained DOM/API hints, six static DOM detail
+filters, T1 Energy API identity repair and six rendered DOM resource hints.
+All are in PR #10409 through one required-check, whole-deployment and cutover cycle.
+The consolidated working tree passes the combined mandatory PostgreSQL/Redis
+worker and cold suites, complete original/public comparisons, 185 Python
+pipeline/ownership/cutover/CSV tests and vet. No database case skipped. The first
+combined Python invocation used a nonexistent test filename and ran no tests;
+the corrected mandatory invocation is the qualification. Renew all exact-head
+gates for this combined commit. See [combined proof](evidence/go-native-sixteen-configuration-combined-candidate-2026-10-11.json).
 It replaces the two installed Python maintenance commands with direct
 `go-typesense-exporter` operations; the optional `crawler` aliases delegate
 before opening Python pools. Currency refresh preserves decimal inversion,
@@ -182,6 +190,58 @@ whole deployment and all-route admission.
 Algorized's original sitemap stream contains 64 URLs. Its current B0 ownership
 prevents ordinary overlap and legacy scrape enqueue; retain that exclusion until
 the final ownership transition is qualified. See the [configuration qualification](evidence/go-native-retained-dom-api-options-candidate-2026-10-11.json).
+
+### Included six-configuration group — rendered DOM resource hints
+
+The same **0.13.1011 / 201-profile** candidate includes six rendered DOM
+resource-hint configurations alongside the detail/API group below. The
+complete original browser streams and pinned Lightpanda 1.0.0 documents agree
+on all canonical URLs: In3 **1**, Tyson Thailand **13**, Goldbeck Czech **78**,
+PSI **20**, Insel MyOda **20**, and Colisee Onela **603**. Captured publisher headers
+are retained in the native comparison. No failed, blocked, partial or instrumented
+capture with errors is admitted.
+
+`bot_protection` is a strictly typed original reconnaissance hint; `auto` uses the
+pinned engine default. Original metadata remains in the immutable ownership hash.
+The original lean route and physical Lightpanda both render the same local
+script/fetch-produced inventory without font/media requests. A new fixture is wired
+into both architectures' existing physical integration image to bind that assumption
+to engine upgrades. [Pinned physical CI](https://github.com/colophon-group/jobseek/actions/runs/38111722898)
+passed on Linux ARM64 and AMD64 for `cc0ea0062af601cd8d875e61af16a826c0e73049`;
+completed job logs independently confirm the new fixture executed and passed on
+both architectures. The macOS fixture skip is not qualification.
+
+Six mandatory real PostgreSQL/Redis worker cases prove complete settlement, atomic
+render failure and publisher precedence for both auto/none. Six cold cases prove
+interruption, committed-before-ack recovery and changed-config refusal. Full public
+inventory comparison passes with race enabled. Explicit lean/aggressive/unknown
+policies and malformed reconnaissance flags remain rejected. Both groups are
+consolidated into #10409 to avoid a second full gate/deployment/cutover cycle.
+Renew exact-head qualification and deliver one combined rollout; retain every enabled board.
+
+### Included seven-configuration group — DOM detail filters and T1 API repair
+
+The same **0.13.1011 / 201-profile** candidate includes this seven-configuration group.
+It adds shared static DOM inactive-detail and selector-exclusion behavior. Six
+complete original public inventories match **1 / 1 / 0 / 6 / 4 / 30 URLs** and
+all verification requests, including redirects and 404/410 removal. Unexpected
+selector text fails the complete cycle, and publisher reservation wins over
+partial results. Verification retains the exact parent/config/resource binding,
+500-detail cap, eight concurrent reads and bounded failure drain. The all-inactive
+case retains the original runtime's six-empty-check confirmation window.
+
+The same release repairs T1 Energy's URL template using its supported `job_id`
+JMESPath alias. Its old configuration emitted zero from ten raw API records;
+the original and Go implementations of the repaired configuration match all
+**ten canonical jobs / three requests**. The board remains enabled. Twenty-seven
+original reference cases, 16 mandatory Postgres/Redis worker cases, six cold
+retirement cases and the existing 18 verification regressions are checked, with
+zero skips in the mandatory checks. Public evidence stays protected outside Git.
+See [grouped qualification](evidence/go-native-dom-detail-filters-api-repair-candidate-2026-10-11.json).
+
+This combined candidate has no production authority. Renew all exact-head gates
+for #10409 and use the original whole rollout and fresh full admission. Rendered detail filters, APT's root 404, Persistent Systems'
+503 and Tesco's 403 remain unqualified; preserve their existing enabled boards.
 
 ## Historical checkpoint — source1007 ordinary OOM recovery
 

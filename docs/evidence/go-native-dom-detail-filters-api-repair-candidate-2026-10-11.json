@@ -1,0 +1,105 @@
+{
+  "schema": "jobseek.go-migration-dom-detail-filters-api-repair/v1",
+  "candidate_version": "0.13.1011",
+  "compiled_profiles": 201,
+  "base_revision": "f66597e848856310bea2c3a59b766f29a3dc1305",
+  "preceding_pr": 10409,
+  "production_authority": false,
+  "original_reference_revision": "f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77",
+  "types": [
+    "dom",
+    "api_sniffer"
+  ],
+  "configurations": [
+    {
+      "board_slug": "schaeffler-compact-dynamics",
+      "jobs": 1,
+      "requests": 3,
+      "original_capture_sha256": "f7381ff03aac0457ac5222657cacaa89bbacfde777f79341d3f9238649f531bc"
+    },
+    {
+      "board_slug": "vohra-physicians-corporate-careers",
+      "jobs": 1,
+      "requests": 4,
+      "original_capture_sha256": "c0297bac781b4c8853c4ce633dbbb93360b416b9b1e5dfe4104b97dcdb8d26ac"
+    },
+    {
+      "board_slug": "drees-sommer-china",
+      "jobs": 0,
+      "requests": 2,
+      "original_capture_sha256": "0b5c8a735df00bc27db19e8e0a8eba41e852efa98fbf4abfbe055a11e6f883fc"
+    },
+    {
+      "board_slug": "avolta-sweden",
+      "jobs": 6,
+      "requests": 7,
+      "original_capture_sha256": "0ff8a77f3e136e56d426cca276b71c28afb953db6f31f62208d544e91bbefc97"
+    },
+    {
+      "board_slug": "suez-china-infrastructure",
+      "jobs": 4,
+      "requests": 10,
+      "original_capture_sha256": "916721e2898407431606dc10f79bea3b84eb5112caaff7dcd4b899ee3fb2b313"
+    },
+    {
+      "board_slug": "suez-china-operations",
+      "jobs": 30,
+      "requests": 61,
+      "original_capture_sha256": "a93962fb93eb9c485f81c4d456a95b52ff73633de9e84d843ace2f1d8e0f792d"
+    },
+    {
+      "board_slug": "t1-energy-factory",
+      "jobs": 10,
+      "requests": 3,
+      "original_capture_sha256": "dc6bacd9ca20e68009f90735694a50909112e7611ae3713c9890eff35beebe73"
+    }
+  ],
+  "behavior": [
+    "DOM exact selector-scoped inactive text removes closed details; missing marker keeps active, unexpected marker text fails the whole cycle",
+    "Selector exclusion reads every candidate; failures suppress partial inventories and publisher reservation takes precedence, bound to the exact parent/config/resource",
+    "Original 500-detail cap, eight concurrent reads, bounded retries, cookies, redirects and full failure drain retained",
+    "All-inactive discovery retains the existing six-empty-check runtime guard; verified-empty reason supplies discovery evidence and does not bypass database confirmation",
+    "T1 replaces unsupported nested Python-format indexing with the existing job_id JMESPath alias; original prior config emitted zero from ten raw records; original and Go repaired config match all ten canonical records",
+    "Rendered detail filters and alternate-fetch combinations remain excluded pending qualification"
+  ],
+  "checks": {
+    "original_reference_cases": 27,
+    "real_postgres_redis_worker_cases": 16,
+    "cold_retirement_cases": 6,
+    "zero_skips": true,
+    "public_inventories": 7,
+    "shared_existing_verification_worker_cases": 18,
+    "public_and_reference_race_passed": true,
+    "worker_final_race_seconds": 11.332,
+    "queue_cold_race_seconds": 6.412,
+    "go_vet_packages": [
+      "dom-detail",
+      "ordinary-queue",
+      "ordinary-worker"
+    ],
+    "csv_validation_tests": 12
+  },
+  "historical_failed_check": "First all-inactive assertions incorrectly expected immediate absence. Original runtime empty-guard behavior was checked and final mandatory test asserts unchanged rows, one empty check and successful settlement. No guard bypass was implemented.",
+  "held_public_cases": [
+    {
+      "board_slug": "association-for-prevention-torture-vacancies",
+      "reason": "original root 404; no successful public inventory qualification"
+    },
+    {
+      "board_slug": "persistent-systems-careers",
+      "reason": "original API 503"
+    },
+    {
+      "board_slug": "tesco-careers-sk",
+      "reason": "original redirect followed by 403"
+    }
+  ],
+  "required_before_serving": [
+    "Deliver preceding grouped releases; rebase onto the actual merged source and renew all exact-head required gates",
+    "Original whole deployment and fresh all-enabled-board/all-actual-route admission preserving the complete prior cohort and qualified additions",
+    "Supported cutover, independent immutable identities, resource/kernel/freshness/conservation observation"
+  ],
+  "prior_candidate_base_revision": "ccddde7475e84a762f6bab086360c805038da9df",
+  "grouping": "consolidated into PR10409: sixteen configurations plus both maintenance consumers and retained polling correction; one rollout",
+  "qualification_baseline_revision": "1d0c76a8276b98720c3cf1c3bc1e2e026e2ff2bc"
+}
