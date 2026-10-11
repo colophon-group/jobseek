@@ -1,0 +1,187 @@
+{
+  "schema": "jobseek.go-native-production-checkpoint/v1",
+  "observed_at_utc": "2026-10-11T15:52:13.655790+00:00",
+  "source_revision": "5a278333d1ea5c1f19f9066301785d735160f39f",
+  "version": "0.13.1017",
+  "profiles": 204,
+  "pr": 10424,
+  "parent_pr": 10421,
+  "qualified_head": "436d24c693472fab378c6555af6052e13a4b4a56",
+  "status": "Original whole deployments, B0 and full ordinary activation succeeded; active287 independently verified.",
+  "crawler_run": 38149482662,
+  "renderer_run": 38149584506,
+  "outgoing_cold_epoch": 286,
+  "next_native_epoch": 287,
+  "preserved_cohort_floor": {
+    "monitors": 7779,
+    "detail_boards": 7683
+  },
+  "qualification": {
+    "listing_controls_registry_configurations": 9,
+    "new_monitor_boards": 7,
+    "required_CI_run": 38146923560,
+    "installed_image_run": 38146923546,
+    "pilot_image_run": 38146951767,
+    "crawler_deploy_gate_run": 38146922102,
+    "ARM_whole_lane_run": 38146947401,
+    "synthetic_ARM_measurement_arms": 16,
+    "synthetic_verdict": "admitted",
+    "exact_head_required_CI": "passed",
+    "installed_image_parity": "passed",
+    "crawler_deploy_gate": "passed",
+    "merged_crawler_files_identical_to_qualified_head": true
+  },
+  "migration_schema": {
+    "version": "0040",
+    "constraint_validated": true
+  },
+  "evidence_sha256": {
+    "native1017-merge-authority-pr10424-attempt1-2026-10-11.json": "c5a5c6dac2b3cbfe75920a9f73b179210f8bc840df083b2ccb64c81b723fac56",
+    "native1017-final-head436d-qualification1-2026-10-11.json": "97fd59bdee202eee6aacfe4fe021acf57f5ef6f6e5bec597ea69d6822e3bd20d",
+    "native1017-whole-lane-head436d24-run38146947401-2026-10-11/report.json": "78af2bcdd7ad6bdee9fda1f02cf7752600657f8e5d33c6d56d7c81c3b1aa4b61",
+    "native-source1017-original-deployed-identities-2026-10-11.json": "008b73bc51b268811d2809a0d5ff851278b85e08ba6852e2f47632b268246377",
+    "native-source1017-renderer-independent-verified1-2026-10-11.json": "88dab7a622f1e098b234ecaa4fa2d97406e782d590f7ebd6e2424054b7ef5dcf",
+    "native-source1017-postdeploy-cold286-verified2-2026-10-11.json": "2f021192ffb3577702c2aee1a3de0292c1f4f747b74eb21a47ec2687c03a4b0e",
+    "native-source1017-exporter-progress-independent-verified1-2026-10-11.json": "c85b587033ab9828c4cb877616cd1a3c8f7a91d9fbc7199b021b88fa09d05834",
+    "native1017-supported-b0-readback-verified1-2026-10-11.log": "3fe2a9d9f9a6b92896ec7aa1caaed42bcd274606c83b851eeb18786414780213",
+    "native-source1017-owner-stage-promoted-attempt1-2026-10-11.log": "f1a10dff0e4fd5364790b2a00934f17429642607750c288162beb567f263dda5",
+    "native-source1017-owner-activate-promoted-attempt1-2026-10-11.log": "05de9f479520eb873730f673b9976b2691844cc7a2de6bf30cb3a8c39f52ed11",
+    "native-ordinary-admission1017/source1017-merged-go-sdk-manifest1.json": "3b1782e57c31009e89fd402636e7e28883094c9c49ab9070fe1f5fb6065c6e18",
+    "native-ordinary-admission1017/admission-summary-source1017-verified1.json": "1c5fc3271ae6a3618a02dccbf21237f2aaf806d2ee9ed30aa82cf80d4d9c35dc",
+    "native-ordinary-admission1017/qualified-listing-dom-group-head436d24c.json": "155b2b7cb2b91068059ce58e79dd555bc75d1f5a8dda0a3b6ef2f93130a2791b",
+    "native-source1017-full-conservation-independent-initial1-2026-10-11.json": "6ab1e9fa73fb52a6e76c8a9e4436e703c29c7fa5356d1ed2e1f0d9958062fa3f",
+    "native-source1017-ordinary-kernel-independent-initial1-2026-10-11.json": "83fa150f1d1fa3034f75dcae8ee6823e1e620a333c1bb10177fe7d451be0a226",
+    "native-source1017-fleet-freshness-independent-initial1-2026-10-11.json": "66b9f1b84535583f30601923ef06790d8616282431ffdfec37e3b276bec1a728",
+    "native1017-fresh-remaining-coverage-screen1-2026-10-11.json": "b27a082c544bf140dbb87716801a9d82777d7858db7dd4186e4bb10f0a4a0452"
+  },
+  "limitations": [
+    "Initial active authority and natural queue settlement verified; sustained throughput, complete conservation, scheduled detail ages and full-fleet freshness remain unproved.",
+    "Local batching speed/allocation and synthetic ARM density are not comparable production cost or full-fleet evidence.",
+    "Production Python/Playwright/Chromium retained for uncovered enabled routes and supported reversal; offline Python preserved."
+  ],
+  "b0": {
+    "active": true,
+    "epoch": 287,
+    "plan_digest": "56382fbf1b26f0f825ebcf758767494666b4775bf043110a5903a99d60463fc2",
+    "receipt_sha256": "af460f583453276044fe2bf17f03ab6675e0ad5f701feb6d814dc083634720f6"
+  },
+  "admission": {
+    "enabled_boards": 7885,
+    "scheduled_routes": 1663107,
+    "monitor_boards": 7786,
+    "detail_boards": 7683,
+    "new_monitors": 7,
+    "new_detail_boards": 0,
+    "scheduled_owned_routes": 1539720,
+    "global_cache_mismatches": 6757,
+    "global_cache_mismatches_outside_preserved_floor": true,
+    "plan_sha256": "e505abdcf56315da0673efd79de33b0426ff5a351a9d54b0be7e97bf3b6196d5",
+    "projection_sha1": "20d0781d1bf699feb402ed07a27c0731b8349fdc",
+    "state": "active"
+  },
+  "new_monitor_slugs": [
+    "travel-leisure-co-rci-mexico",
+    "canton-of-fribourg-teaching",
+    "european-athletics-directus-careers",
+    "international-skating-union-careers",
+    "cummins-china",
+    "mentiora-ai-careers",
+    "signal-iduna-poland"
+  ],
+  "remaining_compiled_candidates": {
+    "monitors_excluding_b0": 14,
+    "detail_boards": 52,
+    "detail_boards_with_cache_mismatches": 44,
+    "compiled_is_not_qualified": true
+  },
+  "remaining_uncompiled_monitor_configurations": {
+    "dom": 53,
+    "api_sniffer": 17,
+    "inline": 4,
+    "rss": 3,
+    "njoyn": 1,
+    "brassring": 4
+  },
+  "ordinary_receipt_sha256": "aa04bcaac80bcc3023dc9d25d1fa8f8af69b4be6e39e4167ed6db1963b21c352",
+  "early_natural_observation": {
+    "completed_monitors": 12,
+    "exact_recurring_schedules": 12,
+    "retained_completion_leases": 0,
+    "completed_claims_include_failures": true,
+    "fences_by_task": [
+      {
+        "task_kind": "monitor",
+        "state": "active",
+        "count": 4
+      },
+      {
+        "task_kind": "monitor",
+        "state": "completed",
+        "count": 12
+      },
+      {
+        "task_kind": "scrape",
+        "state": "completed",
+        "count": 10
+      }
+    ],
+    "scope": "Read-only current-epoch sample; no global conservation or freshness claim."
+  },
+  "early_resource_observation": {
+    "restart_count": 0,
+    "OOMKilled": false,
+    "resource_events": [
+      {
+        "action": "start",
+        "time": 1791733904,
+        "exit_code": null
+      }
+    ],
+    "kernel_killed_processes": [],
+    "memory_sample": "160.2MiB / 1GiB",
+    "go_memory_target": "512MiB",
+    "sustained_memory_proof": false
+  },
+  "early_monitor_freshness": [
+    {
+      "native_owned": false,
+      "enabled": 99,
+      "unscheduled": 0,
+      "never_checked": 87,
+      "due": 14,
+      "overdue_1h": 2,
+      "overdue_6h": 0,
+      "overdue_24h": 0,
+      "oldest_due_seconds": 5082.59817
+    },
+    {
+      "native_owned": true,
+      "enabled": 7786,
+      "unscheduled": 0,
+      "never_checked": 3717,
+      "due": 4486,
+      "overdue_1h": 3199,
+      "overdue_6h": 346,
+      "overdue_24h": 0,
+      "oldest_due_seconds": 43123.348484
+    }
+  ],
+  "images": {
+    "crawler": "ghcr.io/colophon-group/jobseek-crawler@sha256:006bfe2911f2eadd18518d833d164ebc46a47990c7aef8668e6ce5a412b3801a",
+    "browser": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:e06839113a9309ba053f78091872cc3e39d212808410d0f52e53dd33c9389c20",
+    "renderer": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:8b285dcfa891f0310096f71486bad0b9f1973864702363394e912a2d10533669"
+  },
+  "lightpanda": {
+    "version": "1.0.0",
+    "latest_release_verified_date": "2026-10-11",
+    "release_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0"
+  },
+  "local_batch_comparison": {
+    "intents": 500,
+    "single_ms": 6240.338,
+    "batch_ms": 410.3,
+    "single_allocated_bytes": 106421848,
+    "batch_allocated_bytes": 3582264,
+    "production_comparison": false
+  }
+}
