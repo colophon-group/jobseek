@@ -1,0 +1,186 @@
+[
+  {
+    "theme": "dark",
+    "width": 390,
+    "borders": {
+      "widths": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "style": "solid",
+      "color": "rgb(244, 244, 245)",
+      "overflow": "visible",
+      "scrollWidth": 375,
+      "viewport": 390,
+      "edgeOwners": [
+        false,
+        false,
+        false
+      ]
+    },
+    "idle": {
+      "cursor": "default",
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(161, 161, 170)",
+      "boxShadow": "none"
+    },
+    "hover": {
+      "cursor": "default",
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(161, 161, 170)",
+      "boxShadow": "none"
+    },
+    "pressed": {
+      "cursor": "default",
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(161, 161, 170)",
+      "boxShadow": "none"
+    },
+    "focus": {
+      "visible": true,
+      "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(245, 245, 245) 0px 0px 0px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px"
+    },
+    "switchedToAllAndBack": true,
+    "errors": []
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "borders": {
+      "widths": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "style": "solid",
+      "color": "rgb(244, 244, 245)",
+      "overflow": "visible",
+      "scrollWidth": 1265,
+      "viewport": 1280,
+      "edgeOwners": [
+        false,
+        false,
+        false
+      ]
+    },
+    "idle": {
+      "cursor": "default",
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(161, 161, 170)",
+      "boxShadow": "none"
+    },
+    "hover": {
+      "cursor": "default",
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(161, 161, 170)",
+      "boxShadow": "none"
+    },
+    "pressed": {
+      "cursor": "default",
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(161, 161, 170)",
+      "boxShadow": "none"
+    },
+    "focus": {
+      "visible": true,
+      "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(245, 245, 245) 0px 0px 0px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px"
+    },
+    "switchedToAllAndBack": true,
+    "errors": []
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "borders": {
+      "widths": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "style": "solid",
+      "color": "rgb(24, 24, 27)",
+      "overflow": "visible",
+      "scrollWidth": 375,
+      "viewport": 390,
+      "edgeOwners": [
+        false,
+        false,
+        false
+      ]
+    },
+    "idle": {
+      "cursor": "default",
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(82, 82, 91)",
+      "boxShadow": "none"
+    },
+    "hover": {
+      "cursor": "default",
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(82, 82, 91)",
+      "boxShadow": "none"
+    },
+    "pressed": {
+      "cursor": "default",
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(82, 82, 91)",
+      "boxShadow": "none"
+    },
+    "focus": {
+      "visible": true,
+      "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(17, 17, 17) 0px 0px 0px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px"
+    },
+    "switchedToAllAndBack": true,
+    "errors": []
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "borders": {
+      "widths": [
+        "0px",
+        "0px",
+        "0px",
+        "0px"
+      ],
+      "style": "solid",
+      "color": "rgb(24, 24, 27)",
+      "overflow": "visible",
+      "scrollWidth": 1265,
+      "viewport": 1280,
+      "edgeOwners": [
+        false,
+        false,
+        false
+      ]
+    },
+    "idle": {
+      "cursor": "default",
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(82, 82, 91)",
+      "boxShadow": "none"
+    },
+    "hover": {
+      "cursor": "default",
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(82, 82, 91)",
+      "boxShadow": "none"
+    },
+    "pressed": {
+      "cursor": "default",
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(82, 82, 91)",
+      "boxShadow": "none"
+    },
+    "focus": {
+      "visible": true,
+      "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(17, 17, 17) 0px 0px 0px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px"
+    },
+    "switchedToAllAndBack": true,
+    "errors": []
+  }
+]

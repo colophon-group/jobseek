@@ -662,7 +662,7 @@ export function AiSearchFilter({
     <div
       ref={rootRef}
       className={isDrawer
-      ? "w-full min-w-0 rounded-lg bg-surface ring-1 ring-inset ring-border-soft"
+      ? "w-full min-w-0 rounded-lg border border-border-soft bg-surface"
       : "relative"}
     >
       {isDrawer ? (
@@ -672,7 +672,7 @@ export function AiSearchFilter({
             comment: "Accessible label for the compact precise-matching control between watchlist stats and results",
             message: "Precise matching",
           })}
-          className="flex min-h-11 w-full min-w-0 flex-wrap items-center gap-2.5 bg-background/40 px-3 py-2"
+          className={`flex min-h-11 w-full min-w-0 flex-wrap items-center gap-2.5 rounded-t-[inherit] bg-background/40 px-3 py-2 ${open ? "" : "rounded-b-[inherit]"}`}
         >
           <span className="grid size-7 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
             {eligibility.status === "subscription_required" ? (
@@ -774,7 +774,7 @@ export function AiSearchFilter({
                   if (open && isEditing) cancelEditing();
                   else if (open) closePanel();
                 }}
-                className={`inline-flex min-h-10 items-center gap-1.5 rounded-md px-2.5 text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-primary ${!(open && activeQuery !== null) ? "bg-surface font-semibold shadow-sm" : "text-muted"}`}
+                className={`inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-[11px] outline-none transition-colors hover:bg-primary/10 hover:text-foreground active:bg-primary/15 focus-visible:ring-2 focus-visible:ring-primary ${!(open && activeQuery !== null) ? "bg-surface font-semibold shadow-sm" : "text-muted"}`}
               >
                 <Eye size={14} aria-hidden="true" />
                 {t({
@@ -794,7 +794,7 @@ export function AiSearchFilter({
                 onClick={() => {
                   if (!open) openPanel();
                 }}
-                className={`inline-flex min-h-10 items-center gap-1.5 rounded-md px-2.5 text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 ${open && activeQuery !== null ? "bg-surface font-semibold shadow-sm" : "text-muted"}`}
+                className={`inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-[11px] outline-none transition-colors enabled:hover:bg-primary/10 enabled:hover:text-foreground enabled:active:bg-primary/15 focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 ${open && activeQuery !== null ? "bg-surface font-semibold shadow-sm" : "text-muted"}`}
               >
                 <Funnel size={14} aria-hidden="true" />
                 {t({
@@ -859,7 +859,7 @@ export function AiSearchFilter({
             data-state={open ? "open" : "closed"}
             hidden={!open}
             className={isDrawer
-              ? "relative z-20 w-full min-w-0 max-w-full bg-surface data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:duration-200 motion-reduce:animate-none"
+              ? "relative z-20 w-full min-w-0 max-w-full rounded-b-[inherit] bg-surface data-[state=open]:animate-in data-[state=open]:fade-in data-[state=open]:duration-200 motion-reduce:animate-none"
               : `fixed inset-x-4 top-28 z-30 max-h-[calc(100vh-9rem)] w-auto overflow-y-auto rounded-lg border border-border-soft bg-surface p-4 shadow-xl shadow-black/10 sm:absolute sm:inset-x-auto sm:top-10 sm:max-h-[calc(100vh-6rem)] sm:w-[min(28rem,calc(100vw-2rem))] sm:overflow-y-auto ${
                   align === "right" ? "sm:right-0" : "sm:left-0"
                 }`}

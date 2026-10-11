@@ -1,0 +1,230 @@
+[
+  {
+    "theme": "dark",
+    "width": 390,
+    "borders": {
+      "widths": [
+        "1px",
+        "1px",
+        "1px",
+        "1px"
+      ],
+      "style": "solid",
+      "color": "rgba(255, 255, 255, 0.08)",
+      "overflow": "visible",
+      "scrollWidth": 375,
+      "viewport": 390,
+      "childrenInsideBorder": true
+    },
+    "idle": {
+      "cursor": "pointer",
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(161, 161, 170)",
+      "boxShadow": "none"
+    },
+    "hover": {
+      "cursor": "pointer",
+      "background": "oklab(0.970145 0.0000441968 0.0000194311 / 0.1)",
+      "color": "rgb(244, 244, 245)",
+      "boxShadow": "none"
+    },
+    "pressed": {
+      "cursor": "pointer",
+      "background": "oklab(0.970145 0.0000441968 0.0000194311 / 0.15)",
+      "color": "rgb(244, 244, 245)",
+      "boxShadow": "none"
+    },
+    "narrowIdle": {
+      "cursor": "pointer",
+      "background": "rgba(15, 15, 15, 0.08)"
+    },
+    "narrowHover": {
+      "cursor": "pointer",
+      "background": "oklab(0.970145 0.0000441968 0.0000194311 / 0.1)"
+    },
+    "narrowPressed": {
+      "background": "oklab(0.970145 0.0000441968 0.0000194311 / 0.15)"
+    },
+    "focus": {
+      "visible": true,
+      "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(245, 245, 245) 0px 0px 0px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px"
+    },
+    "stickyTop": {
+      "actual": 56,
+      "expected": 56
+    },
+    "switchedToAllAndBack": true,
+    "errors": []
+  },
+  {
+    "theme": "dark",
+    "width": 1280,
+    "borders": {
+      "widths": [
+        "1px",
+        "1px",
+        "1px",
+        "1px"
+      ],
+      "style": "solid",
+      "color": "rgba(255, 255, 255, 0.08)",
+      "overflow": "visible",
+      "scrollWidth": 1265,
+      "viewport": 1280,
+      "childrenInsideBorder": true
+    },
+    "idle": {
+      "cursor": "pointer",
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(161, 161, 170)",
+      "boxShadow": "none"
+    },
+    "hover": {
+      "cursor": "pointer",
+      "background": "oklab(0.970145 0.0000441968 0.0000194311 / 0.1)",
+      "color": "rgb(244, 244, 245)",
+      "boxShadow": "none"
+    },
+    "pressed": {
+      "cursor": "pointer",
+      "background": "oklab(0.970145 0.0000441968 0.0000194311 / 0.15)",
+      "color": "rgb(244, 244, 245)",
+      "boxShadow": "none"
+    },
+    "narrowIdle": {
+      "cursor": "pointer",
+      "background": "rgba(15, 15, 15, 0.08)"
+    },
+    "narrowHover": {
+      "cursor": "pointer",
+      "background": "oklab(0.970145 0.0000441968 0.0000194311 / 0.1)"
+    },
+    "narrowPressed": {
+      "background": "oklab(0.970145 0.0000441968 0.0000194311 / 0.15)"
+    },
+    "focus": {
+      "visible": true,
+      "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(245, 245, 245) 0px 0px 0px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px"
+    },
+    "stickyTop": {
+      "actual": 88,
+      "expected": 88
+    },
+    "switchedToAllAndBack": true,
+    "errors": []
+  },
+  {
+    "theme": "light",
+    "width": 390,
+    "borders": {
+      "widths": [
+        "1px",
+        "1px",
+        "1px",
+        "1px"
+      ],
+      "style": "solid",
+      "color": "rgba(24, 24, 27, 0.08)",
+      "overflow": "visible",
+      "scrollWidth": 375,
+      "viewport": 390,
+      "childrenInsideBorder": true
+    },
+    "idle": {
+      "cursor": "pointer",
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(82, 82, 91)",
+      "boxShadow": "none"
+    },
+    "hover": {
+      "cursor": "pointer",
+      "background": "oklab(0.177637 0.00000810623 0.00000356138 / 0.1)",
+      "color": "rgb(24, 24, 27)",
+      "boxShadow": "none"
+    },
+    "pressed": {
+      "cursor": "pointer",
+      "background": "oklab(0.177637 0.00000810623 0.00000356138 / 0.15)",
+      "color": "rgb(24, 24, 27)",
+      "boxShadow": "none"
+    },
+    "narrowIdle": {
+      "cursor": "pointer",
+      "background": "rgba(255, 255, 255, 0.008)"
+    },
+    "narrowHover": {
+      "cursor": "pointer",
+      "background": "oklab(0.177637 0.00000810623 0.00000356138 / 0.1)"
+    },
+    "narrowPressed": {
+      "background": "oklab(0.177637 0.00000810623 0.00000356138 / 0.15)"
+    },
+    "focus": {
+      "visible": true,
+      "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(17, 17, 17) 0px 0px 0px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px"
+    },
+    "stickyTop": {
+      "actual": 56,
+      "expected": 56
+    },
+    "switchedToAllAndBack": true,
+    "errors": []
+  },
+  {
+    "theme": "light",
+    "width": 1280,
+    "borders": {
+      "widths": [
+        "1px",
+        "1px",
+        "1px",
+        "1px"
+      ],
+      "style": "solid",
+      "color": "rgba(24, 24, 27, 0.08)",
+      "overflow": "visible",
+      "scrollWidth": 1265,
+      "viewport": 1280,
+      "childrenInsideBorder": true
+    },
+    "idle": {
+      "cursor": "pointer",
+      "background": "rgba(0, 0, 0, 0)",
+      "color": "rgb(82, 82, 91)",
+      "boxShadow": "none"
+    },
+    "hover": {
+      "cursor": "pointer",
+      "background": "oklab(0.177637 0.00000810623 0.00000356138 / 0.1)",
+      "color": "rgb(24, 24, 27)",
+      "boxShadow": "none"
+    },
+    "pressed": {
+      "cursor": "pointer",
+      "background": "oklab(0.177637 0.00000810623 0.00000356138 / 0.15)",
+      "color": "rgb(24, 24, 27)",
+      "boxShadow": "none"
+    },
+    "narrowIdle": {
+      "cursor": "pointer",
+      "background": "rgba(255, 255, 255, 0.08)"
+    },
+    "narrowHover": {
+      "cursor": "pointer",
+      "background": "oklab(0.177637 0.00000810623 0.00000356138 / 0.1)"
+    },
+    "narrowPressed": {
+      "background": "oklab(0.177637 0.00000810623 0.00000356138 / 0.15)"
+    },
+    "focus": {
+      "visible": true,
+      "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(17, 17, 17) 0px 0px 0px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px"
+    },
+    "stickyTop": {
+      "actual": 88,
+      "expected": 88
+    },
+    "switchedToAllAndBack": true,
+    "errors": []
+  }
+]
