@@ -29,6 +29,15 @@ func TestRealFifthProviderMonitorReferencesCommitCanonicalContentAndSettlement(t
 			}
 			f := privateRichPipelineFixtureURL(t, c.Provider, string(raw), c.Source)
 			ctx := context.Background()
+			unprovedEmpty := c.Expected.Truncated && !c.Expected.Error && !c.Expected.Gone && len(c.Expected.URLs) == 0
+			if unprovedEmpty {
+				if _, err := f.pg.Exec(ctx, "UPDATE job_board SET empty_check_count=3 WHERE id=$1::uuid", f.board); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := f.pg.Exec(ctx, "UPDATE job_posting SET missing_count=3 WHERE id=$1::uuid", f.original); err != nil {
+					t.Fatal(err)
+				}
+			}
 			claim, circuits := claimFixture(t, f)
 			requests := []fourthHTTPRequest{}
 			var mutex sync.Mutex
@@ -54,6 +63,20 @@ func TestRealFifthProviderMonitorReferencesCommitCanonicalContentAndSettlement(t
 			if c.Expected.Error {
 				if failures != 1 || gone != 0 || result.Batches.Inserted != 0 {
 					t.Fatal("failed inventory wrote content")
+				}
+				return
+			}
+			if unprovedEmpty {
+				var empty, missing, postings int
+				var active bool
+				if err := f.pg.QueryRow(ctx, "SELECT empty_check_count,(SELECT count(*) FROM job_posting WHERE board_id=$1::uuid) FROM job_board WHERE id=$1::uuid", f.board).Scan(&empty, &postings); err != nil {
+					t.Fatal(err)
+				}
+				if err := f.pg.QueryRow(ctx, "SELECT is_active,missing_count FROM job_posting WHERE id=$1::uuid", f.original).Scan(&active, &missing); err != nil {
+					t.Fatal(err)
+				}
+				if failures != 1 || gone != 0 || empty != 3 || postings != 1 || !active || missing != 3 || result.Batches.Inserted != 0 || result.Cycle.Status != "failed" {
+					t.Fatal("unproved truncated empty inventory changed canonical accounting")
 				}
 				return
 			}

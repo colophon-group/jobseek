@@ -51,6 +51,9 @@ func TestRealInitialResponseDecryptPersistenceAndFailureAuthority(t *testing.T) 
 				raw, _ := json.Marshal(md)
 				f := privateRichPipelineFixture(t, "api_sniffer", string(raw))
 				ctx := context.Background()
+				if _, err := f.pg.Exec(ctx, "UPDATE job_board SET empty_check_count=3 WHERE id=$1::uuid", f.board); err != nil {
+					t.Fatal(err)
+				}
 				if _, err := f.pg.Exec(ctx, "UPDATE job_posting SET missing_count=3 WHERE id=$1::uuid", f.original); err != nil {
 					t.Fatal(err)
 				}
@@ -93,11 +96,11 @@ func TestRealInitialResponseDecryptPersistenceAndFailureAuthority(t *testing.T) 
 					t.Fatal("encrypted initial response did not settle", err)
 				}
 				var active, reserved bool
-				var missing, failures, count int
+				var missing, failures, count, empty int
 				if err := f.pg.QueryRow(ctx, "SELECT is_active,missing_count FROM job_posting WHERE id=$1::uuid", f.original).Scan(&active, &missing); err != nil {
 					t.Fatal(err)
 				}
-				if err := f.pg.QueryRow(ctx, "SELECT tdm_reserved,consecutive_failures,(SELECT count(*) FROM job_posting WHERE board_id=$1::uuid) FROM job_board WHERE id=$1::uuid", f.board).Scan(&reserved, &failures, &count); err != nil {
+				if err := f.pg.QueryRow(ctx, "SELECT tdm_reserved,consecutive_failures,empty_check_count,(SELECT count(*) FROM job_posting WHERE board_id=$1::uuid) FROM job_board WHERE id=$1::uuid", f.board).Scan(&reserved, &failures, &empty, &count); err != nil {
 					t.Fatal(err)
 				}
 				complete := mode == "suffix" || mode == "fixed" || mode == "plain-tail"
@@ -106,7 +109,7 @@ func TestRealInitialResponseDecryptPersistenceAndFailureAuthority(t *testing.T) 
 					if tail {
 						wanted = 2
 					}
-					if active || missing != 4 || failures != 0 || reserved || count != wanted+1 || result.Batches.Inserted != wanted || calls != wanted {
+					if active || missing != 4 || failures != 0 || empty != 0 || reserved || count != wanted+1 || result.Batches.Inserted != wanted || calls != wanted {
 						t.Fatal("complete encrypted inventory lost canonical effects")
 					}
 					var title, description string
@@ -120,7 +123,17 @@ func TestRealInitialResponseDecryptPersistenceAndFailureAuthority(t *testing.T) 
 						// incomplete count suppresses absence, matching Python.
 						wantedCount = 2
 					}
-					if !active || missing != 3 || count != wantedCount || failures != 0 || reserved != (mode == "reserved") {
+					wantFailures, wantEmpty := 0, 3
+					if mode == "malformed" {
+						wantFailures = 1
+						if result.Cycle.Status != "failed" {
+							t.Fatal("malformed encrypted inventory acquired success authority")
+						}
+					}
+					if mode == "encrypted-tail" {
+						wantEmpty = 0
+					}
+					if !active || missing != 3 || count != wantedCount || failures != wantFailures || empty != wantEmpty || reserved != (mode == "reserved") {
 						t.Fatal("incomplete or reserved encrypted inventory changed canonical authority")
 					}
 				}
