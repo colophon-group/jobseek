@@ -95,9 +95,11 @@ zero with missing-step warnings. Neither is admitted by this group. Continue
 those and the remaining enabled configurations in grouped iterations without
 delaying the verified Oracle/Nextdata/inline delivery.
 
-## Following operational group — currency and location taxonomy maintenance
+## Following combined release — maintenance and retained DOM/API configurations
 
-An isolated candidate reserves **0.13.1011** on source1010's repaired candidate.
+One combined candidate reserves **0.13.1011 / 201 profiles** on source1010's repaired candidate.
+It delivers both maintenance operations and the three DOM/API configurations
+below through a single required-check and whole-deployment cycle.
 It replaces the two installed Python maintenance commands with direct
 `go-typesense-exporter` operations; the optional `crawler` aliases delegate
 before opening Python pools. Currency refresh preserves decimal inversion,
@@ -118,9 +120,9 @@ Python retirement work. Continue qualifying the 126 currently unowned monitor
 configurations in compatible groups; do not treat the skip-detail configuration
 screen as proof of scheduled-route admission or fleet freshness.
 
-## Following configuration group — retained DOM and HTTP API hints
+### Included configuration group — retained DOM and HTTP API hints
 
-The isolated **0.13.1012 / 201-profile** candidate groups Patrimonium and Howden
+The same **0.13.1011 / 201-profile** candidate groups Patrimonium and Howden
 DOM monitors with GitHub's HTTP API monitor. Complete original captures match
 all **4 / 9 / 73 roles** and request sequences. DOM's scraper retry hint leaves
 the listing retry loop unchanged; the API paginator's nested browser hint
@@ -132,7 +134,7 @@ publisher-policy behavior. Six cold retirement cases conserve the queues and
 canonical rows. The mandatory database rerun has zero skips; the first local
 attempt used the wrong fixture variables and is superseded. All four affected
 Go packages pass vet. This candidate has no production authority and follows
-source1010 and the grouped maintenance release through fresh required checks,
+source1010 as part of the combined maintenance/configuration release through fresh required checks,
 whole deployment and all-route admission.
 
 Algorized's original sitemap stream contains 64 URLs. Its current B0 ownership

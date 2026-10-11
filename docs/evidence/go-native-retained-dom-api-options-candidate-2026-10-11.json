@@ -1,6 +1,6 @@
 {
   "schema": "jobseek.go-migration-retained-public-options/v1",
-  "candidate_version": "0.13.1012",
+  "candidate_version": "0.13.1011",
   "compiled_profiles": 201,
   "base_revision": "c0a95b2b571cbbc30ff432079cc24ac5b1b4d6f6",
   "production_authority": false,
@@ -60,9 +60,10 @@
     "reason": "Existing B0 board/detail ownership forbids ordinary monitor overlap and legacy scrape enqueue. Qualification of the final ownership transition remains required."
   },
   "required_before_serving": [
-    "Deliver source1010 and maintenance source1011, then rebase and renew all exact-head required gates",
+    "Deliver source1010, then rebase this combined maintenance and DOM/API candidate and renew all exact-head required gates",
     "Original whole deployment and fresh all-enabled-board/all-actual-route admission",
     "Preserve the complete prior monitor/detail cohort, all verified additions and explicit cache/route/publisher exclusions",
     "Supported quiesced cutover, independent identities and natural resource/freshness/conservation observation"
-  ]
+  ],
+  "combined_maintenance_evidence": "go-native-maintenance-consumers-candidate-2026-10-11.json"
 }

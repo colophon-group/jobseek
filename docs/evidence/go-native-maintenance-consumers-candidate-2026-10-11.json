@@ -66,5 +66,6 @@
     "Keep original maintenance locks, revision/image binding, protected actor authorization and credential scoping",
     "Use direct native operation in installed workflow; retain optional Python CLI delegation and offline original references",
     "No production repair or currency refresh was dispatched by this qualification"
-  ]
+  ],
+  "combined_configuration_evidence": "go-native-retained-dom-api-options-candidate-2026-10-11.json"
 }
