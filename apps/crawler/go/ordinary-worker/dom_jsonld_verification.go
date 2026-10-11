@@ -30,7 +30,7 @@ func domVerificationResponseMatches(p queue.GreenhouseMonitorProfile, config map
 	}
 	b := r.domVerification
 	c, e := queue.DOMMonitorOptions(config)
-	return e == nil && (c.RequireJSONLD || c.HasDetailFilters()) && p.Endpoint == config["board_url"] && b.parent == p.Endpoint && b.boardID == p.BoardID && b.effective == p.EffectiveConfigSHA256 && b.resource == r.endpoint && b.config == domVerificationConfig(config)
+	return e == nil && (c.RequireJSONLD || c.HasDetailFilters() || c.TitleScan != nil || c.PDFProof != nil) && p.Endpoint == config["board_url"] && b.parent == p.Endpoint && b.boardID == p.BoardID && b.effective == p.EffectiveConfigSHA256 && b.resource == r.endpoint && b.config == domVerificationConfig(config)
 }
 
 // The private binding comes from this complete listing's exact candidate set,

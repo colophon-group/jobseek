@@ -224,6 +224,8 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 			allowed[key] = true
 		}
 	case "dom":
+		allowed["title_matched_url_scan"] = true
+		allowed["require_pdf_text"], allowed["require_unexpired_pdf"] = true, true
 		allowed["fetch_url_transform"] = true
 		for _, key := range dom.ListingProviderKeys {
 			allowed[key] = true
@@ -253,6 +255,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 			allowed[key] = true
 		}
 	case "api_sniffer":
+		allowed["require_pdf_pattern"], allowed["require_unexpired_pdf"] = true, true
 		allowed["url_transform"] = true
 		for _, key := range apisniffer.ConfigKeys {
 			allowed[key] = true

@@ -1,0 +1,342 @@
+[
+  {
+    "name": "today-inclusive",
+    "config": {
+      "require_unexpired_pdf": {
+        "pattern": "Deadline: (\\d{1,2} [A-Za-z]+ \\d{4})",
+        "date_format": "%d %B %Y"
+      }
+    },
+    "text": "Deadline: 11 October 2026",
+    "now": "2026-10-11T12:00:00Z",
+    "keep": true,
+    "deadline": "2026-10-11",
+    "error": false
+  },
+  {
+    "name": "expired",
+    "config": {
+      "require_unexpired_pdf": {
+        "pattern": "Deadline: (\\d{1,2} [A-Za-z]+ \\d{4})",
+        "date_format": "%d %B %Y"
+      }
+    },
+    "text": "Deadline: 10 October 2026",
+    "now": "2026-10-11T12:00:00Z",
+    "keep": false,
+    "deadline": "2026-10-10",
+    "error": false
+  },
+  {
+    "name": "future",
+    "config": {
+      "require_unexpired_pdf": {
+        "pattern": "Deadline: (\\d{1,2} [A-Za-z]+ \\d{4})",
+        "date_format": "%d %B %Y"
+      }
+    },
+    "text": "Deadline: 1 November 2026",
+    "now": "2026-10-11T12:00:00Z",
+    "keep": true,
+    "deadline": "2026-11-01",
+    "error": false
+  },
+  {
+    "name": "missing-deadline",
+    "config": {
+      "require_unexpired_pdf": {
+        "pattern": "Deadline: (\\d{1,2} [A-Za-z]+ \\d{4})",
+        "date_format": "%d %B %Y"
+      }
+    },
+    "text": "No configured deadline",
+    "now": "2026-10-11T12:00:00Z",
+    "keep": false,
+    "deadline": "",
+    "error": true
+  },
+  {
+    "name": "ambiguous-deadline",
+    "config": {
+      "require_unexpired_pdf": {
+        "pattern": "Deadline: (\\d{1,2} [A-Za-z]+ \\d{4})",
+        "date_format": "%d %B %Y"
+      }
+    },
+    "text": "Deadline: 11 October 2026\nDeadline: 12 October 2026",
+    "now": "2026-10-11T12:00:00Z",
+    "keep": false,
+    "deadline": "",
+    "error": true
+  },
+  {
+    "name": "invalid-date",
+    "config": {
+      "require_unexpired_pdf": {
+        "pattern": "Deadline: (\\d{1,2} [A-Za-z]+ \\d{4})",
+        "date_format": "%d %B %Y"
+      }
+    },
+    "text": "Deadline: 31 February 2026",
+    "now": "2026-10-11T12:00:00Z",
+    "keep": false,
+    "deadline": "",
+    "error": true
+  },
+  {
+    "name": "german-month",
+    "config": {
+      "require_unexpired_pdf": {
+        "pattern": "Deadline: (.+)",
+        "date_format": "%d %B %Y"
+      }
+    },
+    "text": "Deadline: 3. März 2027",
+    "now": "2026-10-11T12:00:00Z",
+    "keep": true,
+    "deadline": "2027-03-03",
+    "error": false
+  },
+  {
+    "name": "ordinal-of",
+    "config": {
+      "require_unexpired_pdf": {
+        "pattern": "Deadline: (.+)",
+        "date_format": "%d of %B %Y"
+      }
+    },
+    "text": "Deadline: 11th of October 2026",
+    "now": "2026-10-11T12:00:00Z",
+    "keep": true,
+    "deadline": "2026-10-11",
+    "error": false
+  },
+  {
+    "name": "owner",
+    "config": {
+      "require_pdf_text": {
+        "include": "\\bEmployer\\b",
+        "exclude": "\\bForeign\\b"
+      }
+    },
+    "text": "Employer",
+    "now": "2026-10-11T12:00:00Z",
+    "keep": true,
+    "deadline": "",
+    "error": false
+  },
+  {
+    "name": "excluded-owner",
+    "config": {
+      "require_pdf_text": {
+        "include": "\\bEmployer\\b",
+        "exclude": "\\bForeign\\b"
+      }
+    },
+    "text": "Foreign",
+    "now": "2026-10-11T12:00:00Z",
+    "keep": false,
+    "deadline": "",
+    "error": false
+  },
+  {
+    "name": "ambiguous-owner",
+    "config": {
+      "require_pdf_text": {
+        "include": "\\bEmployer\\b",
+        "exclude": "\\bForeign\\b"
+      }
+    },
+    "text": "Employer Foreign",
+    "now": "2026-10-11T12:00:00Z",
+    "keep": false,
+    "deadline": "",
+    "error": true
+  },
+  {
+    "name": "unknown-owner",
+    "config": {
+      "require_pdf_text": {
+        "include": "\\bEmployer\\b",
+        "exclude": "\\bForeign\\b"
+      }
+    },
+    "text": "Unclassified publisher",
+    "now": "2026-10-11T12:00:00Z",
+    "keep": false,
+    "deadline": "",
+    "error": true
+  },
+  {
+    "name": "active-window",
+    "config": {
+      "require_unexpired_pdf": {
+        "active_window": {
+          "pattern": "(?P<month>[A-Za-z]+) (?P<opens>\\d+)-(?P<closes>\\d+), (?P<year>\\d{4})",
+          "date_format": "%B %d %Y"
+        }
+      }
+    },
+    "text": "October 10-11, 2026",
+    "now": "2026-10-11T12:00:00Z",
+    "keep": true,
+    "deadline": "2026-10-11",
+    "error": false
+  },
+  {
+    "name": "future-window",
+    "config": {
+      "require_unexpired_pdf": {
+        "active_window": {
+          "pattern": "(?P<month>[A-Za-z]+) (?P<opens>\\d+)-(?P<closes>\\d+), (?P<year>\\d{4})",
+          "date_format": "%B %d %Y"
+        }
+      }
+    },
+    "text": "October 12-20, 2026",
+    "now": "2026-10-11T12:00:00Z",
+    "keep": false,
+    "deadline": "2026-10-20",
+    "error": false
+  },
+  {
+    "name": "closed-window",
+    "config": {
+      "require_unexpired_pdf": {
+        "active_window": {
+          "pattern": "(?P<month>[A-Za-z]+) (?P<opens>\\d+)-(?P<closes>\\d+), (?P<year>\\d{4})",
+          "date_format": "%B %d %Y"
+        }
+      }
+    },
+    "text": "October 1-10, 2026",
+    "now": "2026-10-11T12:00:00Z",
+    "keep": false,
+    "deadline": "2026-10-10",
+    "error": false
+  },
+  {
+    "name": "reversed-window",
+    "config": {
+      "require_unexpired_pdf": {
+        "active_window": {
+          "pattern": "(?P<month>[A-Za-z]+) (?P<opens>\\d+)-(?P<closes>\\d+), (?P<year>\\d{4})",
+          "date_format": "%B %d %Y"
+        }
+      }
+    },
+    "text": "October 20-10, 2026",
+    "now": "2026-10-11T12:00:00Z",
+    "keep": false,
+    "deadline": "",
+    "error": true
+  },
+  {
+    "name": "multiple-windows",
+    "config": {
+      "require_unexpired_pdf": {
+        "active_window": {
+          "pattern": "(?P<month>[A-Za-z]+) (?P<opens>\\d+)-(?P<closes>\\d+), (?P<year>\\d{4})",
+          "date_format": "%B %d %Y"
+        }
+      }
+    },
+    "text": "September 1-20, 2026\nOctober 10-15, 2026\nOctober 11-17, 2026",
+    "now": "2026-10-11T12:00:00Z",
+    "keep": true,
+    "deadline": "2026-10-17",
+    "error": false
+  },
+  {
+    "name": "window-fallback",
+    "config": {
+      "require_unexpired_pdf": {
+        "active_window": {
+          "pattern": "(?P<month>[A-Za-z]+) (?P<opens>\\d+)-(?P<closes>\\d+), (?P<year>\\d{4})",
+          "date_format": "%B %d %Y"
+        },
+        "rules": [
+          {
+            "pattern": "Deadline: (\\d{1,2} [A-Za-z]+ \\d{4})",
+            "date_format": "%d %B %Y"
+          }
+        ]
+      }
+    },
+    "text": "Deadline: 11 October 2026",
+    "now": "2026-10-11T12:00:00Z",
+    "keep": true,
+    "deadline": "2026-10-11",
+    "error": false
+  },
+  {
+    "name": "two-rule-ambiguity",
+    "config": {
+      "require_unexpired_pdf": {
+        "rules": [
+          {
+            "pattern": "Deadline: (\\d{1,2} [A-Za-z]+ \\d{4})",
+            "date_format": "%d %B %Y"
+          },
+          {
+            "pattern": "Close: (.+)",
+            "date_format": "%d %B %Y"
+          }
+        ]
+      }
+    },
+    "text": "Deadline: 11 October 2026\nClose: 12 October 2026",
+    "now": "2026-10-11T12:00:00Z",
+    "keep": false,
+    "deadline": "",
+    "error": true
+  },
+  {
+    "name": "API-owned",
+    "config": {
+      "require_unexpired_pdf": {
+        "pattern": "Deadline: (\\d{1,2} [A-Za-z]+ \\d{4})",
+        "date_format": "%d %B %Y"
+      },
+      "require_pdf_pattern": "Employer"
+    },
+    "text": "Employer\nDeadline: 11 October 2026",
+    "now": "2026-10-11T12:00:00Z",
+    "keep": true,
+    "deadline": "2026-10-11",
+    "error": false
+  },
+  {
+    "name": "API-foreign",
+    "config": {
+      "require_unexpired_pdf": {
+        "pattern": "Deadline: (\\d{1,2} [A-Za-z]+ \\d{4})",
+        "date_format": "%d %B %Y"
+      },
+      "require_pdf_pattern": "Employer"
+    },
+    "text": "Foreign\nDeadline: 11 October 2026",
+    "now": "2026-10-11T12:00:00Z",
+    "keep": false,
+    "deadline": "",
+    "error": true
+  },
+  {
+    "name": "expired-unclassified-owner",
+    "config": {
+      "require_unexpired_pdf": {
+        "pattern": "Deadline: (\\d{1,2} [A-Za-z]+ \\d{4})",
+        "date_format": "%d %B %Y"
+      },
+      "require_pdf_text": {
+        "include": "\\bEmployer\\b",
+        "exclude": "\\bForeign\\b"
+      }
+    },
+    "text": "Unknown\nDeadline: 10 October 2026",
+    "now": "2026-10-11T12:00:00Z",
+    "keep": false,
+    "deadline": "2026-10-10",
+    "error": false
+  }
+]

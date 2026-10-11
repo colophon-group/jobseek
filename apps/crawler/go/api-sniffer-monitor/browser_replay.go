@@ -112,6 +112,9 @@ func BrowserReplayOptionsFromMetadata(boardURL, raw string) (BrowserReplayOption
 	if e != nil {
 		return o, e
 	}
+	if o.Inventory.PDFProof != nil {
+		return o, ErrOptions
+	}
 	// HTTP discovery infers fields; original browser replay only uses an
 	// explicit field map. Preserve URL-only inventory and detail scheduling.
 	o.Inventory.AutoFields = false

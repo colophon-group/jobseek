@@ -186,5 +186,5 @@ func discoverAPISnifferInventory(ctx context.Context, client *http.Client, profi
 		}
 		result.Jobs = append(result.Jobs, RichMonitorJob{URL: job.URL, URLOnly: found.URLOnly, Title: title, Description: description, Locations: job.Locations, Language: job.Metadata["language"], DatePosted: job.DatePosted, Metadata: job.Metadata, EmploymentType: job.EmploymentType, JobLocationType: job.JobLocationType, Extras: job.Extras})
 	}
-	return result, nil
+	return filterListingPDFInventory(ctx, &operationClient, profile, config, result, o.PDFProof, nil, time.Now())
 }

@@ -30,6 +30,8 @@ type ListingConfig struct {
 	Proofs                               *ListingProofs
 	ProviderProof                        *ListingProviderProof
 	JoinProofURL                         func(string, string) (string, error)
+	TitleScan                            *TitleScanConfig
+	PDFProof                             *PDFListingProof
 }
 
 // ListingOptions covers the existing static single-page href inventory.
@@ -39,6 +41,8 @@ func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 	c := ListingConfig{Attempts: 3, BoardURL: endpoint}
 	allowed := map[string]bool{}
 	allowed["rich_rows"] = true
+	allowed["title_matched_url_scan"] = true
+	allowed["require_pdf_text"], allowed["require_unexpired_pdf"] = true, true
 	for _, key := range ListingProviderKeys {
 		allowed[key] = true
 	}
@@ -188,6 +192,15 @@ func ListingOptions(config Object, endpoint string) (ListingConfig, error) {
 	}
 	if err == nil {
 		err = listingDetailVerificationOptions(config, &c)
+	}
+	if err == nil {
+		c.TitleScan, err = titleScanOptions(config["title_matched_url_scan"], c)
+	}
+	if err == nil {
+		c.PDFProof, err = PDFListingProofOptions(config)
+		if c.PDFProof != nil && (c.RichRows != nil || c.FetchURL != "") {
+			err = ErrPDFProof
+		}
 	}
 	return c, err
 }

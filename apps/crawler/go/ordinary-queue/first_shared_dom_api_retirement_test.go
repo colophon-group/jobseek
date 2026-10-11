@@ -28,6 +28,18 @@ func firstSharedDOMAPIFixture(t *testing.T, variant string) firstOwnerFixture {
 	}
 	md := map[string]any{"scraper_type": "skip"}
 	boardURL := "https://example.com/careers"
+	if kind == "dom-title-scan" {
+		md["title_matched_url_scan"] = map[string]any{"listing_title_selector": ".title", "detail_title_selector": "h4", "url_template": "https://example.com/vacante-{index}", "max_scan": 3}
+	}
+	if kind == "dom-pdf-owner" {
+		md["require_pdf_text"] = map[string]any{"include": "Employer", "exclude": "Foreign"}
+	}
+	if kind == "dom-pdf-expiry" || kind == "api-pdf-expiry" {
+		md["require_unexpired_pdf"] = map[string]any{"pattern": `Deadline: (.+)`, "date_format": "%d %B %Y"}
+		if provider == "api_sniffer" {
+			md["require_pdf_pattern"] = "Employer"
+		}
+	}
 	if kind == "dom-webforms" {
 		boardURL = "https://careers.slaughterandmay.com/VacanciesV2.aspx"
 		f, err := os.Open("../../data/boards.csv")
@@ -158,6 +170,10 @@ func firstSharedDOMAPIFixture(t *testing.T, variant string) firstOwnerFixture {
 }
 func TestRealSharedNavigationHTMLVariantColdRetirement(t *testing.T) {
 	testProviderColdRetirement(t, []string{"api-html/direct", "api-html/proxy", "api-inert/direct", "api-none/direct", "api-none/proxy", "api-none/rendered", "dom-none/direct", "dom-none/proxy", "dom-none/rendered", "api-boundary/direct", "api-boundary/proxy", "api-boundary/rendered", "dom-group/direct", "dom-group/proxy", "dom-group/rendered"}, firstSharedDOMAPIFixture)
+}
+
+func TestRealListingTitleAndPDFProofColdRetirement(t *testing.T) {
+	testProviderColdRetirement(t, []string{"dom-title-scan/direct", "dom-title-scan/proxy", "dom-pdf-owner/direct", "dom-pdf-owner/proxy", "dom-pdf-owner/rendered", "dom-pdf-expiry/direct", "dom-pdf-expiry/proxy", "dom-pdf-expiry/rendered", "api-pdf-expiry/direct", "api-pdf-expiry/proxy"}, firstSharedDOMAPIFixture)
 }
 func TestRealSharedDOMAPIVariantColdRetirement(t *testing.T) {
 	testProviderColdRetirement(t, []string{"api-auto/direct", "api-auto/proxy", "api-auto/rendered", "dom-jsonld/direct", "dom-jsonld/proxy", "dom-jsonld/rendered", "dom-include/direct", "dom-include/proxy", "dom-include/rendered"}, firstSharedDOMAPIFixture)
