@@ -1,0 +1,133 @@
+{
+  "schema": "jobseek.go-native-production-checkpoint/v1",
+  "observed_at_utc": "2026-10-11T12:06:13.402037+00:00",
+  "source_revision": "570ca8c957994720f98cbc7ee66d723ad7c6c62a",
+  "version": "0.13.1015",
+  "profiles": 204,
+  "pr": 10415,
+  "qualified_head": "96e2822bf94e0a0d8df3430f158bee37850f0c36",
+  "status": "Original whole deployments, B0 and full ordinary activation succeeded; source1015 active285 independently verified.",
+  "crawler_run": 38135083899,
+  "renderer_run": 38135117744,
+  "outgoing_cold_epoch": 284,
+  "next_native_epoch": 285,
+  "preserved_cohort_floor": {
+    "monitors": 7779,
+    "detail_boards": 7675
+  },
+  "qualification": {
+    "static_ordered_configurations": 8,
+    "public_stage_outputs": 34,
+    "original_python_public_boards": 7,
+    "synthetic_ARM_measurement_arms": 16,
+    "synthetic_verdict": "admitted",
+    "exact_head_required_CI": "passed",
+    "installed_image_parity": "passed",
+    "crawler_deploy_gate": "passed"
+  },
+  "migration_schema": {
+    "version": "0040",
+    "columns": {
+      "next_detail_at": "timestamptz",
+      "next_detail_description_hash": "int8",
+      "next_detail_step": "int2"
+    },
+    "constraint_validated": true
+  },
+  "evidence_sha256": {
+    "native1015-pr10415-final-merge-authority1-2026-10-11.json": "57baf838884b1508ad6600ad55c7149459eb5c7c954cf8bbfbe28d9296d5b123",
+    "native1015-source1014-outgoing-cold284-independent-verified1-2026-10-11.json": "22bcff37ca56baaada3f2a027063c325c1c2760bffe06463dd72684ca9568a6d",
+    "native-source1015-original-deployed-identities-2026-10-11.json": "79822df0c9466b20812dbb59991ad50bbf1ec371960aa705c81cdbf78b617f23",
+    "native-source1015-renderer-independent-verified1-2026-10-11.json": "8a83d75f67ed3eea7a5f5bd90943ef384fbeb2fffe884badfd3fdd388aca4133",
+    "native-source1015-postdeploy-cold284-verified1-2026-10-11.json": "b4120f70c7a47d7d4b77555b071dc6ff74280e3c0c6090edd4285568b08b8bcf",
+    "native-source1015-exporter-progress-independent-verified1-2026-10-11.json": "8f41651a1abed4ce063c398e1075a533a97c7df936ede3ab32bab8c2d72feece",
+    "native1015-whole-lane-head96e282-run38132157642-2026-10-11/report.json": "542ccec6900dc8b19a7cbde1f3992b922fa931bfe85b2b35f220809c3d03effd",
+    "native-ordinary-admission1015/source1015-merged-sdk-archive-manifest.json": "3f837d22eba8048efda6df6ca4c14a8f0325f0efffeb856a3cf17b0992e59023",
+    "native-source1015-full-conservation-independent-verified2-2026-10-11.json": "47f5c102a448fbf6426104412c9c8b4a33506a9a75c32d4c40d693f735fac3a3",
+    "native-source1015-ordinary-kernel-independent-initial1-2026-10-11.json": "b59297f34f00276d8825cbcd4ed5071b0e7768c00b558ef3969486c934418b4d",
+    "native-source1015-fleet-freshness-independent-initial1-2026-10-11.json": "c2d2ef6a88af97a79e1469f0e64ebb77732ccd3fe990a4f47bb75c11a2b9a18d",
+    "native-ordinary-admission1015/admission-summary-source1015-verified1.json": "502ef0eb64c9f9fe425bca35ccd467a5b1ebaa20a5c250423987fb24a54e1dcb",
+    "native1015-fresh-remaining-coverage-screen1-2026-10-11.json": "98b87ece11e013592150fd9a0969095f31f699658045b49e884347a77e9d7c7a"
+  },
+  "limitations": [
+    "Initial activation and natural observations are verified; sustained fleet throughput, detail due-age and complete conservation remain unproved.",
+    "Full-fleet freshness, scheduled detail due-age conservation and attributable comparative cost not established.",
+    "Production Python/Playwright/Chromium retained for remaining enabled profiles and supported reversal; offline tooling preserved."
+  ],
+  "b0": {
+    "active": true,
+    "epoch": 285,
+    "plan_digest": "ec766a08d54bdfeec237d6d0ccb3a6cb37919d499acbb1be12181d5f8f616869",
+    "receipt_sha256": "3c58cbbdd7f753e0cb6d69f10400a4ae6aed785c09cd62af35d54c11f901dc98"
+  },
+  "admission": {
+    "enabled_boards": 7885,
+    "scheduled_routes": 1661551,
+    "monitor_boards": 7779,
+    "detail_boards": 7683,
+    "new_detail_boards": 8,
+    "new_group_scheduled_routes": 1032,
+    "scheduled_owned_routes": 1538625,
+    "held_qualified_candidates": 0,
+    "plan_sha256": "69add371efd6c3aac6802fd7a58bba4173466e027aaba76d29051ab195a9c9cd",
+    "projection_sha1": "d765b1b2d19c83fc1d4f96304a9534fc326362ea",
+    "state": "active"
+  },
+  "remaining_compiled_candidates": {
+    "monitors_excluding_b0": 12,
+    "detail_boards": 52,
+    "detail_boards_with_cache_mismatches": 44,
+    "compiled_is_not_qualified": true
+  },
+  "ordinary_receipt_sha256": "ab5a54e7508d05fd4202189dd6f0047aaa86e495fa5cfa253ae42bb535f4d65d",
+  "early_natural_observation": {
+    "completed_monitors": 91,
+    "exact_recurring_schedules": 91,
+    "retained_completion_leases": 0,
+    "completed_claims_include_failures": true,
+    "scope": "Read-only current-epoch sample; no global freshness/conservation claim."
+  },
+  "early_resource_observation": {
+    "restart_count": 0,
+    "OOMKilled": false,
+    "resource_events": [],
+    "kernel_killed_processes": [],
+    "memory_sample": "398.5MiB / 1GiB",
+    "go_memory_target": "512MiB",
+    "sustained_source1015_memory_proof": false
+  },
+  "early_monitor_freshness": [
+    {
+      "native_owned": false,
+      "enabled": 106,
+      "unscheduled": 0,
+      "never_checked": 93,
+      "due": 16,
+      "overdue_1h": 1,
+      "overdue_6h": 0,
+      "overdue_24h": 0,
+      "oldest_due_seconds": 3864.083848
+    },
+    {
+      "native_owned": true,
+      "enabled": 7779,
+      "unscheduled": 0,
+      "never_checked": 3711,
+      "due": 4622,
+      "overdue_1h": 3412,
+      "overdue_6h": 13,
+      "overdue_24h": 0,
+      "oldest_due_seconds": 59701.5802
+    }
+  ],
+  "images": {
+    "crawler": "ghcr.io/colophon-group/jobseek-crawler@sha256:a827283fdb3066ad20dd0d8f8ffd13aa3fe4e67e7a6f210f942af0eb45003443",
+    "browser": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:f7ec298fe2a02a37c42e4b20db86cbb515ac59bf4e251d46d419e48a7d5dbd10",
+    "renderer": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:913f5aa453410d3138d78905768bd1b641aeca759e6e931eb576dc80ce8d86e4"
+  },
+  "lightpanda": {
+    "version": "1.0.0",
+    "latest_release_verified_date": "2026-10-11",
+    "release_url": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0"
+  }
+}
