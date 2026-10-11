@@ -2369,3 +2369,24 @@ explicitly covers Innosuisse. This deployment-tool batch is rebased onto that
 merged result; crawler, pilot, renderer and workflow bytes match the previous
 qualified candidate, and new exact-head checks remain required. Original offline Python tooling remains useful.
 See [the deployment-tool candidate](evidence/go-native-deployment-tools-candidate-2026-10-11.json).
+
+## Scheduling follow-up — preserve separate discovery and monitor limits
+
+Candidate **0.13.1021** repairs a native scheduling mismatch found while measuring
+source1018 freshness. Python starts20 discovery workers and limits only monitor
+execution to5. Go used the smaller value as the capacity for every task, also
+limiting detail execution to5. The candidate restores20 discovery slots and a
+separate5-monitor semaphore inside the existing live lease. Waiting monitors keep
+heartbeats; cancellation and token loss prevent execution and retain recovery
+leases. `MONITOR_CONCURRENCY=0` retains bounded discovery without an additional
+monitor cap. CPU and memory limits stay unchanged.
+
+Focused race tests and actual private PostgreSQL/Redis cases pass, including
+concurrent detail progress, heartbeat renewal during capacity wait, exact schedule
+settlement and cancellation/token-loss without fabricated receipts. The complete
+worker race suite passes under the race detector with required private PostgreSQL/Redis
+(2,031.507s). Installed CI and whole rollout remain required.
+At20:13 UTC, the active fleet still has6,819 due native monitors /4,528 over an
+hour late and1,541,413 due native detail routes /1,486,120 over a day late. This
+candidate repairs a concrete contract mismatch; its production freshness and
+resource effect is unproved. See [the capacity candidate](evidence/go-native-worker-capacity-candidate-2026-10-11.json).
