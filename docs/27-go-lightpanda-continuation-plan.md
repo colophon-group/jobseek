@@ -1,6 +1,25 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1009 deployed and active
+## Current checkpoint — source1010 merged; original whole deployments in progress
+
+[PR #10408](https://github.com/colophon-group/jobseek/pull/10408) merged as
+`f66597e848856310bea2c3a59b766f29a3dc1305`, version **0.13.1010 / 201 profiles**.
+The Oracle proxy, Revolut, IIHF and explicit rich-skip group passed all exact-head
+required checks, installed-image parity, physical Lightpanda and ARM whole-lane
+qualification. The original [crawler deployment](https://github.com/colophon-group/jobseek/actions/runs/38107792937)
+and [renderer deployment](https://github.com/colophon-group/jobseek/actions/runs/38107805696)
+are in progress. This checkpoint does not yet establish incoming production authority.
+
+Source1009 completed over 40 minutes of natural ordinary observation without
+a restart or kernel/cgroup OOM kill. Fleet backlog grew, so full-fleet freshness
+remains unresolved. Its original ordinary retirement, B0 rollback and selector
+clear succeeded. Independent outgoing verification confirms cold epoch **278**,
+no active plans or ownership receipts, cleared selectors and restored healthy
+base writers. Finish the incoming exact-source/image checks, fresh all-board
+and all-actual-route admission and supported activation. Preserve the complete
+7,759 / 2,753 cohort and every qualified addition.
+
+## Previous checkpoint — source1009 delivered and safely retired
 
 [PR #10407](https://github.com/colophon-group/jobseek/pull/10407) merged as
 `fac1f66fe9f20b1b06496a0634167364813b6adc`, version **0.13.1009 / 197 profiles**.
@@ -31,25 +50,26 @@ global queue conservation or successful output for every completed claim.
 
 Lightpanda **1.0.0** remains the latest official stable release, rechecked October
 11. Its immutable image/binary pins and 128 MiB per-child V8 limit remain in place.
-After activation, observe natural memory, queue conservation and fleet freshness
+For the incoming activation, observe natural memory, queue conservation and fleet freshness
 long enough to cover the previous ordinary OOM interval. Low current RSS or
 `OOMKilled=false` cannot exclude prior kernel kills. The protected five-way
 memory replay preserves output and lowers managed peak, but excludes SQL/location
 state and is not proof of a Linux cgroup cure.
 
-The full migration goal remains active. The following grouped candidate is undergoing
-fresh CI while this active release receives natural observation. Continue the remaining enabled types,
+The full migration goal remains active. Source1010 is in its original whole rollout,
+and the combined next release enters fresh CI. Continue the remaining enabled types,
 rich no-scrape schedule handling and operational consumers in grouped iterations.
 Python/Playwright/Chromium runtime retirement still requires full enabled-route
 and consumer coverage, comparable whole-lane CPU/RAM/density/cost, supported cold
 reversal and the rollback window. Preserve useful isolated offline Python tooling.
 
-## Following grouped candidate — Oracle, Revolut, IIHF and rich schedule drain
+## Merged source1010 group — Oracle, Revolut, IIHF and rich schedule drain
 
-The isolated following candidate reserves version **0.13.1010 / 201 profiles**
-on merged source1009 `fac1f66fe9f20b1b06496a0634167364813b6adc`. It has no
-production authority. Renew this group's exact-head checks while source1009
-is active; complete its natural observation before the next whole rollout.
+The merged group is **0.13.1010 / 201 profiles**, based on source1009.
+Head `b5cecc18341b3254bb1cbea8b8dc4f05f2fbf220` passed fresh Required CI,
+Crawler Deploy Gate, installed-image parity, physical Lightpanda and the ARM
+whole-lane check before an expected-head merge. Complete its original rollout
+and independent full admission before claiming active authority.
 
 Oracle reuses its existing provider SDK with separately configured proxy monitor
 and detail routes. Original Inova's 702 jobs and Conduent's 556 jobs match every
@@ -84,7 +104,7 @@ that rejected any skip-detail owner. Those assertions now require the exact
 SQL-only skip profile, queue binding and wildcard ownership domain, and continue
 to reject JSON-LD, DOM and rendered fetch authority. The five complete affected
 profile tests pass under the race detector; renew all checks for the repaired
-head. The 201-profile executable startup and
+head; all renewed gates succeeded. The 201-profile executable startup and
 focused shared-renderer regression/race checks pass. Protected inventories remain
 outside Git; see the [candidate evidence](evidence/go-native-oracle-revolut-iihf-candidate-2026-10-11.json)
 for source identities, complete comparisons and immutable evidence hashes.
@@ -97,7 +117,7 @@ delaying the verified Oracle/Nextdata/inline delivery.
 
 ## Following combined release — maintenance and retained DOM/API configurations
 
-One combined candidate reserves **0.13.1011 / 201 profiles** on source1010's repaired candidate.
+One combined candidate reserves **0.13.1011 / 201 profiles** on merged source1010 `f66597e848856310bea2c3a59b766f29a3dc1305`.
 It delivers both maintenance operations and the three DOM/API configurations
 below through a single required-check and whole-deployment cycle.
 It replaces the two installed Python maintenance commands with direct

@@ -2,7 +2,7 @@
   "schema": "jobseek.go-migration-retained-public-options/v1",
   "candidate_version": "0.13.1011",
   "compiled_profiles": 201,
-  "base_revision": "c0a95b2b571cbbc30ff432079cc24ac5b1b4d6f6",
+  "base_revision": "f66597e848856310bea2c3a59b766f29a3dc1305",
   "production_authority": false,
   "original_reference_revision": "f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77",
   "types": [
@@ -65,5 +65,6 @@
     "Preserve the complete prior monitor/detail cohort, all verified additions and explicit cache/route/publisher exclusions",
     "Supported quiesced cutover, independent identities and natural resource/freshness/conservation observation"
   ],
-  "combined_maintenance_evidence": "go-native-maintenance-consumers-candidate-2026-10-11.json"
+  "combined_maintenance_evidence": "go-native-maintenance-consumers-candidate-2026-10-11.json",
+  "prior_candidate_base_revision": "c0a95b2b571cbbc30ff432079cc24ac5b1b4d6f6"
 }

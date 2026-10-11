@@ -1,7 +1,7 @@
 {
   "schema": "jobseek.go-migration-maintenance-candidate/v1",
   "candidate_version": "0.13.1011",
-  "base_revision": "b5cecc18341b3254bb1cbea8b8dc4f05f2fbf220",
+  "base_revision": "f66597e848856310bea2c3a59b766f29a3dc1305",
   "production_authority": false,
   "operations": [
     "refresh-currency-rates",
@@ -67,5 +67,6 @@
     "Use direct native operation in installed workflow; retain optional Python CLI delegation and offline original references",
     "No production repair or currency refresh was dispatched by this qualification"
   ],
-  "combined_configuration_evidence": "go-native-retained-dom-api-options-candidate-2026-10-11.json"
+  "combined_configuration_evidence": "go-native-retained-dom-api-options-candidate-2026-10-11.json",
+  "prior_candidate_base_revision": "b5cecc18341b3254bb1cbea8b8dc4f05f2fbf220"
 }
