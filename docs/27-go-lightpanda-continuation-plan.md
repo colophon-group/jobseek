@@ -1,6 +1,74 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1014 active across 7,779 / 7,675 boards
+## Current checkpoint — source1015 active across 7,779 / 7,683 boards
+
+[PR #10415](https://github.com/colophon-group/jobseek/pull/10415) merged as
+`570ca8c957994720f98cbc7ee66d723ad7c6c62a`, **0.13.1015 / 204 profiles**.
+The batch supports eight static ordered DOM/JSON-LD fallback configurations,
+including separate stage claims, partial writes, per-stage transport and durable
+next-stage recovery. Final Required CI, installed-image parity, Crawler Deploy
+Gate and ARM whole-lane qualification passed at exact head `96e2822b`.
+The full worker race suite passed in 1,100 seconds after the DOM numeric-copy
+fix; final CI passed the complete queue and worker suites. All 34 original
+public stage outputs agree. ARM qualification covers 16 synthetic arms and
+does not establish full-fleet freshness or attributable production cost.
+
+Original source1014 ordinary retirement, B0 rollback and selector clear
+succeeded. Independent cold **epoch 284** verification confirms restored healthy
+base writers, no active ordinary plans, projections, native tokens or receipts,
+and no premature source1015 ownership. Two B0 rollback attempts refused the
+scheduled reconciliation's mutation lock; the supported retry succeeded after
+that job released it. No lock or lease was bypassed.
+
+The matching [renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38135117744)
+succeeded at attempt 1 and its source and immutable published image are independently
+verified. The original [whole crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38135083899)
+succeeded at attempt 1. Independent checks verify both published crawler image
+digests, applied schema 0040 and its validated constraint, healthy incoming cold
+readiness and 43 successful exporter documents with no errors. Original B0
+activation and independent readback confirm **epoch 285**.
+
+The fresh full admission census covers **7,885 enabled boards / 1,661,551
+scheduled routes**. It preserves all **7,779 monitors / 7,675 previous detail
+boards** and admits all **eight ordered fallback configurations**, adding 1,032
+scheduled routes. Original full staging and activation succeeded, giving
+**7,779 monitors / 7,683 detail boards / 1,538,625 owned scheduled routes**.
+Independent active readback confirms the exact source, SQL plan, Redis
+projection, receipts, running immutable images and healthy services. At 12:06
+UTC, all 91 completed monitor receipts have exact recurring schedules and no
+retained completion leases. Completed claims include failures. Early resource
+checks show no OOM, restart, panic or stall; source1015 sustained memory,
+full-fleet freshness and global conservation remain unproved.
+See [the deployed source1015 checkpoint](evidence/go-native-source1015-production-2026-10-11.json).
+
+Before retirement, source1014 ran for more than 78 minutes with no OOM, restart,
+cgroup limit event or kernel kill. It still had a substantial due backlog: at
+11:02 UTC, 6,099 native monitors were due. A later sample used about 216 MiB and
+one CPU; cumulative mean task durations were about 9.5 seconds for monitors and
+2.7 seconds for details. These observations identify throughput work; they do
+not prove fleet freshness, detail-age conservation or comparable cost.
+
+Prioritize the next grouped delivery from the fresh merged-source screen:
+**12 compiled but unqualified monitor configurations** and **52 compiled but
+unowned detail configurations**, including **44 with route-cache mismatches**.
+The latter count also includes three B0-owned detail boards, which retain their
+existing owner. Five other compiled detail boards currently have consistent
+route caches and still need qualification. Resolve cache identity, lane and
+retained-step behavior through documented native scheduling/ownership contracts;
+validate original output, policy and cold recovery before admission. Combine
+that work with remaining DOM/API/PDF listing controls and measured worker
+capacity so engine coverage results in sustained freshness.
+
+Continue remaining DOM/API/PDF listing controls together. Current original
+public baselines cover seven static listings: RCI yields two jobs and Fribourg
+teaching proves empty; Gymnastics has a PDF with neither configured ownership
+marker, and the UK embassy PDF lacks the configured deadline. Retain those
+failures until a validated configuration repair. Tesco's old API redirects to a
+replacement careers page. Preserve every enabled board, useful offline Python,
+and the supported rollback window while completing runtime consumers and
+sustained throughput/freshness before retiring production Python/Playwright/Chromium.
+
+## Historical checkpoint — source1014 active across 7,779 / 7,675 boards
 
 [PR #10413](https://github.com/colophon-group/jobseek/pull/10413) merged as
 `7ad9aa3b7c539fcf07196d2cecf5a04ed0ee78d0`, **0.13.1014 / 202 profiles**.
