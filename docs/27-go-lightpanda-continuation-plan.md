@@ -1,6 +1,6 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1011 merged; original whole rollout running
+## Current checkpoint — source1011 deployed; next 91-board release qualified
 
 [PR #10409](https://github.com/colophon-group/jobseek/pull/10409) merged as
 `5eec6ffcb0a095f4eec8ed86f9337815acb76da2`, version **0.13.1011 / 201 profiles**.
@@ -17,11 +17,14 @@ Redis projections, no native tokens, and preserved retired SQL plans. A fresh
 head/base/hold/review/check audit preceded the head-bound merge. The original
 [whole crawler deployment](https://github.com/colophon-group/jobseek/actions/runs/38116937869)
 and matching [renderer deployment](https://github.com/colophon-group/jobseek/actions/runs/38116979406)
-are running for that exact merged source. Deployment success, selected immutable
-image readbacks, incoming cold readiness and exporter progress are not yet proved.
-Ordinary Go ownership remains inactive. After successful rollout, use fresh
-all-board/all-route admission and the supported full activation, then observe
-natural health, conservation, memory and fleet freshness.
+succeeded at attempt 1 for that exact merged source. Independent checks confirm
+the selected immutable crawler/browser/renderer digests, incoming cold epoch 280,
+healthy base writers and successful exporter progress (671 postings, zero export
+errors and unknown writers at 06:29 UTC). Ordinary Go ownership remains inactive.
+The qualified transport and enrichment groups are combined into one 91-board
+release before the next whole deployment and full activation. Renew fresh
+all-board/all-route admission and preserve every previously qualified owner.
+Then observe natural health, conservation, memory and fleet freshness.
 
 ## Historical source1010 checkpoint — failed full activation recovered
 
@@ -160,7 +163,7 @@ zero with missing-step warnings. Neither is admitted by this group. Continue
 those and the remaining enabled configurations in grouped iterations without
 delaying the verified Oracle/Nextdata/inline delivery.
 
-## Following grouped detail release — Workday proxy, DOM and JSON-LD TLS
+## Following grouped detail release — 91 boards across transport and enrichment
 
 The isolated candidate on `fix-crawler/native-detail-transport-group` reserves
 **0.13.1012 / 202 profiles**, rebased onto merged source1011 `5eec6ffcb`.
@@ -187,8 +190,22 @@ The full mandatory worker race suite passed in 867.65 seconds at `77a991c3`;
 the rebased `83901c104` candidate has the exact same Git tree.
 See [the bounded proof](evidence/go-native-grouped-detail-transports-candidate-2026-10-11.json).
 
-Finish the original source1011 rollout while this candidate enters its own PR.
-Renew required CI, installed-image proof and deployment gates for its final head.
+[PR #10411](https://github.com/colophon-group/jobseek/pull/10411) also includes
+47 static DOM and eight JSON-LD boards with selected enrichment fields. Their
+108 original public samples match all ten content fields and exact request
+sequences. Thirty mandatory worker cases preserve selected writes, unselected
+content, core-field backfill, original failure counters and third-failure parking.
+All 24 cold reversal cases pass, including interrupted/completed/reaped claims,
+inactive postings and SAVE failure. Both module vet checks pass. Date and
+standalone structured salary masks preserve their original inert compatibility
+behavior; description-derived salary and location resolution keep their existing
+writer semantics. GE Vernova Menk USA remains held after original HTTP errors.
+The groups have no overlap: **91 qualified boards / 180 public samples** in one
+version1012 release. See [the enrichment proof](evidence/go-native-grouped-detail-enrichment-candidate-2026-10-11.json).
+
+The original source1011 rollout is complete and remains healthy with native
+ownership inactive. Renew required CI, installed-image proof and deployment
+gates for the combined final head, then deliver one whole release and cutover.
 Fresh all-board/all-route admission must
 preserve the previous qualified cohort and reject remaining cache, lane, step or
 source mismatches. No new board has production detail authority from these local
