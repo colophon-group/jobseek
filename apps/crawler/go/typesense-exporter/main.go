@@ -19,6 +19,13 @@ import (
 // production inputs without writing a cursor or index. --run requires an
 // explicit enable flag and exclusive ownership recorded in PostgreSQL.
 func main() {
+	if len(os.Args) >= 2 && os.Args[1] == "--redis-capacity" {
+		if err := runCapacity(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(os.Args) >= 2 && os.Args[1] == "--refresh-currency-rates" {
 		if len(os.Args) != 2 && !(len(os.Args) == 3 && os.Args[2] == "--dry-run") {
 			fmt.Fprintln(os.Stderr, "usage: --refresh-currency-rates [--dry-run]")

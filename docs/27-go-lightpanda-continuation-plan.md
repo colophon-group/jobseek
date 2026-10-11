@@ -211,6 +211,24 @@ preserve the previous qualified cohort and reject remaining cache, lane, step or
 source mismatches. No new board has production detail authority from these local
 proofs. Full-fleet freshness, memory, cost and Python retirement remain unfinished.
 
+## Following operational consumer group — Redis capacity
+
+The isolated **0.13.1013** candidate moves capacity summary, exact inspection
+and dry-run/apply orphan pruning into the installed Go exporter executable.
+The CLI execs Go before opening Python pools. All 15 original family policies,
+budgets, metric labels and machine fields are preserved. The original atomic
+reachability Lua protects first/recurring queues, inflight, deadletters and the
+B0 legacy guard. Real Redis race tests verify all roots, read-only inspection,
+bounded deletion and corrupt-guard refusal. Fifteen Python contract tests,
+Ruff, CLI Pyright and Go vet pass. An independent original-source reference
+matches every stable snapshot field, pruning report and actual Redis DUMP.
+Changing timestamps/duration and Redis process/client RAM are excluded from
+that comparison. See [the capacity proof](evidence/go-native-redis-capacity-candidate-2026-10-11.json).
+
+Schedule rebuild stays in Python until producer-aware B0 dispatch and fallback
+semantics are qualified. This group follows the combined 91-board release;
+required checks and the original whole deployment remain mandatory.
+
 ## Current combined release — sixteen configurations, maintenance and polling
 
 One combined candidate reserves **0.13.1011 / 201 profiles** on merged source1010 `f66597e848856310bea2c3a59b766f29a3dc1305`.

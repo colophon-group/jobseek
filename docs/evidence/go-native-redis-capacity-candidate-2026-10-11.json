@@ -1,0 +1,34 @@
+{
+  "status": "local candidate qualified; no production deployment",
+  "version": "0.13.1013",
+  "base_revision": "3142a3162f392597870a936557823f5b6d58e844",
+  "operations": [
+    "redis-capacity summary",
+    "redis-capacity inspect",
+    "redis-capacity prune (dry-run and apply)"
+  ],
+  "original_source_revision": "f66597e848856310bea2c3a59b766f29a3dc1305",
+  "original_reference_scope": "Original capacity function bodies and Lua from immutable archive; only unrelated app imports and unused rebuild SQL constant omitted. Actual private Redis and installed native candidate command. Dynamic timestamp/duration and Redis process/client RAM excluded; every other snapshot field, prune report and Redis DUMP match.",
+  "real_redis_race_contracts": 4,
+  "python_contract_tests": 15,
+  "ruff": "PASS",
+  "pyright_cli": "0 errors",
+  "vet": "PASS",
+  "atomic_ownership_roots": [
+    "first and recurring scrape queues in both lanes",
+    "inflight and deadletter in both lanes",
+    "B0 legacy guard"
+  ],
+  "bounds": {
+    "scan_count": 2000,
+    "memory_samples_per_family": 128,
+    "pipeline_chunk": 500,
+    "maximum_prune_scan": 250000,
+    "maximum_prune_delete": 100000
+  },
+  "remaining_python": "Schedule rebuild still uses Python to preserve producer-aware dispatch and fallback behavior; no runtime retirement claimed. Offline reference helpers remain useful.",
+  "proof_sha256": {
+    "native1013-capacity-original-native-parity2-2026-10-11.json": "93004434d1836d67fa224fc4371aba35e6b318aac995738388af21fe05036125",
+    "native1013-capacity-focused-real-redis-race2-2026-10-11.log": "900dd8045a2bd2fb3c40588c3563c3abf45da55c903bf1f08191a42b83e0cb5c"
+  }
+}
