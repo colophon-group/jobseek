@@ -60,7 +60,10 @@ release checked on2026-10-12; all images use immutable digests.
    held Njoyn and BrassRing inventory completion and canonical route-cache repairs.
    Preserve held Hitachi Energy and Implenia until fresh full evidence qualifies
    them. Compilation and empty/synthetic fixtures do not grant board ownership.
-4. Finish standalone CSV publication, release-bridge/credential helpers, schema
+4. Deliver the [source1024 Go bridge/attestation candidate](evidence/go-native-release-bridge-candidate-2026-10-12.json)
+   after restoring source1023 adoption. Its24 original Python oracle cases and
+   all63 deployment regressions pass locally; Linux qualification and the original
+   rollout remain required. Finish standalone CSV publication, credential helpers, schema
    execution and remaining legacy worker/browser consumers through their existing
    operational contracts. Retain useful isolated offline Python.
 5. Establish full enabled-route replacement, sustained freshness/conservation and

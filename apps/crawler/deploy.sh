@@ -778,8 +778,8 @@ verify_active_deploy_snapshot() {
   verify_runtime_contract_pair \
     "$ACTIVE_ENV_SNAPSHOT" "$DEPLOY_SUCCESS_FILE" "$runtime_contract_required" || return 1
   if [[ "$format_version" == 3 ]]; then
-    python3 "$BRIDGE_VERIFIER" \
-      --generation "$ACTIVE_RELEASE_DIR" --owner "$OWNER" >/dev/null || return 1
+    env -i "$NATIVE_DEPLOY_TOOLS" release-bridge \
+      "$ACTIVE_RELEASE_DIR" "$OWNER" >/dev/null || return 1
   fi
 }
 
