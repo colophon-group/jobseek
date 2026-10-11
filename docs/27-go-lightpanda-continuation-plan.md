@@ -2385,7 +2385,9 @@ Focused race tests and actual private PostgreSQL/Redis cases pass, including
 concurrent detail progress, heartbeat renewal during capacity wait, exact schedule
 settlement and cancellation/token-loss without fabricated receipts. The complete
 worker race suite passes under the race detector with required private PostgreSQL/Redis
-(2,031.507s). Installed CI and whole rollout remain required.
+(2,031.507s). Installed CI and whole rollout remain required. The capacity batch is rebased
+onto the updated deployment-tool parent; worker and VERSION bytes match the
+locally tested candidate, and new exact-head CI must pass.
 At20:13 UTC, the active fleet still has6,819 due native monitors /4,528 over an
 hour late and1,541,413 due native detail routes /1,486,120 over a day late. This
 candidate repairs a concrete contract mismatch; its production freshness and

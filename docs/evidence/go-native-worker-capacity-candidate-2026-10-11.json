@@ -2,7 +2,7 @@
   "schema": "jobseek.go-native-candidate/v1",
   "version": "0.13.1021",
   "profiles": 204,
-  "base_candidate_revision": "2fa8cf84c1ac334ad74ee43625aff82836b12a80",
+  "base_candidate_revision": "934eacdefb04710dbdd264d88dedc3eed4f16811",
   "production_ownership_granted": false,
   "full_migration_complete": false,
   "problem": "Go used min(discovery_concurrency,monitor_concurrency) as the capacity for every task; original Python starts discovery workers and limits only monitors inside their live lease",
@@ -48,5 +48,10 @@
     "original quiesced whole rollout",
     "observed production CPU/RAM and sustained monitor/detail freshness",
     "remaining profiles and production Python consumers"
-  ]
+  ],
+  "rebase_validation": {
+    "previous_head": "dba73d2436edb8636d848398cb9ec07abadd8308",
+    "worker_and_version_bytes_unchanged": true,
+    "new_exact_head_ci": "pending"
+  }
 }
