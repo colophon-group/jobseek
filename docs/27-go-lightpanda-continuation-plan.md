@@ -95,6 +95,46 @@ Treat measured throughput and complete detail-age/queue conservation as
 remaining delivery work; profile coverage alone does not authorize retirement
 of the remaining production Python consumers.
 
+## Next throughput delivery — bounded detail publication
+
+Candidate source1017 publishes up to 64 committed detail intents within one
+existing write-fence transaction. Every batch still checks the live lease,
+epoch, source/configuration, complete Redis ownership projection and current
+canonical posting rows. The original per-item Lua publication and queue ABI
+remain unchanged; stale intents are omitted and an ambiguous later failure
+retains the valid published prefix for existing repair. This applies together
+to the shared monitor writer, including DOM and configured API inventories.
+
+A private 500-intent comparison preserves every cache field, queue lane and
+score. The final observation reduced publication from 6,240 ms to 410 ms and
+allocated bytes from 106,421,848 to 3,582,264. These are local measurements,
+not fleet freshness or attributable production cost. Canonical/configuration
+changes, expired leases, publisher reservations, malformed cache tails and
+cancelled barrier waits reject unsafe publication. Four real PostgreSQL/Redis
+DOM/API direct/proxy worker cases preserve 65-detail cross-batch scheduling,
+canonical rows, missing-job accounting and settlement. Eight interrupted or
+committed-before-ACK cold reversals preserve published detail caches, lanes and
+scores through the original retirement and a Redis restart.
+
+The listing parent is PR #10421. Its complete local worker race suite passed
+in 1,652.916 seconds; CI's queue suite exceeded its 20-minute timer while still
+progressing. The parent raises that bounded suite budget to 40 minutes and
+renews exact-head required checks and the separate 16-arm ARM whole-lane run.
+Source1017 full regression, exact-head CI/image qualification, supported whole
+rollout, preserved full ownership and measured natural throughput/freshness
+remain required. Production remains source1015, epoch285; no candidate changes
+have received production ownership from these local tests.
+
+Source1017 also fixes rendered selector lists to use the same group semantics
+as the static parser and browser `querySelectorAll`. The original ISU listing
+and physical pinned Lightpanda1.0.0 both return an explicit empty inventory;
+the complete captured document now passes the native listing/PDF/empty proof
+pipeline. A regression preserves DOM order, overlapping-selector uniqueness,
+base URL identity and rejection of malformed or non-link groups. The hockey
+listing is separately held: original Chromium verifies all PDFs expired, but
+Lightpanda's outerHTML exceeds the existing524,288-byte bound. Do not infer
+that board's admission from pure PDF tests or relax the generic resource cap.
+
 ## Historical checkpoint — source1014 active across 7,779 / 7,675 boards
 
 [PR #10413](https://github.com/colophon-group/jobseek/pull/10413) merged as
