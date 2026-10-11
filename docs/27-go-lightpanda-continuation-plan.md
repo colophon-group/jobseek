@@ -1,6 +1,6 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1010 merged; original whole deployments in progress
+## Current checkpoint — source1010 deployed; full ordinary admission in progress
 
 [PR #10408](https://github.com/colophon-group/jobseek/pull/10408) merged as
 `f66597e848856310bea2c3a59b766f29a3dc1305`, version **0.13.1010 / 201 profiles**.
@@ -8,7 +8,12 @@ The Oracle proxy, Revolut, IIHF and explicit rich-skip group passed all exact-he
 required checks, installed-image parity, physical Lightpanda and ARM whole-lane
 qualification. The original [crawler deployment](https://github.com/colophon-group/jobseek/actions/runs/38107792937)
 and [renderer deployment](https://github.com/colophon-group/jobseek/actions/runs/38107805696)
-are in progress. This checkpoint does not yet establish incoming production authority.
+succeeded at attempt 1. Independent checks confirm the selected immutable images,
+incoming cold epoch 278 and successful exporter progress. The original supported
+B0 activation succeeded at **epoch 279**, with independently verified source-bound
+receipt and healthy services. Fresh all-enabled-board/all-actual-route admission
+is now running before full ordinary activation. This checkpoint does not yet
+establish the full ordinary owner.
 
 Source1009 completed over 40 minutes of natural ordinary observation without
 a restart or kernel/cgroup OOM kill. Fleet backlog grew, so full-fleet freshness

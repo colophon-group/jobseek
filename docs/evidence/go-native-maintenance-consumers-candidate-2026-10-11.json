@@ -68,5 +68,6 @@
     "No production repair or currency refresh was dispatched by this qualification"
   ],
   "combined_configuration_evidence": "go-native-retained-dom-api-options-candidate-2026-10-11.json",
-  "prior_candidate_base_revision": "b5cecc18341b3254bb1cbea8b8dc4f05f2fbf220"
+  "prior_candidate_base_revision": "b5cecc18341b3254bb1cbea8b8dc4f05f2fbf220",
+  "historical_ci_failure": "Head ccddde747 failed two retained CLI tests that patched the removed unused create_web_pool import. Those tests now patch the actual src.db consumer and continue asserting no web database connection. Renew all exact-head gates."
 }
