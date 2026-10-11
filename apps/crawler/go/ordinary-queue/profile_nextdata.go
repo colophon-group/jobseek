@@ -85,6 +85,12 @@ func RenderedNextdataMonitorOptions(config map[string]string) (apisniffer.Nextda
 	if browserSource {
 		options["render"] = true // source=browser forces rendering in Python.
 	}
+	// This source-bound catalog is proven on self-identifying Lightpanda.
+	// Preserve the original metadata hash; do not offer generic Chromium masking.
+	revolut := config["board_url"] == "https://www.revolut.com/careers/" && !browserSource && options["stealth"] == true
+	if revolut {
+		delete(options, "stealth")
+	}
 	if validateRenderedNavigation(options) != nil {
 		return fail()
 	}
@@ -96,6 +102,9 @@ func RenderedNextdataMonitorOptions(config map[string]string) (apisniffer.Nextda
 		delete(cloneMD, key)
 	}
 	cloneMD["render"] = json.RawMessage(`false`)
+	if revolut {
+		delete(cloneMD, "stealth")
+	}
 	if browserSource {
 		cloneMD["source"] = json.RawMessage(`"nextdata"`)
 		delete(cloneMD, "browser_expression")
@@ -109,6 +118,12 @@ func RenderedNextdataMonitorOptions(config map[string]string) (apisniffer.Nextda
 	// routes require their independently tested page navigation contract.
 	if err != nil || o.Pagination != nil || o.ExpectedOrganization != "" {
 		return fail()
+	}
+	if revolut {
+		if o.Source != "nextdata" || o.Path != "props.pageProps.positions" || o.Template != "https://www.revolut.com/careers/position/{slug}-{id}/" || len(o.SlugFields) != 1 || o.SlugFields[0] != "text" || len(o.Fields) != 3 || o.Fields["title"] != "text" || o.Fields["locations"] != "locations[].name" || o.Fields["metadata.team"] != "team" {
+			return fail()
+		}
+		o.Strict = true
 	}
 	if florida {
 		if o.ExpectedTitle != "" {

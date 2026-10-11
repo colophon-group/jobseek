@@ -21,7 +21,7 @@ func TestOracleMonitorBindsOptionsAndSeparateScraper(t *testing.T) {
 	if err != nil || q.EffectiveConfigSHA256 == p.EffectiveConfigSHA256 {
 		t.Fatal("changed finder option not bound", err)
 	}
-	for _, m := range []string{`{"host":"arbitrary.example.com","site":"CX_1"}`, `{"proxy":true}`, `{"offset_overlap":200}`, `{"fields":{"title":"Title"}}`, `{"unported":true}`, `{"scraper_config":{"enrich":["unported"]}}`, `{"scraper_type":"skip","scraper_config":{"enrich":["description"]}}`} {
+	for _, m := range []string{`{"host":"arbitrary.example.com","site":"CX_1"}`, `{"proxy":"enabled"}`, `{"offset_overlap":200}`, `{"fields":{"title":"Title"}}`, `{"unported":true}`, `{"scraper_config":{"enrich":["unported"]}}`, `{"scraper_type":"skip","scraper_config":{"enrich":["description"]}}`} {
 		c["metadata"] = m
 		if _, err := InspectRichMonitor(profileBoardID, c); err == nil {
 			t.Fatal("unsupported config admitted", m)

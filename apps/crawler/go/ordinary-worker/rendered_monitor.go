@@ -54,8 +54,9 @@ func (r *NativeRenderedDetails) FetchMonitor(ctx context.Context, profile queue.
 		return r.fetchNativeBrowserProvider(ctx, profile, config)
 	}
 	_, options, err := queue.RenderedDOMMonitorOptions(config)
+	var inlineOptions apisniffer.InlineMonitorOptions
 	if profile.Provider == "inline" {
-		_, options, err = queue.RenderedInlineMonitorOptions(config)
+		inlineOptions, options, err = queue.RenderedInlineMonitorOptions(config)
 	}
 	if err != nil {
 		return result, err
@@ -65,6 +66,11 @@ func (r *NativeRenderedDetails) FetchMonitor(ctx context.Context, profile queue.
 		defer func() { <-r.slots }()
 	case <-ctx.Done():
 		return result, ctx.Err()
+	}
+	if profile.Provider == "inline" && len(inlineOptions.Candidates) > 1 {
+		return collectRenderedInlineCandidates(ctx, profile, config, inlineOptions, func(p queue.GreenhouseMonitorProfile, attempt int) (*runtimev1.BrowserResult, error) {
+			return r.executeMonitorNavigation(ctx, p, options, attempt)
+		})
 	}
 	if profile.Provider == "dom" {
 		return collectRenderedDOMPages(ctx, profile, config, verified, func(attempt int) (*runtimev1.BrowserResult, error) {

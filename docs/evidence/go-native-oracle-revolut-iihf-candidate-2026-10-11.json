@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-10-11T01:13:35.653895+00:00",
+  "candidate_version": "0.13.1010",
+  "compiled_profiles": 201,
+  "candidate_base": "fac1f66fe9f20b1b06496a0634167364813b6adc",
+  "production_authority": false,
+  "preceding_pr": 10407,
+  "types": {
+    "oracle_hcm": {
+      "original_source_revision": "f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77",
+      "inova_jobs": 702,
+      "conduent_jobs": 556,
+      "comparison": "every original monitor field and complete successful request sequence; original transient403 skipped only in SDK replay; actual worker retries independently tested",
+      "new_profiles": [
+        "oracle_hcm.proxy-finder-items/v1",
+        "oracle_hcm.proxy-api-detail/v1"
+      ],
+      "transport": "independent monitor/detail configured credentialed CONNECT; original board/config hashes retained",
+      "worker_cases": 30,
+      "worker_race_seconds": 9.537,
+      "original_replay_race_seconds": 2.062
+    },
+    "nextdata": {
+      "board": "https://www.revolut.com/careers/",
+      "jobs": 369,
+      "comparison": "all original URLs, titles, locations and metadata through physical Lightpanda HTML and existing typed chunk validator/projector",
+      "compatibility": "source-bound preset retains original stealth metadata hash; self-identifying Lightpanda navigation; strict parser; no generic masking",
+      "go_http_admitted": false
+    },
+    "inline": {
+      "board": "https://www.iihf.com/en/static/5082/jobs",
+      "jobs": 1,
+      "mirrors": 3,
+      "comparison": "all canonical fields against original Chromium inventory and unchanged original Python writer HTML normalization; all three physical mirrors and ordered fallback",
+      "fallback": "validated navigation status or bot challenge only; reservations stop; missing/corrupt evidence fails; alternate404 grants no board-gone authority"
+    }
+  },
+  "lightpanda": {
+    "latest_stable": "1.0.0",
+    "official_release": "https://github.com/lightpanda-io/browser/releases/tag/1.0.0",
+    "verified_macos_arm64_binary_sha256": "955440053a84754dd64c62f970449a56a2b350cdf43ea5f2e809a73047b8173d",
+    "verified_document_status": 200
+  },
+  "verification": {
+    "postgres_redis_rendered_cases": 14,
+    "rendered_and_public_regression_race_seconds": 14.873,
+    "cold_retirement_cases": 15,
+    "cold_retirement_race_seconds": 16.774,
+    "199_profile_executable_startup_race_seconds": 6.305,
+    "queue_profiles_race_seconds": 1.459,
+    "go_vet_worker": "pass",
+    "go_vet_queue": "pass",
+    "python_runtime_contracts": {
+      "cases": 16,
+      "seconds": 0.7
+    },
+    "legacy_ownership_bridge": {
+      "original_failure": "test_detail_projection_is_independent_of_monitor_membership[oracle_hcm.proxy-api-detail/v1]: OrdinaryOwnershipError; profile missing in fixed legacy detail allowlist",
+      "repair": "allow exact new Oracle proxy detail profile; preserve worker, domain, company and config identity checks",
+      "following_checks": "existing entire ownership/cutover suite executed after repair; fresh exact-head gates required",
+      "passed": 92,
+      "skipped_real_postgres_cases": 9,
+      "seconds": 5.66,
+      "ruff": "pass"
+    }
+  },
+  "protected_evidence_manifest": [
+    {
+      "file": "native1010-final-inova-careers-original-public-capture1-2026-10-11.json",
+      "bytes": 2134040,
+      "sha256": "cc476e6c6316019748d2163abd0097a7fd36363acea79e0e05e29000f81bbad2"
+    },
+    {
+      "file": "native1010-final-conduent-careers-original-public-capture1-2026-10-11.json",
+      "bytes": 1681522,
+      "sha256": "40f3d166a3a2d7fe056da2ea56bd4aec3d2e3f4133a6a70c6602b40532f52c65"
+    },
+    {
+      "file": "native1010-final-revolut-careers-original-public-capture1-2026-10-11.json",
+      "bytes": 4414864,
+      "sha256": "2f0d53eca1cc5b71f385800914306354a9e55c910a459bcb6bc640d86e1fb3ab"
+    },
+    {
+      "file": "native1010-final-international-ice-hockey-federation-jobs-original-public-capture1-2026-10-11.json",
+      "bytes": 5091508,
+      "sha256": "1ce5ffabc1051e45c70496ea1f9b559bbf5be6e4498c734abc3b591a25a995b9"
+    },
+    {
+      "file": "native1010-revolut-lightpanda-local-public1-2026-10-11.json",
+      "bytes": 502772,
+      "sha256": "b3cb89dea1820939e219e8f9da39c054ef6f0b835765f85c163e4762110ca445"
+    },
+    {
+      "file": "native1010-iihf-canada-lightpanda-local-public1-2026-10-11.json",
+      "bytes": 57647,
+      "sha256": "c4c686252dcaa7526c999bde58504df585db7dd97f9316f60fa4cd36de02d12a"
+    },
+    {
+      "file": "native1010-iihf-eu-lightpanda-local-public1-2026-10-11.json",
+      "bytes": 57619,
+      "sha256": "1ade7991f67c9b0f1c7cea78a1a20a496771b8d6410f3aaf7cbe102e32360e9e"
+    },
+    {
+      "file": "native1010-iihf-www-lightpanda-local-public1-2026-10-11.json",
+      "bytes": 59486,
+      "sha256": "1a8cbe876dc11e2262486cd3df18911c5f2f363c3fcb9bc49e47a510c5b01ca6"
+    },
+    {
+      "file": "native1010-iihf-original-writer-normalization1-2026-10-11.json",
+      "bytes": 2755,
+      "sha256": "b3d59715631b942d06334c7ede9e3d64e60b07c0706e2067f8e5889c557a83c2"
+    }
+  ],
+  "unqualified": {
+    "mediamarkt": "5 original jobs and physical initial Lightpanda document observed; clicked detail completion unproved after five bounded probes, including original locator.click; no interactive preset admitted",
+    "daiichi_life_vietnam": "original stream returned zero with missing-step warnings; no positive or authoritative-empty evidence"
+  },
+  "required_before_serving": [
+    "Rebase on delivered source1009 and reserve actual next VERSION",
+    "Fresh exact-head required checks, installed image parity and physical renderer/whole-lane qualification",
+    "Original complete rollout and source-bound full all-board/all-route admission",
+    "Preserve entire earlier full cohort and all qualified additions; exclude unproved configs",
+    "Natural fleet freshness, queue conservation, memory and comparable whole-lane resource/cost observation"
+  ],
+  "qualification_input_base": "6c2da9673e59d30910e41daadefd135dfb189dd4",
+  "qualification_runtime_tree_unchanged_after_squash_rebase": true,
+  "qualification_tree_before_checkpoint_refresh": "f737eb8c10d652b81b679855127d53eb1c86c729",
+  "type_batch_compiled_profiles_before_shared_schedule_drain": 199,
+  "shared_schedule_drain_evidence": "go-native-explicit-no-scrape-candidate-2026-10-11.json"
+}

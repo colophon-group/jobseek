@@ -59,6 +59,27 @@ func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Cla
 		return result, claimRunError("detail_read", err)
 	}
 	profile := detail.Profile()
+	if queue.NoScrapeDetailProfile(profile.Profile) {
+		receipt, e := authority.FinishWorkdayDetail(ctx, detail, nil, queue.GreenhouseHostObservation{}, func(ctx context.Context, tx pgx.Tx, current *queue.CurrentWorkdayDetail, _ *queue.HostCircuitOutcome) (string, error) {
+			if !queue.NoScrapeDetailProfile(current.Profile().Profile) {
+				return "", queue.ErrAuthorityLost
+			}
+			tag, e := tx.Exec(ctx, `UPDATE job_posting p SET next_scrape_at=NULL,leased_until=NULL FROM job_board b
+WHERE p.id=$1::uuid AND p.board_id=b.id AND b.metadata->>'scraper_type'='skip'
+AND NOT COALESCE(b.metadata->'scraper_config' ? 'enrich',false)`, current.PostingID())
+			if e != nil {
+				return "", e
+			}
+			if tag.RowsAffected() != 1 {
+				return "", queue.ErrAuthorityLost
+			}
+			return "unscheduled", nil
+		})
+		if e != nil {
+			return result, claimRunError("detail_unschedule", e)
+		}
+		return settle(receipt, "unscheduled")
+	}
 	if http.proxyRequired != queue.ProfileRequiresProxy(profile.Profile) || http.skipSSL != profile.SkipSSL || profile.SkipSSL && (profile.Profile != "workday.cxs-detail/v1" || http.proxyRequired) {
 		return result, claimRunError("detail_transport", queue.ErrConfiguration)
 	}
@@ -186,7 +207,7 @@ func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Cla
 		} else if err != nil && fetched.ErrorKind == "status" {
 			err = &executor.NavigationHTTPError{RequestedURL: profile.SourceURL, ResponseURL: fetched.FinalURL, Status: uint32(fetched.Status)}
 		}
-	} else if profile.Profile == "adp.public-detail/v1" || (profile.Profile == "paylocity.html-detail/v1" || profile.Profile == "paylocity.proxy-html-detail/v1") || profile.Profile == "paycom.public-detail/v1" || profile.Profile == "rippling.v1-detail/v1" || profile.Profile == "mokahr.encrypted-detail/v1" || (profile.Profile == "eightfold.jsonld-api-detail/v1" || profile.Profile == "eightfold.proxy-jsonld-api-detail/v1") || profile.Profile == "smartrecruiters.api-detail/v1" || (profile.Profile == "workable.api-detail/v1" || profile.Profile == "workable.proxy-api-detail/v1") || profile.Profile == "join.nextdata-detail/v1" || profile.Profile == "oracle_hcm.api-detail/v1" || (profile.Profile == "api_sniffer.http-detail/v1" || profile.Profile == "api_sniffer.proxy-http-detail/v1") {
+	} else if profile.Profile == "adp.public-detail/v1" || (profile.Profile == "paylocity.html-detail/v1" || profile.Profile == "paylocity.proxy-html-detail/v1") || profile.Profile == "paycom.public-detail/v1" || profile.Profile == "rippling.v1-detail/v1" || profile.Profile == "mokahr.encrypted-detail/v1" || (profile.Profile == "eightfold.jsonld-api-detail/v1" || profile.Profile == "eightfold.proxy-jsonld-api-detail/v1") || profile.Profile == "smartrecruiters.api-detail/v1" || (profile.Profile == "workable.api-detail/v1" || profile.Profile == "workable.proxy-api-detail/v1") || profile.Profile == "join.nextdata-detail/v1" || (profile.Profile == "oracle_hcm.api-detail/v1" || profile.Profile == "oracle_hcm.proxy-api-detail/v1") || (profile.Profile == "api_sniffer.http-detail/v1" || profile.Profile == "api_sniffer.proxy-http-detail/v1") {
 		content, reservation, err = fetchAPIDetail(ctx, http, profile)
 		if reservation != nil && reservation.PolicyURL != nil && (len(*reservation.PolicyURL) > 8192 || !utf8.ValidString(*reservation.PolicyURL) || strings.ContainsRune(*reservation.PolicyURL, 0)) {
 			reservation.PolicyURL = nil

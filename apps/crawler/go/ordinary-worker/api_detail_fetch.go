@@ -70,7 +70,7 @@ func fetchAPIDetail(ctx context.Context, verified *VerifiedDirectHTTP, profile q
 		// This configured route follows the Python shared client redirect contract.
 		client.CheckRedirect = verified.client.CheckRedirect
 		content, reservation, err = fetchHTTPAPIDetail(ctx, &client, profile)
-	case "oracle_hcm.api-detail/v1":
+	case "oracle_hcm.api-detail/v1", "oracle_hcm.proxy-api-detail/v1":
 		body, response, failure := fetchOraclePage(ctx, &client, profile.Endpoint)
 		if ctx.Err() != nil {
 			return nil, nil, ctx.Err()

@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "candidate_version": "0.13.1010",
+  "compiled_profiles": 201,
+  "scope": "explicit original skip/no-enrich-key schedule clear; both worker namespaces; no origin-fetch authority",
+  "original_source_revision": "f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77",
+  "original_classifier_and_actual_sql_cases": 147,
+  "original_explicit_clear_positive_cases": 28,
+  "reference_fixture_sha256": "fee8c035a563b5bf94b619629e23f7ff3af6fc8a71d471aa90cdea7aa09d8d42",
+  "profiles": [
+    "skip.unscheduled-detail/v1",
+    "skip.browser-unscheduled-detail/v1"
+  ],
+  "behavior": {
+    "sql": "clear only next_scrape_at and leased_until under current canonical posting/board/ownership/fence binding",
+    "canonical_posting_fields": "whole JSON row preserved except schedule and lease fields",
+    "origin_requests": 0,
+    "renderer_calls": 0,
+    "retained_exclusions": [
+      "implicit rich defaults",
+      "any scraper_config.enrich key, including empty/null",
+      "malformed metadata and source URLs",
+      "changed source/config/worker bindings",
+      "unproved routing/cache snapshots"
+    ]
+  },
+  "qualification": {
+    "real_postgres_redis_worker_cases": 12,
+    "worker_race_seconds": 4.309,
+    "cold_retirement_cases": 8,
+    "cold_race_seconds": 2.317,
+    "201_profile_executable_startup_race_seconds": 4.686,
+    "ownership_cutover_runtime_tests": 119,
+    "real_postgres_required": true,
+    "python_seconds": 6.37,
+    "go_vet_queue": "pass",
+    "go_vet_worker": "pass"
+  },
+  "authority": false,
+  "admission": "No historical unowned-route count is assumed eligible. Fresh complete source-bound route/cache reconciliation and original full staging/activation are required."
+}

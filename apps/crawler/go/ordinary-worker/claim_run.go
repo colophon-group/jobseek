@@ -551,6 +551,11 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			return finishSuccess(terminal)
 		}
 		providerGone := (profile.Provider != "dom" || queue.DOMMonitorPrimaryResourceMatches(profile, task.Config, response.endpoint)) && (response.status == 404 || (profile.Provider == "join" || profile.Provider == "dom" || profile.Provider == "jazzhr" || profile.Provider == "gupy") && response.status == 410) && profile.Provider != "api_sniffer" && profile.Provider != "pinpoint" && profile.Provider != "rss" && profile.Provider != "personio" && profile.Provider != "smartrecruiters" && profile.Provider != "workable" && profile.Provider != "sitemap" && profile.Provider != "oracle_hcm" && profile.Provider != "breezy" && profile.Provider != "gem" && profile.Provider != "phenom"
+		if profile.Provider == "inline" && task.Worker == queue.Browser {
+			if o, _, err := queue.RenderedInlineMonitorOptions(task.Config); err == nil && len(o.Candidates) > 1 {
+				providerGone = false
+			}
+		}
 		if queue.SecondaryProvider(profile.Provider) {
 			var failure *DiscoveryError
 			providerGone = errors.As(fetchErr, &failure) && failure.Kind == "provider_gone" && queue.SecondaryMonitorGone(task.Config, response.endpoint, response.status, response.providerDisabled)

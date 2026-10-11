@@ -81,9 +81,7 @@ func TestLastHTTPCanonicalRegistryAndPairedDetails(t *testing.T) {
 				t.Fatal("canonical resource scope changed", err)
 			}
 			if provider == "unisante" {
-				if _, err := inspectDetailOwnership(profileBoardID, config); err == nil {
-					t.Fatal("skip scraper gained independent detail authority")
-				}
+				assertSQLOnlySkipDetailOwnership(t, config)
 				md["_identity_migration_receipt"] = map[string]any{"id": "unisante-provider-reference-v1", "version": 1, "completed_at": "2026-10-10", "updated_count": 1, "retired_count": 2}
 				b, _ := json.Marshal(md)
 				after := cloneConfig(config)

@@ -8,6 +8,11 @@ import (
 )
 
 func OracleMonitorOptions(config map[string]string) (oracle.Options, error) {
+	parsed, err := httpMonitorParsingConfig(config)
+	if err != nil {
+		return oracle.Options{}, err
+	}
+	config = parsed
 	if config["crawler_type"] != "oracle_hcm" || config["monitor_needs_browser"] != "0" {
 		return oracle.Options{}, ErrUnsupportedProfile
 	}
@@ -27,7 +32,7 @@ func inspectOracleMonitor(boardID string, config map[string]string, md map[strin
 	if _, err := oracleMonitorEnrichment(config); err != nil {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
-	if raw, ok := md["proxy"]; ok && string(raw) != "false" && string(raw) != "null" {
+	if raw, ok := md["proxy"]; ok && string(raw) != "true" && string(raw) != "false" && string(raw) != "null" {
 		return GreenhouseMonitorProfile{}, ErrUnsupportedProfile
 	}
 	o, err := OracleMonitorOptions(config)
@@ -41,7 +46,7 @@ func inspectOracleMonitor(boardID string, config map[string]string, md map[strin
 // scraper supplies description and, on two enabled boards, employment type.
 // The detail consumer retains its existing owner until independently admitted.
 func oracleMonitorEnrichment(config map[string]string) ([]string, error) {
-	return monitorEnrichmentFields(config, map[string]bool{"description": true, "employment_type": true})
+	return monitorEnrichmentFields(config, map[string]bool{"description": true, "locations": true, "employment_type": true})
 }
 
 func monitorEnrichmentFields(config map[string]string, allowed map[string]bool) ([]string, error) {
@@ -87,5 +92,5 @@ func monitorEnrichmentFields(config map[string]string, allowed map[string]bool) 
 
 func OracleMonitorResourceMatches(p GreenhouseMonitorProfile, config map[string]string, endpoint string) bool {
 	o, err := OracleMonitorOptions(config)
-	return err == nil && p.Provider == "oracle_hcm" && p.Profile == "oracle_hcm.finder-items/v1" && p.Endpoint == o.Endpoint() && o.ResourceMatches(endpoint)
+	return err == nil && p.Provider == "oracle_hcm" && (p.Profile == "oracle_hcm.finder-items/v1" || p.Profile == "oracle_hcm.proxy-finder-items/v1") && p.Endpoint == o.Endpoint() && o.ResourceMatches(endpoint)
 }

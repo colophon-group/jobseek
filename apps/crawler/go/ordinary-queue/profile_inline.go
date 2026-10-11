@@ -89,8 +89,24 @@ func RenderedInlineMonitorOptions(config map[string]string) (api.InlineMonitorOp
 		return fail()
 	}
 	o, err := api.InlineMonitorOptionsFromMetadata(config["board_url"], string(body))
-	if err != nil || len(o.Candidates) != 1 || o.Candidates[0].URL != o.BoardURL || len(o.Candidates[0].Document.Headers) != 0 {
+	if err != nil {
 		return fail()
+	}
+	if len(o.Candidates) == 1 {
+		if o.Candidates[0].URL != o.BoardURL || len(o.Candidates[0].Document.Headers) != 0 {
+			return fail()
+		}
+	} else {
+		// Preserve this published board's ordered read-only regional mirrors.
+		want := []string{"https://canada-central.iihf.com/en/static/5082/jobs", "https://eu-west.iihf.com/en/static/5082/jobs", "https://www.iihf.com/en/static/5082/jobs"}
+		if o.BoardURL != want[2] || len(o.Candidates) != len(want) || o.JSONPath != "" {
+			return fail()
+		}
+		for i, c := range o.Candidates {
+			if c.URL != want[i] || len(c.Document.Headers) != 0 {
+				return fail()
+			}
+		}
 	}
 	return o, options, nil
 }

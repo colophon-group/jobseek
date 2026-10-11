@@ -1,6 +1,101 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1007 restored after native ordinary OOM recovery
+## Current checkpoint — source1009 deployed and active
+
+[PR #10407](https://github.com/colophon-group/jobseek/pull/10407) merged as
+`fac1f66fe9f20b1b06496a0634167364813b6adc`, version **0.13.1009 / 197 profiles**.
+It groups API pagination convergence, PostFinance RSS identity migration,
+Amazon partitions and Yum China public data. It also applies the ordinary
+worker's 512 MiB Go memory target inside the existing 1 GiB hard limit.
+Required CI, Crawler Deploy Gate, installed-image parity, physical Lightpanda
+builds and the ARM64 synthetic whole-lane check passed for the exact PR tree.
+The synthetic benchmark does not establish full-fleet cost or freshness.
+
+The original [whole crawler deployment](https://github.com/colophon-group/jobseek/actions/runs/38101571049)
+and [whole renderer deployment](https://github.com/colophon-group/jobseek/actions/runs/38101585206)
+succeeded at attempt 1. Independent checks verify the selected immutable source
+and image digests, incoming cold epoch 276, exporter progress, and supported B0
+activation. The original full ordinary activation then succeeded at **epoch 277**;
+it waited for retained legacy SQL leases to expire before restoring all writers.
+Independent active-authority verification at October 11 02:17 UTC confirms exact
+SQL plan, Redis projection, receipt identities and healthy services.
+
+Fresh admission inspected **7,885 enabled boards / 1,663,878 actual scheduled
+posting routes**. The active cohort owns **7,759 monitors / 2,753 detail boards**,
+preserving the entire previous 7,754 / 2,753 cohort and adding Bupa Saudi Arabia,
+Publicis, PostFinance, Amazon and Yum China. Its admitted posting routes total
+1,459,884. Forty-two detail-cache excluded boards and one route excluded board
+retain their consumer pending separate qualification; no unsupported cache was
+silently admitted. Initial receipt observation is bounded and does not establish
+global queue conservation or successful output for every completed claim.
+
+Lightpanda **1.0.0** remains the latest official stable release, rechecked October
+11. Its immutable image/binary pins and 128 MiB per-child V8 limit remain in place.
+After activation, observe natural memory, queue conservation and fleet freshness
+long enough to cover the previous ordinary OOM interval. Low current RSS or
+`OOMKilled=false` cannot exclude prior kernel kills. The protected five-way
+memory replay preserves output and lowers managed peak, but excludes SQL/location
+state and is not proof of a Linux cgroup cure.
+
+The full migration goal remains active. The following grouped candidate is undergoing
+fresh CI while this active release receives natural observation. Continue the remaining enabled types,
+rich no-scrape schedule handling and operational consumers in grouped iterations.
+Python/Playwright/Chromium runtime retirement still requires full enabled-route
+and consumer coverage, comparable whole-lane CPU/RAM/density/cost, supported cold
+reversal and the rollback window. Preserve useful isolated offline Python tooling.
+
+## Following grouped candidate — Oracle, Revolut, IIHF and rich schedule drain
+
+The isolated following candidate reserves version **0.13.1010 / 201 profiles**
+on merged source1009 `fac1f66fe9f20b1b06496a0634167364813b6adc`. It has no
+production authority. Renew this group's exact-head checks while source1009
+is active; complete its natural observation before the next whole rollout.
+
+Oracle reuses its existing provider SDK with separately configured proxy monitor
+and detail routes. Original Inova's 702 jobs and Conduent's 556 jobs match every
+monitor field and complete successful request sequence. Conduent retains its
+configured description/location detail enrichment. Thirty real Postgres/Redis
+worker cases cover plain and credentialed CONNECT transports without leaking a
+monitor proxy setting into detail transport.
+
+Revolut's original 369 jobs match URL, title, location and metadata through a
+physical Lightpanda 1.0.0 document. Its exact preset preserves the original config
+hash while using self-identifying Lightpanda and a strict document parser.
+The direct Go HTTP attempt returned 403 and was removed from the candidate.
+IIHF's single job matches every canonical field across all three physical
+Lightpanda regional mirrors. Canonical description comparison uses the unchanged
+original Python writer normalization. Ordered fallback stops for publisher
+reservations or uncertain evidence; alternate 404s cannot deactivate the board.
+
+The same release adds explicit rich no-scrape schedule handling in both simple
+and browser queues. The original classifier and original SQL predicate agree
+for its admitted literal skip cases. It clears only schedule/lease fields,
+preserves all canonical posting data and makes no HTTP or renderer calls.
+An enrich key (even empty/null), implicit defaults and unproved source/config
+bindings retain their prior consumer. Do not assume all historically unowned
+routes qualify. See [schedule-drain evidence](evidence/go-native-explicit-no-scrape-candidate-2026-10-11.json).
+
+The group passes 14 real rendered settlement/policy/config-binding cases and
+15 provider cold retirement/conservation cases. Schedule drain adds 12 actual
+worker cases and eight cold cases; the original classifier/SQL reference has
+147 synthetic cases. The full 119 ownership/cutover/runtime tests pass with
+mandatory real Postgres. CI at head `6f94d638` exposed four historical assertions
+that rejected any skip-detail owner. Those assertions now require the exact
+SQL-only skip profile, queue binding and wildcard ownership domain, and continue
+to reject JSON-LD, DOM and rendered fetch authority. The five complete affected
+profile tests pass under the race detector; renew all checks for the repaired
+head. The 201-profile executable startup and
+focused shared-renderer regression/race checks pass. Protected inventories remain
+outside Git; see the [candidate evidence](evidence/go-native-oracle-revolut-iihf-candidate-2026-10-11.json)
+for source identities, complete comparisons and immutable evidence hashes.
+
+MediaMarkt has five original jobs and a physical initial Lightpanda document,
+but clicked-detail completion is still unproved. Daiichi Life Vietnam returned
+zero with missing-step warnings. Neither is admitted by this group. Continue
+those and the remaining enabled configurations in grouped iterations without
+delaying the verified Oracle/Nextdata/inline delivery.
+
+## Historical checkpoint — source1007 ordinary OOM recovery
 
 [PR #10405](https://github.com/colophon-group/jobseek/pull/10405) merged as
 `f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77`, version 0.13.1007, with 196 profiles.

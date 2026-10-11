@@ -3,6 +3,7 @@ package queue
 import "encoding/json"
 
 var httpMonitorProxyProfiles = map[string]string{
+	"oracle_hcm.finder-items/v1":      "oracle_hcm.proxy-finder-items/v1",
 	"rss.successfactors-rmk-skip/v1":  "rss.successfactors-rmk-proxy-skip/v1",
 	"rss.successfactors-rmk-items/v1": "rss.successfactors-rmk-proxy-items/v1",
 	"talemetry.listing-urls/v1":       "talemetry.proxy-listing-urls/v1",
@@ -82,7 +83,7 @@ func httpMonitorParsingConfig(config map[string]string) (map[string]string, erro
 	}
 	if proxy {
 		switch config["crawler_type"] {
-		case "dom", "api_sniffer", "inline", "sitemap", "eightfold", "phenom", "workable":
+		case "dom", "api_sniffer", "inline", "sitemap", "eightfold", "phenom", "workable", "oracle_hcm":
 		default:
 			return nil, ErrUnsupportedProfile
 		}
@@ -106,7 +107,7 @@ func httpMonitorParsingConfig(config map[string]string) (map[string]string, erro
 // Transport choice is compiled into immutable profile identities; neither a
 // generic caller flag nor a runtime selector grants proxy write authority.
 func ProfileRequiresProxy(profile string) bool {
-	if profile == "headhunter.proxy-api-detail/v1" || profile == "headhunter.proxy-summary-items/v1" || profile == workableProxyDetailProfile || profile == "jobbank104.proxy-public-items/v1" || profile == "practicematch.proxy-listing-urls/v1" {
+	if profile == oracleProxyDetailProfile || profile == "headhunter.proxy-api-detail/v1" || profile == "headhunter.proxy-summary-items/v1" || profile == workableProxyDetailProfile || profile == "jobbank104.proxy-public-items/v1" || profile == "practicematch.proxy-listing-urls/v1" {
 		return true
 	}
 	if profile == "computrabajo.proxy-listing-urls/v1" || profile == "earcu.proxy-feed-items/v1" || profile == "paylocity.proxy-embedded-items/v1" || profile == paylocityProxyDetailProfile || profile == eightfoldProxyDetailProfile || profile == domProxyDetailProfile || profile == jsonldProxyDetailProfile || profile == httpAPIProxyDetailProfile {
