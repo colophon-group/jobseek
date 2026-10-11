@@ -39,7 +39,7 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 		return fail() // Original CareerCenter proof supports static rich rows only.
 	}
 	options := map[string]any{}
-	for _, key := range []string{"render", "browser_backend", "routing_revision", "wait", "wait_fallback", "timeout", "actions", "request_headers", "proxy", "skip_ssl", "channel", "stealth", "headless", "persistent_context", "user_agent", "resource_policy", "transport_attempts", "encoding"} {
+	for _, key := range []string{"render", "browser_backend", "routing_revision", "wait", "wait_fallback", "timeout", "actions", "request_headers", "proxy", "skip_ssl", "channel", "stealth", "headless", "persistent_context", "user_agent", "resource_policy", "bot_protection", "transport_attempts", "encoding"} {
 		if raw, ok := md[key]; ok {
 			var v any
 			if json.Unmarshal(raw, &v) != nil {
@@ -48,10 +48,13 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 			options[key] = v
 		}
 	}
+	if err := normalizeDOMLightpandaResourceOptions(options); err != nil {
+		return fail()
+	}
 	if err := validateRenderedNavigation(options, true); err != nil {
 		return fail()
 	}
-	for _, key := range []string{"onclick_selector", "script_json_links"} {
+	for _, key := range []string{"inactive_detail_states", "exclude_detail_selector", "onclick_selector", "script_json_links"} {
 		if raw := md[key]; raw != nil && string(raw) != "null" {
 			return fail()
 		}
@@ -89,6 +92,10 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 			return fail()
 		}
 		cloneMD["pagination"] = parsed
+	}
+	delete(cloneMD, "bot_protection")
+	if options["resource_policy"] == "none" {
+		cloneMD["resource_policy"] = json.RawMessage(`"none"`)
 	}
 	cloneMD["render"] = json.RawMessage(`false`)
 	body, err := json.Marshal(cloneMD)

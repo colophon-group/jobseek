@@ -383,6 +383,13 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 		pg := &Pagination{Style: "page", Location: "query", Increment: 1, MaxPages: 200}
 		for k, v := range p {
 			switch k {
+			case "browser":
+				// The original plain-HTTP API paginator ignores this legacy
+				// annotation. Top-level browser=true still requires its own
+				// inspected browser replay route and cannot enter this parser.
+				if _, ok := v.(bool); !ok {
+					return o, ErrOptions
+				}
 			case "param_name", "style", "location", "value_template":
 				s, ok := v.(string)
 				if !ok {

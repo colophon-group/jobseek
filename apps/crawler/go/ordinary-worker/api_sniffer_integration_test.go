@@ -30,6 +30,9 @@ func realAPIRichTransportCases(t *testing.T, proxy bool, annotations ...bool) {
 			if legacyEnrich {
 				metadata["enrich"] = []string{"description", "locations"}
 			}
+			if len(annotations) > 2 && annotations[2] {
+				metadata["pagination"].(map[string]any)["browser"] = true
+			}
 			if proxy {
 				metadata["proxy"] = true
 			}
@@ -103,6 +106,9 @@ func realAPIFailureTransportCases(t *testing.T, proxy bool, annotations ...bool)
 			metadata := map[string]any{"api_url": endpoint, "json_path": "jobs", "url_field": "url", "fields": map[string]any{"title": "name"}, "scraper_type": "skip", "transport_attempts": 1, "transient_403": true, "pagination": map[string]any{"param_name": "page", "start_value": 1, "max_pages": 2}}
 			if mode == "cap" {
 				metadata["max_items"] = 1
+			}
+			if len(annotations) > 2 && annotations[2] {
+				metadata["pagination"].(map[string]any)["browser"] = true
 			}
 			if proxy {
 				metadata["proxy"] = true
@@ -179,4 +185,9 @@ func realAPIFailureTransportCases(t *testing.T, proxy bool, annotations ...bool)
 			assertRichDeadlineAndLease(t, f, "api_sniffer")
 		})
 	}
+}
+
+func TestRealAPIPaginationBrowserHintRetainsRichWritesAndFailureContract(t *testing.T) {
+	t.Run("rich", func(t *testing.T) { realAPIRichTransportCases(t, false, false, false, true) })
+	t.Run("failure", func(t *testing.T) { realAPIFailureTransportCases(t, false, false, false, true) })
 }

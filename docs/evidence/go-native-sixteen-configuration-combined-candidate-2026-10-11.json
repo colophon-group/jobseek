@@ -1,0 +1,62 @@
+{
+  "schema": "jobseek.migration.evidence/v1",
+  "candidate_version": "0.13.1011",
+  "base_revision": "f66597e848856310bea2c3a59b766f29a3dc1305",
+  "pr": 10409,
+  "scope": {
+    "retained_dom_api_hints": 3,
+    "static_dom_detail_filters": 6,
+    "api_identity_repair": 1,
+    "rendered_dom_resource_hints": 6,
+    "total_configurations": 16,
+    "maintenance_consumers": [
+      "currency refresh",
+      "location taxonomy source repair"
+    ],
+    "operational_correction": "bound retained per-instance idle claims during Go ownership"
+  },
+  "qualification": {
+    "combined_mandatory_postgres_redis_worker": "passed; full new hint/filter/resource settlement cases and original/public field/URL comparisons",
+    "combined_mandatory_cold_retirement": "passed; hints, filters and resources including interruption, committed-before-ack and config drift",
+    "skipped_go_checks": 0,
+    "python_pipeline_ownership_cutover_csv_tests": 185,
+    "skipped_python_checks": 0,
+    "vet": [
+      "dom-detail",
+      "ordinary-queue",
+      "ordinary-worker",
+      "go-lightpanda"
+    ],
+    "prior_physical_resource_proof": {
+      "run": 38111722898,
+      "head": "cc0ea0062af601cd8d875e61af16a826c0e73049",
+      "amd64": "passed",
+      "arm64": "passed"
+    },
+    "full_data_validator": "passed after regenerating deterministic census for repaired T1 CSV; structural records unchanged",
+    "census_registry_tests": 69,
+    "prior_ci_data_validation_failure": "00cfc head carried stale boards/manifest checksums in frozen census; no functional test failure; regenerated with repository-owned networkless command",
+    "registry_resource_contracts": {
+      "top_level_passed": 54,
+      "race": true,
+      "mandatory_postgres": true,
+      "mandatory_redis": true,
+      "skips": 0
+    },
+    "prior_native_ci_failure": {
+      "head": "134cbc1c7740723568d27baeb5150ff2222074df",
+      "run": 38113070557,
+      "cause": [
+        "historical auto-policy rejection assertion superseded by physically qualified monitor normalization",
+        "historical API registry count superseded by T1 supported alias repair"
+      ],
+      "correction": "assert qualified monitor hash and transport, retain detail auto/lean/aggressive rejection, require T1 repaired alias and exact34/2 API supported/retained counts"
+    }
+  },
+  "consolidation": "Fold the formerly separate 1012 candidate into 1011 to avoid a second required-check/whole-deployment/cutover cycle. Historical individual capture names stay unchanged.",
+  "limits": [
+    "All exact-head required, installed, physical and whole-lane gates must be renewed for the combined commit.",
+    "Production remains source1010 with verified B0/base restoration and no ordinary owner.",
+    "Local functional proof and synthetic physical fixtures do not establish full-fleet freshness or cost."
+  ]
+}

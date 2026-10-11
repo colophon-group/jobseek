@@ -295,7 +295,9 @@ async def private_redis(monkeypatch):
 
 
 @asynccontextmanager
-async def private_active_plan(*, details: bool = False, jsonld: bool = False, api: str = ""):
+async def private_active_plan(
+    *, details: bool = False, jsonld: bool = False, api: str = "", fleet: bool = False
+):
     dsn = os.environ.get("JOBSEEK_ORDINARY_QUEUE_TEST_DATABASE_URL", "")
     if not dsn:
         if os.environ.get("JOBSEEK_ORDINARY_QUEUE_REQUIRE_POSTGRES") == "1":
@@ -321,6 +323,23 @@ async def private_active_plan(*, details: bool = False, jsonld: bool = False, ap
             )
             epoch = await conn.fetchval("SELECT nextval('public.lightpanda_b0_routing_epoch_seq')")
             expected, payload = expectation(epoch, details=details, jsonld=jsonld, api=api)
+            if fleet:
+                doc = json.loads(payload)
+                doc["members"] = [
+                    {**doc["members"][0], "board_id": str(uuid.UUID(int=i + 1))}
+                    for i in range(7763)
+                ]
+                doc["details"] = [
+                    {**doc["details"][0], "board_id": str(uuid.UUID(int=i + 1))}
+                    for i in range(7585)
+                ]
+                payload = json.dumps(doc, separators=(",", ":"))
+                expected = LegacyOwnership(
+                    hashlib.sha256(payload.encode()).hexdigest(),
+                    hashlib.sha1(ownership_projection(payload).encode()).hexdigest(),
+                    expected.source_revision,
+                    str(epoch),
+                )
             # Private SQL fixture only; production still has no activation endpoint.
             await conn.execute(
                 "INSERT INTO ordinary_worker_ownership_plan"
@@ -405,6 +424,47 @@ async def test_real_legacy_attestation_projection_loss_and_retirement(monkeypatc
         with pytest.raises(OrdinaryOwnershipError):
             async with legacy_ownership_barrier(pool, expected):
                 await rq.claim_work(ownership=expected)
+        assert before == await queue_snapshot(client)
+
+
+@pytest.mark.parametrize("loss", ["retirement", "projection"])
+async def test_real_full_fleet_retained_polling_preserves_authority_and_work(monkeypatch, loss):
+    from src.workers.pipeline import _LegacyClaimGate
+
+    async with (
+        private_active_plan(jsonld=True, fleet=True) as (pool, expected, payload),
+        private_redis(monkeypatch) as client,
+    ):
+        install_settings(monkeypatch, expected)
+        assert await prepare_legacy_ownership(pool) == expected
+        await client.set("ordinary:ownership:active", ownership_projection(payload))
+        claim = AsyncMock(wraps=rq.claim_work)
+        monkeypatch.setattr("src.workers.pipeline.claim_work", claim)
+        gate = _LegacyClaimGate(pool, expected, browser=False)
+        assert await asyncio.gather(*(gate.claim() for _ in range(20))) == [None] * 20
+        assert claim.await_count == 1
+        # Fresh unowned work is claimed after the same existing idle period.
+        selected = str(uuid.UUID(int=1))
+        foreign = str(uuid.uuid4())
+        await client.hset("board:" + selected, mapping={"domain": "greenhouse"})
+        await client.hset("board:" + foreign, mapping={"domain": "greenhouse"})
+        await client.zadd("monitors_simple:greenhouse", {selected: 1, foreign: 2})
+        await client.zadd("ready:simple:1", {"greenhouse": 1})
+        gate.empty_until = 0
+        work = await gate.claim()
+        assert work is not None and work.task_id == foreign
+        assert await client.zscore("monitors_simple:greenhouse", selected) == 1
+        # Neither retirement nor projection loss can use cached claim authority.
+        if loss == "retirement":
+            await pool.execute(
+                "UPDATE ordinary_worker_ownership_plan SET state='retired' WHERE plan_sha256=$1",
+                expected.plan_sha256,
+            )
+        else:
+            await client.delete("ordinary:ownership:active")
+        before = await queue_snapshot(client)
+        with pytest.raises(OrdinaryOwnershipError):
+            await gate.claim()
         assert before == await queue_snapshot(client)
 
 

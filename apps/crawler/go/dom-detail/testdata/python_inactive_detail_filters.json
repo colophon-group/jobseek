@@ -1,0 +1,337 @@
+{
+  "source_revision": "f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77",
+  "cases": [
+    {
+      "name": "active",
+      "states": [
+        {
+          "selector": ".inactive",
+          "exact_text": "Closed"
+        }
+      ],
+      "body": "<h1>Job</h1>",
+      "status": 200,
+      "valid": true,
+      "keep": true,
+      "error": false
+    },
+    {
+      "name": "inactive",
+      "states": [
+        {
+          "selector": ".inactive",
+          "exact_text": "Closed"
+        }
+      ],
+      "body": "<div class=\"inactive\">Closed</div>",
+      "status": 200,
+      "valid": true,
+      "keep": false,
+      "error": false
+    },
+    {
+      "name": "nested",
+      "states": [
+        {
+          "selector": ".inactive",
+          "exact_text": "Closed"
+        }
+      ],
+      "body": "<div class=\"inactive\"><b>Closed</b></div>",
+      "status": 200,
+      "valid": true,
+      "keep": false,
+      "error": false
+    },
+    {
+      "name": "whitespace",
+      "states": [
+        {
+          "selector": ".inactive",
+          "exact_text": "Closed"
+        }
+      ],
+      "body": "<div class=\"inactive\"> \n Closed \t </div>",
+      "status": 200,
+      "valid": true,
+      "keep": false,
+      "error": false
+    },
+    {
+      "name": "unicode",
+      "states": [
+        {
+          "selector": ".inactive",
+          "exact_text": "Closed"
+        }
+      ],
+      "body": "<div class=\"inactive\">\u00a0Closed\u2003</div>",
+      "status": 200,
+      "valid": true,
+      "keep": false,
+      "error": false
+    },
+    {
+      "name": "control-space",
+      "states": [
+        {
+          "selector": ".inactive",
+          "exact_text": "Closed"
+        }
+      ],
+      "body": "<div class=\"inactive\">\u001cClosed\u001f</div>",
+      "status": 200,
+      "valid": true,
+      "keep": false,
+      "error": false
+    },
+    {
+      "name": "marker-drift",
+      "states": [
+        {
+          "selector": ".inactive",
+          "exact_text": "Closed"
+        }
+      ],
+      "body": "<div class=\"inactive\">Pending</div>",
+      "status": 200,
+      "valid": true,
+      "keep": false,
+      "error": true
+    },
+    {
+      "name": "empty-marker",
+      "states": [
+        {
+          "selector": ".inactive",
+          "exact_text": "Closed"
+        }
+      ],
+      "body": "<div class=\"inactive\"></div>",
+      "status": 200,
+      "valid": true,
+      "keep": false,
+      "error": true
+    },
+    {
+      "name": "multiple-exact",
+      "states": [
+        {
+          "selector": ".inactive",
+          "exact_text": "Closed"
+        }
+      ],
+      "body": "<div class=\"inactive\">Pending</div><div class=\"inactive\">Closed</div>",
+      "status": 200,
+      "valid": true,
+      "keep": false,
+      "error": false
+    },
+    {
+      "name": "404",
+      "states": [
+        {
+          "selector": ".inactive",
+          "exact_text": "Closed"
+        }
+      ],
+      "body": "gone",
+      "status": 404,
+      "valid": true,
+      "keep": false,
+      "error": false
+    },
+    {
+      "name": "410",
+      "states": [
+        {
+          "selector": ".inactive",
+          "exact_text": "Closed"
+        }
+      ],
+      "body": "gone",
+      "status": 410,
+      "valid": true,
+      "keep": false,
+      "error": false
+    },
+    {
+      "name": "config-0",
+      "states": null,
+      "body": "",
+      "status": 200,
+      "valid": true
+    },
+    {
+      "name": "config-1",
+      "states": [],
+      "body": "",
+      "status": 200,
+      "valid": false
+    },
+    {
+      "name": "config-2",
+      "states": {},
+      "body": "",
+      "status": 200,
+      "valid": false
+    },
+    {
+      "name": "config-3",
+      "states": "bad",
+      "body": "",
+      "status": 200,
+      "valid": false
+    },
+    {
+      "name": "config-4",
+      "states": [
+        {}
+      ],
+      "body": "",
+      "status": 200,
+      "valid": false
+    },
+    {
+      "name": "config-5",
+      "states": [
+        {
+          "selector": ".inactive",
+          "exact_text": ""
+        }
+      ],
+      "body": "",
+      "status": 200,
+      "valid": false
+    },
+    {
+      "name": "config-6",
+      "states": [
+        {
+          "selector": ".inactive",
+          "exact_text": true
+        }
+      ],
+      "body": "",
+      "status": 200,
+      "valid": false
+    },
+    {
+      "name": "config-7",
+      "states": [
+        {
+          "selector": ".inactive",
+          "exact_text": "x\u0000"
+        }
+      ],
+      "body": "",
+      "status": 200,
+      "valid": false
+    },
+    {
+      "name": "config-8",
+      "states": [
+        {
+          "selector": "[",
+          "exact_text": "Closed"
+        }
+      ],
+      "body": "",
+      "status": 200,
+      "valid": false
+    },
+    {
+      "name": "config-9",
+      "states": [
+        {
+          "selector": ".inactive",
+          "exact_text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      ],
+      "body": "",
+      "status": 200,
+      "valid": false
+    },
+    {
+      "name": "config-10",
+      "states": [
+        {
+          "selector": ".inactive",
+          "exact_text": "Closed"
+        },
+        {
+          "selector": ".inactive",
+          "exact_text": "Closed"
+        },
+        {
+          "selector": ".inactive",
+          "exact_text": "Closed"
+        },
+        {
+          "selector": ".inactive",
+          "exact_text": "Closed"
+        },
+        {
+          "selector": ".inactive",
+          "exact_text": "Closed"
+        }
+      ],
+      "body": "",
+      "status": 200,
+      "valid": false
+    },
+    {
+      "name": "config-11",
+      "states": [
+        {
+          "selector": ".inactive",
+          "exact_text": "Closed",
+          "extra": true
+        }
+      ],
+      "body": "",
+      "status": 200,
+      "valid": false
+    },
+    {
+      "name": "exclude-active",
+      "mode": "exclude",
+      "selector": ".mirrored",
+      "body": "<h1>Job</h1>",
+      "status": 200,
+      "valid": true,
+      "keep": true,
+      "error": false
+    },
+    {
+      "name": "exclude-mirrored",
+      "mode": "exclude",
+      "selector": ".mirrored",
+      "body": "<a class=\"mirrored\">ATS</a>",
+      "status": 200,
+      "valid": true,
+      "keep": false,
+      "error": false
+    },
+    {
+      "name": "exclude-404",
+      "mode": "exclude",
+      "selector": ".mirrored",
+      "body": "gone",
+      "status": 404,
+      "valid": true,
+      "keep": false,
+      "error": false
+    },
+    {
+      "name": "exclude-410",
+      "mode": "exclude",
+      "selector": ".mirrored",
+      "body": "gone",
+      "status": 410,
+      "valid": true,
+      "keep": false,
+      "error": false
+    }
+  ]
+}
