@@ -45,7 +45,7 @@ type Options struct {
 	collectRows                            func([]inventorySourceRow)
 }
 
-var ConfigKeys = []string{"api_url", "method", "json_path", "json_path_values", "total_path", "url_field", "url_template", "url_template_fields", "fields", "params", "post_data", "post_body", "request_headers", "headers", "pagination", "pagination_convergence", "url_field_match", "max_items", "transient_403", "transport_attempts", "browser", "render", "proxy", "skip_ssl", "ssl_verify", "wait", "timeout", "settle", "items", "score", "total", "empty_response", "item_filter", "url_filter", "resource_policy", "url_regex", "url_allowlist", "defaults", "rescrape_policy", "enrich", "slug_fields", "response_decrypt", "post_data_refresh"}
+var ConfigKeys = []string{"api_url", "method", "json_path", "json_path_values", "total_path", "url_field", "url_template", "url_template_fields", "fields", "params", "post_data", "post_body", "request_headers", "headers", "pagination", "pagination_convergence", "url_field_match", "max_items", "max_pages", "transient_403", "transport_attempts", "browser", "render", "proxy", "skip_ssl", "ssl_verify", "wait", "timeout", "settle", "items", "score", "total", "empty_response", "item_filter", "url_filter", "resource_policy", "url_regex", "url_allowlist", "defaults", "rescrape_policy", "enrich", "slug_fields", "response_decrypt", "post_data_refresh"}
 
 // Explicit HTTP configurations share the production client and the original
 // inventory writer. Browser captures, rotating auth, provider-specific filters
@@ -74,6 +74,15 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 	}
 	for k := range m {
 		if !allowed[k] {
+			return o, ErrOptions
+		}
+	}
+	// Original HTTP and browser replay read only pagination.max_pages. The
+	// top-level value on existing TikTok metadata is a retained annotation;
+	// it must not truncate the complete traversal or replace the browser cap.
+	if value, present := m["max_pages"]; present {
+		n, ok := integer(value)
+		if !ok || n < 1 || n > 500 {
 			return o, ErrOptions
 		}
 	}

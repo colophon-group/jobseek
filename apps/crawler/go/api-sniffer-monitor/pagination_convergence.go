@@ -26,7 +26,7 @@ func parsePaginationConvergence(value, match any, o Options) (*PaginationConverg
 		return nil, nil
 	}
 	m, ok := value.(map[string]any)
-	if !ok || o.Pagination == nil || o.Pagination.Style != "page" && o.Pagination.Style != "offset" || o.HTML || o.AutoPath || o.PathValues || o.TotalPath == "" || o.ResponseDecrypt != nil || o.PostDataRefresh != nil {
+	if !ok || o.Pagination == nil || o.Pagination.Style != "page" && o.Pagination.Style != "offset" || o.HTML || o.AutoPath || o.PathValues || o.ResponseDecrypt != nil || o.PostDataRefresh != nil {
 		return nil, ErrOptions
 	}
 	for k := range m {
@@ -128,8 +128,11 @@ func convergenceShape(d *Document, o Options) (int, bool) {
 			return 0, false
 		}
 	}
-	total, err := Search(d.Value, o.TotalPath)
-	if _, numeric := total.(json.Number); err != nil || !numeric {
+	// Original replay uses find_total_count when total_path is absent. Keep
+	// the same ordered parent/root lookup as ordinary pagination, and require
+	// a real numeric total on every pass before convergence can prove absence.
+	total := d.totalValue(o.Path, o.TotalPath)
+	if _, numeric := total.(json.Number); !numeric {
 		return 0, false
 	}
 	return countNumber(total)

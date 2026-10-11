@@ -6,10 +6,13 @@ import (
 	"testing"
 )
 
-func firstAPIConvergenceFixture(t *testing.T, _ string) firstOwnerFixture {
+func firstAPIConvergenceFixture(t *testing.T, variant string) firstOwnerFixture {
 	p := firstProviderBatchFixture(t, "api_sniffer")
 	f, ctx := p.f, context.Background()
 	md := `{"api_url":"https://example.com/api?page=1","json_path":"jobs","total_path":"total","url_field":"url","pagination":{"style":"page","param_name":"page","max_pages":3},"pagination_convergence":{"max_passes":3,"required_no_growth_passes":2,"identity_by":["url"]},"scraper_type":"skip"}`
+	if variant == "api_sniffer/inferred-convergence" {
+		md = strings.Replace(md, `,"total_path":"total"`, "", 1)
+	}
 	if _, err := f.observer.Exec(ctx, "UPDATE job_board SET metadata=$2::jsonb WHERE id=$1::uuid", f.task.ID, md); err != nil {
 		t.Fatal(err)
 	}
@@ -28,5 +31,5 @@ func firstAPIConvergenceFixture(t *testing.T, _ string) firstOwnerFixture {
 }
 
 func TestRealAPIConvergenceColdRetirementAndConservation(t *testing.T) {
-	testProviderColdRetirement(t, []string{"api_sniffer/convergence"}, firstAPIConvergenceFixture)
+	testProviderColdRetirement(t, []string{"api_sniffer/convergence", "api_sniffer/inferred-convergence"}, firstAPIConvergenceFixture)
 }

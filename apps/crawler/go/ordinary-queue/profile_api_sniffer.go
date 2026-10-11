@@ -11,7 +11,25 @@ func APISnifferBrowserMonitorOptions(config map[string]string) (apisniffer.Brows
 	if config["crawler_type"] != "api_sniffer" || config["monitor_needs_browser"] != "1" {
 		return apisniffer.BrowserReplayOptions{}, ErrUnsupportedProfile
 	}
-	return apisniffer.BrowserReplayOptionsFromMetadata(config["board_url"], config["metadata"])
+	parsed, err := apiSnifferURLParsingConfig(config)
+	if err != nil {
+		return apisniffer.BrowserReplayOptions{}, err
+	}
+	return apisniffer.BrowserReplayOptionsFromMetadata(parsed["board_url"], parsed["metadata"])
+}
+
+// APISnifferBrowserReplayMetadata carries only the validated network/parser
+// metadata. The request fingerprint and canonical writer retain the complete
+// original board configuration, including its URL identity policy.
+func APISnifferBrowserReplayMetadata(config map[string]string) (json.RawMessage, error) {
+	if _, err := APISnifferBrowserMonitorOptions(config); err != nil {
+		return nil, err
+	}
+	parsed, err := apiSnifferURLParsingConfig(config)
+	if err != nil {
+		return nil, err
+	}
+	return json.RawMessage(parsed["metadata"]), nil
 }
 
 func APISnifferMonitorOptions(config map[string]string) (apisniffer.Options, error) {
@@ -19,29 +37,38 @@ func APISnifferMonitorOptions(config map[string]string) (apisniffer.Options, err
 	if parseErr != nil {
 		return apisniffer.Options{}, parseErr
 	}
-	// Shared URL identity policy is validated and applied by the canonical
-	// inventory writer. Keep it out of the network/parser-only clone.
-	if _, err := FeedMonitorURLRules(config); err != nil {
-		return apisniffer.Options{}, err
-	}
-	md, err := profileMetadataFields(parsed["metadata"], nil)
+	parsed, err := apiSnifferURLParsingConfig(parsed)
 	if err != nil {
 		return apisniffer.Options{}, err
+	}
+	if parsed["crawler_type"] != "api_sniffer" || parsed["monitor_needs_browser"] != "0" {
+		return apisniffer.Options{}, ErrUnsupportedProfile
+	}
+	return apisniffer.OptionsFromMetadata(parsed["board_url"], parsed["metadata"])
+}
+
+func apiSnifferURLParsingConfig(config map[string]string) (map[string]string, error) {
+	// Shared URL identity policy is validated and applied by the canonical
+	// inventory writer for both HTTP and browser API inventories. Keep it out
+	// of the network/parser-only clone, retaining the complete source binding.
+	if _, err := FeedMonitorURLRules(config); err != nil {
+		return nil, err
+	}
+	md, err := profileMetadataFields(config["metadata"], nil)
+	if err != nil {
+		return nil, err
 	}
 	if _, ok := md["url_transform"]; ok {
 		delete(md, "url_transform")
 		body, err := json.Marshal(md)
 		if err != nil {
-			return apisniffer.Options{}, ErrUnsupportedProfile
+			return nil, ErrUnsupportedProfile
 		}
-		parsed = cloneConfig(parsed)
+		parsed := cloneConfig(config)
 		parsed["metadata"] = string(body)
+		return parsed, nil
 	}
-	config = parsed
-	if config["crawler_type"] != "api_sniffer" || config["monitor_needs_browser"] != "0" {
-		return apisniffer.Options{}, ErrUnsupportedProfile
-	}
-	return apisniffer.OptionsFromMetadata(config["board_url"], config["metadata"])
+	return config, nil
 }
 
 // API monitors auto-select skip when they already expose fields. Only an

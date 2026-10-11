@@ -12,7 +12,16 @@ import (
 )
 
 func TestOriginalPythonAPIConvergenceOracle(t *testing.T) {
-	data, err := os.ReadFile("testdata/python_pagination_convergence.json")
+	testAPIConvergenceOracle(t, "testdata/python_pagination_convergence.json", 15)
+}
+
+func TestOriginalPythonInferredAPIConvergenceOracle(t *testing.T) {
+	testAPIConvergenceOracle(t, "testdata/python_inferred_pagination_convergence.json", 14)
+}
+
+func testAPIConvergenceOracle(t *testing.T, file string, count int) {
+	t.Helper()
+	data, err := os.ReadFile(file)
 	var cases []struct {
 		Name      string
 		BoardURL  string `json:"board_url"`
@@ -25,7 +34,7 @@ func TestOriginalPythonAPIConvergenceOracle(t *testing.T) {
 	}
 	d := json.NewDecoder(bytes.NewReader(data))
 	d.UseNumber()
-	if err != nil || d.Decode(&cases) != nil || len(cases) != 15 {
+	if err != nil || d.Decode(&cases) != nil || len(cases) != count {
 		t.Fatal("unchanged original convergence oracle unavailable")
 	}
 	for _, c := range cases {
