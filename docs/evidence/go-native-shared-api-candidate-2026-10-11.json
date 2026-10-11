@@ -55,8 +55,12 @@
     },
     "tiktok-careers": {
       "jobs": 4271,
-      "passed": false,
-      "status": "Full race replay hit its5-minute timer during language prediction; bounded single-CPU normal execution/profile underway."
+      "passed": true,
+      "status": "Complete source/title/deadline/lease parity against original title coercion and decoding; actual worker and private migrated SQL/Redis.",
+      "normal_execution_seconds": 25.61,
+      "single_CPU": true,
+      "race_budget_status": "Earlier full replay exceeded5-minute race timer; complete normal execution fits600-second runtime budget.",
+      "original_title_whitespace_coercions": 71
     }
   },
   "held": {
@@ -79,7 +83,6 @@
   "qualification_pending": [
     "Final full Required CI, installed-image parity and Crawler Deploy Gate.",
     "Final Linux/ARM whole-lane qualification and resource/cost measurements.",
-    "Complete TikTok public canonical processing within the production budget.",
     "Supported whole deployment, preserved-floor fresh admission and source-bound active readback."
   ],
   "evidence_sha256": {
@@ -89,11 +92,18 @@
     "native1018-shared-api-full-queue-head922ec91-attempt1-2026-10-11.json": "515413ba44efdf337f93f46a86b419327b236f6a2c94235362e2e213f13ec052",
     "native1018-api-inferred-convergence-original-synthetic-oracle1-2026-10-11.json": "8c9c5747160f01cb7549de278c8804e758c86e53463eaca0e61260b50b9c8231",
     "native-source1017-monitor-accounting-independent-accounting1-2026-10-11.json": "9efd2f254fd9e651e6c25846744daded9b7d1b1cd27a863aab1d8f2858e4a583",
-    "native1018-shared-api-physical-public3-2026-10-11/tiktok-careers-lightpanda.json": "7e0a698b33ae40cb5b4805a5a7a88f4a5db4a19a534417d5532246c2ebe73353"
+    "native1018-shared-api-physical-public3-2026-10-11/tiktok-careers-lightpanda.json": "7e0a698b33ae40cb5b4805a5a7a88f4a5db4a19a534417d5532246c2ebe73353",
+    "native1018-shared-api-tiktok-original-canonical-titles2-2026-10-11.json": "f97a43655adca470e384f2f8b33eb857ef4f08741f5c0a3a836853562d5777d4"
   },
   "lightpanda": {
     "release": "1.0.0",
     "HTML_and_V8_bounds_changed": false
   },
-  "full_migration_complete": false
+  "full_migration_complete": false,
+  "pr": 10430,
+  "local_CPU_profile": {
+    "normal_full_execution_seconds": 23.47,
+    "CPU_samples_seconds": 21.14,
+    "scope": "Earlier complete processing sample ended on private oracle raw-title assertion; final original-coercion canonical replay passes in25.61 seconds. Not production cost or fleet freshness."
+  }
 }

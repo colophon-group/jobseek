@@ -90,9 +90,14 @@ failure/absence decisions, exact deadlines and cold reversal.
 
 Public original and pinned Lightpanda1.0.0 inventories match all **649 Goldman
 Sachs jobs and 4,271 TikTok jobs**, including every URL and job field after the
-existing null-to-empty metadata/extra-map normalization. Goldman also passes
-the captured public inventory through the actual native worker and private
-canonical SQL/Redis pipeline. TikTok's complete native inventory initially
+existing null-to-empty metadata/extra-map normalization. Both pass captured
+public inventories through the actual native worker and private canonical
+SQL/Redis pipeline, preserving all source URLs, original prepared titles,
+deadlines and settlement. TikTok's full normal replay takes 25.61 seconds on
+one CPU; the earlier five-minute race timeout does not establish a runtime
+failure. Its title oracle must apply original coercion before comparison: 71
+raw titles contain whitespace trimmed by both original and native preparation.
+TikTok's complete native inventory initially
 exceeded the API relay's 8 MiB bound: its serialized inventory is 15,332,230
 bytes. The candidate raises only the API frame bound to **16 MiB**, with actual
 client/server tests preserving a complete 9 MiB description and refusing an
