@@ -30,12 +30,15 @@ func domVerificationResponseMatches(p queue.GreenhouseMonitorProfile, config map
 	}
 	b := r.domVerification
 	c, e := queue.DOMMonitorOptions(config)
-	return e == nil && c.RequireJSONLD && p.Endpoint == config["board_url"] && b.parent == p.Endpoint && b.boardID == p.BoardID && b.effective == p.EffectiveConfigSHA256 && b.resource == r.endpoint && b.config == domVerificationConfig(config)
+	return e == nil && (c.RequireJSONLD || c.HasDetailFilters()) && p.Endpoint == config["board_url"] && b.parent == p.Endpoint && b.boardID == p.BoardID && b.effective == p.EffectiveConfigSHA256 && b.resource == r.endpoint && b.config == domVerificationConfig(config)
 }
 
 // The private binding comes from this complete listing's exact candidate set,
 // not a broad host or URL-pattern allowance for publisher policy observations.
 func fetchDOMVerification(ctx context.Context, client *http.Client, p queue.GreenhouseMonitorProfile, config map[string]string, source string, wait func(context.Context, time.Duration) error) (bool, *GreenhouseResponse, error) {
+	return fetchDOMVerificationClassified(ctx, client, p, config, source, wait, func(body string) (bool, error) { return jsonld.ContainsJobPosting([]byte(body), ""), nil }, false)
+}
+func fetchDOMVerificationClassified(ctx context.Context, client *http.Client, p queue.GreenhouseMonitorProfile, config map[string]string, source string, wait func(context.Context, time.Duration) error, classify func(string) (bool, error), strict bool) (bool, *GreenhouseResponse, error) {
 	var observed *GreenhouseResponse
 	for attempt := 0; attempt < 3; attempt++ {
 		if e := ctx.Err(); e != nil {
@@ -65,10 +68,14 @@ func fetchDOMVerification(ctx context.Context, client *http.Client, p queue.Gree
 			if err != nil || classification["classification"] == "challenge" {
 				return false, observed, &DiscoveryError{Kind: "inventory_failed"}
 			}
-			return jsonld.ContainsJobPosting([]byte(body), ""), observed, nil
+			keep, err := classify(body)
+			return keep, observed, err
 		}
 		retry := e != nil || doc.Status == 200 || doc.Status == 401 || doc.Status == 403 || doc.Status == 408 || doc.Status == 425 || doc.Status == 429 || doc.Status >= 500
 		if !retry {
+			if strict && doc.Status != 404 && doc.Status != 410 {
+				return false, observed, &DiscoveryError{Kind: "inventory_failed", Status: doc.Status}
+			}
 			return false, observed, nil
 		}
 		if attempt == 2 {
@@ -84,6 +91,9 @@ func verifyDOMJobPostingInventory(ctx context.Context, client *http.Client, p qu
 	return verifyDOMJobPostingInventoryWithWait(ctx, client, p, config, in, pauseRich)
 }
 func verifyDOMJobPostingInventoryWithWait(ctx context.Context, client *http.Client, p queue.GreenhouseMonitorProfile, config map[string]string, in RichDiscovery, wait func(context.Context, time.Duration) error) (RichDiscovery, error) {
+	return verifyDOMInventoryClassified(ctx, client, p, config, in, wait, nil, false)
+}
+func verifyDOMInventoryClassified(ctx context.Context, client *http.Client, p queue.GreenhouseMonitorProfile, config map[string]string, in RichDiscovery, wait func(context.Context, time.Duration) error, classify func(string) (bool, error), strict bool) (RichDiscovery, error) {
 	if client == nil || len(in.Jobs) > 500 {
 		in.Jobs = nil
 		return in, &DiscoveryError{Kind: "inventory_failed"}
@@ -107,7 +117,11 @@ func verifyDOMJobPostingInventoryWithWait(ctx context.Context, client *http.Clie
 				if workCtx.Err() != nil {
 					continue
 				}
-				kept[i], observed[i], failures[i] = fetchDOMVerification(workCtx, &scoped, p, config, jobs[i].URL, wait)
+				if classify == nil {
+					kept[i], observed[i], failures[i] = fetchDOMVerification(workCtx, &scoped, p, config, jobs[i].URL, wait)
+				} else {
+					kept[i], observed[i], failures[i] = fetchDOMVerificationClassified(workCtx, &scoped, p, config, jobs[i].URL, wait, classify, strict)
+				}
 				if failures[i] != nil {
 					cancel()
 				}

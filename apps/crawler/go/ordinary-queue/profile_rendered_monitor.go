@@ -51,7 +51,7 @@ func RenderedDOMMonitorOptions(config map[string]string) (dom.ListingConfig, map
 	if err := validateRenderedNavigation(options, true); err != nil {
 		return fail()
 	}
-	for _, key := range []string{"onclick_selector", "script_json_links"} {
+	for _, key := range []string{"inactive_detail_states", "exclude_detail_selector", "onclick_selector", "script_json_links"} {
 		if raw := md[key]; raw != nil && string(raw) != "null" {
 			return fail()
 		}

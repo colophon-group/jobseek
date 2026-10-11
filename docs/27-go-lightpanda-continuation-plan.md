@@ -166,6 +166,31 @@ Algorized's original sitemap stream contains 64 URLs. Its current B0 ownership
 prevents ordinary overlap and legacy scrape enqueue; retain that exclusion until
 the final ownership transition is qualified. See the [configuration qualification](evidence/go-native-retained-dom-api-options-candidate-2026-10-11.json).
 
+## Following seven-configuration group — DOM detail filters and T1 API repair
+
+The next grouped candidate reserves **0.13.1012 / 201 profiles** after PR #10409.
+It adds shared static DOM inactive-detail and selector-exclusion behavior. Six
+complete original public inventories match **1 / 1 / 0 / 6 / 4 / 30 URLs** and
+all verification requests, including redirects and 404/410 removal. Unexpected
+selector text fails the complete cycle, and publisher reservation wins over
+partial results. Verification retains the exact parent/config/resource binding,
+500-detail cap, eight concurrent reads and bounded failure drain. The all-inactive
+case retains the original runtime's six-empty-check confirmation window.
+
+The same release repairs T1 Energy's URL template using its supported `job_id`
+JMESPath alias. Its old configuration emitted zero from ten raw API records;
+the original and Go implementations of the repaired configuration match all
+**ten canonical jobs / three requests**. The board remains enabled. Twenty-seven
+original reference cases, 16 mandatory Postgres/Redis worker cases, six cold
+retirement cases and the existing 18 verification regressions are checked, with
+zero skips in the mandatory checks. Public evidence stays protected outside Git.
+See [grouped qualification](evidence/go-native-dom-detail-filters-api-repair-candidate-2026-10-11.json).
+
+This candidate has no production authority. Rebase after the preceding combined
+release merges, renew exact-head gates and use the original whole rollout and
+fresh full admission. Rendered detail filters, APT's root 404, Persistent Systems'
+503 and Tesco's 403 remain unqualified; preserve their existing enabled boards.
+
 ## Historical checkpoint — source1007 ordinary OOM recovery
 
 [PR #10405](https://github.com/colophon-group/jobseek/pull/10405) merged as

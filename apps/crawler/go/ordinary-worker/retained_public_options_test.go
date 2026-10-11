@@ -23,9 +23,13 @@ func TestRetainedDOMAndAPIOptionsMatchCompleteOriginalPublicInventories(t *testi
 	if directory == "" {
 		t.Skip("requires protected original complete public captures")
 	}
-	for _, slug := range []string{"patrimonium-careers", "github-careers", "howden-denmark-elvium"} {
+	for _, slug := range []string{"patrimonium-careers", "github-careers", "howden-denmark-elvium", "t1-energy-factory"} {
 		t.Run(slug, func(t *testing.T) {
-			raw, err := os.ReadFile(filepath.Join(directory, "native1012-public-options-"+slug+"-original-public-capture1-2026-10-11.json"))
+			prefix := "native1012-public-options-"
+			if slug == "t1-energy-factory" {
+				prefix = "native1012-repaired-api-"
+			}
+			raw, err := os.ReadFile(filepath.Join(directory, prefix+slug+"-original-public-capture1-2026-10-11.json"))
 			if err != nil {
 				t.Fatal("original capture unavailable")
 			}
