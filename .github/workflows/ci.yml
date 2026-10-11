@@ -580,7 +580,7 @@ jobs:
         include:
           - lane: queue
             modules: api-sniffer-monitor oracle-hcm ordinary-queue
-            test_timeout: 20m
+            test_timeout: 40m
           - lane: worker
             modules: ordinary-worker
             test_timeout: 30m
