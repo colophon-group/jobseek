@@ -198,8 +198,10 @@ pinned engine default. Original metadata remains in the immutable ownership hash
 The original lean route and physical Lightpanda both render the same local
 script/fetch-produced inventory without font/media requests. A new fixture is wired
 into both architectures' existing physical integration image to bind that assumption
-to engine upgrades. The local Linux-only fixture skipped on macOS; its Linux CI
-execution remains required before this candidate is qualified for merge.
+to engine upgrades. [Pinned physical CI](https://github.com/colophon-group/jobseek/actions/runs/38111722898)
+passed on Linux ARM64 and AMD64 for `cc0ea0062af601cd8d875e61af16a826c0e73049`;
+completed job logs independently confirm the new fixture executed and passed on
+both architectures. The macOS fixture skip is not qualification.
 
 Six mandatory real PostgreSQL/Redis worker cases prove complete settlement, atomic
 render failure and publisher precedence for both auto/none. Six cold cases prove

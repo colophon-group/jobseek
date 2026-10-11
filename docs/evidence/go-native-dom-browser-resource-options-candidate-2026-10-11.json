@@ -21,7 +21,13 @@
     "mandatory_databases": true,
     "database_skips": 0,
     "local_engine_fixture": "original Chromium lean and physical pinned Lightpanda render one same script/fetch-produced job; no fonts/media requested",
-    "linux_pinned_fixture": "added to mandatory integration image whitelist; local macOS run skipped; CI required"
+    "linux_pinned_fixture": {
+      "run": 38111722898,
+      "head": "cc0ea0062af601cd8d875e61af16a826c0e73049",
+      "arm64_job": 114388510241,
+      "amd64_job": 114388510353,
+      "result": "both succeeded; completed logs verify new fixture passed once on each architecture"
+    }
   },
   "excluded": [
     "explicit lean/aggressive/unknown policy",
@@ -33,6 +39,6 @@
   "limits": [
     "Six successful public URL inventories do not establish full-fleet freshness or cost.",
     "No production admission or ownership transfer is authorized by this evidence alone.",
-    "Physical Linux fixture must pass on both pinned architectures before merge."
+    "After rebasing onto actual merged source1011, renew all applicable exact-head gates before merge."
   ]
 }
