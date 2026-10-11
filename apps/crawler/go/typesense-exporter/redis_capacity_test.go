@@ -21,7 +21,7 @@ func capacityRedisFixture(t *testing.T, ctx context.Context) *redis.Client {
 	return reaperRedisFixture(t, ctx)
 }
 func TestCapacityBoundsAndOriginalReachabilityIdentity(t *testing.T) {
-	for _, args := range [][]string{{}, {"rebuild"}, {"summary", "extra"}, {"prune", "--max-scanned=0"}, {"prune", "--max-scanned=250001"}, {"prune", "--max-delete=100001"}, {"prune", "--cursor=-1"}, {"summary", "--format=html"}, {"inspect", "--unknown"}} {
+	for _, args := range [][]string{{}, {"rebuild", "--limit=0"}, {"summary", "extra"}, {"prune", "--max-scanned=0"}, {"prune", "--max-scanned=250001"}, {"prune", "--max-delete=100001"}, {"prune", "--cursor=-1"}, {"summary", "--format=html"}, {"inspect", "--unknown"}} {
 		if _, e := parseCapacityOptions(args); e == nil {
 			t.Fatal("accepted invalid bounded operation", args)
 		}

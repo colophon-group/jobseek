@@ -1,35 +1,44 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — 91-board source1012 merged; whole rollout running
+## Current checkpoint — source1012 active across 7,779 / 7,675 boards
 
 [PR #10411](https://github.com/colophon-group/jobseek/pull/10411) merged as
 `68ff4fd49bda61127a64cb166d8ef679033d7344`, **0.13.1012 / 202 profiles**.
-It delivers the 36-board Workday/DOM/JSON-LD transport group and 55-board shared
-DOM/JSON-LD enrichment group in one release. All 180 original public samples,
-42 mandatory worker cases and 42 cold reversal cases pass. The combined full
-mandatory local worker suite passes in 857.108 seconds. Final Required CI,
-installed-image parity and Crawler Deploy Gate passed at exact `3142a316`.
-Fresh predecessor readback confirms cold280, six healthy base services and no
-active native plans, receipts or projections. Fresh head/base/draft/check/hold
-and review checks preceded the atomic head-bound merge.
+It delivers the combined 91-board Workday/DOM/JSON-LD transport and enrichment
+group: 180 original public samples, 42 mandatory worker cases and 42 cold
+reversal cases. Final Required CI, installed-image parity and Crawler Deploy
+Gate passed. The original whole crawler and renderer deployments succeeded at
+attempt 1; independent checks confirm immutable selected images, cold readiness
+and exporter progress. Lightpanda **1.0.0** remains the latest verified stable release.
 
-The original [whole crawler deployment](https://github.com/colophon-group/jobseek/actions/runs/38120768444)
-is running; the matching [renderer deployment](https://github.com/colophon-group/jobseek/actions/runs/38120825701)
-succeeded at attempt 1. Incoming selected images, cold readiness and exporter
-progress still require independent readbacks. Native ownership remains inactive.
-Then stage B0 through the original wrapper, renew complete actual-route admission
-against the merged SDK and preserve the full **7,763 / 7,585** prior cohort plus
-16 qualified monitor additions and every newly qualified detail whose actual
-cache, worker lane and step pass. Local/public qualification alone grants no
-production authority. Full-fleet freshness, memory, cost and final retirement
-remain unfinished.
+Original B0 and full ordinary activation succeeded at **epoch 281**. The ordinary
+activation waited for retained SQL leases to expire naturally. Fresh admission
+inspected all **7,885 enabled boards / 1,659,612 actual scheduled routes**, preserves
+the previous **7,763 / 7,585** owner cohort and adds 16 monitors plus 90 detail
+boards. Go now owns **7,779 monitors / 7,675 detail boards**, covering **1,535,656
+scheduled routes**. Rieter Global Solique's current posting identity/lane/step
+mismatch remains outside ownership; no admission predicate was weakened.
+
+Independent active readback confirms exact SQL plan, Redis projection, source,
+receipt identities and healthy services. At 08:15 UTC, all 238 completed monitor
+receipts have matching recurring schedules and zero retained completion leases.
+Completed claims include failures; these observations do not prove successful
+output for every claim, global conservation or full-fleet freshness. Resource
+readbacks show zero restarts, cgroup/kernel OOM kills or stalled-loop markers.
+Keep this release active for a sustained freshness/memory/throughput observation.
+See [the source1012 production checkpoint](evidence/go-native-source1012-production-2026-10-11.json).
 
 [PR #10412](https://github.com/colophon-group/jobseek/pull/10412) follows with
-native Redis capacity operations and two CI matrix lanes. Its rebased qualified
-tree is unchanged; all four original modules, mandatory PostgreSQL/Redis, full
-race/vet/tidy/gofmt and retained Python ownership/cutover tests remain under
-Required CI. The lanes use separate job services. The expected reduction in
-wall-clock CI time requires actual run evidence.
+native capacity summary, inspection and orphan pruning. Its fresh required
+checks run separate queue and worker lanes with all original modules, real
+PostgreSQL/Redis, full race/vet/tidy/gofmt and Python ownership/cutover contracts.
+The worker suite's observed 20-minute limit now has a 30-minute budget; the queue
+lane retains 20 minutes. No check was removed. The next stacked candidate,
+**0.13.1014**, moves resumable schedule rebuild to Go with the original no-scrape
+SQL, queue lanes, per-domain delays, authenticated producer decisions and durable
+authority guard. Its local actual PostgreSQL/Redis command tests and 17 Python
+compatibility tests pass; Linux socket execution and exact-head required checks
+remain to be verified in CI. Production runtime retirement remains unfinished.
 
 ## Historical checkpoint — source1011 deployed before source1012
 

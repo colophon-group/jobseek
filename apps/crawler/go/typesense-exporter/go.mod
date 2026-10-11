@@ -7,6 +7,7 @@ require github.com/colophon-group/jobseek/apps/crawler/go/oracle-hcm v0.0.0 // i
 replace github.com/colophon-group/jobseek/apps/crawler/go/oracle-hcm => ../oracle-hcm
 
 require (
+	github.com/colophon-group/jobseek/apps/crawler/contracts v0.0.0
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/redis/go-redis/v9 v9.14.0
 	golang.org/x/text v0.42.0
@@ -52,7 +53,6 @@ require github.com/colophon-group/jobseek/apps/crawler/go/dom-detail v0.0.0 // i
 replace github.com/colophon-group/jobseek/apps/crawler/go/dom-detail => ../dom-detail
 
 require (
-	github.com/colophon-group/jobseek/apps/crawler/contracts v0.0.0 // indirect
 	github.com/colophon-group/jobseek/apps/crawler/go/api-sniffer-monitor v0.0.0 // indirect
 	github.com/colophon-group/jobseek/apps/crawler/go/sitemap-monitor v0.0.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect

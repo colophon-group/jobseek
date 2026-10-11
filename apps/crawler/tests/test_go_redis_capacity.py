@@ -18,6 +18,7 @@ def test_native_capacity_retains_original_policies_and_atomic_reachability():
     assert json.loads((native / "redis_capacity_policy.json").read_text()) == [
         asdict(policy) for policy in redis_capacity.FAMILY_POLICIES
     ]
+    assert (native / "schedule_rebuild.sql").read_text() == redis_capacity._REBUILD_QUERY
     assert (native / "redis_capacity_prune.lua").read_bytes() == (
         ROOT / "src/lua/prune_orphan_scrape.lua"
     ).read_bytes()
@@ -32,6 +33,21 @@ def test_native_capacity_retains_original_policies_and_atomic_reachability():
             ["summary", "--format=prometheus"],
         ),
         (["inspect"], ["inspect", "--format=json"]),
+        (["rebuild"], ["rebuild", "--limit=10000"]),
+        (
+            [
+                "rebuild",
+                "--limit=100",
+                "--after-id=00000000-0000-0000-0000-000000000001",
+                "--apply",
+            ],
+            [
+                "rebuild",
+                "--limit=100",
+                "--after-id=00000000-0000-0000-0000-000000000001",
+                "--apply",
+            ],
+        ),
         (
             ["prune"],
             ["prune", "--cursor=0", "--max-scanned=50000", "--max-delete=50000"],

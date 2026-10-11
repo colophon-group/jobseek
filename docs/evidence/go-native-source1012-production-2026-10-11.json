@@ -1,0 +1,114 @@
+{
+  "schema": "jobseek.go.production-checkpoint/v1",
+  "source_revision": "68ff4fd49bda61127a64cb166d8ef679033d7344",
+  "version": "0.13.1012",
+  "profiles": 202,
+  "pull_request": 10411,
+  "whole_deployment_runs": {
+    "crawler": 38120768444,
+    "renderer": 38120825701
+  },
+  "images": {
+    "JOBSEEK_DEPLOY_REVISION": "68ff4fd49bda61127a64cb166d8ef679033d7344",
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:8c7f7cf2c1a1409ba4086886d02bfd617f1d44379c44bff21b687e0e341ba046",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:9b279194569d566244bff546dd2a0ffe89c5a362bfd00e463ec211d9f963384a"
+  },
+  "ordinary_owner": {
+    "epoch": 281,
+    "monitors": 7779,
+    "detail_boards": 7675,
+    "owned_scheduled_routes": 1535656,
+    "actual_routes_inspected": 1659612,
+    "enabled_boards": 7885,
+    "prior_cohort_preserved": true,
+    "monitor_additions": 16,
+    "detail_additions": 90,
+    "held_detail_addition": "rieter-global-solique"
+  },
+  "health": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200,
+    "lightpanda-claimant": 204,
+    "ordinary-go": 204
+  },
+  "natural_observation": {
+    "at": "2026-10-11T08:15:27.885198+00:00",
+    "fences": [
+      {
+        "task_kind": "monitor",
+        "state": "active",
+        "count": 6
+      },
+      {
+        "task_kind": "monitor",
+        "state": "completed",
+        "count": 238
+      },
+      {
+        "task_kind": "scrape",
+        "state": "completed",
+        "count": 151
+      }
+    ],
+    "completed_monitor_receipts": 238,
+    "exact_recurring_schedules": 238,
+    "retained_completion_leases": 0,
+    "worker_metrics": [
+      "jobseek_ordinary_go_ready 1",
+      "jobseek_ordinary_go_active_claims 5",
+      "jobseek_ordinary_go_claim_errors_total 0",
+      "crawler_tasks_total{kind=\"monitor\",status=\"failed\"} 19",
+      "crawler_tasks_total{kind=\"monitor\",status=\"gone\"} 1",
+      "crawler_tasks_total{kind=\"monitor\",status=\"succeeded\"} 222",
+      "crawler_tasks_total{kind=\"monitor\",status=\"timeout\"} 1",
+      "crawler_tasks_total{kind=\"scrape\",status=\"failed\"} 1",
+      "crawler_tasks_total{kind=\"scrape\",status=\"host_circuit_open\"} 133",
+      "crawler_tasks_total{kind=\"scrape\",status=\"skipped\"} 4",
+      "crawler_tasks_total{kind=\"scrape\",status=\"succeeded\"} 13",
+      "jobseek_ordinary_go_posting_touches_total 28528"
+    ],
+    "scope": "Natural completed claims include failures and retries; exact observed schedules do not establish global conservation or full-fleet freshness."
+  },
+  "ordinary_memory": {
+    "observed_at_utc": "2026-10-11T08:16:16.794140+00:00",
+    "restart_count": 0,
+    "go_memory_target": "512MiB",
+    "memory_limit_bytes": 1073741824,
+    "stats": {
+      "CPUPerc": "101.06%",
+      "MemUsage": "179.1MiB / 1GiB",
+      "MemPerc": "17.49%",
+      "PIDs": "10"
+    },
+    "cgroup": {
+      "memory.current": "195297280",
+      "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0",
+      "cpu.max": "100000 100000",
+      "cpu.stat": "usage_usec 587497995\nuser_usec 542057421\nsystem_usec 45440573\nnr_periods 7494\nnr_throttled 5078\nthrottled_usec 392375890"
+    },
+    "kernel_killed_processes_since_created": [],
+    "panic_markers_tail6000": {
+      "nil_pointer": 0,
+      "index_out_of_range": 0,
+      "concurrent_map": 0,
+      "out_of_memory": 0,
+      "command_rejected": 0,
+      "drain_timeout": 0
+    },
+    "stalled_markers_tail6000": 0
+  },
+  "lightpanda": {
+    "version": "1.0.0",
+    "latest_stable_checked_on": "2026-10-11"
+  },
+  "remaining": [
+    "Complete enabled monitor/detail/fallback coverage and reconcile rejected actual routes",
+    "Qualify and deploy native schedule rebuild and remaining runtime/deployment consumers",
+    "Prove sustained fleet freshness, global conservation and comparable attributable whole-lane cost",
+    "Exercise final supported reversal and rollback window before retiring production Python/Playwright/Chromium"
+  ]
+}

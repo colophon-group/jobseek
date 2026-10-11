@@ -27,18 +27,20 @@ var capacityPruneLua string
 
 type capacityOptions struct {
 	Action, Format        string
+	AfterID               string
+	Limit                 int
 	Apply                 bool
 	Cursor                uint64
 	MaxScanned, MaxDelete int
 }
 
 func parseCapacityOptions(args []string) (capacityOptions, error) {
-	o := capacityOptions{Format: "json", MaxScanned: 50000, MaxDelete: 50000}
+	o := capacityOptions{Format: "json", MaxScanned: 50000, MaxDelete: 50000, Limit: 10000}
 	if len(args) == 0 {
 		return o, errors.New("capacity action required")
 	}
 	o.Action = args[0]
-	if o.Action != "summary" && o.Action != "inspect" && o.Action != "prune" {
+	if o.Action != "summary" && o.Action != "inspect" && o.Action != "prune" && o.Action != "rebuild" {
 		return o, errors.New("unsupported capacity action")
 	}
 	f := flag.NewFlagSet("redis-capacity", flag.ContinueOnError)
@@ -48,8 +50,13 @@ func parseCapacityOptions(args []string) (capacityOptions, error) {
 	f.Uint64Var(&o.Cursor, "cursor", 0, "")
 	f.IntVar(&o.MaxScanned, "max-scanned", 50000, "")
 	f.IntVar(&o.MaxDelete, "max-delete", 50000, "")
+	f.StringVar(&o.AfterID, "after-id", "", "")
+	f.IntVar(&o.Limit, "limit", 10000, "")
 	if f.Parse(args[1:]) != nil || f.NArg() != 0 || (o.Format != "json" && o.Format != "prometheus") || o.MaxScanned < 1 || o.MaxScanned > 250000 || o.MaxDelete < 1 || o.MaxDelete > 100000 {
 		return o, errors.New("invalid capacity options")
+	}
+	if o.Limit < 1 || o.Limit > 50000 || o.AfterID != "" && !capacityUUID.MatchString(o.AfterID) {
+		return o, errors.New("invalid rebuild bounds or UUID cursor")
 	}
 	return o, nil
 }
@@ -440,6 +447,9 @@ func runCapacity(args []string) error {
 	options.ContextTimeoutEnabled = true
 	c := redis.NewClient(options)
 	defer c.Close()
+	if o.Action == "rebuild" {
+		return runCapacityRebuild(ctx, c, o)
+	}
 	if o.Action == "prune" {
 		r, e := capacityPrune(ctx, c, o)
 		if e != nil {
