@@ -1,6 +1,6 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1010 deployed; full ordinary admission in progress
+## Current checkpoint — source1010 deployed; failed full activation recovered
 
 [PR #10408](https://github.com/colophon-group/jobseek/pull/10408) merged as
 `f66597e848856310bea2c3a59b766f29a3dc1305`, version **0.13.1010 / 201 profiles**.
@@ -11,17 +11,34 @@ and [renderer deployment](https://github.com/colophon-group/jobseek/actions/runs
 succeeded at attempt 1. Independent checks confirm the selected immutable images,
 incoming cold epoch 278 and successful exporter progress. The original supported
 B0 activation succeeded at **epoch 279**, with independently verified source-bound
-receipt and healthy services. Fresh all-enabled-board/all-actual-route admission
-is now running before full ordinary activation. This checkpoint does not yet
-establish the full ordinary owner.
+receipt and healthy services. Fresh admission reconciled **7,885 enabled boards /
+1,662,895 actual scheduled posting routes**, preserving every previous owner and
+admitting all four qualified additions: **7,763 monitors / 7,585 detail boards**.
+Full activation failed before restart arming: the B0 producer's Redis health
+check lost authority. The original supported `recover-pending` completed;
+independent verification confirms all base/B0 services healthy at epoch **279**,
+the failed plan retired, and no ordinary receipt or Redis projection remaining.
+The full ordinary owner is currently inactive.
+
+The incident slowlog identifies 86 exact claim-script executions consuming
+4.82 seconds in six seconds; the producer health budget is three seconds.
+Retained Python instances each start 20 discovery pollers. The combined
+**0.13.1011** candidate serializes their claims during native ownership and shares
+the existing two-second empty/error polling delay within each instance. Processing
+slots stay available; every real claim still takes the SQL barrier and validates
+the complete Redis projection. Full-size 7,763 / 7,585 private PostgreSQL/Redis
+regressions cover concurrent empty polls, fresh unowned work, retirement and
+projection loss. Renew exact-head gates, retire B0 through the original workflow,
+deploy the whole combined release, renew admission and retry supported activation.
+Do not weaken health or ownership checks, or retry the unchanged fleet blindly.
 
 Source1009 completed over 40 minutes of natural ordinary observation without
 a restart or kernel/cgroup OOM kill. Fleet backlog grew, so full-fleet freshness
 remains unresolved. Its original ordinary retirement, B0 rollback and selector
 clear succeeded. Independent outgoing verification confirms cold epoch **278**,
 no active plans or ownership receipts, cleared selectors and restored healthy
-base writers. Finish the incoming exact-source/image checks, fresh all-board
-and all-actual-route admission and supported activation. Preserve the complete
+base writers. Finish the polling correction and combined release, renew incoming
+exact-source/image checks and admission, then supported activation. Preserve the complete
 7,759 / 2,753 cohort and every qualified addition.
 
 ## Previous checkpoint — source1009 delivered and safely retired
@@ -165,6 +182,32 @@ whole deployment and all-route admission.
 Algorized's original sitemap stream contains 64 URLs. Its current B0 ownership
 prevents ordinary overlap and legacy scrape enqueue; retain that exclusion until
 the final ownership transition is qualified. See the [configuration qualification](evidence/go-native-retained-dom-api-options-candidate-2026-10-11.json).
+
+## Following combined thirteen-configuration release
+
+The **0.13.1012 / 201-profile** candidate groups the seven DOM detail/API
+configurations below with six rendered DOM resource-hint configurations. The
+complete original browser streams and pinned Lightpanda 1.0.0 documents agree
+on all canonical URLs: In3 **1**, Tyson Thailand **13**, Goldbeck Czech **78**,
+PSI **20**, Insel MyOda **20**, and Colisee Onela **603**. Captured publisher headers
+are retained in the native comparison. No failed, blocked, partial or instrumented
+capture with errors is admitted.
+
+`bot_protection` is a strictly typed original reconnaissance hint; `auto` uses the
+pinned engine default. Original metadata remains in the immutable ownership hash.
+The original lean route and physical Lightpanda both render the same local
+script/fetch-produced inventory without font/media requests. A new fixture is wired
+into both architectures' existing physical integration image to bind that assumption
+to engine upgrades. The local Linux-only fixture skipped on macOS; its Linux CI
+execution remains required before this candidate is qualified for merge.
+
+Six mandatory real PostgreSQL/Redis worker cases prove complete settlement, atomic
+render failure and publisher precedence for both auto/none. Six cold cases prove
+interruption, committed-before-ack recovery and changed-config refusal. Full public
+inventory comparison passes with race enabled. Explicit lean/aggressive/unknown
+policies and malformed reconnaissance flags remain rejected. Rebase this whole
+thirteen-configuration group onto the actual merged source1011, renew exact-head
+qualification and deliver one whole rollout after #10409; retain every enabled board.
 
 ## Following seven-configuration group — DOM detail filters and T1 API repair
 

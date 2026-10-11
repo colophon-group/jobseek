@@ -36,7 +36,7 @@ func directDOMMonitorOptions(config map[string]string) (dom.ListingConfig, error
 	if err != nil {
 		return dom.ListingConfig{}, err
 	}
-	if md["browser_backend"] != nil || md["routing_revision"] != nil {
+	if md["browser_backend"] != nil || md["routing_revision"] != nil || md["bot_protection"] != nil {
 		return dom.ListingConfig{}, ErrUnsupportedProfile
 	}
 	options := dom.Object{}

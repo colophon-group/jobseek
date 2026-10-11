@@ -1,0 +1,38 @@
+{
+  "schema": "jobseek.migration.evidence/v1",
+  "candidate_version": "0.13.1012",
+  "grouping": "same release as seven DOM detail/API configurations; thirteen total",
+  "original_source_revision": "f20f5fe83b0ba1a700bbb1d3566b5fc25b5e5b77",
+  "lightpanda": "1.0.0",
+  "macos_arm64_sha256": "955440053a84754dd64c62f970449a56a2b350cdf43ea5f2e809a73047b8173d",
+  "complete_original_and_physical_canonical_urls": {
+    "in3-careers": 1,
+    "tyson-foods-thailand-mckey": 13,
+    "goldbeck-czech-prefabrikace": 78,
+    "psi-careers": 20,
+    "insel-gruppe-myoda": 20,
+    "colisee-france-onela-careers": 603
+  },
+  "qualification": {
+    "original_instrumented_streams_complete": true,
+    "public_native_race_comparison": "passed; full URL sets and captured policy headers",
+    "worker_postgres_redis_cases": 6,
+    "cold_retirement_cases": 6,
+    "mandatory_databases": true,
+    "database_skips": 0,
+    "local_engine_fixture": "original Chromium lean and physical pinned Lightpanda render one same script/fetch-produced job; no fonts/media requested",
+    "linux_pinned_fixture": "added to mandatory integration image whitelist; local macOS run skipped; CI required"
+  },
+  "excluded": [
+    "explicit lean/aggressive/unknown policy",
+    "malformed bot_protection",
+    "blocked Peru/Chile physical documents",
+    "capture-error original streams",
+    "actions not separately qualified"
+  ],
+  "limits": [
+    "Six successful public URL inventories do not establish full-fleet freshness or cost.",
+    "No production admission or ownership transfer is authorized by this evidence alone.",
+    "Physical Linux fixture must pass on both pinned architectures before merge."
+  ]
+}

@@ -228,7 +228,7 @@ func richProfileMetadata(config map[string]string) (map[string]json.RawMessage, 
 		for _, key := range dom.ListingProviderKeys {
 			allowed[key] = true
 		}
-		for _, key := range []string{"inactive_detail_states", "exclude_detail_selector", "include_board_url", "require_jsonld_jobposting", "advertised_total", "empty_states", "empty_selector", "empty_text", "rich_rows", "onclick_selector", "script_json_links", "url_filter", "url_allowlist", "url_transform", "job_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "retry_statuses", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "browser_backend", "routing_revision", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
+		for _, key := range []string{"bot_protection", "inactive_detail_states", "exclude_detail_selector", "include_board_url", "require_jsonld_jobposting", "advertised_total", "empty_states", "empty_selector", "empty_text", "rich_rows", "onclick_selector", "script_json_links", "url_filter", "url_allowlist", "url_transform", "job_filter", "link_selector", "render", "proxy", "skip_ssl", "ssl_verify", "actions", "pagination", "transport_attempts", "request_headers", "retry_statuses", "encoding", "wait", "timeout", "headless", "channel", "stealth", "persistent_context", "user_agent", "wait_fallback", "resource_policy", "browser_backend", "routing_revision", "delist_threshold", "drop_threshold", "blast_radius_floor"} {
 			allowed[key] = true
 		}
 
