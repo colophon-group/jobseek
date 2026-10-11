@@ -2,7 +2,7 @@
   "schema_version": 1,
   "observed_at_utc": "2026-10-11T01:13:35.653895+00:00",
   "candidate_version": "0.13.1010",
-  "compiled_profiles": 199,
+  "compiled_profiles": 201,
   "candidate_base": "fac1f66fe9f20b1b06496a0634167364813b6adc",
   "production_authority": false,
   "preceding_pr": 10407,
@@ -125,5 +125,7 @@
   ],
   "qualification_input_base": "6c2da9673e59d30910e41daadefd135dfb189dd4",
   "qualification_runtime_tree_unchanged_after_squash_rebase": true,
-  "qualification_tree_before_checkpoint_refresh": "f737eb8c10d652b81b679855127d53eb1c86c729"
+  "qualification_tree_before_checkpoint_refresh": "f737eb8c10d652b81b679855127d53eb1c86c729",
+  "type_batch_compiled_profiles_before_shared_schedule_drain": 199,
+  "shared_schedule_drain_evidence": "go-native-explicit-no-scrape-candidate-2026-10-11.json"
 }

@@ -43,9 +43,9 @@ Python/Playwright/Chromium runtime retirement still requires full enabled-route
 and consumer coverage, comparable whole-lane CPU/RAM/density/cost, supported cold
 reversal and the rollback window. Preserve useful isolated offline Python tooling.
 
-## Following grouped candidate — Oracle proxy/enrichment, Revolut and IIHF
+## Following grouped candidate — Oracle, Revolut, IIHF and rich schedule drain
 
-The isolated following candidate reserves version **0.13.1010 / 199 profiles**
+The isolated following candidate reserves version **0.13.1010 / 201 profiles**
 on merged source1009 `fac1f66fe9f20b1b06496a0634167364813b6adc`. It has no
 production authority. Renew this group's exact-head checks while source1009
 rolls out; complete its full activation and natural observation before the next
@@ -67,8 +67,19 @@ Lightpanda regional mirrors. Canonical description comparison uses the unchanged
 original Python writer normalization. Ordered fallback stops for publisher
 reservations or uncertain evidence; alternate 404s cannot deactivate the board.
 
+The same release adds explicit rich no-scrape schedule handling in both simple
+and browser queues. The original classifier and original SQL predicate agree
+for its admitted literal skip cases. It clears only schedule/lease fields,
+preserves all canonical posting data and makes no HTTP or renderer calls.
+An enrich key (even empty/null), implicit defaults and unproved source/config
+bindings retain their prior consumer. Do not assume all historically unowned
+routes qualify. See [schedule-drain evidence](evidence/go-native-explicit-no-scrape-candidate-2026-10-11.json).
+
 The group passes 14 real rendered settlement/policy/config-binding cases and
-15 cold retirement/conservation cases. The 199-profile executable startup and
+15 provider cold retirement/conservation cases. Schedule drain adds 12 actual
+worker cases and eight cold cases; the original classifier/SQL reference has
+147 synthetic cases. The full 119 ownership/cutover/runtime tests pass with
+mandatory real Postgres. The 201-profile executable startup and
 focused shared-renderer regression/race checks pass. Protected inventories remain
 outside Git; see the [candidate evidence](evidence/go-native-oracle-revolut-iihf-candidate-2026-10-11.json)
 for source identities, complete comparisons and immutable evidence hashes.

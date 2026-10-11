@@ -33,6 +33,9 @@ const eightfoldDetailProfile = "eightfold.jsonld-api-detail/v1"
 const eightfoldProxyDetailProfile = "eightfold.proxy-jsonld-api-detail/v1"
 
 func independentDetailProfile(profile string) bool {
+	if NoScrapeDetailProfile(profile) {
+		return true
+	}
 	if LastHTTPDetailProfile(profile) {
 		return true
 	}

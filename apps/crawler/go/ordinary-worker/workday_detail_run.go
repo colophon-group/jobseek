@@ -59,6 +59,27 @@ func RunDetail(ctx context.Context, authority *queue.Authority, claim *queue.Cla
 		return result, claimRunError("detail_read", err)
 	}
 	profile := detail.Profile()
+	if queue.NoScrapeDetailProfile(profile.Profile) {
+		receipt, e := authority.FinishWorkdayDetail(ctx, detail, nil, queue.GreenhouseHostObservation{}, func(ctx context.Context, tx pgx.Tx, current *queue.CurrentWorkdayDetail, _ *queue.HostCircuitOutcome) (string, error) {
+			if !queue.NoScrapeDetailProfile(current.Profile().Profile) {
+				return "", queue.ErrAuthorityLost
+			}
+			tag, e := tx.Exec(ctx, `UPDATE job_posting p SET next_scrape_at=NULL,leased_until=NULL FROM job_board b
+WHERE p.id=$1::uuid AND p.board_id=b.id AND b.metadata->>'scraper_type'='skip'
+AND NOT COALESCE(b.metadata->'scraper_config' ? 'enrich',false)`, current.PostingID())
+			if e != nil {
+				return "", e
+			}
+			if tag.RowsAffected() != 1 {
+				return "", queue.ErrAuthorityLost
+			}
+			return "unscheduled", nil
+		})
+		if e != nil {
+			return result, claimRunError("detail_unschedule", e)
+		}
+		return settle(receipt, "unscheduled")
+	}
 	if http.proxyRequired != queue.ProfileRequiresProxy(profile.Profile) || http.skipSSL != profile.SkipSSL || profile.SkipSSL && (profile.Profile != "workday.cxs-detail/v1" || http.proxyRequired) {
 		return result, claimRunError("detail_transport", queue.ErrConfiguration)
 	}

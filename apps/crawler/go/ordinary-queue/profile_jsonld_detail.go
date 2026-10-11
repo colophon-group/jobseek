@@ -116,6 +116,9 @@ func InspectJSONLDDetail(boardID string, config map[string]string, source string
 }
 
 func inspectDetailOwnership(boardID string, config map[string]string) (WorkdayDetailProfile, error) {
+	if p, e := inspectNoScrapeDetailOwnership(boardID, config); e == nil {
+		return p, nil
+	}
 	if p, e := inspectLastHTTPDetail(boardID, config, config["board_url"], Simple, true); e == nil {
 		return p, nil
 	}
@@ -168,6 +171,9 @@ func inspectDetailOwnership(boardID string, config map[string]string) (WorkdayDe
 }
 
 func inspectDetail(boardID string, config map[string]string, source string, worker WorkerType) (WorkdayDetailProfile, error) {
+	if p, e := InspectNoScrapeDetail(boardID, config, source, worker); e == nil {
+		return p, nil
+	}
 	if p, e := inspectLastHTTPDetail(boardID, config, source, worker, false); e == nil {
 		return p, nil
 	}

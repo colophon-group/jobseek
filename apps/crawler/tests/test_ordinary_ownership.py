@@ -569,6 +569,7 @@ def _compiled_native_detail_profiles():
 
 @pytest.mark.parametrize("profile", _compiled_native_detail_profiles())
 def test_detail_projection_is_independent_of_monitor_membership(profile):
+    browser = ".rendered-" in profile or profile == "skip.browser-unscheduled-detail/v1"
     _, payload = expectation()
     doc = json.loads(payload)
     board = "00000000-0000-4000-8000-000000000098"
@@ -577,7 +578,7 @@ def test_detail_projection_is_independent_of_monitor_membership(profile):
             "board_id": board,
             "domain": "*",
             "profile": profile,
-            "worker": "browser" if ".rendered-" in profile else "simple",
+            "worker": "browser" if browser else "simple",
             "company_id": "00000000-0000-4000-8000-000000000002",
             "effective_config_sha256": "a" * 64,
             "config": {"crawler_type": "dom", "metadata": '{"scraper_type":"json-ld"}'},
@@ -599,7 +600,7 @@ def test_detail_projection_is_independent_of_monitor_membership(profile):
     assert projection["details"] == {board: domain}
     for field, value in (
         ("domain", "jobs.example.net"),
-        ("worker", "simple" if ".rendered-" in profile else "browser"),
+        ("worker", "simple" if browser else "browser"),
         ("company_id", "invalid"),
         ("company_id", None),
         ("effective_config_sha256", "invalid"),
