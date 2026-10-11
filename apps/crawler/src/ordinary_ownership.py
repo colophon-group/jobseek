@@ -184,6 +184,7 @@ def ownership_projection(payload: str) -> str:
                     "dom.rendered-detail/v1",
                     "jsonld.rendered-detail/v1",
                     "oracle_hcm.api-detail/v1",
+                    "oracle_hcm.proxy-api-detail/v1",
                     "embedded.direct-detail/v1",
                     "embedded.rendered-detail/v1",
                     "api_sniffer.http-detail/v1",

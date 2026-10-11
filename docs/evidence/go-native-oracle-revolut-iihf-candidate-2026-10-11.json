@@ -54,6 +54,15 @@
     "python_runtime_contracts": {
       "cases": 16,
       "seconds": 0.7
+    },
+    "legacy_ownership_bridge": {
+      "original_failure": "test_detail_projection_is_independent_of_monitor_membership[oracle_hcm.proxy-api-detail/v1]: OrdinaryOwnershipError; profile missing in fixed legacy detail allowlist",
+      "repair": "allow exact new Oracle proxy detail profile; preserve worker, domain, company and config identity checks",
+      "following_checks": "existing entire ownership/cutover suite executed after repair; fresh exact-head gates required",
+      "passed": 92,
+      "skipped_real_postgres_cases": 9,
+      "seconds": 5.66,
+      "ruff": "pass"
     }
   },
   "protected_evidence_manifest": [
