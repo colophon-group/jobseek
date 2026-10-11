@@ -27,7 +27,8 @@
     "cli_pyright": "0 errors",
     "linux_amd64_test_compile": "pass",
     "linux_authenticated_exchange_execution": "pending exact-head CI",
-    "notes": "Full suite has other optional installed-runtime cases; this does not claim all tests are skip-free."
+    "notes": "Full suite has other optional installed-runtime cases; this does not claim all tests are skip-free.",
+    "linux_arm64_test_compile": "pass"
   },
   "production_dispatch": false,
   "remaining": [
@@ -35,5 +36,7 @@
     "Supported cold reversal and original whole deployment",
     "Fresh whole-route admission and activation",
     "Full enabled-route/runtime coverage and sustained freshness/conservation/cost before final retirement"
-  ]
+  ],
+  "combined_release_pr": 10413,
+  "base_pr_status": "superseded by combined main-targeted release"
 }

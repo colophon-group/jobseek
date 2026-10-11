@@ -28,13 +28,13 @@ readbacks show zero restarts, cgroup/kernel OOM kills or stalled-loop markers.
 Keep this release active for a sustained freshness/memory/throughput observation.
 See [the source1012 production checkpoint](evidence/go-native-source1012-production-2026-10-11.json).
 
-[PR #10412](https://github.com/colophon-group/jobseek/pull/10412) follows with
-native capacity summary, inspection and orphan pruning. Its fresh required
+[PR #10413](https://github.com/colophon-group/jobseek/pull/10413) combines
+native capacity summary, inspection, orphan pruning and resumable schedule rebuild
+in **0.13.1014**, superseding the isolated #10412 candidate. Its required
 checks run separate queue and worker lanes with all original modules, real
 PostgreSQL/Redis, full race/vet/tidy/gofmt and Python ownership/cutover contracts.
 The worker suite's observed 20-minute limit now has a 30-minute budget; the queue
-lane retains 20 minutes. No check was removed. The next stacked candidate,
-**0.13.1014**, moves resumable schedule rebuild to Go with the original no-scrape
+lane retains 20 minutes. No check was removed. The same release moves resumable schedule rebuild to Go with the original no-scrape
 SQL, queue lanes, per-domain delays, authenticated producer decisions and durable
 authority guard. Its local actual PostgreSQL/Redis command tests and 17 Python
 compatibility tests pass; Linux socket execution and exact-head required checks
