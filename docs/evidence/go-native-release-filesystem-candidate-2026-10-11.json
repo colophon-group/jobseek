@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "status": "local candidate; production not deployed",
+  "full_migration_complete": false,
+  "version": "0.13.1022",
+  "parent_candidate": "8152106e72e6950edbc98074928e2ff114996f79",
+  "parent_pr": 10434,
+  "grouped_python_consumers_replaced": [
+    "atomic release-generation pointer publication",
+    "file/tree/release-root fsync before pointer publication",
+    "presence-aware deterministic USTAR deployment-spec archive creation",
+    "complete rollback archive verification and exclusive extraction"
+  ],
+  "preserved_contracts": [
+    "original full writer quiescence and restart",
+    "incoming source-bound Go tool retained through old-generation rollback",
+    "present/absent deploy-spec manifest and exact SHA256/mode checks",
+    "no archive extraction until all members and identities validate",
+    "atomic pointer rename and parent-directory fsync",
+    "no runtime credentials inherited by native filesystem/archive commands"
+  ],
+  "verification": {
+    "deployment_regressions": {
+      "passed": 63,
+      "seconds": 115.57
+    },
+    "runtime_contract_and_postgresql_preflight_regressions": {
+      "passed": 24,
+      "seconds": 1.48
+    },
+    "go_race": "passed 1.661s; USTAR metadata/mode/absence round trip; malformed digest/mode/order/format/UTF8/duplicate/extra/symlink/hardlink/traversal fail without extraction; durability and pointer checks",
+    "go_vet_tidy_format": "passed",
+    "ruff": "passed",
+    "shell_syntax_and_diff_whitespace": "passed"
+  },
+  "required_before_delivery": [
+    "exact-head required CI and Crawler Deploy Gate",
+    "Linux source-bound host artifact qualification and installed runtime identities",
+    "parent10434 merged/deployed or explicitly combined scope with renewed qualifications",
+    "supported full rollout and independent source/image/schema/health/exporter verification"
+  ],
+  "limitations": [
+    "Local filesystem tests ran on macOS; Linux installed/operational qualification remains pending.",
+    "No native board admission or production resource/freshness claim comes from this helper port.",
+    "Standalone CSV publisher, schema execution, credential/release-bridge consumers and legacy Python workers remain."
+  ]
+}

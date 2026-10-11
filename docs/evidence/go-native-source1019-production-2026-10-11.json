@@ -1,0 +1,91 @@
+{
+  "schema": 1,
+  "observed_at_utc": "2026-10-11T21:23:11.086444+00:00",
+  "status": "deployed; native ownership cold",
+  "full_migration_complete": false,
+  "source_revision": "d365467744d0f5acd7985fe93dd8d2d120903b66",
+  "version": "0.13.1019",
+  "profiles": 204,
+  "pr": 10431,
+  "reviewed_head": "7739b0ce80bbd8258bab3c4de967711a41976afd",
+  "crawler_deployment": {
+    "run": 38174597573,
+    "attempt": 1,
+    "conclusion": "success"
+  },
+  "renderer_deployment": {
+    "run": 38175091748,
+    "attempt": 1,
+    "conclusion": "success"
+  },
+  "identities": {
+    "JOBSEEK_DEPLOY_REVISION": "d365467744d0f5acd7985fe93dd8d2d120903b66",
+    "CRAWLER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler@sha256:3829c0bcac4c0accd946342dc940b9710ab5e93d6f5503da122a4a634e4dbd07",
+    "BROWSER_IMAGE_REF": "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:d90377063857d212913a824f45af0d90fa3f2bc44121472f44a1b2908372664d"
+  },
+  "renderer_image": "ghcr.io/colophon-group/jobseek-lightpanda-renderer@sha256:4881590e5fafd4e4ab21bc1ca5fefed6afa8b5dacbfbb47d64b80dd3e7ff52fc",
+  "routing_epoch": 290,
+  "active_ordinary_plans": 0,
+  "restored_restart_armed_base_services": 7,
+  "base_health_endpoints": {
+    "worker-1": 200,
+    "worker-2": 200,
+    "worker-3": 200,
+    "browser-1": 200,
+    "drain": 200,
+    "exporter": 200
+  },
+  "migration_schema": {
+    "version": "0040",
+    "columns": {
+      "next_detail_at": "timestamptz",
+      "next_detail_description_hash": "int8",
+      "next_detail_step": "int2"
+    },
+    "constraint_validated": true
+  },
+  "renderer_running": true,
+  "renderer_sticky_oom": false,
+  "exporter_metrics": {
+    "crawler_exporter_last_flush_ts": 1791753789.0,
+    "crawler_exporter_rows_exported_total{table=\"job_posting\"}": 1316.0,
+    "crawler_typesense_export_docs_total{status=\"success\"}": 1316.0,
+    "crawler_typesense_export_docs_total{status=\"error\"}": 0.0,
+    "crawler_exporter_cdc_unknown_writers_total": 0.0,
+    "crawler_typesense_healthy": 1.0,
+    "crawler_exporter_downstream_available{target=\"typesense\"}": 1.0,
+    "crawler_exporter_downstream_backoff_seconds{target=\"typesense\"}": 0.0,
+    "crawler_exporter_flush_duration_seconds_sum": 60.47352633499995,
+    "crawler_exporter_flush_duration_seconds_count": 316.0
+  },
+  "preserved_previous_owner_floor": {
+    "monitors": 7788,
+    "detail_boards": 7683
+  },
+  "lightpanda_version": "1.0.0",
+  "held_new_owners": [
+    "hitachi-energy-careers",
+    "implenia-global"
+  ],
+  "independent_readback_sha256": {
+    "native-source1019-postdeploy-cold290-independent-verified1-2026-10-11.json": "524e50d430cc694ca3a8b481ea8d2755a53654495a7b0cf81116ce36df371710",
+    "native-source1019-renderer-independent-verified1-2026-10-11.json": "90d869442c092323117044f6e6027b0ddd21684c3db3dc4ca5dde8fc3f83bf76",
+    "native-source1019-exporter-progress-independent-verified1-2026-10-11.json": "b5925bd3e2725235f5886977d4abbfc35b5f321e7685cc13f7ff2e235c8243a0"
+  },
+  "limitations": [
+    "No source1019 native ownership activated while the combined source1021 candidate qualifies.",
+    "Exporter progress and healthy base services do not establish fleet freshness or production cost.",
+    "Previous source1018 freshness backlog remains unresolved."
+  ],
+  "next_release": {
+    "pr": 10434,
+    "head": "8152106e72e6950edbc98074928e2ff114996f79",
+    "version": "0.13.1021",
+    "group": [
+      "Go PostgreSQL preflight",
+      "Go CSV manifest creation and verification",
+      "discovery20/monitor5 scheduling capacity"
+    ],
+    "production_deployed": false
+  }
+}

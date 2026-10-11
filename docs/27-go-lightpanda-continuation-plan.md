@@ -1,6 +1,55 @@
 # Go and Lightpanda migration delivery plan
 
-## Current checkpoint — source1018 active across 7,788 / 7,683 boards
+## Current checkpoint — source1019 deployed; native ownership cold
+
+[PR #10431](https://github.com/colophon-group/jobseek/pull/10431) merged as
+`d365467744d0f5acd7985fe93dd8d2d120903b66`, **0.13.1019 / 204 profiles**.
+The original [whole crawler rollout](https://github.com/colophon-group/jobseek/actions/runs/38174597573)
+and [matching renderer rollout](https://github.com/colophon-group/jobseek/actions/runs/38175091748)
+succeeded at attempt1. Independent host readbacks verify the selected source,
+immutable images, schema0040, seven running restart-armed base services and six
+healthy endpoints. The renderer is running without sticky OOM. At21:23 UTC the
+exporter had published1,316 documents, with no reported export errors, unknown
+CDC writers or downstream backoff. See the [production checkpoint](evidence/go-native-source1019-production-2026-10-11.json).
+
+Source1018 ordinary retirement, B0 rollback and selector clear completed through
+the original workflows. Independent readback proves **cold epoch290**, with no
+active ordinary plan, native receipts, projection or source1019 ownership.
+Legacy workers serve the boards while the next combined batch qualifies.
+Preserve the previous **7,788 monitor /7,683 detail-board** ownership floor during
+fresh admission. Hitachi Energy and Implenia remain held. Lightpanda **1.0.0**
+is the latest stable release verified on2026-10-11.
+
+### Next grouped delivery and remaining work
+
+1. Finish [PR #10434](https://github.com/colophon-group/jobseek/pull/10434),
+   **0.13.1021**, which combines Go PostgreSQL operational preflight, CSV manifest
+   creation/verification and the original discovery20/monitor5 scheduling
+   contract. Local87 deployment tests and the full native-worker race suite pass;
+   exact-head CI, installed images and whole-lane qualification govern delivery.
+   Close its parent PR #10432 as superseded only after the combined PR merges.
+2. Deploy the qualified combined revision through the original whole crawler and
+   matching renderer workflows. Independently verify source/images/schema/base
+   health and exporter progress, then renew the census and supported B0/ordinary
+   admission without dropping the previous7,788/7,683 floor.
+3. Measure natural claim settlement, queue conservation, due ages and CPU/RAM.
+   The source1018 backlog includes over1.48million detail routes more than a day
+   late; the concurrency correction has not yet proved fleet freshness.
+4. Continue remaining DOM/API/inline/RSS/provider controls in groups. Port
+   release-pointer publication, filesystem durability and rollback archive
+   creation/verification together in the next deployment-consumer batch.
+   The [source1022 four-helper candidate](evidence/go-native-release-filesystem-candidate-2026-10-11.json)
+   passes87 focused operational regressions and Go race tests locally; it still
+   requires installed Linux qualification and a supported full rollout.
+   Finish standalone CSV publication, credential/release-bridge helpers, schema
+   execution and remaining legacy worker/browser consumers through their existing
+   operational contracts.
+5. Establish full enabled-route replacement authority, sustained freshness and
+   attributable resource/cost evidence, then supported cold reversal and the
+   rollback window before removing production Python/Playwright/Chromium.
+   Preserve useful isolated offline Python. **The full goal remains incomplete.**
+
+## Historical checkpoint — source1018 served 7,788 / 7,683 boards
 
 [PR #10430](https://github.com/colophon-group/jobseek/pull/10430) merged as
 `0ee76dcba9d5efab6b77001ac8a55d24b4ac4cff`, **0.13.1018 / 204 profiles**.
@@ -83,7 +132,7 @@ confirm continued processing; they do not resolve the measured freshness backlog
    supported cold reversal/rollback window. Keep useful isolated offline Python.
    **The full migration goal remains active and incomplete.**
 
-## Next grouped candidate — rotating API paths and RSS identities
+## Delivered source1019 — rotating API paths and RSS identities
 
 Candidate **0.13.1019** ports two existing profile families without changing board
 metadata. Browser API replay tries the stored endpoint first; after failure it

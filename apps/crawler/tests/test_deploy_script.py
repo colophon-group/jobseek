@@ -2369,8 +2369,8 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     rollback = script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
 
     assert "docker-compose.yml" in script.partition("DEPLOY_SPEC_FILES=(")[2].partition(")")[0]
-    assert 'tarfile.open(archive_path, "w", format=tarfile.USTAR_FORMAT)' in script
-    assert "archive.addfile(member, io.BytesIO(content))" in script
+    assert 'env -i "$NATIVE_DEPLOY_TOOLS" spec-pack' in script
+    assert 'env -i "$NATIVE_DEPLOY_TOOLS" spec-unpack' in script
     assert "DEPLOY_SPEC_PRESENCE_FORMAT_VERSION=1" in script
     assert "extract_verified_deploy_spec_snapshot" in script
     assert "remove_previously_absent_deploy_specs" in rollback
@@ -2596,7 +2596,7 @@ def test_deploy_publishes_exact_success_marker_only_after_commit() -> None:
         "JOBSEEK_DATA_CONTRACT_SHA256: ${{ needs.build.outputs.data_contract_sha256 }}" in workflow
     )
     assert '[[ -d "$ACTIVE_RELEASE_ROOT" && ! -L "$ACTIVE_RELEASE_ROOT" ]]' in script
-    assert "os.replace(temporary, active)" in script
+    assert 'env -i "$NATIVE_DEPLOY_TOOLS" release-activate' in script
 
 
 def test_release_generation_root_is_durable_before_pointer_publication() -> None:
@@ -2606,10 +2606,9 @@ def test_release_generation_root_is_durable_before_pointer_publication() -> None
             "snapshot_active_deploy_specs() {"
         )
     ]
-    generation_sync = publish.index("os.fsync(directory_fd)")
-    root_sync = publish.index("os.fsync(release_root_fd)")
+    generation_sync = publish.index('env -i "$NATIVE_DEPLOY_TOOLS" release-fsync "$generation"')
     pointer_publish = publish.index('activate_release_generation "$generation"')
-    assert generation_sync < root_sync < pointer_publish
+    assert generation_sync < pointer_publish
     assert not MURMUR_DEPLOY_WORKFLOW.exists()
 
 
