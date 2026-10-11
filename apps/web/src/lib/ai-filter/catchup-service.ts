@@ -591,7 +591,8 @@ export async function runAiFilterCatchupStep(input: {
           aiFilterHistoricalHorizonStart().getTime()
           ? { lastSweepAt: completedAt }
           : {}),
-        updatedAt: completedAt,
+        // Coverage progress is not a criteria edit. Email submission uses the
+        // configuration edit timestamp to reject plans for changed prompts.
       })
       .where(and(
         eq(aiFilterConfiguration.id, claim.configurationId),

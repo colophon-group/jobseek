@@ -359,6 +359,20 @@ describe.skipIf(!process.env.AI_FILTER_TEST_DATABASE_URL)(
       await tick();
       expect(mocks.classify.mock.calls.length).toBeGreaterThanOrEqual(3);
     });
+    it("publishes coverage without invalidating email plans for unchanged criteria", async () => {
+      await fixture();
+      const [before] = await sql()`SELECT updated_at FROM ai_filter_configuration`;
+      mocks.postings = [posting()];
+      await tick();
+      await tick();
+      const [after] = await sql()`SELECT updated_at,last_caught_up_at FROM ai_filter_configuration`;
+      expect(after.updated_at).toEqual(before.updated_at);
+      expect(after.last_caught_up_at).toBeTruthy();
+      await sql()`UPDATE ai_filter_configuration SET refresh_requested_at=NULL`;
+      await tick();
+      const [repaired] = await sql()`SELECT updated_at FROM ai_filter_configuration`;
+      expect(repaired.updated_at).toEqual(before.updated_at);
+    });
     it("keeps zero reviewed distinct from completed evaluation with zero accepted", async () => {
       const input = await fixture();
       expect((await getAiFilterOwnerState(input)).coverage?.state).toBe(

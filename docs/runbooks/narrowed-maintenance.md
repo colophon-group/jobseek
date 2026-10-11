@@ -58,6 +58,16 @@ can still complete: disabling application checkout does not expire provider
 sessions. Inspect and expire those separately before declaring a complete sales
 freeze. See [Stripe collection pause](https://docs.stripe.com/billing/subscriptions/pause-payment).
 
+Email updates keep their existing independent daily cron, provider admission,
+delivery windows, quotas, cooldown and idempotency controls. None of these
+maintenance flags pauses standard job emails. Email preparation never enqueues
+classification or spends AI budget. Narrowed-only opt-ins wait for completed
+coverage and retain incomplete windows for retry; they never fall back to broad
+results. Existing accepted, covered decisions remain eligible during maintenance.
+Worker coverage progress must preserve the configuration edit timestamp so it
+does not invalidate pending email plans for unchanged criteria. Actual criteria
+edits and feedback still invalidate stale plans before submission.
+
 Already-created Workflow runs belong to their original deployment; new source
 or environment gates do not prove those runs stopped. Migration 0104 invalidates
 their segment leases and rejects future claims at the database boundary. Retain
