@@ -148,6 +148,17 @@ func WriteGreenhouseInventory(ctx context.Context, sink GreenhouseSink, preparer
 		result.Batches.ForeignRelisted += counts.ForeignRelisted
 		result.Batches.Deduplicated += counts.Deduplicated
 		if len(counts.Details) > 0 {
+			if publisher, ok := sink.(interface {
+				EnqueueURLDetails(context.Context, []queue.URLOnlyDetail) (int, error)
+			}); ok {
+				for start := 0; start < len(counts.Details); start += queue.URLDetailPublicationBatch {
+					end := min(start+queue.URLDetailPublicationBatch, len(counts.Details))
+					if _, err := publisher.EnqueueURLDetails(ctx, counts.Details[start:end]); err != nil {
+						return result, claimRunError("detail_enqueue", err)
+					}
+				}
+				continue
+			}
 			publisher, ok := sink.(interface {
 				EnqueueURLDetail(context.Context, queue.URLOnlyDetail) (bool, error)
 			})
