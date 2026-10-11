@@ -137,6 +137,38 @@ zero with missing-step warnings. Neither is admitted by this group. Continue
 those and the remaining enabled configurations in grouped iterations without
 delaying the verified Oracle/Nextdata/inline delivery.
 
+## Following grouped detail release — Workday proxy, DOM and JSON-LD TLS
+
+The isolated candidate on `fix-crawler/native-detail-transport-group` reserves
+**0.13.1012 / 202 profiles**, based on the combined release's `b733c6c5` tree.
+It implements three detail transport variants together: 22 Workday configurations
+with explicit proxy requests, 13 static DOM TLS exceptions, and two JSON-LD TLS
+exceptions. Workday proxy authority has its own immutable profile; it cannot
+change the monitor's direct transport. The existing sealed proxy transport,
+publisher policy, enrichment and canonical writer remain shared. DOM and JSON-LD
+retain the complete original configuration hash while separating a strict
+`skip_ssl` boolean from parser options. Proxy/TLS mixtures remain unqualified.
+
+Complete original captures and race tests compare all ten content fields and the
+72 exact requests for **36 boards / 72 samples**. The other board, EFTA legacy
+recruitment, has no scheduled actual route and receives no public qualification.
+Six Workday samples match the original gone/empty result; this is not positive
+content evidence. The local original DOM dispatcher initially lacked its installed
+parser binary. The supported Python parser reversal replays those exact captured
+HTTP bytes independently, without another origin request. Real mandatory
+PostgreSQL/Redis worker tests cover success, reserved and transient outcomes,
+credentialed CONNECT, unrelated TLS trust, wrong-client refusal, canonical writes
+and schedule/lease conservation. All 18 interruption/retirement cases pass;
+native executable startup and the complete retained Python ownership suite pass.
+See [the bounded proof](evidence/go-native-grouped-detail-transports-candidate-2026-10-11.json).
+
+Finish and deliver PR #10409 first. Preserve this candidate independently, rebase
+it onto the actual merged source, then renew required CI, installed-image proof
+and deployment gates for its final head. Fresh all-board/all-route admission must
+preserve the previous qualified cohort and reject remaining cache, lane, step or
+source mismatches. No new board has production detail authority from these local
+proofs. Full-fleet freshness, memory, cost and Python retirement remain unfinished.
+
 ## Current combined release — sixteen configurations, maintenance and polling
 
 One combined candidate reserves **0.13.1011 / 201 profiles** on merged source1010 `f66597e848856310bea2c3a59b766f29a3dc1305`.

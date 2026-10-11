@@ -65,6 +65,10 @@ func InspectJSONLDDetail(boardID string, config map[string]string, source string
 		}
 	}
 	options, proxy := httpDetailParsingOptions(options)
+	options, skipSSL, err := httpDetailTLSOptions(options, proxy)
+	if err != nil {
+		return fail()
+	}
 	if jsonld.ValidateConfig(options) != nil {
 		return fail()
 	}
@@ -112,7 +116,7 @@ func InspectJSONLDDetail(boardID string, config map[string]string, source string
 	if proxy {
 		profile = jsonldProxyDetailProfile
 	}
-	return WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: source, Domain: strings.ToLower(endpoint.Hostname()), Profile: profile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), JSONLDConfig: options, EnrichmentFields: enrichmentFields}, nil
+	return WorkdayDetailProfile{BoardID: boardID, CompanyID: config["company_id"], SourceURL: source, Endpoint: source, Domain: strings.ToLower(endpoint.Hostname()), Profile: profile, EffectiveBoardSHA256: hex.EncodeToString(digest[:]), JSONLDConfig: options, EnrichmentFields: enrichmentFields, SkipSSL: skipSSL}, nil
 }
 
 func inspectDetailOwnership(boardID string, config map[string]string) (WorkdayDetailProfile, error) {

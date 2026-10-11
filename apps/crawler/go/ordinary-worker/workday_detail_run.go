@@ -80,7 +80,7 @@ AND NOT COALESCE(b.metadata->'scraper_config' ? 'enrich',false)`, current.Postin
 		}
 		return settle(receipt, "unscheduled")
 	}
-	if http.proxyRequired != queue.ProfileRequiresProxy(profile.Profile) || http.skipSSL != profile.SkipSSL || profile.SkipSSL && (profile.Profile != "workday.cxs-detail/v1" || http.proxyRequired) {
+	if http.proxyRequired != queue.ProfileRequiresProxy(profile.Profile) || http.skipSSL != profile.SkipSSL || profile.SkipSSL && (profile.Profile != "workday.cxs-detail/v1" && profile.Profile != "dom.direct-detail/v1" && profile.Profile != "jsonld.direct-detail/v1" || http.proxyRequired) {
 		return result, claimRunError("detail_transport", queue.ErrConfiguration)
 	}
 	var preflight *queue.GreenhouseHostPreflight

@@ -84,10 +84,19 @@ func InspectWorkdayDetail(boardID string, config map[string]string, sourceURL st
 			return fail()
 		}
 	}
-	for _, key := range []string{"proxy", "render"} {
+	for _, key := range []string{"render"} {
 		if raw, present := options[key]; present && string(raw) != "false" && string(raw) != "null" {
 			return fail()
 		}
+	}
+	proxy := false
+	if raw, present := options["proxy"]; present && string(raw) != "null" {
+		if json.Unmarshal(raw, &proxy) != nil {
+			return fail()
+		}
+	}
+	if proxy && string(metadata["ssl_verify"]) == "false" {
+		return fail()
 	}
 	var aliases []string
 	if raw, present := options["facility_tenant_aliases"]; present && string(raw) != "null" {
@@ -111,5 +120,9 @@ func InspectWorkdayDetail(boardID string, config map[string]string, sourceURL st
 	if err != nil || monitorErr != nil || parsed.Host != monitorEndpoint.Host {
 		return fail()
 	}
-	return WorkdayDetailProfile{BoardID: boardID, CompanyID: monitor.CompanyID, SourceURL: sourceURL, Endpoint: endpoint, Domain: parsed.Hostname(), Profile: "workday.cxs-detail/v1", EffectiveBoardSHA256: monitor.EffectiveConfigSHA256, FacilityTenantAliases: aliases, SkipSSL: string(metadata["ssl_verify"]) == "false"}, nil
+	profile := "workday.cxs-detail/v1"
+	if proxy {
+		profile = "workday.proxy-cxs-detail/v1"
+	}
+	return WorkdayDetailProfile{BoardID: boardID, CompanyID: monitor.CompanyID, SourceURL: sourceURL, Endpoint: endpoint, Domain: parsed.Hostname(), Profile: profile, EffectiveBoardSHA256: monitor.EffectiveConfigSHA256, FacilityTenantAliases: aliases, SkipSSL: string(metadata["ssl_verify"]) == "false"}, nil
 }

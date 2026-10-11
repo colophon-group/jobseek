@@ -17,6 +17,12 @@ func firstWorkdayDetailFixture(t *testing.T) firstOwnerFixture {
 }
 func firstAPIDetailFixture(t *testing.T, requested string) firstOwnerFixture {
 	t.Helper()
+	if requested == "dom/ssl-exception" {
+		return firstIndependentDetailFixture(t, `{"scraper_type":"dom","scraper_config":{"skip_ssl":true,"steps":[{"tag":"h1","field":"title"}]}}`, "https://careers.example.net/job/123", "careers.example.net")
+	}
+	if requested == "jsonld/ssl-exception" {
+		return firstIndependentDetailFixture(t, `{"scraper_type":"json-ld","scraper_config":{"skip_ssl":true}}`, "https://careers.example.net/job/123", "careers.example.net")
+	}
 	if requested == "johdi" {
 		return firstIndependentDetailFixture(t, `{"scraper_type":"johdi","scraper_config":{"company_key":"synthetic_company_key_12345","flow":"web","locale":"fr"}}`, "https://careers.example.com/jobs#/offer/23/job", "careers.example.com")
 	}
@@ -62,6 +68,9 @@ func firstAPIDetailFixture(t *testing.T, requested string) firstOwnerFixture {
 	provider, boardURL, source, metadata := "workday", "https://fixture.wd1.myworkdayjobs.com/Careers", "https://fixture.wd1.myworkdayjobs.com/Careers/job/JR001", `{"scraper_type":"workday"}`
 	if requested == "workday/ssl-exception" {
 		metadata = `{"scraper_type":"workday","ssl_verify":false}`
+	}
+	if requested == "workday/proxy" {
+		metadata = `{"scraper_type":"workday","scraper_config":{"proxy":true}}`
 	}
 	if requested == "seek" {
 		provider, boardURL, source, metadata = "seek", "https://au.seek.com/jobs?advertiserid=9094357", "https://au.seek.com/job/123", `{"scraper_type":"seek"}`
@@ -128,6 +137,12 @@ func firstAPIDetailFixture(t *testing.T, requested string) firstOwnerFixture {
 
 func TestRealFirstWorkdayDetailRetirementConservesInterruptedAndCompletedAttempts(t *testing.T) {
 	testFirstAPIDetailRetirement(t, "workday")
+}
+
+func TestRealFirstGroupedDetailTransportRetirementConservesAttempts(t *testing.T) {
+	for _, provider := range []string{"workday/proxy", "dom/ssl-exception", "jsonld/ssl-exception"} {
+		t.Run(provider, func(t *testing.T) { testFirstAPIDetailRetirement(t, provider) })
+	}
 }
 func TestRealFirstOracleDetailRetirementConservesInterruptedAndCompletedAttempts(t *testing.T) {
 	testFirstAPIDetailRetirement(t, "oracle_hcm")
