@@ -72,9 +72,7 @@ func TestLocalizedHTTPCanonicalRegistry(t *testing.T) {
 				delete(md, key)
 			}
 			if provider != "talemetry" {
-				if _, e := inspectDetailOwnership(profileBoardID, config); e == nil {
-					t.Fatal("rich skip gained detail authority")
-				}
+				assertSQLOnlySkipDetailOwnership(t, config)
 			}
 		})
 	}

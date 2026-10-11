@@ -7,6 +7,27 @@ import (
 	"testing"
 )
 
+func assertSQLOnlySkipDetailOwnership(t *testing.T, config map[string]string) {
+	t.Helper()
+	worker, expected := Simple, noScrapeDetailProfile
+	if config["scraper_needs_browser"] == "1" {
+		worker, expected = Browser, browserNoScrapeDetailProfile
+	}
+	p, err := inspectDetailOwnership(profileBoardID, config)
+	if err != nil || p.Profile != expected || !NoScrapeDetailProfile(p.Profile) || detailWorker(p.Profile) != worker || p.Domain != "*" || ProfileRequiresProxy(p.Profile) {
+		t.Fatal("explicit skip lost SQL-only ownership or gained transport", p, err)
+	}
+	if _, err := InspectJSONLDDetail(profileBoardID, config, config["board_url"], worker); err == nil {
+		t.Fatal("explicit skip gained JSON-LD fetch authority")
+	}
+	if _, err := InspectDOMDetail(profileBoardID, config, config["board_url"], worker); err == nil {
+		t.Fatal("explicit skip gained DOM fetch authority")
+	}
+	if _, err := InspectRenderedDetail(profileBoardID, config, config["board_url"], worker); err == nil {
+		t.Fatal("explicit skip gained rendered fetch authority")
+	}
+}
+
 func TestExplicitNoScrapeProfileMatchesOriginalClassifierAndSQL(t *testing.T) {
 	raw, e := os.ReadFile("testdata/python_explicit_no_scrape.json")
 	if e != nil {

@@ -42,9 +42,7 @@ func TestNativeBrowserProviderConfigurationAndResourceBinding(t *testing.T) {
 		if _, e := InspectRichMonitor(profileBoardID, bad); e == nil {
 			t.Fatal("browser provider acquired direct owner")
 		}
-		if _, e := inspectDetailOwnership(profileBoardID, config); e == nil {
-			t.Fatal("skip provider acquired detail ownership")
-		}
+		assertSQLOnlySkipDetailOwnership(t, config)
 		changed := cloneConfig(config)
 		changed["metadata"] = `{"scraper_type":"skip","drop_threshold":0.2}`
 		q, e := InspectRichMonitor(profileBoardID, changed)
