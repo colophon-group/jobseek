@@ -13,7 +13,10 @@ import (
 
 const Protocol = "jobseek.lightpanda.api-replay/v1"
 const RequestLimit = 128 << 10
-const ResponseLimit = 8 << 20
+// Complete public inventories such as TikTok exceed 8 MiB after field
+// projection. This API-specific frame bound remains below the existing
+// 64 MiB provider document bound; DOM and child V8 limits are independent.
+const ResponseLimit = 16 << 20
 const MaxDurationMS = 600000
 
 var ErrProtocol = errors.New("invalid API replay request or response")

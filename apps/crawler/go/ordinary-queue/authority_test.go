@@ -381,6 +381,10 @@ func TestRealAuthorityDelayedActivationRejectsExpiredClaim(t *testing.T) {
 	if err := f.observer.QueryRow(ctx, "SELECT count(*) FROM ordinary_worker_write_fence WHERE task_id=$1::uuid", f.task.ID).Scan(&count); err != nil || count != 0 {
 		t.Fatal("expired activation persisted fence")
 	}
+	var checked *time.Time
+	if err := f.observer.QueryRow(ctx, "SELECT last_checked_at FROM job_board WHERE id=$1::uuid", f.task.ID).Scan(&checked); err != nil || checked != nil {
+		t.Fatal("expired activation recorded a monitor attempt", err)
+	}
 	assertCanonical(t, f, false)
 }
 
@@ -453,6 +457,10 @@ func TestRealAuthorityCommitBeforeAcknowledgementRecovery(t *testing.T) {
 				claim := mustClaim(t, f)
 				due := futureDue()
 				ctx := context.Background()
+				var originalChecked *time.Time
+				if err := f.observer.QueryRow(ctx, "SELECT last_checked_at FROM job_board WHERE id=$1::uuid", f.task.ID).Scan(&originalChecked); err != nil {
+					t.Fatal(err)
+				}
 				if _, err := f.authority.Write(ctx, claim, true, func(ctx context.Context, tx pgx.Tx) error { return effect(ctx, tx, claim, due) }); err != nil {
 					t.Fatal(err)
 				}
@@ -484,6 +492,10 @@ func TestRealAuthorityCommitBeforeAcknowledgementRecovery(t *testing.T) {
 				}
 				if !current.RecoveredReceipt().NextDue().Equal(due) {
 					t.Fatal("recovery changed canonical due")
+				}
+				var recoveredChecked *time.Time
+				if err := f.observer.QueryRow(ctx, "SELECT last_checked_at FROM job_board WHERE id=$1::uuid", f.task.ID).Scan(&recoveredChecked); err != nil || !reflect.DeepEqual(originalChecked, recoveredChecked) {
+					t.Fatal("receipt recovery invented a new monitor attempt timestamp", err)
 				}
 				called := false
 				if _, err := replacement.Write(ctx, current, true, func(context.Context, pgx.Tx) error { called = true; return nil }); !errors.Is(err, ErrAuthorityLost) || called {
