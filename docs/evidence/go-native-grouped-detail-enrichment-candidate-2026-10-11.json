@@ -1,0 +1,438 @@
+{
+  "status": "local grouped candidate qualified; no production admission",
+  "version": "0.13.1012",
+  "profiles": 202,
+  "original_source_revision": "f66597e848856310bea2c3a59b766f29a3dc1305",
+  "public_qualified_board_count": 55,
+  "public_sample_count": 108,
+  "scheduled_routes_in_frozen_candidates": 15732,
+  "types": {
+    "dom": 47,
+    "json-ld": 8
+  },
+  "combined_unique_boards": 91,
+  "combined_transport_boards": 36,
+  "mandatory_worker_cases": 30,
+  "mandatory_cold_cases": 24,
+  "race": true,
+  "mandatory_postgres_redis": true,
+  "database_skips": 0,
+  "selected_fields": [
+    "title",
+    "description",
+    "locations",
+    "employment_type",
+    "job_location_type",
+    "date_posted",
+    "base_salary"
+  ],
+  "canonical_contract": "Preserve original selected writes and backfill, location resolution and description-derived salary. date_posted and standalone structured base_salary remain original inert compatibility fields; no new persistence semantics.",
+  "held": [
+    "GE Vernova Menk USA: original HTTPStatusError; no public qualification",
+    "Four unsupported DOM profiles and one DOM board without an actual scheduled route"
+  ],
+  "fields_compared": [
+    "title",
+    "description",
+    "locations",
+    "employment_type",
+    "job_location_type",
+    "date_posted",
+    "base_salary",
+    "language",
+    "extras",
+    "metadata"
+  ],
+  "proof_logs_sha256": {
+    "native1013-detail-enrichment-mandatory-cold-race1-2026-10-11.log": "52716fab70d6b73d2e4b9843a4b8a59e356263d0a7c2ab04a89765be376eec0c",
+    "native1013-detail-enrichment-mandatory-worker-race2-2026-10-11.log": "4ad46c969069711f1c8e8a5a47696ba3f9783926697b765d9e2fdb0b06d5aac9",
+    "native1013-detail-enrichment-public-race2-2026-10-11.log": "71001e07dbdb9d18d68d76bb0b766c8c657df00f28e4e8380c727042bc853f32"
+  },
+  "captures": [
+    {
+      "slug": "fintechos-careers",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "04722f1afbcda99199778d843f3e48128f03639c616dc02b753198f89e6bfdc3"
+    },
+    {
+      "slug": "bucher-industries-unipektin",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "5e8b34b7f80e5cf8a28aa2300b73e20856903db9f49570d2981ca2d1cd2c1368"
+    },
+    {
+      "slug": "securitas-costa-rica",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "bd8abe034a6267e8b0b608c75abc0a1ff9b3750ff53115b6303b33ee47aa7ad9"
+    },
+    {
+      "slug": "zhengda-group-careers-my-cpf",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "f11b5809bf2d400dc96e7660c0476ea19037eed175eaae03d0dad1a45f22407c"
+    },
+    {
+      "slug": "fraunhofer-gesellschaft-sweden",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "f921459c1032834851f922979bb44a4a9765c6d6e75d2b28f4584bd885d77e1a"
+    },
+    {
+      "slug": "planzer-careers",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "8f571c614bd58352b3273ec9fe7f85a026e7afb7ec510d58befacac6d76303c0"
+    },
+    {
+      "slug": "fraunhofer-gesellschaft-spain-science",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "6d61f5d47beb661e170ff7873c10680858bcf84785497e18b9f564102c556df7"
+    },
+    {
+      "slug": "synhelion-careers",
+      "kind": "dom",
+      "samples": 1,
+      "requests": 1,
+      "capture_sha256": "ce38a5d0009e199fcf95dcc8ab04fb3700a505a2dfdcd5e3fda7db2cbdef7e9b"
+    },
+    {
+      "slug": "yum-china-careers",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "aec84de7375e835b476f2f0038a27dcec3263740baa6b281c130693d5138b67a"
+    },
+    {
+      "slug": "haier-group-careers-cn",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "ea648e505d56fe45000aff041e43ef50d059df763b55ac890074f241d7724ad3"
+    },
+    {
+      "slug": "undp-consultancies",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "b0a10bc0f03b0b8fa8d581301bde149ab91644300b890a2db8ec376836938e0d"
+    },
+    {
+      "slug": "medicines-patent-pool-careers",
+      "kind": "dom",
+      "samples": 1,
+      "requests": 1,
+      "capture_sha256": "5975f044ec1ba47d73a82140aedd69037852919bcc90b03cfd8a1cbcec61e664"
+    },
+    {
+      "slug": "helvetia-baloise-caser-acierta",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "3e985b98d813131f7e6cd885bf16259c5a65c72a7ce35bd807470d8c2c94052d"
+    },
+    {
+      "slug": "bupa-spain-sanitas",
+      "kind": "json-ld",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "48e94efa5b8cdb4a0d3b76d9b5b5702969e133880d5b5dcc852838216c028248"
+    },
+    {
+      "slug": "bucher-industries-hydraulics",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "4dbfc69c22ccc728cae62f1de0c7ad9bc7db26b273db95564983267025e94472"
+    },
+    {
+      "slug": "securitas-france",
+      "kind": "json-ld",
+      "samples": 2,
+      "requests": 8,
+      "capture_sha256": "ffc900357f9aa8c014965e009e938351bbdc4274b5ded778404cb52723b53068"
+    },
+    {
+      "slug": "rewe-group-austria",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "1d0e3a66cbdc812df827bf56a1f805162566ee6dfbf7c682929ba5083f85dd51"
+    },
+    {
+      "slug": "swisslog-careers",
+      "kind": "json-ld",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "cbf705ab70f2c1c1402e7d6da74867ed7f939ab9cbd3944ea6c7b77aa4445b78"
+    },
+    {
+      "slug": "grifols-careers-plasmavita",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "574aa33b8f02552a322c42503b909e046ccae9f2640b430ad7b1a3e0b11ee822"
+    },
+    {
+      "slug": "rieter-global-solique",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 4,
+      "capture_sha256": "8da50fa81a565698376758007e678aeb1a9861dae86b935e2194165e0a39cc08"
+    },
+    {
+      "slug": "zhengda-group-careers-vn-cpf",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "50c3970f3bec78da0791d307de465f833f04ae7b5c4fc8b246765e01969838f2"
+    },
+    {
+      "slug": "cencora-profarma-lg",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "1f9bdaf5f8c754d6082aec85b4378a80b8fda20c37109417b6842c3024847c4d"
+    },
+    {
+      "slug": "bkw-careers",
+      "kind": "json-ld",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "2fc5c6a6d233557cb09ddef6ab106808781018de8398da6e1f08b3168da34c82"
+    },
+    {
+      "slug": "canton-neuchatel-careers",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 6,
+      "capture_sha256": "5438a73e8b0ebe40a1228e9a5bba63288078a36866e62ca1a962b321034711a4"
+    },
+    {
+      "slug": "helvetia-baloise-caser-residencial",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "1a124f860e15f71bb393dd3b61b3b8682663198e2435c7a56063c8ae4d2de845"
+    },
+    {
+      "slug": "ruag-main",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 6,
+      "capture_sha256": "73fc339eb1347f77990d08c4ba1224051174c754264620d6d50fe4f6463d8f63"
+    },
+    {
+      "slug": "grifols-careers-plasmavita-austria",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "8de3c58a3252005b3904f5685771a58b437294a3c2ee6d1a5ec3a79fa79438f3"
+    },
+    {
+      "slug": "pwc-careers-cl",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "89f7ba4b67937bfeb0a328f1b210326b615a021e1aa8ab9fcb0b29fa0037a037"
+    },
+    {
+      "slug": "ayuda-en-accion-talentclue",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "dc4ca7a4dba6a0f476fbe7afd1c9cbbd45b3b5b4e77df1a2b1f0c0a8a99ad82a"
+    },
+    {
+      "slug": "didi-global-careers-intl",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "0fa9fdd914d32a22df3f6d8f25304a13ec8a8dec9165de15335be8825f423ccf"
+    },
+    {
+      "slug": "international-skating-union-lucca",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "38594f232d66030334784da82e5f2cb489f97c1469aab8f60eb8c0d646785a3a"
+    },
+    {
+      "slug": "hopital-de-la-tour-recrutement",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "505e5096d89dfe8afa5dab0f8df846e0f29f1d071c2c669198ec3d19b1f9c322"
+    },
+    {
+      "slug": "beth-israel-lahey-health-exeter",
+      "kind": "json-ld",
+      "samples": 2,
+      "requests": 8,
+      "capture_sha256": "e4cafe595df251037333db6e88c6932e863f900101f6dd6b5ed3d4e41f092081"
+    },
+    {
+      "slug": "university-of-neuchatel-umantis",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 6,
+      "capture_sha256": "6bc75548ec86e71c559368b10ea73ecff4522c899b426a986931c34f42cf71e5"
+    },
+    {
+      "slug": "finma-careers",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "74d856aeda20751f53816e674c4a3b1e8e22a2e80c7906eb7823c0361d28ac0f"
+    },
+    {
+      "slug": "zhengda-group-careers-th-cpf",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "0be49d25675510b6c0de8654c2dcd9cf8b22f8ac8d0859a31fc108da1b3e2e68"
+    },
+    {
+      "slug": "carrefour-france-careers-fr-match",
+      "kind": "json-ld",
+      "samples": 2,
+      "requests": 4,
+      "capture_sha256": "e5907a6ddbaacb013ecd70c74a0688e836380ae90bb6b94d4afe11b043c490ba"
+    },
+    {
+      "slug": "visana-main",
+      "kind": "json-ld",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "2c19839d00e3eb0a5e29cc60ece388c29ddd918f724f196b513ded95614e30c7"
+    },
+    {
+      "slug": "city-of-zurich-careers",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "090277fb1d013af7c691840725160a973ef0ddbde117943c2d8a82f6cf5dd75e"
+    },
+    {
+      "slug": "chuv-careers",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "ff1116f4ff8f0d391a14d6bfed2195afa8af976f89f7d244a50f0419a153830d"
+    },
+    {
+      "slug": "bunge-careers-au-nz",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "69c5ec52bb4d1c994be429e12bfc52b0b1f9535baaaf2f9a2692dfe0e69c40ba"
+    },
+    {
+      "slug": "bupa-poland-luxmed",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "0c9a84b7ca11ef81fb3994f9786f0ffa9e80d07cf503498431c49b35e8c484c8"
+    },
+    {
+      "slug": "meinian-onehealth-careers",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "5dadc0d8dcfabc70b1940e5801d4c633153240da798dbc871d10bccad866c240"
+    },
+    {
+      "slug": "helvetia-baloise-helvetia-caser",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "6ee06da05d5f56ebe816245951f7200f24735c4ac88d1c961288d8bb55ae6f7f"
+    },
+    {
+      "slug": "johns-hopkins-health-system-careers",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "3c13b59342e8dad694b92562052acb0aaaf8ff241fee53b4af474ee8b040c13c"
+    },
+    {
+      "slug": "icrc-successfactors",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "a7e241a6294d66d203281a4d59be6e6c3549f0474e5c1bc5e746977c55cc9b47"
+    },
+    {
+      "slug": "bupa-saudi-arabia",
+      "kind": "json-ld",
+      "samples": 2,
+      "requests": 3,
+      "capture_sha256": "c4c0ed5bd6dd71a9fe78c2c56ab725bd1e4e49eff7fb9b4a6617fccf320bc04c"
+    },
+    {
+      "slug": "transports-publics-genevois-successfactors",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "5cb08c8d18f11a7b7c7b309f734ced9cf54b7b697627f53173e069a245c9eb34"
+    },
+    {
+      "slug": "zhengda-group-careers-cn-ctc",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "723a300c1fa5c09d56bb305ddb6b3dc854357b9daa1b83ce980ded38fa1a0a28"
+    },
+    {
+      "slug": "decathlon-es-talentclue",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "cf7a051fda3b133d308598570da45d0a8e064031b315b43a545b4a8875a3da47"
+    },
+    {
+      "slug": "covenant-health-physician-opportunities",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "815a5e363ace75f30f2e48ce26055fd54a61da0a8f01d4d33981e7430ad87457"
+    },
+    {
+      "slug": "norwegian-refugee-council-careers-local",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "c87766cc83039a90bbe88fe5c614bedbb0e3908b4d6e95c8443502b902dd7f1a"
+    },
+    {
+      "slug": "barcelona-activa-talentclue",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "9e39a4f3893507ee6e0da50ddbcf8c769bf696f584d46d198e4823a3f233c708"
+    },
+    {
+      "slug": "pilatus-careers",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "865edddadac0c677e8c5c75cc099f6e4f102bf5a907784015bbd8920971fbeeb"
+    },
+    {
+      "slug": "world-aquatics-lucca",
+      "kind": "dom",
+      "samples": 2,
+      "requests": 2,
+      "capture_sha256": "df7b9cfa4f5096d2d160bf20772ad292733a4865b876ba6d3cb949ce5b61dedb"
+    }
+  ]
+}

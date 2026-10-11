@@ -56,13 +56,13 @@ func TestDOMDetailRefusesUnimplementedTransportAndPipeline(t *testing.T) {
 			c["metadata"] = `{"scraper_type":"dom","scraper_config":{"render":true}}`
 		},
 		"tls": func(c map[string]string) {
-			c["metadata"] = `{"scraper_type":"dom","scraper_config":{"skip_ssl":true}}`
+			c["metadata"] = `{"scraper_type":"dom","scraper_config":{"skip_ssl":"enabled"}}`
 		},
 		"fallback": func(c map[string]string) {
 			c["metadata"] = `{"scraper_type":"dom","scraper_config":{"fallback":["dom"]}}`
 		},
 		"enrich": func(c map[string]string) {
-			c["metadata"] = `{"scraper_type":"dom","scraper_config":{"enrich":["title"]}}`
+			c["metadata"] = `{"scraper_type":"dom","scraper_config":{"enrich":["unknown"]}}`
 		},
 		"duplicates": func(c map[string]string) {
 			c["metadata"] = `{"scraper_type":"dom","scraper_config":{"proxy":true,"proxy":false}}`
@@ -114,7 +114,7 @@ func TestDOMDetailCanonicalizesNestedSQLAndRedisMetadata(t *testing.T) {
 
 func TestDOMDetailRetainsUnsupportedSecondaryAndTransportContracts(t *testing.T) {
 	for _, extra := range []string{
-		`"proxy":"enabled"`, `"render":true`, `"skip_ssl":true`, `"ssl_verify":false`,
+		`"proxy":"enabled"`, `"render":true`, `"skip_ssl":"enabled"`, `"ssl_verify":false`,
 		`"actions":[{"action":"click","selector":"button"}]`, `"enrich":["json-ld"]`,
 		`"document_fallback":{"pdf":{}}`, `"linked_description":{"selector":"a.detail"}`,
 		`"fetch_url_transform":{"find":"a","replace":"b"}`, `"encoding":"utf-16"`,

@@ -107,6 +107,9 @@ func httpMonitorParsingConfig(config map[string]string) (map[string]string, erro
 // Transport choice is compiled into immutable profile identities; neither a
 // generic caller flag nor a runtime selector grants proxy write authority.
 func ProfileRequiresProxy(profile string) bool {
+	if profile == "workday.proxy-cxs-detail/v1" {
+		return true
+	}
 	if profile == oracleProxyDetailProfile || profile == "headhunter.proxy-api-detail/v1" || profile == "headhunter.proxy-summary-items/v1" || profile == workableProxyDetailProfile || profile == "jobbank104.proxy-public-items/v1" || profile == "practicematch.proxy-listing-urls/v1" {
 		return true
 	}
@@ -150,4 +153,31 @@ func httpDetailParsingOptions(options map[string]any) (map[string]any, bool) {
 	}
 	delete(parsed, "proxy")
 	return parsed, options["proxy"] == true
+}
+
+// An explicit direct TLS exception changes only the sealed transport. Keep
+// the complete source config in the ownership hash and reject proxy mixtures.
+func httpDetailTLSOptions(options map[string]any, proxy bool) (map[string]any, bool, error) {
+	value, present := options["skip_ssl"]
+	if !present {
+		return options, false, nil
+	}
+	skip := false
+	if value != nil {
+		var ok bool
+		skip, ok = value.(bool)
+		if !ok {
+			return nil, false, ErrUnsupportedProfile
+		}
+	}
+	if skip && proxy {
+		return nil, false, ErrUnsupportedProfile
+	}
+	parsed := make(map[string]any, len(options))
+	for key, value := range options {
+		if key != "skip_ssl" {
+			parsed[key] = value
+		}
+	}
+	return parsed, skip, nil
 }

@@ -1,0 +1,391 @@
+{
+  "status": "local candidate qualified; no production admission",
+  "version": "0.13.1012",
+  "profiles": 202,
+  "base_revision": "5eec6ffcb0a095f4eec8ed86f9337815acb76da2",
+  "original_source_revision": "f66597e848856310bea2c3a59b766f29a3dc1305",
+  "candidate_board_count": 37,
+  "public_qualified_board_count": 36,
+  "public_sample_count": 72,
+  "fields_compared": [
+    "title",
+    "description",
+    "locations",
+    "employment_type",
+    "job_location_type",
+    "date_posted",
+    "base_salary",
+    "language",
+    "extras",
+    "metadata"
+  ],
+  "mandatory_worker_cases": 12,
+  "mandatory_cold_cases": 18,
+  "race": true,
+  "mandatory_postgres_redis": true,
+  "database_skips": 0,
+  "proof_logs_sha256": {
+    "native1012-detail-transport-group-mandatory-worker-race2-2026-10-11.log": "3b7836df5ffb7d5a52694588a732291472f6f10ae8426903d6f3d5447a0208b3",
+    "native1012-detail-transport-group-mandatory-cold-race1-2026-10-11.log": "54fa6e166ea7ff68b61fa7de01884794435467a8510d344554cb0ceed1df0694",
+    "native1012-detail-transport-group-public-race2-2026-10-11.log": "2cadc136507dae42bc40af36cbd06502c9de68e8b3ed77ed93d31af1da94d6bb",
+    "native1012-detail-transport-group-mandatory-python-ownership1-2026-10-11.log": "0389fe4deaea38bf169449f4e7ba89e11cf4e964d9858875415bab8f1c7fbcfd"
+  },
+  "captures": [
+    {
+      "slug": "mastercard-careers-wd",
+      "kind": "workday-proxy",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "5d4e5e6591189308c1b376950bdb6c341f0491ccaf0b3eacab727ba258b8d964",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "pwc-careers-jp-strategy",
+      "kind": "dom-tls",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "020c0b3280f86f4aee4324b11a3e7d220d242f86a3e0c1e88da5a77c69d8b9c1",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "roche-careers",
+      "kind": "workday-proxy",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 2,
+      "capture_sha256": "bacb18a2090391fe81a254e008b9962297018b44a9927da02ee384699932abe7",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "nvidia-careers",
+      "kind": "workday-proxy",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "3a275ac960800624fdb1a0a86ae0b66cf42e807e269a74793b29deb47a92a6b1",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "novartis-careers",
+      "kind": "workday-proxy",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 2,
+      "capture_sha256": "55a6e1437ee948df9e6cea56814f53bb028338d35fd02f3bcdc87df5439b0ee8",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "airbus-careers-workday",
+      "kind": "workday-proxy",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "3cf365465f94120f0bd9c5f2cb5d68c749db705d9a829c3788d90db6a154c31e",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "morgan-stanley-workday",
+      "kind": "workday-proxy",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "27f591e9d6e86abee2c6c99e9ed9f64cb590262209742f7169a3a2b302f3ea51",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "pwc-careers-jp-business-assurance",
+      "kind": "dom-tls",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "9b50d5558f24d848586e55a9376c137b06afabee2eae5898b405d359817a17ca",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "barclays-careers-workday",
+      "kind": "workday-proxy",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "87883ad6f89df289a5e50eeebf01fe3d98153035e927d5dee4c02e732af7ba2a",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "citigroup-workday",
+      "kind": "workday-proxy",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "8e5580b5b885a006256506ea3449f48f2a16d770d5de5a35eb65b7d64928aa65",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "rtx-careers-workday",
+      "kind": "workday-proxy",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "629fb13457144139f4680a16ca9d9a86db9614476687902947a331c8cf86fa6b",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "bilfinger-isp-poland",
+      "kind": "dom-tls",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "c9edd10ccd72978e9064d4a1e7d3c48fb31b7c8008614e07564909326d4d6c93",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "pwc-careers-jp-business-transformation",
+      "kind": "dom-tls",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "e5f05ffc8b9f663838ea04fd53cc3878651790c50054652cde98ee1a9270d704",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "pld-space-careers",
+      "kind": "dom-tls",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "bb231e30935d227686d5ce0bdd60ee61e4aa7757a33a3592571292d19c4278d5",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "csl-careers",
+      "kind": "jsonld-tls",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "bbe70842035692186acf10ae95ea88cff70dcd9dfded22ad2285708dd306f68f",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "cisco-careers",
+      "kind": "workday-proxy",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "5579d744d44dfee740e97c04e672ae377f7e3842a996f1c8e8cb4c37ce987af1",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "pwc-careers-jp-consulting",
+      "kind": "dom-tls",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "8c9ebcc011604d09ef8194339987bac1bbd8b6936ef7ab06ad17e9bcf3f0b414",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "target-careers",
+      "kind": "workday-proxy",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "f373785fb2cec4770b9cd07f1bbb9ff6bdf71ac6ca60c8df01c86aa37cc5631c",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "applied-materials-careers-workday",
+      "kind": "workday-proxy",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "de051d9068b03ebb76cca21bdda99784d336ea6232d234be5cd2f673d05706ae",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "mondelez-careers",
+      "kind": "workday-proxy",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "f46a5ace7dfd7dac7c02dfb5c9965aeb43cce1a3a60bce0174d37a684f70cab9",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "wells-fargo-careers",
+      "kind": "workday-proxy",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "389368ec7fb18d7ace48ef23ec4892094826eba4a26f6a93a4d7a11a0849cdcc",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "pwc-careers-jp-legal",
+      "kind": "dom-tls",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "eb89e467912e2d02c15a6494881f4f7b95e396f2f7c5734635ea40bffaa226fe",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "general-dynamics-gdit",
+      "kind": "workday-proxy",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "bb58b1bbd740c536db3ed236fa34eff0d5cf6e8f2716a768bbeb3c0b47198469",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "mercuria-careers",
+      "kind": "dom-tls",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "9e04116e81352ab1e9a5f42b9cd8c501f057cbe2ad69fca3e35dc28093546759",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "abb-workday",
+      "kind": "workday-proxy",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "b55e52b7862df4af848d98e24473df18164686ca97ed945ea3520c6e16f5faeb",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "medtronic-careers",
+      "kind": "workday-proxy",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "9397063aa0c5ad210ea031f3b906fd25a24e6f6dae2c345d1faccdcec48e82e4",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "hitachi-careers",
+      "kind": "workday-proxy",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "85d063a6ac45d3d90a70492385982a55c8eecce8d4f46b416920488b0fa2ed0c",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "pwc-careers-jp-advisory",
+      "kind": "dom-tls",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "33b70488e48cc1994f45c47f14ccb803cb1a414f04dd0b5cc3219e4c96234e13",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "pwc-careers-jp-tax",
+      "kind": "dom-tls",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "c5259663376ea7037843e11eacb948227bb42208f99877fa35213855991f3ab7",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "hpe-careers",
+      "kind": "workday-proxy",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 2,
+      "capture_sha256": "422da91206dc33d269e5d348598342a50924ce18d6f20ef00ed9728dacf19c07",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "johnson-and-johnson-careers",
+      "kind": "workday-proxy",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "ab3dd3752dbc9ee9488b72be1583e200049b00a34dca0cfcee6c9253718fdf70",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "pwc-careers-jp-corporate",
+      "kind": "dom-tls",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "9c0fc44e3ec2310b2b13d4475b16502f0f9909e40ab783a2ac306ff8fe0b0b6e",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "pwc-careers-jp-assurance",
+      "kind": "dom-tls",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "1d0e4996223c25451c518593e8372086ef547fcfdd8398f6c02f1ac8dfb1f9a5",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "toyota-careers",
+      "kind": "workday-proxy",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "8c09081884f55a35839cc6d3b4e076bb7cd3e58eaee2ea657e46a0589718879b",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "dentsu-careers-workday",
+      "kind": "workday-proxy",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "7553b6efa976ff80e5ebbd042504546d51ae4fe826031597bec7d3b1a9a5e479",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "pwc-careers-jp-risk-advisory",
+      "kind": "dom-tls",
+      "samples": 2,
+      "requests": 2,
+      "original_empty_samples": 0,
+      "capture_sha256": "280fd33a9b48f21f7da523ce22cd0ff00a8b47b7e292de9626d93c8fe3f548a4",
+      "qualified_public_samples": true
+    },
+    {
+      "slug": "european-free-trade-association-legacy-recruitment",
+      "kind": "jsonld-tls",
+      "samples": 0,
+      "requests": 0,
+      "original_empty_samples": 0,
+      "capture_sha256": "aa6e53409c2b564c973602a6527b3406c3cc6a0b99dc5e3b5d3475cea7598343",
+      "qualified_public_samples": false
+    }
+  ],
+  "held": [
+    "european-free-trade-association-legacy-recruitment: no scheduled actual route or public sample"
+  ],
+  "limitations": [
+    "Frozen historical route samples do not prove current full-route eligibility; all-board and all-actual-route admission remains required.",
+    "Six Workday samples match original empty/gone behavior; this is not positive canonical content proof.",
+    "First DOM public captures lacked the installed local parser; original Python parser ran under its explicit reversal on exactly those captured HTTP bytes, with no additional origin requests.",
+    "First synthetic DOM worker assertion required a paragraph wrapper rather than canonical text; repaired the test only.",
+    "No CI/installed image proof, production deployment, active ordinary ownership or full-fleet freshness/cost claim."
+  ],
+  "mandatory_python_ownership_tests": 89,
+  "vet": "ordinary-queue and ordinary-worker passed",
+  "additional_validation": "All Workday/DOM/JSON-LD detail admission unit contracts passed under race after correcting two historical blanket TLS-rejection assertions; malformed flags and unsupported secondary options remain rejected.",
+  "previous_qualification_base_revision": "b733c6c5ecb9ba9b40c7ef59c64964740f194f5c",
+  "full_local_worker_race": {
+    "head": "77a991c3fdcbf83ea3932c53f8da05f40b89cba8",
+    "rebased_equivalent_head": "83901c1048e34a2699612e9071ad4810c04e7b42",
+    "equivalent_tree": "14fc4cd709989c82fe24e850e34e8db383cb396b",
+    "returncode": 0,
+    "elapsed_seconds": 867.65,
+    "mandatory_postgres_redis": true,
+    "log_sha256": "e408531388b0f67e331e87088df1c546de4525ceb55cd6a3a52f427496058218"
+  }
+}

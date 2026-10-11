@@ -515,8 +515,12 @@ def test_retained_legacy_plan_keeps_original_projection():
     assert ownership_projection(original) == original
 
 
-def test_detail_projection_retains_actual_domain_and_rejects_foreign_members():
+@pytest.mark.parametrize("profile", ["workday.cxs-detail/v1", "workday.proxy-cxs-detail/v1"])
+def test_detail_projection_retains_actual_domain_and_rejects_foreign_members(profile):
     _, payload = expectation(details=True)
+    doc = json.loads(payload)
+    doc["details"][0]["profile"] = profile
+    payload = json.dumps(doc, separators=(",", ":"))
     projection = json.loads(ownership_projection(payload))
     board = "00000000-0000-4000-8000-000000000001"
     assert projection["members"] == {board: "greenhouse"}
@@ -624,7 +628,11 @@ def _compiled_native_detail_profiles():
     profiles = sorted(set(re.findall(r'"([a-z0-9_.-]+detail/v1)"', source)))
     assert len(profiles) >= 23, "compiled detail capability evidence is incomplete"
     # Workday's retained monitor-membership requirement has dedicated tests.
-    return [profile for profile in profiles if profile != "workday.cxs-detail/v1"]
+    return [
+        profile
+        for profile in profiles
+        if profile not in ("workday.cxs-detail/v1", "workday.proxy-cxs-detail/v1")
+    ]
 
 
 @pytest.mark.parametrize("profile", _compiled_native_detail_profiles())

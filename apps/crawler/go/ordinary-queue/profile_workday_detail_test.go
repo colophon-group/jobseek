@@ -41,7 +41,7 @@ func TestWorkdayDetailAdmissionRetainsOtherScrapersAndTransportRoutes(t *testing
 	const source = "https://fixture.wd1.myworkdayjobs.com/Careers/job/JR001"
 	for _, metadata := range []string{
 		`{"scraper_type":"json-ld"}`, `{"scraper_type":"onlyfy"}`,
-		`{"scraper_config":{"proxy":true}}`, `{"scraper_config":{"render":true}}`,
+		`{"scraper_config":{"proxy":"enabled"}}`, `{"scraper_config":{"render":true}}`,
 		`{"ssl_verify":"false"}`, `{"scraper_config":{"skip_ssl":true}}`,
 		`{"scraper_config":{"proxy":true,"proxy":false}}`,
 		`{"scraper_config":{"facility_tenant_aliases":[""]}}`,
