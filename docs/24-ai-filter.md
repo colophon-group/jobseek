@@ -294,10 +294,13 @@ count, or make app layouts request-bound. Validate regressions with
 ## Deliberate MVP exclusions
 
 There is no eval-dataset creation, provider bakeoff, fallback model, or formal
-privacy/legal workstream in this release. Notifications remain independent of
-narrowed decisions. Making notification delivery consume Jev results requires a
-separate delivery and readiness contract; notification matching must never
-silently become an execution trigger.
+privacy/legal workstream in this release. Standard notifications keep their
+independent matching and delivery path. Narrowed-only opt-ins consume existing
+accepted decisions after their delivery window has completed coverage; they
+retain incomplete windows for retry and never fall back to broad results.
+Notification matching must never enqueue evaluation or spend classifier budget.
+Coverage checkpoints preserve the criteria-edit timestamp so worker progress
+cannot cancel email plans for unchanged prompts.
 
 ## Freshness verification
 
