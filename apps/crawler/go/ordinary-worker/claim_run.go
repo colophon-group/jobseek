@@ -512,7 +512,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			matches = queue.BeisenMonitorResourceMatches(profile, task.Config, response.endpoint)
 		}
 		if profile.Provider == "api_sniffer" {
-			matches = queue.APISnifferMonitorResourceMatches(profile, task.Config, response.endpoint)
+			matches = queue.APISnifferMonitorResourceMatches(profile, task.Config, response.endpoint) || pdfVerificationResponseMatches(profile, task.Config, response)
 		}
 		if profile.Provider == "icims" {
 			matches = queue.ICIMSMonitorResourceMatches(profile, task.Config, response.endpoint)
@@ -538,7 +538,7 @@ func RunGreenhouseClaim(ctx context.Context, authority *queue.Authority, claim *
 			if profile.Provider == "dom" || profile.Provider == "mokahr" || profile.Provider == "almacareer" || profile.Provider == "eightfold" || profile.Provider == "inline" || profile.Provider == "beisen" || profile.Provider == "api_sniffer" || profile.Provider == "smartrecruiters" || profile.Provider == "workable" || profile.Provider == "join" || profile.Provider == "sitemap" || profile.Provider == "oracle_hcm" || profile.Provider == "icims" || profile.Provider == "phenom" || profile.Provider == "nextdata" {
 				initial = response.endpoint
 			}
-			if profile.Provider == "dom" && domVerificationResponseMatches(profile, task.Config, response) {
+			if profile.Provider == "dom" && domVerificationResponseMatches(profile, task.Config, response) || pdfVerificationResponseMatches(profile, task.Config, response) {
 				// The original listing remains the installed queue resource.
 				// Its finite, config-bound child fetch supplies the final policy
 				// observation; arbitrary detail URLs never pass the seal above.

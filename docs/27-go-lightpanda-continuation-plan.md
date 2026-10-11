@@ -68,6 +68,33 @@ replacement careers page. Preserve every enabled board, useful offline Python,
 and the supported rollback window while completing runtime consumers and
 sustained throughput/freshness before retiring production Python/Playwright/Chromium.
 
+## Next grouped implementation — shared DOM/API listing controls
+
+Source1016 implements complete numbered detail-link resolution plus shared PDF
+ownership and UTC deadline/window classification for nine current registry
+configurations across DOM and configured HTTP API monitors. It reuses existing
+profiles, verified transports, canonical writers and ownership/reversal flows.
+Browser API replay with PDF gates remains refused until its child-read contract
+is implemented; rendered DOM listings use independently verified HTTP for PDF
+reads. No new configuration has production ownership from compilation alone.
+
+Original Python references cover 14 numbered-link cases and 22 PDF decisions.
+Seven captured public baselines match: RCI's complete 20-link scan yields two
+URLs; Fribourg teaching and European Athletics prove explicit empty inventories;
+Gymnastics and the UK embassy retain ambiguous-document failures, and the two
+old embassy endpoints retain their redirect failures. Native PostgreSQL/Redis
+checks cover 30 direct/proxy/rendered inventory, policy and settlement cases;
+30 cold reversals preserve interrupted and committed-before-ack claims and
+reject changed settings. Full regression suites and runtime/image qualification
+are still required before merge, supported whole deployment and admission.
+
+At 12:42 UTC, deployed source1015 had run for 39 minutes without an OOM or
+restart, with a 219.6 MiB sample under its 1 GiB limit. Its one CPU remained
+saturated and 5,817 native monitors were due (3,571 overdue by an hour).
+Treat measured throughput and complete detail-age/queue conservation as
+remaining delivery work; profile coverage alone does not authorize retirement
+of the remaining production Python consumers.
+
 ## Historical checkpoint — source1014 active across 7,779 / 7,675 boards
 
 [PR #10413](https://github.com/colophon-group/jobseek/pull/10413) merged as

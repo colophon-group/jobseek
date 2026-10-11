@@ -99,7 +99,7 @@ func collectRenderedDOMPages(ctx context.Context, profile queue.GreenhouseMonito
 		return RichDiscovery{}, queue.ErrConfiguration
 	}
 	var tail *http.Client
-	if listing.Pagination != nil || listing.RequireJSONLD {
+	if listing.Pagination != nil || listing.RequireJSONLD || listing.PDFProof != nil {
 		if verified == nil {
 			return RichDiscovery{}, queue.ErrConfiguration
 		}
@@ -129,10 +129,16 @@ func collectRenderedDOMPages(ctx context.Context, profile queue.GreenhouseMonito
 		}
 		return result, executor.ErrBotChallenge
 	})
-	if failure != nil || !listing.RequireJSONLD {
+	if failure != nil {
 		return found, failure
 	}
-	return verifyDOMJobPostingInventory(ctx, tail, profile, config, found)
+	if listing.RequireJSONLD {
+		found, failure = verifyDOMJobPostingInventory(ctx, tail, profile, config, found)
+		if failure != nil {
+			return found, failure
+		}
+	}
+	return filterListingPDFInventory(ctx, tail, profile, config, found, listing.PDFProof, nil, time.Now())
 }
 
 // Navigation is shared by DOM and embedded document monitors. Parsing remains

@@ -41,6 +41,7 @@ type Options struct {
 	ResponseDecrypt                        *responseDecrypt
 	PostDataRefresh                        *postDataRefresh
 	Convergence                            *PaginationConvergence
+	PDFProof                               *dom.PDFListingProof
 	collectRows                            func([]inventorySourceRow)
 }
 
@@ -64,6 +65,7 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 		return o, err
 	}
 	allowed := map[string]bool{}
+	allowed["require_pdf_pattern"], allowed["require_unexpired_pdf"] = true, true
 	for _, k := range ConfigKeys {
 		allowed[k] = true
 	}
@@ -72,6 +74,15 @@ func OptionsFromMetadata(boardURL, metadata string) (Options, error) {
 	}
 	for k := range m {
 		if !allowed[k] {
+			return o, ErrOptions
+		}
+	}
+	if m["require_pdf_pattern"] != nil || m["require_unexpired_pdf"] != nil {
+		if m["require_pdf_pattern"] == nil || m["require_unexpired_pdf"] == nil {
+			return o, ErrOptions
+		}
+		o.PDFProof, err = dom.PDFListingProofOptions(dom.Object(m))
+		if err != nil {
 			return o, ErrOptions
 		}
 	}

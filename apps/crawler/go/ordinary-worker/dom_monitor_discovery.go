@@ -19,7 +19,7 @@ import (
 	"golang.org/x/text/cases"
 )
 
-func discoverDOMSingleInventory(ctx context.Context, verified *http.Client, profile queue.GreenhouseMonitorProfile, c dom.ListingConfig, later bool) (RichDiscovery, error) {
+func discoverDOMSingleInventory(ctx context.Context, verified *http.Client, profile queue.GreenhouseMonitorProfile, c dom.ListingConfig, later bool, configs ...map[string]string) (RichDiscovery, error) {
 	result := RichDiscovery{Jobs: []RichMonitorJob{}}
 	var err error
 	if verified == nil {
@@ -93,6 +93,12 @@ func discoverDOMSingleInventory(ctx context.Context, verified *http.Client, prof
 			break
 		}
 		count++
+	}
+	if c.TitleScan != nil {
+		if later || len(configs) != 1 {
+			return result, queue.ErrConfiguration
+		}
+		return discoverDOMTitleScan(ctx, &client, profile, configs[0], c, source, result, pauseRich)
 	}
 	return parseDOMInventory(ctx, result, profile, c, source, "", false, later)
 }
@@ -314,13 +320,19 @@ func discoverDOMInventory(ctx context.Context, client *http.Client, profile queu
 		if later {
 			c.IncludeBoardURL = false
 		}
-		return discoverDOMSingleInventory(ctx, client, p, c, later)
+		return discoverDOMSingleInventory(ctx, client, p, c, later, config)
 	})
 	if err != nil {
 		return found, err
 	}
 	if c.RequireJSONLD {
 		found, err = verifyDOMJobPostingInventory(ctx, client, profile, config, found)
+		if err != nil {
+			return found, err
+		}
+	}
+	if c.PDFProof != nil {
+		found, err = filterListingPDFInventory(ctx, client, profile, config, found, c.PDFProof, c.Document.Headers, time.Now())
 		if err != nil {
 			return found, err
 		}
