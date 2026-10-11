@@ -39,6 +39,7 @@
     "test:coverage": "pnpm proxy-matchers:update && vitest run --config vitest.coverage.config.ts",
     "test:watch": "pnpm proxy-matchers:update && vitest",
     "test:isr": "vitest run --config vitest.isr.config.ts",
+    "billing:control": "tsx scripts/control-subscription-billing.ts",
     "test:jev-live": "tsx scripts/test-jev-ai-filter-live.ts",
     "typecheck": "next typegen && tsc",
     "test:company-reference": "vitest run --config vitest.company-reference.config.ts",

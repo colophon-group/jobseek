@@ -1,3 +1,4 @@
+import * as availability from "@/lib/service-availability";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -50,6 +51,18 @@ describe("BillingSettings action errors", () => {
     mocks.isLoggedIn = true;
     mocks.searchParams = new URLSearchParams();
     mocks.createPortalSession.mockResolvedValue({ url: null });
+  });
+
+  it("keeps billing management accessible while stale checkout UI is paused", () => {
+    const pause = vi.spyOn(availability, "subscriptionPurchasesPaused").mockReturnValue(true);
+    try {
+      render(<BillingSettings planInfo={{ plan: "free", checkoutEnabled: true, hasBillingAccount: true, status: "canceled" }} />);
+      expect(screen.getByText("New Pro subscriptions are temporarily paused.")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Manage subscription" })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Start 7-day free trial" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Subscribe to Pro" })).toBeNull();
+      expect(mocks.createCheckoutSession).not.toHaveBeenCalled();
+    } finally { pause.mockRestore(); }
   });
 
   it("returns a newly subscribed viewer to the preserved focused search", async () => {

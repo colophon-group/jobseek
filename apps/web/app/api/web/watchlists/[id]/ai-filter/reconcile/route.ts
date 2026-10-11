@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { assertNarrowedAvailable } from "@/lib/service-availability";
 
 import {
   AiFilterEntitlementError,
@@ -33,6 +34,7 @@ export async function POST(
   if (!ownerId || !isUuid(watchlistId)) return aiFilterNotFoundResponse();
   try {
     const owner = { ownerId, watchlistId };
+    assertNarrowedAvailable();
     const body = await readSmallJson(request);
     const keys = Reflect.ownKeys(body);
     if (

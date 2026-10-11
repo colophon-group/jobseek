@@ -14,6 +14,8 @@ import {
   createPortalSession,
 } from "@/lib/actions/billing";
 import { translateActionError } from "@/lib/action-error-messages";
+import { subscriptionPurchasesPaused, narrowedUnderMaintenance } from "@/lib/service-availability";
+import { NarrowedMaintenanceNotice } from "@/components/search/narrowed-maintenance-notice";
 import { Button } from "@/components/ui/Button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import type { PlanId } from "@/lib/plans";
@@ -31,6 +33,8 @@ type PlanInfo = {
 
 export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
   const { t, i18n } = useLingui();
+  const purchasesPaused = subscriptionPurchasesPaused();
+  planInfo = { ...planInfo, checkoutEnabled: planInfo.checkoutEnabled && !purchasesPaused };
   const lp = useLocalePath();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -145,6 +149,8 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
           Subscription
         </Trans>
       </h2>
+      {narrowedUnderMaintenance() && <NarrowedMaintenanceNotice />}
+      {purchasesPaused && <p role="status" className="text-sm text-muted"><Trans id="pro.maintenance.purchases" comment="Notice while new Pro subscriptions are temporarily paused">New Pro subscriptions are temporarily paused.</Trans></p>}
       {error && <ErrorAlert message={error} focusOnRender />}
       {checkoutComplete && !hasAccess && (
         <div
@@ -447,7 +453,7 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
                     <ArrowRight size={16} aria-hidden="true" />
                   </Button>
                 ))}
-              {!planInfo.checkoutEnabled && (
+              {!planInfo.checkoutEnabled && !purchasesPaused && (
                 <span className="text-sm text-muted">
                   <Trans
                     id="pro.offer.unavailable"
@@ -458,7 +464,7 @@ export function BillingSettings({ planInfo }: { planInfo: PlanInfo }) {
                 </span>
               )}
             </div>
-            {!planInfo.checkoutEnabled && (
+            {!planInfo.checkoutEnabled && !purchasesPaused && (
               <div className="mt-5 border-t border-divider pt-4">
                 <ProWaitlistForm />
               </div>

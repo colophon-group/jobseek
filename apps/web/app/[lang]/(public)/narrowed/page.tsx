@@ -11,6 +11,8 @@ import { PublicDomainArt } from "@/components/PublicDomainArt";
 import { MarketingLinks, type MarketingPageProps } from "@/components/marketing/MarketingPage";
 import { initI18nForPage, isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales } from "@/lib/i18n";
 import { buildAlternates, JsonLd } from "@/lib/seo";
+import { narrowedUnderMaintenance } from "@/lib/service-availability";
+import { NarrowedMaintenanceNotice } from "@/components/search/narrowed-maintenance-notice";
 import { stripeSignupOpen } from "@/lib/stripe/config";
 
 export async function generateMetadata({ params }: MarketingPageProps): Promise<Metadata> {
@@ -37,6 +39,7 @@ export default async function Page({ params }: MarketingPageProps) {
   return <>
     <JsonLd data={{ "@context": "https://schema.org", "@type": "WebPage", name: i18n._(copy.metaTitle), description: i18n._(copy.description), url: `${siteConfig.url}/${locale}/narrowed`, inLanguage: locale }} />
     <main id="main-content" tabIndex={-1} className="scroll-mt-12">
+      {narrowedUnderMaintenance() && <div className="mx-auto max-w-[1200px] px-4 pt-6"><NarrowedMaintenanceNotice /></div>}
       <section className="mx-auto grid max-w-[1200px] items-center gap-7 px-4 pb-6 pt-9 md:grid-cols-[1.15fr_1fr] md:gap-12 md:pb-8 md:pt-12">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted">Job Seek Pro / Narrowed</p>

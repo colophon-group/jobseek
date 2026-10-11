@@ -1,4 +1,5 @@
 import "server-only";
+import { subscriptionPurchasesPaused } from "@/lib/service-availability";
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import type Stripe from "stripe";
@@ -16,6 +17,7 @@ export class BillingConflict extends Error {
 /** Persist customer and request parameters before creating a payable session.
  * A failed DB commit after the API call can then recover the identical session. */
 export async function checkout(user: { id: string; email: string }, locale = "en", next?: string | null): Promise<{ url: string | null; error?: "billing_processing" }> {
+  if (subscriptionPurchasesPaused()) throw new BillingConflict("payments_unavailable");
   const stripe = getStripe();
   const environment = stripeEnvironment();
   const priceId = stripePriceId();

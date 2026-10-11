@@ -1967,6 +1967,12 @@ msgstr "Inserisci la tua e-mail e ti invieremo un link per reimpostare la passwo
 msgid "auth.resetPassword.subtitle"
 msgstr "Inserisci la tua nuova password qui sotto."
 
+#. Explains that maintenance preserves saved matching criteria and ordinary search
+#. js-lingui-explicit-id
+#: src/components/search/narrowed-maintenance-notice.tsx
+msgid "narrowed.maintenance.description"
+msgstr "La valutazione è sospesa. I criteri salvati vengono conservati. La ricerca normale e le liste di monitoraggio restano disponibili."
+
 #. Assurance 1 body
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx
@@ -3394,6 +3400,12 @@ msgstr "Narrowed — cerca oltre il titolo"
 msgid "faq.sections.narrowed"
 msgstr "Narrowed e Pro"
 
+#. Notice heading while Narrowed evaluation is paused for maintenance
+#. js-lingui-explicit-id
+#: src/components/search/narrowed-maintenance-notice.tsx
+msgid "narrowed.maintenance.title"
+msgstr "Narrowed è in manutenzione"
+
 #. Narrowed marketing page: link
 #. js-lingui-explicit-id
 #: src/content/narrowed.ts
@@ -3484,6 +3496,14 @@ msgstr "Nuova password"
 #: app/[lang]/reset-password/page.tsx
 msgid "auth.resetPassword.newPassword"
 msgstr "Nuova password"
+
+#. Notice while new Pro subscriptions are temporarily paused
+#. Notice while new Pro subscriptions are temporarily paused
+#. js-lingui-explicit-id
+#: src/components/Pricing.tsx
+#: src/components/settings/BillingSettings.tsx
+msgid "pro.maintenance.purchases"
+msgstr "I nuovi abbonamenti Pro sono temporaneamente sospesi."
 
 #. Default title assigned to a newly created watchlist
 #. js-lingui-explicit-id

@@ -38,6 +38,7 @@ vi.mock("@/lib/useLocalePath", () => ({
 }));
 
 import { AiSearchFilter } from "../ai-search-filter";
+import * as availability from "@/lib/service-availability";
 
 describe("AiSearchFilter", () => {
   beforeEach(() => {
@@ -51,6 +52,22 @@ describe("AiSearchFilter", () => {
     mocks.session.isPending = false;
     mocks.disableAiFilter.mockResolvedValue({ ok: true });
     window.history.replaceState({}, "", "/en/explore?q=engineer");
+  });
+
+  it("shows maintenance for owners and shared viewers without hiding ordinary results or offering evaluation", () => {
+    const maintenance = vi.spyOn(availability, "narrowedUnderMaintenance").mockReturnValue(true);
+    const onDrawerOpenChange = vi.fn();
+    try {
+      render(<AiSearchFilter isSubscribed hasSearchFilters candidateCount={12} readOnly defaultOpen
+        presentation="drawer" initialQuery="Work directly with users" onDrawerOpenChange={onDrawerOpenChange}
+        drawerContent={<p>Recorded matching role</p>} />);
+      expect(screen.getByText("Narrowed is under maintenance")).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Narrowed" })).toBeNull();
+      expect(screen.queryByText("Recorded matching role")).toBeNull();
+      expect(onDrawerOpenChange).toHaveBeenLastCalledWith(false);
+      expect(mocks.configureAiFilter).not.toHaveBeenCalled();
+      expect(mocks.createAiFilteredWatchlist).not.toHaveBeenCalled();
+    } finally { maintenance.mockRestore(); }
   });
 
   it("shows a read-only preview immediately without exposing mutation controls", () => {

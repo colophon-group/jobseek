@@ -96,3 +96,15 @@ both the production Vercel project and the production GitHub environment. Turbo
 forwards it in both web build tasks. The existing sensitive `CRON_SECRET` cannot
 be read back and is retained for the other internal endpoints. The dedicated
 refresh bearer grants access only to refresh dispatch.
+
+### Maintenance and subscription pauses
+
+Source controls are in `src/config/service-availability.json`. Narrowed
+maintenance blocks Workflow creation before `start()` and suspends foreground
+evaluation. Purchases are also independently pausable. Existing billing is a
+separate provider operation via `pnpm billing:control audit|pause|resume`; editing
+source controls alone does not stop renewals. The protected timer workflow
+defaults to `action=pause`; `action=activate` refuses active maintenance.
+See [the maintenance runbook](../../../docs/runbooks/narrowed-maintenance.md) for
+repeated pause/resume operations, existing provider sessions and old Workflow
+runs, and verification requirements.
